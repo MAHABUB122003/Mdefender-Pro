@@ -1,0 +1,42 @@
+MONGO_URI=mongodb://localhost:27017/
+MONGO_DB=mdefender_pro
+SECRET_KEY=your-super-secret-key-change-this
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+EMAIL_ALERTS=False
+SMTP_SERVER=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+ALERT_EMAIL=
+
+
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build/cache
+.pytest_cache/
+.mypy_cache/

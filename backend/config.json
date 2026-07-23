@@ -1,0 +1,27 @@
+{
+  "_comment": "Edit these values to connect MDefender Pro to ANY website. Only 4 things to change.",
+
+  "website_name": "MDefender Pro",
+  "backend_url": "http://localhost:8000",
+  "proxy_port": 3000,
+  "backend_timeout": 30,
+  "whitelist_localhost": false,
+
+  "frontend": {
+    "mode": "static",
+    "static_dir": "../frontend/dist",
+    "spa": true
+  },
+
+  "backend_api": {
+    "prefix": "api",
+    "forward": true
+  },
+
+  "static_paths": ["uploads", "assets", "face-models"],
+
+  "static_extensions": [
+    ".js", ".css", ".svg", ".png", ".jpg", ".jpeg", ".ico",
+    ".gif", ".webp", ".woff", ".woff2", ".ttf", ".eot", ".map", ".otf"
+  ]
+}

@@ -1,0 +1,12 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+python-multipart==0.0.20
+pymongo==4.13.2
+python-dotenv==1.1.0
+numpy==2.2.6
+scikit-learn==1.7.1
+joblib==1.5.1
+requests==2.32.4
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+gunicorn==23.0.0

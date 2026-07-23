@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - MDefender Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .block-wrapper { width: 100%; max-width: 560px; animation: fadeIn .5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .block-card { background: #fff; border-radius: 20px; padding: 36px 40px 28px; box-shadow: 0 20px 60px rgba(0,0,0,.05); border: 1px solid #e8edf4; }
+        .block-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 18px; border-bottom: 1px solid #f0f4fa; margin-bottom: 24px; }
+        .brand-text h2 { font-size: 18px; font-weight: 700; color: #0f172a; }
+        .brand-text span { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .6px; }
+        .ref-badge { font-size: 12px; color: #64748b; background: #f8fafc; padding: 4px 14px; border-radius: 16px; border: 1px solid #e8edf4; font-family: monospace; }
+        .block-content { text-align: center; }
+        .block-title { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+        .block-subtitle { font-size: 15px; color: #64748b; margin-bottom: 24px; }
+        .details-grid { background: #f8fafc; border-radius: 12px; padding: 4px 18px; margin-bottom: 20px; border: 1px solid #e8edf4; text-align: left; }
+        .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #f0f4fa; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-size: 12px; font-weight: 500; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
+        .detail-value { font-size: 13px; color: #0f172a; font-weight: 500; word-break: break-all; text-align: right; max-width: 55%; }
+        .detail-value.attack-type { color: #dc2626; font-weight: 600; }
+        .detail-value.reference { font-family: monospace; background: #fff; padding: 2px 10px; border-radius: 4px; border: 1px solid #e8edf4; font-size: 12px; }
+        .info-message { background: #f8fafc; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #e8edf4; text-align: left; font-size: 13px; color: #475569; line-height: 1.6; }
+        .block-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+        .btn { padding: 11px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; text-decoration: none; border: none; display: inline-block; }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,.3); }
+        .block-footer { text-align: center; padding-top: 18px; border-top: 1px solid #f0f4fa; font-size: 13px; color: #94a3b8; }
+        .block-footer strong { color: #64748b; }
+        @media (max-width: 600px) {
+            .block-card { padding: 24px 18px 20px; }
+            .block-title { font-size: 22px; }
+            .detail-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+            .detail-value { text-align: left; max-width: 100%; }
+            .block-actions { flex-direction: column; }
+            .btn { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="block-wrapper">
+        <div class="block-card">
+            <div class="block-header">
+                <div class="brand-text">
+                    <h2>MDefender Pro</h2>
+                    <span>{{ website_name }}</span>
+                </div>
+                <div class="ref-badge">ID: {{ reference_id }}</div>
+            </div>
+            <div class="block-content">
+                <h1 class="block-title">Access Denied</h1>
+                <p class="block-subtitle">{{ reason }}</p>
+                <div class="details-grid">
+                    <div class="detail-row">
+                        <span class="detail-label">Attack Type</span>
+                        <span class="detail-value attack-type">{{ attack_type }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Your IP</span>
+                        <span class="detail-value">{{ client_ip }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Reason</span>
+                        <span class="detail-value">{{ reason }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Reference ID</span>
+                        <span class="detail-value reference">{{ reference_id }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Timestamp</span>
+                        <span class="detail-value">{{ timestamp }}</span>
+                    </div>
+                </div>
+                <div class="info-message">
+                    If you believe this is a mistake, please contact the website administrator.
+                    Provide the <strong>Reference ID</strong> for faster resolution.
+                </div>
+                <div class="block-actions">
+                    <a href="/" class="btn btn-primary">Return to Homepage</a>
+                </div>
+            </div>
+            <div class="block-footer">
+                Protected by <strong>MDefender Pro</strong> &mdash; All attacks are logged and monitored
+            </div>
+        </div>
+    </div>
+</body>
+</html>
