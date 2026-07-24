@@ -1,4 +1,5 @@
 from src.database.mongodb_connection import MongoDB
+from src.engine.rule_engine import RuleEngine
 from datetime import datetime, timedelta
 from bson import ObjectId
 import uuid
@@ -8,6 +9,7 @@ import secrets
 class UserAPI:
     def __init__(self):
         self.db = MongoDB()
+        self.rule_engine = RuleEngine()
 
     def _resolve_id(self, user_id):
         if isinstance(user_id, ObjectId):
@@ -42,6 +44,7 @@ class UserAPI:
             'password_hash': password_hash,
             'api_key': api_key,
             'plan': 'free',
+            'role': 'readonly',
             'status': 'active',
             'created_at': datetime.now(),
             'updated_at': datetime.now(),
@@ -97,6 +100,7 @@ class UserAPI:
                 'email': user['email'],
                 'name': user['name'],
                 'plan': user.get('plan', 'free'),
+                'role': user.get('role', 'readonly'),
                 'api_key': user.get('api_key', ''),
             }
         }
@@ -121,6 +125,7 @@ class UserAPI:
             'email': user['email'],
             'name': user['name'],
             'plan': user.get('plan', 'free'),
+            'role': user.get('role', 'readonly'),
             'api_key': user.get('api_key', ''),
             'status': user.get('status', 'active'),
             'created_at': user['created_at'].strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else '',
@@ -273,6 +278,7 @@ class UserAPI:
                 'email': u.get('email', ''),
                 'name': u.get('name', ''),
                 'plan': u.get('plan', 'free'),
+                'role': u.get('role', 'readonly'),
                 'status': u.get('status', 'active'),
                 'api_key': u.get('api_key', ''),
                 'created_at': u['created_at'].strftime('%Y-%m-%d %H:%M:%S') if u.get('created_at') else '',
@@ -285,7 +291,7 @@ class UserAPI:
 
     def admin_update_user(self, user_id, data):
         updates = {}
-        for key in ['plan', 'status', 'name']:
+        for key in ['plan', 'status', 'name', 'role']:
             if key in data:
                 updates[key] = data[key]
         if 'plan' in data and data['plan'] == 'premium':
@@ -319,3 +325,127 @@ class UserAPI:
             'total_requests': total_requests,
             'total_blocked': total_blocked,
         }
+
+    def upgrade_plan(self, user, plan='premium', days=30):
+        current_plan = user.get('plan', 'free')
+        if current_plan == 'premium':
+            return {'status': 'error', 'message': 'Your account is already on Premium plan'}
+
+        expiry = datetime.now() + timedelta(days=days)
+        self.db.users.update_one(
+            {'_id': user['_id']},
+            {'$set': {
+                'plan': plan,
+                'plan_expires': expiry,
+                'updated_at': datetime.now(),
+            }}
+        )
+        return {
+            'status': 'success',
+            'message': f'Upgraded to {plan} plan successfully!',
+            'plan': plan,
+            'plan_expires': expiry.strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
+    def downgrade_plan(self, user):
+        current_plan = user.get('plan', 'free')
+        if current_plan == 'free':
+            return {'status': 'error', 'message': 'Your account is already on Free plan'}
+
+        self.db.users.update_one(
+            {'_id': user['_id']},
+            {'$set': {
+                'plan': 'free',
+                'plan_expires': None,
+                'role': 'readonly',
+                'updated_at': datetime.now(),
+            }}
+        )
+        return {
+            'status': 'success',
+            'message': 'Downgraded to Free plan. Premium features are now locked.',
+            'plan': 'free',
+        }
+
+    def get_user_logs(self, user, params):
+        page = int(params.get('page', 1))
+        per_page = int(params.get('limit', 20))
+        search = params.get('search', '')
+        ip_filter = params.get('ip', '')
+        attack_type = params.get('attack_type', '')
+        date_from = params.get('date_from', '')
+        date_to = params.get('date_to', '')
+        user_websites = [w.get('url', '') for w in user.get('websites', [])]
+        query = {}
+        if user_websites:
+            url_conditions = []
+            for w in user_websites:
+                if w:
+                    url_conditions.append({'url': {'$regex': w, '$options': 'i'}})
+            if url_conditions:
+                query['$or'] = url_conditions
+        if search:
+            search_conditions = [
+                {'ip': {'$regex': search, '$options': 'i'}},
+                {'url': {'$regex': search, '$options': 'i'}},
+                {'attack_type': {'$regex': search, '$options': 'i'}},
+            ]
+            if '$or' in query:
+                query = {'$and': [query, {'$or': search_conditions}]}
+            else:
+                query['$or'] = search_conditions
+        if ip_filter:
+            query['ip'] = ip_filter
+        if attack_type:
+            query['attack_type'] = attack_type
+        if date_from or date_to:
+            query['timestamp'] = {}
+            if date_from:
+                try:
+                    query['timestamp']['$gte'] = datetime.strptime(date_from, '%Y-%m-%d')
+                except: pass
+            if date_to:
+                try:
+                    query['timestamp']['$lte'] = datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
+                except: pass
+        total = self.db.attacks.count_documents(query)
+        logs = list(self.db.attacks.find(query)
+            .sort('timestamp', -1)
+            .skip((page - 1) * per_page)
+            .limit(per_page))
+        result_logs = []
+        for i, log in enumerate(logs):
+            result_logs.append({
+                'id': str(log.get('_id', i)),
+                'ip': log.get('ip', ''),
+                'url': log.get('url', ''),
+                'attack_type': log.get('attack_type', 'Unknown'),
+                'status': log.get('status', 'blocked'),
+                'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
+                'confidence': log.get('confidence', 0),
+                'method': log.get('method', 'GET'),
+                'user_agent': log.get('user_agent', ''),
+                'rule_matched': log.get('rule_matched', ''),
+            })
+        return {
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page if total > 0 else 1,
+            'logs': result_logs,
+        }
+
+    def get_user_rules(self, user):
+        rules = []
+        for i, rule in enumerate(self.rule_engine.default_rules):
+            rules.append({
+                'id': str(i + 1),
+                'name': rule.get('name', ''),
+                'description': rule.get('description', ''),
+                'pattern': rule.get('pattern', ''),
+                'type': rule.get('type', ''),
+                'action': rule.get('action', 'block'),
+                'enabled': rule.get('enabled', True),
+                'severity': rule.get('severity', 'medium'),
+            })
+        return rules

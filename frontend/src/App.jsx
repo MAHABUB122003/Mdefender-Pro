@@ -10,11 +10,18 @@ import Settings from './pages/Settings'
 import Connect from './pages/Connect'
 import BlockPage from './pages/BlockPage'
 import Layout from './components/Layout'
+import UserLayout from './components/UserLayout'
 import Landing from './pages/Landing'
 import Pricing from './pages/Pricing'
 import Register from './pages/Register'
 import UserLogin from './pages/UserLogin'
 import UserDashboard from './pages/UserDashboard'
+import UserWebsites from './pages/UserWebsites'
+import UserLogs from './pages/UserLogs'
+import UserRules from './pages/UserRules'
+import UserSettings from './pages/UserSettings'
+import Finance from './pages/Finance'
+import NoticeBoard from './pages/NoticeBoard'
 import Docs from './pages/Docs'
 
 function App() {
@@ -30,6 +37,22 @@ function App() {
     setToken(null)
   }
 
+  const [userToken, setUserToken] = useState(localStorage.getItem('mdefender_user_token'))
+
+  useEffect(() => {
+    const handler = () => setUserToken(localStorage.getItem('mdefender_user_token'))
+    window.addEventListener('userTokenChanged', handler)
+    return () => window.removeEventListener('userTokenChanged', handler)
+  }, [])
+
+  const userLogout = () => {
+    localStorage.removeItem('mdefender_user_token')
+    localStorage.removeItem('mdefender_user_plan')
+    localStorage.removeItem('mdefender_user_name')
+    setUserToken(null)
+    window.location.href = '/user/login'
+  }
+
   return (
     <Routes>
       {/* Public pages */}
@@ -42,9 +65,25 @@ function App() {
       {/* User routes */}
       <Route path="/user/login" element={<UserLogin />} />
       <Route path="/user/dashboard" element={
-        localStorage.getItem('mdefender_user_token')
-          ? <UserDashboard />
-          : <Navigate to="/user/login" replace />
+        userToken ? <UserLayout onLogout={userLogout}><UserDashboard /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/logs" element={
+        userToken ? <UserLayout onLogout={userLogout}><UserLogs /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/rules" element={
+        userToken ? <UserLayout onLogout={userLogout}><UserRules /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/websites" element={
+        userToken ? <UserLayout onLogout={userLogout}><UserWebsites /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/finance" element={
+        userToken ? <UserLayout onLogout={userLogout}><Finance /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/notices" element={
+        userToken ? <UserLayout onLogout={userLogout}><NoticeBoard /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/settings" element={
+        userToken ? <UserLayout onLogout={userLogout}><UserSettings /></UserLayout> : <Navigate to="/user/login" replace />
       } />
 
       {/* Admin routes */}
@@ -84,6 +123,16 @@ function App() {
           <Route path="/admin/settings" element={
             <Layout onLogout={logout}>
               <Settings token={token} />
+            </Layout>
+          } />
+          <Route path="/admin/finance" element={
+            <Layout onLogout={logout}>
+              <Finance />
+            </Layout>
+          } />
+          <Route path="/admin/notices" element={
+            <Layout onLogout={logout}>
+              <NoticeBoard />
             </Layout>
           } />
           <Route path="/connect" element={

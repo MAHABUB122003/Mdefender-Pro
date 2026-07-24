@@ -1,22 +1,37 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api/api'
 
 export default function UserLogin() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(searchParams.get('registered') === 'true')
+
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => {
+        setShowSuccess(false)
+        searchParams.delete('registered')
+        setSearchParams(searchParams, { replace: true })
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccess, searchParams, setSearchParams])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setShowSuccess(false)
     setLoading(true)
     try {
       const data = await api.userLogin(email, password)
       if (data.status === 'success') {
         localStorage.setItem('mdefender_user_token', data.token)
+        window.dispatchEvent(new Event('userTokenChanged'))
         navigate('/user/dashboard')
       } else {
         setError(data.message || 'Invalid credentials')
@@ -119,7 +134,7 @@ export default function UserLogin() {
             <i className="fas fa-circle-exclamation"></i>
             <span>{error}</span>
           </div>
-          <div className={`success-msg ${window.location.search.includes('registered=true') ? 'show' : ''}`}>
+          <div className={`success-msg ${showSuccess ? 'show' : ''}`}>
             <i className="fas fa-check-circle"></i>
             <span>Account created successfully! Please sign in.</span>
           </div>

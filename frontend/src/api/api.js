@@ -5,7 +5,9 @@ const API_BASE =
 async function apiCall(endpoint, options = {}) {
   const isAdmin = endpoint.startsWith('/api/admin/')
   const isUser = endpoint.startsWith('/api/user/')
-  const tokenKey = isUser ? 'mdefender_user_token' : 'mdefender_token'
+  const isFinance = endpoint.startsWith('/api/finance/')
+  const isNotices = endpoint.startsWith('/api/notices')
+  const tokenKey = (isUser || isFinance || isNotices) ? 'mdefender_user_token' : 'mdefender_token'
   const token = localStorage.getItem(tokenKey)
   const headers = {
     'Content-Type': 'application/json',
@@ -21,7 +23,7 @@ async function apiCall(endpoint, options = {}) {
   })
 
   if (response.status === 401) {
-    if (isUser) {
+    if (isUser || isFinance || isNotices) {
       localStorage.removeItem('mdefender_user_token')
       window.location.href = '/user/login'
     } else {
@@ -182,6 +184,69 @@ export const api = {
   adminUpdateUser: (id, data) => apiCall(`/api/admin/users?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   adminDeleteUser: (id) => apiCall(`/api/admin/users?id=${id}`, { method: 'DELETE' }),
   adminGetUserStats: () => apiCall('/api/admin/user_stats'),
+
+  // Role Management
+  getRoles: () => apiCall('/api/admin/roles'),
+  updateUserRole: (id, role) => apiCall(`/api/admin/users/role?id=${id}`, { method: 'PUT', body: JSON.stringify({ role }) }),
+
+  // Bank Accounts
+  getBankAccounts: () => apiCall('/api/finance/bank-accounts'),
+  addBankAccount: (data) => apiCall('/api/finance/bank-accounts', { method: 'POST', body: JSON.stringify(data) }),
+  updateBankAccount: (id, data) => apiCall(`/api/finance/bank-accounts?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteBankAccount: (id) => apiCall(`/api/finance/bank-accounts?id=${id}`, { method: 'DELETE' }),
+
+  // Finance Transactions
+  getTransactions: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/finance/transactions${qs ? '?' + qs : ''}`)
+  },
+  addTransaction: (data) => apiCall('/api/finance/transactions', { method: 'POST', body: JSON.stringify(data) }),
+  updateTransaction: (id, data) => apiCall(`/api/finance/transactions?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTransaction: (id) => apiCall(`/api/finance/transactions?id=${id}`, { method: 'DELETE' }),
+
+  // Import Transactions
+  importTransactions: async (file, mapping, bankAccountId) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('mapping', JSON.stringify(mapping))
+    if (bankAccountId) formData.append('bank_account_id', bankAccountId)
+
+    const token = localStorage.getItem('mdefender_user_token')
+    const response = await fetch(`${API_BASE}/api/finance/import`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    })
+    if (response.status === 401) {
+      localStorage.removeItem('mdefender_user_token')
+      window.location.href = '/user/login'
+      throw new Error('Unauthorized')
+    }
+    return response.json()
+  },
+
+  // Finance Categories & Summary
+  getFinanceCategories: () => apiCall('/api/finance/categories'),
+  getFinanceSummary: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/finance/summary${qs ? '?' + qs : ''}`)
+  },
+
+  // Notices
+  getNotices: () => apiCall('/api/notices'),
+  addNotice: (content) => apiCall('/api/notices', { method: 'POST', body: JSON.stringify({ content }) }),
+  deleteNotice: (id) => apiCall(`/api/notices?id=${id}`, { method: 'DELETE' }),
+
+  // Plan Management
+  upgradePlan: (days = 30) => apiCall('/api/user/upgrade-plan', { method: 'POST', body: JSON.stringify({ plan: 'premium', days }) }),
+  downgradePlan: () => apiCall('/api/user/downgrade-plan', { method: 'POST' }),
+
+  // User Logs & Rules
+  getUserLogs: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/user/logs${qs ? '?' + qs : ''}`)
+  },
+  getUserRules: () => apiCall('/api/user/rules'),
 }
 
 export default api

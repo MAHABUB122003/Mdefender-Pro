@@ -1,221 +1,53 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
+import { Doughnut, Line } from 'react-chartjs-2'
 import api from '../api/api'
 
-const s = {
-  page: {
-    minHeight: '100vh',
-    background: '#0f172a',
-    color: '#fff',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  },
-  topbar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 40px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-    background: 'rgba(15,23,42,0.95)',
-    backdropFilter: 'blur(12px)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 50,
-  },
-  topbarLogo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    textDecoration: 'none',
-    color: '#fff',
-  },
-  topbarIcon: {
-    width: '36px',
-    height: '36px',
-    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-    borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '16px',
-  },
-  topbarRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px',
-  },
-  topbarUser: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '8px 16px',
-    background: 'rgba(255,255,255,0.05)',
-    borderRadius: '10px',
-    fontSize: '13px',
-    color: '#cbd5e1',
-  },
-  logoutBtn: {
-    padding: '8px 16px',
-    background: 'rgba(239,68,68,0.1)',
-    color: '#ef4444',
-    border: '1px solid rgba(239,68,68,0.2)',
-    borderRadius: '8px',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  content: {
-    padding: '32px 40px',
-    maxWidth: '1200px',
-    margin: '0 auto',
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '20px',
-    marginBottom: '32px',
-  },
-  statCard: {
-    padding: '24px',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '16px',
-    transition: 'all 0.3s',
-  },
-  statIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-    marginBottom: '16px',
-  },
-  statValue: {
-    fontSize: '28px',
-    fontWeight: '800',
-    marginBottom: '4px',
-  },
-  statLabel: {
-    fontSize: '13px',
-    color: '#94a3b8',
-  },
-  sectionGrid: {
-    display: 'grid',
-    gridTemplateColumns: '2fr 1fr',
-    gap: '24px',
-    marginBottom: '32px',
-  },
-  card: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '16px',
-    padding: '24px',
-  },
-  cardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '20px',
-  },
-  cardTitle: {
-    fontSize: '16px',
-    fontWeight: '700',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    textAlign: 'left',
-    padding: '12px 16px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  td: {
-    padding: '12px 16px',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
-    fontSize: '13px',
-    color: '#cbd5e1',
-  },
-  badge: (color) => ({
-    padding: '4px 10px',
-    borderRadius: '6px',
-    fontSize: '11px',
-    fontWeight: '600',
-    background: `${color}18`,
-    color: color,
-  }),
-  input: {
-    width: '100%',
-    padding: '10px 14px',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '8px',
-    color: '#fff',
-    fontSize: '13px',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-  },
-  btn: (bg, color) => ({
-    padding: '8px 16px',
-    background: bg,
-    color: color,
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-  }),
-  apiKeyBox: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-    marginTop: '12px',
-  },
-  apiKeyValue: {
-    flex: 1,
-    padding: '10px 14px',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '8px',
-    color: '#a5b4fc',
-    fontSize: '13px',
-    fontFamily: "'Fira Code', Consolas, monospace",
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  websiteItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 16px',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
-  },
-  removeBtn: {
-    padding: '4px 10px',
-    background: 'rgba(239,68,68,0.1)',
-    color: '#ef4444',
-    border: '1px solid rgba(239,68,68,0.2)',
-    borderRadius: '6px',
-    fontSize: '11px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
+
+const doughnutColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+
+function useAnimatedNumber(target, duration = 800) {
+  const [value, setValue] = useState(0)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (target === 0) { setValue(0); return }
+    const startTime = performance.now()
+    function step(now) {
+      const progress = Math.min((now - startTime) / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setValue(Math.floor(eased * target))
+      if (progress < 1) ref.current = requestAnimationFrame(step)
+      else setValue(target)
+    }
+    ref.current = requestAnimationFrame(step)
+    return () => { if (ref.current) cancelAnimationFrame(ref.current) }
+  }, [target, duration])
+  return value.toLocaleString()
+}
+
+function StatCard({ icon, iconClass, value, label, trend, trendDir }) {
+  const animated = useAnimatedNumber(value)
+  return (
+    <div className="stat-card">
+      <div className="stat-top">
+        <div className={`stat-icon-wrap ${iconClass}`}><i className={`fas ${icon}`}></i></div>
+      </div>
+      <div className="stat-number">{animated}</div>
+      <div className="stat-label">{label}</div>
+      <div className={`stat-trend ${trendDir}`}><i className={`fas fa-arrow-${trendDir}`}></i> {trend}</div>
+    </div>
+  )
+}
+
+function QuickAction({ icon, label, color, onClick }) {
+  return (
+    <button className="quick-action" onClick={onClick}>
+      <div className="qa-icon" style={{ background: `${color}15`, color }}><i className={`fas ${icon}`}></i></div>
+      <span>{label}</span>
+    </button>
+  )
 }
 
 export default function UserDashboard() {
@@ -225,21 +57,15 @@ export default function UserDashboard() {
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
-
+  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const token = localStorage.getItem('mdefender_user_token')
-
-  useEffect(() => {
-    if (!token) {
-      navigate('/user/login')
-      return
-    }
-    fetchData()
-  }, [token, navigate])
 
   const fetchData = useCallback(async () => {
     try {
       const result = await api.getUserDashboard()
       setData(result)
+      if (result?.user?.name) localStorage.setItem('mdefender_user_name', result.user.name)
+      if (result?.user?.plan) localStorage.setItem('mdefender_user_plan', result.user.plan)
     } catch (err) {
       console.error(err)
       if (err.message === 'Unauthorized') {
@@ -251,10 +77,10 @@ export default function UserDashboard() {
     }
   }, [navigate])
 
-  const handleLogout = () => {
-    localStorage.removeItem('mdefender_user_token')
-    navigate('/user/login')
-  }
+  useEffect(() => {
+    if (!token) { navigate('/user/login'); return }
+    fetchData()
+  }, [token, navigate, fetchData])
 
   const handleAddWebsite = async (e) => {
     e.preventDefault()
@@ -299,238 +125,438 @@ export default function UserDashboard() {
     }
   }
 
+  const blockTopIP = async (ip) => {
+    if (!isPremium) { alert('Upgrade to Premium to block IPs'); return }
+    if (confirm(`Block ${ip}?`)) {
+      try { await api.blockAttacker(ip); fetchData() } catch (e) { alert(e.message) }
+    }
+  }
+
+  const attackChartData = {
+    labels: data?.attack_types?.length ? data.attack_types : ['SQL Injection', 'XSS', 'LFI', 'RCE', 'Other'],
+    datasets: [{
+      data: data?.attack_counts?.length ? data.attack_counts : [0, 0, 0, 0, 0],
+      backgroundColor: doughnutColors,
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  }
+
+  const dailyDays = []
+  const dailyCounts = []
+  const now = new Date()
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    dailyDays.push(d.toLocaleDateString('en', { weekday: 'short' }))
+    dailyCounts.push(data?.daily_requests?.[i] || 0)
+  }
+
+  const dailyChartData = {
+    labels: dailyDays,
+    datasets: [{
+      label: 'Requests',
+      data: dailyCounts,
+      borderColor: '#2563eb',
+      backgroundColor: 'rgba(37,99,235,0.08)',
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#2563eb',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  }
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } },
+      tooltip: {
+        backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8,
+        callbacks: {
+          label(ctx) {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
+            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0.0'
+            return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`
+          }
+        }
+      }
+    },
+    animation: { animateRotate: true, duration: 1000 }
+  }
+
+  const lineOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8, intersect: false, mode: 'index' } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }
+    },
+    interaction: { intersect: false, mode: 'index' },
+    animation: { duration: 1200, easing: 'easeInOutQuart' }
+  }
+
   if (loading) {
-    return (
-      <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#667eea' }}></i>
-      </div>
-    )
+    return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
   }
 
   return (
-    <div style={s.page}>
-      <style>{`
-        .udash-card:hover { border-color: rgba(102,126,234,0.2); }
-        .udash-remove:hover { background: rgba(239,68,68,0.2) !important; }
-        @media (max-width: 1024px) {
-          .udash-stats { grid-template-columns: repeat(2, 1fr) !important; }
-          .udash-section { grid-template-columns: 1fr !important; }
-          .udash-content { padding: 24px 20px !important; }
-        }
-        @media (max-width: 768px) {
-          .udash-topbar { padding: 12px 16px !important; flex-wrap: wrap; gap: 10px; }
-          .udash-topbar-right { gap: 10px !important; }
-          .udash-topbar-user span { display: none; }
-          .udash-content { padding: 16px !important; }
-          .udash-stats { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
-          .udash-table-wrap { overflow-x: auto; }
-        }
-        @media (max-width: 480px) {
-          .udash-stats { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-
-      {/* Top Bar */}
-      <div style={s.topbar} className="udash-topbar">
-        <Link to="/" style={s.topbarLogo}>
-          <div style={s.topbarIcon}>
-            <i className="fas fa-shield-halved" style={{ color: '#fff' }}></i>
+    <>
+      {/* User Info Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+        borderRadius: '14px',
+        padding: '20px 24px',
+        marginBottom: '24px',
+        color: '#fff',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '50px', height: '50px', borderRadius: '12px',
+            background: 'rgba(255,255,255,0.2)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: '700',
+          }}>
+            {(data?.user?.name || 'U').charAt(0).toUpperCase()}
           </div>
-          <span style={{ fontSize: '17px', fontWeight: '700' }}>MDefender Pro</span>
-        </Link>
-        <div style={s.topbarRight} className="udash-topbar-right">
-          <div style={s.topbarUser}>
-            <i className="fas fa-user-circle" style={{ fontSize: '16px', color: '#667eea' }}></i>
-            {data?.user?.name || data?.user?.email || 'User'}
+          <div>
+            <div style={{ fontSize: '18px', fontWeight: '700' }}>Welcome back, {data?.user?.name || 'User'}</div>
+            <div style={{ fontSize: '13px', opacity: 0.8 }}>{data?.user?.email}</div>
           </div>
-          <button onClick={handleLogout} style={s.logoutBtn}>
-            <i className="fas fa-right-from-bracket"></i> Logout
-          </button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{
+            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+            background: isPremium ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.3)',
+          }}>
+            <i className={`fas ${isPremium ? 'fa-crown' : 'fa-star'}`} style={{ marginRight: '6px' }}></i>
+            {(data?.user?.plan || 'free').toUpperCase()} PLAN
+          </span>
+          <span style={{ fontSize: '12px', opacity: 0.7 }}>Since {data?.user?.created_at || 'N/A'}</span>
         </div>
       </div>
 
-      <div style={s.content} className="udash-content">
-        {/* Stats */}
-        <div style={s.statsGrid} className="udash-stats">
-          <div style={s.statCard} className="udash-card">
-            <div style={{ ...s.statIcon, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
-              <i className="fas fa-chart-bar"></i>
+      {/* Upgrade Banner for Free Users */}
+      {!isPremium && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+          border: '1px solid #f59e0b',
+          borderRadius: '14px',
+          padding: '16px 24px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '10px', background: '#f59e0b',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff',
+            }}>
+              <i className="fas fa-crown"></i>
             </div>
-            <div style={s.statValue}>{data?.requests_today?.toLocaleString() || '0'}</div>
-            <div style={s.statLabel}>Requests Today</div>
-          </div>
-          <div style={s.statCard} className="udash-card">
-            <div style={{ ...s.statIcon, background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
-              <i className="fas fa-globe"></i>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#92400e' }}>Upgrade to Premium</div>
+              <div style={{ fontSize: '12px', color: '#a16207' }}>Unlock Attack Logs, WAF Rules, unlimited websites & more</div>
             </div>
-            <div style={s.statValue}>{data?.total_requests?.toLocaleString() || '0'}</div>
-            <div style={s.statLabel}>Total Requests</div>
           </div>
-          <div style={s.statCard} className="udash-card">
-            <div style={{ ...s.statIcon, background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
-              <i className="fas fa-shield-halved"></i>
-            </div>
-            <div style={s.statValue}>{data?.total_blocked?.toLocaleString() || '0'}</div>
-            <div style={s.statLabel}>Total Blocked</div>
-          </div>
-          <div style={s.statCard} className="udash-card">
-            <div style={{ ...s.statIcon, background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}>
-              <i className="fas fa-server"></i>
-            </div>
-            <div style={s.statValue}>{data?.active_websites || 0}</div>
-            <div style={s.statLabel}>Active Websites</div>
-          </div>
+          <a href="/user/settings" style={{
+            padding: '10px 20px', background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
+            cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            boxShadow: '0 2px 8px rgba(245,158,11,0.3)',
+          }}>
+            <i className="fas fa-arrow-up"></i> Upgrade Now
+          </a>
         </div>
+      )}
 
-        {/* Main Content Grid */}
-        <div style={s.sectionGrid} className="udash-section">
-          {/* Recent Activity */}
-          <div style={s.card}>
-            <div style={s.cardHeader}>
-              <div style={s.cardTitle}>
-                <i className="fas fa-clock-rotate-left" style={{ color: '#f59e0b' }}></i>
-                Recent Activity
-              </div>
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        <StatCard icon="fa-chart-line" iconClass="blue" value={data?.requests_today || 0} label="Requests Today" trend="active" trendDir="up" />
+        <StatCard icon="fa-globe" iconClass="green" value={data?.total_requests || 0} label="Total Requests" trend="cumulative" trendDir="up" />
+        <StatCard icon="fa-shield-halved" iconClass="red" value={data?.total_blocked || 0} label="Attacks Blocked" trend="protected" trendDir="up" />
+        <StatCard icon="fa-server" iconClass="purple" value={data?.active_websites || 0} label="Active Websites" trend="online" trendDir="up" />
+      </div>
+
+      {/* Charts Grid */}
+      <div className="charts-grid">
+        <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`}>
+          <div className="chart-header">
+            <h3><i className="fas fa-chart-pie" style={{ color: '#2563eb', marginRight: '6px' }}></i> Attack Types</h3>
+            <span className="chart-action">Distribution</span>
+          </div>
+          <div className="chart-container">
+            <Doughnut data={attackChartData} options={doughnutOptions} />
+          </div>
+          {!isPremium && (
+            <div className="premium-overlay-small">
+              <Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium</Link>
             </div>
-            <table style={s.table}>
-              <thead>
-                <tr>
-                  <th style={s.th}>Time</th>
-                  <th style={s.th}>IP Address</th>
-                  <th style={s.th}>Type</th>
-                  <th style={s.th}>URL</th>
+          )}
+        </div>
+        <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`}>
+          <div className="chart-header">
+            <h3><i className="fas fa-chart-bar" style={{ color: '#10b981', marginRight: '6px' }}></i> Requests Over Time</h3>
+            <span className="chart-action">Last 7 days</span>
+          </div>
+          <div className="chart-container">
+            <Line data={dailyChartData} options={lineOptions} />
+          </div>
+          {!isPremium && (
+            <div className="premium-overlay-small">
+              <Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium</Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Attackers */}
+      <div className={`top-attackers ${!isPremium ? 'premium-blur' : ''}`}>
+        <div className="section-header">
+          <h3><i className="fas fa-crosshairs" style={{ color: '#ef4444', marginRight: '6px' }}></i> Top Attacking IPs</h3>
+          {isPremium && <Link to="/user/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>}
+        </div>
+        <table>
+          <thead>
+            <tr><th>#</th><th>IP Address</th><th>Attacks</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            {data?.top_attackers?.slice(0, 5).map((attacker, i) => {
+              const maxAttacks = data.top_attackers[0]?.count || 1
+              return (
+                <tr key={i}>
+                  <td><span className={`rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>{i + 1}</span></td>
+                  <td><span className="attacker-ip">{attacker.ip}</span></td>
+                  <td>
+                    <div className="attack-progress">
+                      <div className="progress-bar">
+                        <div className="fill" style={{
+                          width: `${(attacker.count / maxAttacks * 100)}%`,
+                          background: i === 0 ? 'linear-gradient(90deg,#ef4444,#f87171)' : i === 1 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#2563eb,#60a5fa)'
+                        }}></div>
+                      </div>
+                      <span className="count">{attacker.count}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <button className="badge danger" style={{ cursor: 'pointer', border: 'none' }} onClick={() => blockTopIP(attacker.ip)}>
+                      {isPremium ? 'Block' : 'PRO'}
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {data?.recent_activity?.length ? data.recent_activity.slice(0, 10).map((log, i) => (
-                  <tr key={i}>
-                    <td style={s.td}>{log.timestamp || log.time || '—'}</td>
-                    <td style={{ ...s.td, fontFamily: "'Fira Code', Consolas, monospace", fontSize: '12px' }}>{log.ip}</td>
-                    <td style={s.td}>
-                      <span style={s.badge(log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? '#ef4444' : log.attack_type === 'XSS' ? '#f59e0b' : '#3b82f6')}>
-                        {log.attack_type}
-                      </span>
-                    </td>
-                    <td style={{ ...s.td, color: '#94a3b8', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.url}</td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan="4" style={{ ...s.td, textAlign: 'center', color: '#64748b', padding: '32px' }}>
-                      <i className="fas fa-shield-check" style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}></i>
-                      No recent activity
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              )
+            }) || (
+              <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No attack data available</td></tr>
+            )}
+          </tbody>
+        </table>
+        {!isPremium && <div className="premium-overlay-small"><Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium to view attacker details</Link></div>}
+      </div>
+
+      {/* Recent Activity */}
+      <div className={`recent-activity ${!isPremium ? 'premium-blur' : ''}`}>
+        <div className="section-header">
+          <h3><i className="fas fa-clock-rotate-left" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> Recent Attacks Blocked</h3>
+          {isPremium && <Link to="/user/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>}
+        </div>
+        <div className="activity-timeline">
+          {data?.recent_activity?.slice(0, 5).map((log, i) => (
+            <div className="activity-item" key={i}>
+              <div className="activity-time">{log.timestamp || log.time || ''}</div>
+              <div className="activity-content">
+                <span className={`activity-type ${log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? 'critical' : log.attack_type === 'XSS' || log.attack_type === 'LFI' ? 'high' : 'medium'}`}>
+                  <i className="fas fa-bug"></i> {log.attack_type}
+                </span>
+                <div className="activity-detail">From <strong>{log.ip}</strong></div>
+                <div className="activity-payload">{log.url}</div>
+              </div>
+            </div>
+          )) || (
+            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
+              <i className="fas fa-shield-check" style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}></i>
+              No attacks recorded yet
+            </div>
+          )}
+        </div>
+        {!isPremium && <div className="premium-overlay-small"><Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium for full attack history</Link></div>}
+      </div>
+
+      {/* Quick Actions & System Status */}
+      <div className="quick-actions-section">
+        <div className="quick-actions-card">
+          <div className="section-header" style={{ marginBottom: 0 }}>
+            <h3><i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i> Quick Actions</h3>
           </div>
-
-          {/* Account Info */}
-          <div>
-            {/* API Key */}
-            <div style={{ ...s.card, marginBottom: '24px' }}>
-              <div style={s.cardHeader}>
-                <div style={s.cardTitle}>
-                  <i className="fas fa-key" style={{ color: '#a78bfa' }}></i>
-                  API Key
-                </div>
-              </div>
-              <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '12px' }}>Use this key to integrate MDefender into your application.</p>
-              <div style={s.apiKeyValue}>
-                {data?.api_key ? data.api_key.slice(0, 12) + '••••••••••••' : 'No key generated'}
-              </div>
-              <div style={s.apiKeyBox}>
-                <button onClick={copyApiKey} style={s.btn('rgba(102,126,234,0.15)', '#a5b4fc')}>
-                  <i className={`fas ${copySuccess ? 'fa-check' : 'fa-copy'}`}></i>
-                  {copySuccess ? 'Copied!' : 'Copy'}
-                </button>
-                <button onClick={handleRegenerateKey} style={s.btn('rgba(245,158,11,0.15)', '#f59e0b')}>
-                  <i className="fas fa-arrow-rotate-right"></i> Regenerate
-                </button>
-              </div>
-            </div>
-
-            {/* Account Info */}
-            <div style={s.card}>
-              <div style={s.cardHeader}>
-                <div style={s.cardTitle}>
-                  <i className="fas fa-user-circle" style={{ color: '#3b82f6' }}></i>
-                  Account Info
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Name</span>
-                  <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{data?.user?.name || '—'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Email</span>
-                  <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{data?.user?.email || '—'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Plan</span>
-                  <span style={{ fontSize: '13px', color: data?.user?.plan === 'premium' ? '#a5b4fc' : '#94a3b8', fontWeight: '600' }}>
-                    {(data?.user?.plan || 'free').toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b', fontSize: '13px' }}>Member Since</span>
-                  <span style={{ fontSize: '13px', color: '#cbd5e1' }}>{data?.user?.created_at || '—'}</span>
-                </div>
-              </div>
-            </div>
+          <div className="quick-actions-grid">
+            <QuickAction icon="fa-globe" label="Add Website" color="#10b981" onClick={() => window.location.href = '/user/websites'} />
+            <QuickAction icon="fa-key" label="Copy API Key" color="#8b5cf6" onClick={copyApiKey} />
+            <QuickAction icon="fa-money-bill-wave" label="Finance" color="#2563eb" onClick={() => window.location.href = '/user/finance'} />
+            <QuickAction icon="fa-bullhorn" label="Notices" color="#f59e0b" onClick={() => window.location.href = '/user/notices'} />
+            <QuickAction icon="fa-cog" label="Settings" color="#64748b" onClick={() => window.location.href = '/user/settings'} />
+            <QuickAction icon="fa-arrow-rotate-right" label="Refresh" color="#10b981" onClick={fetchData} />
           </div>
         </div>
 
-        {/* Websites Section */}
-        <div style={s.card}>
-          <div style={s.cardHeader}>
-            <div style={s.cardTitle}>
-              <i className="fas fa-globe" style={{ color: '#10b981' }}></i>
-              My Websites
+        <div className="system-card">
+          <div className="section-header" style={{ marginBottom: 0 }}>
+            <h3><i className="fas fa-server" style={{ color: '#10b981', marginRight: '6px' }}></i> System Status</h3>
+            <span className="status-pill online"><i className="fas fa-circle" style={{ fontSize: '7px' }}></i> Operational</span>
+          </div>
+          <div className="system-grid">
+            <div className="system-item">
+              <span className="system-label">WAF Engine</span>
+              <span className="system-status"><span className="status-dot green"></span> Active</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Rate Limiter</span>
+              <span className="system-status"><span className="status-dot green"></span> Active</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Database</span>
+              <span className="system-status"><span className="status-dot green"></span> Connected</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">SSL/TLS</span>
+              <span className="system-status"><span className="status-dot green"></span> Active</span>
             </div>
           </div>
-          <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+        </div>
+      </div>
+
+      {/* Websites & Account Info */}
+      <div className="quick-actions-section">
+        {/* My Websites */}
+        <div className="quick-actions-card">
+          <div className="section-header" style={{ marginBottom: 0 }}>
+            <h3><i className="fas fa-globe" style={{ color: '#10b981', marginRight: '6px' }}></i> My Websites</h3>
+            <Link to="/user/websites" className="view-all">Manage <i className="fas fa-arrow-right"></i></Link>
+          </div>
+          <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '10px', marginTop: '14px', marginBottom: '14px' }}>
             <input
-              type="text"
-              placeholder="example.com"
-              value={newWebsite}
+              type="text" placeholder="example.com" value={newWebsite}
               onChange={e => setNewWebsite(e.target.value)}
-              style={{ ...s.input, flex: 1 }}
+              style={{ flex: 1, padding: '10px 14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit' }}
               required
             />
-            <button type="submit" disabled={adding} style={s.btn('linear-gradient(135deg, #667eea, #764ba2)', '#fff')}>
-              <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i> Add Website
+            <button type="submit" disabled={adding} style={{
+              padding: '10px 16px', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: '#fff',
+              border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
+            }}>
+              <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i> Add
             </button>
           </form>
           <div>
-            {data?.websites?.length ? data.websites.map((w, i) => (
-              <div key={i} style={s.websiteItem}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <i className="fas fa-globe" style={{ color: '#10b981', fontSize: '14px' }}></i>
+            {data?.websites?.slice(0, 3).map((w, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '10px 14px', borderBottom: '1px solid #f1f5f9',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <i className="fas fa-globe" style={{ color: '#10b981', fontSize: '13px' }}></i>
                   <div>
-                    <span style={{ fontSize: '14px', display: 'block' }}>{w.domain || w.url || w}</span>
-                    {w.added_at && <span style={{ fontSize: '11px', color: '#64748b' }}>Added {w.added_at}</span>}
+                    <span style={{ fontSize: '13px', fontWeight: '500' }}>{w.domain || w.url || w}</span>
+                    {w.added_at && <div style={{ fontSize: '11px', color: '#94a3b8' }}>{w.added_at}</div>}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: '#ecfdf5', color: '#10b981' }}>
                     {w.status || 'active'}
                   </span>
-                  <button onClick={() => handleRemoveWebsite(w.id)} style={s.removeBtn} className="udash-remove">
-                    <i className="fas fa-trash-can"></i> Remove
+                  <button onClick={() => handleRemoveWebsite(w.id)} style={{
+                    padding: '4px 8px', background: '#fef2f2', color: '#ef4444', border: 'none',
+                    borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    <i className="fas fa-trash-can"></i>
                   </button>
                 </div>
               </div>
-            )) : (
-              <div style={{ textAlign: 'center', color: '#64748b', padding: '32px', fontSize: '13px' }}>
-                <i className="fas fa-globe" style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}></i>
-                No websites added yet. Add your first website above.
+            ))}
+            {(!data?.websites || data.websites.length === 0) && (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '24px', fontSize: '13px' }}>
+                No websites added yet
+              </div>
+            )}
+            {data?.websites?.length > 3 && (
+              <div style={{ textAlign: 'center', padding: '10px' }}>
+                <Link to="/user/websites" style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>
+                  View all {data.websites.length} websites <i className="fas fa-arrow-right" style={{ fontSize: '10px' }}></i>
+                </Link>
               </div>
             )}
           </div>
         </div>
+
+        {/* Account Info & API Key */}
+        <div>
+          {/* API Key */}
+          <div className="quick-actions-card" style={{ marginBottom: '18px' }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <h3><i className="fas fa-key" style={{ color: '#a78bfa', marginRight: '6px' }}></i> API Key</h3>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '12px', margin: '10px 0' }}>Use this key to integrate MDefender into your application.</p>
+            <div style={{
+              padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0',
+              borderRadius: '8px', fontSize: '13px', fontFamily: "'Fira Code', Consolas, monospace",
+              color: '#2563eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '10px',
+            }}>
+              {data?.api_key ? data.api_key.slice(0, 16) + '••••••••••••' : 'No key generated'}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={copyApiKey} style={{
+                padding: '8px 14px', background: '#eff6ff', color: '#2563eb', border: 'none',
+                borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
+              }}>
+                <i className={`fas ${copySuccess ? 'fa-check' : 'fa-copy'}`}></i> {copySuccess ? 'Copied!' : 'Copy'}
+              </button>
+              <button onClick={handleRegenerateKey} style={{
+                padding: '8px 14px', background: '#fffbeb', color: '#d97706', border: 'none',
+                borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
+              }}>
+                <i className="fas fa-arrow-rotate-right"></i> Regenerate
+              </button>
+            </div>
+          </div>
+
+          {/* Account Info */}
+          <div className="quick-actions-card">
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <h3><i className="fas fa-user-circle" style={{ color: '#3b82f6', marginRight: '6px' }}></i> Account Info</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
+              {[
+                { label: 'Name', value: data?.user?.name || '—' },
+                { label: 'Email', value: data?.user?.email || '—' },
+                { label: 'Plan', value: (data?.user?.plan || 'free').toUpperCase(), color: isPremium ? '#8b5cf6' : '#64748b' },
+                { label: 'Role', value: data?.user?.role || 'readonly' },
+                { label: 'Member Since', value: data?.user?.created_at || '—' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>{item.label}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: item.color || '#0f172a' }}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -2,50 +2,52 @@ import { useState, useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 
 const pageNames = {
-  '/admin/dashboard': 'Dashboard',
-  '/admin/logs': 'Attack Logs',
-  '/admin/rules': 'Rules Management',
-  '/admin/clients': 'Clients Management',
-  '/admin/blacklist': 'Blacklist Management',
-  '/admin/settings': 'Settings',
-  '/admin/finance': 'Finance Management',
-  '/admin/notices': 'Notice Board',
-  '/connect': 'Website Connection',
+  '/user/dashboard': 'Dashboard',
+  '/user/logs': 'Attack Logs',
+  '/user/rules': 'Rules Management',
+  '/user/finance': 'Finance',
+  '/user/notices': 'Notice Board',
+  '/user/websites': 'My Websites',
+  '/user/settings': 'Settings',
 }
 
-export default function Header({ onToggleSidebar, onLogout }) {
+const iconMap = {
+  '/user/dashboard': 'fa-chart-pie',
+  '/user/logs': 'fa-list',
+  '/user/rules': 'fa-shield',
+  '/user/finance': 'fa-money-bill-wave',
+  '/user/notices': 'fa-bullhorn',
+  '/user/websites': 'fa-globe',
+  '/user/settings': 'fa-cog',
+}
+
+export default function UserHeader({ onToggleSidebar, onLogout }) {
   const [time, setTime] = useState({ date: '', time: '' })
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const storedName = localStorage.getItem('mdefender_user_name') || 'User'
+  const userName = storedName
   const location = useLocation()
   const pageName = pageNames[location.pathname] || 'Dashboard'
-
-  const iconMap = {
-    '/admin/dashboard': 'fa-chart-pie',
-    '/admin/logs': 'fa-list',
-    '/admin/rules': 'fa-shield',
-    '/admin/clients': 'fa-globe',
-    '/admin/blacklist': 'fa-ban',
-    '/admin/settings': 'fa-cog',
-    '/admin/finance': 'fa-money-bill-wave',
-    '/admin/notices': 'fa-bullhorn',
-    '/connect': 'fa-link',
-  }
+  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
 
   useEffect(() => {
     window.__doLogout = onLogout
+  }, [onLogout])
+
+  useEffect(() => {
     const update = () => {
       const now = new Date()
       const pad = n => String(n).padStart(2, '0')
       setTime({
-        date: `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
+        date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
         time: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
       })
     }
     update()
     const id = setInterval(update, 1000)
     return () => { clearInterval(id); delete window.__doLogout }
-  }, [onLogout])
+  }, [])
 
   useEffect(() => {
     const close = () => { setShowDropdown(false); setShowNotifications(false) }
@@ -70,8 +72,8 @@ export default function Header({ onToggleSidebar, onLogout }) {
         </div>
       </div>
       <div className="header-right">
-        <span className="header-threat-badge">
-          <i className="fas fa-shield-halved"></i> Systems Secure
+        <span className="header-threat-badge" style={isPremium ? {} : { background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderColor: '#fde68a', color: '#d97706' }}>
+          <i className={`fas ${isPremium ? 'fa-shield-halved' : 'fa-crown'}`}></i> {isPremium ? 'Premium' : 'Free Plan'}
         </span>
         <div className="header-clock">
           <i className="fas fa-clock"></i>
@@ -87,43 +89,23 @@ export default function Header({ onToggleSidebar, onLogout }) {
             <div className={`notification-panel ${showNotifications ? 'show' : ''}`}>
               <div className="panel-header">
                 <span>Notifications</span>
-                <span className="panel-count">3 new</span>
+                <span className="panel-count">0 new</span>
               </div>
-              <div className="panel-item">
-                <div className="panel-icon critical"><i className="fas fa-bug"></i></div>
-                <div className="panel-body">
-                  <div className="panel-text">SQL Injection blocked from 192.168.1.100</div>
-                  <div className="panel-meta">2 minutes ago</div>
-                </div>
+              <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                <i className="fas fa-bell-slash" style={{ fontSize: '20px', display: 'block', marginBottom: '8px', color: '#cbd5e1' }}></i>
+                No new notifications
               </div>
-              <div className="panel-item">
-                <div className="panel-icon warning"><i className="fas fa-bug"></i></div>
-                <div className="panel-body">
-                  <div className="panel-text">XSS attack detected on /search</div>
-                  <div className="panel-meta">5 minutes ago</div>
-                </div>
-              </div>
-              <div className="panel-item">
-                <div className="panel-icon success"><i className="fas fa-check-circle"></i></div>
-                <div className="panel-body">
-                  <div className="panel-text">New client "example.com" connected</div>
-                  <div className="panel-meta">1 hour ago</div>
-                </div>
-              </div>
-              <Link to="/admin/logs" className="panel-footer">
-                View All <i className="fas fa-arrow-right"></i>
-              </Link>
             </div>
           </div>
           <div style={{ position: 'relative' }}>
             <div className="user-pill" onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); setShowNotifications(false) }}>
-              <div className="avatar">A</div>
-              <span className="user-name">Admin</span>
+              <div className="avatar">{userName.charAt(0).toUpperCase()}</div>
+              <span className="user-name">{userName}</span>
               <i className="fas fa-chevron-down"></i>
             </div>
             <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`}>
-              <Link to="/admin/settings" onClick={() => setShowDropdown(false)}><i className="fas fa-user"></i> Profile</Link>
-              <Link to="/admin/settings" onClick={() => setShowDropdown(false)}><i className="fas fa-cog"></i> Settings</Link>
+              <Link to="/user/settings" onClick={() => setShowDropdown(false)}><i className="fas fa-user"></i> Profile</Link>
+              <Link to="/user/settings" onClick={() => setShowDropdown(false)}><i className="fas fa-cog"></i> Settings</Link>
               <div className="divider"></div>
               <button onClick={onLogout}><i className="fas fa-right-from-bracket"></i> Logout</button>
             </div>

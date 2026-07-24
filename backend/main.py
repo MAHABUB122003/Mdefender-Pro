@@ -18,6 +18,8 @@ from src.database.mongodb_connection import MongoDB
 from src.api.waf_api import WAFAPI
 from src.api.admin_api import AdminAPI
 from src.api.user_api import UserAPI
+from src.api.finance_api import FinanceAPI
+from src.api.notice_api import NoticeAPI
 from src.security.auth import Auth
 from src.security.ip_filter import IPFilter
 from src.utils.logger import Logger
@@ -27,7 +29,9 @@ app = FastAPI(title="MDefender Pro", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://mdefender-pro-6e3r.onrender.com/",
+        "https://mdefender-pro-6e3r.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
         "*",
     ],
     allow_credentials=True,
@@ -41,6 +45,8 @@ ip_filter = IPFilter()
 waf_api = WAFAPI()
 admin_api = AdminAPI()
 user_api = UserAPI()
+finance_api = FinanceAPI()
+notice_api = NoticeAPI()
 logger = Logger()
 
 _templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
@@ -86,6 +92,15 @@ def verify_token(request: Request):
     if not token or token not in _tokens:
         raise HTTPException(status_code=401, detail='Unauthorized')
     return _tokens[token]
+
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "MDefender Pro API", "version": "1.0.0", "docs": "/docs"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
 
 
 # === Auth Routes ===
@@ -305,6 +320,30 @@ async def user_dashboard(user: dict = Depends(verify_user_token)):
     return user_api.get_dashboard_stats(user)
 
 
+@app.post("/api/user/upgrade-plan")
+async def upgrade_user_plan(request: Request, user: dict = Depends(verify_user_token)):
+    data = await request.json()
+    plan = data.get('plan', 'premium')
+    days = data.get('days', 30)
+    return user_api.upgrade_plan(user, plan=plan, days=days)
+
+
+@app.post("/api/user/downgrade-plan")
+async def downgrade_user_plan(user: dict = Depends(verify_user_token)):
+    return user_api.downgrade_plan(user)
+
+
+@app.get("/api/user/logs")
+async def user_get_logs(request: Request, user: dict = Depends(verify_user_token)):
+    params = dict(request.query_params)
+    return user_api.get_user_logs(user, params)
+
+
+@app.get("/api/user/rules")
+async def user_get_rules(user: dict = Depends(verify_user_token)):
+    return user_api.get_user_rules(user)
+
+
 # === Admin User Management Routes ===
 
 @app.get("/api/admin/users")
@@ -325,6 +364,126 @@ async def admin_delete_user(request: Request, user: str = Depends(verify_token))
 @app.get("/api/admin/user_stats")
 async def admin_user_stats(user: str = Depends(verify_token)):
     return user_api.admin_get_user_stats()
+
+
+# === Role Management Routes ===
+
+@app.get("/api/admin/roles")
+async def get_roles(user: str = Depends(verify_token)):
+    return finance_api.get_all_roles()
+
+@app.put("/api/admin/users/role")
+async def admin_update_user_role(request: Request, user: str = Depends(verify_token)):
+    user_id = request.query_params.get('id')
+    data = await request.json()
+    return finance_api.update_user_role(user_id, data.get('role', ''), {'email': user, 'role': 'super_admin'})
+
+
+# === Bank Account Routes ===
+
+@app.get("/api/finance/bank-accounts")
+async def get_bank_accounts(user: dict = Depends(verify_user_token)):
+    return finance_api.get_bank_accounts(user)
+
+@app.post("/api/finance/bank-accounts")
+async def add_bank_account(request: Request, user: dict = Depends(verify_user_token)):
+    data = await request.json()
+    return finance_api.add_bank_account(data, user)
+
+@app.put("/api/finance/bank-accounts")
+async def update_bank_account(request: Request, user: dict = Depends(verify_user_token)):
+    account_id = request.query_params.get('id')
+    data = await request.json()
+    return finance_api.update_bank_account(account_id, data, user)
+
+@app.delete("/api/finance/bank-accounts")
+async def delete_bank_account(request: Request, user: dict = Depends(verify_user_token)):
+    account_id = request.query_params.get('id')
+    return finance_api.delete_bank_account(account_id, user)
+
+
+# === Transaction Routes ===
+
+@app.get("/api/finance/transactions")
+async def get_transactions(request: Request, user: dict = Depends(verify_user_token)):
+    params = dict(request.query_params)
+    return finance_api.get_transactions(user, params)
+
+@app.post("/api/finance/transactions")
+async def add_transaction(request: Request, user: dict = Depends(verify_user_token)):
+    data = await request.json()
+    return finance_api.add_transaction(data, user)
+
+@app.put("/api/finance/transactions")
+async def update_transaction(request: Request, user: dict = Depends(verify_user_token)):
+    tx_id = request.query_params.get('id')
+    data = await request.json()
+    return finance_api.update_transaction(tx_id, data, user)
+
+@app.delete("/api/finance/transactions")
+async def delete_transaction(request: Request, user: dict = Depends(verify_user_token)):
+    tx_id = request.query_params.get('id')
+    return finance_api.delete_transaction(tx_id, user)
+
+
+# === Transaction Import ===
+
+@app.post("/api/finance/import")
+async def import_transactions(request: Request, user: dict = Depends(verify_user_token)):
+    form = await request.form()
+    file = form.get('file')
+    mapping_str = form.get('mapping', '{}')
+    bank_account_id = form.get('bank_account_id', '')
+
+    try:
+        mapping = json.loads(mapping_str)
+    except:
+        mapping = {}
+
+    if bank_account_id:
+        mapping['bank_account_id'] = bank_account_id
+
+    if not file:
+        return {'status': 'error', 'message': 'No file uploaded'}
+
+    filename = file.filename
+    content = await file.read()
+
+    if filename.endswith('.csv'):
+        file_content = content.decode('utf-8', errors='replace')
+    else:
+        file_content = content
+
+    return finance_api.import_transactions(file_content, filename, mapping, user)
+
+
+# === Finance Categories & Summary ===
+
+@app.get("/api/finance/categories")
+async def get_categories(user: dict = Depends(verify_user_token)):
+    return finance_api.get_categories()
+
+@app.get("/api/finance/summary")
+async def get_finance_summary(request: Request, user: dict = Depends(verify_user_token)):
+    params = dict(request.query_params)
+    return finance_api.get_finance_summary(user, params)
+
+
+# === Notice Board Routes ===
+
+@app.get("/api/notices")
+async def get_notices(user: dict = Depends(verify_user_token)):
+    return notice_api.get_notices()
+
+@app.post("/api/notices")
+async def add_notice(request: Request, user: dict = Depends(verify_user_token)):
+    data = await request.json()
+    return notice_api.add_notice(data, user)
+
+@app.delete("/api/notices")
+async def delete_notice(request: Request, user: dict = Depends(verify_user_token)):
+    notice_id = request.query_params.get('id')
+    return notice_api.delete_notice(notice_id, user)
 
 
 # === WAF API Routes (for client integration) ===

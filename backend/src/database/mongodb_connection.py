@@ -46,6 +46,14 @@ class MongoDB:
             self._db.clients.create_index('domain', unique=True)
         if hasattr(self._db, 'auto_blocks'):
             self._db.auto_blocks.create_index('ip')
+        if hasattr(self._db, 'finance_transactions'):
+            self._db.finance_transactions.create_index('date')
+            self._db.finance_transactions.create_index('bank_account_id')
+            self._db.finance_transactions.create_index('type')
+        if hasattr(self._db, 'bank_accounts'):
+            self._db.bank_accounts.create_index('account_number')
+        if hasattr(self._db, 'notices'):
+            self._db.notices.create_index('created_at')
 
     @property
     def attacks(self):
@@ -87,6 +95,18 @@ class MongoDB:
     def user_tokens(self):
         return self._db['user_tokens'] if self._db is not None else None
 
+    @property
+    def bank_accounts(self):
+        return self._db['bank_accounts'] if self._db is not None else None
+
+    @property
+    def finance_transactions(self):
+        return self._db['finance_transactions'] if self._db is not None else None
+
+    @property
+    def notices(self):
+        return self._db['notices'] if self._db is not None else None
+
 
 class InMemoryDB:
     def __init__(self):
@@ -100,6 +120,15 @@ class InMemoryDB:
         self.auto_blocks = InMemoryCollection()
         self.users = InMemoryCollection()
         self.user_tokens = InMemoryCollection()
+        self.bank_accounts = InMemoryCollection()
+        self.finance_transactions = InMemoryCollection()
+        self.notices = InMemoryCollection()
+
+    def __getitem__(self, key):
+        return getattr(self, key, None)
+
+    def __contains__(self, key):
+        return hasattr(self, key)
 
 
 class InMemoryCollection:

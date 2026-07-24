@@ -19,3 +19,4 @@ redis
 motor
 email-validator
 jinja2==3.1.6
+openpyxl==3.1.5
