@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 const cardStyle = {
@@ -10,6 +11,8 @@ const cardStyle = {
 }
 
 export default function NoticeBoard() {
+  const navigate = useNavigate()
+  const token = localStorage.getItem('mdefender_user_token')
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [newNotice, setNewNotice] = useState('')
@@ -30,6 +33,10 @@ export default function NoticeBoard() {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (!token) { navigate('/user/login'); return }
+  }, [token, navigate])
 
   useEffect(() => { loadNotices() }, [loadNotices])
 
@@ -59,7 +66,10 @@ export default function NoticeBoard() {
   }
 
   if (loading) {
-    return (
+  const canPost = userInfo && userInfo.role !== 'readonly'
+  const canDelete = userInfo && userInfo.role !== 'readonly'
+
+  return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px' }}>
         <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#667eea' }}></i>
       </div>
@@ -84,6 +94,7 @@ export default function NoticeBoard() {
         </div>
 
         {/* New Notice Form */}
+        {canPost && (
         <form onSubmit={handlePost} style={cardStyle}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
             Post a New Notice
@@ -131,6 +142,7 @@ export default function NoticeBoard() {
             </button>
           </div>
         </form>
+        )}
 
         {/* Notices List */}
         <div>
@@ -169,6 +181,7 @@ export default function NoticeBoard() {
                       <div style={{ fontSize: '11px', color: '#94a3b8' }}>{notice.created_at}</div>
                     </div>
                   </div>
+                  {canDelete && (
                   <button
                     onClick={() => handleDelete(notice.id)}
                     className="notice-delete"
@@ -190,6 +203,7 @@ export default function NoticeBoard() {
                   >
                     <i className="fas fa-trash-can"></i>
                   </button>
+                  )}
                 </div>
                 <div style={{
                   fontSize: '14px',

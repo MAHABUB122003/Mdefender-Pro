@@ -4,6 +4,7 @@ import api from '../api/api'
 
 export default function UserWebsites() {
   const navigate = useNavigate()
+  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [newWebsite, setNewWebsite] = useState('')
@@ -33,6 +34,10 @@ export default function UserWebsites() {
   const handleAddWebsite = async (e) => {
     e.preventDefault()
     if (!newWebsite.trim()) return
+    if (!isPremium && data?.websites?.length >= 1) {
+      alert('Free plan is limited to 1 website. Upgrade to Premium for unlimited websites.')
+      return
+    }
     setAdding(true)
     try {
       await api.addUserWebsite({ domain: newWebsite.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '') })
@@ -72,6 +77,28 @@ export default function UserWebsites() {
   return (
     <>
       {/* Add Website Form */}
+      {!isPremium && data?.websites?.length >= 1 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fef3c7, #fde68a)', border: '1px solid #f59e0b',
+          borderRadius: '14px', padding: '16px 24px', marginBottom: '24px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <i className="fas fa-crown" style={{ color: '#d97706', fontSize: '18px' }}></i>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#92400e' }}>Free Plan: 1 website limit reached</div>
+              <div style={{ fontSize: '12px', color: '#a16207' }}>Upgrade to Premium for unlimited websites</div>
+            </div>
+          </div>
+          <a href="/user/settings" style={{
+            padding: '8px 16px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '8px',
+            fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'none',
+          }}>
+            <i className="fas fa-arrow-up" style={{ marginRight: '4px' }}></i> Upgrade
+          </a>
+        </div>
+      )}
+
       <div style={{
         background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0',
         boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: '24px', marginBottom: '24px',
@@ -79,13 +106,17 @@ export default function UserWebsites() {
         <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>
           <i className="fas fa-plus-circle" style={{ color: '#10b981', marginRight: '8px' }}></i>
           Add New Website
+          {!isPremium && data?.websites?.length >= 1 && (
+            <span style={{ fontSize: '12px', fontWeight: '500', color: '#d97706', marginLeft: '8px' }}>(Premium only)</span>
+          )}
         </h3>
         <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px' }}>
           <input
             type="text"
-            placeholder="example.com"
+            placeholder={(!isPremium && data?.websites?.length >= 1) ? "Upgrade to Premium to add more" : "example.com"}
             value={newWebsite}
             onChange={e => setNewWebsite(e.target.value)}
+            disabled={!isPremium && data?.websites?.length >= 1}
             style={{
               flex: 1, padding: '12px 16px', border: '2px solid #e2e8f0', borderRadius: '10px',
               fontSize: '14px', fontFamily: 'inherit', transition: 'border-color 0.2s',
@@ -94,7 +125,7 @@ export default function UserWebsites() {
             onBlur={e => e.target.style.borderColor = '#e2e8f0'}
             required
           />
-          <button type="submit" disabled={adding} style={{
+          <button type="submit" disabled={adding || (!isPremium && data?.websites?.length >= 1)} style={{
             padding: '12px 24px', background: adding ? '#94a3b8' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
             color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
             cursor: adding ? 'not-allowed' : 'pointer', fontFamily: 'inherit',

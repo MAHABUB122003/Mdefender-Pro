@@ -1,6 +1,6 @@
 import os
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, ConfigurationError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,8 +27,8 @@ class MongoDB:
             self._client.admin.command('ping')
             self._db = self._client[db_name]
             self._ensure_indexes()
-        except ConnectionFailure:
-            print("Warning: MongoDB connection failed. Using in-memory fallback.")
+        except (ConnectionFailure, ConfigurationError, Exception) as e:
+            print(f"Warning: MongoDB connection failed ({type(e).__name__}). Using in-memory fallback.")
             self._db = InMemoryDB()
 
     def _ensure_indexes(self):

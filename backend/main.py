@@ -344,6 +344,23 @@ async def user_get_rules(user: dict = Depends(verify_user_token)):
     return user_api.get_user_rules(user)
 
 
+@app.post("/api/user/block-ip")
+async def user_block_ip(request: Request, user: dict = Depends(verify_user_token)):
+    data = await request.json()
+    ip = data.get('ip', '')
+    reason = data.get('reason', 'Blocked by user')
+    if not ip:
+        return {'status': 'error', 'message': 'IP address is required'}
+    db.blacklist.insert_one({
+        'ip': ip,
+        'reason': reason,
+        'type': 'permanent',
+        'added_by': user.get('email', 'unknown'),
+        'created_at': datetime.now(),
+    })
+    return {'status': 'success', 'message': f'{ip} has been blocked'}
+
+
 # === Admin User Management Routes ===
 
 @app.get("/api/admin/users")

@@ -247,6 +247,9 @@ export const api = {
     return apiCall(`/api/user/logs${qs ? '?' + qs : ''}`)
   },
   getUserRules: () => apiCall('/api/user/rules'),
+
+  // User Block IP
+  userBlockIP: (ip, reason) => apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify({ ip, reason }) }),
 }
 
 export default api

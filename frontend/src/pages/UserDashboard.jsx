@@ -128,7 +128,7 @@ export default function UserDashboard() {
   const blockTopIP = async (ip) => {
     if (!isPremium) { alert('Upgrade to Premium to block IPs'); return }
     if (confirm(`Block ${ip}?`)) {
-      try { await api.blockAttacker(ip); fetchData() } catch (e) { alert(e.message) }
+      try { await api.userBlockIP(ip, 'Blocked from dashboard'); fetchData() } catch (e) { alert(e.message) }
     }
   }
 
@@ -273,7 +273,7 @@ export default function UserDashboard() {
               <div style={{ fontSize: '12px', color: '#a16207' }}>Unlock Attack Logs, WAF Rules, unlimited websites & more</div>
             </div>
           </div>
-          <a href="/user/settings" style={{
+          <Link to="/user/settings" style={{
             padding: '10px 20px', background: 'linear-gradient(135deg, #f59e0b, #d97706)',
             color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
             cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none',
@@ -281,7 +281,7 @@ export default function UserDashboard() {
             boxShadow: '0 2px 8px rgba(245,158,11,0.3)',
           }}>
             <i className="fas fa-arrow-up"></i> Upgrade Now
-          </a>
+          </Link>
         </div>
       )}
 
@@ -403,11 +403,11 @@ export default function UserDashboard() {
             <h3><i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i> Quick Actions</h3>
           </div>
           <div className="quick-actions-grid">
-            <QuickAction icon="fa-globe" label="Add Website" color="#10b981" onClick={() => window.location.href = '/user/websites'} />
+             <QuickAction icon="fa-globe" label="Add Website" color="#10b981" onClick={() => navigate('/user/websites')} />
             <QuickAction icon="fa-key" label="Copy API Key" color="#8b5cf6" onClick={copyApiKey} />
-            <QuickAction icon="fa-money-bill-wave" label="Finance" color="#2563eb" onClick={() => window.location.href = '/user/finance'} />
-            <QuickAction icon="fa-bullhorn" label="Notices" color="#f59e0b" onClick={() => window.location.href = '/user/notices'} />
-            <QuickAction icon="fa-cog" label="Settings" color="#64748b" onClick={() => window.location.href = '/user/settings'} />
+             <QuickAction icon="fa-money-bill-wave" label="Finance" color="#2563eb" onClick={() => navigate('/user/finance')} />
+             <QuickAction icon="fa-bullhorn" label="Notices" color="#f59e0b" onClick={() => navigate('/user/notices')} />
+             <QuickAction icon="fa-cog" label="Settings" color="#64748b" onClick={() => navigate('/user/settings')} />
             <QuickAction icon="fa-arrow-rotate-right" label="Refresh" color="#10b981" onClick={fetchData} />
           </div>
         </div>

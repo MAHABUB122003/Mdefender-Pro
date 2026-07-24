@@ -121,11 +121,33 @@ export default function UserLogs() {
                 <td>{log.timestamp}</td>
                 <td>
                   <button className="btn-small btn-edit" onClick={() => setExpandedRow(expandedRow === i ? null : i)}>
-                    <i className="fas fa-eye"></i> Details
+                    <i className={`fas fa-eye${expandedRow === i ? '-slash' : ''}`}></i> {expandedRow === i ? 'Hide' : 'Details'}
                   </button>
                 </td>
               </tr>
             ))}
+            {expandedRow != null && logs.logs?.[expandedRow] && (
+              <tr>
+                <td colSpan="8" style={{ background: '#f8fafc', padding: '16px 20px', fontSize: '13px', lineHeight: '1.8' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+                    <div><strong>IP:</strong> <code>{logs.logs[expandedRow].ip}</code></div>
+                    <div><strong>Method:</strong> {logs.logs[expandedRow].method || 'N/A'}</div>
+                    <div><strong>URL:</strong> {logs.logs[expandedRow].url}</div>
+                    <div><strong>Attack Type:</strong> {logs.logs[expandedRow].attack_type}</div>
+                    <div><strong>Confidence:</strong> {logs.logs[expandedRow].confidence != null ? Number(logs.logs[expandedRow].confidence).toFixed(4) : 'N/A'}</div>
+                    <div><strong>Rule Matched:</strong> {logs.logs[expandedRow].rule_matched || 'N/A'}</div>
+                    <div><strong>Status:</strong> {logs.logs[expandedRow].status}</div>
+                    <div><strong>Timestamp:</strong> {logs.logs[expandedRow].timestamp}</div>
+                  </div>
+                  {logs.logs[expandedRow].user_agent && (
+                    <div style={{ marginTop: '8px' }}>
+                      <strong>User Agent:</strong>
+                      <div style={{ fontSize: '12px', color: '#64748b', wordBreak: 'break-all', marginTop: '2px' }}>{logs.logs[expandedRow].user_agent}</div>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

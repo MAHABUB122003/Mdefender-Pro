@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import api from '../api/api'
 
 export default function Logs({ token }) {
@@ -82,8 +82,8 @@ export default function Logs({ token }) {
             ) : logs.logs?.length === 0 ? (
               <tr><td colSpan="8" style={{ textAlign: 'center', color: '#6c757d', padding: '40px' }}>No logs found</td></tr>
             ) : logs.logs?.map((log, i) => (
-              <>
-                <tr key={i} style={{ cursor: 'pointer' }}>
+              <Fragment key={i}>
+                <tr style={{ cursor: 'pointer' }}>
                   <td>{(page - 1) * perPage + i + 1}</td>
                   <td><code>{log.ip}</code></td>
                   <td>{log.url?.slice(0, 50)}{log.url?.length > 50 ? '...' : ''}</td>
@@ -115,7 +115,7 @@ export default function Logs({ token }) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
