@@ -90,7 +90,7 @@ class DisableMFARequest(BaseModel):
 
 
 class MFAChallengeRequest(BaseModel):
-    email_or_username: str
+    temp_token: str = Field(..., min_length=1)
     code: str = Field(..., min_length=6, max_length=8)
 
 

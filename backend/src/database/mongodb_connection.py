@@ -234,7 +234,18 @@ class InMemoryCollection:
             if self._matches(doc, query):
                 if '$set' in update:
                     doc.update(update['$set'])
-                else:
+                if '$unset' in update:
+                    for key in update['$unset']:
+                        doc.pop(key, None)
+                if '$inc' in update:
+                    for key, val in update['$inc'].items():
+                        doc[key] = doc.get(key, 0) + val
+                if '$push' in update:
+                    for key, val in update['$push'].items():
+                        if key not in doc:
+                            doc[key] = []
+                        doc[key].append(val)
+                if not any(op in update for op in ('$set', '$unset', '$inc', '$push')):
                     doc.update(update)
                 return type('obj', (object,), {'modified_count': 1})()
         if upsert:
@@ -243,6 +254,34 @@ class InMemoryCollection:
                 new_doc.update(update['$set'])
             self._data.append(new_doc)
         return type('obj', (object,), {'modified_count': 0})()
+
+    def update_many(self, query, update, upsert=False):
+        count = 0
+        for doc in self._data:
+            if self._matches(doc, query):
+                if '$set' in update:
+                    doc.update(update['$set'])
+                if '$unset' in update:
+                    for key in update['$unset']:
+                        doc.pop(key, None)
+                if '$inc' in update:
+                    for key, val in update['$inc'].items():
+                        doc[key] = doc.get(key, 0) + val
+                if '$push' in update:
+                    for key, val in update['$push'].items():
+                        if key not in doc:
+                            doc[key] = []
+                        doc[key].append(val)
+                if not any(op in update for op in ('$set', '$unset', '$inc', '$push')):
+                    doc.update(update)
+                count += 1
+        if upsert and count == 0:
+            new_doc = query.copy()
+            if '$set' in update:
+                new_doc.update(update['$set'])
+            self._data.append(new_doc)
+            count = 1
+        return type('obj', (object,), {'modified_count': count})()
 
     def delete_one(self, query):
         for i, doc in enumerate(self._data):
@@ -311,6 +350,9 @@ class InMemoryCollection:
                         return False
                 elif '$lte' in value:
                     if not (doc.get(key) and doc[key] <= value['$lte']):
+                        return False
+                elif '$ne' in value:
+                    if doc.get(key) == value['$ne']:
                         return False
                 else:
                     if doc.get(key) != value:

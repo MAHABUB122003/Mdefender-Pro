@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Dict, Optional
+import secrets
 from src.database.mongodb_connection import MongoDB
 from src.auth.config import AuthConfig
 from src.services.password_service import PasswordService
@@ -260,6 +261,3 @@ class LoginService:
             'refresh_token': refresh_token,
             'redirect': '/admin/dashboard',
         }
-
-
-import secrets

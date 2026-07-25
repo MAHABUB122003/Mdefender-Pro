@@ -80,10 +80,10 @@ export const api = {
       return data;
     }),
 
-  verifyMFA: (emailOrUsername, code) =>
+  verifyMFA: (tempToken, code) =>
     apiCall('/api/auth/mfa/verify', {
       method: 'POST',
-      body: JSON.stringify({ email_or_username: emailOrUsername, code }),
+      body: JSON.stringify({ temp_token: tempToken, code }),
     }).then(data => {
       if (data.csrf_token) setCsrfToken(data.csrf_token);
       return data;

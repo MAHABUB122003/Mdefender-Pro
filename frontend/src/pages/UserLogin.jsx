@@ -13,6 +13,7 @@ export default function UserLogin() {
   const [password, setPassword] = useState('')
   const [mfaCode, setMfaCode] = useState('')
   const [mfaRequired, setMfaRequired] = useState(false)
+  const [tempToken, setTempToken] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(searchParams.get('verified') === 'true')
@@ -36,7 +37,7 @@ export default function UserLogin() {
     setLoading(true)
     try {
       if (mfaRequired) {
-        const data = await api.verifyMFA(emailOrUsername, mfaCode)
+        const data = await api.verifyMFA(tempToken, mfaCode)
         if (data.status === 'success') {
           window.location.href = '/user/dashboard'
         } else {
@@ -48,6 +49,7 @@ export default function UserLogin() {
           window.location.href = '/user/dashboard'
         } else if (data.mfa_required) {
           setMfaRequired(true)
+          setTempToken(data.temp_token || '')
           setError('')
         } else if (data.email_not_verified) {
           navigate('/auth/verify-email')

@@ -5,7 +5,10 @@ def to_object_id(value):
     if isinstance(value, ObjectId):
         return value
     if isinstance(value, str):
-        return ObjectId(value)
+        try:
+            return ObjectId(value)
+        except Exception:
+            return None
     return None
 
 

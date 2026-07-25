@@ -88,7 +88,7 @@ class BruteForceService:
                 else:
                     self.db.failed_logins.update_one(
                         {'_id': record['_id']},
-                        {'$unset': {'locked': True, 'lockout_until': True}}
+                        {'$unset': {'locked': '', 'lockout_until': ''}}
                     )
                     return False, 0, False
 
@@ -97,7 +97,7 @@ class BruteForceService:
     def record_successful_login_check(self, identifier: str):
         self.db.failed_logins.update_many(
             {'identifier': identifier},
-            {'$unset': {'locked': True, 'lockout_until': True}}
+            {'$unset': {'locked': '', 'lockout_until': ''}}
         )
 
     def _count_recent_attempts(self, identifier: str) -> int:
@@ -142,5 +142,5 @@ class BruteForceService:
     def unlock_account(self, identifier: str):
         self.db.failed_logins.update_many(
             {'identifier': identifier},
-            {'$unset': {'locked': True, 'lockout_until': True, 'permanent_lockout': True}}
+            {'$unset': {'locked': '', 'lockout_until': '', 'permanent_lockout': ''}}
         )

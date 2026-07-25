@@ -163,7 +163,7 @@ async def login(data: LoginRequest, request: Request, response: Response):
 @auth_router.post('/mfa/verify')
 async def verify_mfa(data: MFAChallengeRequest, request: Request, response: Response):
     result = login_service.verify_mfa_and_login(
-        temp_token=data.code,
+        temp_token=data.temp_token,
         code=data.code,
         ip_address=get_client_ip(request),
         user_agent=get_user_agent(request),
@@ -831,7 +831,7 @@ async def admin_verify_email(user_id: str, admin: str = Depends(get_current_admi
         raise HTTPException(status_code=404, detail='User not found')
     db.users.update_one(
         {'_id': user_oid},
-        {'$set': {'email_verified': True, 'updated_at': datetime.now(timezone.utc).replace(tzinfo=None)}}
+        {'$set': {'email_verified': True, 'updated_at': datetime.now(timezone.utc)}}
     )
     return {'status': 'success', 'message': f'Email verified for user {user.get("email", user_id)}'}
 
@@ -847,6 +847,6 @@ async def admin_verify_email_by_email(request: Request, admin: str = Depends(get
         raise HTTPException(status_code=404, detail='User not found with this email')
     db.users.update_one(
         {'_id': user['_id']},
-        {'$set': {'email_verified': True, 'updated_at': datetime.now(timezone.utc).replace(tzinfo=None)}}
+        {'$set': {'email_verified': True, 'updated_at': datetime.now(timezone.utc)}}
     )
     return {'status': 'success', 'message': f'Email verified for {email}'}
