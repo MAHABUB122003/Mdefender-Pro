@@ -11,12 +11,19 @@ joblib==1.4.2
 xgboost==2.1.4
 
 requests==2.32.4
+httpx==0.28.1
 
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 
+argon2-cffi==23.1.0
+pyotp==2.9.0
+qrcode[pil]==8.0
+
 redis
 motor
-email-validator
+email-validator>=2.2.0
+dnspython>=2.7.0
 jinja2==3.1.6
 openpyxl==3.1.5
+psutil>=5.9.0

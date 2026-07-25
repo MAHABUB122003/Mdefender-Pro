@@ -54,6 +54,29 @@ class MongoDB:
             self._db.bank_accounts.create_index('account_number')
         if hasattr(self._db, 'notices'):
             self._db.notices.create_index('created_at')
+        try:
+            self._db.users.create_index('email', unique=True, sparse=True)
+            self._db.users.create_index('username', sparse=True)
+            self._db.users.create_index('google_id', sparse=True)
+            self._db.email_verification_tokens.create_index('token_hash')
+            self._db.email_verification_tokens.create_index('expires_at', expireAfterSeconds=0)
+            self._db.password_reset_tokens.create_index('token_hash')
+            self._db.password_reset_tokens.create_index('expires_at', expireAfterSeconds=0)
+            self._db.refresh_tokens.create_index('user_id')
+            self._db.refresh_tokens.create_index('token_hash')
+            self._db.sessions.create_index('user_id')
+            self._db.sessions.create_index('session_token')
+            self._db.sessions.create_index('expires_at', expireAfterSeconds=0)
+            self._db.failed_logins.create_index('identifier')
+            self._db.failed_logins.create_index('timestamp')
+            self._db.audit_logs.create_index('user_id')
+            self._db.audit_logs.create_index('timestamp')
+            self._db.audit_logs.create_index('action')
+            self._db.security_events.create_index('timestamp')
+            self._db.security_events.create_index('event_type')
+            self._db.mfa_secrets.create_index('user_id', unique=True)
+        except Exception:
+            pass
 
     @property
     def attacks(self):
@@ -107,6 +130,38 @@ class MongoDB:
     def notices(self):
         return self._db['notices'] if self._db is not None else None
 
+    @property
+    def email_verification_tokens(self):
+        return self._db['email_verification_tokens'] if self._db is not None else None
+
+    @property
+    def password_reset_tokens(self):
+        return self._db['password_reset_tokens'] if self._db is not None else None
+
+    @property
+    def refresh_tokens(self):
+        return self._db['refresh_tokens'] if self._db is not None else None
+
+    @property
+    def sessions(self):
+        return self._db['sessions'] if self._db is not None else None
+
+    @property
+    def failed_logins(self):
+        return self._db['failed_logins'] if self._db is not None else None
+
+    @property
+    def audit_logs(self):
+        return self._db['audit_logs'] if self._db is not None else None
+
+    @property
+    def security_events(self):
+        return self._db['security_events'] if self._db is not None else None
+
+    @property
+    def mfa_secrets(self):
+        return self._db['mfa_secrets'] if self._db is not None else None
+
 
 class InMemoryDB:
     def __init__(self):
@@ -123,6 +178,14 @@ class InMemoryDB:
         self.bank_accounts = InMemoryCollection()
         self.finance_transactions = InMemoryCollection()
         self.notices = InMemoryCollection()
+        self.email_verification_tokens = InMemoryCollection()
+        self.password_reset_tokens = InMemoryCollection()
+        self.refresh_tokens = InMemoryCollection()
+        self.sessions = InMemoryCollection()
+        self.failed_logins = InMemoryCollection()
+        self.audit_logs = InMemoryCollection()
+        self.security_events = InMemoryCollection()
+        self.mfa_secrets = InMemoryCollection()
 
     def __getitem__(self, key):
         return getattr(self, key, None)

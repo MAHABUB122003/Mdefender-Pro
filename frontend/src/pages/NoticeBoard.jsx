@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 const cardStyle = {
@@ -11,8 +10,6 @@ const cardStyle = {
 }
 
 export default function NoticeBoard() {
-  const navigate = useNavigate()
-  const token = localStorage.getItem('mdefender_user_token')
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [newNotice, setNewNotice] = useState('')
@@ -33,10 +30,6 @@ export default function NoticeBoard() {
       setLoading(false)
     }
   }, [])
-
-  useEffect(() => {
-    if (!token) { navigate('/user/login'); return }
-  }, [token, navigate])
 
   useEffect(() => { loadNotices() }, [loadNotices])
 

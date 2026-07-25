@@ -50,7 +50,7 @@ Priority order: **Inline options > Config file > package.json**
 |---|---|---|---|
 | `apiKey` | `string` | `''` | **Required.** Your MDefender Pro API key |
 | `domain` | `string` | `''` | **Required.** The domain to protect |
-| `apiEndpoint` | `string` | `'https://api.mdefender.com'` | MDefender API base URL |
+| `apiEndpoint` | `string` | `'https://mdefender-pro.onrender.com'` | MDefender API base URL |
 | `mode` | `'block' \| 'monitor' \| 'off'` | `'block'` | `block` = block threats, `monitor` = log only, `off` = disabled |
 | `blockStatusCode` | `number` | `403` | HTTP status code for blocked requests |
 | `timeout` | `number` | `5000` | API request timeout in milliseconds |

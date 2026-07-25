@@ -1,6 +1,6 @@
 <?php
 /**
- * SecureWAF - PHP Client
+ * MDefender Pro - PHP Client
  *
  * Usage:
  *   require_once 'client/php/waf.php';
@@ -15,7 +15,7 @@ class SecureWAF {
     private $server;
     private $timeout;
 
-    public function __construct($apiKey, $server = 'http://localhost:5000', $timeout = 3) {
+    public function __construct($apiKey, $server = 'https://mdefender-pro.onrender.com', $timeout = 5) {
         if (empty($apiKey)) {
             throw new Exception('[SecureWAF] apiKey is required. Get one from your WAF dashboard.');
         }
@@ -45,6 +45,7 @@ class SecureWAF {
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 "Authorization: Bearer {$this->apiKey}",
+                'X-MDefender-Version: 1.1.0',
             ],
         ]);
 
@@ -79,8 +80,10 @@ class SecureWAF {
 
         if ($result['status'] === 'blocked') {
             header('HTTP/1.1 403 Forbidden');
-            header('Content-Type: text/html');
-            echo $result['block_page'] ?? '<h1>Blocked by Web Application Firewall</h1>';
+            header('Content-Type: text/html; charset=utf-8');
+            header('X-MDefender-Status: blocked');
+            header('X-MDefender-Attack-Type: ' . ($result['attack_type'] ?? 'unknown'));
+            echo $result['block_page'] ?? '<h1>Blocked by MDefender Pro WAF</h1>';
             exit;
         }
     }

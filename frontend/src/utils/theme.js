@@ -1,0 +1,26 @@
+const theme = (dark) => ({
+  bg: dark ? '#0f172a' : '#f8fafc',
+  bgCard: dark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+  bgCardHover: dark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+  bgInput: dark ? '#1e293b' : '#f8fafc',
+  bgNav: dark ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.92)',
+  bgCode: dark ? '#1e293b' : '#f1f5f9',
+  border: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+  borderLight: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+  text: dark ? '#ffffff' : '#0f172a',
+  textSecondary: dark ? '#94a3b8' : '#64748b',
+  textMuted: dark ? '#64748b' : '#94a3b8',
+  textCode: dark ? '#e2e8f0' : '#1e293b',
+  shadow: dark ? '0 25px 80px rgba(0,0,0,0.5)' : '0 25px 80px rgba(0,0,0,0.08)',
+  shadowNav: dark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.06)',
+  overlay: dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)',
+  primary: '#6366f1',
+  primaryBg: dark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)',
+  primaryBorder: dark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.2)',
+  green: '#10b981',
+  blue: '#3b82f6',
+  purple: '#667eea',
+  violet: '#764ba2',
+})
+
+export default theme

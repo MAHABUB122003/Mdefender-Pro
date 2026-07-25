@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const DEFAULT_CONFIG = {
   apiKey: '',
   domain: '',
-  apiEndpoint: 'https://api.mdefender.com',
+  apiEndpoint: 'https://mdefender-pro.onrender.com',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
   timeout: 5000,

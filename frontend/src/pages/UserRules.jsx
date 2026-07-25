@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../api/api'
 
 export default function UserRules() {
-  const navigate = useNavigate()
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [rules, setRules] = useState([])
   const [loading, setLoading] = useState(true)
-
-  const token = localStorage.getItem('mdefender_user_token')
 
   const fetchRules = async () => {
     try {
@@ -19,10 +16,9 @@ export default function UserRules() {
   }
 
   useEffect(() => {
-    if (!token) { navigate('/user/login'); return }
     if (!isPremium) { setLoading(false); return }
     fetchRules()
-  }, [token, navigate, isPremium])
+  }, [isPremium])
 
   if (!isPremium) {
     return (

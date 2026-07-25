@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -20,126 +20,126 @@ import UserWebsites from './pages/UserWebsites'
 import UserLogs from './pages/UserLogs'
 import UserRules from './pages/UserRules'
 import UserSettings from './pages/UserSettings'
+import UserConnect from './pages/UserConnect'
+import UserBlacklist from './pages/UserBlacklist'
+import DDoSDashboard from './pages/DDoSDashboard'
 import Finance from './pages/Finance'
 import NoticeBoard from './pages/NoticeBoard'
 import Docs from './pages/Docs'
+import VerifyEmail from './pages/auth/VerifyEmail'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
+import GoogleCallback from './pages/auth/GoogleCallback'
+import SessionsPage from './pages/auth/Sessions'
+
+import api from './api/api'
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('mdefender_token'))
-
-  const login = (newToken) => {
-    localStorage.setItem('mdefender_token', newToken)
-    setToken(newToken)
-  }
-
-  const logout = () => {
-    localStorage.removeItem('mdefender_token')
-    setToken(null)
-  }
-
-  const [userToken, setUserToken] = useState(localStorage.getItem('mdefender_user_token'))
+  const [adminUser, setAdminUser] = useState(null)
+  const [adminLoading, setAdminLoading] = useState(true)
+  const [userState, setUserState] = useState(null)
+  const [userLoading, setUserLoading] = useState(true)
 
   useEffect(() => {
-    const handler = () => setUserToken(localStorage.getItem('mdefender_user_token'))
-    window.addEventListener('userTokenChanged', handler)
-    return () => window.removeEventListener('userTokenChanged', handler)
+    api.getMe().then(data => {
+      const user = data.user
+      if (user.role === 'super_admin') {
+        setAdminUser(user)
+      }
+      setUserState(user)
+    }).catch(() => {
+      setAdminUser(null)
+      setUserState(null)
+    }).finally(() => {
+      setAdminLoading(false)
+      setUserLoading(false)
+    })
   }, [])
 
-  const userLogout = () => {
-    localStorage.removeItem('mdefender_user_token')
-    localStorage.removeItem('mdefender_user_plan')
-    localStorage.removeItem('mdefender_user_name')
-    setUserToken(null)
+  const adminLogout = useCallback(async () => {
+    try { await api.logout() } catch {}
+    setAdminUser(null)
+    window.location.href = '/admin/login'
+  }, [])
+
+  const userLogout = useCallback(async () => {
+    try { await api.logout() } catch {}
+    setUserState(null)
     window.location.href = '/user/login'
+  }, [])
+
+  if (adminLoading || userLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    )
   }
 
   return (
     <Routes>
-      {/* Public pages */}
       <Route path="/" element={<Landing />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/docs" element={<Docs />} />
-      <Route path="/register" element={<Register />} />
       <Route path="/blocked" element={<BlockPage />} />
 
-      {/* User routes */}
-      <Route path="/user/login" element={<UserLogin />} />
-      <Route path="/user/dashboard" element={
-        userToken ? <UserLayout onLogout={userLogout}><UserDashboard /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/logs" element={
-        userToken ? <UserLayout onLogout={userLogout}><UserLogs /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/rules" element={
-        userToken ? <UserLayout onLogout={userLogout}><UserRules /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/websites" element={
-        userToken ? <UserLayout onLogout={userLogout}><UserWebsites /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/finance" element={
-        userToken ? <UserLayout onLogout={userLogout}><Finance /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/notices" element={
-        userToken ? <UserLayout onLogout={userLogout}><NoticeBoard /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/settings" element={
-        userToken ? <UserLayout onLogout={userLogout}><UserSettings /></UserLayout> : <Navigate to="/user/login" replace />
+      <Route path="/auth/verify-email" element={<VerifyEmail />} />
+      <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/google/callback" element={<GoogleCallback />} />
+      <Route path="/user/sessions" element={
+        userState ? <UserLayout onLogout={userLogout}><SessionsPage /></UserLayout> : <Navigate to="/user/login" replace />
       } />
 
-      {/* Admin routes */}
-      {!token ? (
+      <Route path="/register" element={
+        userState ? <Navigate to="/user/dashboard" replace /> : <Register />
+      } />
+      <Route path="/user/login" element={
+        userState ? <Navigate to="/user/dashboard" replace /> : <UserLogin />
+      } />
+      <Route path="/user/dashboard" element={
+        userState ? <UserLayout onLogout={userLogout}><UserDashboard /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/logs" element={
+        userState ? <UserLayout onLogout={userLogout}><UserLogs /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/rules" element={
+        userState ? <UserLayout onLogout={userLogout}><UserRules /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/websites" element={
+        userState ? <UserLayout onLogout={userLogout}><UserWebsites /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/finance" element={
+        userState ? <UserLayout onLogout={userLogout}><Finance /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/connect" element={
+        userState ? <UserLayout onLogout={userLogout}><UserConnect /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/blacklist" element={
+        userState ? <UserLayout onLogout={userLogout}><UserBlacklist /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+      <Route path="/user/settings" element={
+        userState ? <UserLayout onLogout={userLogout}><UserSettings /></UserLayout> : <Navigate to="/user/login" replace />
+      } />
+
+      {!adminUser ? (
         <>
-          <Route path="/admin/login" element={<Login onLogin={login} />} />
+          <Route path="/admin/login" element={<Login />} />
           <Route path="/admin/*" element={<Navigate to="/admin/login" replace />} />
         </>
       ) : (
         <>
           <Route path="/admin/login" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={
-            <Layout onLogout={logout}>
-              <Dashboard token={token} />
-            </Layout>
-          } />
-          <Route path="/admin/logs" element={
-            <Layout onLogout={logout}>
-              <Logs token={token} />
-            </Layout>
-          } />
-          <Route path="/admin/rules" element={
-            <Layout onLogout={logout}>
-              <Rules token={token} />
-            </Layout>
-          } />
-          <Route path="/admin/clients" element={
-            <Layout onLogout={logout}>
-              <Clients token={token} />
-            </Layout>
-          } />
-          <Route path="/admin/blacklist" element={
-            <Layout onLogout={logout}>
-              <Blacklist token={token} />
-            </Layout>
-          } />
-          <Route path="/admin/settings" element={
-            <Layout onLogout={logout}>
-              <Settings token={token} />
-            </Layout>
-          } />
-          <Route path="/admin/finance" element={
-            <Layout onLogout={logout}>
-              <Finance />
-            </Layout>
-          } />
-          <Route path="/admin/notices" element={
-            <Layout onLogout={logout}>
-              <NoticeBoard />
-            </Layout>
-          } />
-          <Route path="/connect" element={
-            <Layout onLogout={logout}>
-              <Connect token={token} />
-            </Layout>
-          } />
+          <Route path="/admin/dashboard" element={<Layout onLogout={adminLogout}><Dashboard /></Layout>} />
+          <Route path="/admin/logs" element={<Layout onLogout={adminLogout}><Logs /></Layout>} />
+          <Route path="/admin/rules" element={<Layout onLogout={adminLogout}><Rules /></Layout>} />
+          <Route path="/admin/clients" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
+          <Route path="/admin/blacklist" element={<Layout onLogout={adminLogout}><Blacklist /></Layout>} />
+          <Route path="/admin/settings" element={<Layout onLogout={adminLogout}><Settings /></Layout>} />
+          <Route path="/admin/finance" element={<Layout onLogout={adminLogout}><Finance /></Layout>} />
+          <Route path="/admin/notices" element={<Layout onLogout={adminLogout}><NoticeBoard /></Layout>} />
+          <Route path="/connect" element={<Layout onLogout={adminLogout}><Connect /></Layout>} />
+          <Route path="/admin/ddos" element={<Layout onLogout={adminLogout}><DDoSDashboard /></Layout>} />
         </>
       )}
 

@@ -1,10 +1,23 @@
 {
-  "name": "mdefender",
-  "version": "1.0.0",
-  "description": "MDefender Pro - Web Application Firewall middleware for Node.js/Express",
+  "name": "mdefender-pro",
+  "version": "1.1.0",
+  "description": "MDefender Pro - Web Application Firewall middleware for Node.js/Express. Protects against XSS, SQLi, CSRF, and other OWASP Top 10 attacks.",
   "main": "index.js",
   "types": "index.d.ts",
-  "keywords": ["waf", "security", "firewall", "xss", "sqli", "protection", "middleware"],
+  "keywords": [
+    "waf",
+    "web-application-firewall",
+    "security",
+    "firewall",
+    "xss",
+    "sqli",
+    "csrf",
+    "protection",
+    "middleware",
+    "express",
+    "nodejs",
+    "owasp"
+  ],
   "author": "MDefender Pro",
   "license": "MIT",
   "engines": {
@@ -20,11 +33,14 @@
     "index.js",
     "index.d.ts",
     "README.md",
-    "config-loader.js",
-    "lib/"
+    "config-loader.js"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/mdefender/mdefender"
+  },
+  "homepage": "https://mdefender-pro-6e3r.onrender.com",
+  "bugs": {
+    "url": "https://github.com/mdefender/mdefender/issues"
   }
 }

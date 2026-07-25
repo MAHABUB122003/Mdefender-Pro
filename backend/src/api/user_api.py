@@ -1,15 +1,23 @@
 from src.database.mongodb_connection import MongoDB
 from src.engine.rule_engine import RuleEngine
+from src.services.password_service import PasswordService
+from src.services.email_service import EmailService
 from datetime import datetime, timedelta
 from bson import ObjectId
 import uuid
 import hashlib
 import secrets
+import logging
+
+logger = logging.getLogger('mdefender.auth')
+
 
 class UserAPI:
     def __init__(self):
         self.db = MongoDB()
         self.rule_engine = RuleEngine()
+        self.password_service = PasswordService()
+        self.email_service = EmailService()
 
     def _resolve_id(self, user_id):
         if isinstance(user_id, ObjectId):
@@ -22,20 +30,40 @@ class UserAPI:
     def register(self, data):
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
+        confirm_password = data.get('confirmPassword', data.get('confirm_password', ''))
         name = data.get('name', '').strip()
 
+        # --- Step 1: Required fields ---
         if not email or not password or not name:
             return {'status': 'error', 'message': 'Name, email and password are required'}
-        if len(password) < 8:
-            return {'status': 'error', 'message': 'Password must be at least 8 characters'}
-        if '@' not in email:
-            return {'status': 'error', 'message': 'Invalid email address'}
 
+        # --- Step 2: Password confirmation ---
+        if confirm_password and password != confirm_password:
+            return {'status': 'error', 'message': 'Passwords do not match'}
+
+        # --- Step 3: Email validation (RFC syntax + MX records + disposable) ---
+        email_result = self.email_service.validate(email)
+        if not email_result['valid']:
+            first_error = email_result['errors'][0]
+            logger.warning(f"Email validation failed: {email} — {first_error}")
+            return {'status': 'error', 'message': first_error}
+        email = email_result['normalized_email']
+
+        # --- Step 4: Password strength validation (enterprise policy) ---
+        pw_result = self.password_service.validate_strength(password)
+        if not pw_result['valid']:
+            first_error = pw_result['errors'][0]
+            logger.warning(f"Password validation failed for {email} — {first_error}")
+            return {'status': 'error', 'message': first_error}
+
+        # --- Step 5: Duplicate email check ---
         existing = self.db.users.find_one({'email': email})
         if existing:
+            logger.warning(f"Duplicate registration attempt: {email}")
             return {'status': 'error', 'message': 'An account with this email already exists'}
 
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        # --- Step 6: Hash password with bcrypt ---
+        password_hash = self.password_service.hash_password(password)
         api_key = 'md_' + secrets.token_hex(24)
 
         user = {
@@ -58,6 +86,7 @@ class UserAPI:
         }
 
         result = self.db.users.insert_one(user)
+        logger.info(f"New user registered: {email}")
         return {
             'status': 'success',
             'message': 'Account created successfully',
@@ -69,13 +98,39 @@ class UserAPI:
         email = email.strip().lower()
         user = self.db.users.find_one({'email': email})
         if not user:
+            logger.warning(f"Login failed (unknown email): {email} from {ip}")
             return {'status': 'error', 'message': 'Invalid email or password'}
 
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        if user.get('password_hash') != password_hash:
+        stored_hash = user.get('password_hash', '')
+        authenticated = False
+
+        # --- Path A: bcrypt hash (new format) ---
+        if self.password_service.is_bcrypt_hash(stored_hash):
+            authenticated = self.password_service.verify_password(password, stored_hash)
+
+        # --- Path B: SHA-256 hash (legacy format) — verify then migrate ---
+        elif self.password_service.is_sha256_hash(stored_hash):
+            legacy_hash = hashlib.sha256(password.encode()).hexdigest()
+            if legacy_hash == stored_hash:
+                authenticated = True
+                # Migrate to bcrypt on successful login
+                new_hash = self.password_service.hash_password(password)
+                self.db.users.update_one(
+                    {'_id': user['_id']},
+                    {'$set': {'password_hash': new_hash, 'updated_at': datetime.now()}}
+                )
+                logger.info(f"Migrated password hash to bcrypt for: {email}")
+
+        # --- Path C: Unknown hash format — reject ---
+        else:
+            logger.error(f"Unknown hash format for user: {email}")
+
+        if not authenticated:
+            logger.warning(f"Login failed (wrong password): {email} from {ip}")
             return {'status': 'error', 'message': 'Invalid email or password'}
 
         if user.get('status') == 'suspended':
+            logger.warning(f"Login blocked (suspended account): {email}")
             return {'status': 'error', 'message': 'Your account has been suspended. Contact support.'}
 
         self.db.users.update_one(
@@ -92,6 +147,7 @@ class UserAPI:
             'ip': ip,
         })
 
+        logger.info(f"User logged in: {email} from {ip}")
         return {
             'status': 'success',
             'token': token,
@@ -206,18 +262,32 @@ class UserAPI:
         new_pw = data.get('new_password', '')
         if not old_pw or not new_pw:
             return {'status': 'error', 'message': 'Both passwords are required'}
-        if len(new_pw) < 8:
-            return {'status': 'error', 'message': 'New password must be at least 8 characters'}
 
-        old_hash = hashlib.sha256(old_pw.encode()).hexdigest()
-        if user.get('password_hash') != old_hash:
+        # --- Validate new password strength ---
+        pw_result = self.password_service.validate_strength(new_pw)
+        if not pw_result['valid']:
+            return {'status': 'error', 'message': pw_result['errors'][0]}
+
+        # --- Verify current password ---
+        stored_hash = user.get('password_hash', '')
+        old_valid = False
+
+        if self.password_service.is_bcrypt_hash(stored_hash):
+            old_valid = self.password_service.verify_password(old_pw, stored_hash)
+        elif self.password_service.is_sha256_hash(stored_hash):
+            # Legacy SHA-256 verification
+            old_valid = (hashlib.sha256(old_pw.encode()).hexdigest() == stored_hash)
+
+        if not old_valid:
             return {'status': 'error', 'message': 'Current password is incorrect'}
 
-        new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
+        # --- Hash new password with bcrypt ---
+        new_hash = self.password_service.hash_password(new_pw)
         self.db.users.update_one(
             {'_id': user['_id']},
             {'$set': {'password_hash': new_hash, 'updated_at': datetime.now()}}
         )
+        logger.info(f"Password changed for: {user.get('email', 'unknown')}")
         return {'status': 'success', 'message': 'Password changed successfully'}
 
     def get_dashboard_stats(self, user):
@@ -230,8 +300,10 @@ class UserAPI:
             )
             user['requests_today'] = 0
 
+        user_id_str = str(user['_id'])
+
         attack_logs = list(self.db.attacks.find(
-            {'user_id': str(user['_id'])}
+            {'user_id': user_id_str}
         ).sort('timestamp', -1).limit(20))
 
         logs = []
@@ -248,6 +320,38 @@ class UserAPI:
             })
 
         websites = user.get('websites', [])
+
+        attack_type_map = {}
+        attacker_ip_map = {}
+        all_attacks = list(self.db.attacks.find({'user_id': user_id_str}))
+        for a in all_attacks:
+            atype = a.get('attack_type', 'Unknown')
+            attack_type_map[atype] = attack_type_map.get(atype, 0) + 1
+            ip = a.get('ip', '')
+            if ip:
+                attacker_ip_map[ip] = attacker_ip_map.get(ip, 0) + 1
+
+        attack_types = list(attack_type_map.keys())
+        attack_counts = [attack_type_map[k] for k in attack_types]
+
+        top_attackers = sorted(
+            [{'ip': ip, 'count': count} for ip, count in attacker_ip_map.items()],
+            key=lambda x: x['count'],
+            reverse=True
+        )[:10]
+
+        daily_requests = []
+        for i in range(7):
+            day = datetime.now() - timedelta(days=6 - i)
+            day_str = day.strftime('%Y-%m-%d')
+            count = self.db.attacks.count_documents({
+                'user_id': user_id_str,
+                'timestamp': {
+                    '$gte': datetime.strptime(day_str, '%Y-%m-%d'),
+                    '$lt': datetime.strptime(day_str, '%Y-%m-%d') + timedelta(days=1),
+                }
+            })
+            daily_requests.append(count)
 
         return {
             'user': {
@@ -267,6 +371,10 @@ class UserAPI:
             'active_websites': len(websites),
             'websites': websites,
             'recent_activity': logs,
+            'attack_types': attack_types,
+            'attack_counts': attack_counts,
+            'daily_requests': daily_requests,
+            'top_attackers': top_attackers,
             'protection_status': 'active',
         }
 
@@ -449,3 +557,16 @@ class UserAPI:
                 'severity': rule.get('severity', 'medium'),
             })
         return rules
+
+    def toggle_ddos_protection(self, user, enabled):
+        self.db.users.update_one(
+            {'_id': user['_id']},
+            {'$set': {'ddos_enabled': enabled, 'updated_at': datetime.now()}}
+        )
+        return {'status': 'success', 'ddos_enabled': enabled, 'message': f'DDoS protection {"enabled" if enabled else "disabled"}'}
+
+    def get_ddos_status(self, user):
+        return {
+            'status': 'success',
+            'ddos_enabled': user.get('ddos_enabled', True),
+        }

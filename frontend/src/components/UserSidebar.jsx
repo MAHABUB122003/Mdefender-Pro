@@ -36,12 +36,15 @@ export default function UserSidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-money-bill-wave"></i></span>
             <span>Finance</span>
           </NavLink>
-          <div className="nav-label">Communication</div>
-          <NavLink to="/user/notices">
-            <span className="nav-icon"><i className="fas fa-bullhorn"></i></span>
-            <span>Notice Board</span>
-          </NavLink>
           <div className="nav-label">Management</div>
+          <NavLink to="/user/connect">
+            <span className="nav-icon"><i className="fas fa-link"></i></span>
+            <span>Connect</span>
+          </NavLink>
+          <NavLink to="/user/blacklist">
+            <span className="nav-icon"><i className="fas fa-ban"></i></span>
+            <span>Blacklist</span>
+          </NavLink>
           <NavLink to="/user/websites">
             <span className="nav-icon"><i className="fas fa-globe"></i></span>
             <span>Websites</span>

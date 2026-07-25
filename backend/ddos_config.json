@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "log_level": "info",
+  "redis_url": "redis://localhost:6379/0",
+  "use_redis": true,
+  "fallback_to_memory": true,
+  "whitelist_ips": ["127.0.0.1", "::1", "localhost"],
+  "whitelist_paths": ["/health", "/api/admin/login"],
+  "blocked_user_agents": [
+    "sqlmap", "nikto", "nmap", "masscan", "havij", "w3af",
+    "acunetix", "netsparker", "openvas", "metasploit",
+    "burpsuite", "dirbuster", "gobuster", "ffuf"
+  ]
+}

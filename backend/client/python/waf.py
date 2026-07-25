@@ -1,5 +1,5 @@
 """
-SecureWAF - Python Client
+MDefender Pro - Python Client
 
 Usage (Flask):
     from client.python.waf import waf_middleware
@@ -18,7 +18,7 @@ import urllib.error
 
 
 class SecureWAF:
-    def __init__(self, api_key, server='http://localhost:5000', timeout=3, block_page=True):
+    def __init__(self, api_key, server='https://mdefender-pro.onrender.com', timeout=5, block_page=True):
         if not api_key:
             raise ValueError('[SecureWAF] api_key is required. Get one from your WAF dashboard.')
         self.api_key = api_key
@@ -44,6 +44,7 @@ class SecureWAF:
             headers={
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {self.api_key}',
+                'X-MDefender-Version': '1.1.0',
             },
         )
 
@@ -54,7 +55,7 @@ class SecureWAF:
             return {'status': 'allowed'}
 
 
-def waf_middleware(app, api_key, server='http://localhost:5000', block_page=True):
+def waf_middleware(app, api_key, server='https://mdefender-pro.onrender.com', block_page=True):
     """Wrap a Flask/WSGI app with WAF protection."""
     waf = SecureWAF(api_key, server, block_page=block_page)
 
@@ -76,11 +77,13 @@ def waf_middleware(app, api_key, server='http://localhost:5000', block_page=True
         )
 
         if result.get('status') == 'blocked':
-            block_html = result.get('block_page', '<h1>Blocked by WAF</h1>')
+            block_html = result.get('block_page', '<h1>Blocked by MDefender Pro WAF</h1>')
             response = block_html.encode('utf-8')
             start_response('403 Forbidden', [
                 ('Content-Type', 'text/html'),
                 ('Content-Length', str(len(response))),
+                ('X-MDefender-Status', 'blocked'),
+                ('X-MDefender-Attack-Type', result.get('attack_type', 'unknown')),
             ])
             return [response]
 
@@ -96,9 +99,9 @@ class DjangoWAFMiddleware:
         from django.conf import settings
         self.get_response = get_response
         self.waf = SecureWAF(
-            api_key=getattr(settings, 'WAF_API_KEY', ''),
-            server=getattr(settings, 'WAF_SERVER', 'http://localhost:5000'),
-            block_page=getattr(settings, 'WAF_BLOCK_PAGE', True),
+            api_key=getattr(settings, 'MDEFENDER_API_KEY', ''),
+            server=getattr(settings, 'MDEFENDER_SERVER', 'https://mdefender-pro.onrender.com'),
+            block_page=getattr(settings, 'MDEFENDER_BLOCK_PAGE', True),
         )
 
     def __call__(self, request):
@@ -112,7 +115,14 @@ class DjangoWAFMiddleware:
 
         if result.get('status') == 'blocked':
             from django.http import HttpResponse
-            return HttpResponse(result.get('block_page', '<h1>Blocked by WAF</h1>'), status=403)
+            return HttpResponse(
+                result.get('block_page', '<h1>Blocked by MDefender Pro WAF</h1>'),
+                status=403,
+                headers={
+                    'X-MDefender-Status': 'blocked',
+                    'X-MDefender-Attack-Type': result.get('attack_type', 'unknown'),
+                }
+            )
 
         return self.get_response(request)
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 const cardStyle = {
@@ -46,8 +45,6 @@ const badgeStyle = (color) => ({
 })
 
 export default function Finance() {
-  const navigate = useNavigate()
-  const token = localStorage.getItem('mdefender_user_token')
   const [activeTab, setActiveTab] = useState('accounts')
   const [accounts, setAccounts] = useState([])
   const [transactions, setTransactions] = useState([])
@@ -95,10 +92,6 @@ export default function Finance() {
       setLoading(false)
     }
   }, [txFilters])
-
-  useEffect(() => {
-    if (!token) { navigate('/user/login'); return }
-  }, [token, navigate])
 
   useEffect(() => { loadData() }, [loadData])
 

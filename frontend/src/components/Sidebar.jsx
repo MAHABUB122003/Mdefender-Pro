@@ -19,6 +19,10 @@ export default function Sidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-chart-pie"></i></span>
             <span>Dashboard</span>
           </NavLink>
+          <NavLink to="/admin/ddos">
+            <span className="nav-icon"><i className="fas fa-shield-halved"></i></span>
+            <span>DDoS Protection</span>
+          </NavLink>
           <NavLink to="/admin/logs">
             <span className="nav-icon"><i className="fas fa-list"></i></span>
             <span>Logs</span>

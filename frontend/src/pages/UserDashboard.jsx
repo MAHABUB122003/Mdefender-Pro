@@ -8,6 +8,18 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointE
 
 const doughnutColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
+const DDOS_FEATURES = [
+  { icon: 'fa-bolt', name: 'Rate Limiting', desc: 'Sliding window per-user rate limits', color: '#2563eb' },
+  { icon: 'fa-chart-line', name: 'Traffic Monitoring', desc: 'Real-time traffic analysis & stats', color: '#10b981' },
+  { icon: 'fa-user-secret', name: 'Behavioral Analysis', desc: 'Detect abnormal browsing patterns', color: '#8b5cf6' },
+  { icon: 'fa-shield-halved', name: 'IP Reputation', desc: 'Auto-score & block malicious IPs', color: '#ef4444' },
+  { icon: 'fa-gauge-high', name: 'Burst Detection', desc: 'Identify sudden traffic spikes', color: '#f59e0b' },
+  { icon: 'fa-layer-group', name: 'Progressive Blocking', desc: 'Throttle → block → permanent ban', color: '#ec4899' },
+  { icon: 'fa-fingerprint', name: 'Request Fingerprinting', desc: 'Track attackers across IPs', color: '#14b8a6' },
+  { icon: 'fa-user-tag', name: 'UA Analysis', desc: 'Block bots, scanners & attack tools', color: '#f97316' },
+  { icon: 'fa-code', name: 'JS Challenge', desc: 'JavaScript & CAPTCHA verification', color: '#6366f1' },
+]
+
 function useAnimatedNumber(target, duration = 800) {
   const [value, setValue] = useState(0)
   const ref = useRef(null)
@@ -57,8 +69,9 @@ export default function UserDashboard() {
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [ddosEnabled, setDdosEnabled] = useState(true)
+  const [ddosToggling, setDdosToggling] = useState(false)
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
-  const token = localStorage.getItem('mdefender_user_token')
 
   const fetchData = useCallback(async () => {
     try {
@@ -68,19 +81,28 @@ export default function UserDashboard() {
       if (result?.user?.plan) localStorage.setItem('mdefender_user_plan', result.user.plan)
     } catch (err) {
       console.error(err)
-      if (err.message === 'Unauthorized') {
-        localStorage.removeItem('mdefender_user_token')
-        navigate('/user/login')
-      }
     } finally {
       setLoading(false)
     }
-  }, [navigate])
+  }, [])
 
   useEffect(() => {
-    if (!token) { navigate('/user/login'); return }
     fetchData()
-  }, [token, navigate, fetchData])
+    api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {})
+  }, [fetchData])
+
+  const handleDdosToggle = async () => {
+    setDdosToggling(true)
+    try {
+      const newState = !ddosEnabled
+      await api.toggleDdos(newState)
+      setDdosEnabled(newState)
+    } catch (err) {
+      alert(err.message || 'Failed to toggle DDoS protection')
+    } finally {
+      setDdosToggling(false)
+    }
+  }
 
   const handleAddWebsite = async (e) => {
     e.preventDefault()
@@ -293,6 +315,92 @@ export default function UserDashboard() {
         <StatCard icon="fa-server" iconClass="purple" value={data?.active_websites || 0} label="Active Websites" trend="online" trendDir="up" />
       </div>
 
+      {/* DDoS Protection Section */}
+      <div style={{
+        background: '#fff',
+        borderRadius: '14px',
+        padding: '24px',
+        marginBottom: '24px',
+        border: ddosEnabled ? '1px solid #d1fae5' : '1px solid #fecaca',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '12px',
+                background: ddosEnabled ? '#ecfdf5' : '#fef2f2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
+                color: ddosEnabled ? '#10b981' : '#ef4444',
+              }}>
+                <i className={`fas ${ddosEnabled ? 'fa-shield-halved' : 'fa-shield-slash'}`}></i>
+              </div>
+              <div>
+                <h3 style={{ color: '#0f172a', fontSize: '18px', fontWeight: '700', margin: 0 }}>DDoS Protection</h3>
+                <span style={{
+                  fontSize: '12px', fontWeight: '600',
+                  color: ddosEnabled ? '#10b981' : '#ef4444',
+                }}>
+                  {ddosEnabled ? 'Active & Protecting' : 'Disabled'}
+                </span>
+              </div>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 56px', lineHeight: '1.5' }}>
+              {ddosEnabled
+                ? 'Your websites are protected against DDoS attacks, traffic floods, and malicious bots in real-time.'
+                : 'Your websites are NOT protected from DDoS attacks. Enable protection to stay safe.'}
+            </p>
+          </div>
+          <button
+            onClick={handleDdosToggle}
+            disabled={ddosToggling}
+            style={{
+              padding: '12px 28px',
+              borderRadius: '10px',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: ddosToggling ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s',
+              background: ddosEnabled
+                ? '#fef2f2'
+                : '#ecfdf5',
+              color: ddosEnabled ? '#ef4444' : '#10b981',
+              minWidth: '140px',
+              justifyContent: 'center',
+            }}
+          >
+            <i className={`fas ${ddosToggling ? 'fa-spinner fa-spin' : ddosEnabled ? 'fa-power-off' : 'fa-shield-halved'}`}></i>
+            {ddosToggling ? 'Updating...' : ddosEnabled ? 'Turn Off' : 'Turn On'}
+          </button>
+        </div>
+
+        {/* DDoS Feature Tags */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: '8px',
+          marginTop: '20px', paddingTop: '16px',
+          borderTop: '1px solid #f1f5f9',
+        }}>
+          {DDOS_FEATURES.map((f, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px', borderRadius: '8px',
+              background: ddosEnabled ? '#f8fafc' : '#f8fafc',
+              border: '1px solid #e2e8f0',
+              opacity: ddosEnabled ? 1 : 0.5,
+              transition: 'all 0.2s',
+            }}>
+              <i className={`fas ${f.icon}`} style={{ color: ddosEnabled ? f.color : '#94a3b8', fontSize: '11px' }}></i>
+              <span style={{ color: ddosEnabled ? '#334155' : '#94a3b8', fontSize: '11px', fontWeight: '500' }}>{f.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Charts Grid */}
       <div className="charts-grid">
         <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`}>
@@ -405,10 +513,10 @@ export default function UserDashboard() {
           <div className="quick-actions-grid">
              <QuickAction icon="fa-globe" label="Add Website" color="#10b981" onClick={() => navigate('/user/websites')} />
             <QuickAction icon="fa-key" label="Copy API Key" color="#8b5cf6" onClick={copyApiKey} />
-             <QuickAction icon="fa-money-bill-wave" label="Finance" color="#2563eb" onClick={() => navigate('/user/finance')} />
-             <QuickAction icon="fa-bullhorn" label="Notices" color="#f59e0b" onClick={() => navigate('/user/notices')} />
+             <QuickAction icon="fa-link" label="Connect" color="#2563eb" onClick={() => navigate('/user/connect')} />
+             <QuickAction icon="fa-money-bill-wave" label="Finance" color="#10b981" onClick={() => navigate('/user/finance')} />
+             <QuickAction icon="fa-ban" label="Blacklist" color="#ef4444" onClick={() => navigate('/user/blacklist')} />
              <QuickAction icon="fa-cog" label="Settings" color="#64748b" onClick={() => navigate('/user/settings')} />
-            <QuickAction icon="fa-arrow-rotate-right" label="Refresh" color="#10b981" onClick={fetchData} />
           </div>
         </div>
 
@@ -419,16 +527,16 @@ export default function UserDashboard() {
           </div>
           <div className="system-grid">
             <div className="system-item">
+              <span className="system-label">DDoS Protection</span>
+              <span className="system-status"><span className={`status-dot ${ddosEnabled ? 'green' : ''}`} style={!ddosEnabled ? { background: '#ef4444' } : {}}></span> {ddosEnabled ? 'Active' : 'Disabled'}</span>
+            </div>
+            <div className="system-item">
               <span className="system-label">WAF Engine</span>
               <span className="system-status"><span className="status-dot green"></span> Active</span>
             </div>
             <div className="system-item">
               <span className="system-label">Rate Limiter</span>
               <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Database</span>
-              <span className="system-status"><span className="status-dot green"></span> Connected</span>
             </div>
             <div className="system-item">
               <span className="system-label">SSL/TLS</span>

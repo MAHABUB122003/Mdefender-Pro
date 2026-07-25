@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../api/api'
 
 export default function UserLogs() {
-  const navigate = useNavigate()
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [logs, setLogs] = useState({ logs: [], total: 0, total_pages: 0 })
   const [loading, setLoading] = useState(true)
@@ -15,8 +14,6 @@ export default function UserLogs() {
   const [page, setPage] = useState(1)
   const [expandedRow, setExpandedRow] = useState(null)
   const perPage = 20
-
-  const token = localStorage.getItem('mdefender_user_token')
 
   const fetchLogs = async () => {
     setLoading(true)
@@ -34,10 +31,9 @@ export default function UserLogs() {
   }
 
   useEffect(() => {
-    if (!token) { navigate('/user/login'); return }
     if (!isPremium) { setLoading(false); return }
     fetchLogs()
-  }, [token, navigate, isPremium, page])
+  }, [isPremium, page])
 
   const handleFilter = (e) => {
     e.preventDefault()

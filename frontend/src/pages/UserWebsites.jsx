@@ -1,35 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 export default function UserWebsites() {
-  const navigate = useNavigate()
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
 
-  const token = localStorage.getItem('mdefender_user_token')
-
   const fetchData = useCallback(async () => {
     try {
       const result = await api.getUserDashboard()
       setData(result)
     } catch (err) {
-      if (err.message === 'Unauthorized') {
-        localStorage.removeItem('mdefender_user_token')
-        navigate('/user/login')
-      }
+      console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [navigate])
+  }, [])
 
   useEffect(() => {
-    if (!token) { navigate('/user/login'); return }
     fetchData()
-  }, [token, navigate, fetchData])
+  }, [fetchData])
 
   const handleAddWebsite = async (e) => {
     e.preventDefault()
