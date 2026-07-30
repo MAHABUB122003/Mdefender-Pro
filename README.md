@@ -149,42 +149,55 @@ System Architecture
               v
 
         Protected Application
-Technology Stack
+
+```
+#Technology Stack
 Backend
+```
 Python
 FastAPI
 Node.js Services
 MongoDB
 Redis
 Docker
-Machine Learning
+```
+#Machine Learning
+```
 XGBoost
 Scikit-learn
 Feature Engineering
 Anomaly Detection Models
+```
 Frontend
+```
 React
 Vite
 Tailwind CSS
 Recharts
+```
 Security Components
+```
 OWASP Rule Engine
 Regex Detection Engine
 Behavioral Analysis
 Threat Intelligence
 IP Reputation System
+```
 Installation
 Clone Repository
+```
 git clone https://github.com/MAHABUB122003/MDefender-Pro.git
 
 cd MDefender-Pro
+```
 Backend Setup
+```
 cd backend
 
 pip install -r requirements.txt
-
+```
 Create .env file:
-
+```
 MONGO_URI=mongodb://localhost:27017
 
 DATABASE_NAME=mdefender
@@ -192,39 +205,45 @@ DATABASE_NAME=mdefender
 SECRET_KEY=your_secret_key
 
 REDIS_URL=redis://localhost:6379
-
+```
 Start backend:
-
+```
 uvicorn main:app --host 0.0.0.0 --port 8000
+```
 Frontend Setup
+```
 cd frontend
 
 npm install
 
 npm run dev
+```
 Docker Deployment
 
 Build containers:
-
+```
 docker compose build
-
+```
 Start services:
-
+```
 docker compose up
-
+```
 Deployment stack:
-
+```
 Frontend  : React
 Backend   : FastAPI
 Database  : MongoDB
 Queue     : Redis
 Workers   : Celery
+```
 Subscription Model
+```
 Plan	Price	Features
 Free	$0	Basic WAF Protection
 Pro	$29/month	ML Detection, DDoS Protection
 Business	$99/month	Advanced Security Controls
 Enterprise	Custom	Unlimited Deployment, SLA, SSO
+```
 Development Roadmap
 Phase 1: Monetization
 Subscription management
