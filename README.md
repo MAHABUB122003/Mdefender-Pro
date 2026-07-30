@@ -294,4 +294,5 @@ License
 MIT License
 
 
-This style is more suitable for a **professional cybersecurity product repository** and lo
+
+This style is more suitable for a **professional cybersecurity product repository** and looks closer to projects like Cloudflare, Wordfence, ModSecurity, and enterprise security platforms.
