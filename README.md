@@ -1,7 +1,7 @@
 # MDefender Pro
 
 <p align="center">
-  <img src="assets/banner.png" alt="MDefender Pro Banner" width="100%">
+  <img src="https://github.com/MAHABUB122003/Mdefender-Pro/blob/main/image/mdefender_github1.png" alt="MDefender Pro Banner" width="100%">
 </p>
 
 <h3 align="center">
