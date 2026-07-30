@@ -237,13 +237,13 @@ Queue     : Redis
 Workers   : Celery
 ```
 Subscription Model
-```
+
 Plan	Price	Features
 Free	$0	Basic WAF Protection
 Pro	$29/month	ML Detection, DDoS Protection
 Business	$99/month	Advanced Security Controls
 Enterprise	Custom	Unlimited Deployment, SLA, SSO
-```
+
 Development Roadmap
 Phase 1: Monetization
 Subscription management
