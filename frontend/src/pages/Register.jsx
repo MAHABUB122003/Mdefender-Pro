@@ -53,7 +53,11 @@ export default function Register() {
         confirm_password: confirmPassword,
       })
       if (data.status === 'success') {
-        navigate('/auth/verify-email?registered=true&email=' + encodeURIComponent(email))
+        if (data.verification_token) {
+          navigate('/auth/verify-email?token=' + encodeURIComponent(data.verification_token))
+        } else {
+          navigate('/auth/verify-email?registered=true&email=' + encodeURIComponent(email))
+        }
       } else {
         setError(data.message || data.detail || 'Registration failed')
       }

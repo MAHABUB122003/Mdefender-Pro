@@ -57,15 +57,33 @@ class PasswordResetService:
     def reset_password(self, token: str, new_password: str) -> Dict:
         token_hash = self.jwt_service.hash_token(token)
 
+        update_result = self.db.password_reset_tokens.update_one(
+            {
+                'token_hash': token_hash,
+                'used': False,
+            },
+            {
+                '$set': {
+                    'used': True,
+                    'used_at': datetime.now(timezone.utc),
+                }
+            }
+        )
+
+        if update_result.modified_count == 0:
+            return {
+                'success': False,
+                'error': 'Invalid or already used reset token',
+            }
+
         token_record = self.db.password_reset_tokens.find_one({
             'token_hash': token_hash,
-            'used': False,
         })
 
         if not token_record:
             return {
                 'success': False,
-                'error': 'Invalid or already used reset token',
+                'error': 'Invalid reset token',
             }
 
         expires_at = token_record['expires_at']
@@ -95,11 +113,6 @@ class PasswordResetService:
                 'updated_at': datetime.now(timezone.utc),
             },
             '$inc': {'token_version': 1}}
-        )
-
-        self.db.password_reset_tokens.update_one(
-            {'_id': token_record['_id']},
-            {'$set': {'used': True}}
         )
 
         self.db.refresh_tokens.update_many(
@@ -223,8 +236,9 @@ class PasswordResetService:
             }}
         )
 
-        verification_token = self.jwt_service.generate_email_verification_token()
-        token_hash = self.jwt_service.hash_token(verification_token)
+        verification_token = self.jwt_service.generate_email_verification_token(email_validation['normalized_email'])
+        raw_token = self.jwt_service.extract_raw_token(verification_token)
+        token_hash = self.jwt_service.hash_token(raw_token)
 
         self.db.email_verification_tokens.insert_one({
             'user_id': user_id,
@@ -235,6 +249,9 @@ class PasswordResetService:
                 minutes=self.config.EMAIL_VERIFICATION_EXPIRE_MINUTES
             ),
             'used': False,
+            'request_ip': 'account_change',
+            'request_user_agent': '',
+            'verification_attempts': 0,
         })
 
         return {

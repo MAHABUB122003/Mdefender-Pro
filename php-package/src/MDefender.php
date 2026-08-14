@@ -64,7 +64,9 @@ class MDefender
      */
     public function analyze(string $url, string $method = 'GET', array $headers = [], string $body = '', string $ip = 'unknown', array $queryParams = []): array
     {
+        $domain = $_SERVER['HTTP_HOST'] ?? 'unknown';
         $payload = json_encode([
+            'domain' => $domain,
             'request' => [
                 'url' => $url,
                 'method' => $method,

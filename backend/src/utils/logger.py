@@ -37,7 +37,7 @@ class Logger:
             except Exception:
                 pass
 
-    def log_attack(self, ip, url, attack_type, status='blocked', confidence=0.0, details=None):
+    def log_attack(self, ip, url, attack_type, status='blocked', confidence=0.0, details=None, user_id=None, domain=None, detection_source=None, website_id=None):
         log_entry = {
             'ip': ip,
             'url': url,
@@ -45,10 +45,16 @@ class Logger:
             'status': status,
             'confidence': confidence,
             'timestamp': datetime.now(),
-            'details': details or {}
+            'details': details or {},
+            'user_id': user_id or '',
+            'domain': domain or '',
+            'website_id': website_id or '',
+            'detection_source': detection_source or 'rule',
         }
         try:
             self.db.attacks.insert_one(log_entry)
+            if website_id:
+                self.db.waf_events.insert_one(log_entry.copy())
         except Exception:
             pass
         self.logger.warning(f"Attack: {attack_type} | IP: {ip} | URL: {url} | Status: {status}")

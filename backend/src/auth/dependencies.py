@@ -32,8 +32,18 @@ async def get_current_user(request: Request) -> dict:
     if payload.get('mfa_pending'):
         raise HTTPException(status_code=401, detail='MFA verification required')
 
-    if payload.get('is_admin'):
-        raise HTTPException(status_code=403, detail='Admin token used for user endpoint')
+    if payload.get('is_admin') or payload.get('role') == 'super_admin':
+        return {
+            'id': payload.get('sub', 'admin'),
+            'email': payload.get('email', 'admin'),
+            'full_name': 'Administrator',
+            'username': payload.get('email', 'admin'),
+            'role': 'super_admin',
+            'email_verified': True,
+            'mfa_enabled': False,
+            'plan': 'enterprise',
+            'is_admin': True,
+        }
 
     try:
         user_oid = ObjectId(payload['sub'])

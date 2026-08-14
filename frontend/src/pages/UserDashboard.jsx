@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Doughnut, Line } from 'react-chartjs-2'
 import api from '../api/api'
+import MalwareScanner from '../components/MalwareScanner'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
@@ -68,9 +69,9 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true)
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
-  const [copySuccess, setCopySuccess] = useState(false)
   const [ddosEnabled, setDdosEnabled] = useState(true)
   const [ddosToggling, setDdosToggling] = useState(false)
+  const [mlStatus, setMlStatus] = useState(null)
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
 
   const fetchData = useCallback(async () => {
@@ -89,6 +90,7 @@ export default function UserDashboard() {
   useEffect(() => {
     fetchData()
     api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {})
+    api.getMlStatus().then(r => setMlStatus(r)).catch(() => {})
   }, [fetchData])
 
   const handleDdosToggle = async () => {
@@ -126,24 +128,6 @@ export default function UserDashboard() {
       fetchData()
     } catch (err) {
       alert(err.message || 'Failed to remove website')
-    }
-  }
-
-  const handleRegenerateKey = async () => {
-    if (!confirm('Regenerate API key? Your old key will stop working immediately.')) return
-    try {
-      await api.regenerateApiKey()
-      fetchData()
-    } catch (err) {
-      alert(err.message || 'Failed to regenerate key')
-    }
-  }
-
-  const copyApiKey = () => {
-    if (data?.api_key) {
-      navigator.clipboard.writeText(data.api_key)
-      setCopySuccess(true)
-      setTimeout(() => setCopySuccess(false), 2000)
     }
   }
 
@@ -401,6 +385,43 @@ export default function UserDashboard() {
         </div>
       </div>
 
+      {/* ML & Malware Protection Section */}
+      <div className="ml-user-section">
+        <div className={`scanner-wrap ${!isPremium ? 'premium-blur' : ''}`}>
+          <MalwareScanner />
+          {!isPremium && (
+            <div className="premium-overlay-small">
+              <Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium to use the ML scanner</Link>
+            </div>
+          )}
+        </div>
+
+        <div className="system-card">
+          <div className="section-header" style={{ marginBottom: 0 }}>
+            <h3><i className="fas fa-microchip" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Model Status</h3>
+            <span className="status-pill online"><i className="fas fa-circle" style={{ fontSize: '7px' }}></i> Online</span>
+          </div>
+          <div className="system-grid">
+            <div className="system-item">
+              <span className="system-label">WAF Model</span>
+              <span className="system-status"><span className={`status-dot ${mlStatus?.waf?.loaded ? 'green' : 'red'}`}></span> {mlStatus?.waf?.loaded ? `v${mlStatus.waf.version || '?'}` : 'Offline'}</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Malware Model</span>
+              <span className="system-status"><span className={`status-dot ${mlStatus?.malware?.loaded ? 'green' : 'red'}`}></span> {mlStatus?.malware?.loaded ? `v${mlStatus.malware.version || '?'}` : 'Offline'}</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">WAF Threshold</span>
+              <span className="system-status">{(mlStatus?.waf?.threshold || 0).toFixed(2)}</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Training Date</span>
+              <span className="system-status">{mlStatus?.waf?.training_date ? String(mlStatus.waf.training_date).slice(0, 10) : '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Charts Grid */}
       <div className="charts-grid">
         <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`}>
@@ -512,9 +533,8 @@ export default function UserDashboard() {
           </div>
           <div className="quick-actions-grid">
              <QuickAction icon="fa-globe" label="Add Website" color="#10b981" onClick={() => navigate('/user/websites')} />
-            <QuickAction icon="fa-key" label="Copy API Key" color="#8b5cf6" onClick={copyApiKey} />
+             <QuickAction icon="fa-key" label="API Key" color="#8b5cf6" onClick={() => navigate('/user/settings')} />
              <QuickAction icon="fa-link" label="Connect" color="#2563eb" onClick={() => navigate('/user/connect')} />
-             <QuickAction icon="fa-money-bill-wave" label="Finance" color="#10b981" onClick={() => navigate('/user/finance')} />
              <QuickAction icon="fa-ban" label="Blacklist" color="#ef4444" onClick={() => navigate('/user/blacklist')} />
              <QuickAction icon="fa-cog" label="Settings" color="#64748b" onClick={() => navigate('/user/settings')} />
           </div>
@@ -610,40 +630,7 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Account Info & API Key */}
-        <div>
-          {/* API Key */}
-          <div className="quick-actions-card" style={{ marginBottom: '18px' }}>
-            <div className="section-header" style={{ marginBottom: 0 }}>
-              <h3><i className="fas fa-key" style={{ color: '#a78bfa', marginRight: '6px' }}></i> API Key</h3>
-            </div>
-            <p style={{ color: '#64748b', fontSize: '12px', margin: '10px 0' }}>Use this key to integrate MDefender into your application.</p>
-            <div style={{
-              padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0',
-              borderRadius: '8px', fontSize: '13px', fontFamily: "'Fira Code', Consolas, monospace",
-              color: '#2563eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '10px',
-            }}>
-              {data?.api_key ? data.api_key.slice(0, 16) + '••••••••••••' : 'No key generated'}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={copyApiKey} style={{
-                padding: '8px 14px', background: '#eff6ff', color: '#2563eb', border: 'none',
-                borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
-              }}>
-                <i className={`fas ${copySuccess ? 'fa-check' : 'fa-copy'}`}></i> {copySuccess ? 'Copied!' : 'Copy'}
-              </button>
-              <button onClick={handleRegenerateKey} style={{
-                padding: '8px 14px', background: '#fffbeb', color: '#d97706', border: 'none',
-                borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
-              }}>
-                <i className="fas fa-arrow-rotate-right"></i> Regenerate
-              </button>
-            </div>
-          </div>
-
-          {/* Account Info */}
+        {/* Account Info */}
           <div className="quick-actions-card">
             <div className="section-header" style={{ marginBottom: 0 }}>
               <h3><i className="fas fa-user-circle" style={{ color: '#3b82f6', marginRight: '6px' }}></i> Account Info</h3>
@@ -663,7 +650,6 @@ export default function UserDashboard() {
               ))}
             </div>
           </div>
-        </div>
       </div>
     </>
   )

@@ -1,5 +1,7 @@
 from src.database.mongodb_connection import MongoDB
 from src.engine.rule_engine import RuleEngine
+from src.engine.ml_detector import MLDetector
+from src.engine.malware_detector import MalwareDetector
 from src.security.auth import Auth
 from src.security.attack_blocker import AttackBlocker
 from src.utils.logger import Logger
@@ -18,6 +20,8 @@ class AdminAPI:
         self.auth = Auth()
         self.logger = Logger()
         self.attack_blocker = AttackBlocker()
+        self.ml_detector = MLDetector()
+        self.malware_detector = MalwareDetector()
 
     def get_stats(self):
         total_requests = self.db.requests.count_documents({})
@@ -38,6 +42,42 @@ class AdminAPI:
                 log['_id'] = str(log['_id'])
             if 'timestamp' in log and log['timestamp']:
                 log['timestamp'] = log['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+        malware_total = self.db.malware_scans.count_documents({})
+        malware_verdicts_raw = list(self.db.malware_scans.aggregate([
+            {'$group': {'_id': '$verdict', 'count': {'$sum': 1}}}
+        ]))
+        malware_verdicts = {item['_id'] or 'unknown': item['count'] for item in malware_verdicts_raw}
+        malware_families_raw = list(self.db.malware_scans.aggregate([
+            {'$match': {'verdict': 'malicious', 'family': {'$ne': None}}},
+            {'$group': {'_id': '$family', 'count': {'$sum': 1}}},
+            {'$sort': {'count': -1}},
+            {'$limit': 10},
+        ]))
+        recent_scans = list(self.db.malware_scans.find().sort('timestamp', -1).limit(10))
+        for log in recent_scans:
+            if '_id' in log:
+                log['_id'] = str(log['_id'])
+            ts = log.get('timestamp')
+            if isinstance(ts, datetime):
+                log['timestamp'] = ts.strftime('%Y-%m-%d %H:%M:%S')
+            elif ts is None:
+                log['timestamp'] = ''
+
+        detection_sources_raw = list(self.db.attacks.aggregate([
+            {'$group': {'_id': '$detection_source', 'count': {'$sum': 1}}}
+        ]))
+        detection_sources = {
+            (item['_id'] or 'rule'): item['count'] for item in detection_sources_raw
+        }
+        ml_detections = sum(count for key, count in detection_sources.items() if key == 'ml')
+        ml_categories_raw = list(self.db.attacks.aggregate([
+            {'$match': {'detection_source': 'ml'}},
+            {'$group': {'_id': '$attack_type', 'count': {'$sum': 1}}},
+            {'$sort': {'count': -1}},
+            {'$limit': 10},
+        ]))
+        waf_status = self.ml_detector.get_status()
+        malware_status = self.malware_detector.get_status()
         return {
             'total_requests': total_requests,
             'total_attacks_blocked': total_attacks,
@@ -46,7 +86,31 @@ class AdminAPI:
             'attack_types': attack_types,
             'attack_counts': attack_counts,
             'top_attackers': [{'ip': item['_id'], 'count': item['count']} for item in top_attackers],
-            'recent_logs': recent_logs
+            'recent_logs': recent_logs,
+            'malware': {
+                'total_scans': malware_total,
+                'verdicts': malware_verdicts,
+                'top_families': [{'family': item['_id'], 'count': item['count']} for item in malware_families_raw],
+                'recent_scans': recent_scans,
+            },
+            'ml': {
+                'waf': {
+                    'loaded': waf_status.get('loaded'),
+                    'model_version': waf_status.get('model_version'),
+                    'threshold': waf_status.get('threshold'),
+                    'n_category_classes': waf_status.get('n_category_classes'),
+                    'training_date': waf_status.get('training_date'),
+                },
+                'malware_model': {
+                    'loaded': malware_status.get('loaded'),
+                    'model_version': malware_status.get('model_version'),
+                    'n_family_classes': malware_status.get('n_family_classes'),
+                    'training_date': malware_status.get('training_date'),
+                },
+                'detection_sources': detection_sources,
+                'ml_detections': ml_detections,
+                'ml_categories': [{'category': item['_id'], 'count': item['count']} for item in ml_categories_raw],
+            },
         }
 
     def get_logs(self, params):

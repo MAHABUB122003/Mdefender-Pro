@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/pricing', label: 'Pricing' },
+  { to: '/blog', label: 'Blog' },
   { to: '/docs', label: 'Docs' },
 ];
 
@@ -23,21 +24,21 @@ export default function PublicNavbar() {
   useEffect(() => { setMobileOpen(false); }, [loc.pathname]);
 
   const c = {
-    bg: dark ? 'rgba(8,8,14,0.88)' : 'rgba(255,255,255,0.92)',
+    bg: dark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)',
     border: dark
-      ? (scrolled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)')
+      ? (scrolled ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)')
       : (scrolled ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.04)'),
     shadow: scrolled
-      ? (dark ? '0 1px 20px rgba(0,0,0,0.4)' : '0 1px 20px rgba(0,0,0,0.06)')
+      ? (dark ? '0 1px 20px rgba(0,0,0,0.8)' : '0 1px 20px rgba(0,0,0,0.06)')
       : 'none',
-    text: dark ? '#f1f5f9' : '#0f172a',
-    muted: dark ? 'rgba(148,163,184,0.8)' : 'rgba(100,116,139,0.8)',
-    hover: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+    text: dark ? '#fafafa' : '#0f172a',
+    muted: dark ? 'rgba(161,161,170,0.8)' : 'rgba(100,116,139,0.8)',
+    hover: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
     active: '#6366f1',
     toggleBg: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
     toggleHover: dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)',
-    mobileBg: dark ? 'rgba(8,8,14,0.98)' : 'rgba(255,255,255,0.98)',
-    mobileBorder: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    mobileBg: dark ? 'rgba(9,9,11,0.98)' : 'rgba(255,255,255,0.98)',
+    mobileBorder: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
   };
 
   return (

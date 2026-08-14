@@ -1,6 +1,6 @@
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:8000";
+  "http://localhost:5000";
 
 let csrfToken = null;
 
@@ -37,13 +37,25 @@ async function apiCall(endpoint, options = {}) {
       return data;
     }
 
+    const authFlowEndpoints = [
+      '/api/auth/login', '/api/auth/admin/login',
+      '/api/auth/register', '/api/auth/verify-email',
+      '/api/auth/resend-verification', '/api/auth/forgot-password',
+      '/api/auth/reset-password', '/api/auth/mfa/verify',
+      '/api/auth/google/callback',
+    ];
+    if (authFlowEndpoints.includes(endpoint)) {
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || data.error || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
     if (endpoint === '/api/auth/me' || endpoint === '/api/auth/refresh') {
       throw new Error('Unauthorized');
     }
 
-    if (endpoint.startsWith('/api/auth/')) {
-      window.location.href = '/user/login';
-    } else if (endpoint.startsWith('/api/admin/')) {
+    if (endpoint.startsWith('/api/admin/')) {
       window.location.href = '/admin/login';
     } else {
       window.location.href = '/user/login';
@@ -180,6 +192,18 @@ export const api = {
   },
 
   getStats: () => apiCall('/api/admin/stats'),
+  getMlStatus: () => apiCall('/api/ml/status'),
+  scanFile: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await fetch(`${API_BASE}/api/scan`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    })
+    return response.json()
+  },
+  scanContent: (data) => apiCall('/api/scan', { method: 'POST', body: JSON.stringify(data) }),
   getLogs: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
     return apiCall(`/api/admin/logs${qs ? '?' + qs : ''}`)
@@ -233,28 +257,6 @@ export const api = {
   removeUserBlacklist: (ip) => apiCall(`/api/user/blacklist?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
   getDdosStatus: () => apiCall('/api/user/ddos-status'),
   toggleDdos: (enabled) => apiCall('/api/user/ddos-toggle', { method: 'POST', body: JSON.stringify({ enabled }) }),
-  getBankAccounts: () => apiCall('/api/finance/bank-accounts'),
-  addBankAccount: (data) => apiCall('/api/finance/bank-accounts', { method: 'POST', body: JSON.stringify(data) }),
-  updateBankAccount: (id, data) => apiCall(`/api/finance/bank-accounts?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteBankAccount: (id) => apiCall(`/api/finance/bank-accounts?id=${id}`, { method: 'DELETE' }),
-  getTransactions: (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiCall(`/api/finance/transactions${qs ? '?' + qs : ''}`) },
-  addTransaction: (data) => apiCall('/api/finance/transactions', { method: 'POST', body: JSON.stringify(data) }),
-  updateTransaction: (id, data) => apiCall(`/api/finance/transactions?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteTransaction: (id) => apiCall(`/api/finance/transactions?id=${id}`, { method: 'DELETE' }),
-  importTransactions: async (file, mapping, bankAccountId) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('mapping', JSON.stringify(mapping))
-    if (bankAccountId) formData.append('bank_account_id', bankAccountId)
-    const response = await fetch(`${API_BASE}/api/finance/import`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    })
-    return response.json()
-  },
-  getFinanceCategories: () => apiCall('/api/finance/categories'),
-  getFinanceSummary: (params = {}) => { const qs = new URLSearchParams(params).toString(); return apiCall(`/api/finance/summary${qs ? '?' + qs : ''}`) },
   getNotices: () => apiCall('/api/notices'),
   addNotice: (content) => apiCall('/api/notices', { method: 'POST', body: JSON.stringify({ content }) }),
   deleteNotice: (id) => apiCall(`/api/notices?id=${id}`, { method: 'DELETE' }),

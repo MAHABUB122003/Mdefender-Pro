@@ -13,6 +13,7 @@ import Layout from './components/Layout'
 import UserLayout from './components/UserLayout'
 import Landing from './pages/Landing'
 import Pricing from './pages/Pricing'
+import Blog from './pages/Blog'
 import Register from './pages/Register'
 import UserLogin from './pages/UserLogin'
 import UserDashboard from './pages/UserDashboard'
@@ -23,7 +24,6 @@ import UserSettings from './pages/UserSettings'
 import UserConnect from './pages/UserConnect'
 import UserBlacklist from './pages/UserBlacklist'
 import DDoSDashboard from './pages/DDoSDashboard'
-import Finance from './pages/Finance'
 import NoticeBoard from './pages/NoticeBoard'
 import Docs from './pages/Docs'
 import VerifyEmail from './pages/auth/VerifyEmail'
@@ -80,6 +80,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/blog" element={<Blog />} />
       <Route path="/docs" element={<Docs />} />
       <Route path="/blocked" element={<BlockPage />} />
 
@@ -109,9 +110,6 @@ function App() {
       <Route path="/user/websites" element={
         userState ? <UserLayout onLogout={userLogout}><UserWebsites /></UserLayout> : <Navigate to="/user/login" replace />
       } />
-      <Route path="/user/finance" element={
-        userState ? <UserLayout onLogout={userLogout}><Finance /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
       <Route path="/user/connect" element={
         userState ? <UserLayout onLogout={userLogout}><UserConnect /></UserLayout> : <Navigate to="/user/login" replace />
       } />
@@ -136,7 +134,6 @@ function App() {
           <Route path="/admin/clients" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
           <Route path="/admin/blacklist" element={<Layout onLogout={adminLogout}><Blacklist /></Layout>} />
           <Route path="/admin/settings" element={<Layout onLogout={adminLogout}><Settings /></Layout>} />
-          <Route path="/admin/finance" element={<Layout onLogout={adminLogout}><Finance /></Layout>} />
           <Route path="/admin/notices" element={<Layout onLogout={adminLogout}><NoticeBoard /></Layout>} />
           <Route path="/connect" element={<Layout onLogout={adminLogout}><Connect /></Layout>} />
           <Route path="/admin/ddos" element={<Layout onLogout={adminLogout}><DDoSDashboard /></Layout>} />

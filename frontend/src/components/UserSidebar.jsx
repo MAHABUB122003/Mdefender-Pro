@@ -31,11 +31,6 @@ export default function UserSidebar({ isOpen }) {
             <span>Rules</span>
             {!isPremium && <span className="pro-badge">PRO</span>}
           </NavLink>
-          <div className="nav-label">Finance</div>
-          <NavLink to="/user/finance">
-            <span className="nav-icon"><i className="fas fa-money-bill-wave"></i></span>
-            <span>Finance</span>
-          </NavLink>
           <div className="nav-label">Management</div>
           <NavLink to="/user/connect">
             <span className="nav-icon"><i className="fas fa-link"></i></span>

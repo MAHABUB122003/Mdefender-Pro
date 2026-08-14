@@ -52,16 +52,6 @@ export default function UserWebsites() {
     }
   }
 
-  const handleRegenerateKey = async () => {
-    if (!confirm('Regenerate API key? Your old key will stop working immediately.')) return
-    try {
-      await api.regenerateApiKey()
-      fetchData()
-    } catch (err) {
-      alert(err.message || 'Failed to regenerate key')
-    }
-  }
-
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
   }
@@ -188,33 +178,6 @@ export default function UserWebsites() {
         </div>
       </div>
 
-      {/* API Key Section */}
-      <div style={{
-        background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: '24px', marginTop: '24px',
-      }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-          <i className="fas fa-key" style={{ color: '#a78bfa', marginRight: '8px' }}></i>
-          API Key
-        </h3>
-        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
-          Use this key to integrate MDefender WAF protection into your application. Include it in your API requests for authentication.
-        </p>
-        <div style={{
-          padding: '14px 18px', background: '#f8fafc', border: '1px solid #e2e8f0',
-          borderRadius: '10px', fontSize: '13px', fontFamily: "'Fira Code', Consolas, monospace",
-          color: '#2563eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '16px',
-        }}>
-          {data?.api_key || 'No key generated'}
-        </div>
-        <button onClick={handleRegenerateKey} style={{
-          padding: '10px 20px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a',
-          borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-          fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
-        }}>
-          <i className="fas fa-arrow-rotate-right"></i> Regenerate Key
-        </button>
-      </div>
     </>
   )
 }

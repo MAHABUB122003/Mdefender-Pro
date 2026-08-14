@@ -1,0 +1,70 @@
+{
+  "model_name": "mdefender-waf",
+  "version": "2.0.0",
+  "type": "binary_attack_detection",
+  "vectorizer": {
+    "analyzer": "char_wb",
+    "ngram_range": [
+      2,
+      6
+    ],
+    "n_features": 524288,
+    "lowercase": true,
+    "alternate_sign": false
+  },
+  "max_text_len": 4000,
+  "feature_version": "char-ngram-hashing-v1",
+  "preprocessing": "unquote x2 + collapse whitespace + truncate",
+  "train_rows": 530756,
+  "val_rows": 70768,
+  "test_rows": 106152,
+  "training_date": "2026-08-14T00:00:47",
+  "random_state": 42,
+  "threshold": 0.6034113423591284,
+  "threshold_info": {
+    "f1_threshold": 0.6034113423591284,
+    "f1_at_threshold": 0.986232790988736,
+    "recall_at_thresholds": {
+      "0.3": 0.9955701078582434,
+      "0.5": 0.9911883667180277,
+      "0.7": 0.9798247303543913,
+      "0.9": 0.9347072419106317
+    }
+  },
+  "category_classes": [
+    "Command Injection",
+    "Generic Attack",
+    "Header Injection",
+    "Insecure Deserialization",
+    "LDAP Injection",
+    "Local File Inclusion",
+    "Malicious File Upload",
+    "NoSQL Injection",
+    "Open Redirect",
+    "Path Traversal",
+    "Remote File Inclusion",
+    "SQL Injection",
+    "SSRF",
+    "SSTI",
+    "Web Cache Poisoning",
+    "XSS",
+    "XXE"
+  ],
+  "category_eval": {
+    "accuracy": 0.9713020030816641
+  },
+  "binary_eval": {
+    "threshold": 0.6034113423591284,
+    "roc_auc": 0.9991536590481083,
+    "confusion_matrix": [
+      [
+        74561,
+        439
+      ],
+      [
+        444,
+        30708
+      ]
+    ]
+  }
+}

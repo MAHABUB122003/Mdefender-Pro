@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Doughnut, Line } from 'react-chartjs-2'
 import api from '../api/api'
+import MalwareScanner from '../components/MalwareScanner'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
@@ -157,6 +158,37 @@ export default function Dashboard({ token }) {
     animation: { duration: 1200, easing: 'easeInOutQuart' }
   }
 
+  const sourceKeys = ['ml', 'rule', 'blacklist', 'rate_limit', 'malware']
+  const sourceLabels = ['ML Detection', 'Rules', 'Blacklist', 'Rate Limit', 'Malware Scan']
+  const sourceColors = ['#8b5cf6', '#2563eb', '#ef4444', '#f59e0b', '#ec4899']
+  const sourceData = sourceKeys.map(k => stats?.ml?.detection_sources?.[k] || 0)
+  const sourceChartData = {
+    labels: sourceLabels,
+    datasets: [{
+      data: sourceData,
+      backgroundColor: sourceColors,
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  }
+
+  const verdictKeys = ['malicious', 'suspicious', 'clean']
+  const verdictLabels = ['Malicious', 'Suspicious', 'Clean']
+  const verdictColors = ['#ef4444', '#f59e0b', '#10b981']
+  const verdictData = verdictKeys.map(k => stats?.malware?.verdicts?.[k] || 0)
+  const verdictChartData = {
+    labels: verdictLabels,
+    datasets: [{
+      data: verdictData,
+      backgroundColor: verdictColors,
+      borderWidth: 0,
+      hoverOffset: 8
+    }]
+  }
+
+  const mlCategoryMax = Math.max(1, ...(stats?.ml?.ml_categories || []).map(c => c.count))
+  const familyMax = Math.max(1, ...(stats?.malware?.top_families || []).map(f => f.count))
+
   if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
 
   return (
@@ -166,6 +198,13 @@ export default function Dashboard({ token }) {
         <StatCard icon="fa-chart-line" iconClass="green" value={stats?.total_requests || 0} label="Total Requests" trend="8.3% increase" trendDir="up" onReset={() => resetStat('requests')} />
         <StatCard icon="fa-globe" iconClass="purple" value={stats?.active_clients || 0} label="Active Clients" trend="+2 online" trendDir="up" />
         <StatCard icon="fa-ban" iconClass="red" value={stats?.blacklisted_ips || 0} label="Blacklisted IPs" trend="5.1% tracked" trendDir="down" />
+      </div>
+
+      <div className="stats-grid" style={{ marginTop: '-6px' }}>
+        <StatCard icon="fa-robot" iconClass="purple" value={stats?.ml?.ml_detections || 0} label="ML WAF Detections" trend="Deep-learning WAF" trendDir="up" />
+        <StatCard icon="fa-file-shield" iconClass="green" value={stats?.malware?.total_scans || 0} label="Malware Scans" trend="Static analysis" trendDir="up" />
+        <StatCard icon="fa-skull-crossbones" iconClass="red" value={stats?.malware?.verdicts?.malicious || 0} label="Malicious Files" trend="Flagged by ML" trendDir="down" />
+        <StatCard icon="fa-brain" iconClass="blue" value={(stats?.ml?.waf?.loaded ? 1 : 0) + (stats?.ml?.malware_model?.loaded ? 1 : 0)} label="ML Models Active" trend={stats?.ml?.waf?.model_version ? `v${stats.ml.waf.model_version}` : 'offline'} trendDir={stats?.ml?.waf?.loaded ? 'up' : 'down'} />
       </div>
 
       <div className="charts-grid">
@@ -185,6 +224,27 @@ export default function Dashboard({ token }) {
           </div>
           <div className="chart-container">
             <Line data={dailyChartData} options={lineOptions} />
+          </div>
+        </div>
+      </div>
+
+      <div className="charts-grid">
+        <div className="chart-card">
+          <div className="chart-header">
+            <h3><i className="fas fa-robot" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Detection Sources</h3>
+            <span className="chart-action">All blocked events</span>
+          </div>
+          <div className="chart-container">
+            <Doughnut data={sourceChartData} options={doughnutOptions} />
+          </div>
+        </div>
+        <div className="chart-card">
+          <div className="chart-header">
+            <h3><i className="fas fa-file-shield" style={{ color: '#10b981', marginRight: '6px' }}></i> Malware Scan Verdicts</h3>
+            <span className="chart-action">Total scans</span>
+          </div>
+          <div className="chart-container">
+            <Doughnut data={verdictChartData} options={doughnutOptions} />
           </div>
         </div>
       </div>
@@ -259,6 +319,122 @@ export default function Dashboard({ token }) {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="ml-panels">
+        <div className="chart-card">
+          <div className="chart-header">
+            <h3><i className="fas fa-microchip" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Detected Attack Categories</h3>
+            <span className="chart-action">Top 10</span>
+          </div>
+          <div className="ml-cat-list">
+            {(stats?.ml?.ml_categories?.length ? stats.ml.ml_categories : []).map((cat, i) => (
+              <div className="ml-cat-row" key={i}>
+                <span className="ml-cat-name">{cat.category || 'Unknown'}</span>
+                <div className="attack-progress">
+                  <div className="progress-bar" style={{ maxWidth: 'none', flex: 1 }}>
+                    <div className="fill" style={{ width: `${(cat.count / mlCategoryMax) * 100}%`, background: 'linear-gradient(90deg,#8b5cf6,#a78bfa)' }}></div>
+                  </div>
+                  <span className="count">{cat.count}</span>
+                </div>
+              </div>
+            )) || (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No ML-detected attacks recorded yet</div>
+            )}
+          </div>
+        </div>
+
+        <div className="system-card">
+          <div className="section-header" style={{ marginBottom: 0 }}>
+            <h3><i className="fas fa-brain" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Model Status</h3>
+          </div>
+          <div className="system-grid">
+            <div className="system-item">
+              <span className="system-label">WAF Model</span>
+              <span className="system-status"><span className={`status-dot ${stats?.ml?.waf?.loaded ? 'green' : 'red'}`}></span> {stats?.ml?.waf?.loaded ? `v${stats.ml.waf.model_version || '?'}` : 'Offline'}</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Attack Categories</span>
+              <span className="system-status">{stats?.ml?.waf?.n_category_classes || 0} classes</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Malware Model</span>
+              <span className="system-status"><span className={`status-dot ${stats?.ml?.malware_model?.loaded ? 'green' : 'red'}`}></span> {stats?.ml?.malware_model?.loaded ? `v${stats.ml.malware_model.model_version || '?'}` : 'Offline'}</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Malware Families</span>
+              <span className="system-status">{stats?.ml?.malware_model?.n_family_classes || 0} families</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">ML Threshold</span>
+              <span className="system-status">{(stats?.ml?.waf?.threshold || 0).toFixed(2)}</span>
+            </div>
+            <div className="system-item">
+              <span className="system-label">Training Date</span>
+              <span className="system-status">{stats?.ml?.waf?.training_date ? String(stats.ml.waf.training_date).slice(0, 10) : '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="malware-section">
+        <div className="top-attackers" style={{ flex: 1, marginBottom: 0 }}>
+          <div className="section-header">
+            <h3><i className="fas fa-bug" style={{ color: '#ec4899', marginRight: '6px' }}></i> Top Malware Families</h3>
+          </div>
+          <table>
+            <thead>
+              <tr><th>#</th><th>Family</th><th>Detections</th></tr>
+            </thead>
+            <tbody>
+              {(stats?.malware?.top_families?.length ? stats.malware.top_families : []).map((fam, i) => (
+                <tr key={i}>
+                  <td><span className={`rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>{i + 1}</span></td>
+                  <td><span className="attacker-ip">{fam.family}</span></td>
+                  <td>
+                    <div className="attack-progress">
+                      <div className="progress-bar" style={{ maxWidth: 'none', flex: 1 }}>
+                        <div className="fill" style={{ width: `${(fam.count / familyMax) * 100}%`, background: 'linear-gradient(90deg,#ec4899,#f472b6)' }}></div>
+                      </div>
+                      <span className="count">{fam.count}</span>
+                    </div>
+                  </td>
+                </tr>
+              )) || (
+                <tr><td colSpan="3" style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No malware detections yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="recent-activity" style={{ flex: 1, marginBottom: 0 }}>
+          <div className="section-header">
+            <h3><i className="fas fa-file-shield" style={{ color: '#10b981', marginRight: '6px' }}></i> Recent Malware Scans</h3>
+          </div>
+          <div className="activity-timeline">
+            {(stats?.malware?.recent_scans?.length ? stats.malware.recent_scans : []).map((scan, i) => (
+              <div className="activity-item" key={i}>
+                <div className="activity-time">{scan.timestamp}</div>
+                <div className="activity-content">
+                  <span className={`activity-type ${scan.verdict === 'malicious' ? 'critical' : scan.verdict === 'suspicious' ? 'high' : 'low'}`}>
+                    <i className="fas fa-shield-halved"></i> {scan.verdict}
+                  </span>
+                  <div className="activity-detail">{scan.filename || 'unknown file'}{scan.family ? ` · ${scan.family}` : ''}</div>
+                  <div className="activity-payload">score {scan.risk_score} · conf {(scan.confidence || 0).toFixed(2)}</div>
+                </div>
+              </div>
+            )) || (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
+                <i className="fas fa-file-shield" style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}></i>
+                No malware scans yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="scanner-section">
+        <MalwareScanner />
       </div>
 
       <div className="quick-actions-section">

@@ -8,7 +8,6 @@ const pageNames = {
   '/admin/clients': 'Clients Management',
   '/admin/blacklist': 'Blacklist Management',
   '/admin/settings': 'Settings',
-  '/admin/finance': 'Finance Management',
   '/admin/notices': 'Notice Board',
   '/connect': 'Website Connection',
 }
@@ -27,7 +26,6 @@ export default function Header({ onToggleSidebar, onLogout }) {
     '/admin/clients': 'fa-globe',
     '/admin/blacklist': 'fa-ban',
     '/admin/settings': 'fa-cog',
-    '/admin/finance': 'fa-money-bill-wave',
     '/admin/notices': 'fa-bullhorn',
     '/connect': 'fa-link',
   }

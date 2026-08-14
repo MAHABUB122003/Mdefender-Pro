@@ -11,6 +11,7 @@ from datetime import datetime
 import uuid
 import hashlib
 import logging
+import secrets
 
 _log = logging.getLogger(__name__)
 
@@ -33,47 +34,65 @@ class WAFAPI:
             return float(settings_doc['confidence_threshold'])
         return 0.7
 
-    def verify_api_key(self, api_key, domain):
-        if not api_key or not domain:
-            return False
-        client = self.db.clients.find_one({
-            'domain': domain,
-            'api_key': api_key,
-            'status': 'active'
-        })
-        return client is not None
+    def verify_api_key(self, api_key, domain=None):
+        if not api_key:
+            return None
+            
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        record = self.db.api_keys.find_one({'key_hash': key_hash, 'status': 'active'})
+        if record:
+            if domain:
+                website = self.db.websites.find_one({'_id': record['website_id']})
+                if website and website['domain'] == domain:
+                    return record
+                return None
+            return record
+
+        # Legacy fallback
+        user = self.db.users.find_one({'api_key': api_key, 'status': 'active'})
+        if user:
+            return {'user_id': str(user['_id']), 'website_id': None}
+            
+        return None
 
     def connect_website(self, data):
+        # NOTE: Deprecated in favor of UserAPI.add_website for multitenant support.
+        # Keeping minimal functionality for backward compatibility during transition.
         domain = data.get('domain')
         origin_server = data.get('origin_server')
         security_level = data.get('security_level', 'high')
-        api_key = hashlib.sha256(f"{domain}{datetime.now()}{uuid.uuid4()}".encode()).hexdigest()[:32]
+        
+        raw_key = 'mdf_live_' + secrets.token_hex(24)
+        website_id = str(uuid.uuid4())
+        
         client = {
+            '_id': website_id,
             'domain': domain,
             'origin_server': origin_server,
             'security_level': security_level,
-            'api_key': api_key,
             'status': 'active',
             'created_at': datetime.now(),
-            'updated_at': datetime.now(),
-            'settings': {
-                'block_sqli': True,
-                'block_xss': True,
-                'block_lfi': True,
-                'block_cmd_injection': True,
-                'block_csrf': True,
-                'confidence_threshold': 0.7
-            }
+            'updated_at': datetime.now()
         }
-        result = self.db.clients.insert_one(client)
+        self.db.clients.insert_one(client)
+        
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        self.db.api_keys.insert_one({
+            'website_id': website_id,
+            'user_id': None,
+            'key_hash': key_hash,
+            'created_at': datetime.now(),
+            'status': 'active'
+        })
+        
         return {
             'status': 'success',
-            'client_id': str(result.inserted_id),
-            'api_key': api_key,
+            'client_id': website_id,
+            'api_key': raw_key,
             'message': 'Website connected successfully'
         }
 
-    def analyze_request(self, request_data):
+    def analyze_request(self, request_data, user_id=None, domain=None, website_id=None):
         ip = request_data.get('ip', '')
         url = request_data.get('url', '/')
         method = request_data.get('method', 'GET')
@@ -86,46 +105,91 @@ class WAFAPI:
         if self.ip_filter.is_whitelisted(ip):
             return {'status': 'allowed', 'attack_type': None, 'confidence': 0.0, 'message': 'Whitelisted IP bypassed'}
         if self.attack_blocker.is_blacklisted(ip):
-            self.logger.log_attack(ip, url, 'Auto-Blocked IP', 'blocked', 1.0)
+            self.logger.log_attack(ip, url, 'Auto-Blocked IP', 'blocked', 1.0, user_id=user_id, domain=domain, detection_source='blacklist', website_id=website_id)
             return {'status': 'blocked', 'attack_type': 'Blacklisted IP', 'confidence': 1.0, 'message': 'IP is blacklisted', 'reference_id': str(uuid.uuid4())[:8]}
         if self.rate_limiter.is_rate_limited(ip):
             self.attack_blocker.auto_block(ip, 'Rate limit exceeded', 1)
-            self.logger.log_attack(ip, url, 'Rate Limiting', 'blocked', 1.0)
+            self.logger.log_attack(ip, url, 'Rate Limiting', 'blocked', 1.0, user_id=user_id, domain=domain, detection_source='rate_limit', website_id=website_id)
             return {'status': 'blocked', 'attack_type': 'Rate Limiting', 'confidence': 1.0, 'message': 'Rate limit exceeded', 'reference_id': str(uuid.uuid4())[:8]}
 
         parsed = self.request_parser.parse(request_data)
         features = self.feature_extractor.extract_features(parsed)
+        raw_text = self.feature_extractor.extract_text(parsed)
         rule_matches = self.rule_engine.check_rules(parsed)
+
+        ml_result = self.ml_detector.detect(raw_text)
+        ml_confidence = ml_result.get('probability', 0.0)
+        ml_model_version = ml_result.get('model_version', 'unknown')
 
         if rule_matches:
             attack_type = rule_matches[0]['rule_name']
-            confidence = 0.9
+            confidence = max(0.9, ml_confidence)
             self.attack_blocker.record_attack(ip, attack_type, url)
             if settings.get('auto_block_enabled', True):
                 self.attack_blocker.check_and_auto_block(ip, threshold, window, duration)
-            self.logger.log_attack(ip, url, attack_type, 'blocked', confidence)
+            self.logger.log_attack(ip, url, attack_type, 'blocked', confidence, user_id=user_id, domain=domain, detection_source='rule', website_id=website_id)
             self.rate_limiter.increment(ip)
-            return {'status': 'blocked', 'attack_type': attack_type, 'confidence': confidence, 'message': f"Blocked by rule: {attack_type}", 'reference_id': str(uuid.uuid4())[:8], 'rule_matched': rule_matches[0]['rule_name']}
+            return {'status': 'blocked', 'attack_type': attack_type, 'confidence': round(confidence, 2),
+                    'message': f"Blocked by rule: {attack_type}", 'reference_id': str(uuid.uuid4())[:8],
+                    'rule_matched': rule_matches[0]['rule_name'],
+                    'threat_score': min(100, int(round(ml_confidence * 100))),
+                    'risk_level': 'critical', 'category': ml_result.get('category'),
+                    'ml_model_version': ml_model_version}
 
-        ml_confidence = 0.0
-        attack_type = None
-        attack_keys = ['sql_score', 'xss_score', 'lfi_score', 'rce_score', 'ssti_score', 'ssrf_score']
-        has_attack_signal = any(features.get(k, 0) > 0 for k in attack_keys)
-        if has_attack_signal:
-            ml_confidence = self.ml_detector.predict(features)
-        if ml_confidence >= confidence_threshold:
-            attack_type = self.ml_detector.get_attack_type(features) or 'Suspicious'
+        if ml_result.get('attack'):
+            attack_type = ml_result.get('category') or self._infer_attack_type(features) or 'Suspicious'
             confidence = ml_confidence
             self.attack_blocker.record_attack(ip, attack_type, url)
             if settings.get('auto_block_enabled', True):
                 self.attack_blocker.check_and_auto_block(ip, threshold, window, duration)
-            self.logger.log_attack(ip, url, attack_type, 'blocked', confidence)
+            self.logger.log_attack(ip, url, attack_type, 'blocked', confidence, user_id=user_id, domain=domain, detection_source='ml', website_id=website_id,
+                                   details={'ml_model_version': ml_model_version})
             self.rate_limiter.increment(ip)
-            return {'status': 'blocked', 'attack_type': attack_type, 'confidence': round(confidence, 2), 'message': f"ML model detected {attack_type} (confidence: {confidence:.2f})", 'reference_id': str(uuid.uuid4())[:8]}
+            risk_level = 'critical' if ml_confidence >= 0.85 else ('high' if ml_confidence >= confidence_threshold else 'medium')
+            return {'status': 'blocked', 'attack_type': attack_type,
+                    'confidence': round(confidence, 2),
+                    'message': f"ML model detected {attack_type} (confidence: {confidence:.2f})",
+                    'reference_id': str(uuid.uuid4())[:8],
+                    'threat_score': ml_result.get('risk_score', 0),
+                    'risk_level': risk_level,
+                    'category': ml_result.get('category'),
+                    'ml_model_version': ml_model_version}
 
-        self.logger.log_request(ip, url, method, 'allowed')
+        risk_score = ml_result.get('risk_score', 0)
+        if risk_score >= 30:
+            self.logger.log_attack(ip, url, 'Suspicious', 'monitored', ml_confidence, user_id=user_id, domain=domain, detection_source='ml', website_id=website_id,
+                                   details={'ml_model_version': ml_model_version})
+        else:
+            self.logger.log_request(ip, url, method, 'allowed')
         self.rate_limiter.increment(ip)
-        return {'status': 'allowed', 'attack_type': None, 'confidence': round(ml_confidence, 2), 'message': 'Request allowed'}
+        return {'status': 'allowed', 'attack_type': None, 'confidence': round(ml_confidence, 2),
+                'message': 'Request allowed',
+                'threat_score': risk_score,
+                'risk_level': self._risk_level(risk_score),
+                'category': None, 'ml_model_version': ml_model_version}
+
+    def _infer_attack_type(self, features):
+        keys = [
+            ('has_sqli', 'SQL Injection'), ('sql_score', 'SQL Injection'),
+            ('has_xss', 'XSS'), ('xss_score', 'XSS'),
+            ('has_lfi', 'Local File Inclusion'), ('lfi_score', 'Local File Inclusion'),
+            ('has_cmd_injection', 'Command Injection'), ('rce_score', 'Command Injection'),
+            ('ssti_score', 'SSTI'), ('ssrf_score', 'SSRF'),
+            ('has_csrf', 'CSRF'),
+        ]
+        for key, label in keys:
+            if features.get(key, 0) > 0:
+                return label
+        return None
+
+    def _risk_level(self, score):
+        if score >= 80:
+            return 'critical'
+        if score >= 60:
+            return 'high'
+        if score >= 30:
+            return 'medium'
+        return 'low'
 
     def _serialize_doc(self, doc):
         if not doc:

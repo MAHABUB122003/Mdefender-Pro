@@ -31,11 +31,6 @@ export default function Sidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-shield"></i></span>
             <span>Rules</span>
           </NavLink>
-          <div className="nav-label">Finance</div>
-          <NavLink to="/admin/finance">
-            <span className="nav-icon"><i className="fas fa-money-bill-wave"></i></span>
-            <span>Finance</span>
-          </NavLink>
           <div className="nav-label">Communication</div>
           <NavLink to="/admin/notices">
             <span className="nav-icon"><i className="fas fa-bullhorn"></i></span>

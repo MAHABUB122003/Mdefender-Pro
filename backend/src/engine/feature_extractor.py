@@ -13,6 +13,23 @@ class FeatureExtractor:
             except Exception:
                 pass
 
+    def extract_text(self, parsed_request):
+        """Raw combined request text (url + query + body + params) for the
+        char n-gram ML model. Matches training-time input exactly."""
+        url = parsed_request.get('url', '')
+        body = parsed_request.get('body', '')
+        query_string = parsed_request.get('query_string', '')
+        query_params = parsed_request.get('query_params', {})
+        query_values = ' '.join(str(v) for v in query_params.values()) if isinstance(query_params, dict) else ''
+        body_fields = parsed_request.get('body_fields', {})
+        body_field_values = parsed_request.get('body_field_values', '')
+        if isinstance(body_fields, dict):
+            body_field_values = ' '.join(str(v) for v in body_fields.values())
+        parts = [p for p in [url, body, query_string, query_values, body_field_values] if p.strip()]
+        combined = ' '.join(parts) if parts else url
+        decoded = self._decode_payload(combined)
+        return decoded
+
     def extract_features(self, parsed_request):
         url = parsed_request.get('url', '')
         body = parsed_request.get('body', '')

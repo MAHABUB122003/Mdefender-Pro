@@ -11,20 +11,21 @@ function MethodBadge({ method }) {
 }
 
 function CodeBlock({ children, label, dark }) {
+  const s = theme(dark);
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => { navigator.clipboard.writeText(children); setCopied(true); setTimeout(() => setCopied(false), 2000); }, [children]);
 
   return (
-    <div style={{ borderRadius: 8, overflow: 'hidden', margin: '16px 0', backgroundColor: dark ? '#1e293b' : '#f1f5f9', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}` }}>
+    <div style={{ borderRadius: 8, overflow: 'hidden', margin: '16px 0', backgroundColor: s.bgCode, border: `1px solid ${s.borderLight}` }}>
       {label && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', background: dark ? '#0f172a' : '#e2e8f0', borderBottom: `1px solid ${dark ? '#334155' : '#cbd5e1'}`, fontSize: 12, color: dark ? '#94a3b8' : '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', background: dark ? '#18181b' : '#e2e8f0', borderBottom: `1px solid ${s.borderLight}`, fontSize: 12, color: s.textSecondary, fontFamily: "'JetBrains Mono', monospace" }}>
           <span>{label}</span>
-          <button onClick={handleCopy} style={{ background: 'none', border: 'none', color: copied ? '#4ade80' : (dark ? '#64748b' : '#94a3b8'), cursor: 'pointer', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", padding: '4px 8px', borderRadius: 4, transition: 'color 0.2s', backgroundColor: copied ? 'rgba(74,222,128,0.1)' : 'transparent' }}>
+          <button onClick={handleCopy} style={{ background: 'none', border: 'none', color: copied ? '#4ade80' : s.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: "'JetBrains Mono', monospace", padding: '4px 8px', borderRadius: 4, transition: 'color 0.2s', backgroundColor: copied ? 'rgba(74,222,128,0.1)' : 'transparent' }}>
             {copied ? '✓ Copied' : 'Copy'}
           </button>
         </div>
       )}
-      <pre style={{ background: dark ? '#1e293b' : '#f8fafc', color: dark ? '#e2e8f0' : '#1e293b', padding: '20px 24px', margin: 0, fontSize: 14, lineHeight: 1.8, fontFamily: "'Fira Code', 'JetBrains Mono', 'SF Mono', monospace", overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+      <pre style={{ background: s.bgCode, color: s.textCode, padding: '20px 24px', margin: 0, fontSize: 14, lineHeight: 1.8, fontFamily: "'Fira Code', 'JetBrains Mono', 'SF Mono', monospace", overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
         <code>{children}</code>
       </pre>
     </div>
@@ -151,7 +152,7 @@ export default function Docs() {
           <div style={{ margin: '0 16px', padding: 16, borderRadius: 8, backgroundColor: s.primaryBg, border: `1px solid ${s.primaryBorder}` }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: s.text, marginBottom: 4 }}>24/7 Support</div>
             <div style={{ fontSize: 12, color: s.textSecondary, marginBottom: 8 }}>Round-the-clock assistance</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: s.primary }}>📞 01715044575</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: s.primary }}><i className="fas fa-phone"></i> 01715044575</div>
           </div>
         </aside>
 
@@ -173,8 +174,8 @@ export default function Docs() {
               MDefender Pro is a next-generation, AI-powered Web Application Firewall built for modern international businesses. It provides real-time threat detection and prevention, protecting your applications from SQL injection, XSS, CSRF, zero-day exploits, and more — without adding latency to your response times.
             </p>
             <div className="docs-grid-3" style={{ marginBottom: 40 }}>
-              {[{ icon: '🧠', title: 'AI Detection', desc: 'Machine learning models trained on millions of attack patterns detect threats in real-time.' }, { icon: '🌐', title: 'Universal Compat', desc: 'Native SDKs for Node.js, Python, PHP, Go, Ruby, and Rust. Works with any HTTP server.' }, { icon: '⚡', title: 'Zero Latency', desc: 'Sub-millisecond inference engine adds less than 0.3% overhead to your average response time.' }].map((c) => (
-                <div key={c.title} style={cardStyle}><div style={{ fontSize: 24, marginBottom: 12 }}>{c.icon}</div><div style={{ fontSize: 15, fontWeight: 600, color: s.text, marginBottom: 6 }}>{c.title}</div><div style={{ fontSize: 13, color: s.textSecondary, lineHeight: 1.6 }}>{c.desc}</div></div>
+              {[{ icon: 'fas fa-brain', title: 'AI Detection', desc: 'Machine learning models trained on millions of attack patterns detect threats in real-time.' }, { icon: 'fas fa-globe', title: 'Universal Compat', desc: 'Native SDKs for Node.js, Python, PHP, Go, Ruby, and Rust. Works with any HTTP server.' }, { icon: 'fas fa-bolt', title: 'Zero Latency', desc: 'Sub-millisecond inference engine adds less than 0.3% overhead to your average response time.' }].map((c) => (
+                <div key={c.title} style={cardStyle}><div style={{ fontSize: 24, marginBottom: 12, color: s.primary }}><i className={c.icon}></i></div><div style={{ fontSize: 15, fontWeight: 600, color: s.text, marginBottom: 6 }}>{c.title}</div><div style={{ fontSize: 13, color: s.textSecondary, lineHeight: 1.6 }}>{c.desc}</div></div>
               ))}
             </div>
           </section>
@@ -237,31 +238,19 @@ export default function Docs() {
             <p style={{ ...bodyStyle, marginBottom: 16, maxWidth: 680 }}>Create a configuration file in your project root to customize MDefender's behavior.</p>
             <CodeBlock label="mdefender.config.js" dark={dark}>{`module.exports = {
   apiKey: process.env.MDEFENDER_API_KEY,
-  mode: "protect",
-  logLevel: "info",
-  failOpen: true,
-  rules: {
-    sqlInjection: true,
-    xss: true,
-    csrf: true,
-    lfiRfi: true,
-    commandInjection: true,
-    pathTraversal: true,
-    zeroDay: true,
-    botBlocking: true,
-  },
-  rateLimit: {
-    enabled: true,
-    maxRequests: 100,
-    windowMs: 60000,
-  },
+  domain: "api.mywebsite.com",
+  mode: "block",
+  onError: "allow",
+  logBlocked: true,
+  skipPaths: ["/health", "/favicon.ico"],
+  timeout: 5000
 };`}</CodeBlock>
             <div style={{ ...subheadingStyle, marginTop: 24 }}>Configuration Options</div>
             <div style={{ overflowX: 'auto', marginBottom: 40 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead><tr style={{ borderBottom: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}><th style={thStyle}>Option</th><th style={thStyle}>Type</th><th style={thStyle}>Default</th><th style={thStyle}>Description</th></tr></thead>
                 <tbody>
-                  {[['apiKey', 'string', 'required', 'Your MDefender Pro API key'], ['mode', 'string', '"protect"', '"protect" or "monitor"'], ['logLevel', 'string', '"info"', '"debug", "info", "warn", "error"'], ['failOpen', 'boolean', 'true', 'Allow traffic if service is unreachable'], ['rateLimit.enabled', 'boolean', 'true', 'Enable request rate limiting'], ['rateLimit.maxRequests', 'number', '100', 'Max requests per window'], ['rateLimit.windowMs', 'number', '60000', 'Rate limit window in ms']].map((row) => (
+                  {[['apiKey', 'string', 'required', 'Your MDefender Pro API key'], ['domain', 'string', '""', 'Domain of the tenant/website'], ['mode', 'string', '"block"', '"block", "monitor", or "off"'], ['onError', 'string', '"allow"', '"allow" or "block" - what to do if API is unreachable'], ['logBlocked', 'boolean', 'true', 'Log blocked requests to console'], ['timeout', 'number', '5000', 'API request timeout in ms'], ['skipPaths', 'array', '["/health", "/favicon.ico"]', 'URL paths to bypass WAF check']].map((row) => (
                     <tr key={row[0]} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
                       <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#60a5fa' }}>{row[0]}</td>
                       <td style={tdStyle}>{row[1]}</td>
@@ -516,10 +505,10 @@ server {
             <h2 style={headingStyle}>Enterprise Support</h2>
             <p style={{ ...bodyStyle, marginBottom: 24, maxWidth: 680 }}>For large-scale deployments, custom integrations, and priority support.</p>
             <div style={{ ...cardStyle, padding: 32, textAlign: 'center', marginBottom: 40 }}>
-              <div style={{ fontSize: 32, marginBottom: 16 }}>🏢</div>
+              <div style={{ fontSize: 32, marginBottom: 16, color: s.primary }}><i className="fas fa-building"></i></div>
               <div style={{ fontSize: 20, fontWeight: 700, color: s.text, marginBottom: 8 }}>Enterprise Support</div>
               <div style={{ fontSize: 14, color: s.textSecondary, marginBottom: 16, lineHeight: 1.6 }}>24/7 priority support, custom rule development, dedicated infrastructure, and a named account manager.</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: s.primary, marginBottom: 8 }}>📞 01715044575</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: s.primary, marginBottom: 8 }}><i className="fas fa-phone"></i> 01715044575</div>
               <div style={{ fontSize: 13, color: s.textMuted }}>Available 24/7 for enterprise customers</div>
             </div>
           </section>

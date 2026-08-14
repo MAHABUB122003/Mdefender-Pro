@@ -8,7 +8,6 @@ export default function UserConnect() {
   const [activeTab, setActiveTab] = useState('nodejs')
   const [activeSubTab, setActiveSubTab] = useState('flask')
   const [copiedId, setCopiedId] = useState(null)
-  const [copySuccess, setCopySuccess] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -25,8 +24,6 @@ export default function UserConnect() {
     fetchData()
   }, [fetchData])
 
-  const apiKey = data?.api_key || ''
-  const maskedKey = apiKey ? apiKey.slice(0, 16) + '••••••••••••' : 'No key generated'
   const websites = data?.websites || []
 
   const copyCode = (id) => {
@@ -36,14 +33,6 @@ export default function UserConnect() {
       navigator.clipboard.writeText(text)
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
-    }
-  }
-
-  const copyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey)
-      setCopySuccess(true)
-      setTimeout(() => setCopySuccess(false), 2000)
     }
   }
 
@@ -76,37 +65,22 @@ export default function UserConnect() {
         </div>
       </div>
 
-      {/* Step 1: Your API Key */}
+      {/* Step 1: Get Your API Key */}
       <div className="quick-actions-card" style={{ marginBottom: '18px', animationDelay: '0.1s' }}>
         <div className="section-header" style={{ marginBottom: '14px' }}>
-          <h3><i className="fas fa-key" style={{ color: '#a78bfa', marginRight: '6px' }}></i> Step 1: Your API Key</h3>
+          <h3><i className="fas fa-key" style={{ color: '#a78bfa', marginRight: '6px' }}></i> Step 1: Get Your API Key</h3>
         </div>
         <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 12px', lineHeight: 1.6 }}>
-          Use this key to authenticate your website with MDefender. Keep it secret — do not expose it in client-side code.
+          Your API key is managed in Settings. Copy it from there and use it in the code examples below.
         </p>
-        <div style={{
-          padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0',
-          borderRadius: '10px', fontSize: '13px', fontFamily: "'Fira Code', Consolas, monospace",
-          color: '#2563eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '12px',
+        <Link to="/user/settings" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          padding: '10px 20px', background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+          color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+          textDecoration: 'none', boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
         }}>
-          {maskedKey}
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={copyApiKey} style={{
-            padding: '8px 16px', background: '#eff6ff', color: '#2563eb', border: 'none',
-            borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-            fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
-          }}>
-            <i className={`fas ${copySuccess ? 'fa-check' : 'fa-copy'}`}></i> {copySuccess ? 'Copied!' : 'Copy API Key'}
-          </button>
-          <Link to="/user/settings" style={{
-            padding: '8px 16px', background: '#fffbeb', color: '#d97706', border: 'none',
-            borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-            fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none',
-          }}>
-            <i className="fas fa-arrow-rotate-right"></i> Regenerate
-          </Link>
-        </div>
+          <i className="fas fa-cog"></i> Go to Settings &amp; Copy API Key
+        </Link>
       </div>
 
       {/* Step 2: Your Websites */}
@@ -152,7 +126,7 @@ export default function UserConnect() {
           </div>
           <div className="method-body">
             <div className="method-steps">
-              <div className="method-step"><span className="ms-num">1</span><div><strong>Copy your API key</strong><p>Use the key shown above in Step 1.</p></div></div>
+              <div className="method-step"><span className="ms-num">1</span><div><strong>Get your API key</strong><p>Copy it from <Link to="/user/settings">Settings</Link>.</p></div></div>
               <div className="method-step"><span className="ms-num">2</span><div><strong>Install the library</strong><p>Install the MDefender package for your language.</p></div></div>
               <div className="method-step"><span className="ms-num">3</span><div><strong>Add one line</strong><p>Import and use the middleware before your routes.</p></div></div>
               <div className="method-step"><span className="ms-num">4</span><div><strong>You're protected</strong><p>All requests are analyzed in real-time.</p></div></div>
@@ -166,7 +140,7 @@ export default function UserConnect() {
               <div className={`tab-content ${activeTab === 'nodejs' ? 'active' : ''}`}>
                 <div className="code-block">
                   <div className="code-header"><span className="code-lang">JavaScript</span><button className={`copy-btn ${copiedId === 'nodejs-code' ? 'copied' : ''}`} onClick={() => copyCode('nodejs-code')}><i className="fas fa-copy"></i> {copiedId === 'nodejs-code' ? 'Copied!' : 'Copy'}</button></div>
-                  <pre><code id="nodejs-code"><span className="cmt">// npm install mdefender</span>{'\n'}<span className="kw">const</span> waf = <span className="fn">require</span>(<span className="str">'mdefender'</span>);{'\n\n'}<span className="cmt">// Add before your routes</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">waf</span>(&#123;{'\n'}  <span className="key">apiKey</span>: <span className="str">'{apiKey || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">server</span>: <span className="str">'http://localhost:5000'</span>{'\n'}&#125;));</code></pre>
+                   <pre><code id="nodejs-code"><span className="cmt">// npm install mdefender</span>{'\n'}<span className="kw">const</span> waf = <span className="fn">require</span>(<span className="str">'mdefender'</span>);{'\n\n'}<span className="cmt">// Add before your routes</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">waf</span>(&#123;{'\n'}  <span className="key">apiKey</span>: <span className="str">'md_live_your_api_key_here'</span>,{'\n'}  <span className="key">server</span>: <span className="str">'http://localhost:5000'</span>{'\n'}&#125;));</code></pre>
                 </div>
               </div>
               <div className={`tab-content ${activeTab === 'python' ? 'active' : ''}`}>
@@ -177,19 +151,19 @@ export default function UserConnect() {
                 {activeSubTab === 'flask' ? (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Flask</span><button className={`copy-btn ${copiedId === 'flask-code' ? 'copied' : ''}`} onClick={() => copyCode('flask-code')}><i className="fas fa-copy"></i> {copiedId === 'flask-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'{apiKey || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:5000'</span>{'\n'})</code></pre>
+                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'md_live_your_api_key_here'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:5000'</span>{'\n'})</code></pre>
                   </div>
                 ) : (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Django</span><button className={`copy-btn ${copiedId === 'django-code' ? 'copied' : ''}`} onClick={() => copyCode('django-code')}><i className="fas fa-copy"></i> {copiedId === 'django-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'{apiKey || 'YOUR_API_KEY'}'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:5000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
+                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'md_live_your_api_key_here'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:5000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
                   </div>
                 )}
               </div>
               <div className={`tab-content ${activeTab === 'php' ? 'active' : ''}`}>
                 <div className="code-block">
                   <div className="code-header"><span className="code-lang">PHP</span><button className={`copy-btn ${copiedId === 'php-code' ? 'copied' : ''}`} onClick={() => copyCode('php-code')}><i className="fas fa-copy"></i> {copiedId === 'php-code' ? 'Copied!' : 'Copy'}</button></div>
-                  <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'{apiKey || 'YOUR_API_KEY'}'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
+                   <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'md_live_your_api_key_here'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
                 </div>
               </div>
             </div>
@@ -235,7 +209,7 @@ export default function UserConnect() {
           <div className="api-details">
             <div>
               <div className="api-label">Request Headers</div>
-              <div className="api-code">Authorization: Bearer {apiKey ? apiKey.slice(0, 12) + '...' : 'YOUR_API_KEY'}{'\n'}Content-Type: application/json</div>
+              <div className="api-code">Authorization: Bearer md_live_your_api_key_here{'\n'}Content-Type: application/json</div>
             </div>
             <div>
               <div className="api-label">Request Body</div>

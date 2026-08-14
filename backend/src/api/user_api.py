@@ -187,62 +187,98 @@ class UserAPI:
             'created_at': user['created_at'].strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else '',
             'last_login': user['last_login'].strftime('%Y-%m-%d %H:%M:%S') if user.get('last_login') else '',
             'plan_expires': user['plan_expires'].strftime('%Y-%m-%d %H:%M:%S') if user.get('plan_expires') else None,
-            'websites': user.get('websites', []),
+            'websites': list(self.db.websites.find({'user_id': str(user['_id'])})),
             'total_requests': user.get('total_requests', 0),
             'total_blocked': user.get('total_blocked', 0),
         }
 
-    def regenerate_api_key(self, user):
-        new_key = 'md_' + secrets.token_hex(24)
-        self.db.users.update_one(
-            {'_id': user['_id']},
-            {'$set': {'api_key': new_key, 'updated_at': datetime.now()}}
-        )
-        return {'status': 'success', 'api_key': new_key, 'message': 'API key regenerated'}
+    def regenerate_api_key(self, user, data=None):
+        if data and data.get('website_id'):
+            website_id = data.get('website_id')
+            website = self.db.websites.find_one({'_id': website_id, 'user_id': str(user['_id'])})
+            if not website:
+                return {'status': 'error', 'message': 'Website not found'}
+            
+            raw_key = 'mdf_live_' + secrets.token_hex(24)
+            key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+            
+            # Delete old keys
+            self.db.api_keys.delete_many({'website_id': website_id})
+            
+            self.db.api_keys.insert_one({
+                'website_id': website_id,
+                'user_id': str(user['_id']),
+                'key_hash': key_hash,
+                'created_at': datetime.now(),
+                'status': 'active'
+            })
+            return {'status': 'success', 'api_key': raw_key, 'message': 'Website API key regenerated'}
+        else:
+            # Legacy account-level key for compatibility
+            new_key = 'md_' + secrets.token_hex(24)
+            self.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {'api_key': new_key, 'updated_at': datetime.now()}}
+            )
+            return {'status': 'success', 'api_key': new_key, 'message': 'Account API key regenerated'}
 
     def add_website(self, user, data):
         domain = data.get('domain', '').strip()
         origin = data.get('origin_server', '').strip()
+        platform = data.get('platform', 'Other').strip()
         if not domain:
             return {'status': 'error', 'message': 'Domain is required'}
 
-        websites = user.get('websites', [])
+        user_id_str = str(user['_id'])
         plan = user.get('plan', 'free')
         max_sites = 1 if plan == 'free' else 10
 
-        if len(websites) >= max_sites:
+        current_websites_count = self.db.websites.count_documents({'user_id': user_id_str})
+
+        if current_websites_count >= max_sites:
             return {'status': 'error', 'message': f'Your {plan} plan allows up to {max_sites} website(s). Upgrade for more.'}
 
-        if any(w['domain'] == domain for w in websites):
+        if self.db.websites.find_one({'domain': domain}):
             return {'status': 'error', 'message': 'Domain already registered'}
 
+        website_id = str(uuid.uuid4())
         website = {
-            'id': str(uuid.uuid4()),
+            '_id': website_id,
+            'user_id': user_id_str,
             'domain': domain,
+            'platform': platform,
             'origin_server': origin,
             'status': 'active',
-            'added_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'added_at': datetime.now(),
             'requests_today': 0,
             'blocked_today': 0,
+            'waf_mode': 'protect',
+            'malware_scanner': 'active',
+            'threat_level': 'LOW',
         }
+        self.db.websites.insert_one(website)
 
-        self.db.users.update_one(
-            {'_id': user['_id']},
-            {'$push': {'websites': website}}
-        )
+        # Generate scoped API Key
+        raw_key = 'mdf_live_' + secrets.token_hex(24)
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        
+        self.db.api_keys.insert_one({
+            'website_id': website_id,
+            'user_id': user_id_str,
+            'key_hash': key_hash,
+            'created_at': datetime.now(),
+            'status': 'active'
+        })
 
-        return {'status': 'success', 'website': website, 'message': f'{domain} added successfully'}
+        return {'status': 'success', 'website': website, 'api_key': raw_key, 'message': f'{domain} added successfully'}
 
     def remove_website(self, user, website_id):
-        websites = user.get('websites', [])
-        new_websites = [w for w in websites if w.get('id') != website_id]
-        if len(new_websites) == len(websites):
+        user_id_str = str(user['_id'])
+        result = self.db.websites.delete_one({'_id': website_id, 'user_id': user_id_str})
+        if result.deleted_count == 0:
             return {'status': 'error', 'message': 'Website not found'}
-
-        self.db.users.update_one(
-            {'_id': user['_id']},
-            {'$set': {'websites': new_websites}}
-        )
+        
+        self.db.api_keys.delete_many({'website_id': website_id})
         return {'status': 'success', 'message': 'Website removed'}
 
     def update_profile(self, user, data):
@@ -483,25 +519,15 @@ class UserAPI:
         attack_type = params.get('attack_type', '')
         date_from = params.get('date_from', '')
         date_to = params.get('date_to', '')
-        user_websites = [w.get('url', '') for w in user.get('websites', [])]
-        query = {}
-        if user_websites:
-            url_conditions = []
-            for w in user_websites:
-                if w:
-                    url_conditions.append({'url': {'$regex': w, '$options': 'i'}})
-            if url_conditions:
-                query['$or'] = url_conditions
+        user_id_str = str(user['_id'])
+        query = {'user_id': user_id_str}
         if search:
             search_conditions = [
                 {'ip': {'$regex': search, '$options': 'i'}},
                 {'url': {'$regex': search, '$options': 'i'}},
                 {'attack_type': {'$regex': search, '$options': 'i'}},
             ]
-            if '$or' in query:
-                query = {'$and': [query, {'$or': search_conditions}]}
-            else:
-                query['$or'] = search_conditions
+            query = {'$and': [query, {'$or': search_conditions}]}
         if ip_filter:
             query['ip'] = ip_filter
         if attack_type:

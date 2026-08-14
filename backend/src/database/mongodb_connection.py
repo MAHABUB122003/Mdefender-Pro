@@ -36,6 +36,7 @@ class MongoDB:
             self._db.attacks.create_index('timestamp')
             self._db.attacks.create_index('ip')
             self._db.attacks.create_index('attack_type')
+            self._db.attacks.create_index('user_id')
         if hasattr(self._db, 'attack_attempts'):
             self._db.attack_attempts.create_index('timestamp')
             self._db.attack_attempts.create_index('ip')
@@ -54,12 +55,38 @@ class MongoDB:
             self._db.bank_accounts.create_index('account_number')
         if hasattr(self._db, 'notices'):
             self._db.notices.create_index('created_at')
+        if hasattr(self._db, 'malware_scans'):
+            self._db.malware_scans.create_index('timestamp')
+            self._db.malware_scans.create_index('verdict')
+            self._db.malware_scans.create_index('domain')
+        if hasattr(self._db, 'websites'):
+            self._db.websites.create_index('user_id')
+            self._db.websites.create_index('domain', unique=True)
+        if hasattr(self._db, 'api_keys'):
+            self._db.api_keys.create_index('user_id')
+            self._db.api_keys.create_index('key_hash', unique=True)
+            self._db.api_keys.create_index('website_id')
+        if hasattr(self._db, 'subscriptions'):
+            self._db.subscriptions.create_index('user_id', unique=True)
+        if hasattr(self._db, 'waf_events'):
+            self._db.waf_events.create_index('user_id')
+            self._db.waf_events.create_index('website_id')
+            self._db.waf_events.create_index('timestamp')
+        if hasattr(self._db, 'security_events'):
+            self._db.security_events.create_index('user_id')
+            self._db.security_events.create_index('website_id')
+            self._db.security_events.create_index('timestamp')
+        for coll in ('entitlements', 'notifications', 'usage_metrics', 'paddle_transactions'):
+            if hasattr(self._db, coll):
+                self._db[coll].create_index('user_id')
         try:
             self._db.users.create_index('email', unique=True, sparse=True)
             self._db.users.create_index('username', sparse=True)
             self._db.users.create_index('google_id', sparse=True)
             self._db.email_verification_tokens.create_index('token_hash')
             self._db.email_verification_tokens.create_index('expires_at', expireAfterSeconds=0)
+            self._db.email_verification_tokens.create_index('request_ip')
+            self._db.email_verification_tokens.create_index('email')
             self._db.password_reset_tokens.create_index('token_hash')
             self._db.password_reset_tokens.create_index('expires_at', expireAfterSeconds=0)
             self._db.refresh_tokens.create_index('user_id')
@@ -162,6 +189,57 @@ class MongoDB:
     def mfa_secrets(self):
         return self._db['mfa_secrets'] if self._db is not None else None
 
+    @property
+    def malware_scans(self):
+        return self._db['malware_scans'] if self._db is not None else None
+
+    @property
+    def websites(self):
+        return self._db['websites'] if self._db is not None else None
+
+    @property
+    def api_keys(self):
+        return self._db['api_keys'] if self._db is not None else None
+
+    @property
+    def subscriptions(self):
+        return self._db['subscriptions'] if self._db is not None else None
+
+    @property
+    def waf_events(self):
+        return self._db['waf_events'] if self._db is not None else None
+
+    @property
+    def malware_findings(self):
+        return self._db['malware_findings'] if self._db is not None else None
+
+    @property
+    def quarantine_files(self):
+        return self._db['quarantine_files'] if self._db is not None else None
+
+    @property
+    def wordpress_sites(self):
+        return self._db['wordpress_sites'] if self._db is not None else None
+
+    @property
+    def entitlements(self):
+        return self._db['entitlements'] if self._db is not None else None
+
+    @property
+    def notifications(self):
+        return self._db['notifications'] if self._db is not None else None
+
+    @property
+    def usage_metrics(self):
+        return self._db['usage_metrics'] if self._db is not None else None
+
+    @property
+    def paddle_transactions(self):
+        return self._db['paddle_transactions'] if self._db is not None else None
+
+    def __getitem__(self, key):
+        return getattr(self, key, None)
+
 
 class InMemoryDB:
     def __init__(self):
@@ -186,6 +264,18 @@ class InMemoryDB:
         self.audit_logs = InMemoryCollection()
         self.security_events = InMemoryCollection()
         self.mfa_secrets = InMemoryCollection()
+        self.malware_scans = InMemoryCollection()
+        self.websites = InMemoryCollection()
+        self.api_keys = InMemoryCollection()
+        self.subscriptions = InMemoryCollection()
+        self.waf_events = InMemoryCollection()
+        self.malware_findings = InMemoryCollection()
+        self.quarantine_files = InMemoryCollection()
+        self.wordpress_sites = InMemoryCollection()
+        self.entitlements = InMemoryCollection()
+        self.notifications = InMemoryCollection()
+        self.usage_metrics = InMemoryCollection()
+        self.paddle_transactions = InMemoryCollection()
 
     def __getitem__(self, key):
         return getattr(self, key, None)

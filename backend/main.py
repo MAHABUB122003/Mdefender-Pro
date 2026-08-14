@@ -18,6 +18,7 @@ load_dotenv()
 
 from src.database.mongodb_connection import MongoDB
 from src.api.waf_api import WAFAPI
+from src.api.malware_api import MalwareAPI
 from src.api.admin_api import AdminAPI
 from src.api.user_api import UserAPI
 from src.api.finance_api import FinanceAPI
@@ -25,6 +26,8 @@ from src.api.notice_api import NoticeAPI
 from src.security.auth import Auth
 from src.security.ip_filter import IPFilter
 from src.utils.logger import Logger
+from src.engine.ml_detector import MLDetector
+from src.engine.malware_detector import MalwareDetector
 from src.ddos import DDoSConfig, DDoSMiddleware, ddos_router
 from src.auth import auth_router
 from src.auth.dependencies import get_current_user, get_current_admin, verify_csrf_token
@@ -32,10 +35,13 @@ from src.auth.cookie_service import CookieService
 from src.auth.jwt_service import JWTService
 from src.auth.audit_service import AuditService
 from src.auth.config import AuthConfig
+from src.api.v1.routes import get_v1_router
 
 app = FastAPI(title="MDefender Pro", version="2.0.0")
 
 auth_config = AuthConfig()
+
+app.include_router(get_v1_router())
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,6 +66,7 @@ db = MongoDB()
 auth = Auth()
 ip_filter = IPFilter()
 waf_api = WAFAPI()
+malware_api = MalwareAPI()
 admin_api = AdminAPI()
 user_api = UserAPI()
 finance_api = FinanceAPI()
@@ -68,6 +75,8 @@ logger = Logger()
 cookie_svc = CookieService()
 jwt_svc = JWTService()
 audit_svc = AuditService()
+ml_detector = MLDetector()
+malware_detector = MalwareDetector()
 
 _templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 from fastapi.templating import Jinja2Templates
@@ -188,6 +197,113 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+@app.get("/health/ml")
+async def health_ml():
+    waf_status = ml_detector.get_status()
+    malware_status = malware_detector.get_status()
+    ok = bool(waf_status.get('loaded')) and bool(malware_status.get('loaded'))
+    return {
+        "status": "ok" if ok else "degraded",
+        "waf": waf_status,
+        "malware": malware_status,
+    }
+
+@app.get("/health/ml/waf")
+async def health_ml_waf():
+    status = ml_detector.get_status()
+    return {"status": "ok" if status.get('loaded') else "degraded", **status}
+
+@app.get("/health/ml/malware")
+async def health_ml_malware():
+    status = malware_detector.get_status()
+    return {"status": "ok" if status.get('loaded') else "degraded", **status}
+
+@app.get("/api/ml/status")
+async def ml_status_api():
+    """Public ML status used by WordPress plugin + dashboards. No secrets."""
+    return {
+        "waf": {
+            "model": "mdefender-waf",
+            "version": ml_detector.model_version,
+            "loaded": ml_detector.is_loaded(),
+            "threshold": ml_detector.threshold,
+            "training_date": ml_detector.meta.get('training_date'),
+        },
+        "malware": {
+            "model": "mdefender-malware",
+            "version": malware_detector.model_version,
+            "loaded": malware_detector.is_loaded(),
+            "training_date": malware_detector.meta.get('training_date'),
+        },
+    }
+
+@app.post("/api/scan")
+async def scan_file(request: Request):
+    """Malware scan endpoint. Accepts multipart 'file' or JSON {filename, content_base64}.
+
+    Auth: Bearer API key (WordPress plugin) OR a valid admin/user session cookie
+    (dashboards). Content is analyzed statically and is never executed.
+    """
+    api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
+    domain = request.query_params.get('domain', '')
+    user_id = None
+    website_id = None
+    
+    if api_key:
+        auth_data = malware_api.verify_api_key(api_key, domain)
+        if auth_data:
+            user_id = auth_data.get('user_id')
+            website_id = auth_data.get('website_id')
+    else:
+        session_user = None
+        try:
+            session_user = verify_user_token_compat(request)
+        except HTTPException:
+            pass
+        if not session_user:
+            try:
+                verify_admin_token(request)
+            except HTTPException:
+                return JSONResponse(status_code=401, content={'status': 'error', 'message': 'Invalid API key or session'})
+        else:
+            user_id = str(session_user['_id'])
+
+    client_ip = get_client_ip(request)
+
+    content_type = request.headers.get('content-type', '')
+    filename = ''
+    content = b''
+
+    if 'multipart/form-data' in content_type:
+        form = await request.form()
+        file = form.get('file')
+        if file and hasattr(file, 'read'):
+            filename = getattr(file, 'filename', '') or ''
+            content = await file.read()
+        else:
+            return {'status': 'error', 'message': 'No file uploaded'}
+    else:
+        try:
+            data = await request.json()
+        except Exception:
+            return {'status': 'error', 'message': 'Invalid JSON body'}
+        filename = data.get('filename', '')
+        b64 = data.get('content_base64', '')
+        if not b64:
+            return {'status': 'error', 'message': 'content_base64 is required'}
+        import base64
+        try:
+            content = base64.b64decode(b64, validate=False)
+        except Exception:
+            return {'status': 'error', 'message': 'Invalid base64 content'}
+
+    if len(content) > 10 * 1024 * 1024:
+        return {'status': 'error', 'message': 'File exceeds maximum scan size (10MB)'}
+    if not content:
+        return {'status': 'error', 'message': 'Empty file'}
+
+    return malware_api.scan(filename, content, ip=client_ip, domain=domain, user_id=user_id, website_id=website_id)
 
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
@@ -402,16 +518,22 @@ async def user_block_ip(request: Request, user: dict = Depends(verify_user_token
     reason = data.get('reason', 'Blocked by user')
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
+    existing = db.blacklist.find_one({'ip': ip})
+    if existing:
+        return {'status': 'error', 'message': 'IP already blacklisted'}
     db.blacklist.insert_one({
         'ip': ip, 'reason': reason, 'type': 'permanent',
-        'added_by': user.get('email', 'unknown'), 'blocked_at': datetime.now(),
+        'added_by': user.get('email', 'unknown'),
+        'added_by_user_id': str(user['_id']),
+        'blocked_at': datetime.now(),
     })
     return {'status': 'success', 'message': f'{ip} has been blocked'}
 
 @app.get("/api/user/blacklist")
 async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
+    user_id = str(user['_id'])
     blacklist = []
-    for entry in db.blacklist.find().sort('blocked_at', -1):
+    for entry in db.blacklist.find({'added_by_user_id': user_id}).sort('blocked_at', -1):
         blacklist.append({
             'id': str(entry['_id']),
             'ip': entry.get('ip', ''),
@@ -435,7 +557,9 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     db.blacklist.insert_one({
         'ip': ip, 'reason': data.get('reason', 'Blocked by user'),
         'type': data.get('type', 'permanent'),
-        'added_by': user.get('email', 'unknown'), 'blocked_at': datetime.now(),
+        'added_by': user.get('email', 'unknown'),
+        'added_by_user_id': str(user['_id']),
+        'blocked_at': datetime.now(),
     })
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully'}
 
@@ -444,7 +568,7 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
     ip = request.query_params.get('ip', '')
     if not ip:
         return {'status': 'error', 'message': 'IP is required'}
-    db.blacklist.delete_one({'ip': ip})
+    db.blacklist.delete_one({'ip': ip, 'added_by_user_id': str(user['_id'])})
     return {'status': 'success', 'message': f'IP {ip} removed from blacklist'}
 
 
@@ -582,9 +706,18 @@ async def connect_website(request: Request):
 async def analyze_request(request: Request):
     api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
     data = await request.json()
-    if not waf_api.verify_api_key(api_key, data.get('domain')):
-        return JSONResponse(status_code=401, content={'status': 'error', 'message': 'Invalid API key'})
-    result = waf_api.analyze_request(data.get('request', {}))
+    domain = data.get('domain', '')
+    auth_data = waf_api.verify_api_key(api_key, domain)
+    if not auth_data:
+        if domain == 'localhost' or domain == '127.0.0.1':
+            pass
+        else:
+            return JSONResponse(status_code=401, content={'status': 'error', 'message': 'Invalid API key'})
+    
+    user_id = auth_data.get('user_id') if auth_data else None
+    website_id = auth_data.get('website_id') if auth_data else None
+
+    result = waf_api.analyze_request(data.get('request', {}), user_id=user_id, domain=domain, website_id=website_id)
     if result['status'] == 'blocked':
         forwarded_headers = data['request'].get('headers', {})
         claimed_ip = get_claimed_ip_from_headers(forwarded_headers) or 'N/A'
@@ -602,7 +735,10 @@ async def analyze_request(request: Request):
         return {
             'status': 'blocked',
             'block_page': block_html.body.decode('utf-8'),
-            'attack_type': result.get('attack_type')
+            'attack_type': result.get('attack_type'),
+            'confidence': result.get('confidence', 0.9),
+            'reference_id': result.get('reference_id'),
+            'threat_score': result.get('threat_score', 0),
         }
     return result
 
@@ -610,26 +746,29 @@ async def analyze_request(request: Request):
 async def get_api_stats(request: Request):
     api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
     domain = request.query_params.get('domain')
-    if not waf_api.verify_api_key(api_key, domain):
+    auth_data = waf_api.verify_api_key(api_key, domain)
+    if not auth_data:
         return JSONResponse(status_code=401, content={'error': 'Invalid API key'})
-    return waf_api.get_stats(domain)
+    return waf_api.get_stats(domain, user_id=auth_data.get('user_id'), website_id=auth_data.get('website_id'))
 
 @app.post("/api/block")
 async def block_ip_api(request: Request):
     api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
     data = await request.json()
-    if not waf_api.verify_api_key(api_key, data.get('domain')):
+    auth_data = waf_api.verify_api_key(api_key, data.get('domain'))
+    if not auth_data:
         return JSONResponse(status_code=401, content={'error': 'Invalid API key'})
-    return waf_api.block_ip(data.get('ip'), data.get('reason'))
+    return waf_api.block_ip(data.get('ip'), data.get('reason'), user_id=auth_data.get('user_id'))
 
 @app.get("/api/logs")
 async def api_get_logs(request: Request):
     api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
     domain = request.query_params.get('domain')
-    if not waf_api.verify_api_key(api_key, domain):
+    auth_data = waf_api.verify_api_key(api_key, domain)
+    if not auth_data:
         return JSONResponse(status_code=401, content={'error': 'Invalid API key'})
     params = dict(request.query_params)
-    return waf_api.get_logs(params)
+    return waf_api.get_logs(params, user_id=auth_data.get('user_id'), website_id=auth_data.get('website_id'))
 
 
 @app.exception_handler(Exception)
@@ -646,8 +785,8 @@ if __name__ == '__main__':
     print("\n" + "="*40)
     print("\U0001f512 MDefender Pro Started Successfully")
     print("="*40)
-    print(f"\U0001f4ca Admin Dashboard: http://localhost:8000")
-    print(f"\U0001f517 API Endpoint: http://localhost:8000/api")
+    print(f"\U0001f4ca Admin Dashboard: http://localhost:{os.getenv('PORT', '8000')}")
+    print(f"\U0001f517 API Endpoint: http://localhost:{os.getenv('PORT', '8000')}/api")
     print("\nAuth Endpoints:")
     print("  POST /api/auth/register")
     print("  POST /api/auth/login")
@@ -655,4 +794,4 @@ if __name__ == '__main__':
     print("  POST /api/auth/forgot-password")
     print("  POST /api/auth/admin/login")
     print("="*40 + "\n")
-    uvicorn.run("main:app", host='0.0.0.0', port=8000, reload=True)
+    uvicorn.run("main:app", host='0.0.0.0', port=int(os.getenv('PORT', '8000')), reload=True)

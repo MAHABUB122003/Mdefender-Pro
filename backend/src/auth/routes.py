@@ -64,13 +64,16 @@ async def register(data: RegisterRequest, request: Request):
     if data.password != data.confirm_password:
         raise HTTPException(status_code=400, detail='Passwords do not match')
 
+    ip = get_client_ip(request)
+    ua = get_user_agent(request)
+
     result = registration_service.register(
         full_name=data.full_name,
         email=data.email,
         password=data.password,
         username=data.username,
-        ip_address=get_client_ip(request),
-        user_agent=get_user_agent(request),
+        ip_address=ip,
+        user_agent=ua,
     )
 
     if not result['success']:
@@ -78,24 +81,37 @@ async def register(data: RegisterRequest, request: Request):
 
     verification_token = result.get('verification_token', '')
     frontend_url = config.FRONTEND_URL
+    smtp_configured = bool(config.SMTP_SERVER and config.SMTP_USERNAME)
+
+    anti_phishing_code = jwt_service.generate_anti_phishing_code()
     asyncio.create_task(
         asyncio.to_thread(
             email_sender.send_verification_email,
-            data.email, verification_token, frontend_url
+            data.email, verification_token, frontend_url, anti_phishing_code
         )
     )
 
-    return {
+    response_data = {
         'status': 'success',
         'message': result['message'],
     }
+    if not smtp_configured:
+        response_data['verification_token'] = verification_token
+        response_data['verification_url'] = f'{frontend_url}/auth/verify-email?token={verification_token}&email={data.email}'
+
+    return response_data
 
 
 # ─── Email Verification ───
 
 @auth_router.post('/verify-email')
-async def verify_email(data: VerifyEmailRequest):
-    result = registration_service.verify_email(data.token)
+async def verify_email(data: VerifyEmailRequest, request: Request):
+    ip = get_client_ip(request)
+    ua = get_user_agent(request)
+
+    result = registration_service.verify_email(
+        data.token, ip_address=ip, user_agent=ua
+    )
     if not result['success']:
         raise HTTPException(status_code=400, detail=result['error'])
     return {'status': 'success', 'message': result['message']}
@@ -103,8 +119,11 @@ async def verify_email(data: VerifyEmailRequest):
 
 @auth_router.post('/resend-verification')
 async def resend_verification(data: ResendVerificationRequest, request: Request):
+    ip = get_client_ip(request)
+    ua = get_user_agent(request)
+
     result = registration_service.resend_verification(
-        data.email, get_client_ip(request)
+        data.email, ip_address=ip, user_agent=ua
     )
     if not result['success']:
         raise HTTPException(status_code=429, detail=result['error'])
@@ -112,10 +131,11 @@ async def resend_verification(data: ResendVerificationRequest, request: Request)
     if result.get('verification_token'):
         verification_token = result['verification_token']
         frontend_url = config.FRONTEND_URL
+        anti_phishing_code = jwt_service.generate_anti_phishing_code()
         asyncio.create_task(
             asyncio.to_thread(
                 email_sender.send_verification_email,
-                data.email, verification_token, frontend_url
+                data.email, verification_token, frontend_url, anti_phishing_code
             )
         )
 
@@ -145,6 +165,7 @@ async def login(data: LoginRequest, request: Request, response: Response):
             'message': result.get('error') or result.get('message', 'Login failed'),
             'mfa_required': result.get('mfa_required', False),
             'temp_token': result.get('temp_token'),
+            'email_not_verified': result.get('email_not_verified', False),
         })
 
     csrf_token = secrets.token_urlsafe(32)
@@ -418,10 +439,11 @@ async def change_email(data: ChangeEmailRequest, request: Request,
     if result.get('verification_token'):
         verification_token = result['verification_token']
         frontend_url = config.FRONTEND_URL
+        anti_phishing_code = jwt_service.generate_anti_phishing_code()
         asyncio.create_task(
             asyncio.to_thread(
                 email_sender.send_verification_email,
-                data.new_email, verification_token, frontend_url
+                data.new_email, verification_token, frontend_url, anti_phishing_code
             )
         )
 
@@ -610,6 +632,7 @@ async def get_profile(user: dict = Depends(get_current_user)):
             'email_verified': user_doc.get('email_verified', False),
             'mfa_enabled': user_doc.get('mfa_enabled', False),
             'plan': user_doc.get('plan', 'free'),
+            'api_key': user_doc.get('api_key', ''),
             'created_at': user_doc.get('created_at', '').isoformat() if isinstance(user_doc.get('created_at'), datetime) else str(user_doc.get('created_at', '')),
             'last_login': user_doc.get('last_login', '').isoformat() if isinstance(user_doc.get('last_login'), datetime) else str(user_doc.get('last_login', '')),
         }

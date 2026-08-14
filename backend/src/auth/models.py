@@ -41,7 +41,7 @@ class AdminLoginRequest(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str = Field(..., min_length=64, max_length=128)
+    token: str = Field(..., min_length=64, max_length=256)
 
 
 class ResendVerificationRequest(BaseModel):
