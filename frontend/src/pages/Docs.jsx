@@ -46,7 +46,7 @@ const faqData = [
 const sidebarSections = [
   { title: 'Overview', items: [{ id: 'what-is-mdefender', label: 'What is MDefender', icon: '◎' }, { id: 'security-features', label: 'Security Features', icon: '◈' }, { id: 'compliance', label: 'Compliance', icon: '◆' }] },
   { title: 'Quick Start', items: [{ id: 'getting-started', label: 'Getting Started', icon: '→' }, { id: 'installation', label: 'Installation', icon: '↓' }, { id: 'configuration', label: 'Configuration', icon: '≡' }] },
-  { title: 'Platform Guides', items: [{ id: 'nodejs-express', label: 'Node.js / Express', icon: '⬡' }, { id: 'python-flask-django', label: 'Python / Flask / Django', icon: '◇' }, { id: 'php-laravel', label: 'PHP / Laravel', icon: '◇' }, { id: 'nginx-apache', label: 'Nginx / Apache', icon: '◇' }] },
+  { title: 'Platform Guides', items: [{ id: 'nodejs-express', label: 'Node.js / Express', icon: '⬡' }, { id: 'react-spa', label: 'React / SPA', icon: '◇' }, { id: 'python-flask-django', label: 'Python / Flask / Django', icon: '◇' }, { id: 'php-laravel', label: 'PHP / Laravel', icon: '◇' }, { id: 'nginx-apache', label: 'Nginx / Apache', icon: '◇' }] },
   { title: 'API Reference', items: [{ id: 'api-auth', label: 'Authentication', icon: '⊞' }, { id: 'api-user', label: 'User Endpoints', icon: '⊟' }, { id: 'api-websites', label: 'Website Management', icon: '⊟' }] },
   { title: 'Resources', items: [{ id: 'sdks', label: 'SDKs', icon: '⊞' }, { id: 'faq', label: 'FAQ', icon: '？' }, { id: 'enterprise', label: 'Enterprise Support', icon: '★' }] },
 ];
@@ -224,9 +224,9 @@ export default function Docs() {
           <section id="installation" style={{ scrollMarginTop: 100 }}>
             <h2 style={headingStyle}>Installation</h2>
             <p style={{ ...bodyStyle, marginBottom: 16, maxWidth: 680 }}>Install MDefender Pro using the package manager for your language.</p>
-            <CodeBlock label="npm" dark={dark}>{'npm install mdefender'}</CodeBlock>
-            <CodeBlock label="yarn" dark={dark}>{'yarn add mdefender'}</CodeBlock>
-            <CodeBlock label="pnpm" dark={dark}>{'pnpm add mdefender'}</CodeBlock>
+            <CodeBlock label="npm" dark={dark}>{'npm install mdefender-pro'}</CodeBlock>
+            <CodeBlock label="yarn" dark={dark}>{'yarn add mdefender-pro'}</CodeBlock>
+            <CodeBlock label="pnpm" dark={dark}>{'pnpm add mdefender-pro'}</CodeBlock>
             <CodeBlock label="pip (Python)" dark={dark}>{'pip install mdefender'}</CodeBlock>
             <CodeBlock label="composer (PHP)" dark={dark}>{'composer require mdefender/mdefender'}</CodeBlock>
           </section>
@@ -269,19 +269,19 @@ export default function Docs() {
             <h2 style={headingStyle}>Node.js / Express</h2>
             <p style={{ ...bodyStyle, marginBottom: 16, maxWidth: 680 }}>Integrate MDefender into your Express application in minutes.</p>
             <CodeBlock label="app.js" dark={dark}>{`const express = require("express");
-const { MDefender } = require("mdefender");
+const mdefender = require("mdefender-pro");
 
 const app = express();
-const waf = new MDefender({ apiKey: process.env.MDEFENDER_API_KEY });
 
-app.use(waf.middleware());
+// Load WAF middleware (automatically loads configuration from mdefender.config.js)
+app.use(mdefender());
 
 app.get("/", (req, res) => {
-  res.json({ status: "ok", threats: req.mdefender.threats });
+  res.json({ status: "ok", mdefender: req.mdefender });
 });
 
 app.listen(3000);`}</CodeBlock>
-            <CodeBlock label=".env" dark={dark}>{`MDEFENDER_API_KEY=md_live_your_api_key_here`}</CodeBlock>
+            <CodeBlock label=".env" dark={dark}>{`MDEFENDER_API_KEY=your_64_char_api_key_here`}</CodeBlock>
             <div style={{ ...subheadingStyle, marginTop: 24 }}>Monitor Mode</div>
             <CodeBlock label="mdefender.config.js" dark={dark}>{`module.exports = {
   apiKey: process.env.MDEFENDER_API_KEY,
@@ -290,11 +290,37 @@ app.listen(3000);`}</CodeBlock>
             <div style={{ ...subheadingStyle, marginTop: 24 }}>Accessing Threat Data</div>
             <p style={{ ...bodyStyle, marginBottom: 12 }}>Each request object includes a <code style={{ backgroundColor: s.primaryBg, padding: '2px 6px', borderRadius: 4, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", color: '#c084fc' }}>req.mdefender</code> property with threat detection results.</p>
             <CodeBlock dark={dark}>{`app.use((req, res, next) => {
-  console.log("Threats:", req.mdefender.threats);
-  console.log("Score:", req.mdefender.riskScore);
-  console.log("Blocked:", req.mdefender.blocked);
+  console.log("Status:", req.mdefender.status);
+  console.log("Threat Score:", req.mdefender.threat_score);
+  console.log("Request ID:", req.mdefender.request_id);
   next();
 });`}</CodeBlock>
+          </section>
+          {divider}
+
+          {/* React / SPA */}
+          <section id="react-spa" style={{ scrollMarginTop: 100 }}>
+            <h2 style={headingStyle}>React / SPA Frontends</h2>
+            <p style={{ ...bodyStyle, marginBottom: 16, maxWidth: 680 }}>
+              Protect client-side Single Page Applications (React, Vue, Angular) by loading the WAF client protector in your main entry file.
+            </p>
+            <CodeBlock label="main.jsx" dark={dark}>{`import { createRoot } from 'react-dom/client';
+import { initWaf } from 'mdefender-pro/client';
+
+// Initialize WAF client protection (automatically forwards blocks to backend and syncs API queries)
+initWaf({
+  backendUrl: 'http://localhost:5005'
+});
+
+// Your app rendering code...`}</CodeBlock>
+            <div style={{ ...bodyStyle, marginTop: 12 }}>
+              The client-side WAF module does the following automatically:
+              <ul style={{ paddingLeft: 20, marginTop: 8 }}>
+                <li>Inspects URL query parameters on initial page load and displays the official WAF block page if an attack is detected.</li>
+                <li style={{ marginTop: 4 }}>Intercepts all outgoing <code style={{ backgroundColor: s.primaryBg, padding: '2px 4px', borderRadius: 4, fontFamily: "'JetBrains Mono', monospace", color: '#c084fc' }}>fetch</code> and <code style={{ backgroundColor: s.primaryBg, padding: '2px 4px', borderRadius: 4, fontFamily: "'JetBrains Mono', monospace", color: '#c084fc' }}>XMLHttpRequest</code> (Axios) API requests and propagates the browser's current query parameters.</li>
+                <li style={{ marginTop: 4 }}>Catches any WAF-blocked 403 API responses and overrides the browser document to render the official WAF block page immediately.</li>
+              </ul>
+            </div>
           </section>
           {divider}
 
@@ -307,7 +333,7 @@ app.listen(3000);`}</CodeBlock>
 from mdefender import MDefender
 
 app = Flask(__name__)
-waf = MDefender(api_key="md_live_your_api_key_here")
+waf = MDefender(api_key="your_64_char_api_key_here")
 
 @app.before_request
 def protect():
@@ -326,7 +352,7 @@ app.run(port=5000)`}</CodeBlock>
 class MDefenderMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-        self.waf = MDefender(api_key="md_live_your_api_key_here")
+        self.waf = MDefender(api_key="your_64_char_api_key_here")
 
     def __call__(self, request):
         result = self.waf.inspect(request)
@@ -412,7 +438,7 @@ server {
                 <thead><tr style={{ borderBottom: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}><th style={thStyle}>Method</th><th style={thStyle}>Endpoint</th><th style={thStyle}>Description</th><th style={thStyle}>Auth</th></tr></thead>
                 <tbody>
                   {[['POST', '/auth/register', 'Create a new account', 'No'], ['POST', '/auth/login', 'Login and get token', 'No'], ['GET', '/auth/profile', 'Get current user profile', 'Yes'], ['PUT', '/auth/update-profile', 'Update user profile', 'Yes'], ['PUT', '/auth/change-password', 'Change account password', 'Yes']].map((row) => (
-                    <tr key={row[1]} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
+                    <tr key={`${row[0]}-${row[1]}`} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
                       <td style={{ padding: '10px 12px' }}><MethodBadge method={row[0]} /></td>
                       <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#60a5fa' }}>{row[1]}</td>
                       <td style={tdStyle}>{row[2]}</td>
@@ -434,7 +460,7 @@ server {
                 <thead><tr style={{ borderBottom: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}><th style={thStyle}>Method</th><th style={thStyle}>Endpoint</th><th style={thStyle}>Description</th></tr></thead>
                 <tbody>
                   {[['POST', '/user/regenerate-key', 'Generate a new API key'], ['GET', '/user/dashboard', 'Get security dashboard data'], ['PUT', '/user/profile', 'Update user profile'], ['PUT', '/user/change-password', 'Change account password']].map((row) => (
-                    <tr key={row[1]} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
+                    <tr key={`${row[0]}-${row[1]}`} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
                       <td style={{ padding: '10px 12px' }}><MethodBadge method={row[0]} /></td>
                       <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#60a5fa' }}>{row[1]}</td>
                       <td style={tdStyle}>{row[2]}</td>
@@ -455,7 +481,7 @@ server {
                 <thead><tr style={{ borderBottom: `2px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}><th style={thStyle}>Method</th><th style={thStyle}>Endpoint</th><th style={thStyle}>Description</th></tr></thead>
                 <tbody>
                   {[['POST', '/websites', 'Add a new website'], ['GET', '/websites', 'List all websites'], ['GET', '/websites/:id', 'Get website details'], ['PUT', '/websites/:id', 'Update website settings'], ['DELETE', '/websites/:id', 'Remove a website']].map((row) => (
-                    <tr key={row[1]} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
+                    <tr key={`${row[0]}-${row[1]}`} style={{ borderBottom: `1px solid ${s.borderLight}` }}>
                       <td style={{ padding: '10px 12px' }}><MethodBadge method={row[0]} /></td>
                       <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#60a5fa' }}>{row[1]}</td>
                       <td style={tdStyle}>{row[2]}</td>
@@ -465,14 +491,12 @@ server {
               </table>
             </div>
           </section>
-          {divider}
-
           {/* SDKs */}
           <section id="sdks" style={{ scrollMarginTop: 100 }}>
             <h2 style={headingStyle}>SDKs</h2>
             <p style={{ ...bodyStyle, marginBottom: 24, maxWidth: 680 }}>Official SDKs for all major programming languages.</p>
             <div className="docs-grid-3" style={{ marginBottom: 40 }}>
-              {[{ name: 'Node.js', cmd: 'npm install mdefender', icon: '⬡' }, { name: 'Python', cmd: 'pip install mdefender', icon: '◇' }, { name: 'PHP', cmd: 'composer require mdefender/mdefender', icon: '◇' }, { name: 'Go', cmd: 'go get github.com/mdefender/mdefender-go', icon: '◇' }, { name: 'Ruby', cmd: 'gem install mdefender', icon: '◇' }, { name: 'Rust', cmd: 'cargo add mdefender', icon: '◇' }].map((sdk) => (
+              {[{ name: 'Node.js', cmd: 'npm install mdefender-pro', icon: '⬡' }, { name: 'Python', cmd: 'pip install mdefender', icon: '◇' }, { name: 'PHP', cmd: 'composer require mdefender/mdefender', icon: '◇' }, { name: 'Go', cmd: 'go get github.com/mdefender/mdefender-go', icon: '◇' }, { name: 'Ruby', cmd: 'gem install mdefender', icon: '◇' }, { name: 'Rust', cmd: 'cargo add mdefender', icon: '◇' }].map((sdk) => (
                 <div key={sdk.name} style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><span style={{ fontSize: 16, opacity: 0.5 }}>{sdk.icon}</span><span style={{ fontSize: 15, fontWeight: 600, color: s.text }}>{sdk.name}</span></div>
                   <CodeBlock dark={dark}>{sdk.cmd}</CodeBlock>

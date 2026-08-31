@@ -2,11 +2,11 @@ from src.database.mongodb_connection import MongoDB
 from src.engine.rule_engine import RuleEngine
 from src.services.password_service import PasswordService
 from src.services.email_service import EmailService
+from src.utils.api_key import generate_api_key
 from datetime import datetime, timedelta
 from bson import ObjectId
 import uuid
 import hashlib
-import secrets
 import logging
 
 logger = logging.getLogger('mdefender.auth')
@@ -64,7 +64,7 @@ class UserAPI:
 
         # --- Step 6: Hash password with bcrypt ---
         password_hash = self.password_service.hash_password(password)
-        api_key = 'md_' + secrets.token_hex(24)
+        api_key = generate_api_key()
 
         user = {
             'email': email,
@@ -138,6 +138,14 @@ class UserAPI:
             {'$set': {'last_login': datetime.now()}}
         )
 
+        api_key = user.get('api_key', '')
+        if not api_key:
+            api_key = generate_api_key()
+            self.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {'api_key': api_key, 'updated_at': datetime.now()}}
+            )
+
         token = str(uuid.uuid4())
         self.db.user_tokens.insert_one({
             'token': token,
@@ -154,10 +162,10 @@ class UserAPI:
             'user': {
                 'id': str(user['_id']),
                 'email': user['email'],
-                'name': user['name'],
+                'name': user.get('name', user.get('full_name', '')),
                 'plan': user.get('plan', 'free'),
                 'role': user.get('role', 'readonly'),
-                'api_key': user.get('api_key', ''),
+                'api_key': api_key,
             }
         }
 
@@ -179,7 +187,7 @@ class UserAPI:
         return {
             'id': str(user['_id']),
             'email': user['email'],
-            'name': user['name'],
+            'name': user.get('name', user.get('full_name', '')),
             'plan': user.get('plan', 'free'),
             'role': user.get('role', 'readonly'),
             'api_key': user.get('api_key', ''),
@@ -199,7 +207,7 @@ class UserAPI:
             if not website:
                 return {'status': 'error', 'message': 'Website not found'}
             
-            raw_key = 'mdf_live_' + secrets.token_hex(24)
+            raw_key = generate_api_key()
             key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
             
             # Delete old keys
@@ -215,11 +223,17 @@ class UserAPI:
             return {'status': 'success', 'api_key': raw_key, 'message': 'Website API key regenerated'}
         else:
             # Legacy account-level key for compatibility
-            new_key = 'md_' + secrets.token_hex(24)
+            new_key = generate_api_key()
+            user_id_str = str(user['_id'])
             self.db.users.update_one(
                 {'_id': user['_id']},
                 {'$set': {'api_key': new_key, 'updated_at': datetime.now()}}
             )
+            # Revoke all auto-generated website api keys that were created using the old master key
+            self.db.api_keys.delete_many({
+                'user_id': user_id_str,
+                'label': 'wordpress_auto'
+            })
             return {'status': 'success', 'api_key': new_key, 'message': 'Account API key regenerated'}
 
     def add_website(self, user, data):
@@ -259,7 +273,7 @@ class UserAPI:
         self.db.websites.insert_one(website)
 
         # Generate scoped API Key
-        raw_key = 'mdf_live_' + secrets.token_hex(24)
+        raw_key = generate_api_key()
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         
         self.db.api_keys.insert_one({
@@ -338,32 +352,58 @@ class UserAPI:
 
         user_id_str = str(user['_id'])
 
-        attack_logs = list(self.db.attacks.find(
-            {'user_id': user_id_str}
-        ).sort('timestamp', -1).limit(20))
+        # Query websites from the websites collection scoped to the user
+        websites_cursor = self.db.websites.find({'user_id': user_id_str})
+        websites = []
+        for w in websites_cursor:
+            websites.append({
+                'id': str(w['_id']),
+                'domain': w.get('domain', ''),
+                'name': w.get('name', ''),
+                'platform': w.get('platform', 'Other'),
+                'origin_server': w.get('origin_server', ''),
+                'status': w.get('status', 'active'),
+                'added_at': w['added_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('added_at') else (w['connected_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('connected_at') else ''),
+                'requests_today': w.get('requests_today', 0),
+                'blocked_today': w.get('blocked_today', 0),
+                'waf_mode': w.get('waf_mode', 'protect'),
+                'malware_scanner': w.get('malware_scanner', 'active'),
+                'threat_level': w.get('threat_level', 'LOW'),
+            })
+
+        website_domains = {w['id']: w.get('domain', '') for w in websites}
+
+        # Retrieve recent activity (blocks) from security_events
+        attack_logs = list(self.db.security_events.find({
+            'user_id': user_id_str,
+            '$or': [{'action': 'block'}, {'status': 'block'}]
+        }).sort('timestamp', -1).limit(20))
 
         logs = []
         for log in attack_logs:
+            web_id = log.get('website_id')
+            domain_val = website_domains.get(web_id, '')
             logs.append({
                 'id': str(log.get('_id', '')),
-                'ip': log.get('ip', ''),
-                'url': log.get('url', ''),
-                'attack_type': log.get('attack_type', 'Unknown'),
-                'confidence': log.get('confidence', 0),
+                'ip': log.get('source_ip', ''),
+                'url': log.get('endpoint', ''),
+                'attack_type': log.get('attack_type') or 'Unknown',
+                'confidence': log.get('risk_score', 0) / 100.0,
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
-                'status': log.get('status', 'blocked'),
-                'domain': log.get('domain', ''),
+                'status': log.get('action') or 'blocked',
+                'domain': domain_val or log.get('domain', ''),
             })
-
-        websites = user.get('websites', [])
 
         attack_type_map = {}
         attacker_ip_map = {}
-        all_attacks = list(self.db.attacks.find({'user_id': user_id_str}))
+        all_attacks = list(self.db.security_events.find({
+            'user_id': user_id_str,
+            '$or': [{'action': 'block'}, {'status': 'block'}]
+        }))
         for a in all_attacks:
-            atype = a.get('attack_type', 'Unknown')
+            atype = a.get('attack_type', 'Unknown') or 'Unknown'
             attack_type_map[atype] = attack_type_map.get(atype, 0) + 1
-            ip = a.get('ip', '')
+            ip = a.get('source_ip', '')
             if ip:
                 attacker_ip_map[ip] = attacker_ip_map.get(ip, 0) + 1
 
@@ -376,11 +416,12 @@ class UserAPI:
             reverse=True
         )[:10]
 
+        # Fetch daily requests count (all actions) from security_events
         daily_requests = []
         for i in range(7):
             day = datetime.now() - timedelta(days=6 - i)
             day_str = day.strftime('%Y-%m-%d')
-            count = self.db.attacks.count_documents({
+            count = self.db.security_events.count_documents({
                 'user_id': user_id_str,
                 'timestamp': {
                     '$gte': datetime.strptime(day_str, '%Y-%m-%d'),
@@ -389,20 +430,23 @@ class UserAPI:
             })
             daily_requests.append(count)
 
+        # Get latest statistics
+        user_doc = self.db.users.find_one({'_id': user['_id']}) or user
+
         return {
             'user': {
-                'id': str(user['_id']),
-                'email': user['email'],
-                'name': user['name'],
-                'plan': user.get('plan', 'free'),
-                'created_at': user['created_at'].strftime('%Y-%m-%d') if user.get('created_at') else '',
-                'last_login': user['last_login'].strftime('%Y-%m-%d %H:%M:%S') if user.get('last_login') else '',
+                'id': str(user_doc['_id']),
+                'email': user_doc['email'],
+                'name': user_doc.get('name', user_doc.get('full_name', '')),
+                'plan': user_doc.get('plan', 'free'),
+                'created_at': user_doc['created_at'].strftime('%Y-%m-%d') if user_doc.get('created_at') else '',
+                'last_login': user_doc['last_login'].strftime('%Y-%m-%d %H:%M:%S') if user_doc.get('last_login') else '',
             },
-            'api_key': user.get('api_key', ''),
-            'plan': user.get('plan', 'free'),
-            'requests_today': user.get('requests_today', 0),
-            'total_requests': user.get('total_requests', 0),
-            'total_blocked': user.get('total_blocked', 0),
+            'api_key': user_doc.get('api_key', ''),
+            'plan': user_doc.get('plan', 'free'),
+            'requests_today': user_doc.get('requests_today', 0),
+            'total_requests': user_doc.get('total_requests', 0),
+            'total_blocked': user_doc.get('total_blocked', 0),
             'websites_count': len(websites),
             'active_websites': len(websites),
             'websites': websites,

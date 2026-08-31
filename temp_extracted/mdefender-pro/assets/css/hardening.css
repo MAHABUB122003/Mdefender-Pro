@@ -1,0 +1,543 @@
+/* ===== HARDENING PAGE — Premium Design ===== */
+/* Uses war-* design tokens from admin.css */
+
+/* ── Header ── */
+.war-harden-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.war-harden-header-left h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--war-dark);
+    margin: 0 0 2px;
+    letter-spacing: -0.3px;
+}
+
+.war-harden-header-left p {
+    font-size: 13px;
+    color: var(--war-gray-400);
+    margin: 0;
+}
+
+.war-harden-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.war-harden-actions .war-btn .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+/* ── Score Row ── */
+.war-harden-score {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.war-harden-score-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid var(--war-gray-200);
+    transition: box-shadow 0.25s, transform 0.25s;
+    position: relative;
+    overflow: hidden;
+}
+
+.war-harden-score-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--war-primary), #60a5fa);
+    opacity: 0.6;
+}
+
+.war-harden-score-card:hover {
+    box-shadow: 0 8px 25px -6px rgba(0,0,0,0.08);
+    transform: translateY(-3px);
+}
+
+.war-harden-score-card .score-value {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--war-dark);
+    letter-spacing: -0.5px;
+}
+
+.war-harden-score-card .score-label {
+    color: var(--war-gray-400);
+    font-size: 12px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.war-grade-badge {
+    display: inline-flex;
+    width: 50px;
+    height: 50px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 24px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.war-grade-a { background: linear-gradient(135deg, #059669, #34d399); }
+.war-grade-b { background: linear-gradient(135deg, var(--war-primary), #60a5fa); }
+.war-grade-c { background: linear-gradient(135deg, #d97706, #fbbf24); }
+.war-grade-d { background: linear-gradient(135deg, #ea580c, #fb923c); }
+.war-grade-f { background: linear-gradient(135deg, #dc2626, #f87171); }
+
+/* ── Tabs ── */
+.war-harden-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--war-gray-50);
+    border-radius: 12px;
+    border: 1px solid var(--war-gray-200);
+    padding: 4px;
+}
+
+.war-harden-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    color: var(--war-gray-500);
+    font-family: var(--war-font);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.war-harden-tab:hover {
+    color: var(--war-secondary);
+}
+
+.war-harden-tab.active {
+    background: #fff;
+    color: var(--war-dark);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    font-weight: 600;
+}
+
+.war-harden-tab .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.war-harden-section { display: none; }
+.war-harden-section.active { display: block; }
+
+/* ── Feature Grid ── */
+.war-harden-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 14px;
+}
+
+/* ── Feature Card ── */
+.war-harden-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid var(--war-gray-200);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    overflow: hidden;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+}
+
+.war-harden-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--war-gray-200);
+    transition: background 0.3s;
+}
+
+.war-harden-card:has(.war-toggle-sm input:checked)::before {
+    background: var(--war-green);
+}
+
+.war-harden-card:hover {
+    box-shadow: 0 6px 20px -6px rgba(0,0,0,0.06);
+    border-color: var(--war-gray-300);
+}
+
+.war-harden-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+    min-height: 48px;
+}
+
+.war-harden-card-header:hover {
+    background: var(--war-gray-50);
+}
+
+.war-harden-card-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--war-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.war-harden-card-header h3 .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--war-primary);
+    opacity: 0.7;
+}
+
+/* ── Toggle Switch ── */
+.war-toggle-sm {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.war-toggle-sm input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.war-toggle-sm .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--war-gray-300);
+    border-radius: 20px;
+    transition: background 0.25s;
+}
+
+.war-toggle-sm .slider::before {
+    content: '';
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.war-toggle-sm input:checked + .slider {
+    background: var(--war-green);
+}
+
+.war-toggle-sm input:checked + .slider::before {
+    transform: translateX(16px);
+}
+
+/* ── Card Body ── */
+.war-harden-card-body {
+    padding: 0 20px 16px;
+    display: none;
+}
+
+.war-harden-card-body.active {
+    display: block;
+    border-top: 1px solid var(--war-gray-100);
+    padding-top: 14px;
+}
+
+.war-harden-card-body p {
+    margin: 0 0 8px;
+}
+
+.war-harden-card-body .description {
+    font-size: 12px;
+    color: var(--war-gray-400);
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
+.war-harden-card-body label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--war-gray-600);
+    padding: 4px 0;
+}
+
+.war-harden-card-body input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+.war-harden-card-body input[type="text"],
+.war-harden-card-body input[type="number"],
+.war-harden-card-body textarea,
+.war-harden-card-body select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--war-gray-300);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--war-secondary);
+    background: #fff;
+    font-family: var(--war-font);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-bottom: 6px;
+}
+
+.war-harden-card-body input:focus,
+.war-harden-card-body textarea:focus,
+.war-harden-card-body select:focus {
+    border-color: var(--war-primary);
+    box-shadow: 0 0 0 3px var(--war-primary-light);
+    outline: none;
+}
+
+.war-harden-card-body select {
+    cursor: pointer;
+    appearance: auto;
+}
+
+.war-harden-apply-btn {
+    margin-top: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+/* ── Admin IP / Settings Sections ── */
+.war-harden-ip-section {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid var(--war-gray-200);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    padding: 22px 24px;
+}
+
+.war-harden-ip-section h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--war-dark);
+    margin: 0 0 4px;
+}
+
+.war-harden-ip-section .description {
+    font-size: 12px;
+    color: var(--war-gray-400);
+    margin: 0 0 16px;
+}
+
+.war-harden-ip-section textarea,
+.war-harden-ip-section input[type="text"],
+.war-harden-ip-section input[type="email"] {
+    padding: 8px 12px;
+    border: 1px solid var(--war-gray-300);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--war-secondary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.war-harden-ip-section textarea:focus,
+.war-harden-ip-section input[type="text"]:focus,
+.war-harden-ip-section input[type="email"]:focus {
+    border-color: var(--war-primary);
+    box-shadow: 0 0 0 3px var(--war-primary-light);
+    outline: none;
+}
+
+/* ── Report ── */
+.war-harden-report {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid var(--war-gray-200);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    padding: 22px 24px;
+}
+
+.war-harden-report h2 {
+    margin: 0 0 16px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--war-dark);
+}
+
+.war-harden-report-summary {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    padding: 14px 18px;
+    background: var(--war-gray-50);
+    border-radius: 10px;
+}
+
+.war-harden-report-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.war-harden-report-summary-item strong {
+    font-size: 12px;
+    color: var(--war-gray-500);
+    font-weight: 500;
+}
+
+.war-harden-report-summary-item .value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--war-dark);
+}
+
+.war-harden-report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.war-harden-report-table thead th {
+    text-align: left;
+    padding: 9px 12px;
+    background: var(--war-gray-50);
+    color: var(--war-gray-500);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--war-gray-200);
+}
+
+.war-harden-report-table tbody td {
+    padding: 9px 12px;
+    font-size: 12px;
+    color: var(--war-gray-700);
+    border-bottom: 1px solid var(--war-gray-100);
+}
+
+.war-harden-report-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.war-harden-status-enabled { color: var(--war-green); font-weight: 600; }
+.war-harden-status-disabled { color: var(--war-red); font-weight: 600; }
+
+/* ── Toast ── */
+.war-harden-toast {
+    position: fixed;
+    top: 40px;
+    right: 24px;
+    z-index: 99999;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 20px 50px -8px rgba(0,0,0,0.12);
+    display: none;
+    max-width: 400px;
+    animation: warSlideDown 0.25s ease;
+    font-family: var(--war-font);
+}
+
+.war-harden-toast.success {
+    background: var(--war-green-light);
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    display: block;
+}
+
+.war-harden-toast.error {
+    background: var(--war-red-light);
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    display: block;
+}
+
+.war-harden-toast.info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    display: block;
+}
+
+/* ── Spinner ── */
+.war-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--war-gray-200);
+    border-top-color: var(--war-primary);
+    border-radius: 50%;
+    animation: warSpin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+/* ── Button overrides ── */
+.war-btn-success {
+    background: var(--war-green);
+    color: #fff;
+}
+
+.war-btn-success:hover {
+    background: #059669;
+    color: #fff;
+}
+
+.war-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ── Keyframes ── */
+@keyframes warFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+    .war-harden-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+}
+
+@media (max-width: 782px) {
+    .war-harden-score { grid-template-columns: 1fr; }
+    .war-harden-grid { grid-template-columns: 1fr; }
+    .war-harden-header { flex-direction: column; align-items: flex-start; }
+    .war-harden-tabs { flex-direction: column; }
+    .war-harden-ip-section textarea { max-width: 100% !important; }
+}

@@ -104,6 +104,9 @@ class DecisionEngine:
         risk_score = min(100, max(0, int(round(risk_score * 100))))
 
         # --- 7. Decision ---
+        url_path = parsed.get("path", "").lower()
+        is_auth_path = any(x in url_path for x in ['login', 'register', 'auth', 'signin', 'signup', 'logout'])
+
         decision = "ALLOW"
         if reputation_score >= 1.0:
             decision = "BLOCK"
@@ -113,11 +116,11 @@ class DecisionEngine:
             decision = "BLOCK"
             confidence = max(0.95, ml_score)
             reason = f"Security rule matched: {rule_matches[0]['rule_name']}"
-        elif ml_score >= 0.85:
+        elif ml_score >= 0.85 and not is_auth_path:
             decision = "BLOCK"
             confidence = ml_score
             reason = f"ML WAF detected {ml_result.get('category') or 'malicious'} request"
-        elif risk_score >= 70:
+        elif risk_score >= 70 and not is_auth_path:
             decision = "BLOCK"
             confidence = max(ml_score, 0.7)
             reason = "Combined risk score exceeded block threshold"

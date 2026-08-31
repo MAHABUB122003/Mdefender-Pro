@@ -43,7 +43,12 @@ class IPFilter:
         self._whitelist.add(ip)
 
     def is_whitelisted(self, ip):
-        return ip in self._whitelist
+        if ip in self._whitelist:
+            return True
+        entry = self.db.whitelist.find_one({'ip': ip})
+        if entry:
+            return True
+        return False
 
     def get_blacklist(self):
         return list(self.db.blacklist.find().sort('blocked_at', -1))

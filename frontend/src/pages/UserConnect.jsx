@@ -140,7 +140,7 @@ export default function UserConnect() {
               <div className={`tab-content ${activeTab === 'nodejs' ? 'active' : ''}`}>
                 <div className="code-block">
                   <div className="code-header"><span className="code-lang">JavaScript</span><button className={`copy-btn ${copiedId === 'nodejs-code' ? 'copied' : ''}`} onClick={() => copyCode('nodejs-code')}><i className="fas fa-copy"></i> {copiedId === 'nodejs-code' ? 'Copied!' : 'Copy'}</button></div>
-                   <pre><code id="nodejs-code"><span className="cmt">// npm install mdefender</span>{'\n'}<span className="kw">const</span> waf = <span className="fn">require</span>(<span className="str">'mdefender'</span>);{'\n\n'}<span className="cmt">// Add before your routes</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">waf</span>(&#123;{'\n'}  <span className="key">apiKey</span>: <span className="str">'md_live_your_api_key_here'</span>,{'\n'}  <span className="key">server</span>: <span className="str">'http://localhost:5000'</span>{'\n'}&#125;));</code></pre>
+                   <pre><code id="nodejs-code"><span className="cmt">// npm install mdefender-pro</span>{'\n'}<span className="kw">const</span> mdefender = <span className="fn">require</span>(<span className="str">'mdefender-pro'</span>);{'\n\n'}<span className="cmt">// Add before your routes (configuration loaded automatically)</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">mdefender</span>());</code></pre>
                 </div>
               </div>
               <div className={`tab-content ${activeTab === 'python' ? 'active' : ''}`}>
@@ -151,19 +151,19 @@ export default function UserConnect() {
                 {activeSubTab === 'flask' ? (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Flask</span><button className={`copy-btn ${copiedId === 'flask-code' ? 'copied' : ''}`} onClick={() => copyCode('flask-code')}><i className="fas fa-copy"></i> {copiedId === 'flask-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'md_live_your_api_key_here'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:5000'</span>{'\n'})</code></pre>
+                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'your_64_char_api_key_here'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:8000'</span>{'\n'})</code></pre>
                   </div>
                 ) : (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Django</span><button className={`copy-btn ${copiedId === 'django-code' ? 'copied' : ''}`} onClick={() => copyCode('django-code')}><i className="fas fa-copy"></i> {copiedId === 'django-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'md_live_your_api_key_here'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:5000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
+                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'your_64_char_api_key_here'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:8000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
                   </div>
                 )}
               </div>
               <div className={`tab-content ${activeTab === 'php' ? 'active' : ''}`}>
                 <div className="code-block">
                   <div className="code-header"><span className="code-lang">PHP</span><button className={`copy-btn ${copiedId === 'php-code' ? 'copied' : ''}`} onClick={() => copyCode('php-code')}><i className="fas fa-copy"></i> {copiedId === 'php-code' ? 'Copied!' : 'Copy'}</button></div>
-                   <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'md_live_your_api_key_here'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
+                   <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'your_64_char_api_key_here'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
                 </div>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function UserConnect() {
       <div className="api-section">
         <div className="section-header-bar">
           <h3><i className="fas fa-plug"></i> Step 3: API Reference</h3>
-          <span className="api-base">Base: <code>http://localhost:5000</code></span>
+          <span className="api-base">Base: <code>http://localhost:8000</code></span>
         </div>
         <div className="api-card">
           <div className="api-top">
@@ -209,7 +209,7 @@ export default function UserConnect() {
           <div className="api-details">
             <div>
               <div className="api-label">Request Headers</div>
-              <div className="api-code">Authorization: Bearer md_live_your_api_key_here{'\n'}Content-Type: application/json</div>
+              <div className="api-code">Authorization: Bearer your_64_char_api_key_here{'\n'}Content-Type: application/json</div>
             </div>
             <div>
               <div className="api-label">Request Body</div>

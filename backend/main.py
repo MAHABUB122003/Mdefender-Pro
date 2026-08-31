@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from bson import ObjectId
-from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, Request, Response, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
@@ -38,6 +38,15 @@ from src.auth.config import AuthConfig
 from src.api.v1.routes import get_v1_router
 
 app = FastAPI(title="MDefender Pro", version="2.0.0")
+
+@app.on_event("startup")
+async def startup_event():
+    port = os.getenv('PORT', '8000')
+    print("\n" + "="*45)
+    print("🔒 MDefender Pro Backend Server Ready & Connected")
+    print(f"🔗 API Endpoint: http://localhost:{port}/api")
+    print(f"🌐 Frontend App: http://localhost:5173")
+    print("="*45 + "\n")
 
 auth_config = AuthConfig()
 
@@ -121,6 +130,54 @@ async def security_headers_middleware(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def waf_self_protection_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/analyze") or path.startswith("/api/connect") or path == "/health" or path.startswith("/docs") or path.startswith("/openapi.json"):
+        return await call_next(request)
+        
+    client_ip = get_client_ip(request)
+    query_params = dict(request.query_params)
+    
+    req_payload = {
+        'url': path,
+        'query_string': request.url.query,
+        'query_params': query_params,
+        'ip': client_ip,
+        'headers': dict(request.headers),
+        'user_agent': request.headers.get('user-agent', ''),
+        'method': request.method,
+    }
+    
+    decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
+        req_payload, user_id=None, domain='localhost', website_id=None
+    )
+    
+    if is_blocked:
+        forwarded_headers = dict(request.headers)
+        claimed_ip = get_claimed_ip_from_headers(forwarded_headers) or client_ip
+        
+        try:
+            waf_api.async_save_logs(decision, log_entry, event, is_blocked, ip, user_id=None, website_id=None)
+        except Exception:
+            pass
+            
+        block_html = _templates.TemplateResponse("block_page.html", {
+            "request": request,
+            "client_ip": claimed_ip,
+            "real_ip": client_ip,
+            "attack_type": decision.get('attack_type', 'Unknown'),
+            "reason": f"Malicious payload detected (confidence: {decision.get('confidence', 0):.2f})",
+            "reference_id": decision.get('reference_id', 'N/A'),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "website_name": "MDefender Pro Dashboard"
+        })
+        return HTMLResponse(content=block_html.body.decode('utf-8'), status_code=403)
+        
+    return await call_next(request)
+
+
+
 def get_client_ip(request: Request):
     forwarded = request.headers.get('X-Forwarded-For')
     if forwarded:
@@ -162,8 +219,13 @@ def verify_user_token_compat(request: Request):
     try:
         user_oid = ObjectId(payload['sub'])
     except Exception:
-        raise HTTPException(status_code=401, detail='Invalid user ID')
-    user = db.users.find_one({'_id': user_oid})
+        user_oid = None
+
+    user = None
+    if user_oid:
+        user = db.users.find_one({'_id': user_oid})
+    if not user:
+        user = db.users.find_one({'_id': payload['sub']})
     if not user:
         raise HTTPException(status_code=401, detail='User not found')
     if not user.get('is_active', True):
@@ -464,8 +526,12 @@ async def user_change_password(request: Request, user: dict = Depends(verify_use
     return user_api.change_password(user, data)
 
 @app.post("/api/user/regenerate_key")
-async def user_regenerate_key(user: dict = Depends(verify_user_token_compat)):
-    return user_api.regenerate_api_key(user)
+async def user_regenerate_key(request: Request, user: dict = Depends(verify_user_token_compat)):
+    try:
+        data = await request.json()
+    except Exception:
+        data = None
+    return user_api.regenerate_api_key(user, data)
 
 @app.post("/api/user/websites")
 async def user_add_website(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -570,6 +636,76 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         return {'status': 'error', 'message': 'IP is required'}
     db.blacklist.delete_one({'ip': ip, 'added_by_user_id': str(user['_id'])})
     return {'status': 'success', 'message': f'IP {ip} removed from blacklist'}
+
+@app.get("/api/user/whitelist")
+async def user_get_whitelist(user: dict = Depends(verify_user_token_compat)):
+    user_id = str(user['_id'])
+    whitelist = []
+    for entry in db.whitelist.find({'added_by_user_id': user_id}).sort('added_at', -1):
+        whitelist.append({
+            'id': str(entry['_id']),
+            'ip': entry.get('ip', ''),
+            'reason': entry.get('reason', ''),
+            'added_at': entry['added_at'].strftime('%Y-%m-%d %H:%M:%S') if entry.get('added_at') else '',
+            'added_by': entry.get('added_by', ''),
+        })
+    return whitelist
+
+@app.post("/api/user/whitelist")
+async def user_add_whitelist(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    ip = data.get('ip', '').strip()
+    if not ip:
+        return {'status': 'error', 'message': 'IP address is required'}
+    existing = db.whitelist.find_one({'ip': ip})
+    if existing:
+        return {'status': 'error', 'message': 'IP already whitelisted'}
+    db.whitelist.insert_one({
+        'ip': ip, 'reason': data.get('reason', 'Whitelisted by user'),
+        'added_by': user.get('email', 'unknown'),
+        'added_by_user_id': str(user['_id']),
+        'added_at': datetime.now(),
+    })
+    return {'status': 'success', 'message': f'IP {ip} whitelisted successfully'}
+
+@app.delete("/api/user/whitelist")
+async def user_delete_whitelist(request: Request, user: dict = Depends(verify_user_token_compat)):
+    ip = request.query_params.get('ip', '')
+    if not ip:
+        return {'status': 'error', 'message': 'IP is required'}
+    db.whitelist.delete_one({'ip': ip, 'added_by_user_id': str(user['_id'])})
+    return {'status': 'success', 'message': f'IP {ip} removed from whitelist'}
+
+@app.get("/api/user/whois")
+async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_compat)):
+    import requests
+    geo_data = {}
+    try:
+        r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query", timeout=4)
+        if r.status_code == 200:
+            geo_data = r.json()
+    except Exception: pass
+
+    raw_whois = "No whois record found."
+    try:
+        r = requests.get(f"https://stat.ripe.net/data/whois/data.json?resource={ip}", timeout=4)
+        if r.status_code == 200:
+            data = r.json()
+            records = data.get('data', {}).get('records', [])
+            output = ""
+            for rec in records:
+                for line in rec:
+                    output += f"{line.get('key')}: {line.get('value')}\n"
+                output += "\n" + "-"*40 + "\n\n"
+            if output:
+                raw_whois = output
+    except Exception as e:
+        raw_whois = f"Whois query failed: {str(e)}"
+
+    return {
+        'geo': geo_data,
+        'raw': raw_whois
+    }
 
 
 @app.get("/api/admin/users")
@@ -703,7 +839,7 @@ async def connect_website(request: Request):
     return result
 
 @app.post("/api/analyze")
-async def analyze_request(request: Request):
+async def analyze_request(request: Request, background_tasks: BackgroundTasks):
     api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
     data = await request.json()
     domain = data.get('domain', '')
@@ -717,8 +853,17 @@ async def analyze_request(request: Request):
     user_id = auth_data.get('user_id') if auth_data else None
     website_id = auth_data.get('website_id') if auth_data else None
 
-    result = waf_api.analyze_request(data.get('request', {}), user_id=user_id, domain=domain, website_id=website_id)
-    if result['status'] == 'blocked':
+    # Perform rule checking + ML score evaluation (extremely fast, sub-100ms)
+    decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
+        data.get('request', {}), user_id=user_id, domain=domain, website_id=website_id
+    )
+
+    # Queue the heavy MongoDB Atlas writes and stats updates to background tasks
+    background_tasks.add_task(
+        waf_api.async_save_logs, decision, log_entry, event, is_blocked, ip, user_id, website_id
+    )
+
+    if is_blocked:
         forwarded_headers = data['request'].get('headers', {})
         claimed_ip = get_claimed_ip_from_headers(forwarded_headers) or 'N/A'
         real_ip = data['request'].get('ip', 'unknown')
@@ -726,21 +871,27 @@ async def analyze_request(request: Request):
             "request": request,
             "client_ip": claimed_ip,
             "real_ip": real_ip,
-            "attack_type": result.get('attack_type', 'Unknown'),
-            "reason": f"Malicious payload detected (confidence: {result.get('confidence', 0):.2f})",
-            "reference_id": result.get('reference_id', 'N/A'),
+            "attack_type": decision.get('attack_type', 'Unknown'),
+            "reason": f"Malicious payload detected (confidence: {decision.get('confidence', 0):.2f})",
+            "reference_id": decision.get('reference_id', 'N/A'),
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "website_name": "MDefender Pro"
         })
         return {
             'status': 'blocked',
             'block_page': block_html.body.decode('utf-8'),
-            'attack_type': result.get('attack_type'),
-            'confidence': result.get('confidence', 0.9),
-            'reference_id': result.get('reference_id'),
-            'threat_score': result.get('threat_score', 0),
+            'attack_type': decision.get('attack_type'),
+            'confidence': round(decision.get('confidence', 0.9), 2),
+            'reference_id': decision.get('reference_id'),
+            'threat_score': decision.get('risk_score', 0),
         }
-    return result
+
+    return {
+        'status': 'allowed',
+        'threat_score': decision.get('risk_score', 0),
+        'reference_id': decision.get('reference_id'),
+        'confidence': round(decision.get('confidence', 0.9), 2)
+    }
 
 @app.get("/api/stats")
 async def get_api_stats(request: Request):

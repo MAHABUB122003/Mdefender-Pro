@@ -5,6 +5,33 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+class MongoCollectionProxy:
+    def __init__(self, collection, db_instance):
+        self._collection = collection
+        self._db_instance = db_instance
+
+    def __getattr__(self, name):
+        attr = getattr(self._collection, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                import time
+                from pymongo.errors import AutoReconnect
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        return attr(*args, **kwargs)
+                    except AutoReconnect as e:
+                        if attempt == max_retries - 1:
+                            raise
+                        print(f"[!] Mongo AutoReconnect in method '{name}' (attempt {attempt+1}/{max_retries}), retrying...")
+                        try:
+                            self._db_instance._client.admin.command('ping')
+                        except Exception:
+                            pass
+                        time.sleep(0.2 * (attempt + 1))
+            return wrapper
+        return attr
+
 class MongoDB:
     _instance = None
 
@@ -19,16 +46,65 @@ class MongoDB:
         if self._client is None:
             self._connect()
 
+    def __getattribute__(self, name):
+        val = super().__getattribute__(name)
+        if val is not None and type(val).__name__ == 'Collection' and type(val).__module__.startswith('pymongo'):
+            return MongoCollectionProxy(val, self)
+        return val
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(f"'MongoDB' object has no attribute '{name}'")
+        if self._db is not None:
+            val = self._db[name]
+            if type(val).__name__ == 'Collection' and type(val).__module__.startswith('pymongo'):
+                return MongoCollectionProxy(val, self)
+            return val
+        raise AttributeError(f"'MongoDB' object has no attribute '{name}'")
+
     def _connect(self):
         try:
             mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
             db_name = os.getenv('MONGO_DB', 'mdefender_pro')
-            self._client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+            # Add SSL and connection parameters for production
+            if 'mongodb+srv://' in mongo_uri:
+                # Add SSL parameters for MongoDB Atlas
+                uri_connector = '&' if '?' in mongo_uri else '?'
+                mongo_uri = f"{mongo_uri}{uri_connector}retryWrites=true&w=majority"
+            
+            # Try to use certifi CA bundle for proper SSL on Windows
+            tls_ca_file = None
+            try:
+                import certifi
+                tls_ca_file = certifi.where()
+            except ImportError:
+                pass
+
+            connect_kwargs = {
+                'serverSelectionTimeoutMS': 30000,
+                'connectTimeoutMS': 30000,
+                'socketTimeoutMS': 30000,
+                'retryWrites': True,
+                'retryReads': True,
+                'maxIdleTimeMS': 15000,
+            }
+
+            if 'mongodb+srv://' in mongo_uri or 'ssl=true' in mongo_uri.lower():
+                connect_kwargs['tls'] = True
+                if tls_ca_file:
+                    connect_kwargs['tlsCAFile'] = tls_ca_file
+                else:
+                    # Fallback: allow invalid certificates if certifi is not available
+                    connect_kwargs['tlsAllowInvalidCertificates'] = True
+
+            self._client = MongoClient(mongo_uri, **connect_kwargs)
             self._client.admin.command('ping')
             self._db = self._client[db_name]
+            print("[+] MongoDB connection successful")
             self._ensure_indexes()
         except (ConnectionFailure, ConfigurationError, Exception) as e:
-            print(f"Warning: MongoDB connection failed ({type(e).__name__}). Using in-memory fallback.")
+            print(f"[-] Warning: MongoDB connection failed ({type(e).__name__}): {e}")
+            print("   Using in-memory fallback for now.")
             self._db = InMemoryDB()
 
     def _ensure_indexes(self):
@@ -120,6 +196,10 @@ class MongoDB:
     @property
     def blacklist(self):
         return self._db['blacklist'] if self._db is not None else None
+
+    @property
+    def whitelist(self):
+        return self._db['whitelist'] if self._db is not None else None
 
     @property
     def clients(self):
@@ -247,6 +327,7 @@ class InMemoryDB:
         self.attack_attempts = InMemoryCollection()
         self.requests = InMemoryCollection()
         self.blacklist = InMemoryCollection()
+        self.whitelist = InMemoryCollection()
         self.clients = InMemoryCollection()
         self.rules = InMemoryCollection()
         self.settings = InMemoryCollection()
@@ -297,7 +378,7 @@ class InMemoryCollection:
 
     def find(self, query=None, projection=None):
         if query is None:
-            return self._data[:]
+            return InMemoryCursor(self._data[:])
         results = []
         for doc in self._data:
             if self._matches(doc, query):
@@ -430,25 +511,46 @@ class InMemoryCollection:
                 if not all(self._matches(doc, cond) for cond in value):
                     return False
                 continue
+
+            def check_eq(a, b):
+                if (key == '_id' or key.endswith('_id')) and (a is not None and b is not None):
+                    return str(a) == str(b)
+                return a == b
+
+            doc_val = doc.get(key)
             if isinstance(value, dict):
                 if '$regex' in value:
                     import re
-                    if not re.search(value['$regex'], str(doc.get(key, '')), re.IGNORECASE if value.get('$options', '').lower() == 'i' else 0):
+                    if not re.search(value['$regex'], str(doc_val or ''), re.IGNORECASE if value.get('$options', '').lower() == 'i' else 0):
                         return False
                 elif '$gte' in value:
-                    if not (doc.get(key) and doc[key] >= value['$gte']):
+                    if not (doc_val is not None and doc_val >= value['$gte']):
                         return False
                 elif '$lte' in value:
-                    if not (doc.get(key) and doc[key] <= value['$lte']):
+                    if not (doc_val is not None and doc_val <= value['$lte']):
                         return False
                 elif '$ne' in value:
-                    if doc.get(key) == value['$ne']:
+                    if check_eq(doc_val, value['$ne']):
                         return False
+                elif '$in' in value:
+                    in_list = value['$in']
+                    if key == '_id' or key.endswith('_id'):
+                        in_list_str = [str(x) for x in in_list]
+                        doc_val_str = str(doc_val) if doc_val is not None else None
+                        if doc_val_str not in in_list_str:
+                            return False
+                    else:
+                        if isinstance(doc_val, list):
+                            if not any(item in in_list for item in doc_val):
+                                return False
+                        else:
+                            if doc_val not in in_list:
+                                return False
                 else:
-                    if doc.get(key) != value:
+                    if not check_eq(doc_val, value):
                         return False
             else:
-                if doc.get(key) != value:
+                if not check_eq(doc_val, value):
                     return False
         return True
 

@@ -48,9 +48,14 @@ async def get_current_user(request: Request) -> dict:
     try:
         user_oid = ObjectId(payload['sub'])
     except Exception:
-        raise HTTPException(status_code=401, detail='Invalid user ID')
+        user_oid = None
 
-    user = db.users.find_one({'_id': user_oid})
+    # Try ObjectId lookup first (real MongoDB), then string lookup (in-memory fallback)
+    user = None
+    if user_oid:
+        user = db.users.find_one({'_id': user_oid})
+    if not user:
+        user = db.users.find_one({'_id': payload['sub']})
     if not user:
         raise HTTPException(status_code=401, detail='User not found')
 
@@ -60,7 +65,8 @@ async def get_current_user(request: Request) -> dict:
     return {
         'id': str(user['_id']),
         'email': user['email'],
-        'full_name': user.get('full_name', ''),
+        'full_name': user.get('full_name', user.get('name', '')),
+        'name': user.get('name', user.get('full_name', '')),
         'username': user.get('username'),
         'role': user.get('role', 'user'),
         'email_verified': user.get('email_verified', False),

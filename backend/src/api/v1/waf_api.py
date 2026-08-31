@@ -66,7 +66,7 @@ def verify_api_key(db, api_key, domain=None):
                 "website": website,
             }
 
-    # Also check if api_key is a User Master Account API key (e.g. md_...)
+    # Also check if api_key is a User Master Account API key (users.api_key)
     user = db.users.find_one({"api_key": api_key})
     if user:
         user_id_str = str(user["_id"])
@@ -84,38 +84,44 @@ def verify_api_key(db, api_key, domain=None):
         if not website:
             website = db.websites.find_one({"user_id": user_id_str})
         if not website:
-            import uuid
-            site_id = str(uuid.uuid4())
-            now = datetime.now()
-            site_name = domain or "WordPress Site"
-            website = {
-                "_id": site_id,
-                "user_id": user_id_str,
-                "name": site_name,
-                "url": f"http://{expected}" if expected else "http://localhost",
-                "domain": expected or "localhost",
-                "platform": "wordpress",
-                "status": "active",
-                "protection_enabled": True,
-                "waf_mode": "protect",
-                "malware_scanner": True,
-                "threat_level": "LOW",
-                "verified": True,
-                "connected_at": now,
-                "last_activity": now,
-                "created_at": now,
-                "updated_at": now,
-            }
-            db.websites.insert_one(website)
-            db.api_keys.insert_one({
-                "website_id": site_id,
-                "user_id": user_id_str,
-                "key_hash": key_hash,
-                "label": "wordpress_auto",
-                "created_at": now,
-                "status": "active",
-                "last_used": now,
-            })
+            try:
+                import uuid
+                site_id = str(uuid.uuid4())
+                now = datetime.now()
+                site_name = domain or "WordPress Site"
+                website = {
+                    "_id": site_id,
+                    "user_id": user_id_str,
+                    "name": site_name,
+                    "url": f"http://{expected}" if expected else "http://localhost",
+                    "domain": expected or "localhost",
+                    "platform": "wordpress",
+                    "status": "active",
+                    "protection_enabled": True,
+                    "waf_mode": "protect",
+                    "malware_scanner": True,
+                    "threat_level": "LOW",
+                    "verified": True,
+                    "connected_at": now,
+                    "last_activity": now,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                db.websites.insert_one(website)
+                db.api_keys.insert_one({
+                    "website_id": site_id,
+                    "user_id": user_id_str,
+                    "key_hash": key_hash,
+                    "label": "wordpress_auto",
+                    "created_at": now,
+                    "status": "active",
+                    "last_used": now,
+                })
+            except Exception:
+                # Could not auto-register (e.g. the domain is already claimed by
+                # another website as enforced by the unique domain index). Bail
+                # out cleanly so the caller returns a proper 401 instead of a 500.
+                return None
         return {
             "user_id": user_id_str,
             "website_id": website["_id"],

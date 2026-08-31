@@ -70,7 +70,7 @@ export default function Connect({ token }) {
               <div className={`tab-content ${activeTab === 'nodejs' ? 'active' : ''}`}>
                 <div className="code-block">
                   <div className="code-header"><span className="code-lang">JavaScript</span><button className={`copy-btn ${copiedId === 'nodejs-code' ? 'copied' : ''}`} onClick={() => copyCode('nodejs-code')}><i className="fas fa-copy"></i> {copiedId === 'nodejs-code' ? 'Copied!' : 'Copy'}</button></div>
-                  <pre><code id="nodejs-code"><span className="kw">const</span> waf = <span className="fn">require</span>(<span className="str">'./client/node/waf'</span>);{'\n\n'}<span className="cmt">// Add before your routes</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">waf</span>(&#123;{'\n'}  <span className="key">apiKey</span>: <span className="str">'YOUR_API_KEY'</span>,{'\n'}  <span className="key">server</span>: <span className="str">'http://localhost:5000'</span>  <span className="cmt">// WAF server URL</span>{'\n'}&#125;));</code></pre>
+                  <pre><code id="nodejs-code"><span className="kw">const</span> waf = <span className="fn">require</span>(<span className="str">'./client/node/waf'</span>);{'\n\n'}<span className="cmt">// Add before your routes</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">waf</span>(&#123;{'\n'}  <span className="key">apiKey</span>: <span className="str">'YOUR_API_KEY'</span>,{'\n'}  <span className="key">server</span>: <span className="str">'http://localhost:8000'</span>  <span className="cmt">// WAF server URL</span>{'\n'}&#125;));</code></pre>
                 </div>
               </div>
               <div className={`tab-content ${activeTab === 'python' ? 'active' : ''}`}>
@@ -81,12 +81,12 @@ export default function Connect({ token }) {
                 {activeSubTab === 'flask' ? (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Flask</span><button className={`copy-btn ${copiedId === 'flask-code' ? 'copied' : ''}`} onClick={() => copyCode('flask-code')}><i className="fas fa-copy"></i> {copiedId === 'flask-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="flask-code"><span className="kw">from</span> client.python.waf <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'YOUR_API_KEY'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:5000'</span>{'\n'})</code></pre>
+                    <pre><code id="flask-code"><span className="kw">from</span> client.python.waf <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'YOUR_API_KEY'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:8000'</span>{'\n'})</code></pre>
                   </div>
                 ) : (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Django</span><button className={`copy-btn ${copiedId === 'django-code' ? 'copied' : ''}`} onClick={() => copyCode('django-code')}><i className="fas fa-copy"></i> {copiedId === 'django-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'YOUR_API_KEY'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:5000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'client.python.waf.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
+                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'YOUR_API_KEY'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:8000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'client.python.waf.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
                   </div>
                 )}
               </div>
@@ -127,7 +127,7 @@ export default function Connect({ token }) {
       <div className="api-section">
         <div className="section-header-bar">
           <h3><i className="fas fa-plug"></i> API Reference</h3>
-          <span className="api-base">Base: <code>http://localhost:5000</code></span>
+          <span className="api-base">Base: <code>http://localhost:8000</code></span>
         </div>
         <div className="api-card">
           <div className="api-top">

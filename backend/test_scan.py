@@ -1,5 +1,6 @@
-import sys, traceback
-sys.path.insert(0, r"D:\Documents\ML_all_Payloads\Mdefender-Pro\backend")
+import sys, traceback, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.path.insert(0, r"d:\Documents_product\Mdefender-Pro\Mdefender\backend")
 from src.api.malware_api import MalwareAPI
 
 api = MalwareAPI()

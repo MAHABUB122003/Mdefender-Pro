@@ -72,7 +72,7 @@ export default function UserDashboard() {
   const [ddosEnabled, setDdosEnabled] = useState(true)
   const [ddosToggling, setDdosToggling] = useState(false)
   const [mlStatus, setMlStatus] = useState(null)
-  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
+  const isPremium = data?.plan === 'premium' || localStorage.getItem('mdefender_user_plan') === 'premium'
 
   const fetchData = useCallback(async () => {
     try {

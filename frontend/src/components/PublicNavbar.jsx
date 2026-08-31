@@ -2,10 +2,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 
+const downloadUrl = `${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/v1/wordpress/plugin`;
+
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/pricing', label: 'Pricing' },
-  { to: '/blog', label: 'Blog' },
   { to: '/docs', label: 'Docs' },
 ];
 
@@ -141,6 +142,16 @@ export default function PublicNavbar() {
             Login
           </Link>
 
+          <a href={downloadUrl} className="pn-cta" download style={{
+            padding: '8px 16px', borderRadius: 9, fontSize: 13.5, fontWeight: 600,
+            background: 'transparent', color: c.active,
+            border: `1px solid ${c.active}`, textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Plugin
+          </a>
+
           <Link to="/register" className="pn-cta" style={{
             padding: '8px 20px', borderRadius: 9, fontSize: 13.5, fontWeight: 600,
             background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
@@ -184,6 +195,10 @@ export default function PublicNavbar() {
             </Link>
           ))}
           <div style={{ height: 1, background: c.mobileBorder, margin: '8px 0' }} />
+          <a href={downloadUrl} className="pn-mobile-link" download>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Plugin
+          </a>
           <Link to="/user/login" className="pn-mobile-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
             Login

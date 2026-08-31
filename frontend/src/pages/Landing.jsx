@@ -69,6 +69,9 @@ export default function Landing() {
             <Link to="/register" className="land-btn land-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff', borderRadius: 12, fontSize: 16, fontWeight: 700, textDecoration: 'none', border: 'none', cursor: 'pointer', transition: 'all 0.3s' }}>
               <i className="fas fa-rocket"></i> Get Started Free
             </Link>
+            <a href={`${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/v1/wordpress/plugin`} className="land-btn land-link" download style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: s.text, borderRadius: 12, fontSize: 16, fontWeight: 600, textDecoration: 'none', border: `1px solid ${s.border}`, transition: 'all 0.3s', cursor: 'pointer' }}>
+              <i className="fas fa-download"></i> Download WP Plugin
+            </a>
             <Link to="/docs" className="land-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: s.text, borderRadius: 12, fontSize: 16, fontWeight: 600, textDecoration: 'none', border: `1px solid ${s.border}`, transition: 'all 0.3s', cursor: 'pointer' }}>
               <i className="fas fa-book"></i> View Documentation
             </Link>
@@ -93,13 +96,37 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Download Plugin */}
+      <section className="land-section" style={{ padding: '100px 60px', background: dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 20px', background: s.primaryBg, border: `1px solid ${s.primaryBorder}`, borderRadius: 50, fontSize: 13, fontWeight: 600, color: s.primary, marginBottom: 24 }}>
+            <i className="fas fa-wordpress"></i> WordPress Plugin
+          </div>
+          <h2 style={{ fontSize: 42, fontWeight: 800, marginBottom: 16, letterSpacing: '-0.5px' }}>Download the MDefender Pro WP Plugin</h2>
+          <p style={{ fontSize: 18, color: s.textSecondary, marginBottom: 40, maxWidth: 620, margin: '0 auto 40px', lineHeight: 1.6 }}>
+            Protect your WordPress site in minutes. Download the plugin, install it, connect it with your API key, and get instant WAF protection.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
+            <a href={`${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/v1/wordpress/plugin`} className="land-btn land-link" download style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 40px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', borderRadius: 12, fontSize: 16, fontWeight: 700, textDecoration: 'none', border: 'none', cursor: 'pointer', transition: 'all 0.3s' }}>
+              <i className="fas fa-download"></i> Download Plugin (.zip)
+            </a>
+            <Link to="/register" className="land-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: s.text, borderRadius: 12, fontSize: 16, fontWeight: 600, textDecoration: 'none', border: `1px solid ${s.border}`, transition: 'all 0.3s' }}>
+              <i className="fas fa-key"></i> Get an API Key
+            </Link>
+          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 20px', background: s.bgCard, border: `1px solid ${s.borderLight}`, borderRadius: 12, color: s.textSecondary, fontSize: 13 }}>
+            <i className="fas fa-circle-check" style={{ color: '#10b981' }}></i> Free to download · Easy install · Compatible with WordPress 5.0+
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="land-section" style={{ padding: '100px 60px', background: dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
         <h2 style={{ fontSize: 42, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.5px' }}>How It Works</h2>
         <p style={{ fontSize: 18, color: s.textSecondary, textAlign: 'center', marginBottom: 64, maxWidth: 500, margin: '0 auto 64px' }}>Get protected in three simple steps. No complex configuration needed.</p>
         <div className="land-steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32, maxWidth: 1000, margin: '0 auto' }}>
           {[
-            { n: 1, title: 'Install', desc: 'Install the MDefender package with npm.', code: 'npm i mdefender', codeColor: '#a5b4fc' },
+            { n: 1, title: 'Install', desc: 'Install the MDefender Pro package with npm.', code: 'npm i mdefender-pro', codeColor: '#a5b4fc' },
             { n: 2, title: 'Configure', desc: 'Add your API key from the dashboard.', code: 'mdefender.config.js', codeColor: '#a5b4fc' },
             { n: 3, title: 'Protected', desc: 'Your site is now secured with enterprise-grade WAF.', code: '✓ Protected', codeColor: '#10b981' },
           ].map(s => (

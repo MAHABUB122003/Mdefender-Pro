@@ -7,11 +7,11 @@ from src.security.rate_limiter import RateLimiter
 from src.security.ip_filter import IPFilter
 from src.security.attack_blocker import AttackBlocker
 from src.utils.logger import Logger
+from src.utils.api_key import generate_api_key
 from datetime import datetime
 import uuid
 import hashlib
 import logging
-import secrets
 
 _log = logging.getLogger(__name__)
 
@@ -34,24 +34,90 @@ class WAFAPI:
             return float(settings_doc['confidence_threshold'])
         return 0.7
 
+    def _hostname(self, url_or_host):
+        value = (url_or_host or "").strip().lower()
+        value = value.split("://")[-1]
+        value = value.split("/")[0].split("?")[0].split("#")[0]
+        if ":" in value:
+            value = value.split(":")[0]
+        return value
+
     def verify_api_key(self, api_key, domain=None):
         if not api_key:
             return None
-            
+        api_key = api_key.strip()
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         record = self.db.api_keys.find_one({'key_hash': key_hash, 'status': 'active'})
         if record:
-            if domain:
-                website = self.db.websites.find_one({'_id': record['website_id']})
-                if website and website['domain'] == domain:
-                    return record
-                return None
-            return record
+            user_id = str(record.get('user_id', ''))
+            website_id = record.get('website_id')
+            if domain and website_id:
+                website = self.db.websites.find_one({'_id': website_id})
+                if website:
+                    expected = self._hostname(domain)
+                    if expected and expected not in ("localhost", "127.0.0.1") and \
+                       self._hostname(website.get("domain")) != expected and \
+                       self._hostname(website.get("url")) != expected:
+                        return None
+            return {'user_id': user_id, 'website_id': website_id, 'api_key': api_key}
 
-        # Legacy fallback
-        user = self.db.users.find_one({'api_key': api_key, 'status': 'active'})
+        # Legacy fallback (user master account key)
+        user = self.db.users.find_one({
+            'api_key': api_key,
+            '$or': [{'status': 'active'}, {'is_active': True}],
+        })
         if user:
-            return {'user_id': str(user['_id']), 'website_id': None}
+            user_id_str = str(user['_id'])
+            expected = self._hostname(domain) if domain else "localhost"
+            website = None
+            if domain:
+                website = self.db.websites.find_one({
+                    'user_id': user_id_str,
+                    '$or': [
+                        {'domain': {'$regex': f"^{expected}", '$options': 'i'}},
+                        {'url': {'$regex': f"://{expected}", '$options': 'i'}},
+                        {'domain': expected},
+                    ]
+                })
+            if not website:
+                website = self.db.websites.find_one({'user_id': user_id_str})
+            if not website:
+                try:
+                    import uuid
+                    site_id = str(uuid.uuid4())
+                    now = datetime.now()
+                    site_name = domain or "WordPress Site"
+                    website = {
+                        "_id": site_id,
+                        "user_id": user_id_str,
+                        "name": site_name,
+                        "url": f"http://{expected}" if expected else "http://localhost",
+                        "domain": expected or "localhost",
+                        "platform": "wordpress",
+                        "status": "active",
+                        "protection_enabled": True,
+                        "waf_mode": "protect",
+                        "malware_scanner": True,
+                        "threat_level": "LOW",
+                        "verified": True,
+                        "connected_at": now,
+                        "last_activity": now,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    self.db.websites.insert_one(website)
+                    self.db.api_keys.insert_one({
+                        "website_id": site_id,
+                        "user_id": user_id_str,
+                        "key_hash": key_hash,
+                        "label": "wordpress_auto",
+                        "created_at": now,
+                        "status": "active",
+                        "last_used": now,
+                    })
+                except Exception:
+                    return None
+            return {'user_id': user_id_str, 'website_id': website['_id'], 'api_key': api_key}
             
         return None
 
@@ -62,7 +128,7 @@ class WAFAPI:
         origin_server = data.get('origin_server')
         security_level = data.get('security_level', 'high')
         
-        raw_key = 'mdf_live_' + secrets.token_hex(24)
+        raw_key = generate_api_key()
         website_id = str(uuid.uuid4())
         
         client = {
@@ -93,80 +159,155 @@ class WAFAPI:
         }
 
     def analyze_request(self, request_data, user_id=None, domain=None, website_id=None):
+        from src.engine.decision_engine import DecisionEngine
+        from bson import ObjectId
+        
         ip = request_data.get('ip', '')
         url = request_data.get('url', '/')
         method = request_data.get('method', 'GET')
-        settings = self.attack_blocker.get_settings()
-        threshold = settings.get('auto_block_threshold', 20)
-        window = settings.get('auto_block_window_hours', 24)
-        duration = settings.get('auto_block_duration_hours', 24)
-        confidence_threshold = self._get_confidence_threshold()
+        user_agent = (request_data.get("headers") or {}).get("User-Agent", "")
 
-        if self.ip_filter.is_whitelisted(ip):
-            return {'status': 'allowed', 'attack_type': None, 'confidence': 0.0, 'message': 'Whitelisted IP bypassed'}
-        if self.attack_blocker.is_blacklisted(ip):
-            self.logger.log_attack(ip, url, 'Auto-Blocked IP', 'blocked', 1.0, user_id=user_id, domain=domain, detection_source='blacklist', website_id=website_id)
-            return {'status': 'blocked', 'attack_type': 'Blacklisted IP', 'confidence': 1.0, 'message': 'IP is blacklisted', 'reference_id': str(uuid.uuid4())[:8]}
-        if self.rate_limiter.is_rate_limited(ip):
+        is_whitelisted = self.ip_filter.is_whitelisted(ip)
+        is_blacklisted = self.attack_blocker.is_blacklisted(ip)
+        is_rate_limited = self.rate_limiter.is_rate_limited(ip)
+
+        if is_rate_limited:
             self.attack_blocker.auto_block(ip, 'Rate limit exceeded', 1)
-            self.logger.log_attack(ip, url, 'Rate Limiting', 'blocked', 1.0, user_id=user_id, domain=domain, detection_source='rate_limit', website_id=website_id)
-            return {'status': 'blocked', 'attack_type': 'Rate Limiting', 'confidence': 1.0, 'message': 'Rate limit exceeded', 'reference_id': str(uuid.uuid4())[:8]}
 
-        parsed = self.request_parser.parse(request_data)
-        features = self.feature_extractor.extract_features(parsed)
-        raw_text = self.feature_extractor.extract_text(parsed)
-        rule_matches = self.rule_engine.check_rules(parsed)
+        decision_engine = DecisionEngine(ml_detector=self.ml_detector)
+        decision = decision_engine.evaluate(
+            request_data,
+            ip=ip,
+            is_blacklisted=is_blacklisted,
+            is_rate_limited=is_rate_limited,
+            allowlist=is_whitelisted,
+            user_id=user_id,
+            website_id=website_id,
+            domain=domain
+        )
 
-        ml_result = self.ml_detector.detect(raw_text)
-        ml_confidence = ml_result.get('probability', 0.0)
-        ml_model_version = ml_result.get('model_version', 'unknown')
-
-        if rule_matches:
-            attack_type = rule_matches[0]['rule_name']
-            confidence = max(0.9, ml_confidence)
-            self.attack_blocker.record_attack(ip, attack_type, url)
-            if settings.get('auto_block_enabled', True):
-                self.attack_blocker.check_and_auto_block(ip, threshold, window, duration)
-            self.logger.log_attack(ip, url, attack_type, 'blocked', confidence, user_id=user_id, domain=domain, detection_source='rule', website_id=website_id)
-            self.rate_limiter.increment(ip)
-            return {'status': 'blocked', 'attack_type': attack_type, 'confidence': round(confidence, 2),
-                    'message': f"Blocked by rule: {attack_type}", 'reference_id': str(uuid.uuid4())[:8],
-                    'rule_matched': rule_matches[0]['rule_name'],
-                    'threat_score': min(100, int(round(ml_confidence * 100))),
-                    'risk_level': 'critical', 'category': ml_result.get('category'),
-                    'ml_model_version': ml_model_version}
-
-        if ml_result.get('attack'):
-            attack_type = ml_result.get('category') or self._infer_attack_type(features) or 'Suspicious'
-            confidence = ml_confidence
-            self.attack_blocker.record_attack(ip, attack_type, url)
-            if settings.get('auto_block_enabled', True):
-                self.attack_blocker.check_and_auto_block(ip, threshold, window, duration)
-            self.logger.log_attack(ip, url, attack_type, 'blocked', confidence, user_id=user_id, domain=domain, detection_source='ml', website_id=website_id,
-                                   details={'ml_model_version': ml_model_version})
-            self.rate_limiter.increment(ip)
-            risk_level = 'critical' if ml_confidence >= 0.85 else ('high' if ml_confidence >= confidence_threshold else 'medium')
-            return {'status': 'blocked', 'attack_type': attack_type,
-                    'confidence': round(confidence, 2),
-                    'message': f"ML model detected {attack_type} (confidence: {confidence:.2f})",
-                    'reference_id': str(uuid.uuid4())[:8],
-                    'threat_score': ml_result.get('risk_score', 0),
-                    'risk_level': risk_level,
-                    'category': ml_result.get('category'),
-                    'ml_model_version': ml_model_version}
-
-        risk_score = ml_result.get('risk_score', 0)
-        if risk_score >= 30:
-            self.logger.log_attack(ip, url, 'Suspicious', 'monitored', ml_confidence, user_id=user_id, domain=domain, detection_source='ml', website_id=website_id,
-                                   details={'ml_model_version': ml_model_version})
-        else:
-            self.logger.log_request(ip, url, method, 'allowed')
+        is_blocked = decision['decision'] == 'BLOCK'
         self.rate_limiter.increment(ip)
-        return {'status': 'allowed', 'attack_type': None, 'confidence': round(ml_confidence, 2),
+
+        confidence = decision['confidence']
+        attack_type = decision.get('attack_type')
+        status = 'blocked' if is_blocked else 'allowed'
+        
+        log_entry = {
+            'ip': ip,
+            'url': url,
+            'attack_type': attack_type or ('Normal' if not is_blocked else 'Suspicious'),
+            'status': status,
+            'confidence': confidence,
+            'timestamp': datetime.now(),
+            'details': {
+                'ml_model_version': decision.get('ml_model_version'),
+                'reason': decision['reason']
+            },
+            'user_id': user_id or '',
+            'domain': domain or '',
+            'website_id': website_id or '',
+            'detection_source': 'rule' if 'rule' in decision['reason'].lower() else 'ml',
+        }
+        
+        try:
+            self.db.attacks.insert_one(log_entry)
+            if website_id:
+                self.db.waf_events.insert_one(log_entry.copy())
+        except Exception:
+            pass
+            
+        try:
+            signals = decision.get("signals", {})
+            detection_source = "combined"
+            if signals.get("rule_matches"):
+                detection_source = "rule"
+            elif signals.get("ml_probability", 0) >= 0.6:
+                detection_source = "ml"
+
+            event = {
+                "user_id": user_id or "",
+                "website_id": website_id or "",
+                "timestamp": datetime.now(),
+                "source_ip": ip,
+                "method": method,
+                "endpoint": url,
+                "attack_type": attack_type,
+                "detection_source": detection_source,
+                "risk_score": decision.get("risk_score", 0),
+                "action": decision.get("action"),
+                "status": decision.get("action"),
+                "reference_id": decision.get("reference_id"),
+                "user_agent": user_agent,
+            }
+            self.db.security_events.insert_one(event)
+        except Exception:
+            pass
+
+        # Update statistics in DB
+        if user_id:
+            today = datetime.now().strftime('%Y-%m-%d')
+            user_ref = ObjectId(user_id) if len(str(user_id)) == 24 else user_id
+            try:
+                user_doc = self.db.users.find_one({'_id': user_ref})
+                if user_doc:
+                    if user_doc.get('requests_today_date') != today:
+                        self.db.users.update_one(
+                            {'_id': user_ref},
+                            {'$set': {'requests_today': 0, 'requests_today_date': today}}
+                        )
+                    inc_user = {'total_requests': 1, 'requests_today': 1}
+                    if is_blocked:
+                        inc_user['total_blocked'] = 1
+                    self.db.users.update_one({'_id': user_ref}, {'$inc': inc_user})
+            except Exception:
+                pass
+
+        if website_id:
+            today = datetime.now().strftime('%Y-%m-%d')
+            try:
+                web_doc = self.db.websites.find_one({'_id': website_id})
+                if web_doc:
+                    if web_doc.get('requests_today_date') != today:
+                        self.db.websites.update_one(
+                            {'_id': website_id},
+                            {'$set': {'requests_today': 0, 'blocked_today': 0, 'requests_today_date': today}}
+                        )
+                    inc_web = {'requests_today': 1}
+                    if is_blocked:
+                        inc_web['blocked_today'] = 1
+                    self.db.websites.update_one(
+                        {'_id': website_id},
+                        {'$inc': inc_web, '$set': {'last_activity': datetime.now()}}
+                    )
+            except Exception:
+                pass
+
+        self.logger.logger.warning(f"Attack: {attack_type} | IP: {ip} | URL: {url} | Status: {status}")
+
+        if is_blocked:
+            return {
+                'status': 'blocked',
+                'attack_type': attack_type,
+                'confidence': round(confidence, 2),
+                'message': decision['reason'],
+                'reference_id': decision['reference_id'],
+                'threat_score': decision['risk_score'],
+                'risk_level': decision['risk_level'],
+                'category': attack_type,
+                'ml_model_version': decision.get('ml_model_version', 'unknown')
+            }
+        else:
+            return {
+                'status': 'allowed',
+                'attack_type': None,
+                'confidence': round(confidence, 2),
                 'message': 'Request allowed',
-                'threat_score': risk_score,
-                'risk_level': self._risk_level(risk_score),
-                'category': None, 'ml_model_version': ml_model_version}
+                'threat_score': decision['risk_score'],
+                'risk_level': decision['risk_level'],
+                'category': None,
+                'ml_model_version': decision.get('ml_model_version', 'unknown')
+            }
 
     def _infer_attack_type(self, features):
         keys = [
@@ -271,3 +412,136 @@ class WAFAPI:
                 'confidence': log.get('confidence')
             } for log in logs]
         }
+
+    def evaluate_request_fast(self, request_data, user_id=None, domain=None, website_id=None):
+        from src.engine.decision_engine import DecisionEngine
+        
+        ip = request_data.get('ip', '')
+        url = request_data.get('url', '/')
+        method = request_data.get('method', 'GET')
+        user_agent = (request_data.get("headers") or {}).get("User-Agent", "")
+
+        is_whitelisted = self.ip_filter.is_whitelisted(ip)
+        is_blacklisted = self.attack_blocker.is_blacklisted(ip)
+        is_rate_limited = self.rate_limiter.is_rate_limited(ip)
+
+        decision_engine = DecisionEngine(ml_detector=self.ml_detector)
+        decision = decision_engine.evaluate(
+            request_data,
+            ip=ip,
+            is_blacklisted=is_blacklisted,
+            is_rate_limited=is_rate_limited,
+            allowlist=is_whitelisted,
+            user_id=user_id,
+            website_id=website_id,
+            domain=domain
+        )
+
+        is_blocked = decision['decision'] == 'BLOCK'
+        confidence = decision['confidence']
+        attack_type = decision.get('attack_type')
+        status = 'blocked' if is_blocked else 'allowed'
+
+        log_entry = {
+            'ip': ip,
+            'url': url,
+            'attack_type': attack_type or ('Normal' if not is_blocked else 'Suspicious'),
+            'status': status,
+            'confidence': confidence,
+            'timestamp': datetime.now(),
+            'details': {
+                'ml_model_version': decision.get('ml_model_version'),
+                'reason': decision['reason']
+            },
+            'user_id': user_id or '',
+            'domain': domain or '',
+            'website_id': website_id or '',
+            'detection_source': 'rule' if 'rule' in decision['reason'].lower() else 'ml',
+        }
+
+        signals = decision.get("signals", {})
+        detection_source = "combined"
+        if signals.get("rule_matches"):
+            detection_source = "rule"
+        elif signals.get("ml_probability", 0) >= 0.6:
+            detection_source = "ml"
+
+        event = {
+            "user_id": user_id or "",
+            "website_id": website_id or "",
+            "timestamp": datetime.now(),
+            "source_ip": ip,
+            "method": method,
+            "endpoint": url,
+            "attack_type": attack_type,
+            "detection_source": detection_source,
+            "risk_score": decision.get("risk_score", 0),
+            "action": decision.get("action"),
+            "status": decision.get("action"),
+            "reference_id": decision.get("reference_id"),
+            "user_agent": user_agent,
+        }
+
+        return decision, log_entry, event, is_blocked, ip
+
+    def async_save_logs(self, decision, log_entry, event, is_blocked, ip, user_id, website_id):
+        from bson import ObjectId
+        try:
+            self.rate_limiter.increment(ip)
+        except Exception: pass
+
+        if is_blocked and decision.get('is_rate_limited'):
+            try:
+                self.attack_blocker.auto_block(ip, 'Rate limit exceeded', 1)
+            except Exception: pass
+
+        try:
+            self.db.attacks.insert_one(log_entry)
+            if website_id:
+                self.db.waf_events.insert_one(log_entry.copy())
+        except Exception: pass
+
+        try:
+            self.db.security_events.insert_one(event)
+        except Exception: pass
+
+        if user_id:
+            today = datetime.now().strftime('%Y-%m-%d')
+            user_ref = ObjectId(user_id) if len(str(user_id)) == 24 else user_id
+            try:
+                user_doc = self.db.users.find_one({'_id': user_ref})
+                if user_doc:
+                    if user_doc.get('requests_today_date') != today:
+                        self.db.users.update_one(
+                            {'_id': user_ref},
+                            {'$set': {'requests_today': 0, 'requests_today_date': today}}
+                        )
+                    inc_user = {'total_requests': 1, 'requests_today': 1}
+                    if is_blocked:
+                        inc_user['total_blocked'] = 1
+                    self.db.users.update_one({'_id': user_ref}, {'$inc': inc_user})
+            except Exception: pass
+
+        if website_id:
+            today = datetime.now().strftime('%Y-%m-%d')
+            try:
+                web_doc = self.db.websites.find_one({'_id': website_id})
+                if web_doc:
+                    if web_doc.get('requests_today_date') != today:
+                        self.db.websites.update_one(
+                            {'_id': website_id},
+                            {'$set': {'requests_today': 0, 'blocked_today': 0, 'requests_today_date': today}}
+                        )
+                    inc_web = {'requests_today': 1}
+                    if is_blocked:
+                        inc_web['blocked_today'] = 1
+                    self.db.websites.update_one(
+                        {'_id': website_id},
+                        {'$inc': inc_web, '$set': {'last_activity': datetime.now()}}
+                    )
+            except Exception: pass
+
+        try:
+            self.logger.logger.warning(f"Attack logged: {decision.get('attack_type')} | IP: {ip} | Status: {'blocked' if is_blocked else 'allowed'}")
+        except Exception: pass
+

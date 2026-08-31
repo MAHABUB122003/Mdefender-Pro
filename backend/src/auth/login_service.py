@@ -9,6 +9,7 @@ from src.auth.session_service import SessionService
 from src.auth.brute_force_service import BruteForceService
 from src.auth.audit_service import AuditService
 from src.utils.logger import Logger
+from src.utils.api_key import generate_api_key
 
 
 class LoginService:
@@ -165,6 +166,14 @@ class LoginService:
 
         self.brute_force.record_successful_login(identifier)
 
+        api_key = user.get('api_key')
+        if not api_key:
+            api_key = generate_api_key()
+            self.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {'api_key': api_key, 'updated_at': datetime.now(timezone.utc)}}
+            )
+
         session_info = self.session_service.parse_user_agent(user_agent)
         session = self.session_service.create_session(
             user_id, ip_address, user_agent, session_info
@@ -206,6 +215,7 @@ class LoginService:
                 'full_name': user.get('full_name', ''),
                 'username': user.get('username'),
                 'role': user.get('role', 'user'),
+                'api_key': api_key,
             },
         }
 

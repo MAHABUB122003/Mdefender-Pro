@@ -11,10 +11,15 @@ Endpoints:
   - GET  /wordpress/site/{website_id}  (user) connection details + WP status
 """
 
+import os
+import re
 import uuid
+import zipfile
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from src.api.v1.deps import get_owned_website
@@ -24,6 +29,56 @@ from src.services.notification_service import NotificationService
 from src.utils.api_response import serialize, success
 
 router = APIRouter(prefix="/wordpress", tags=["WordPress"])
+
+PLUGIN_ZIP_PATH = Path(os.getenv(
+    "WAF_PLUGIN_ZIP_PATH",
+    str(Path(__file__).resolve().parents[3] / "downloads" / "mdefender-pro.zip"),
+)).resolve()
+
+
+def _plugin_info():
+    if not PLUGIN_ZIP_PATH.is_file():
+        return None
+    info = {
+        "filename": PLUGIN_ZIP_PATH.name,
+        "size": PLUGIN_ZIP_PATH.stat().st_size,
+        "modified": datetime.fromtimestamp(PLUGIN_ZIP_PATH.stat().st_mtime).isoformat(timespec="seconds"),
+        "version": None,
+        "files": 0,
+    }
+    try:
+        with zipfile.ZipFile(PLUGIN_ZIP_PATH) as zf:
+            names = zf.namelist()
+            info["files"] = len(names)
+            main = next((n for n in names if n.endswith("waf-firewall.php")), None)
+            if main:
+                header = zf.read(main).decode("utf-8", errors="replace")[:2000]
+                m = re.search(r"Version:\s*([0-9][^\s]*)", header)
+                if m:
+                    info["version"] = m.group(1)
+    except Exception:
+        pass
+    return info
+
+
+@router.get("/plugin/meta")
+async def plugin_meta():
+    info = _plugin_info()
+    if not info:
+        raise HTTPException(status_code=404, detail="Plugin package not built yet")
+    return success(info)
+
+
+@router.get("/plugin")
+async def download_plugin():
+    info = _plugin_info()
+    if not info:
+        raise HTTPException(status_code=404, detail="Plugin package not built yet")
+    return FileResponse(
+        PLUGIN_ZIP_PATH,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{info["filename"]}"'},
+    )
 
 from src.api.v1.waf_api import verify_api_key
 
@@ -121,18 +176,52 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         updates["plugin_version"] = body.plugin_version
     if body.stats:
         updates["last_stats"] = body.stats
-        website = auth_data["website"]
-        if website.get("last_activity") is None:
-            db.websites.update_one(
-                {"_id": auth_data["website_id"]},
-                {"$set": {"last_activity": datetime.now()}},
-            )
+        
+    website = auth_data["website"]
+    db.websites.update_one(
+        {"_id": auth_data["website_id"]},
+        {"$set": {"last_activity": datetime.now()}},
+    )
 
     db.wordpress_sites.update_one(
         {"website_id": auth_data["website_id"]},
         {"$set": updates},
     )
-    return success({"status": "ok"})
+
+    # Check for queued scan command
+    queued_scan = db.malware_scans.find_one({
+        "website_id": auth_data["website_id"],
+        "status": "queued"
+    })
+    command = None
+    if queued_scan:
+        command = {
+            "type": "scan",
+            "scan_id": queued_scan["_id"],
+            "scan_type": queued_scan.get("scan_type", "file")
+        }
+
+    # Fetch configuration settings
+    config = {
+        "waf_mode": website.get("waf_mode", "protect"),
+        "learning_mode": website.get("learning_mode", False),
+        "confidence_threshold": website.get("confidence_threshold", 0.7),
+        "disable_xmlrpc": website.get("disable_xmlrpc", False),
+        "disable_directory_listing": website.get("disable_directory_listing", False),
+        "prevent_user_enumeration": website.get("prevent_user_enumeration", False),
+        "disable_file_editing": website.get("disable_file_editing", False),
+    }
+
+    # Fetch active blacklisted IPs for local firewall cache
+    blacklist_cursor = db.blacklist.find()
+    blacklist = [item["ip"] for item in blacklist_cursor if "ip" in item]
+
+    return success({
+        "status": "ok",
+        "config": config,
+        "command": command,
+        "blacklist": blacklist
+    })
 
 
 @router.get("/site/{website_id}")

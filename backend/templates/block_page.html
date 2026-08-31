@@ -3,92 +3,514 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied - MDefender Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>403 &mdash; Security Action Required</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --brand-1: #4f46e5;
+            --brand-2: #6366f1;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border-color: #cbd5e1;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-        .block-wrapper { width: 100%; max-width: 560px; animation: fadeIn .5s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .block-card { background: #fff; border-radius: 20px; padding: 36px 40px 28px; box-shadow: 0 20px 60px rgba(0,0,0,.05); border: 1px solid #e8edf4; }
-        .block-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 18px; border-bottom: 1px solid #f0f4fa; margin-bottom: 24px; }
-        .brand-text h2 { font-size: 18px; font-weight: 700; color: #0f172a; }
-        .brand-text span { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .6px; }
-        .ref-badge { font-size: 12px; color: #64748b; background: #f8fafc; padding: 4px 14px; border-radius: 16px; border: 1px solid #e8edf4; font-family: monospace; }
-        .block-content { text-align: center; }
-        .block-title { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
-        .block-subtitle { font-size: 15px; color: #64748b; margin-bottom: 24px; }
-        .details-grid { background: #f8fafc; border-radius: 12px; padding: 4px 18px; margin-bottom: 20px; border: 1px solid #e8edf4; text-align: left; }
-        .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid #f0f4fa; }
-        .detail-row:last-child { border-bottom: none; }
-        .detail-label { font-size: 12px; font-weight: 500; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
-        .detail-value { font-size: 13px; color: #0f172a; font-weight: 500; word-break: break-all; text-align: right; max-width: 55%; }
-        .detail-value.attack-type { color: #dc2626; font-weight: 600; }
-        .detail-value.reference { font-family: monospace; background: #fff; padding: 2px 10px; border-radius: 4px; border: 1px solid #e8edf4; font-size: 12px; }
-        .info-message { background: #f8fafc; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #e8edf4; text-align: left; font-size: 13px; color: #475569; line-height: 1.6; }
-        .block-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
-        .btn { padding: 11px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; text-decoration: none; border: none; display: inline-block; }
-        .btn-primary { background: #2563eb; color: #fff; }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(37,99,235,.3); }
-        .block-footer { text-align: center; padding-top: 18px; border-top: 1px solid #f0f4fa; font-size: 13px; color: #94a3b8; }
-        .block-footer strong { color: #64748b; }
-        @media (max-width: 600px) {
-            .block-card { padding: 24px 18px 20px; }
-            .block-title { font-size: 22px; }
-            .detail-row { flex-direction: column; align-items: flex-start; gap: 2px; }
-            .detail-value { text-align: left; max-width: 100%; }
-            .block-actions { flex-direction: column; }
-            .btn { width: 100%; text-align: center; }
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.02) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.02) 0%, transparent 40%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 850px;
+            background: var(--card-bg);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+            padding: 48px;
+            text-align: center;
+            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .logo-wrap {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-svg {
+            width: 80px;
+            height: 80px;
+        }
+        .logo-text {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+        .fw-badge {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        .fw-owner {
+            font-size: 15px;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 24px;
+        }
+        .main-title {
+            font-size: 25px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+        .sub-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .desc-text {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+        }
+        
+        .table-container {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-table tr {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .details-table tr:last-child {
+            border-bottom: none;
+        }
+        .details-table th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 240px;
+            padding: 14px 20px;
+            border-right: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        .details-table td {
+            color: #334155;
+            font-weight: 500;
+            font-size: 13.5px;
+            padding: 14px 20px;
+            vertical-align: middle;
+        }
+        
+        .threat-row td {
+            background-color: #fff5f5 !important;
+            color: #991b1b !important;
+        }
+        .threat-cell-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .threat-text {
+            font-weight: 700;
+            color: #dc2626;
+        }
+        .info-tag {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+        
+        .ip-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flag-img {
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: none;
+            vertical-align: middle;
+        }
+        
+        .why-header {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 24px;
+            margin-bottom: 8px;
+        }
+        .why-desc {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 680px;
+            margin: 0 auto 24px;
+        }
+        
+        .ref-box {
+            background: #f8fafc;
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            display: inline-block;
+            margin-bottom: 30px;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .ref-box:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            transform: scale(1.01);
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 28px;
+            border-radius: 6px;
+            font-size: 13.5px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .btn-primary {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #172554;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #475569;
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: #f8fafc;
+            color: #0f172a;
+            border-color: #94a3b8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .footer {
+            font-size: 12px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 24px;
+            margin-top: 24px;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 24px; }
+            .details-table th, .details-table td {
+                display: block;
+                width: 100%;
+                border-right: none;
+            }
+            .details-table th {
+                background-color: #f8fafc;
+                padding-bottom: 6px;
+            }
+            .details-table td {
+                padding-top: 6px;
+                border-bottom: none;
+            }
+            .details-table tr {
+                border-bottom: 1px solid var(--border-color);
+                display: block;
+            }
+            .threat-cell-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .actions {
+                flex-direction: column;
+                width: 100%;
+                max-width: 400px;
+                margin: 0 auto 12px;
+            }
+            .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="block-wrapper">
-        <div class="block-card">
-            <div class="block-header">
-                <div class="brand-text">
-                    <h2>MDefender Pro</h2>
-                    <span>{{ website_name }}</span>
-                </div>
-                <div class="ref-badge">ID: {{ reference_id }}</div>
-            </div>
-            <div class="block-content">
-                <h1 class="block-title">Access Denied</h1>
-                <p class="block-subtitle">{{ reason }}</p>
-                <div class="details-grid">
-                    <div class="detail-row">
-                        <span class="detail-label">Attack Type</span>
-                        <span class="detail-value attack-type">{{ attack_type }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Your IP</span>
-                        <span class="detail-value">{{ client_ip }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Reason</span>
-                        <span class="detail-value">{{ reason }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Reference ID</span>
-                        <span class="detail-value reference">{{ reference_id }}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Timestamp</span>
-                        <span class="detail-value">{{ timestamp }}</span>
-                    </div>
-                </div>
-                <div class="info-message">
-                    If you believe this is a mistake, please contact the website administrator.
-                    Provide the <strong>Reference ID</strong> for faster resolution.
-                </div>
-                <div class="block-actions">
-                    <a href="/" class="btn btn-primary">Return to Homepage</a>
-                </div>
-            </div>
-            <div class="block-footer">
-                Protected by <strong>MDefender Pro</strong> &mdash; All attacks are logged and monitored
-            </div>
+    <div class="container">
+        <!-- Logo Header -->
+        <div class="logo-wrap">
+            <svg class="logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f8fafc" />
+                        <stop offset="30%" stop-color="#cbd5e1" />
+                        <stop offset="70%" stop-color="#94a3b8" />
+                        <stop offset="100%" stop-color="#475569" />
+                    </linearGradient>
+                    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#94a3b8" />
+                        <stop offset="50%" stop-color="#f1f5f9" />
+                        <stop offset="100%" stop-color="#475569" />
+                    </linearGradient>
+                    <linearGradient id="dragonColor" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#1e293b" />
+                        <stop offset="100%" stop-color="#0f172a" />
+                    </linearGradient>
+                    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+                        <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.15" />
+                    </filter>
+                </defs>
+                <path d="M60 10 C85 22 98 25 98 48 C98 75 75 98 60 108 C45 98 22 75 22 48 C22 25 35 22 60 10 Z" fill="url(#shieldBg)" stroke="url(#shieldBorder)" stroke-width="3" filter="url(#dropShadow)" />
+                <path d="M60 18 C80 28 90 30 90 48 C90 70 70 90 60 98 C50 90 30 70 30 48 C30 30 40 28 60 18 Z" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="3 2" />
+                <path d="M60 28 C58 35 52 38 48 38 C44 38 43 42 45 44 C47 46 51 44 51 48 C51 52 46 55 42 53 C38 51 36 54 38 58 C40 62 45 60 48 64 C50 66 48 70 44 72 C48 74 54 75 58 72 C58 68 55 65 57 62 C59 59 63 61 65 58 C67 55 66 52 62 50 C64 45 68 46 70 42 C72 38 67 36 65 32 C63 28 61 25 60 28 Z" fill="url(#dragonColor)" />
+            </svg>
+            <div class="logo-text">MDefender-Pro AI</div>
+        </div>
+        
+        <div class="fw-badge">A.S.A.P. Security Firewall</div>
+        <div class="fw-owner">Mahabub</div>
+        
+        <h1 class="main-title">403 — SECURITY ACTION REQUIRED</h1>
+        <h2 class="sub-title">Access Denied by Corporate WAF</h2>
+        
+        <div class="desc-text" id="desc-msg">Access to [{{ website_name }}] restricted.</div>
+        
+        <!-- Table Section -->
+        <div class="table-container">
+            <table class="details-table">
+                <tr class="threat-row">
+                    <th>Attack Classification</th>
+                    <td>
+                        <div class="threat-cell-content">
+                            <span class="threat-text">{{ attack_type }}</span>
+                            <span class="info-tag">Detailed info tag</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Origin Client IP</th>
+                    <td>
+                        <div class="ip-wrap">
+                            <img id="flag-img" src="" width="20" height="15" alt="" class="flag-img">
+                            <span>{{ client_ip }}<span id="geo-text"></span></span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Event Timestamp</th>
+                    <td><span id="utc-time">{{ timestamp }}</span> (Ref: <span id="unix-ref"></span>)</td>
+                </tr>
+                <tr>
+                    <th>Violation Reason</th>
+                    <td>Request blocked by rule ID: <span id="rule-id-val">90001</span> (Ref: {{ attack_type }})</td>
+                </tr>
+                <tr>
+                    <th>Protocol Details</th>
+                    <td>HTTP/1.1 (WAF_VER: 4.1.0)</td>
+                </tr>
+                <tr>
+                    <th>Server Host</th>
+                    <td><span id="server-host">app-srv-01-prod-us-east.net</span></td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Bottom Explanatory Section -->
+        <h3 class="why-header">Why did this happen?</h3>
+        <p class="why-desc">
+            To maintain system integrity, suspicious requests are automatically analyzed and filtered. If you believe this is a valid corporate action, please share the Reference ID below with your local IT/Security operations. Regular users should clear cache or contact support.
+        </p>
+        
+        <div class="ref-box" id="ref-id-box" title="Click to copy Reference ID" onclick="copyRef()">
+            REFERENCE ID: {{ reference_id }}
+        </div>
+        
+        <!-- Actions Button Section -->
+        <div class="actions">
+            <a href="/" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Return to Homepage
+            </a>
+            <button type="button" class="btn btn-secondary" onclick="copyRef()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy Reference ID
+            </button>
+            <a id="email-link" href="#" class="btn btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                Contact Security Operations
+            </a>
+        </div>
+        
+        <div class="footer">
+            Secured by MDefender-Pro AI Firewall. All critical system events are logged and audited.
         </div>
     </div>
+
+    <script>
+        // Fetch GeoIP details client-side
+        const clientIp = "{{ client_ip }}";
+        if (clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1' && clientIp !== 'unknown') {
+            fetch(`https://ip-api.com/json/${clientIp}?fields=status,country,city,countryCode`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const flagImg = document.getElementById('flag-img');
+                        const geoText = document.getElementById('geo-text');
+                        if (flagImg && data.countryCode) {
+                            const cc = data.countryCode.toLowerCase();
+                            flagImg.src = `https://flagcdn.com/w40/${cc}.png`;
+                            flagImg.srcset = `https://flagcdn.com/w80/${cc}.png 2x`;
+                            flagImg.alt = data.countryCode.toUpperCase();
+                            flagImg.style.display = 'inline-block';
+                        }
+                        if (geoText) {
+                            let geoInfo = '';
+                            if (data.city && data.country) geoInfo = ` (GeoIP: ${data.city}, ${data.country})`;
+                            else if (data.country) geoInfo = ` (GeoIP: ${data.country})`;
+                            geoText.innerText = geoInfo;
+                        }
+                    }
+                }).catch(err => console.error(err));
+        } else {
+            // Local / private IP fallback matching example mockup
+            const flagImg = document.getElementById('flag-img');
+            const geoText = document.getElementById('geo-text');
+            if (flagImg) {
+                flagImg.src = "https://flagcdn.com/w40/bd.png";
+                flagImg.srcset = "https://flagcdn.com/w80/bd.png 2x";
+                flagImg.alt = "BD";
+                flagImg.style.display = 'inline-block';
+            }
+            if (geoText) {
+                geoText.innerText = " (GeoIP: Dhaka, Bangladesh)";
+            }
+        }
+
+        // Convert Timestamp to UTC format
+        const timestampStr = "{{ timestamp }}";
+        try {
+            const dt = new Date(timestampStr.replace(' ', 'T'));
+            document.getElementById('utc-time').innerText = dt.toUTCString();
+            document.getElementById('unix-ref').innerText = Math.floor(dt.getTime() / 1000);
+        } catch (e) {
+            document.getElementById('utc-time').innerText = timestampStr;
+            document.getElementById('unix-ref').innerText = Math.floor(Date.now() / 1000);
+        }
+
+        // Dynamically compute rule ID from attack type
+        const attackType = "{{ attack_type }}";
+        let hash = 0;
+        for (let i = 0; i < attackType.length; i++) {
+            hash = attackType.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const ruleId = Math.abs(hash % 10000) + 90000;
+        document.getElementById('rule-id-val').innerText = ruleId;
+
+        // Server host lookup
+        document.getElementById('server-host').innerText = window.location.hostname || "app-srv-01-prod-us-east.net";
+
+        // Setup email operations mailto link
+        const refId = "{{ reference_id }}";
+        const emailLink = document.getElementById('email-link');
+        if (emailLink) {
+            emailLink.href = `mailto:admin@mdefender-pro.io?subject=WAF Block Reference: ${refId}&body=Hello,%0D%0A%0D%0AMy request was blocked by the security WAF. Details below:%0D%0A- Reference ID: ${refId}%0D%0A- IP: ${clientIp}%0D%0A- Domain: ${window.location.host}`;
+        }
+
+        function copyRef() {
+            navigator.clipboard.writeText(refId).then(() => {
+                const refBox = document.getElementById('ref-id-box');
+                const originalHtml = refBox.innerHTML;
+                refBox.innerHTML = 'COPIED TO CLIPBOARD! ✅';
+                refBox.style.color = '#10b981';
+                refBox.style.borderColor = '#10b981';
+                refBox.style.background = '#ecfdf5';
+                setTimeout(() => {
+                    refBox.innerHTML = originalHtml;
+                    refBox.style.color = '';
+                    refBox.style.borderColor = '';
+                    refBox.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Could not copy Reference ID: ', err);
+            });
+        }
+    </script>
 </body>
 </html>

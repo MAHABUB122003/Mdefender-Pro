@@ -8,6 +8,7 @@ from src.auth.session_service import SessionService
 from src.auth.brute_force_service import BruteForceService
 from src.auth.audit_service import AuditService
 from src.utils.logger import Logger
+from src.utils.api_key import generate_api_key
 
 
 class OAuthService:
@@ -117,9 +118,11 @@ class OAuthService:
             else:
                 user_doc = {
                     'full_name': name,
+                    'name': name,
                     'email': email,
                     'username': None,
                     'password_hash': '',
+                    'api_key': generate_api_key(),
                     'email_verified': True,
                     'mfa_enabled': False,
                     'mfa_secret': None,
@@ -144,6 +147,15 @@ class OAuthService:
             }
 
         user_id = str(user['_id'])
+
+        api_key = user.get('api_key')
+        if not api_key:
+            api_key = generate_api_key()
+            self.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {'api_key': api_key, 'updated_at': datetime.now(timezone.utc)}}
+            )
+            user['api_key'] = api_key
 
         self.db.users.update_one(
             {'_id': user['_id']},
@@ -185,6 +197,7 @@ class OAuthService:
                 'full_name': user.get('full_name', ''),
                 'username': user.get('username'),
                 'role': user.get('role', 'user'),
+                'api_key': api_key,
             },
             'is_new_user': user.get('created_at') == user.get('last_login'),
         }

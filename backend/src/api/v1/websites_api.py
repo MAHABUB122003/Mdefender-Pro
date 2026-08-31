@@ -2,7 +2,7 @@
 
 Multi-tenant website management:
   - add / list / update / remove websites
-  - generate scoped API keys (only displayed once, plaintext, prefix mdf_live_)
+  - generate scoped API keys (64 random chars, only displayed once)
   - rotate / revoke API keys
   - pause / resume protection
   - plan limits enforced server-side
@@ -11,7 +11,6 @@ Tenant isolation: every operation is scoped to the authenticated user.
 """
 
 import hashlib
-import secrets
 import uuid
 from datetime import datetime
 
@@ -24,6 +23,7 @@ from src.database.mongodb_connection import MongoDB
 from src.services.plan_service import PlanService
 from src.services.subscription_service import SubscriptionService
 from src.utils.api_response import parse_object_id, serialize, success
+from src.utils.api_key import generate_api_key
 from src.utils.logger import Logger
 
 router = APIRouter(prefix="/websites", tags=["Websites"])
@@ -52,7 +52,7 @@ def _key_hash(raw_key):
 
 
 def _generate_raw_key():
-    return "mdf_live_" + secrets.token_hex(24)
+    return generate_api_key()
 
 
 def _website_out(doc):
@@ -230,7 +230,7 @@ async def list_api_keys(website_id: str, user=Depends(get_current_user)):
             "id": str(k["_id"]),
             "label": k.get("label"),
             "status": k.get("status"),
-            "prefix": "mdf_live_",
+            "prefix": "",
             "created_at": k.get("created_at").isoformat() if k.get("created_at") else None,
             "last_used": k.get("last_used"),
         } for k in keys
@@ -314,10 +314,11 @@ async def installation_instructions(website_id: str, user=Depends(get_current_us
                 "Protection is enabled automatically",
             ],
         },
+
         "node": {
             "title": "Node.js / Express",
             "steps": [
-                "npm install mdefender",
+                "npm install mdefender-pro",
                 "Create mdefender.config.js with your API key",
                 "Attach the middleware to your app",
             ],
@@ -325,7 +326,7 @@ async def installation_instructions(website_id: str, user=Depends(get_current_us
         "express": {
             "title": "Express",
             "steps": [
-                "npm install mdefender",
+                "npm install mdefender-pro",
                 "Create mdefender.config.js with your API key",
                 "Attach the middleware to your app",
             ],
@@ -355,11 +356,12 @@ async def installation_instructions(website_id: str, user=Depends(get_current_us
             ],
         },
         "react": {
-            "title": "React",
+            "title": "React / SPA Frontends",
             "steps": [
-                "Protect the API behind MDefender via the Node/Express SDK",
-                "npm install mdefender",
-                "Attach the middleware to your API server",
+                "npm install mdefender-pro",
+                "Import and initialize the client-side WAF protector in your main entry file (main.jsx / index.js):",
+                "import { initWaf } from 'mdefender-pro/client';\n\ninitWaf({ backendUrl: 'http://localhost:5005' });",
+                "This automatically handles instant page-load blocking and query parameter synchronization for all fetch/Axios requests!"
             ],
         },
         "other": {

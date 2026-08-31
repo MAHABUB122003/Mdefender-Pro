@@ -27,14 +27,19 @@
     "axios": "^1.6.0"
   },
   "peerDependencies": {
-    "express": ">=4.0.0"
+    "express": "^5.2.1"
   },
   "files": [
     "index.js",
     "index.d.ts",
     "README.md",
-    "config-loader.js"
+    "config-loader.js",
+    "client.mjs"
   ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.mjs"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/mdefender/mdefender"

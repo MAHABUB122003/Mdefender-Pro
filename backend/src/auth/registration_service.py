@@ -1,4 +1,3 @@
-import secrets
 import hmac as hmac_mod
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
@@ -10,8 +9,7 @@ from src.services.email_service import EmailService
 from src.auth.jwt_service import JWTService
 from src.utils.logger import Logger
 from src.utils.objectid import to_object_id
-
-API_KEY_PREFIX = 'md_'
+from src.utils.api_key import generate_api_key
 
 UNIFORM_MESSAGE_IF_NOT_FOUND = 'If an account exists with this email, a verification link has been sent.'
 
@@ -191,10 +189,11 @@ class RegistrationService:
         raw_token = self.jwt_service.extract_raw_token(verification_token)
         token_hash = self.jwt_service.hash_token(raw_token)
 
-        api_key = API_KEY_PREFIX + secrets.token_hex(24)
+        api_key = generate_api_key()
 
         user_doc = {
             'full_name': full_name.strip(),
+            'name': full_name.strip(),
             'email': normalized_email,
             'username': username.lower().strip() if username else None,
             'password_hash': password_hash,

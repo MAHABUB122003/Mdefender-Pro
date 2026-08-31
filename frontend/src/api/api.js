@@ -1,6 +1,6 @@
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  "http://localhost:5000";
+  "http://localhost:8000";
 
 let csrfToken = null;
 
@@ -121,9 +121,9 @@ export const api = {
 
   getMe: () => apiCall('/api/auth/me'),
 
-  getProfile: () => apiCall('/api/auth/profile'),
+  getProfile: () => apiCall('/api/user/profile'),
 
-  updateProfile: (data) => apiCall('/api/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  updateProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
   changePassword: (data) => apiCall('/api/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -243,7 +243,7 @@ export const api = {
   getUserProfile: () => apiCall('/api/user/profile'),
   updateUserProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
   changeUserPassword: (data) => apiCall('/api/user/change_password', { method: 'POST', body: JSON.stringify(data) }),
-  regenerateApiKey: () => apiCall('/api/user/regenerate_key', { method: 'POST' }),
+  regenerateApiKey: (data) => apiCall('/api/user/regenerate_key', { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
   removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
   getUserDashboard: () => apiCall('/api/user/dashboard'),
