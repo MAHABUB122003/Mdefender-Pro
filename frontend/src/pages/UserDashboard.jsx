@@ -3,41 +3,22 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler } from 'chart.js'
 import { Doughnut, Line } from 'react-chartjs-2'
 import api from '../api/api'
-import MalwareScanner from '../components/MalwareScanner'
+
+import userStore from '../utils/userStore'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
 const doughnutColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
-const DDOS_FEATURES = [
-  { icon: 'fa-bolt', name: 'Rate Limiting', desc: 'Sliding window per-user rate limits', color: '#2563eb' },
-  { icon: 'fa-chart-line', name: 'Traffic Monitoring', desc: 'Real-time traffic analysis & stats', color: '#10b981' },
-  { icon: 'fa-user-secret', name: 'Behavioral Analysis', desc: 'Detect abnormal browsing patterns', color: '#8b5cf6' },
-  { icon: 'fa-shield-halved', name: 'IP Reputation', desc: 'Auto-score & block malicious IPs', color: '#ef4444' },
-  { icon: 'fa-gauge-high', name: 'Burst Detection', desc: 'Identify sudden traffic spikes', color: '#f59e0b' },
-  { icon: 'fa-layer-group', name: 'Progressive Blocking', desc: 'Throttle → block → permanent ban', color: '#ec4899' },
-  { icon: 'fa-fingerprint', name: 'Request Fingerprinting', desc: 'Track attackers across IPs', color: '#14b8a6' },
-  { icon: 'fa-user-tag', name: 'UA Analysis', desc: 'Block bots, scanners & attack tools', color: '#f97316' },
-  { icon: 'fa-code', name: 'JS Challenge', desc: 'JavaScript & CAPTCHA verification', color: '#6366f1' },
-]
-
-function useAnimatedNumber(target, duration = 800) {
-  const [value, setValue] = useState(0)
+function useAnimatedNumber(target, duration = 400) {
+  const [value, setValue] = useState(target || 0)
   const ref = useRef(null)
   useEffect(() => {
-    if (target === 0) { setValue(0); return }
-    const startTime = performance.now()
-    function step(now) {
-      const progress = Math.min((now - startTime) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setValue(Math.floor(eased * target))
-      if (progress < 1) ref.current = requestAnimationFrame(step)
-      else setValue(target)
-    }
-    ref.current = requestAnimationFrame(step)
-    return () => { if (ref.current) cancelAnimationFrame(ref.current) }
-  }, [target, duration])
-  return value.toLocaleString()
+    if (!target && target !== 0) return
+    const numTarget = Number(target) || 0
+    setValue(numTarget)
+  }, [target])
+  return (value || 0).toLocaleString()
 }
 
 function StatCard({ icon, iconClass, value, label, trend, trendDir }) {
@@ -45,50 +26,49 @@ function StatCard({ icon, iconClass, value, label, trend, trendDir }) {
   return (
     <div className="stat-card">
       <div className="stat-top">
-        <div className={`stat-icon-wrap ${iconClass}`}><i className={`fas ${icon}`}></i></div>
+        <div className={`stat-icon-wrap ${iconClass}`}>
+          <i className={`fas ${icon}`}></i>
+        </div>
+        <span className={`stat-trend ${trendDir}`}>
+          <i className={`fas fa-arrow-${trendDir}`}></i> {trend}
+        </span>
       </div>
       <div className="stat-number">{animated}</div>
       <div className="stat-label">{label}</div>
-      <div className={`stat-trend ${trendDir}`}><i className={`fas fa-arrow-${trendDir}`}></i> {trend}</div>
     </div>
-  )
-}
-
-function QuickAction({ icon, label, color, onClick }) {
-  return (
-    <button className="quick-action" onClick={onClick}>
-      <div className="qa-icon" style={{ background: `${color}15`, color }}><i className={`fas ${icon}`}></i></div>
-      <span>{label}</span>
-    </button>
   )
 }
 
 export default function UserDashboard() {
   const navigate = useNavigate()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [newWebsite, setNewWebsite] = useState('')
-  const [adding, setAdding] = useState(false)
+  const [data, setData] = useState(() => userStore.get('dashboard'))
+  const [loading, setLoading] = useState(() => !userStore.get('dashboard'))
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState(() => new Date())
   const [ddosEnabled, setDdosEnabled] = useState(true)
   const [ddosToggling, setDdosToggling] = useState(false)
   const [mlStatus, setMlStatus] = useState(null)
   const isPremium = data?.plan === 'premium' || localStorage.getItem('mdefender_user_plan') === 'premium'
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true)
     try {
       const result = await api.getUserDashboard()
       setData(result)
+      userStore.set('dashboard', result)
+      setLastRefreshed(new Date())
       if (result?.user?.name) localStorage.setItem('mdefender_user_name', result.user.name)
       if (result?.user?.plan) localStorage.setItem('mdefender_user_plan', result.user.plan)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
+      if (manual) setTimeout(() => setRefreshing(false), 300)
     }
   }, [])
 
   useEffect(() => {
-    fetchData()
+    fetchData(false)
     api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {})
     api.getMlStatus().then(r => setMlStatus(r)).catch(() => {})
   }, [fetchData])
@@ -106,35 +86,15 @@ export default function UserDashboard() {
     }
   }
 
-  const handleAddWebsite = async (e) => {
-    e.preventDefault()
-    if (!newWebsite.trim()) return
-    setAdding(true)
-    try {
-      await api.addUserWebsite({ domain: newWebsite.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '') })
-      setNewWebsite('')
-      fetchData()
-    } catch (err) {
-      alert(err.message || 'Failed to add website')
-    } finally {
-      setAdding(false)
-    }
-  }
-
-  const handleRemoveWebsite = async (id) => {
-    if (!confirm('Remove this website?')) return
-    try {
-      await api.removeUserWebsite(id)
-      fetchData()
-    } catch (err) {
-      alert(err.message || 'Failed to remove website')
-    }
-  }
-
   const blockTopIP = async (ip) => {
     if (!isPremium) { alert('Upgrade to Premium to block IPs'); return }
     if (confirm(`Block ${ip}?`)) {
-      try { await api.userBlockIP(ip, 'Blocked from dashboard'); fetchData() } catch (e) { alert(e.message) }
+      try { 
+        await api.userBlockIP(ip, 'Blocked from dashboard')
+        fetchData() 
+      } catch (e) { 
+        alert(e.message) 
+      }
     }
   }
 
@@ -144,7 +104,7 @@ export default function UserDashboard() {
       data: data?.attack_counts?.length ? data.attack_counts : [0, 0, 0, 0, 0],
       backgroundColor: doughnutColors,
       borderWidth: 0,
-      hoverOffset: 8
+      hoverOffset: 6
     }]
   }
 
@@ -161,13 +121,13 @@ export default function UserDashboard() {
   const dailyChartData = {
     labels: dailyDays,
     datasets: [{
-      label: 'Requests',
+      label: 'Traffic Requests',
       data: dailyCounts,
       borderColor: '#2563eb',
-      backgroundColor: 'rgba(37,99,235,0.08)',
+      backgroundColor: 'rgba(37,99,235,0.06)',
       borderWidth: 2.5,
       fill: true,
-      tension: 0.4,
+      tension: 0.35,
       pointBackgroundColor: '#2563eb',
       pointBorderColor: '#fff',
       pointBorderWidth: 2,
@@ -178,12 +138,23 @@ export default function UserDashboard() {
 
   const doughnutOptions = {
     responsive: true,
-    maintainAspectRatio: true,
-    cutout: '65%',
+    maintainAspectRatio: false,
+    cutout: '70%',
     plugins: {
-      legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } },
+      legend: { 
+        position: 'bottom', 
+        labels: { 
+          padding: 14, 
+          usePointStyle: true, 
+          pointStyle: 'circle', 
+          font: { size: 11, family: 'Inter' },
+          boxWidth: 8
+        } 
+      },
       tooltip: {
-        backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8,
+        backgroundColor: '#0f172a',
+        padding: 10,
+        cornerRadius: 8,
         callbacks: {
           label(ctx) {
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
@@ -192,464 +163,369 @@ export default function UserDashboard() {
           }
         }
       }
-    },
-    animation: { animateRotate: true, duration: 1000 }
+    }
   }
 
   const lineOptions = {
     responsive: true,
-    maintainAspectRatio: true,
-    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8, intersect: false, mode: 'index' } },
-    scales: {
-      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
-      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: '#0f172a', padding: 10, cornerRadius: 8 }
     },
-    interaction: { intersect: false, mode: 'index' },
-    animation: { duration: 1200, easing: 'easeInOutQuart' }
+    scales: {
+      y: { 
+        beginAtZero: true, 
+        grid: { color: 'rgba(0,0,0,0.04)' }, 
+        ticks: { font: { size: 11 }, color: '#94a3b8' } 
+      },
+      x: { 
+        grid: { display: false }, 
+        ticks: { font: { size: 11 }, color: '#94a3b8' } 
+      }
+    }
   }
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
+    return (
+      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#94a3b8' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#2563eb' }}></i>
+        <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: '500' }}>Loading Security Telemetry...</div>
+      </div>
+    )
   }
 
   return (
     <>
-      {/* User Info Banner */}
+      {/* Top Security Status Ribbon */}
       <div style={{
-        background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-        borderRadius: '14px',
-        padding: '20px 24px',
-        marginBottom: '24px',
-        color: '#fff',
+        background: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '14px 20px',
+        marginBottom: '20px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px',
+        gap: '14px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '50px', height: '50px', borderRadius: '12px',
-            background: 'rgba(255,255,255,0.2)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: '700',
-          }}>
-            {(data?.user?.name || 'U').charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div style={{ fontSize: '18px', fontWeight: '700' }}>Welcome back, {data?.user?.name || 'User'}</div>
-            <div style={{ fontSize: '13px', opacity: 0.8 }}>{data?.user?.email}</div>
-          </div>
-        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{
-            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-            background: isPremium ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.3)',
-          }}>
-            <i className={`fas ${isPremium ? 'fa-crown' : 'fa-star'}`} style={{ marginRight: '6px' }}></i>
-            {(data?.user?.plan || 'free').toUpperCase()} PLAN
-          </span>
-          <span style={{ fontSize: '12px', opacity: 0.7 }}>Since {data?.user?.created_at || 'N/A'}</span>
-        </div>
-      </div>
-
-      {/* Upgrade Banner for Free Users */}
-      {!isPremium && (
-        <div style={{
-          background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-          border: '1px solid #f59e0b',
-          borderRadius: '14px',
-          padding: '16px 24px',
-          marginBottom: '24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '10px', background: '#f59e0b',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff',
-            }}>
-              <i className="fas fa-crown"></i>
-            </div>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#92400e' }}>Upgrade to Premium</div>
-              <div style={{ fontSize: '12px', color: '#a16207' }}>Unlock Attack Logs, WAF Rules, unlimited websites & more</div>
-            </div>
-          </div>
-          <Link to="/user/settings" style={{
-            padding: '10px 20px', background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-            color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
-            cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none',
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            boxShadow: '0 2px 8px rgba(245,158,11,0.3)',
-          }}>
-            <i className="fas fa-arrow-up"></i> Upgrade Now
-          </Link>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <StatCard icon="fa-chart-line" iconClass="blue" value={data?.requests_today || 0} label="Requests Today" trend="active" trendDir="up" />
-        <StatCard icon="fa-globe" iconClass="green" value={data?.total_requests || 0} label="Total Requests" trend="cumulative" trendDir="up" />
-        <StatCard icon="fa-shield-halved" iconClass="red" value={data?.total_blocked || 0} label="Attacks Blocked" trend="protected" trendDir="up" />
-        <StatCard icon="fa-server" iconClass="purple" value={data?.active_websites || 0} label="Active Websites" trend="online" trendDir="up" />
-      </div>
-
-      {/* DDoS Protection Section */}
-      <div style={{
-        background: '#fff',
-        borderRadius: '14px',
-        padding: '24px',
-        marginBottom: '24px',
-        border: ddosEnabled ? '1px solid #d1fae5' : '1px solid #fecaca',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{
+            width: '10px', height: '10px', borderRadius: '50%',
+            background: '#10b981', boxShadow: '0 0 10px rgba(16,185,129,0.7)',
+          }}></div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <div style={{
-                width: '44px', height: '44px', borderRadius: '12px',
-                background: ddosEnabled ? '#ecfdf5' : '#fef2f2',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
-                color: ddosEnabled ? '#10b981' : '#ef4444',
-              }}>
-                <i className={`fas ${ddosEnabled ? 'fa-shield-halved' : 'fa-shield-slash'}`}></i>
-              </div>
-              <div>
-                <h3 style={{ color: '#0f172a', fontSize: '18px', fontWeight: '700', margin: 0 }}>DDoS Protection</h3>
-                <span style={{
-                  fontSize: '12px', fontWeight: '600',
-                  color: ddosEnabled ? '#10b981' : '#ef4444',
-                }}>
-                  {ddosEnabled ? 'Active & Protecting' : 'Disabled'}
-                </span>
-              </div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+              WAF Protection Active & Filtering
             </div>
-            <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 56px', lineHeight: '1.5' }}>
-              {ddosEnabled
-                ? 'Your websites are protected against DDoS attacks, traffic floods, and malicious bots in real-time.'
-                : 'Your websites are NOT protected from DDoS attacks. Enable protection to stay safe.'}
-            </p>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>
+              Real-time heuristic and rule inspection enabled for {data?.websites?.length || 0} website(s)
+            </div>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Instant Refresh Section */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            padding: '4px 8px'
+          }}>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+              <i className="fas fa-clock" style={{ marginRight: '4px', color: '#94a3b8' }}></i>
+              {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}
+            </span>
+            <button
+              onClick={() => fetchData(true)}
+              disabled={refreshing}
+              title="Click to instantly refresh dashboard metrics"
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                border: '1px solid #2563eb',
+                background: refreshing ? '#eff6ff' : '#2563eb',
+                color: refreshing ? '#2563eb' : '#ffffff',
+                fontSize: '11.5px',
+                fontWeight: '600',
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'all 0.2s',
+                boxShadow: refreshing ? 'none' : '0 1px 2px rgba(37,99,235,0.2)'
+              }}
+            >
+              <i className={`fas fa-rotate ${refreshing ? 'fa-spin' : ''}`}></i>
+              {refreshing ? 'Refreshing...' : '⚡ Quick Refresh'}
+            </button>
+          </div>
+
           <button
             onClick={handleDdosToggle}
             disabled={ddosToggling}
             style={{
-              padding: '12px 28px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '14px',
-              fontWeight: '700',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: ddosEnabled ? '1px solid #bbf7d0' : '1px solid #fecaca',
+              background: ddosEnabled ? '#f0fdf4' : '#fef2f2',
+              color: ddosEnabled ? '#15803d' : '#b91c1c',
+              fontSize: '12px',
+              fontWeight: '600',
               cursor: ddosToggling ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
               transition: 'all 0.2s',
-              background: ddosEnabled
-                ? '#fef2f2'
-                : '#ecfdf5',
-              color: ddosEnabled ? '#ef4444' : '#10b981',
-              minWidth: '140px',
-              justifyContent: 'center',
             }}
           >
-            <i className={`fas ${ddosToggling ? 'fa-spinner fa-spin' : ddosEnabled ? 'fa-power-off' : 'fa-shield-halved'}`}></i>
-            {ddosToggling ? 'Updating...' : ddosEnabled ? 'Turn Off' : 'Turn On'}
+            <i className={`fas ${ddosToggling ? 'fa-spinner fa-spin' : ddosEnabled ? 'fa-shield-halved' : 'fa-shield-slash'}`}></i>
+            DDoS Shield: {ddosEnabled ? 'ON' : 'OFF'}
           </button>
-        </div>
 
-        {/* DDoS Feature Tags */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: '8px',
-          marginTop: '20px', paddingTop: '16px',
-          borderTop: '1px solid #f1f5f9',
-        }}>
-          {DDOS_FEATURES.map((f, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '6px 12px', borderRadius: '8px',
-              background: ddosEnabled ? '#f8fafc' : '#f8fafc',
+          <Link
+            to="/user/rules"
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
               border: '1px solid #e2e8f0',
-              opacity: ddosEnabled ? 1 : 0.5,
-              transition: 'all 0.2s',
-            }}>
-              <i className={`fas ${f.icon}`} style={{ color: ddosEnabled ? f.color : '#94a3b8', fontSize: '11px' }}></i>
-              <span style={{ color: ddosEnabled ? '#334155' : '#94a3b8', fontSize: '11px', fontWeight: '500' }}>{f.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+              background: '#f8fafc',
+              color: '#334155',
+              fontSize: '12px',
+              fontWeight: '600',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className="fas fa-shield"></i> Custom Rules
+          </Link>
 
-      {/* ML & Malware Protection Section */}
-      <div className="ml-user-section">
-        <div className={`scanner-wrap ${!isPremium ? 'premium-blur' : ''}`}>
-          <MalwareScanner />
           {!isPremium && (
-            <div className="premium-overlay-small">
-              <Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium to use the ML scanner</Link>
-            </div>
+            <Link
+              to="/user/settings"
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(245,158,11,0.25)'
+              }}
+            >
+              <i className="fas fa-crown"></i> Upgrade
+            </Link>
           )}
         </div>
-
-        <div className="system-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-microchip" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Model Status</h3>
-            <span className="status-pill online"><i className="fas fa-circle" style={{ fontSize: '7px' }}></i> Online</span>
-          </div>
-          <div className="system-grid">
-            <div className="system-item">
-              <span className="system-label">WAF Model</span>
-              <span className="system-status"><span className={`status-dot ${mlStatus?.waf?.loaded ? 'green' : 'red'}`}></span> {mlStatus?.waf?.loaded ? `v${mlStatus.waf.version || '?'}` : 'Offline'}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Malware Model</span>
-              <span className="system-status"><span className={`status-dot ${mlStatus?.malware?.loaded ? 'green' : 'red'}`}></span> {mlStatus?.malware?.loaded ? `v${mlStatus.malware.version || '?'}` : 'Offline'}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">WAF Threshold</span>
-              <span className="system-status">{(mlStatus?.waf?.threshold || 0).toFixed(2)}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Training Date</span>
-              <span className="system-status">{mlStatus?.waf?.training_date ? String(mlStatus.waf.training_date).slice(0, 10) : '—'}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Charts Grid */}
+      {/* 4 Core Stat Cards */}
+      <div className="stats-grid">
+        <StatCard 
+          icon="fa-chart-line" 
+          iconClass="blue" 
+          value={data?.requests_today || 0} 
+          label="Requests Today" 
+          trend="active" 
+          trendDir="up" 
+        />
+        <StatCard 
+          icon="fa-globe" 
+          iconClass="green" 
+          value={data?.total_requests || 0} 
+          label="Total Traffic (Lifetime)" 
+          trend="cumulative" 
+          trendDir="up" 
+        />
+        <StatCard 
+          icon="fa-shield-halved" 
+          iconClass="red" 
+          value={data?.total_blocked || 0} 
+          label="Attacks Blocked" 
+          trend="protected" 
+          trendDir="up" 
+        />
+        <StatCard 
+          icon="fa-server" 
+          iconClass="purple" 
+          value={data?.active_websites || data?.websites?.length || 0} 
+          label="Active Protected Websites" 
+          trend="online" 
+          trendDir="up" 
+        />
+      </div>
+
+      {/* Visual Charts Grid */}
       <div className="charts-grid">
-        <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`}>
+        <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`} style={{ minHeight: '320px' }}>
           <div className="chart-header">
-            <h3><i className="fas fa-chart-pie" style={{ color: '#2563eb', marginRight: '6px' }}></i> Attack Types</h3>
-            <span className="chart-action">Distribution</span>
+            <h3><i className="fas fa-chart-line" style={{ color: '#2563eb', marginRight: '6px' }}></i> Traffic Velocity (7 Days)</h3>
+            <span className="chart-action">Requests History</span>
           </div>
-          <div className="chart-container">
-            <Doughnut data={attackChartData} options={doughnutOptions} />
-          </div>
-          {!isPremium && (
-            <div className="premium-overlay-small">
-              <Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium</Link>
-            </div>
-          )}
-        </div>
-        <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`}>
-          <div className="chart-header">
-            <h3><i className="fas fa-chart-bar" style={{ color: '#10b981', marginRight: '6px' }}></i> Requests Over Time</h3>
-            <span className="chart-action">Last 7 days</span>
-          </div>
-          <div className="chart-container">
+          <div className="chart-container" style={{ height: '230px' }}>
             <Line data={dailyChartData} options={lineOptions} />
           </div>
           {!isPremium && (
             <div className="premium-overlay-small">
-              <Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium</Link>
+              <Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view live traffic trends</Link>
+            </div>
+          )}
+        </div>
+
+        <div className={`chart-card ${!isPremium ? 'premium-blur' : ''}`} style={{ minHeight: '320px' }}>
+          <div className="chart-header">
+            <h3><i className="fas fa-chart-pie" style={{ color: '#10b981', marginRight: '6px' }}></i> Threat Vectors Breakdown</h3>
+            <span className="chart-action">Category Ratio</span>
+          </div>
+          <div className="chart-container" style={{ height: '230px' }}>
+            <Doughnut data={attackChartData} options={doughnutOptions} />
+          </div>
+          {!isPremium && (
+            <div className="premium-overlay-small">
+              <Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view threat categorization</Link>
             </div>
           )}
         </div>
       </div>
 
-      {/* Top Attackers */}
-      <div className={`top-attackers ${!isPremium ? 'premium-blur' : ''}`}>
-        <div className="section-header">
-          <h3><i className="fas fa-crosshairs" style={{ color: '#ef4444', marginRight: '6px' }}></i> Top Attacking IPs</h3>
-          {isPremium && <Link to="/user/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>}
-        </div>
-        <table>
-          <thead>
-            <tr><th>#</th><th>IP Address</th><th>Attacks</th><th>Action</th></tr>
-          </thead>
-          <tbody>
-            {data?.top_attackers?.slice(0, 5).map((attacker, i) => {
-              const maxAttacks = data.top_attackers[0]?.count || 1
-              return (
-                <tr key={i}>
-                  <td><span className={`rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>{i + 1}</span></td>
-                  <td><span className="attacker-ip">{attacker.ip}</span></td>
-                  <td>
-                    <div className="attack-progress">
-                      <div className="progress-bar">
-                        <div className="fill" style={{
-                          width: `${(attacker.count / maxAttacks * 100)}%`,
-                          background: i === 0 ? 'linear-gradient(90deg,#ef4444,#f87171)' : i === 1 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#2563eb,#60a5fa)'
-                        }}></div>
+      {/* Security Operations: Top Attackers & Live Attack Feed */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+        gap: '18px',
+        marginBottom: '24px'
+      }}>
+        {/* Top Attacking IPs */}
+        <div className={`top-attackers ${!isPremium ? 'premium-blur' : ''}`} style={{ marginBottom: 0 }}>
+          <div className="section-header">
+            <h3><i className="fas fa-crosshairs" style={{ color: '#ef4444', marginRight: '6px' }}></i> Top Threat Origins</h3>
+            {isPremium && <Link to="/user/logs" className="view-all">All Logs <i className="fas fa-arrow-right"></i></Link>}
+          </div>
+          <table>
+            <thead>
+              <tr><th>#</th><th>Attacker IP</th><th>Attempts</th><th style={{ textAlign: 'right' }}>Action</th></tr>
+            </thead>
+            <tbody>
+              {data?.top_attackers?.slice(0, 5).map((attacker, i) => {
+                const maxAttacks = data.top_attackers[0]?.count || 1
+                return (
+                  <tr key={i}>
+                    <td><span className={`rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>{i + 1}</span></td>
+                    <td><span className="attacker-ip">{attacker.ip}</span></td>
+                    <td>
+                      <div className="attack-progress">
+                        <div className="progress-bar">
+                          <div className="fill" style={{
+                            width: `${(attacker.count / maxAttacks * 100)}%`,
+                            background: i === 0 ? 'linear-gradient(90deg,#ef4444,#f87171)' : i === 1 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#2563eb,#60a5fa)'
+                          }}></div>
+                        </div>
+                        <span className="count">{attacker.count}</span>
                       </div>
-                      <span className="count">{attacker.count}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <button className="badge danger" style={{ cursor: 'pointer', border: 'none' }} onClick={() => blockTopIP(attacker.ip)}>
-                      {isPremium ? 'Block' : 'PRO'}
-                    </button>
-                  </td>
-                </tr>
-              )
-            }) || (
-              <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No attack data available</td></tr>
-            )}
-          </tbody>
-        </table>
-        {!isPremium && <div className="premium-overlay-small"><Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium to view attacker details</Link></div>}
-      </div>
-
-      {/* Recent Activity */}
-      <div className={`recent-activity ${!isPremium ? 'premium-blur' : ''}`}>
-        <div className="section-header">
-          <h3><i className="fas fa-clock-rotate-left" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> Recent Attacks Blocked</h3>
-          {isPremium && <Link to="/user/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>}
-        </div>
-        <div className="activity-timeline">
-          {data?.recent_activity?.slice(0, 5).map((log, i) => (
-            <div className="activity-item" key={i}>
-              <div className="activity-time">{log.timestamp || log.time || ''}</div>
-              <div className="activity-content">
-                <span className={`activity-type ${log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? 'critical' : log.attack_type === 'XSS' || log.attack_type === 'LFI' ? 'high' : 'medium'}`}>
-                  <i className="fas fa-bug"></i> {log.attack_type}
-                </span>
-                <div className="activity-detail">From <strong>{log.ip}</strong></div>
-                <div className="activity-payload">{log.url}</div>
-              </div>
-            </div>
-          )) || (
-            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
-              <i className="fas fa-shield-check" style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}></i>
-              No attacks recorded yet
-            </div>
-          )}
-        </div>
-        {!isPremium && <div className="premium-overlay-small"><Link to="/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to Premium for full attack history</Link></div>}
-      </div>
-
-      {/* Quick Actions & System Status */}
-      <div className="quick-actions-section">
-        <div className="quick-actions-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i> Quick Actions</h3>
-          </div>
-          <div className="quick-actions-grid">
-             <QuickAction icon="fa-globe" label="Add Website" color="#10b981" onClick={() => navigate('/user/websites')} />
-             <QuickAction icon="fa-key" label="API Key" color="#8b5cf6" onClick={() => navigate('/user/settings')} />
-             <QuickAction icon="fa-link" label="Connect" color="#2563eb" onClick={() => navigate('/user/connect')} />
-             <QuickAction icon="fa-ban" label="Blacklist" color="#ef4444" onClick={() => navigate('/user/blacklist')} />
-             <QuickAction icon="fa-cog" label="Settings" color="#64748b" onClick={() => navigate('/user/settings')} />
-          </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button 
+                        className="badge danger" 
+                        style={{ cursor: 'pointer', border: 'none', padding: '4px 8px' }} 
+                        onClick={() => blockTopIP(attacker.ip)}
+                      >
+                        {isPremium ? 'BLOCK' : 'PRO'}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              }) || (
+                <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>No hostile IP traffic detected</td></tr>
+              )}
+            </tbody>
+          </table>
+          {!isPremium && <div className="premium-overlay-small"><Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view attacker details</Link></div>}
         </div>
 
-        <div className="system-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-server" style={{ color: '#10b981', marginRight: '6px' }}></i> System Status</h3>
-            <span className="status-pill online"><i className="fas fa-circle" style={{ fontSize: '7px' }}></i> Operational</span>
+        {/* Live Block Events */}
+        <div className={`recent-activity ${!isPremium ? 'premium-blur' : ''}`} style={{ marginBottom: 0 }}>
+          <div className="section-header">
+            <h3><i className="fas fa-clock-rotate-left" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> Recent Blocks Stream</h3>
+            {isPremium && <Link to="/user/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>}
           </div>
-          <div className="system-grid">
-            <div className="system-item">
-              <span className="system-label">DDoS Protection</span>
-              <span className="system-status"><span className={`status-dot ${ddosEnabled ? 'green' : ''}`} style={!ddosEnabled ? { background: '#ef4444' } : {}}></span> {ddosEnabled ? 'Active' : 'Disabled'}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">WAF Engine</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Rate Limiter</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">SSL/TLS</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Websites & Account Info */}
-      <div className="quick-actions-section">
-        {/* My Websites */}
-        <div className="quick-actions-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-globe" style={{ color: '#10b981', marginRight: '6px' }}></i> My Websites</h3>
-            <Link to="/user/websites" className="view-all">Manage <i className="fas fa-arrow-right"></i></Link>
-          </div>
-          <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '10px', marginTop: '14px', marginBottom: '14px' }}>
-            <input
-              type="text" placeholder="example.com" value={newWebsite}
-              onChange={e => setNewWebsite(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', fontFamily: 'inherit' }}
-              required
-            />
-            <button type="submit" disabled={adding} style={{
-              padding: '10px 16px', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: '#fff',
-              border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-              fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
-            }}>
-              <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`}></i> Add
-            </button>
-          </form>
-          <div>
-            {data?.websites?.slice(0, 3).map((w, i) => (
-              <div key={i} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 14px', borderBottom: '1px solid #f1f5f9',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <i className="fas fa-globe" style={{ color: '#10b981', fontSize: '13px' }}></i>
-                  <div>
-                    <span style={{ fontSize: '13px', fontWeight: '500' }}>{w.domain || w.url || w}</span>
-                    {w.added_at && <div style={{ fontSize: '11px', color: '#94a3b8' }}>{w.added_at}</div>}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: '#ecfdf5', color: '#10b981' }}>
-                    {w.status || 'active'}
+          <div className="activity-timeline" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            {data?.recent_activity?.slice(0, 5).map((log, i) => (
+              <div className="activity-item" key={i} style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span className={`activity-type ${log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? 'critical' : log.attack_type === 'XSS' || log.attack_type === 'LFI' ? 'high' : 'medium'}`} style={{ fontSize: '11px' }}>
+                    <i className="fas fa-shield-halved"></i> {log.attack_type}
                   </span>
-                  <button onClick={() => handleRemoveWebsite(w.id)} style={{
-                    padding: '4px 8px', background: '#fef2f2', color: '#ef4444', border: 'none',
-                    borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit',
-                  }}>
-                    <i className="fas fa-trash-can"></i>
-                  </button>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>{log.timestamp || log.time || 'Just now'}</span>
+                </div>
+                <div style={{ fontSize: '12px', color: '#334155' }}>
+                  Source: <strong>{log.ip}</strong>
+                </div>
+                <div className="activity-payload" style={{ fontSize: '11px', padding: '4px 8px', background: '#f8fafc', borderRadius: '4px', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {log.url}
                 </div>
               </div>
-            ))}
-            {(!data?.websites || data.websites.length === 0) && (
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '24px', fontSize: '13px' }}>
-                No websites added yet
+            )) || (
+              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '36px' }}>
+                <i className="fas fa-shield-check" style={{ fontSize: '28px', display: 'block', marginBottom: '8px', color: '#10b981' }}></i>
+                No attacks recorded in current window
               </div>
             )}
-            {data?.websites?.length > 3 && (
-              <div style={{ textAlign: 'center', padding: '10px' }}>
-                <Link to="/user/websites" style={{ fontSize: '12px', color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>
-                  View all {data.websites.length} websites <i className="fas fa-arrow-right" style={{ fontSize: '10px' }}></i>
-                </Link>
-              </div>
-            )}
+          </div>
+          {!isPremium && <div className="premium-overlay-small"><Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to inspect block streams</Link></div>}
+        </div>
+      </div>
+
+      {/* System Engine Health Bar */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '14px 20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px',
+        fontSize: '12px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="status-dot green"></span>
+            <span style={{ color: '#64748b' }}>WAF Rule Engine:</span>
+            <strong style={{ color: '#0f172a' }}>Online</strong>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className={`status-dot ${mlStatus?.waf?.loaded ? 'green' : 'red'}`}></span>
+            <span style={{ color: '#64748b' }}>ML Model Core:</span>
+            <strong style={{ color: '#0f172a' }}>{mlStatus?.waf?.loaded ? `v${mlStatus.waf.version}` : 'Active'}</strong>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="status-dot green"></span>
+            <span style={{ color: '#64748b' }}>Rate Limiting Layer:</span>
+            <strong style={{ color: '#0f172a' }}>Enforcing</strong>
           </div>
         </div>
 
-        {/* Account Info */}
-          <div className="quick-actions-card">
-            <div className="section-header" style={{ marginBottom: 0 }}>
-              <h3><i className="fas fa-user-circle" style={{ color: '#3b82f6', marginRight: '6px' }}></i> Account Info</h3>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
-              {[
-                { label: 'Name', value: data?.user?.name || '—' },
-                { label: 'Email', value: data?.user?.email || '—' },
-                { label: 'Plan', value: (data?.user?.plan || 'free').toUpperCase(), color: isPremium ? '#8b5cf6' : '#64748b' },
-                { label: 'Role', value: data?.user?.role || 'readonly' },
-                { label: 'Member Since', value: data?.user?.created_at || '—' },
-              ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: '13px', color: '#64748b' }}>{item.label}</span>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: item.color || '#0f172a' }}>{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link to="/user/websites" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
+            <i className="fas fa-globe" style={{ marginRight: '4px' }}></i> Manage Sites ({data?.websites?.length || 0})
+          </Link>
+          <span style={{ color: '#cbd5e1' }}>|</span>
+          <Link to="/user/connect" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
+            <i className="fas fa-link" style={{ marginRight: '4px' }}></i> Setup SDK / Plugin
+          </Link>
+        </div>
       </div>
     </>
   )

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>403 &mdash; Security Action Required</title>
+    <title>403 &mdash; Security Action Required | MDefender Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,8 +17,8 @@
             --text-secondary: #475569;
             --text-muted: #94a3b8;
             --border-color: #cbd5e1;
-            --font-main: 'Outfit', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -345,7 +345,7 @@
         <h1 class="main-title">403 — SECURITY ACTION REQUIRED</h1>
         <h2 class="sub-title">Access Denied by Corporate WAF</h2>
         
-        <div class="desc-text" id="desc-msg">Access to [{{ website_name }}] restricted.</div>
+        <div class="desc-text" id="desc-msg">Access to [{{SITE_NAME}}] restricted.</div>
         
         <!-- Table Section -->
         <div class="table-container">
@@ -354,7 +354,7 @@
                     <th>Attack Classification</th>
                     <td>
                         <div class="threat-cell-content">
-                            <span class="threat-text">{{ attack_type }}</span>
+                            <span class="threat-text">{{ATTACK_TYPE}}</span>
                             <span class="info-tag">Detailed info tag</span>
                         </div>
                     </td>
@@ -364,17 +364,17 @@
                     <td>
                         <div class="ip-wrap">
                             <img id="flag-img" src="https://flagcdn.com/w40/bd.png" srcset="https://flagcdn.com/w80/bd.png 2x" width="20" height="15" alt="Flag" class="flag-img" style="display: inline-block;">
-                            <span><span id="client-ip-display" style="font-family: var(--font-mono); font-weight: 700;">{{ client_ip }}</span><span id="geo-text" style="color: #64748b;"> (GeoIP: Dhaka, Bangladesh)</span></span>
+                            <span><span id="client-ip-display" style="font-family: var(--font-mono); font-weight: 700;">{{CLIENT_IP}}</span><span id="geo-text" style="color: #64748b;"> (GeoIP: Dhaka, Bangladesh)</span></span>
                         </div>
                     </td>
                 </tr>
                 <tr>
                     <th>Event Timestamp</th>
-                    <td><span id="utc-time">{{ timestamp }}</span> (Ref: <span id="unix-ref"></span>)</td>
+                    <td><span id="utc-time">{{TIMESTAMP}}</span> (Ref: <span id="unix-ref">1788199736</span>)</td>
                 </tr>
                 <tr>
                     <th>Violation Reason</th>
-                    <td>Request blocked by rule ID: <span id="rule-id-val">90001</span> (Ref: {{ attack_type }})</td>
+                    <td>Request blocked by rule ID: <span id="rule-id-val">96565</span> (Ref: {{ATTACK_TYPE}})</td>
                 </tr>
                 <tr>
                     <th>Protocol Details</th>
@@ -382,7 +382,7 @@
                 </tr>
                 <tr>
                     <th>Server Host</th>
-                    <td><span id="server-host">app-srv-01-prod-us-east.net</span></td>
+                    <td><span id="server-host">{{SITE_NAME}}</span></td>
                 </tr>
             </table>
         </div>
@@ -394,32 +394,32 @@
         </p>
         
         <div class="ref-box" id="ref-id-box" title="Click to copy Reference ID" onclick="copyRef()">
-            REFERENCE ID: {{ reference_id }}
+            REFERENCE ID: {{REFERENCE_ID}}
         </div>
         
         <!-- Actions Button Section -->
         <div class="actions">
-            <a href="/" class="btn btn-primary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+            <a id="email-link" href="#" class="btn btn-primary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                Contact Security Operations
+            </a>
+            <a href="/" class="btn btn-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
                 Return to Homepage
             </a>
             <button type="button" class="btn btn-secondary" onclick="copyRef()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                 </svg>
                 Copy Reference ID
             </button>
-            <a id="email-link" href="#" class="btn btn-secondary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                Contact Security Operations
-            </a>
         </div>
         
         <div class="footer">
@@ -429,7 +429,7 @@
 
     <script>
         // Fetch GeoIP and real IP details
-        const serverDetectedIp = "{{ client_ip }}";
+        const serverDetectedIp = "{{CLIENT_IP}}";
         const ipSpan = document.getElementById('client-ip-display');
         const flagImg = document.getElementById('flag-img');
         const geoText = document.getElementById('geo-text');
@@ -486,33 +486,36 @@
         }
 
         // Convert Timestamp to UTC format
-        const timestampStr = "{{ timestamp }}";
+        const timestampStr = "{{TIMESTAMP}}";
         try {
             const dt = new Date(timestampStr.replace(' ', 'T'));
-            document.getElementById('utc-time').innerText = dt.toUTCString();
-            document.getElementById('unix-ref').innerText = Math.floor(dt.getTime() / 1000);
-        } catch (e) {
-            document.getElementById('utc-time').innerText = timestampStr;
-            document.getElementById('unix-ref').innerText = Math.floor(Date.now() / 1000);
-        }
+            if (!isNaN(dt.getTime())) {
+                document.getElementById('utc-time').innerText = dt.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+                document.getElementById('unix-ref').innerText = Math.floor(dt.getTime() / 1000);
+            }
+        } catch (e) {}
 
         // Dynamically compute rule ID from attack type
-        const attackType = "{{ attack_type }}";
+        const attackType = "{{ATTACK_TYPE}}";
         let hash = 0;
         for (let i = 0; i < attackType.length; i++) {
             hash = attackType.charCodeAt(i) + ((hash << 5) - hash);
         }
         const ruleId = Math.abs(hash % 10000) + 90000;
-        document.getElementById('rule-id-val').innerText = ruleId;
+        const ruleEl = document.getElementById('rule-id-val');
+        if (ruleEl) ruleEl.innerText = ruleId;
 
         // Server host lookup
-        document.getElementById('server-host').innerText = window.location.hostname || "app-srv-01-prod-us-east.net";
+        const srvHost = document.getElementById('server-host');
+        if (srvHost && (!srvHost.innerText || srvHost.innerText === 'Protected Website' || srvHost.innerText.includes('{{'))) {
+            srvHost.innerText = window.location.hostname || "protected.local";
+        }
 
         // Setup email operations mailto link
-        const refId = "{{ reference_id }}";
+        const refId = "{{REFERENCE_ID}}";
         const emailLink = document.getElementById('email-link');
         if (emailLink) {
-            emailLink.href = `mailto:admin@mdefender-pro.io?subject=WAF Block Reference: ${refId}&body=Hello,%0D%0A%0D%0AMy request was blocked by the security WAF. Details below:%0D%0A- Reference ID: ${refId}%0D%0A- IP: ${clientIp}%0D%0A- Domain: ${window.location.host}`;
+            emailLink.href = `mailto:security@mdefender-pro.io?subject=WAF Block Reference: ${refId}&body=Hello Security Team,%0D%0A%0D%0AMy request was blocked by the corporate WAF. Details below:%0D%0A- Reference ID: ${refId}%0D%0A- IP: ${clientIp}%0D%0A- Host: ${window.location.host}%0D%0A- Reason: ${attackType}`;
         }
 
         function copyRef() {

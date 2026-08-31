@@ -31,6 +31,7 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import GoogleCallback from './pages/auth/GoogleCallback'
 import SessionsPage from './pages/auth/Sessions'
+import PaymentSuccess from './pages/PaymentSuccess'
 
 import api from './api/api'
 
@@ -80,6 +81,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/blog" element={<Blog />} />
       <Route path="/docs" element={<Docs />} />
       <Route path="/blocked" element={<BlockPage />} />

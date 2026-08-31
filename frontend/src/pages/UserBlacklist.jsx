@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
+import userStore from '../utils/userStore'
 
 export default function UserBlacklist() {
-  const [entries, setEntries] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [entries, setEntries] = useState(() => userStore.get('blacklist') || [])
+  const [loading, setLoading] = useState(() => !userStore.get('blacklist'))
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ ip: '', reason: '', type: 'permanent' })
   const [submitting, setSubmitting] = useState(false)
@@ -12,7 +13,9 @@ export default function UserBlacklist() {
   const fetchBlacklist = useCallback(async () => {
     try {
       const data = await api.getUserBlacklist()
-      setEntries(Array.isArray(data) ? data : (data.blacklist || []))
+      const list = Array.isArray(data) ? data : (data.blacklist || [])
+      setEntries(list)
+      userStore.set('blacklist', list)
     } catch (err) {
       console.error(err)
     } finally {

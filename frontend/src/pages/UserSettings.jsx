@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/api'
+import PaymentModal from '../components/PaymentModal'
 
 export default function UserSettings() {
   const navigate = useNavigate()
@@ -14,6 +15,8 @@ export default function UserSettings() {
   const [emailLoading, setEmailLoading] = useState(false)
   const [planLoading, setPlanLoading] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState('monthly')
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [paymentHistory, setPaymentHistory] = useState([])
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [mfaSetup, setMfaSetup] = useState(null)
   const [mfaCode, setMfaCode] = useState('')
@@ -30,6 +33,10 @@ export default function UserSettings() {
       setProfile(data.user || data)
       const mfaData = await api.getMFAStatus()
       setMfaEnabled(mfaData.mfa_enabled || false)
+      try {
+        const history = await api.getPaymentHistory()
+        setPaymentHistory(history || [])
+      } catch {}
     } catch {
       navigate('/user/login')
     } finally {
@@ -598,85 +605,142 @@ export default function UserSettings() {
             background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden', gridColumn: activeSection === 'billing' ? '1 / -1' : undefined,
           }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', fontSize: '16px' }}>
-                <i className="fas fa-crown"></i>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', fontSize: '16px' }}>
+                  <i className="fas fa-crown"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Subscription &amp; Billing</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Manage payment methods and active protection plan</p>
+                </div>
               </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Subscription Plan</h3>
-                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Manage your subscription</p>
-              </div>
+              <button
+                onClick={() => setCheckoutOpen(true)}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  color: '#fff',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 8px rgba(37,99,235,0.3)'
+                }}
+              >
+                <i className="fas fa-credit-card"></i> {isPremium ? 'Renew / Change Plan' : 'Upgrade Plan'}
+              </button>
             </div>
+
             <div style={{ padding: '24px' }}>
               {isPremium ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '240px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
-                      <div style={{
-                        width: '56px', height: '56px', borderRadius: '14px',
-                        background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '24px', color: '#fff',
-                        boxShadow: '0 4px 14px rgba(139,92,246,0.3)',
-                      }}>
-                        <i className="fas fa-crown"></i>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>Premium Plan</div>
-                        <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> Active
-                        </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', padding: '18px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{
+                      width: '48px', height: '48px', borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '22px', color: '#fff',
+                    }}>
+                      <i className="fas fa-crown"></i>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Enterprise Pro Plan</div>
+                      <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> Active Protection &middot; 2,000 WAF Rules &amp; 5.2M ML Model
                       </div>
                     </div>
-                    {profile?.plan_expires && (
-                      <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px 70px' }}>
-                        Expires: {new Date(profile.plan_expires).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                      </p>
-                    )}
                   </div>
-                  <button onClick={handleDowngrade} disabled={planLoading} style={{
-                    padding: '10px 20px', background: '#fef2f2', color: '#dc2626',
-                    border: '1px solid #fecaca', borderRadius: '10px', fontSize: '13px',
-                    fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                  }}>
-                    <i className="fas fa-arrow-down"></i> Downgrade to Free
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {profile?.plan_expires && (
+                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
+                        Expires: <strong style={{ color: '#0f172a' }}>{new Date(profile.plan_expires).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</strong>
+                      </span>
+                    )}
+                    <button onClick={async () => {
+                      if (!confirm('Are you sure you want to downgrade to the Free plan?')) return
+                      setPlanLoading(true)
+                      try {
+                        await api.downgradePlan()
+                        showMsg('Downgraded to Free plan.')
+                        fetchProfile()
+                      } catch (err) {
+                        showErr(err.message)
+                      } finally {
+                        setPlanLoading(false)
+                      }
+                    }} disabled={planLoading} style={{
+                      padding: '8px 14px', background: '#fef2f2', color: '#dc2626',
+                      border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px',
+                      fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                      Downgrade
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
-                    {[
-                      { id: 'monthly', label: 'Monthly', price: '$9', sub: '/month', desc: 'Billed monthly' },
-                      { id: 'yearly', label: 'Yearly', price: '$60', sub: '/year', desc: 'Save 44%' },
-                    ].map(p => (
-                      <div key={p.id} onClick={() => setSelectedPlan(p.id)} style={{
-                        padding: '20px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
-                        border: `2px solid ${selectedPlan === p.id ? '#2563eb' : '#e2e8f0'}`,
-                        background: selectedPlan === p.id ? '#eff6ff' : '#fff',
-                        transition: 'all 0.2s',
-                      }}>
-                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: 500 }}>{p.label}</div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '2px' }}>
-                          <span style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>{p.price}</span>
-                          <span style={{ fontSize: '13px', color: '#94a3b8' }}>{p.sub}</span>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{p.desc}</div>
-                      </div>
-                    ))}
+                <div style={{ padding: '18px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Starter Free Plan</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>1 Website &middot; 10,000 requests / month &middot; Basic Rules</div>
                   </div>
-                  <button onClick={handleUpgrade} disabled={planLoading} style={{
-                    width: '100%', padding: '14px 24px',
-                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                    color: '#fff', border: 'none', borderRadius: '12px',
-                    fontSize: '15px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
-                    boxShadow: '0 4px 14px rgba(37,99,235,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  <button onClick={() => setCheckoutOpen(true)} style={{
+                    padding: '9px 18px', background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                    color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px',
+                    fontWeight: '700', cursor: 'pointer',
                   }}>
-                    {planLoading ? <><i className="fas fa-spinner fa-spin"></i> Processing...</> : <><i className="fas fa-crown"></i> Upgrade to Premium</>}
+                    Upgrade to Enterprise Pro ($29/mo)
                   </button>
                 </div>
               )}
+
+              {/* Invoices Table */}
+              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-file-invoice" style={{ color: '#64748b' }}></i> Invoices &amp; Transaction Receipts
+              </h4>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                      <th style={{ padding: '10px 14px' }}>Invoice</th>
+                      <th style={{ padding: '10px 14px' }}>Date</th>
+                      <th style={{ padding: '10px 14px' }}>Amount</th>
+                      <th style={{ padding: '10px 14px' }}>Method</th>
+                      <th style={{ padding: '10px 14px' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentHistory.length > 0 ? (
+                      paymentHistory.map((inv, idx) => (
+                        <tr key={idx} style={{ borderBottom: idx < paymentHistory.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                          <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontWeight: '600', color: '#2563eb' }}>{inv.invoice_id}</td>
+                          <td style={{ padding: '10px 14px', color: '#64748b' }}>{inv.created_at || 'Recent'}</td>
+                          <td style={{ padding: '10px 14px', fontWeight: '700', color: '#0f172a' }}>${inv.amount}.00 USD</td>
+                          <td style={{ padding: '10px 14px', color: '#64748b' }}>
+                            <i className="fas fa-credit-card" style={{ marginRight: '6px' }}></i>
+                            {inv.card_brand ? `${inv.card_brand} ···· ${inv.card_last4}` : (inv.bank_ref ? 'Bank Wire Transfer' : 'Direct Payment')}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', fontSize: '11px', fontWeight: '700' }}>
+                              PAID
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                          No past billing invoices recorded yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -751,6 +815,19 @@ export default function UserSettings() {
           </div>
         )}
       </div>
+
+      {/* Payment Checkout Modal */}
+      <PaymentModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        plan="pro"
+        billingCycle="monthly"
+        onSuccess={() => {
+          setCheckoutOpen(false)
+          fetchProfile()
+          showMsg('Payment completed! Your account is upgraded to Enterprise Pro.')
+        }}
+      />
     </div>
   )
 }

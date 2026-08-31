@@ -558,6 +558,97 @@ async def upgrade_user_plan(request: Request, user: dict = Depends(verify_user_t
 async def downgrade_user_plan(user: dict = Depends(verify_user_token_compat)):
     return user_api.downgrade_plan(user)
 
+@app.get("/api/payment/config")
+async def get_payment_configuration():
+    from src.services.payment_service import PaymentService
+    return PaymentService().get_payment_config()
+
+@app.post("/api/payment/create-checkout-session")
+async def create_stripe_checkout_session(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.payment_service import PaymentService
+    data = await request.json()
+    plan = data.get('plan', 'pro')
+    cycle = data.get('billing_cycle', 'monthly')
+    frontend_url = data.get('frontend_url')
+    service = PaymentService()
+    return service.create_stripe_checkout_session(user, plan_id=plan, billing_cycle=cycle, frontend_url=frontend_url)
+
+@app.post("/api/payment/verify-session")
+async def verify_stripe_session(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.payment_service import PaymentService
+    data = await request.json()
+    session_id = data.get('session_id', '')
+    service = PaymentService()
+    return service.verify_stripe_session(session_id, user)
+
+@app.post("/api/payment/stripe-webhook")
+async def stripe_webhook(request: Request):
+    from src.services.payment_service import PaymentService
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature', '')
+    service = PaymentService()
+    return service.handle_stripe_webhook(payload, sig_header)
+
+@app.post("/api/payment/checkout")
+async def process_payment_checkout(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.payment_service import PaymentService
+    data = await request.json()
+    plan = data.get('plan', 'pro')
+    cycle = data.get('billing_cycle', 'monthly')
+    card = data.get('card', {})
+    service = PaymentService()
+    return service.process_card_checkout(user, plan_id=plan, billing_cycle=cycle, card_data=card)
+
+@app.post("/api/payment/bank-transfer")
+async def process_payment_bank_transfer(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.payment_service import PaymentService
+    data = await request.json()
+    plan = data.get('plan', 'pro')
+    cycle = data.get('billing_cycle', 'monthly')
+    transfer_data = data.get('transfer_data', {})
+    service = PaymentService()
+    return service.process_bank_transfer(user, plan_id=plan, billing_cycle=cycle, transfer_data=transfer_data)
+
+@app.post("/api/payment/wallet")
+async def process_payment_wallet(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.payment_service import PaymentService
+    data = await request.json()
+    plan = data.get('plan', 'pro')
+    cycle = data.get('billing_cycle', 'monthly')
+    wallet_data = data.get('wallet_data', {})
+    service = PaymentService()
+    return service.process_wallet_payment(user, plan_id=plan, billing_cycle=cycle, wallet_data=wallet_data)
+
+@app.get("/api/payment/bkash/config")
+async def get_bkash_config_endpoint():
+    from src.services.bkash_service import BkashService
+    return BkashService().get_bkash_config()
+
+@app.post("/api/payment/bkash/create")
+async def create_bkash_payment_endpoint(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.bkash_service import BkashService
+    data = await request.json()
+    plan = data.get('plan', 'pro')
+    cycle = data.get('billing_cycle', 'monthly')
+    frontend_url = data.get('frontend_url')
+    return BkashService().create_checkout_payment(user, plan_id=plan, billing_cycle=cycle, frontend_url=frontend_url)
+
+@app.post("/api/payment/bkash/verify")
+async def verify_bkash_payment_endpoint(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.services.bkash_service import BkashService
+    data = await request.json()
+    trx_id = data.get('trx_id', '')
+    sender_mobile = data.get('sender_mobile', '')
+    plan = data.get('plan', 'pro')
+    cycle = data.get('billing_cycle', 'monthly')
+    return BkashService().verify_trx_id(user, trx_id=trx_id, sender_mobile=sender_mobile, plan_id=plan, billing_cycle=cycle)
+
+@app.get("/api/payment/history")
+async def get_user_payment_history(user: dict = Depends(verify_user_token_compat)):
+    from src.services.payment_service import PaymentService
+    service = PaymentService()
+    return service.get_user_payment_history(user)
+
 @app.get("/api/user/logs")
 async def user_get_logs(request: Request, user: dict = Depends(verify_user_token_compat)):
     params = dict(request.query_params)
@@ -566,6 +657,22 @@ async def user_get_logs(request: Request, user: dict = Depends(verify_user_token
 @app.get("/api/user/rules")
 async def user_get_rules(user: dict = Depends(verify_user_token_compat)):
     return user_api.get_user_rules(user)
+
+@app.post("/api/user/rules")
+async def user_create_rule(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    return user_api.create_user_rule(user, data)
+
+@app.put("/api/user/rules")
+async def user_update_rule(request: Request, user: dict = Depends(verify_user_token_compat)):
+    rule_id = request.query_params.get('id')
+    data = await request.json()
+    return user_api.update_user_rule(user, rule_id, data)
+
+@app.delete("/api/user/rules")
+async def user_delete_rule(request: Request, user: dict = Depends(verify_user_token_compat)):
+    rule_id = request.query_params.get('id')
+    return user_api.delete_user_rule(user, rule_id)
 
 @app.get("/api/user/ddos-status")
 async def user_ddos_status(user: dict = Depends(verify_user_token_compat)):
@@ -840,58 +947,53 @@ async def connect_website(request: Request):
 
 @app.post("/api/analyze")
 async def analyze_request(request: Request, background_tasks: BackgroundTasks):
-    api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
-    data = await request.json()
-    domain = data.get('domain', '')
-    auth_data = waf_api.verify_api_key(api_key, domain)
-    if not auth_data:
-        if domain == 'localhost' or domain == '127.0.0.1':
+    try:
+        api_key = request.headers.get('Authorization', '').replace('Bearer ', '')
+        data = await request.json()
+        domain = data.get('domain', '')
+        auth_data = waf_api.verify_api_key(api_key, domain)
+        if not auth_data:
+            if domain == 'localhost' or domain == '127.0.0.1':
+                pass
+            else:
+                return JSONResponse(status_code=401, content={'status': 'error', 'message': 'Invalid API key'})
+        
+        user_id = auth_data.get('user_id') if auth_data else None
+        website_id = auth_data.get('website_id') if auth_data else None
+
+        # Perform rule checking + ML score evaluation (extremely fast)
+        decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
+            data.get('request', {}), user_id=user_id, domain=domain, website_id=website_id
+        )
+
+        # Queue background audit log writes
+        try:
+            background_tasks.add_task(
+                waf_api.async_save_logs, decision, log_entry, event, is_blocked, ip, user_id, website_id
+            )
+        except Exception:
             pass
-        else:
-            return JSONResponse(status_code=401, content={'status': 'error', 'message': 'Invalid API key'})
-    
-    user_id = auth_data.get('user_id') if auth_data else None
-    website_id = auth_data.get('website_id') if auth_data else None
 
-    # Perform rule checking + ML score evaluation (extremely fast, sub-100ms)
-    decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
-        data.get('request', {}), user_id=user_id, domain=domain, website_id=website_id
-    )
+        if is_blocked:
+            return {
+                'status': 'blocked',
+                'attack_type': decision.get('attack_type', 'Malicious Attack'),
+                'reason': decision.get('reason', 'Threat detected by WAF engine'),
+                'confidence': round(decision.get('confidence', 0.95), 2),
+                'reference_id': decision.get('reference_id', 'MDF-BLOCKED'),
+                'threat_score': decision.get('risk_score', 80),
+            }
 
-    # Queue the heavy MongoDB Atlas writes and stats updates to background tasks
-    background_tasks.add_task(
-        waf_api.async_save_logs, decision, log_entry, event, is_blocked, ip, user_id, website_id
-    )
-
-    if is_blocked:
-        forwarded_headers = data['request'].get('headers', {})
-        claimed_ip = get_claimed_ip_from_headers(forwarded_headers) or 'N/A'
-        real_ip = data['request'].get('ip', 'unknown')
-        block_html = _templates.TemplateResponse("block_page.html", {
-            "request": request,
-            "client_ip": claimed_ip,
-            "real_ip": real_ip,
-            "attack_type": decision.get('attack_type', 'Unknown'),
-            "reason": f"Malicious payload detected (confidence: {decision.get('confidence', 0):.2f})",
-            "reference_id": decision.get('reference_id', 'N/A'),
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "website_name": "MDefender Pro"
-        })
         return {
-            'status': 'blocked',
-            'block_page': block_html.body.decode('utf-8'),
-            'attack_type': decision.get('attack_type'),
-            'confidence': round(decision.get('confidence', 0.9), 2),
-            'reference_id': decision.get('reference_id'),
+            'status': 'allowed',
             'threat_score': decision.get('risk_score', 0),
+            'reference_id': decision.get('reference_id'),
+            'confidence': round(decision.get('confidence', 0.9), 2)
         }
-
-    return {
-        'status': 'allowed',
-        'threat_score': decision.get('risk_score', 0),
-        'reference_id': decision.get('reference_id'),
-        'confidence': round(decision.get('confidence', 0.9), 2)
-    }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={'status': 'error', 'message': str(e)})
 
 @app.get("/api/stats")
 async def get_api_stats(request: Request):

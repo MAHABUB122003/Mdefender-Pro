@@ -82,7 +82,7 @@ class DecisionEngine:
 
         # --- 3. Parse + rule engine ---
         parsed = self.request_parser.parse(request_data)
-        rule_matches = self.rule_engine.check_rules(parsed)
+        rule_matches = self.rule_engine.check_rules(parsed, user_id=user_id)
         rule_score = 1.0 if rule_matches else 0.0
 
         # --- 4. ML signal ---
@@ -103,6 +103,13 @@ class DecisionEngine:
         )
         risk_score = min(100, max(0, int(round(risk_score * 100))))
 
+        def _rule_name(m):
+            if isinstance(m, dict):
+                return m.get("rule_name") or m.get("name") or "Security Rule"
+            return str(m) if m else "Security Rule"
+
+        first_rule_name = _rule_name(rule_matches[0]) if rule_matches else None
+
         # --- 7. Decision ---
         url_path = parsed.get("path", "").lower()
         is_auth_path = any(x in url_path for x in ['login', 'register', 'auth', 'signin', 'signup', 'logout'])
@@ -115,7 +122,7 @@ class DecisionEngine:
         elif rule_score >= 1.0:
             decision = "BLOCK"
             confidence = max(0.95, ml_score)
-            reason = f"Security rule matched: {rule_matches[0]['rule_name']}"
+            reason = f"Security rule matched: {first_rule_name}"
         elif ml_score >= 0.85 and not is_auth_path:
             decision = "BLOCK"
             confidence = ml_score
@@ -161,13 +168,12 @@ class DecisionEngine:
                 "behavior_score": self._component_score(behavior_score),
             },
             "signals": {
-                "rule_matches": [m["rule_name"] for m in rule_matches][:5],
+                "rule_matches": [_rule_name(m) for m in rule_matches][:5],
                 "ml_category": ml_result.get("category"),
                 "ml_probability": round(ml_score, 4),
                 "ml_model_version": ml_result.get("model_version"),
                 "reputation_source": reputation_source,
             },
-            "attack_type": (rule_matches[0]["rule_name"] if rule_matches else None)
-                          or ml_result.get("category"),
+            "attack_type": first_rule_name or ml_result.get("category"),
             "ml_model_version": ml_result.get("model_version"),
         }

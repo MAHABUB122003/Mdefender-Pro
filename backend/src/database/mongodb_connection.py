@@ -210,6 +210,10 @@ class MongoDB:
         return self._db['rules'] if self._db is not None else None
 
     @property
+    def user_rules(self):
+        return self._db['user_rules'] if self._db is not None else None
+
+    @property
     def settings(self):
         return self._db['settings'] if self._db is not None else None
 
@@ -330,6 +334,7 @@ class InMemoryDB:
         self.whitelist = InMemoryCollection()
         self.clients = InMemoryCollection()
         self.rules = InMemoryCollection()
+        self.user_rules = InMemoryCollection()
         self.settings = InMemoryCollection()
         self.auto_blocks = InMemoryCollection()
         self.users = InMemoryCollection()

@@ -1,11 +1,13 @@
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, Fragment, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/api'
+import userStore from '../utils/userStore'
 
 export default function UserLogs() {
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
-  const [logs, setLogs] = useState({ logs: [], total: 0, total_pages: 0 })
-  const [loading, setLoading] = useState(true)
+  const [logs, setLogs] = useState(() => userStore.get('logs_p1') || { logs: [], total: 0, total_pages: 0 })
+  const [loading, setLoading] = useState(() => !userStore.get('logs_p1'))
+  const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [ipFilter, setIpFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -17,8 +19,17 @@ export default function UserLogs() {
   const [ipLocations, setIpLocations] = useState({})
   const perPage = 20
 
-  const fetchLogs = async () => {
-    setLoading(true)
+  const fetchLogs = useCallback(async (manual = false) => {
+    const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}`;
+    const cached = userStore.get(cacheKey);
+    if (cached && !manual) {
+      setLogs(cached);
+      setLoading(false);
+    } else if (!cached && !manual) {
+      setLoading(true);
+    }
+    if (manual) setRefreshing(true);
+
     try {
       const params = { page, limit: perPage }
       if (search) params.search = search
@@ -29,9 +40,17 @@ export default function UserLogs() {
       if (dateTo) params.date_to = dateTo
       const data = await api.getUserLogs(params)
       setLogs(data)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }
+      userStore.set(cacheKey, data)
+      if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter) {
+        userStore.set('logs_p1', data)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+      if (manual) setTimeout(() => setRefreshing(false), 300)
+    }
+  }, [page, search, ipFilter, typeFilter, statusFilter, dateFrom, dateTo, perPage])
 
   useEffect(() => {
     if (!isPremium) { setLoading(false); return }
@@ -144,8 +163,28 @@ export default function UserLogs() {
             <option value="Path Traversal">Path Traversal</option>
           </select>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Date From" style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="Date To" style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
           <button type="submit" className="btn-filter" style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>Filter</button>
+          <button 
+            type="button" 
+            onClick={() => fetchLogs(true)} 
+            disabled={refreshing}
+            style={{ 
+              padding: '8px 14px', 
+              background: refreshing ? '#eff6ff' : '#f8fafc', 
+              color: '#2563eb', 
+              border: '1px solid #bfdbfe', 
+              borderRadius: '6px', 
+              fontWeight: '600', 
+              cursor: refreshing ? 'not-allowed' : 'pointer', 
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className={`fas fa-rotate ${refreshing ? 'fa-spin' : ''}`}></i>
+            {refreshing ? 'Refreshing...' : '⚡ Refresh Logs'}
+          </button>
         </form>
       </div>
 

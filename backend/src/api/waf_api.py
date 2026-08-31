@@ -3,6 +3,7 @@ from src.engine.ml_detector import MLDetector
 from src.engine.rule_engine import RuleEngine
 from src.engine.feature_extractor import FeatureExtractor
 from src.engine.request_parser import RequestParser
+from src.engine.decision_engine import DecisionEngine
 from src.security.rate_limiter import RateLimiter
 from src.security.ip_filter import IPFilter
 from src.security.attack_blocker import AttackBlocker
@@ -23,6 +24,7 @@ class WAFAPI:
         self.rule_engine = RuleEngine()
         self.feature_extractor = FeatureExtractor()
         self.request_parser = RequestParser()
+        self.decision_engine = DecisionEngine(ml_detector=self.ml_detector)
         self.rate_limiter = RateLimiter()
         self.ip_filter = IPFilter()
         self.attack_blocker = AttackBlocker()
@@ -46,6 +48,17 @@ class WAFAPI:
         if not api_key:
             return None
         api_key = api_key.strip()
+        
+        # Check high-speed in-memory cache (TTL: 60s)
+        cache_key = f"{api_key}::{domain or ''}"
+        now_ts = datetime.now().timestamp()
+        if hasattr(self, '_key_cache') and cache_key in self._key_cache:
+            entry, exp = self._key_cache[cache_key]
+            if now_ts < exp:
+                return entry
+        else:
+            self._key_cache = {}
+
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         record = self.db.api_keys.find_one({'key_hash': key_hash, 'status': 'active'})
         if record:
@@ -59,7 +72,9 @@ class WAFAPI:
                        self._hostname(website.get("domain")) != expected and \
                        self._hostname(website.get("url")) != expected:
                         return None
-            return {'user_id': user_id, 'website_id': website_id, 'api_key': api_key}
+            res_val = {'user_id': user_id, 'website_id': website_id, 'api_key': api_key}
+            self._key_cache[cache_key] = (res_val, now_ts + 60)
+            return res_val
 
         # Legacy fallback (user master account key)
         user = self.db.users.find_one({
@@ -159,7 +174,6 @@ class WAFAPI:
         }
 
     def analyze_request(self, request_data, user_id=None, domain=None, website_id=None):
-        from src.engine.decision_engine import DecisionEngine
         from bson import ObjectId
         
         ip = request_data.get('ip', '')
@@ -174,8 +188,7 @@ class WAFAPI:
         if is_rate_limited:
             self.attack_blocker.auto_block(ip, 'Rate limit exceeded', 1)
 
-        decision_engine = DecisionEngine(ml_detector=self.ml_detector)
-        decision = decision_engine.evaluate(
+        decision = self.decision_engine.evaluate(
             request_data,
             ip=ip,
             is_blacklisted=is_blacklisted,

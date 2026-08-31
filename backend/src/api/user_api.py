@@ -615,18 +615,116 @@ class UserAPI:
 
     def get_user_rules(self, user):
         rules = []
+        # Add global default rules
         for i, rule in enumerate(self.rule_engine.default_rules):
             rules.append({
-                'id': str(i + 1),
+                'id': f"global_{i}",
                 'name': rule.get('name', ''),
                 'description': rule.get('description', ''),
                 'pattern': rule.get('pattern', ''),
-                'type': rule.get('type', ''),
+                'type': 'global',
                 'action': rule.get('action', 'block'),
                 'enabled': rule.get('enabled', True),
                 'severity': rule.get('severity', 'medium'),
+                'is_custom': False
             })
+            
+        # Add user custom rules
+        try:
+            user_id_str = str(user['_id'])
+            customs = list(self.db.user_rules.find({'user_id': user_id_str}))
+            for rule in customs:
+                rules.append({
+                    'id': str(rule['_id']),
+                    'name': rule.get('name', ''),
+                    'description': rule.get('description', 'User custom WAF rule'),
+                    'pattern': rule.get('pattern', ''),
+                    'type': 'custom',
+                    'action': rule.get('action', 'block'),
+                    'enabled': rule.get('enabled', True),
+                    'severity': rule.get('severity', 'medium'),
+                    'is_custom': True
+                })
+        except Exception as e:
+            logger.warning(f"Error loading custom rules for user: {e}")
+            
         return rules
+
+    def create_user_rule(self, user, data):
+        name = data.get('name', '').strip()
+        pattern = data.get('pattern', '').strip()
+        action = data.get('action', 'block')
+        severity = data.get('severity', 'medium')
+        enabled = data.get('enabled', True)
+        
+        if not name or not pattern:
+            return {'status': 'error', 'message': 'Name and pattern are required'}
+        
+        import re
+        try:
+            re.compile(pattern)
+        except re.error as e:
+            return {'status': 'error', 'message': f'Invalid regular expression: {e}'}
+            
+        rule = {
+            'user_id': str(user['_id']),
+            'name': name,
+            'pattern': pattern,
+            'action': action,
+            'severity': severity,
+            'enabled': enabled,
+            'created_at': datetime.now(),
+            'updated_at': datetime.now()
+        }
+        res = self.db.user_rules.insert_one(rule)
+        return {
+            'status': 'success',
+            'message': 'Rule created successfully',
+            'id': str(res.inserted_id)
+        }
+
+    def update_user_rule(self, user, rule_id, data):
+        try:
+            oid = ObjectId(rule_id)
+        except:
+            return {'status': 'error', 'message': 'Invalid rule ID'}
+            
+        rule = self.db.user_rules.find_one({'_id': oid, 'user_id': str(user['_id'])})
+        if not rule:
+            return {'status': 'error', 'message': 'Rule not found'}
+            
+        update_fields = {}
+        if 'name' in data:
+            update_fields['name'] = data['name'].strip()
+        if 'pattern' in data:
+            pattern = data['pattern'].strip()
+            try:
+                import re
+                re.compile(pattern)
+                update_fields['pattern'] = pattern
+            except re.error as e:
+                return {'status': 'error', 'message': f'Invalid regular expression: {e}'}
+        if 'action' in data:
+            update_fields['action'] = data['action']
+        if 'severity' in data:
+            update_fields['severity'] = data['severity']
+        if 'enabled' in data:
+            update_fields['enabled'] = bool(data['enabled'])
+            
+        update_fields['updated_at'] = datetime.now()
+        self.db.user_rules.update_one({'_id': oid}, {'$set': update_fields})
+        return {'status': 'success', 'message': 'Rule updated successfully'}
+
+    def delete_user_rule(self, user, rule_id):
+        try:
+            oid = ObjectId(rule_id)
+        except:
+            return {'status': 'error', 'message': 'Invalid rule ID'}
+            
+        res = self.db.user_rules.delete_one({'_id': oid, 'user_id': str(user['_id'])})
+        if res.deleted_count == 0:
+            return {'status': 'error', 'message': 'Rule not found'}
+        return {'status': 'success', 'message': 'Rule deleted successfully'}
 
     def toggle_ddos_protection(self, user, enabled):
         self.db.users.update_one(
@@ -640,3 +738,37 @@ class UserAPI:
             'status': 'success',
             'ddos_enabled': user.get('ddos_enabled', True),
         }
+
+    def upgrade_plan(self, user, plan='premium', days=30):
+        now = datetime.now()
+        plan_expires = now + timedelta(days=days)
+        self.db.users.update_one(
+            {'_id': user['_id']},
+            {
+                '$set': {
+                    'plan': plan,
+                    'plan_expires': plan_expires,
+                    'updated_at': now
+                }
+            }
+        )
+        return {
+            'status': 'success',
+            'message': f'Plan upgraded to {plan}',
+            'plan': plan,
+            'plan_expires': plan_expires.strftime('%Y-%m-%d')
+        }
+
+    def downgrade_plan(self, user):
+        now = datetime.now()
+        self.db.users.update_one(
+            {'_id': user['_id']},
+            {
+                '$set': {
+                    'plan': 'free',
+                    'plan_expires': None,
+                    'updated_at': now
+                }
+            }
+        )
+        return {'status': 'success', 'message': 'Plan downgraded to Free', 'plan': 'free'}

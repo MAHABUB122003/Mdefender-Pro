@@ -6,20 +6,25 @@ class RequestParser:
         pass
 
     def parse(self, request_data):
+        raw_url = request_data.get('url', '')
+        parsed_url = urllib.parse.urlparse(raw_url)
+        path = parsed_url.path or raw_url
+        query_str = request_data.get('query_string', '') or parsed_url.query
+        
         parsed = {
-            'url': request_data.get('url', ''),
+            'url': raw_url if '?' in raw_url or not query_str else f"{path}?{query_str}",
+            'path': path,
+            'query_string': query_str,
             'method': request_data.get('method', 'GET'),
             'headers': request_data.get('headers', {}),
             'body': request_data.get('body', ''),
             'query_params': request_data.get('query_params', {}),
             'ip': request_data.get('ip', ''),
-            'user_agent': request_data.get('headers', {}).get('User-Agent', ''),
-            'referer': request_data.get('headers', {}).get('Referer', ''),
-            'cookies': request_data.get('headers', {}).get('Cookie', ''),
-            'content_type': request_data.get('headers', {}).get('Content-Type', '')
+            'user_agent': request_data.get('user_agent') or request_data.get('headers', {}).get('User-Agent', ''),
+            'referer': request_data.get('referer') or request_data.get('headers', {}).get('Referer', ''),
+            'cookies': request_data.get('cookies') or request_data.get('headers', {}).get('Cookie', ''),
+            'content_type': request_data.get('content_type') or request_data.get('headers', {}).get('Content-Type', '')
         }
-        parsed['path'] = urllib.parse.urlparse(parsed['url']).path
-        parsed['query_string'] = urllib.parse.urlparse(parsed['url']).query
         parsed['body_fields'] = self._extract_body_fields(parsed['body'], parsed['content_type'])
         parsed['body_field_values'] = ' '.join(str(v) for v in parsed['body_fields'].values()) if parsed['body_fields'] else ''
         return parsed
