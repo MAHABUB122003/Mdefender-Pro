@@ -11,11 +11,44 @@ export function setCsrfToken(token) {
   csrfToken = token;
 }
 
+function getAccessToken() {
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('mdefender_access');
+  }
+  return null;
+}
+
+function getRefreshToken() {
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('mdefender_refresh');
+  }
+  return null;
+}
+
+function storeTokens(data) {
+  if (typeof localStorage !== 'undefined') {
+    if (data.access_token) localStorage.setItem('mdefender_access', data.access_token);
+    if (data.refresh_token) localStorage.setItem('mdefender_refresh', data.refresh_token);
+  }
+}
+
+export function clearTokens() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('mdefender_access');
+    localStorage.removeItem('mdefender_refresh');
+  }
+}
+
 async function apiCall(endpoint, options = {}) {
+  const accessToken = getAccessToken();
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
 
   const csrf = getCsrfToken();
   if (csrf) {
@@ -50,12 +83,15 @@ async function apiCall(endpoint, options = {}) {
     }
 
     if (endpoint === '/api/auth/me' || endpoint === '/api/auth/refresh') {
+      clearTokens();
       throw new Error('Unauthorized');
     }
 
     if (endpoint.startsWith('/api/admin/')) {
+      clearTokens();
       window.location.href = '/admin/login';
     } else {
+      clearTokens();
       window.location.href = '/user/login';
     }
     throw new Error('Unauthorized');
@@ -87,6 +123,7 @@ export const api = {
       body: JSON.stringify({ email_or_username: emailOrUsername, password, remember_me: rememberMe }),
     }).then(data => {
       if (data.csrf_token) setCsrfToken(data.csrf_token);
+      storeTokens(data);
       return data;
     }),
 
@@ -96,6 +133,7 @@ export const api = {
       body: JSON.stringify({ temp_token: tempToken, code }),
     }).then(data => {
       if (data.csrf_token) setCsrfToken(data.csrf_token);
+      storeTokens(data);
       return data;
     }),
 
@@ -105,15 +143,26 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }).then(data => {
       if (data.csrf_token) setCsrfToken(data.csrf_token);
+      storeTokens(data);
       return data;
     }),
 
-  logout: () => apiCall('/api/auth/logout', { method: 'POST' }),
+  logout: () => {
+    clearTokens();
+    return apiCall('/api/auth/logout', { method: 'POST' });
+  },
 
-  logoutAll: () => apiCall('/api/auth/logout-all', { method: 'POST' }),
+  logoutAll: () => {
+    clearTokens();
+    return apiCall('/api/auth/logout-all', { method: 'POST' });
+  },
 
-  refreshToken: () => apiCall('/api/auth/refresh', { method: 'POST' }).then(data => {
+  refreshToken: () => apiCall('/api/auth/refresh', {
+    method: 'POST',
+    headers: getRefreshToken() ? { 'X-Refresh-Token': getRefreshToken() } : {},
+  }).then(data => {
     if (data.csrf_token) setCsrfToken(data.csrf_token);
+    storeTokens(data);
     return data;
   }),
 
@@ -143,6 +192,7 @@ export const api = {
       body: JSON.stringify({ code }),
     }).then(data => {
       if (data.csrf_token) setCsrfToken(data.csrf_token);
+      storeTokens(data);
       return data;
     }),
 
@@ -194,9 +244,13 @@ export const api = {
   scanFile: async (file) => {
     const formData = new FormData()
     formData.append('file', file)
+    const headers = {}
+    const accessToken = getAccessToken()
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
     const response = await fetch(`${API_BASE}/api/scan`, {
       method: 'POST',
       credentials: 'include',
+      headers,
       body: formData,
     })
     return response.json()

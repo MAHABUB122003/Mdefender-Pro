@@ -177,6 +177,8 @@ async def login(data: LoginRequest, request: Request, response: Response):
     return {
         'status': 'success',
         'user': result['user'],
+        'access_token': result['access_token'],
+        'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
     }
 
@@ -202,6 +204,8 @@ async def verify_mfa(data: MFAChallengeRequest, request: Request, response: Resp
     return {
         'status': 'success',
         'user': result['user'],
+        'access_token': result['access_token'],
+        'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
     }
 
@@ -233,6 +237,8 @@ async def admin_login(data: AdminLoginRequest, request: Request, response: Respo
     return {
         'status': 'success',
         'redirect': result.get('redirect', '/admin/dashboard'),
+        'access_token': result['access_token'],
+        'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
     }
 
@@ -296,6 +302,8 @@ async def refresh_token(request: Request, response: Response):
 
     return {
         'status': 'success',
+        'access_token': new_access_token,
+        'refresh_token': new_refresh_token,
         'csrf_token': csrf_token,
     }
 
@@ -563,6 +571,8 @@ async def google_callback(data: GoogleCallbackRequest, request: Request,
     return {
         'status': 'success',
         'user': result['user'],
+        'access_token': result['access_token'],
+        'refresh_token': result['refresh_token'],
         'csrf_token': csrf_token,
     }
 
