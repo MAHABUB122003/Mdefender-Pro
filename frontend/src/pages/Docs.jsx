@@ -798,7 +798,7 @@ $waf->inspectRequest();`}
                   </p>
                 </div>
                 <a
-                  href={`${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/v1/wordpress/plugin`}
+                  href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
                   download
                   style={{
                     display: 'inline-flex',

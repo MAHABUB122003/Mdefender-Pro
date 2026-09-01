@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')
 
 function useAnimatedNumber(target, duration = 800) {
   const [value, setValue] = useState(0)

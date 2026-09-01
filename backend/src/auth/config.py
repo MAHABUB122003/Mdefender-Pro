@@ -38,9 +38,9 @@ class AuthConfig:
 
     GOOGLE_CLIENT_ID: str = field(default_factory=lambda: os.getenv('GOOGLE_CLIENT_ID', ''))
     GOOGLE_CLIENT_SECRET: str = field(default_factory=lambda: os.getenv('GOOGLE_CLIENT_SECRET', ''))
-    GOOGLE_REDIRECT_URI: str = field(default_factory=lambda: os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5173/auth/google/callback'))
+    GOOGLE_REDIRECT_URI: str = field(default_factory=lambda: os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5173/auth/google/callback').rstrip('/'))
 
-    FRONTEND_URL: str = field(default_factory=lambda: os.getenv('FRONTEND_URL', 'http://localhost:5173'))
+    FRONTEND_URL: str = field(default_factory=lambda: os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/'))
 
     SMTP_SERVER: str = field(default_factory=lambda: os.getenv('SMTP_SERVER', ''))
     SMTP_PORT: int = field(default_factory=lambda: int(os.getenv('SMTP_PORT', '587')))
@@ -50,7 +50,7 @@ class AuthConfig:
     SMTP_FROM_NAME: str = 'MDefender Pro'
 
     CORS_ORIGINS: list = field(default_factory=lambda: [
-        origin.strip() for origin in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',') if origin.strip()
+        origin.strip().rstrip('/') for origin in os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',') if origin.strip()
     ])
 
     COOKIE_SECURE: bool = field(default_factory=lambda: os.getenv('COOKIE_SECURE', 'false').lower() == 'true')

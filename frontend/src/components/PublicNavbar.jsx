@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 
-const downloadUrl = `${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/api/v1/wordpress/plugin`;
+const downloadUrl = `${(import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1/wordpress/plugin`;
 
 const navLinks = [
   { to: '/', label: 'Home' },
