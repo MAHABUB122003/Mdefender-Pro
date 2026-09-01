@@ -55,7 +55,7 @@ class AuthConfig:
 
     COOKIE_SECURE: bool = field(default_factory=lambda: os.getenv('COOKIE_SECURE', 'false').lower() == 'true')
     COOKIE_DOMAIN: str = field(default_factory=lambda: os.getenv('COOKIE_DOMAIN', ''))
-    COOKIE_SAMESITE: str = 'lax'
+    COOKIE_SAMESITE: str = field(default_factory=lambda: os.getenv('COOKIE_SAMESITE', 'lax').lower())
 
     MFA_ISSUER_NAME: str = 'MDefender Pro'
     MFA_CODE_VALIDITY_SECONDS: int = 30
