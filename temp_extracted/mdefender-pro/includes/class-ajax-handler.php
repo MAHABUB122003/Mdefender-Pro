@@ -266,8 +266,8 @@ class WAF_FW_Ajax_Handler {
             'attack_block_duration' => (int) get_option('waf_fw_attack_block_duration', 86400),
             'attack_window' => (int) get_option('waf_fw_attack_window', 86400),
             'protection_enabled' => get_option('waf_fw_protection_enabled', 'yes'),
-            'main_waf_api_url' => get_option('waf_fw_main_waf_api_url', 'http://localhost:8000/api'),
-            'main_waf_admin_url' => get_option('waf_fw_main_waf_admin_url', 'http://localhost:8000/admin'),
+            'main_waf_api_url' => get_option('waf_fw_main_waf_api_url', 'https://mdefenderapi.onrender.com/api'),
+            'main_waf_admin_url' => get_option('waf_fw_main_waf_admin_url', 'https://mdefenderpro.onrender.com'),
             'scheduled_scan_enabled' => get_option('waf_fw_scheduled_scan_enabled', 'no'),
             'scheduled_scan_frequency' => get_option('waf_fw_scheduled_scan_frequency', 'weekly'),
             'scheduled_scan_type' => get_option('waf_fw_scheduled_scan_type', 'full'),
@@ -677,7 +677,7 @@ class WAF_FW_Ajax_Handler {
         $status['api_url'] = get_option('waf_fw_ml_api_url', '');
         $status['has_api_key'] = !empty(get_option('waf_fw_ml_api_key', ''));
         $status['has_website_id'] = !empty(get_option('waf_fw_website_id', ''));
-        $status['main_waf_url'] = get_option('waf_fw_main_waf_api_url', 'http://localhost:8000/api');
+        $status['main_waf_url'] = get_option('waf_fw_main_waf_api_url', 'https://mdefenderapi.onrender.com/api');
         wp_send_json_success($status);
     }
 

@@ -444,8 +444,8 @@ class WAF_FW_DB {
             'waf_fw_attack_threshold' => 20,
             'waf_fw_attack_block_duration' => 86400,
             'waf_fw_attack_window' => 86400,
-            'waf_fw_main_waf_api_url' => 'http://localhost:8000/api',
-            'waf_fw_main_waf_admin_url' => 'http://localhost:8000/admin',
+            'waf_fw_main_waf_api_url' => 'https://mdefenderapi.onrender.com/api',
+            'waf_fw_main_waf_admin_url' => 'https://mdefenderpro.onrender.com',
         ];
         foreach ($defaults as $key => $value) {
             if (get_option($key) === false) {
