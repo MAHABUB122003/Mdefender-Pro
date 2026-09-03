@@ -35,7 +35,7 @@ function getDefaultTemplate() {
 const DEFAULT_CONFIG = {
   apiKey: '',
   domain: '',
-  apiEndpoint: 'http://127.0.0.1:8000',
+  apiEndpoint: 'https://mdefenderapi.onrender.com',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
   timeout: 5000,
@@ -337,3 +337,4 @@ mdefender.DEFAULT_CONFIG = DEFAULT_CONFIG;
 mdefender.sendAnalyzeRequest = sendAnalyzeRequest;
 
 module.exports = mdefender;
+

@@ -1,6 +1,6 @@
 {
   "name": "mdefender-pro",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "MDefender Pro - Web Application Firewall middleware for Node.js/Express. Protects against XSS, SQLi, CSRF, and other OWASP Top 10 attacks.",
   "main": "index.js",
   "types": "index.d.ts",
@@ -50,7 +50,7 @@
     "type": "git",
     "url": "git+https://github.com/mdefender/mdefender.git"
   },
-  "homepage": "https://mdefender-pro-6e3r.onrender.com",
+  "homepage": "https://mdefenderapi.onrender.com",
   "bugs": {
     "url": "https://github.com/mdefender/mdefender/issues"
   }
