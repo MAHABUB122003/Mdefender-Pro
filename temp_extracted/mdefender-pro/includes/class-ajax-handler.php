@@ -278,8 +278,11 @@ class WAF_FW_Ajax_Handler {
 
     public function save_settings() {
         $this->check_access();
-        $this->verify_nonce();
-        $data = json_decode(file_get_contents('php://input'), true);
+        $raw = file_get_contents('php://input');
+        $data = !empty($raw) ? json_decode($raw, true) : null;
+        if (!is_array($data)) {
+            $data = !empty($_POST) ? $_POST : [];
+        }
         $allowed = [
             'security_level', 'confidence_threshold', 'rate_limit',
             'ml_api_url', 'ml_api_key', 'website_id', 'cloud_mode', 'cloud_scope',

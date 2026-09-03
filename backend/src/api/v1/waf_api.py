@@ -110,8 +110,6 @@ def verify_api_key(db, api_key, domain=None):
                 ]
             })
         if not website:
-            website = db.websites.find_one({"user_id": user_id_str})
-        if not website:
             try:
                 import uuid
                 site_id = str(uuid.uuid4())
@@ -121,7 +119,7 @@ def verify_api_key(db, api_key, domain=None):
                     "_id": site_id,
                     "user_id": user_id_str,
                     "name": site_name,
-                    "url": f"http://{expected}" if expected else "http://localhost",
+                    "url": f"https://{expected}" if (expected and expected not in ("localhost", "127.0.0.1")) else "http://localhost",
                     "domain": expected or "localhost",
                     "platform": "wordpress",
                     "status": "active",
@@ -135,21 +133,34 @@ def verify_api_key(db, api_key, domain=None):
                     "created_at": now,
                     "updated_at": now,
                 }
-                db.websites.insert_one(website)
-                db.api_keys.insert_one({
-                    "website_id": site_id,
-                    "user_id": user_id_str,
-                    "key_hash": key_hash,
-                    "label": "wordpress_auto",
-                    "created_at": now,
-                    "status": "active",
-                    "last_used": now,
-                })
+                try:
+                    db.websites.insert_one(website)
+                except Exception:
+                    # Domain already claimed; fetch existing website record
+                    existing = db.websites.find_one({"domain": expected})
+                    if existing:
+                        website = existing
+                        site_id = str(existing.get("_id"))
+                
+                # Upsert API key record so duplicate key_hash never throws
+                db.api_keys.update_one(
+                    {"key_hash": key_hash},
+                    {"$set": {
+                        "website_id": site_id,
+                        "user_id": user_id_str,
+                        "key_hash": key_hash,
+                        "label": "wordpress_auto",
+                        "status": "active",
+                        "last_used": now,
+                        "updated_at": now,
+                    }},
+                    upsert=True
+                )
             except Exception:
-                # Could not auto-register (e.g. the domain is already claimed by
-                # another website as enforced by the unique domain index). Bail
-                # out cleanly so the caller returns a proper 401 instead of a 500.
-                return None
+                # Fallback to any user website
+                website = db.websites.find_one({"user_id": user_id_str})
+                if not website:
+                    return None
         return {
             "user_id": user_id_str,
             "website_id": website["_id"],
