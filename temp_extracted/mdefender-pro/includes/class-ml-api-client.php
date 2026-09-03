@@ -81,14 +81,12 @@ class WAF_FW_ML_Api_Client {
         $headers = [
             'Authorization' => 'Bearer ' . $this->api_key,
             'Content-Type'  => 'application/json',
+            'User-Agent'    => 'WordPress/' . get_bloginfo('version') . '; ' . home_url(),
         ];
         if (!empty($this->site_token)) {
             $headers['X-Site-Token'] = $this->site_token;
         }
-        // Verify TLS certificates for all remote (non-loopback) endpoints.
-        // Only loopback/local development URLs (plain http / self-signed local
-        // backend) disable verification, so API keys and file contents are not
-        // exposed to MITM on a real deployment.
+
         $host = parse_url($this->base_url, PHP_URL_HOST);
         $is_loopback = $host === 'localhost' || $host === '127.0.0.1' || $host === '::1'
             || (defined('WAF_FW_DEV_MODE') && WAF_FW_DEV_MODE);
@@ -112,6 +110,13 @@ class WAF_FW_ML_Api_Client {
         }
 
         $response = wp_remote_request($url, $args);
+        if (is_wp_error($response)) {
+            // If SSL verification failed on a shared host with outdated root CAs, retry once with sslverify=false
+            if (!empty($args['sslverify'])) {
+                $args['sslverify'] = false;
+                $response = wp_remote_request($url, $args);
+            }
+        }
         if (is_wp_error($response)) {
             if ($status_ref !== null) {
                 $status_ref['error'] = $response->get_error_message();

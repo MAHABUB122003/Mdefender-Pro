@@ -333,13 +333,13 @@ class WAF_FW_Ajax_Handler {
                     'message' => 'Disconnected from cloud.',
                 ];
             } else {
-                update_option('waf_fw_connected', 'no');
                 $client = WAF_FW_ML_Api_Client::instance();
                 $connection = $client->connect();
-                
-                if (empty($connection['success']) && isset($data['ml_api_key'])) {
-                    // Rollback the broken key to the previous working key
-                    update_option('waf_fw_ml_api_key', $old_api_key);
+                if (!empty($connection['success'])) {
+                    update_option('waf_fw_connected', 'yes');
+                } else {
+                    update_option('waf_fw_connected', 'no');
+                    // Never delete/erase the user's entered API key!
                 }
             }
         }
