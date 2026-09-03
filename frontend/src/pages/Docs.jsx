@@ -10,7 +10,8 @@ const docSections = [
       { id: 'intro', label: 'What is MDefender Pro', icon: 'fa-shield-halved' },
       { id: 'hybrid-architecture', label: 'Hybrid WAF + ML Engine', icon: 'fa-network-wired' },
       { id: 'quickstart', label: '5-Minute Quickstart', icon: 'fa-bolt' },
-      { id: 'website-connect', label: 'Connect Website Guide', icon: 'fa-plug-circle-bolt' }
+      { id: 'website-connect', label: 'Connect Website Guide', icon: 'fa-plug-circle-bolt' },
+      { id: 'block-page-template', label: '403 Block Page Template', icon: 'fa-shield-virus' }
     ]
   },
   {
@@ -581,7 +582,7 @@ module.exports = {
   domain: 'yourdomain.com',
 
   // Endpoint
-  apiEndpoint: 'https://mdefender-pro-6e3r.onrender.com',
+  apiEndpoint: 'https://mdefenderapi.onrender.com',
 
   // Mode: 'block' (active defense) or 'monitor' (log-only)
   mode: 'block',
@@ -1087,9 +1088,9 @@ curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"`}
                   language="javascript"
                   code={`// mdefender.config.js (in your project root)
 module.exports = {
-  apiKey: "Ix2TtXbbBHJolIam3MYLui0jphKy9oRvF_D3AJjY1tO8MGfWU-NCQzvDuwc_6Dri",
+  apiKey: "YOUR_API_KEY_HERE",
   domain: "yourdomain.com",
-  apiEndpoint: "https://mdefender-pro-6e3r.onrender.com", // or http://127.0.0.1:8000 for local dev
+  apiEndpoint: "https://mdefenderapi.onrender.com", // or http://localhost:8000 for local dev
   mode: "block",
   logBlocked: true
 };`}
@@ -1207,6 +1208,214 @@ curl -i "http://localhost:5005/api/books?search=%27%20UNION%20SELECT%20null,pass
 
 # 3. Test Safe Query (Expect 200 OK with data)
 curl -i "http://localhost:5005/api/books"`}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Section: 403 Block Page Template */}
+          {activeSection === 'block-page-template' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#f87171',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Zero-Config Bundled UI</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>&lt; 0.1ms In-Memory Rendering</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>403 Cyber Security Block Page</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '28px' }}>
+                Both the official <strong>npm package (<code>mdefender-pro</code>)</strong> and the <strong>WordPress Plugin</strong> come pre-bundled with an enterprise-grade, responsive <strong>403 Forbidden Block Page Template</strong>. When an exploit or scanner is blocked, the WAF immediately intercepts the connection, generates an incident reference ID, and renders this protective block screen.
+              </p>
+
+              {/* Interactive Visual Preview Mockup */}
+              <div style={{
+                background: '#04070e',
+                border: '1px solid #1e293b',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '32px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #1e293b' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }}></span>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Live Block Page Template Preview
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#60a5fa', background: 'rgba(37,99,235,0.15)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(37,99,235,0.3)', fontFamily: 'monospace' }}>
+                    HTTP 403 FORBIDDEN
+                  </span>
+                </div>
+
+                {/* Simulated Block Page Box */}
+                <div style={{
+                  maxWidth: '580px',
+                  margin: '0 auto',
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  padding: '28px 24px',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+                  textAlign: 'center',
+                  fontFamily: "'Inter', -apple-system, sans-serif"
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '16px' }}>
+                      <i className="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <span style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', letterSpacing: '0.5px' }}>MDEFENDER PRO</span>
+                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+                    WEB APPLICATION FIREWALL &bull; ACTIVE PROTECTION
+                  </div>
+
+                  <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px' }}>
+                    403 &mdash; Security Action Required
+                  </h2>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', margin: '8px 0 14px' }}>
+                    <i className="fa-solid fa-triangle-exclamation"></i> Threat Blocked: SQL Injection Vector
+                  </div>
+
+                  <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.6', margin: '0 0 18px' }}>
+                    Your request was flagged by MDefender Pro WAF security algorithms and prevented from executing. If you believe this is a false positive, please contact the site administrator with the Incident ID below.
+                  </p>
+
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '600' }}>Incident Reference ID:</span>
+                      <strong style={{ color: '#4f46e5', fontFamily: 'monospace' }}>MDF-8C4E19F0</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '600' }}>Client IP Address:</span>
+                      <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>192.0.2.144</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '600' }}>Protected Domain:</span>
+                      <span style={{ color: '#0f172a' }}>yourdomain.com</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#64748b', fontWeight: '600' }}>Timestamp (UTC):</span>
+                      <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>2026-09-04 02:48:31</span>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    Secured by <strong>MDefender-Pro Cloud Service &bull; 5.2M Model &bull; 2,000 WAF Rules</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Template Dynamic Placeholders */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
+                  <i className="fa-solid fa-code" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Template Dynamic Replacement Tokens
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
+                  When rendering the block page, MDefender automatically injects sanitized contextual metadata into the template:
+                </p>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: '#090d18', textAlign: 'left', borderBottom: '1px solid #334155' }}>
+                        <th style={{ padding: '10px 14px', color: '#f8fafc' }}>Placeholder Token</th>
+                        <th style={{ padding: '10px 14px', color: '#f8fafc' }}>Description</th>
+                        <th style={{ padding: '10px 14px', color: '#f8fafc' }}>Example Output</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8' }}>{"{{REFERENCE_ID}}"}</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>Unique hexadecimal incident tracking hash for audits</td>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#a78bfa' }}>MDF-8C4E19F0</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8' }}>{"{{ATTACK_TYPE}}"}</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>Classified threat category (SQLi, XSS, RCE, LFI, Bot Scanner)</td>
+                        <td style={{ padding: '10px 14px', color: '#f87171' }}>SQL Injection Vector</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8' }}>{"{{CLIENT_IP}}"}</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>Connecting remote IP address resolved via X-Forwarded-For</td>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#cbd5e1' }}>192.0.2.144</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8' }}>{"{{SITE_NAME}}"}</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>Your registered website domain name or Host header</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>yourdomain.com</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8' }}>{"{{TIMESTAMP}}"}</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>UTC ISO datetime when the threat was intercepted</td>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#cbd5e1' }}>2026-09-04 02:48:31</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#38bdf8' }}>{"{{REASON}}"}</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>Human-readable explanation of why the payload was denied</td>
+                        <td style={{ padding: '10px 14px', color: '#cbd5e1' }}>Blocked by MDefender Pro security rules.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Custom Block Page Option */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
+                  <i className="fa-solid fa-paintbrush" style={{ color: '#a78bfa', marginRight: '10px' }}></i>
+                  Customizing Your Own Block Page
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '12px' }}>
+                  Want to use your company's own branded styling? Simply pass <code>customBlockPage</code> in <code>mdefender.config.js</code> or options:
+                </p>
+                <CodeBlock
+                  language="javascript"
+                  code={`// mdefender.config.js
+module.exports = {
+  apiKey: process.env.MDEFENDER_API_KEY,
+  domain: 'yourdomain.com',
+  apiEndpoint: 'https://mdefenderapi.onrender.com',
+  mode: 'block',
+  
+  // Path to your custom HTML template with {{REFERENCE_ID}}, {{CLIENT_IP}}, etc.
+  customBlockPage: './public/my-custom-403.html'
+};`}
                 />
               </div>
             </div>

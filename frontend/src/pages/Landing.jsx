@@ -770,6 +770,129 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Bundled 403 Block Page Showcase Section */}
+      <section style={{
+        padding: '90px 24px',
+        maxWidth: '1240px',
+        margin: '0 auto',
+        borderTop: '1px solid #1e293b'
+      }}>
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(6, 11, 24, 0.95))',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          borderRadius: '20px',
+          padding: '48px 36px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '36px',
+            alignItems: 'center'
+          }}>
+            {/* Left Description Column */}
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#f87171',
+                fontSize: '12px',
+                fontWeight: '700',
+                marginBottom: '16px'
+              }}>
+                <i className="fa-solid fa-shield-virus"></i> BUNDLED WITH NPM &amp; WORDPRESS
+              </div>
+
+              <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.02em', marginBottom: '16px', lineHeight: '1.2' }}>
+                Instant Cyber 403 Block Page Template
+              </h2>
+
+              <p style={{ fontSize: '15px', color: '#94a3b8', lineHeight: '1.7', marginBottom: '24px' }}>
+                No need to design or host error handlers. When you install <code>mdefender-pro</code> or the WordPress plugin, a high-performance, dark glassmorphic 403 screen is pre-packaged and ready to defend your application.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {[
+                  { icon: 'fa-bolt', text: 'Sub-millisecond in-memory cache rendering with zero network latency.' },
+                  { icon: 'fa-fingerprint', text: 'Dynamic incident reference ID generation (e.g. MDF-8C4E19F0) for audit compliance.' },
+                  { icon: 'fa-triangle-exclamation', text: 'Auto-categorizes threats: SQLi, XSS, RCE, LFI, and Bot Scanners.' },
+                  { icon: 'fa-paintbrush', text: 'Fully customizable with customBlockPage template support.' }
+                ].map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.12)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>
+                      <i className={`fa-solid ${item.icon}`}></i>
+                    </div>
+                    <span style={{ fontSize: '13.5px', color: '#cbd5e1' }}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Mockup Preview Column */}
+            <div>
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '14px',
+                padding: '24px 20px',
+                color: '#0f172a',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                textAlign: 'center',
+                fontFamily: "'Inter', sans-serif"
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#4f46e5', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
+                    <i className="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <strong style={{ fontSize: '14px', letterSpacing: '0.5px' }}>MDEFENDER PRO</strong>
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
+                  ACTIVE WAF SHIELD
+                </div>
+
+                <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px' }}>
+                  403 &mdash; Security Action Required
+                </h3>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', margin: '6px 0 12px' }}>
+                  <i className="fa-solid fa-triangle-exclamation"></i> Threat Blocked: SQL Injection
+                </div>
+
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  textAlign: 'left',
+                  fontSize: '11.5px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#64748b' }}>Incident ID:</span>
+                    <strong style={{ color: '#4f46e5', fontFamily: 'monospace' }}>MDF-94F2B01E</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#64748b' }}>Client IP:</span>
+                    <span style={{ fontFamily: 'monospace', color: '#0f172a' }}>192.0.2.77</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Timestamp:</span>
+                    <span style={{ fontFamily: 'monospace', color: '#0f172a' }}>2026-09-04 02:48:31</span>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>
+                  Protected by <strong>MDefender Pro &bull; 5.2M ML Model</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Developer Integration Code Tabs */}
       <section style={{
         background: '#050811',

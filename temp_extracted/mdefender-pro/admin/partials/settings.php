@@ -781,7 +781,7 @@ $dashboard = $logger->get_dashboard_data();
         btn.prop('disabled', true).text('Testing...');
         jQuery('#wafMlTestResult').hide();
 
-        jQuery.post(ajaxurl + '?action=waf_fw_save_settings', JSON.stringify({ ml_api_key: key }), function(r) {
+        jQuery.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({ ml_api_key: key }), function(r) {
             if (r.success) {
                 var html = '';
                 if (r.data.connected === true) {
@@ -792,7 +792,7 @@ $dashboard = $logger->get_dashboard_data();
                     html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + (r.data.connection_message || 'Could not reach the cloud service.') + '<br><small>Check that the API key belongs to this website domain in your MDefender-Pro dashboard.</small></div>';
                     wafCloudBadge('no');
                 } else {
-                    html = '<div style="background:var(--war-gray-50);border:1px solid var(--war-gray-300);border-radius:6px;padding:12px;color:#475569;">Settings saved.</div>';
+                    html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + (r.data.connection_message || 'Invalid API Key') + '</div>'; wafCloudBadge('no');
                 }
                 jQuery('#wafMlTestResult').html(html).show();
             } else {
@@ -852,7 +852,7 @@ $dashboard = $logger->get_dashboard_data();
         }
 
         function wafCompleteOnboarding() {
-            $.post(ajaxurl + '?action=waf_fw_complete_onboarding', {}, function() {
+            $.post(ajaxurl + '?action=waf_fw_complete_onboarding&nonce=' + waf_fw_ajax.nonce, {}, function() {
                 location.reload();
             });
         }
@@ -861,7 +861,7 @@ $dashboard = $logger->get_dashboard_data();
             if (!confirm('Are you sure you want to disconnect from MDefender-Pro Cloud?')) return;
             var btn = $(this);
             btn.prop('disabled', true).text('Disconnecting...');
-            $.post(ajaxurl + '?action=waf_fw_save_settings', JSON.stringify({
+            $.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({
                 ml_api_key: ''
             }), function(r) {
                 $('#wafFwMlKey').val('');
@@ -886,7 +886,7 @@ $dashboard = $logger->get_dashboard_data();
             btn.prop('disabled', true).text('Connecting...');
             $('#wafMlTestResult').hide();
 
-            $.post(ajaxurl + '?action=waf_fw_save_settings', JSON.stringify({
+            $.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({
                 ml_api_key: key
             }), function(r) {
                 if (r.success) {
@@ -898,7 +898,7 @@ $dashboard = $logger->get_dashboard_data();
                         html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + (r.data.connection_message || 'Could not reach the cloud service.') + '<br><small>Check that the API key belongs to this website domain in your MDefender-Pro dashboard.</small></div>';
                         wafCloudBadge('no');
                     } else {
-                        html = '<div style="background:var(--war-gray-50);border:1px solid var(--war-gray-300);border-radius:6px;padding:12px;color:#475569;">Settings saved.</div>';
+                        html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + (r.data.connection_message || 'Invalid API Key') + '</div>'; wafCloudBadge('no');
                     }
                     $('#wafMlTestResult').html(html).show();
                     $.get(ajaxurl, {action:'waf_fw_get_settings'}, function(r2) {
@@ -943,7 +943,7 @@ $dashboard = $logger->get_dashboard_data();
                 }
                 $btn.prop('disabled', true).text('Connecting...');
                 $res.attr('class', 'waf-modal-result show').html('<div style="background:var(--war-gray-50);border:1px solid var(--war-gray-300);border-radius:6px;padding:12px;color:#475569;">Connecting to MDefender-Pro cloud...</div>');
-                $.post(ajaxurl + '?action=waf_fw_save_settings', JSON.stringify({
+                $.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({
                     ml_api_key: key
                 }), function(r) {
                     if (r.success && r.data.connected === true) {
@@ -997,7 +997,7 @@ $dashboard = $logger->get_dashboard_data();
 
         $('#wafFwProtection').on('change', function() {
             var on = $(this).is(':checked');
-            $.post(ajaxurl + '?action=waf_fw_toggle_protection', {enabled: on ? 1 : 0}, function(r) {
+            $.post(ajaxurl + '?action=waf_fw_toggle_protection&nonce=' + waf_fw_ajax.nonce, {enabled: on ? 1 : 0}, function(r) {
                 if (r.success) {
                     $('#wafProtectionLabel').text('WAF Protection is ' + (r.data.enabled ? 'ON' : 'OFF'));
                     wafPill($('#wafPillProtection'), r.data.enabled ? 'Active' : 'Off', r.data.enabled ? 'on' : 'off');
@@ -1013,7 +1013,7 @@ $dashboard = $logger->get_dashboard_data();
             e.preventDefault();
             var btn = $(this).find('button[type="submit"]');
             btn.text('Saving...').prop('disabled', true);
-            $.post(ajaxurl + '?action=waf_fw_save_scheduled_scan_settings', JSON.stringify({
+            $.post(ajaxurl + '?action=waf_fw_save_scheduled_scan_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({
                 enabled: $('#wafFwScheduleEnabled').is(':checked'),
                 frequency: $('#wafFwScheduleFrequency').val(),
                 scan_type: $('#wafFwScheduleScanType').val()
@@ -1071,7 +1071,7 @@ $dashboard = $logger->get_dashboard_data();
                 }
             });
 
-            $.post(ajaxurl + '?action=waf_fw_save_settings', JSON.stringify(data), function(r) {
+            $.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify(data), function(r) {
                 if (r.success) {
                     if (typeof r.data.connection_message !== 'undefined') {
                         alert((r.data.connected === true ? 'Connected to cloud: ' : 'Connection issue: ') + r.data.connection_message);

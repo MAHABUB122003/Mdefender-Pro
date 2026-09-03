@@ -77,7 +77,7 @@ class WAF_FW_ML_Api_Client {
      * null on network failure / non-2xx / error envelope. Optionally stores
      * the HTTP status code for the caller via $status_ref.
      */
-    private function request($method, $path, $body = null, $status_ref = null, $timeout = null) {
+    private function request($method, $path, $body = null, &$status_ref = null, $timeout = null) {
         $headers = [
             'Authorization' => 'Bearer ' . $this->api_key,
             'Content-Type'  => 'application/json',

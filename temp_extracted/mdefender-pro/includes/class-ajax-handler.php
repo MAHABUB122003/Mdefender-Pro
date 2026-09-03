@@ -295,6 +295,9 @@ class WAF_FW_Ajax_Handler {
         if (isset($data['learning_mode'])) {
             WAF_FW_Engine::instance()->set_learning_mode($data['learning_mode'] === 'yes');
         }
+        
+        $old_api_key = get_option('waf_fw_ml_api_key', '');
+        
         foreach ($allowed as $key) {
             if (isset($data[$key])) {
                 if ($key === 'cloud_mode' && !in_array($data[$key], ['monitor', 'protect', 'off'], true)) {
@@ -330,6 +333,11 @@ class WAF_FW_Ajax_Handler {
                 update_option('waf_fw_connected', 'no');
                 $client = WAF_FW_ML_Api_Client::instance();
                 $connection = $client->connect();
+                
+                if (empty($connection['success']) && isset($data['ml_api_key'])) {
+                    // Rollback the broken key to the previous working key
+                    update_option('waf_fw_ml_api_key', $old_api_key);
+                }
             }
         }
 
