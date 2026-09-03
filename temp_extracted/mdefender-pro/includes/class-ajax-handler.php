@@ -247,7 +247,7 @@ class WAF_FW_Ajax_Handler {
             'security_level' => get_option('waf_fw_security_level', 'high'),
             'confidence_threshold' => (float) get_option('waf_fw_confidence_threshold', 0.7),
             'rate_limit' => (int) get_option('waf_fw_rate_limit', 100),
-            'ml_api_url' => get_option('waf_fw_ml_api_url', 'https://api.mdefender-pro.io'),
+            'ml_api_url' => get_option('waf_fw_ml_api_url', 'https://mdefenderapi.onrender.com'),
             'ml_api_key' => get_option('waf_fw_ml_api_key', ''),
             'website_id' => get_option('waf_fw_website_id', ''),
             'cloud_mode' => get_option('waf_fw_cloud_mode', 'protect'),
@@ -309,8 +309,8 @@ class WAF_FW_Ajax_Handler {
 
         // Ensure default cloud API URL is set
         $ml_url = get_option('waf_fw_ml_api_url', '');
-        if (empty($ml_url)) {
-            update_option('waf_fw_ml_api_url', 'https://api.mdefender-pro.io');
+        if (empty($ml_url) || strpos($ml_url, 'mdefender-pro.io') !== false) {
+            update_option('waf_fw_ml_api_url', 'https://mdefenderapi.onrender.com');
         }
 
         // Cloud credentials changed -> attempt a connect handshake so the

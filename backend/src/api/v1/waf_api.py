@@ -41,7 +41,14 @@ def _hostname(url_or_host):
     value = value.split("/")[0].split("?")[0].split("#")[0]
     if ":" in value:
         value = value.split(":")[0]
-    return value
+    return value.strip(".")
+
+
+def _clean_host(host_or_url):
+    h = _hostname(host_or_url)
+    if h.startswith("www."):
+        h = h[4:]
+    return h
 
 
 def verify_api_key(db, api_key, domain=None):
@@ -55,10 +62,31 @@ def verify_api_key(db, api_key, domain=None):
         website = db.websites.find_one({"_id": record.get("website_id")})
         if website:
             if domain:
-                expected = _hostname(domain)
-                if expected and expected not in ("localhost", "127.0.0.1") and \
-                   _hostname(website.get("domain")) != expected and \
-                   _hostname(website.get("url")) != expected:
+                expected_raw = _hostname(domain)
+                expected_clean = _clean_host(domain)
+                web_domain_clean = _clean_host(website.get("domain"))
+                web_url_clean = _clean_host(website.get("url"))
+
+                is_local = (
+                    expected_raw in ("localhost", "127.0.0.1", "::1", "", "unknown")
+                    or expected_raw.endswith(".local")
+                    or expected_raw.endswith(".test")
+                )
+                is_web_local = (
+                    web_domain_clean in ("localhost", "127.0.0.1", "::1", "")
+                    or web_url_clean in ("localhost", "127.0.0.1", "::1", "")
+                )
+
+                matches = (
+                    is_local
+                    or is_web_local
+                    or expected_clean == web_domain_clean
+                    or expected_clean == web_url_clean
+                    or (bool(web_domain_clean) and expected_clean.endswith("." + web_domain_clean))
+                    or (bool(expected_clean) and web_domain_clean.endswith("." + expected_clean))
+                )
+
+                if not matches:
                     return None
             return {
                 "user_id": str(record.get("user_id", "")),

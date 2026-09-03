@@ -114,21 +114,31 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     website = auth_data["website"]
     site_token = _generate_site_token()
     now = datetime.now()
+    
+    update_fields = {
+        "platform": "wordpress",
+        "verified": True,
+        "wordpress_connection": {
+            "connected": True,
+            "connected_at": now,
+            "site_token": _hash_token(site_token),
+            "plugin_version": body.plugin_version,
+            "php_version": body.php_version,
+            "wp_version": body.wp_version,
+        },
+        "updated_at": now,
+    }
+    
+    if not website.get("verified") or website.get("domain") in ("localhost", "127.0.0.1", "", None):
+        update_fields["domain"] = body.domain
+        if body.domain != "localhost":
+            update_fields["url"] = f"https://{body.domain}"
+        else:
+            update_fields["url"] = "http://localhost"
+
     db.websites.update_one(
         {"_id": auth_data["website_id"]},
-        {"$set": {
-            "platform": "wordpress",
-            "verified": True,
-            "wordpress_connection": {
-                "connected": True,
-                "connected_at": now,
-                "site_token": _hash_token(site_token),
-                "plugin_version": body.plugin_version,
-                "php_version": body.php_version,
-                "wp_version": body.wp_version,
-            },
-            "updated_at": now,
-        }},
+        {"$set": update_fields},
     )
     db.wordpress_sites.update_one(
         {"website_id": auth_data["website_id"]},

@@ -133,7 +133,16 @@ async def security_headers_middleware(request: Request, call_next):
 @app.middleware("http")
 async def waf_self_protection_middleware(request: Request, call_next):
     path = request.url.path
-    if path.startswith("/api/analyze") or path.startswith("/api/connect") or path == "/health" or path.startswith("/docs") or path.startswith("/openapi.json"):
+    if (
+        path.startswith("/api/v1/")
+        or path.startswith("/api/")
+        or path == "/api"
+        or path == "/health"
+        or path.startswith("/health/")
+        or path.startswith("/docs")
+        or path.startswith("/openapi.json")
+        or path.startswith("/redoc")
+    ):
         return await call_next(request)
         
     client_ip = get_client_ip(request)

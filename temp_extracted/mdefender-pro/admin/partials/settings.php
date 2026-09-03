@@ -2,7 +2,7 @@
 $waf_setup_pending = get_option('waf_fw_onboarding_pending', 'no') === 'yes';
 $waf_dash_url = (string) get_option('waf_fw_dashboard_url', '');
 if (empty($waf_dash_url)) {
-    $waf_dash_url = 'https://mdefender-pro.io';
+    $waf_dash_url = 'https://mdefenderpro.onrender.com';
 }
 
 $logger = WAF_FW_Logger::instance();

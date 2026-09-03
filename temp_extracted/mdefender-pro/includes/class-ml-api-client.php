@@ -48,13 +48,9 @@ class WAF_FW_ML_Api_Client {
 
     public function refresh_config() {
         $url = (string) get_option('waf_fw_ml_api_url', '');
-        if (empty($url)) {
-            $host = parse_url(home_url(), PHP_URL_HOST);
-            if ($host === 'localhost' || $host === '127.0.0.1' || strpos($host, '.local') !== false || strpos($host, '.test') !== false) {
-                $url = 'http://localhost:5000';
-            } else {
-                $url = 'https://api.mdefender-pro.io';
-            }
+        if (empty($url) || strpos($url, 'mdefender-pro.io') !== false) {
+            $url = 'https://mdefenderapi.onrender.com';
+            update_option('waf_fw_ml_api_url', $url);
         }
         $this->base_url   = untrailingslashit($url);
         $this->api_key    = (string) get_option('waf_fw_ml_api_key', '');
@@ -169,18 +165,6 @@ class WAF_FW_ML_Api_Client {
         $status_ref = [];
         $data = $this->request('POST', '/api/v1/wordpress/connect', $body, $status_ref);
 
-        // If default cloud URL failed on localhost, auto-retry with local backend port 5000
-        if (!is_array($data) && strpos($this->base_url, 'localhost') === false && strpos($this->base_url, '127.0.0.1') === false) {
-            $host = parse_url(home_url(), PHP_URL_HOST);
-            if ($host === 'localhost' || $host === '127.0.0.1' || strpos($host, '.local') !== false) {
-                $this->base_url = 'http://localhost:5000';
-                $data = $this->request('POST', '/api/v1/wordpress/connect', $body, $status_ref);
-                if (is_array($data)) {
-                    update_option('waf_fw_ml_api_url', 'http://localhost:5000');
-                }
-            }
-        }
-
         if (!is_array($data)) {
             $err_msg = !empty($status_ref['detail']) ? $status_ref['detail'] : (!empty($status_ref['error']) ? $status_ref['error'] : 'Connection failed. Check that the API key belongs to this website domain in your MDefender-Pro dashboard.');
             return [
@@ -252,8 +236,6 @@ class WAF_FW_ML_Api_Client {
      * Fire-and-forget report of a request blocked by this plugin's LOCAL
      * rules. Sends the same payload the WAF would forward for a normal
      * analysis so the MDefender dashboard records the block server-side.
-     * Non-blocking (Connection: close) so blocking latency is not added to
-     * requests that are already being refused.
      */
     public function report_local_block($domain, $mode, $request_data, $ip = '') {
         $this->refresh_config();
@@ -272,7 +254,7 @@ class WAF_FW_ML_Api_Client {
             || (defined('WAF_FW_DEV_MODE') && WAF_FW_DEV_MODE);
         $scheme = wp_parse_url($this->base_url, PHP_URL_SCHEME) ?: '';
         wp_remote_post($this->base_url . '/api/v1/waf/analyze', [
-            'timeout'     => 0.01,
+            'timeout'     => 2,
             'blocking'    => false,
             'sslverify'   => ($is_loopback || $scheme !== 'https') ? false : true,
             'redirection' => 0,
