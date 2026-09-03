@@ -886,27 +886,26 @@ $dashboard = $logger->get_dashboard_data();
             btn.prop('disabled', true).text('Connecting...');
             $('#wafMlTestResult').hide();
 
-            $.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({
-                ml_api_key: key
-            }), function(r) {
-                if (r.success) {
-                    var html = '';
-                    if (r.data.connected === true) {
-                        html = '<div style="background:var(--war-green-light);border:1px solid #a7f3d0;border-radius:6px;padding:12px;color:#047857;"><strong>Connected!</strong> ' + (r.data.connection_message || 'Cloud service connected.') + '</div>';
-                        wafCloudBadge('yes');
-                    } else if (r.data.connected === false) {
-                        html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + (r.data.connection_message || 'Could not reach the cloud service.') + '<br><small>Check that the API key belongs to this website domain in your MDefender-Pro dashboard.</small></div>';
-                        wafCloudBadge('no');
-                    } else {
-                        html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + (r.data.connection_message || 'Invalid API Key') + '</div>'; wafCloudBadge('no');
-                    }
-                    $('#wafMlTestResult').html(html).show();
-                    $.get(ajaxurl, {action:'waf_fw_get_settings'}, function(r2) {
-                        if (r2.success) updateStatus(r2.data);
-                    });
-                } else {
-                    $('#wafMlTestResult').html('<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;">Save failed: ' + (r.data && r.data.message ? r.data.message : 'Unknown error') + '</div>').show();
-                }
+            jQuery.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({ ml_api_key: key }), function(r) {
+              if (r.success) {
+                  var html = '';
+                  if (r.data && r.data.connected === true) {
+                      html = '<div style="background:var(--war-green-light);border:1px solid #a7f3d0;border-radius:6px;padding:12px;color:#047857;"><strong>Connected!</strong> ' + (r.data.connection_message || 'Cloud service connected.') + '</div>';
+                      wafCloudBadge('yes');
+                      jQuery('#wafDisconnectMl').show();
+                  } else {
+                      var msg = (r.data && r.data.connection_message) ? r.data.connection_message : 'Could not reach cloud service.';
+                      html = '<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;"><strong>Connection Failed:</strong> ' + msg + '<br><small>Check that the API key is active in your MDefender-Pro dashboard.</small></div>';
+                      wafCloudBadge('no');
+                  }
+                  jQuery('#wafMlTestResult').html(html).show();
+                  jQuery.get(ajaxurl, {action:'waf_fw_get_settings'}, function(r2) {
+                      if (r2.success) updateStatus(r2.data);
+                  });
+              } else {
+                  var err = (r.data && r.data.message) ? r.data.message : 'Save failed';
+                  jQuery('#wafMlTestResult').html('<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;">' + err + '</div>').show();
+              }
             }).fail(function() {
                 $('#wafMlTestResult').html('<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;">Network error. Check your server connection.</div>').show();
             }).always(function() {
@@ -1025,7 +1024,7 @@ $dashboard = $logger->get_dashboard_data();
             });
         });
 
-        $('[id$=Form]').on('submit', function(e) {
+        $('[id$=Form]').not('#wafFwMlForm, #wafFwScheduleForm').on('submit', function(e) {
             e.preventDefault();
             var form = $(this);
             var btn = form.find('button[type="submit"]');
