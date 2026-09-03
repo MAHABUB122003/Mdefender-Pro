@@ -38,7 +38,7 @@ const DEFAULT_CONFIG = {
   apiEndpoint: 'https://mdefenderapi.onrender.com',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
-  timeout: 5000,
+  timeout: 10000,
   maxBodySize: 1024 * 1024, // 1MB
   logBlocked: true,
   customBlockPage: null,
@@ -137,7 +137,11 @@ function extractBody(req) {
 function sendAnalyzeRequest(endpointUrl, apiKey, data, timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
     try {
-      const parsed = new URL('/api/analyze', endpointUrl);
+      let analyzePath = '/api/v1/waf/analyze';
+      if (endpointUrl.endsWith('/waf/analyze') || endpointUrl.endsWith('/analyze')) {
+        analyzePath = '';
+      }
+      const parsed = new URL(analyzePath, endpointUrl.replace(/\/+$/, '') + '/');
       const postData = JSON.stringify(data);
       const isHttps = parsed.protocol === 'https:';
       const transport = isHttps ? https : http;
@@ -154,7 +158,7 @@ function sendAnalyzeRequest(endpointUrl, apiKey, data, timeoutMs = 5000) {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(postData),
           'Authorization': `Bearer ${apiKey}`,
-          'X-MDefender-Version': '1.1.0'
+          'X-MDefender-Version': '1.2.4'
         }
       };
 
@@ -165,7 +169,8 @@ function sendAnalyzeRequest(endpointUrl, apiKey, data, timeoutMs = 5000) {
         res.on('end', () => {
           try {
             const json = JSON.parse(body);
-            resolve({ statusCode: res.statusCode, data: json });
+            const decisionData = json && json.data ? json.data : json;
+            resolve({ statusCode: res.statusCode, data: decisionData });
           } catch (e) {
             resolve({ statusCode: res.statusCode, data: { status: res.statusCode === 200 ? 'allowed' : 'error', raw: body } });
           }
@@ -271,7 +276,7 @@ function mdefender(overrides = {}) {
         domain: config.domain || host.split(':')[0],
         request: {
           method: req.method,
-          url: parsedUrl.pathname,
+          url: req.originalUrl || req.url || parsedUrl.pathname,
           query_string: parsedUrl.search || '',
           query_params: Object.fromEntries(parsedUrl.searchParams),
           ip: clientIp,
@@ -287,11 +292,18 @@ function mdefender(overrides = {}) {
       };
 
       const resp = await sendAnalyzeRequest(config.apiEndpoint, config.apiKey, payload, config.timeout);
-      const result = resp.data;
+      const isBlocked = Boolean(
+        result && (
+          result.decision === 'BLOCK' ||
+          result.action === 'block' ||
+          result.status === 'blocked' ||
+          result.blocked === true
+        )
+      );
 
-      if (result.status === 'blocked') {
+      if (isBlocked) {
         if (config.logBlocked) {
-          console.warn(`[MDefender] BLOCKED ${req.method} ${parsedUrl.pathname} - ${result.attack_type || 'Malicious Payload'} (${((result.confidence || 0.95) * 100).toFixed(0)}%) [IP: ${clientIp}]`);
+          console.warn(`[MDefender] BLOCKED ${req.method} ${parsedUrl.pathname} - ${result.attack_type || result.reason || 'Malicious Payload'} (${((result.confidence || 0.95) * 100).toFixed(0)}%) [IP: ${clientIp}]`);
         }
         
         const blockPage = result.block_page || renderBlockPage(config, result, req);

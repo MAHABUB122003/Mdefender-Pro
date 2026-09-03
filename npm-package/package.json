@@ -1,6 +1,6 @@
 {
   "name": "mdefender-pro",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "MDefender Pro - Web Application Firewall middleware for Node.js/Express. Protects against XSS, SQLi, CSRF, and other OWASP Top 10 attacks.",
   "main": "index.js",
   "types": "index.d.ts",
