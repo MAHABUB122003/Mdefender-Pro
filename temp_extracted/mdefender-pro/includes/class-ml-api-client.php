@@ -163,7 +163,7 @@ class WAF_FW_ML_Api_Client {
         ];
 
         $status_ref = [];
-        $data = $this->request('POST', '/api/v1/wordpress/connect', $body, $status_ref);
+        $data = $this->request('POST', '/api/v1/wordpress/connect', $body, $status_ref, 15);
 
         if (!is_array($data)) {
             $err_msg = !empty($status_ref['detail']) ? $status_ref['detail'] : (!empty($status_ref['error']) ? $status_ref['error'] : 'Connection failed. Check that the API key belongs to this website domain in your MDefender-Pro dashboard.');
