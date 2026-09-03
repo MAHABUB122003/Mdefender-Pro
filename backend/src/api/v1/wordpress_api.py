@@ -136,10 +136,22 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         else:
             update_fields["url"] = "http://localhost"
 
-    db.websites.update_one(
-        {"_id": auth_data["website_id"]},
-        {"$set": update_fields},
-    )
+    try:
+        db.websites.update_one(
+            {"_id": auth_data["website_id"]},
+            {"$set": update_fields},
+        )
+    except Exception as e:
+        if "E11000 duplicate key error" in str(e) and body.domain == "localhost":
+            # Ignore duplicate key for localhost
+            update_fields.pop("domain", None)
+            update_fields.pop("url", None)
+            db.websites.update_one(
+                {"_id": auth_data["website_id"]},
+                {"$set": update_fields},
+            )
+        else:
+            raise
     db.wordpress_sites.update_one(
         {"website_id": auth_data["website_id"]},
         {"$set": {

@@ -362,6 +362,7 @@ class InMemoryDB:
         self.notifications = InMemoryCollection()
         self.usage_metrics = InMemoryCollection()
         self.paddle_transactions = InMemoryCollection()
+        self.payments = InMemoryCollection()
 
     def __getitem__(self, key):
         return getattr(self, key, None)
