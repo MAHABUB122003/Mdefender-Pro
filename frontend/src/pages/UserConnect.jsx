@@ -5,7 +5,7 @@ import api from '../api/api'
 export default function UserConnect() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('nodejs')
+  const [activeTab, setActiveTab] = useState('wordpress')
   const [activeSubTab, setActiveSubTab] = useState('flask')
   const [copiedId, setCopiedId] = useState(null)
 
@@ -133,9 +133,43 @@ export default function UserConnect() {
             </div>
             <div className="code-tabs">
               <div className="tab-buttons">
+                <button className={`tab-btn ${activeTab === 'wordpress' ? 'active' : ''}`} onClick={() => setActiveTab('wordpress')}><i className="fab fa-wordpress"></i> WordPress</button>
                 <button className={`tab-btn ${activeTab === 'nodejs' ? 'active' : ''}`} onClick={() => setActiveTab('nodejs')}><i className="fab fa-node-js"></i> Node.js</button>
                 <button className={`tab-btn ${activeTab === 'python' ? 'active' : ''}`} onClick={() => setActiveTab('python')}><i className="fab fa-python"></i> Python</button>
                 <button className={`tab-btn ${activeTab === 'php' ? 'active' : ''}`} onClick={() => setActiveTab('php')}><i className="fab fa-php"></i> PHP</button>
+              </div>
+              <div className={`tab-content ${activeTab === 'wordpress' ? 'active' : ''}`}>
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px', fontSize: '14px', color: '#0f172a', fontWeight: '600' }}><i className="fab fa-wordpress" style={{ color: '#2563eb', marginRight: '6px' }}></i> Official WordPress Plugin (v4.1.0)</h4>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>AI/ML WAF protection + malware scanning directly inside your WordPress admin.</p>
+                    </div>
+                    <a
+                      href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
+                      className="download-btn"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px',
+                        background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: '#fff',
+                        borderRadius: '6px', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
+                        boxShadow: '0 2px 6px rgba(37,99,235,0.25)'
+                      }}
+                      download="mdefender-pro.zip"
+                    >
+                      <i className="fas fa-download"></i> Download mdefender-pro.zip
+                    </a>
+                  </div>
+                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: 1.8 }}>
+                    <li>Go to <code>WordPress Admin &rarr; Plugins &rarr; Add New &rarr; Upload Plugin</code>.</li>
+                    <li>Choose <code>mdefender-pro.zip</code> and click <strong>Activate Plugin</strong>.</li>
+                    <li>Navigate to <code>MDefender-Pro &rarr; Settings</code> in your sidebar.</li>
+                    <li>Paste your API key below and click <strong>Save &amp; Connect</strong>:</li>
+                  </ol>
+                </div>
+                <div className="code-block">
+                  <div className="code-header"><span className="code-lang">Your Website API Key</span><button className={`copy-btn ${copiedId === 'wp-key' ? 'copied' : ''}`} onClick={() => copyCode('wp-key')}><i className="fas fa-copy"></i> {copiedId === 'wp-key' ? 'Copied!' : 'Copy'}</button></div>
+                  <pre><code id="wp-key">{data?.user?.api_key || 'YOUR_API_KEY'}</code></pre>
+                </div>
               </div>
               <div className={`tab-content ${activeTab === 'nodejs' ? 'active' : ''}`}>
                 <div className="code-block">
@@ -151,19 +185,19 @@ export default function UserConnect() {
                 {activeSubTab === 'flask' ? (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Flask</span><button className={`copy-btn ${copiedId === 'flask-code' ? 'copied' : ''}`} onClick={() => copyCode('flask-code')}><i className="fas fa-copy"></i> {copiedId === 'flask-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'your_64_char_api_key_here'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:8000'</span>{'\n'})</code></pre>
+                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'https://mdefenderapi.onrender.com'</span>{'\n'})</code></pre>
                   </div>
                 ) : (
                   <div className="code-block">
                     <div className="code-header"><span className="code-lang">Python / Django</span><button className={`copy-btn ${copiedId === 'django-code' ? 'copied' : ''}`} onClick={() => copyCode('django-code')}><i className="fas fa-copy"></i> {copiedId === 'django-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'your_64_char_api_key_here'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:8000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
+                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>{'\n'}WAF_SERVER = <span className="str">'https://mdefenderapi.onrender.com'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
                   </div>
                 )}
               </div>
               <div className={`tab-content ${activeTab === 'php' ? 'active' : ''}`}>
                 <div className="code-block">
                   <div className="code-header"><span className="code-lang">PHP</span><button className={`copy-btn ${copiedId === 'php-code' ? 'copied' : ''}`} onClick={() => copyCode('php-code')}><i className="fas fa-copy"></i> {copiedId === 'php-code' ? 'Copied!' : 'Copy'}</button></div>
-                   <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'your_64_char_api_key_here'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
+                   <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
                 </div>
               </div>
             </div>
