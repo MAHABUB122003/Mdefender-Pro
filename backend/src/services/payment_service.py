@@ -21,8 +21,9 @@ from src.database.mongodb_connection import MongoDB
 
 _log = logging.getLogger(__name__)
 
-# Plan Pricing Configuration
-PLAN_PRICING = {
+# Plan Pricing Configuration (Fallback defaults)
+DEFAULT_PLAN_PRICING = {
+    "free": {"monthly": 0.0, "yearly": 0.0, "name": "Starter Free"},
     "go": {"monthly": 9.0, "yearly": 90.0, "name": "Developer Go"},
     "pro": {"monthly": 29.0, "yearly": 290.0, "name": "Enterprise Pro"},
     "premium": {"monthly": 29.0, "yearly": 290.0, "name": "Enterprise Pro"},
@@ -39,8 +40,24 @@ class PaymentService:
         if self.stripe_secret_key:
             stripe.api_key = self.stripe_secret_key
 
+    def get_resolved_pricing(self):
+        """Returns dynamic pricing map computed from PlanService."""
+        from src.services.plan_service import PlanService
+        plans = PlanService(self.db).all_plans()
+        pricing_map = {}
+        for p in plans:
+            pid = p["id"]
+            pricing_map[pid] = {
+                "monthly": float(p.get("monthly_price", DEFAULT_PLAN_PRICING.get(pid, {}).get("monthly", 29.0))),
+                "yearly": float(p.get("yearly_price", DEFAULT_PLAN_PRICING.get(pid, {}).get("yearly", 290.0))),
+                "name": p.get("name") or DEFAULT_PLAN_PRICING.get(pid, {}).get("name", pid.capitalize()),
+            }
+        pricing_map["premium"] = pricing_map.get("pro", DEFAULT_PLAN_PRICING["pro"])
+        return pricing_map
+
     def get_payment_config(self):
         """Returns public gateway details, bank wire credentials, and supported currencies."""
+        pricing_map = self.get_resolved_pricing()
         return {
             "mode": os.getenv("PAYMENT_GATEWAY_MODE", "live"),
             "currency": "USD",
@@ -60,7 +77,7 @@ class PaymentService:
                 "bkash_merchant": os.getenv("BKASH_MERCHANT_NO", "+8801715044575"),
                 "paypal_email": os.getenv("PAYPAL_EMAIL", "billing@mdefender.pro")
             },
-            "plans": PLAN_PRICING
+            "plans": pricing_map
         }
 
     # ==================== STRIPE CHECKOUT & PAYMENT INTENTS ====================
@@ -68,10 +85,11 @@ class PaymentService:
     def create_stripe_checkout_session(self, user, plan_id="pro", billing_cycle="monthly", frontend_url=None):
         """Creates a real Stripe Checkout Session for hosted checkout."""
         plan_key = plan_id.lower()
-        if plan_key not in PLAN_PRICING:
+        pricing_map = self.get_resolved_pricing()
+        if plan_key not in pricing_map:
             plan_key = "pro"
 
-        pricing = PLAN_PRICING[plan_key]
+        pricing = pricing_map[plan_key]
         cycle = "yearly" if billing_cycle.lower() == "yearly" else "monthly"
         amount = pricing[cycle]
         amount_cents = int(amount * 100)
@@ -301,10 +319,11 @@ class PaymentService:
     def process_card_checkout(self, user, plan_id="pro", billing_cycle="monthly", card_data=None):
         """Processes credit/debit card payment and activates the user subscription."""
         plan_key = plan_id.lower()
-        if plan_key not in PLAN_PRICING:
+        pricing_map = self.get_resolved_pricing()
+        if plan_key not in pricing_map:
             plan_key = "pro"
 
-        pricing = PLAN_PRICING[plan_key]
+        pricing = pricing_map[plan_key]
         cycle = "yearly" if billing_cycle.lower() == "yearly" else "monthly"
         amount = pricing[cycle]
 
@@ -382,10 +401,11 @@ class PaymentService:
     def process_bank_transfer(self, user, plan_id="pro", billing_cycle="monthly", transfer_data=None):
         """Processes Bank Wire Transfer submission with reference tracking."""
         plan_key = plan_id.lower()
-        if plan_key not in PLAN_PRICING:
+        pricing_map = self.get_resolved_pricing()
+        if plan_key not in pricing_map:
             plan_key = "pro"
 
-        pricing = PLAN_PRICING[plan_key]
+        pricing = pricing_map[plan_key]
         cycle = "yearly" if billing_cycle.lower() == "yearly" else "monthly"
         amount = pricing[cycle]
 
@@ -457,10 +477,11 @@ class PaymentService:
     def process_wallet_payment(self, user, plan_id="pro", billing_cycle="monthly", wallet_data=None):
         """Processes Mobile / Online Wallet (bKash / PayPal / Crypto) payment."""
         plan_key = plan_id.lower()
-        if plan_key not in PLAN_PRICING:
+        pricing_map = self.get_resolved_pricing()
+        if plan_key not in pricing_map:
             plan_key = "pro"
 
-        pricing = PLAN_PRICING[plan_key]
+        pricing = pricing_map[plan_key]
         cycle = "yearly" if billing_cycle.lower() == "yearly" else "monthly"
         amount = pricing[cycle]
 

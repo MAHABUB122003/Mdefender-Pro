@@ -31,7 +31,7 @@ function useAnimatedNumber(target, duration = 800) {
 function StatCard({ icon, iconClass, value, label, trend, trendDir, onReset }) {
   const animated = useAnimatedNumber(value)
   return (
-    <div className="stat-card">
+    <div className="stat-card" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
       <div className="stat-top">
         <div className={`stat-icon-wrap ${iconClass}`}><i className={`fas ${icon}`}></i></div>
         {onReset && (
@@ -40,33 +40,35 @@ function StatCard({ icon, iconClass, value, label, trend, trendDir, onReset }) {
           </button>
         )}
       </div>
-      <div className="stat-number">{animated}</div>
+      <div className="stat-number" style={{ color: '#f8fafc' }}>{animated}</div>
       <div className="stat-label">{label}</div>
-      <div className={`stat-trend ${trendDir}`}><i className={`fas fa-arrow-${trendDir}`}></i> {trend}</div>
+      {trend && <div className={`stat-trend ${trendDir}`}><i className={`fas fa-arrow-${trendDir}`}></i> {trend}</div>}
     </div>
   )
 }
 
-function QuickAction({ icon, label, color, onClick }) {
-  return (
-    <button className="quick-action" onClick={onClick}>
-      <div className="qa-icon" style={{ background: `${color}15`, color }}><i className={`fas ${icon}`}></i></div>
-      <span>{label}</span>
-    </button>
-  )
-}
-
-export default function Dashboard({ token }) {
+export default function Dashboard() {
   const [stats, setStats] = useState(null)
+  const [overview, setOverview] = useState(null)
+  const [health, setHealth] = useState(null)
   const [loading, setLoading] = useState(true)
   const attackChartRef = useRef(null)
 
   const fetchStats = useCallback(async () => {
     try {
-      const data = await api.getStats()
-      setStats(data)
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+      const [statsData, overviewData, healthData] = await Promise.allSettled([
+        api.getStats(),
+        api.adminGetOverview(),
+        api.adminGetSystemHealth(),
+      ])
+      if (statsData.status === 'fulfilled') setStats(statsData.value)
+      if (overviewData.status === 'fulfilled') setOverview(overviewData.value?.data || overviewData.value)
+      if (healthData.status === 'fulfilled') setHealth(healthData.value?.data || healthData.value)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -74,19 +76,6 @@ export default function Dashboard({ token }) {
     const interval = setInterval(fetchStats, 30000)
     return () => clearInterval(interval)
   }, [fetchStats])
-
-  const resetStat = async (type) => {
-    if (!confirm(`Reset ${type} count to zero?`)) return
-    await api.resetStats(type)
-    fetchStats()
-  }
-
-  const blockTopIP = async (ip) => {
-    if (confirm(`Block ${ip}?`)) {
-      await api.blockAttacker(ip)
-      fetchStats()
-    }
-  }
 
   const attackChartData = {
     labels: stats?.attack_types?.length ? stats.attack_types : ['SQL Injection', 'XSS', 'LFI', 'RCE', 'Other'],
@@ -111,18 +100,17 @@ export default function Dashboard({ token }) {
   const dailyChartData = {
     labels: dailyDays,
     datasets: [{
-      label: 'Attacks',
+      label: 'Attacks Blocked',
       data: dailyCounts,
-      borderColor: '#2563eb',
-      backgroundColor: 'rgba(37,99,235,0.08)',
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.08)',
       borderWidth: 2.5,
       fill: true,
       tension: 0.4,
-      pointBackgroundColor: '#2563eb',
+      pointBackgroundColor: '#3b82f6',
       pointBorderColor: '#fff',
       pointBorderWidth: 2,
       pointRadius: 4,
-      pointHoverRadius: 6
     }]
   }
 
@@ -131,96 +119,223 @@ export default function Dashboard({ token }) {
     maintainAspectRatio: true,
     cutout: '65%',
     plugins: {
-      legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } },
-      tooltip: {
-        backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8,
-        callbacks: {
-          label(ctx) {
-            const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
-            const pct = ((ctx.parsed / total) * 100).toFixed(1)
-            return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`
-          }
-        }
-      }
-    },
-    animation: { animateRotate: true, duration: 1000 }
+      legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 }, color: '#94a3b8' } },
+      tooltip: { backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8 }
+    }
   }
 
   const lineOptions = {
     responsive: true,
     maintainAspectRatio: true,
-    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8, intersect: false, mode: 'index' } },
+    plugins: { legend: { display: false } },
     scales: {
-      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+      y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
       x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }
-    },
-    interaction: { intersect: false, mode: 'index' },
-    animation: { duration: 1200, easing: 'easeInOutQuart' }
+    }
   }
 
-  const sourceKeys = ['ml', 'rule', 'blacklist', 'rate_limit', 'malware']
-  const sourceLabels = ['ML Detection', 'Rules', 'Blacklist', 'Rate Limit', 'Malware Scan']
-  const sourceColors = ['#8b5cf6', '#2563eb', '#ef4444', '#f59e0b', '#ec4899']
-  const sourceData = sourceKeys.map(k => stats?.ml?.detection_sources?.[k] || 0)
-  const sourceChartData = {
-    labels: sourceLabels,
-    datasets: [{
-      data: sourceData,
-      backgroundColor: sourceColors,
-      borderWidth: 0,
-      hoverOffset: 8
-    }]
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '80px', color: '#94a3b8' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '32px', marginBottom: '12px', display: 'block' }}></i>
+        Initializing Super Admin Command Center...
+      </div>
+    )
   }
-
-  const verdictKeys = ['malicious', 'suspicious', 'clean']
-  const verdictLabels = ['Malicious', 'Suspicious', 'Clean']
-  const verdictColors = ['#ef4444', '#f59e0b', '#10b981']
-  const verdictData = verdictKeys.map(k => stats?.malware?.verdicts?.[k] || 0)
-  const verdictChartData = {
-    labels: verdictLabels,
-    datasets: [{
-      data: verdictData,
-      backgroundColor: verdictColors,
-      borderWidth: 0,
-      hoverOffset: 8
-    }]
-  }
-
-  const mlCategoryMax = Math.max(1, ...(stats?.ml?.ml_categories || []).map(c => c.count))
-  const familyMax = Math.max(1, ...(stats?.malware?.top_families || []).map(f => f.count))
-
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
 
   return (
-    <>
+    <div className="admin-dashboard" style={{ padding: '4px 0 50px' }}>
+      {/* Super Admin Status Ribbon */}
+      <div style={{
+        background: 'linear-gradient(90deg, #1e1b4b, #0f172a)',
+        border: '1px solid rgba(99, 102, 241, 0.3)',
+        borderRadius: '12px',
+        padding: '16px 22px',
+        marginBottom: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '10px',
+            background: 'rgba(99, 102, 241, 0.2)',
+            color: '#818cf8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px'
+          }}>
+            <i className="fas fa-shield-halved"></i>
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                Super Admin Operations Command Center
+              </h2>
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: '10px',
+                background: 'rgba(16,185,129,0.15)',
+                color: '#34d399',
+                fontSize: '11px',
+                fontWeight: '700'
+              }}>
+                <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> LIVE PLATFORM
+              </span>
+            </div>
+            <p style={{ margin: '3px 0 0', color: '#94a3b8', fontSize: '13px' }}>
+              Global WAF telemetry, user account diagnostics, and revenue pricing controls.
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Hub Links */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <Link
+            to="/admin/users"
+            className="btn-primary"
+            style={{
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: '700',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className="fas fa-users-gear"></i> User Support Center
+          </Link>
+
+          <Link
+            to="/admin/pricing"
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: '#1e293b',
+              border: '1px solid #334155',
+              color: '#fbbf24',
+              fontSize: '13px',
+              fontWeight: '700',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              textDecoration: 'none'
+            }}
+          >
+            <i className="fas fa-tags"></i> Edit Pro Pricing
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Stat Cards */}
       <div className="stats-grid">
-        <StatCard icon="fa-shield-halved" iconClass="blue" value={stats?.total_attacks_blocked || 0} label="Total Attacks Blocked" trend="12.5% increase" trendDir="up" onReset={() => resetStat('attacks')} />
-        <StatCard icon="fa-chart-line" iconClass="green" value={stats?.total_requests || 0} label="Total Requests" trend="8.3% increase" trendDir="up" onReset={() => resetStat('requests')} />
-        <StatCard icon="fa-globe" iconClass="purple" value={stats?.active_clients || 0} label="Active Clients" trend="+2 online" trendDir="up" />
-        <StatCard icon="fa-ban" iconClass="red" value={stats?.blacklisted_ips || 0} label="Blacklisted IPs" trend="5.1% tracked" trendDir="down" />
+        <StatCard
+          icon="fa-users"
+          iconClass="blue"
+          value={overview?.users ?? stats?.total_requests ?? 0}
+          label="Total Registered Users"
+          trend="Multi-tenant accounts"
+          trendDir="up"
+        />
+        <StatCard
+          icon="fa-crown"
+          iconClass="purple"
+          value={overview?.pro_subscribers ?? 0}
+          label="Active Pro / Enterprise"
+          trend="Paid Subscribers"
+          trendDir="up"
+        />
+        <StatCard
+          icon="fa-globe"
+          iconClass="green"
+          value={overview?.websites ?? stats?.active_clients ?? 0}
+          label="Connected Websites"
+          trend="Protected Domains"
+          trendDir="up"
+        />
+        <StatCard
+          icon="fa-shield-halved"
+          iconClass="red"
+          value={stats?.total_attacks_blocked ?? 0}
+          label="Total Attacks Blocked"
+          trend="L7 & ML WAF"
+          trendDir="up"
+        />
       </div>
 
-      <div className="stats-grid" style={{ marginTop: '-6px' }}>
-        <StatCard icon="fa-robot" iconClass="purple" value={stats?.ml?.ml_detections || 0} label="ML WAF Detections" trend="Deep-learning WAF" trendDir="up" />
-        <StatCard icon="fa-file-shield" iconClass="green" value={stats?.malware?.total_scans || 0} label="Malware Scans" trend="Static analysis" trendDir="up" />
-        <StatCard icon="fa-skull-crossbones" iconClass="red" value={stats?.malware?.verdicts?.malicious || 0} label="Malicious Files" trend="Flagged by ML" trendDir="down" />
-        <StatCard icon="fa-brain" iconClass="blue" value={(stats?.ml?.waf?.loaded ? 1 : 0) + (stats?.ml?.malware_model?.loaded ? 1 : 0)} label="ML Models Active" trend={stats?.ml?.waf?.model_version ? `v${stats.ml.waf.model_version}` : 'offline'} trendDir={stats?.ml?.waf?.loaded ? 'up' : 'down'} />
-      </div>
+      {/* System Health Diagnostics Row */}
+      {health?.checks && (
+        <div style={{
+          background: '#0f172a',
+          borderRadius: '12px',
+          border: '1px solid #1e293b',
+          padding: '18px 24px',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-server" style={{ color: '#10b981' }}></i>
+              Platform Engine Diagnostics & Microservice Health
+            </h3>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Real-time ping</span>
+          </div>
 
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '14px'
+          }}>
+            {Object.entries(health.checks).map(([key, item]) => (
+              <div
+                key={key}
+                style={{
+                  background: '#070b14',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: item.ok ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.3)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>
+                    {item.label || key.replace('_', ' ').toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    {item.version ? `Version v${item.version}` : item.patterns ? `${item.patterns} rules loaded` : 'Service online'}
+                  </div>
+                </div>
+                <span className={`badge ${item.ok ? 'success' : 'danger'}`}>
+                  {item.ok ? 'Healthy' : 'Degraded'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Charts Grid */}
       <div className="charts-grid">
-        <div className="chart-card">
+        <div className="chart-card" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
           <div className="chart-header">
-            <h3><i className="fas fa-chart-pie" style={{ color: '#2563eb', marginRight: '6px' }}></i> Attack Types</h3>
-            <span className="chart-action">Distribution</span>
+            <h3><i className="fas fa-chart-pie" style={{ color: '#3b82f6', marginRight: '6px' }}></i> Global Attack Distribution</h3>
+            <span className="chart-action">Telemetry</span>
           </div>
           <div className="chart-container">
             <Doughnut ref={attackChartRef} data={attackChartData} options={doughnutOptions} />
           </div>
         </div>
-        <div className="chart-card">
+
+        <div className="chart-card" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
           <div className="chart-header">
-            <h3><i className="fas fa-chart-bar" style={{ color: '#10b981', marginRight: '6px' }}></i> Attacks Over Time</h3>
-            <span className="chart-action">Last 7 days</span>
+            <h3><i className="fas fa-chart-line" style={{ color: '#10b981', marginRight: '6px' }}></i> Mitigation Volume (Last 7 Days)</h3>
+            <span className="chart-action">Trend</span>
           </div>
           <div className="chart-container">
             <Line data={dailyChartData} options={lineOptions} />
@@ -228,263 +343,110 @@ export default function Dashboard({ token }) {
         </div>
       </div>
 
-      <div className="charts-grid">
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3><i className="fas fa-robot" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Detection Sources</h3>
-            <span className="chart-action">All blocked events</span>
+      {/* Quick Access Control Grid */}
+      <div style={{
+        marginTop: '24px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '16px'
+      }}>
+        <Link
+          to="/admin/users"
+          style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '12px',
+            padding: '20px',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            transition: 'border-color 0.2s'
+          }}
+        >
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+            <i className="fas fa-users-gear"></i>
           </div>
-          <div className="chart-container">
-            <Doughnut data={sourceChartData} options={doughnutOptions} />
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Users & Support</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Unlock, verify & grant plans</div>
           </div>
-        </div>
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3><i className="fas fa-file-shield" style={{ color: '#10b981', marginRight: '6px' }}></i> Malware Scan Verdicts</h3>
-            <span className="chart-action">Total scans</span>
+        </Link>
+
+        <Link
+          to="/admin/pricing"
+          style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '12px',
+            padding: '20px',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            transition: 'border-color 0.2s'
+          }}
+        >
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+            <i className="fas fa-tags"></i>
           </div>
-          <div className="chart-container">
-            <Doughnut data={verdictChartData} options={doughnutOptions} />
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Pricing & Tiers</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Edit monthly/yearly prices</div>
           </div>
-        </div>
+        </Link>
+
+        <Link
+          to="/admin/clients"
+          style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '12px',
+            padding: '20px',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            transition: 'border-color 0.2s'
+          }}
+        >
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+            <i className="fas fa-globe"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Tenant Websites</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Manage user domains</div>
+          </div>
+        </Link>
+
+        <Link
+          to="/admin/rules"
+          style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '12px',
+            padding: '20px',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            transition: 'border-color 0.2s'
+          }}
+        >
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+            <i className="fas fa-shield"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>WAF Rules</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Signatures & Regex</div>
+          </div>
+        </Link>
       </div>
 
-      <div className="top-attackers">
-        <div className="section-header">
-          <h3><i className="fas fa-crosshairs" style={{ color: '#ef4444', marginRight: '6px' }}></i> Top Attacking IPs</h3>
-          <Link to="/admin/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>IP Address</th>
-              <th>Attacks</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats?.top_attackers?.slice(0, 5).map((attacker, i) => {
-              const maxAttacks = stats.top_attackers[0]?.count || 1
-              return (
-                <tr key={i}>
-                  <td>
-                    <span className={`rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>{i + 1}</span>
-                  </td>
-                  <td><span className="attacker-ip">{attacker.ip}</span></td>
-                  <td>
-                    <div className="attack-progress">
-                      <div className="progress-bar">
-                        <div className="fill" style={{
-                          width: `${(attacker.count / maxAttacks * 100)}%`,
-                          background: i === 0 ? 'linear-gradient(90deg,#ef4444,#f87171)' : i === 1 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#2563eb,#60a5fa)'
-                        }}></div>
-                      </div>
-                      <span className="count">{attacker.count}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <button className="badge danger" style={{ cursor: 'pointer', border: 'none' }} onClick={() => blockTopIP(attacker.ip)}>Block</button>
-                  </td>
-                </tr>
-              )
-            }) || (
-              <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No attack data available</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="recent-activity">
-        <div className="section-header">
-          <h3><i className="fas fa-clock-rotate-left" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> Recent Attacks Blocked</h3>
-          <Link to="/admin/logs" className="view-all">View All <i className="fas fa-arrow-right"></i></Link>
-        </div>
-        <div className="activity-timeline">
-          {stats?.recent_logs?.map((log, i) => (
-            <div className="activity-item" key={i}>
-              <div className="activity-time">{log.timestamp}</div>
-              <div className="activity-content">
-                <span className={`activity-type ${log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? 'critical' : log.attack_type === 'XSS' || log.attack_type === 'LFI' ? 'high' : 'medium'}`}>
-                  <i className="fas fa-bug"></i> {log.attack_type}
-                </span>
-                <div className="activity-detail">From <strong>{log.ip}</strong></div>
-                <div className="activity-payload">{log.url}</div>
-              </div>
-            </div>
-          )) || (
-            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
-              <i className="fas fa-shield-check" style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}></i>
-              No attacks recorded yet
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="ml-panels">
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3><i className="fas fa-microchip" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Detected Attack Categories</h3>
-            <span className="chart-action">Top 10</span>
-          </div>
-          <div className="ml-cat-list">
-            {(stats?.ml?.ml_categories?.length ? stats.ml.ml_categories : []).map((cat, i) => (
-              <div className="ml-cat-row" key={i}>
-                <span className="ml-cat-name">{cat.category || 'Unknown'}</span>
-                <div className="attack-progress">
-                  <div className="progress-bar" style={{ maxWidth: 'none', flex: 1 }}>
-                    <div className="fill" style={{ width: `${(cat.count / mlCategoryMax) * 100}%`, background: 'linear-gradient(90deg,#8b5cf6,#a78bfa)' }}></div>
-                  </div>
-                  <span className="count">{cat.count}</span>
-                </div>
-              </div>
-            )) || (
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No ML-detected attacks recorded yet</div>
-            )}
-          </div>
-        </div>
-
-        <div className="system-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-brain" style={{ color: '#8b5cf6', marginRight: '6px' }}></i> ML Model Status</h3>
-          </div>
-          <div className="system-grid">
-            <div className="system-item">
-              <span className="system-label">WAF Model</span>
-              <span className="system-status"><span className={`status-dot ${stats?.ml?.waf?.loaded ? 'green' : 'red'}`}></span> {stats?.ml?.waf?.loaded ? `v${stats.ml.waf.model_version || '?'}` : 'Offline'}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Attack Categories</span>
-              <span className="system-status">{stats?.ml?.waf?.n_category_classes || 0} classes</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Malware Model</span>
-              <span className="system-status"><span className={`status-dot ${stats?.ml?.malware_model?.loaded ? 'green' : 'red'}`}></span> {stats?.ml?.malware_model?.loaded ? `v${stats.ml.malware_model.model_version || '?'}` : 'Offline'}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Malware Families</span>
-              <span className="system-status">{stats?.ml?.malware_model?.n_family_classes || 0} families</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">ML Threshold</span>
-              <span className="system-status">{(stats?.ml?.waf?.threshold || 0).toFixed(2)}</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Training Date</span>
-              <span className="system-status">{stats?.ml?.waf?.training_date ? String(stats.ml.waf.training_date).slice(0, 10) : '—'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="malware-section">
-        <div className="top-attackers" style={{ flex: 1, marginBottom: 0 }}>
-          <div className="section-header">
-            <h3><i className="fas fa-bug" style={{ color: '#ec4899', marginRight: '6px' }}></i> Top Malware Families</h3>
-          </div>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Family</th><th>Detections</th></tr>
-            </thead>
-            <tbody>
-              {(stats?.malware?.top_families?.length ? stats.malware.top_families : []).map((fam, i) => (
-                <tr key={i}>
-                  <td><span className={`rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>{i + 1}</span></td>
-                  <td><span className="attacker-ip">{fam.family}</span></td>
-                  <td>
-                    <div className="attack-progress">
-                      <div className="progress-bar" style={{ maxWidth: 'none', flex: 1 }}>
-                        <div className="fill" style={{ width: `${(fam.count / familyMax) * 100}%`, background: 'linear-gradient(90deg,#ec4899,#f472b6)' }}></div>
-                      </div>
-                      <span className="count">{fam.count}</span>
-                    </div>
-                  </td>
-                </tr>
-              )) || (
-                <tr><td colSpan="3" style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No malware detections yet</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="recent-activity" style={{ flex: 1, marginBottom: 0 }}>
-          <div className="section-header">
-            <h3><i className="fas fa-file-shield" style={{ color: '#10b981', marginRight: '6px' }}></i> Recent Malware Scans</h3>
-          </div>
-          <div className="activity-timeline">
-            {(stats?.malware?.recent_scans?.length ? stats.malware.recent_scans : []).map((scan, i) => (
-              <div className="activity-item" key={i}>
-                <div className="activity-time">{scan.timestamp}</div>
-                <div className="activity-content">
-                  <span className={`activity-type ${scan.verdict === 'malicious' ? 'critical' : scan.verdict === 'suspicious' ? 'high' : 'low'}`}>
-                    <i className="fas fa-shield-halved"></i> {scan.verdict}
-                  </span>
-                  <div className="activity-detail">{scan.filename || 'unknown file'}{scan.family ? ` · ${scan.family}` : ''}</div>
-                  <div className="activity-payload">score {scan.risk_score} · conf {(scan.confidence || 0).toFixed(2)}</div>
-                </div>
-              </div>
-            )) || (
-              <div style={{ textAlign: 'center', color: '#94a3b8', padding: '30px' }}>
-                <i className="fas fa-file-shield" style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}></i>
-                No malware scans yet
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="scanner-section">
+      {/* Malware Scanner Widget */}
+      <div className="scanner-section" style={{ marginTop: '24px' }}>
         <MalwareScanner />
       </div>
-
-      <div className="quick-actions-section">
-        <div className="quick-actions-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i> Quick Actions</h3>
-          </div>
-          <div className="quick-actions-grid">
-            <QuickAction icon="fa-shield" label="Add Rule" color="#2563eb" onClick={() => window.location.href = '/admin/rules'} />
-            <QuickAction icon="fa-ban" label="Block IP" color="#ef4444" onClick={() => { const ip = prompt('Enter IP to block:'); if (ip) api.blockAttacker(ip).then(() => alert('Blocked!')) }} />
-            <QuickAction icon="fa-trash-can" label="Purge Logs" color="#f59e0b" onClick={() => { if (confirm('Clear all attack logs?')) api.resetStats('logs') }} />
-            <QuickAction icon="fa-download" label="Export Data" color="#10b981" onClick={() => { const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mdefender-export.json'; a.click() }} />
-            <QuickAction icon="fa-globe" label="Add Client" color="#8b5cf6" onClick={() => window.location.href = '/admin/clients'} />
-            <QuickAction icon="fa-arrow-rotate-right" label="Refresh" color="#64748b" onClick={fetchStats} />
-          </div>
-        </div>
-
-        <div className="system-card">
-          <div className="section-header" style={{ marginBottom: 0 }}>
-            <h3><i className="fas fa-server" style={{ color: '#10b981', marginRight: '6px' }}></i> System Status</h3>
-            <span className="status-pill online"><i className="fas fa-circle" style={{ fontSize: '7px' }}></i> Operational</span>
-          </div>
-          <div className="system-grid">
-            <div className="system-item">
-              <span className="system-label">WAF Engine</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">ML Detection</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Rate Limiter</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Auto-Block</span>
-              <span className="system-status"><span className="status-dot green"></span> Active</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Blacklist DB</span>
-              <span className="system-status"><span className="status-dot green"></span> Synced</span>
-            </div>
-            <div className="system-item">
-              <span className="system-label">Database</span>
-              <span className="system-status"><span className="status-dot green"></span> Connected</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   )
 }

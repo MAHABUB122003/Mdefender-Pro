@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard'
 import Logs from './pages/Logs'
 import Rules from './pages/Rules'
 import Clients from './pages/Clients'
+import AdminUsers from './pages/AdminUsers'
+import AdminPricing from './pages/AdminPricing'
 import Blacklist from './pages/Blacklist'
 import Settings from './pages/Settings'
 import Connect from './pages/Connect'
@@ -128,9 +130,12 @@ function App() {
         <>
           <Route path="/admin/login" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<Layout onLogout={adminLogout}><Dashboard /></Layout>} />
+          <Route path="/admin/users" element={<Layout onLogout={adminLogout}><AdminUsers /></Layout>} />
+          <Route path="/admin/pricing" element={<Layout onLogout={adminLogout}><AdminPricing /></Layout>} />
+          <Route path="/admin/clients" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
+          <Route path="/admin/websites" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
           <Route path="/admin/logs" element={<Layout onLogout={adminLogout}><Logs /></Layout>} />
           <Route path="/admin/rules" element={<Layout onLogout={adminLogout}><Rules /></Layout>} />
-          <Route path="/admin/clients" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
           <Route path="/admin/blacklist" element={<Layout onLogout={adminLogout}><Blacklist /></Layout>} />
           <Route path="/admin/settings" element={<Layout onLogout={adminLogout}><Settings /></Layout>} />
           <Route path="/admin/notices" element={<Layout onLogout={adminLogout}><NoticeBoard /></Layout>} />

@@ -282,15 +282,33 @@ export const api = {
   getAutoBlockSettings: () => apiCall('/api/admin/auto_block_settings'),
   updateAutoBlockSettings: (data) => apiCall('/api/admin/auto_block_settings', { method: 'POST', body: JSON.stringify(data) }),
   getAutoBlockStats: () => apiCall('/api/admin/auto_block_stats'),
-  blockAttacker: (ip) => apiCall('/api/admin/blacklist', { method: 'POST', body: JSON.stringify({ ip, reason: 'Blocked from dashboard', type: 'permanent' }) }),
-  adminGetAllUsers: () => apiCall('/api/admin/users'),
-  adminUpdateUser: (id, data) => apiCall(`/api/admin/users?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminDeleteUser: (id) => apiCall(`/api/admin/users?id=${id}`, { method: 'DELETE' }),
-  adminGetUserStats: () => apiCall('/api/admin/user_stats'),
-  adminVerifyEmail: (userId) => apiCall(`/api/auth/admin/verify-email/${userId}`, { method: 'POST' }),
-  adminVerifyEmailByEmail: (email) => apiCall('/api/auth/admin/verify-email-by-email', { method: 'POST', body: JSON.stringify({ email }) }),
-  getRoles: () => apiCall('/api/admin/roles'),
-  updateUserRole: (id, role) => apiCall(`/api/admin/users/role?id=${id}`, { method: 'PUT', body: JSON.stringify({ role }) }),
+  adminGetAllUsers: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/admin/users${qs ? '?' + qs : ''}`)
+  },
+  adminGetUsers: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/admin/users${qs ? '?' + qs : ''}`)
+  },
+  adminUnlockUser: (userId) => apiCall('/api/v1/admin/users/unlock', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminVerifyUserEmail: (userId) => apiCall('/api/v1/admin/users/verify-email', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminResetUserApiKey: (userId) => apiCall('/api/v1/admin/users/reset-key', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminResetUserMFA: (userId) => apiCall('/api/v1/admin/users/reset-mfa', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminForceLogoutUser: (userId) => apiCall('/api/v1/admin/users/force-logout', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminUpdateUserPlan: (userId, plan, durationDays = 30) => apiCall('/api/v1/admin/users/plan', { method: 'POST', body: JSON.stringify({ user_id: userId, plan, duration_days: durationDays }) }),
+  adminSuspendUser: (userId) => apiCall('/api/v1/admin/users/suspend', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminRestoreUser: (userId) => apiCall('/api/v1/admin/users/restore', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
+  adminUpdateUserRole: (userId, role) => apiCall('/api/v1/admin/users/role', { method: 'POST', body: JSON.stringify({ user_id: userId, role }) }),
+  adminDeleteUser: (userId) => apiCall(`/api/v1/admin/users/${userId}`, { method: 'DELETE' }),
+
+  adminGetPricing: () => apiCall('/api/v1/admin/pricing'),
+  adminUpdatePricing: (plans) => apiCall('/api/v1/admin/pricing', { method: 'POST', body: JSON.stringify({ plans }) }),
+
+  adminGetTenantWebsites: () => apiCall('/api/v1/admin/websites'),
+  adminDeleteTenantWebsite: (id) => apiCall(`/api/v1/admin/websites/${id}`, { method: 'DELETE' }),
+
+  adminGetOverview: () => apiCall('/api/v1/admin/overview'),
+  adminGetSystemHealth: () => apiCall('/api/v1/admin/system-health'),
 
   getUserProfile: () => apiCall('/api/user/profile'),
   updateUserProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
