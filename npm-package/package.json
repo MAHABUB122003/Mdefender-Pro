@@ -32,6 +32,7 @@
   },
   "files": [
     "index.js",
+    "auto.js",
     "index.d.ts",
     "README.md",
     "config-loader.js",
@@ -43,6 +44,7 @@
   ],
   "exports": {
     ".": "./index.js",
+    "./auto": "./auto.js",
     "./client": "./client.mjs",
     "./vite": "./vite.mjs"
   },
@@ -50,7 +52,6 @@
     "type": "git",
     "url": "git+https://github.com/mdefender/mdefender.git"
   },
-  "homepage": "https://mdefenderapi.onrender.com",
   "bugs": {
     "url": "https://github.com/mdefender/mdefender/issues"
   }

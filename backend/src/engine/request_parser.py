@@ -1,9 +1,10 @@
 import urllib.parse
 import json
+from src.engine.normalizer import DeepNormalizer
 
 class RequestParser:
     def __init__(self):
-        pass
+        self.normalizer = DeepNormalizer()
 
     def parse(self, request_data):
         raw_url = request_data.get('url', '')
@@ -27,6 +28,30 @@ class RequestParser:
         }
         parsed['body_fields'] = self._extract_body_fields(parsed['body'], parsed['content_type'])
         parsed['body_field_values'] = ' '.join(str(v) for v in parsed['body_fields'].values()) if parsed['body_fields'] else ''
+        
+        # Deeply normalized fields for zero-bypass inspection
+        parsed['normalized_path'] = self.normalizer.normalize(parsed['path'])
+        parsed['normalized_query'] = self.normalizer.normalize(parsed['query_string'])
+        parsed['normalized_body'] = self.normalizer.normalize(parsed['body'])
+        parsed['normalized_body_values'] = self.normalizer.normalize(parsed['body_field_values'])
+        parsed['normalized_user_agent'] = self.normalizer.normalize(parsed['user_agent'])
+        parsed['normalized_referer'] = self.normalizer.normalize(parsed['referer'])
+        parsed['normalized_cookies'] = self.normalizer.normalize(parsed['cookies'])
+
+        # Aggregate payload strings for multi-pass scans
+        raw_parts = [
+            parsed['path'],
+            parsed['query_string'],
+            parsed['body'],
+            parsed['body_field_values'],
+            parsed['user_agent'],
+            parsed['referer'],
+            parsed['cookies']
+        ]
+        parsed['combined_raw'] = ' '.join(str(p) for p in raw_parts if str(p).strip())
+        parsed['combined_normalized'] = self.normalizer.normalize(parsed['combined_raw'])
+        parsed['normalized_variants'] = self.normalizer.get_all_normalized_variants(parsed['combined_raw'])
+
         return parsed
 
     def extract_parameters(self, body, content_type='application/x-www-form-urlencoded'):

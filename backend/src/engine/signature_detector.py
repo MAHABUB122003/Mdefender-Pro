@@ -113,23 +113,27 @@ class SignatureDetector:
                                     md5_set.add(parts[2].lower())
                 except Exception as e:
                     self.load_error = f"hashes: {e}"
-            elif os.path.exists(self._rules_path()):
-                # Fallback: load hashes embedded in rules.json
+            # Also load hashes from WordPress malware scanner dataset database if present
+            db_dataset_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "../../../wordpress malware scner datasets/database/dataset.db")
+            )
+            if os.path.exists(db_dataset_path):
                 try:
-                    with open(self._rules_path(), "r", encoding="utf-8", errors="replace") as f:
-                        data = json.load(f)
-                    for h in data.get("hashes", []):
-                        s = h.get("sha256", "")
-                        if len(s) == 64:
-                            sha_set.add(s.lower())
-                        s1 = h.get("sha1", "")
-                        if len(s1) == 40:
-                            sha1_set.add(s1.lower())
-                        m = h.get("md5", "")
-                        if len(m) == 32:
-                            md5_set.add(m.lower())
+                    import sqlite3
+                    conn = sqlite3.connect(db_dataset_path)
+                    cur = conn.cursor()
+                    cur.execute("SELECT sha256, sha1, md5 FROM samples WHERE label != 'benign'")
+                    for row in cur.fetchall():
+                        if row[0] and len(row[0]) == 64:
+                            sha_set.add(row[0].lower())
+                        if row[1] and len(row[1]) == 40:
+                            sha1_set.add(row[1].lower())
+                        if row[2] and len(row[2]) == 32:
+                            md5_set.add(row[2].lower())
+                    conn.close()
                 except Exception as e:
-                    self.load_error = f"hashes(fallback): {e}"
+                    pass
+
             self._hashes = (sha_set, sha1_set, md5_set)
             return self._hashes
 

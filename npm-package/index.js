@@ -35,7 +35,7 @@ function getDefaultTemplate() {
 const DEFAULT_CONFIG = {
   apiKey: '',
   domain: '',
-  apiEndpoint: 'https://mdefenderapi.onrender.com',
+  apiEndpoint: process.env.MDEFENDER_API_ENDPOINT || 'http://localhost:8000',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
   timeout: 10000,
@@ -292,6 +292,7 @@ function mdefender(overrides = {}) {
       };
 
       const resp = await sendAnalyzeRequest(config.apiEndpoint, config.apiKey, payload, config.timeout);
+      const result = resp && resp.data ? resp.data : {};
       const isBlocked = Boolean(
         result && (
           result.decision === 'BLOCK' ||
@@ -348,5 +349,11 @@ mdefender.loadConfig = loadConfig;
 mdefender.DEFAULT_CONFIG = DEFAULT_CONFIG;
 mdefender.sendAnalyzeRequest = sendAnalyzeRequest;
 
+try {
+  const { autoHook } = require('./auto');
+  mdefender.autoHook = autoHook;
+} catch (e) {}
+
 module.exports = mdefender;
+
 

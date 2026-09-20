@@ -1,0 +1,76 @@
+# Environment & Secret Files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Frontend Builds & Static Assets
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Logs and Databases
+logs/
+*.log
+uvicorn_err.log
+uvicorn_out.log
+*.sqlite
+*.sqlite3
+quarantine/
+
+# Large Datasets & Archives
+*.csv
+*.zip
+*.tar.gz
+*.rar
+waf_ml_dataset.csv
+*malware*dataset*
+wordpress malware scner datasets/
+temp_extracted/
+
+# IDE & Editor Configs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db

@@ -1,22 +1,55 @@
-// client.mjs
-/**
- * Initialize MDefender Pro WAF client-side protection for SPAs.
- * @param {Object} options - Client configuration
- * @param {string} options.backendUrl - Base URL of your backend API server (e.g. 'http://localhost:5005')
- */
-export function initWaf(options = {}) {
-  if (typeof window === 'undefined') return;
+// client.mjs - MDefender Pro Client-Side & SPA Protection Engine
+// High-performance 0ms synchronous execution with zero external network delays
 
-  const backendUrl = (options.backendUrl || '').replace(/\/+$/, '');
-  const currentSearch = decodeURIComponent(window.location.search);
+const ATTACK_PATTERNS = [
+    { type: 'Cross-Site Scripting (XSS)', regex: /<\s*(?:script|iframe|object|embed|svg|img|math)\b/i },
+    { type: 'Cross-Site Scripting (XSS)', regex: /\bon(?:error|load|click|mouseover|focus|submit)\s*=/i },
+    { type: 'Cross-Site Scripting (XSS)', regex: /\b(?:javascript|data\s*:\s*text\/html)\s*:/i },
+    { type: 'Cross-Site Scripting (XSS)', regex: /\b(?:alert|eval|confirm|prompt|document\.cookie)\s*\(/i },
+    { type: 'SQL Injection', regex: /\bUNION\s+(?:ALL\s+)?SELECT\b/i },
+    { type: 'SQL Injection', regex: /(?:'|\"|\b)\s*(?:OR|AND)\s+['\"`]?([a-zA-Z0-9_-]+)['\"`]?\s*=\s*['\"`]?\1/i },
+    { type: 'SQL Injection', regex: /(?:--|#|\/\*).*?(?:DROP|ALTER|INSERT|DELETE|UPDATE|EXEC)/i },
+    { type: 'Local File Inclusion (LFI)', regex: /(?:\.\.\/|\.\.\\|etc\/passwd|etc\/shadow|win\.ini|boot\.ini)/i },
+    { type: 'Server-Side Request Forgery (SSRF)', regex: /(?:169\.254\.169\.254|metadata\.google\.internal|(?:gopher|dict|file):\/\/|=(?:https?:\/\/)?(?:127\.0\.0\.1|169\.254|localhost|0\.0\.0\.0))/i },
+    { type: 'Remote Command Execution (RCE)', regex: /(?:;|\||\|\||&&|`|\$\()\s*(?:cat|ls|id|whoami|powershell|cmd|sh|bash|wget|curl)\b/i },
+    { type: 'AI Prompt Injection', regex: /(?:ignore\s+all\s+(?:previous|prior)\s+instructions|system\s+override|DAN\s+mode)/i }
+];
 
-  // Instant 0ms Local Block Page Renderer
-  const renderInstantBlockPage = (attackType, refId) => {
-    const referenceId = refId || ('MDF-' + Math.random().toString(16).substring(2, 10).toUpperCase());
-    const host = window.location.hostname || 'localhost';
+function normalizeInput(str) {
+    if (!str) return '';
+    let curr = str;
+    for (let i = 0; i < 3; i++) {
+        try {
+            const decoded = decodeURIComponent(curr);
+            if (decoded === curr) break;
+            curr = decoded;
+        } catch (e) {
+            break;
+        }
+    }
+    return curr.replace(/\/\*.*?\*\//g, ' ');
+}
+
+function generateRefId() {
+    return 'MDF-' + Math.random().toString(16).substring(2, 10).toUpperCase();
+}
+
+export function renderOfficialBlockPage(attackType, refId, domain) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (window.__MDEFENDER_BLOCKED__) return;
+    window.__MDEFENDER_BLOCKED__ = true;
+
+    const referenceId = refId || generateRefId();
+    const host = window.location.hostname || domain || 'localhost';
     const nowUtc = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
     const unixRef = Math.floor(Date.now() / 1000);
-    const ruleId = 96565;
+    const classification = attackType || 'Cross-Site Scripting (XSS)';
+
+    let hash = 0;
+    for (let i = 0; i < classification.length; i++) {
+        hash = classification.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const ruleId = Math.abs(hash % 10000) + 90000;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -34,179 +67,198 @@ export function initWaf(options = {}) {
             --text-secondary: #475569;
             --text-muted: #94a3b8;
             --border-color: #cbd5e1;
-            --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            --font-mono: Consolas, Monaco, monospace;
+            --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: var(--font-main);
             background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.03) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.03) 0%, transparent 40%);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 16px;
-            -webkit-font-smoothing: antialiased;
+            padding: 20px 14px;
         }
         .container {
             width: 100%;
             max-width: 660px;
             background: var(--card-bg);
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(226, 232, 240, 0.95);
             border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            box-shadow: 0 8px 25px -4px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
             padding: 24px 28px;
+            text-align: center;
         }
-        .top-brand {
+        .logo-wrap {
+            margin-bottom: 10px;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 7px;
-            font-size: 11.5px;
-            font-weight: 700;
-            color: var(--brand-1);
-            letter-spacing: 0.04em;
+            justify-content: center;
+        }
+        .logo-svg {
+            width: 48px;
+            height: 48px;
+        }
+        .logo-text {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
             text-transform: uppercase;
+        }
+        .fw-badge {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 2px;
+        }
+        .fw-owner {
+            font-size: 12px;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             margin-bottom: 12px;
         }
-        .top-brand span { color: var(--text-muted); font-weight: 400; }
-        .top-brand .creator { color: var(--text-secondary); font-weight: 600; }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            background: #fff1f2;
-            border: 1px solid #fecdd3;
-            color: #e11d48;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            margin-bottom: 14px;
-        }
-        .status-badge .dot {
-            width: 6px;
-            height: 6px;
-            background: #e11d48;
-            border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2);
-        }
-        h1 {
+        .main-title {
             font-size: 19px;
             font-weight: 800;
             color: #0f172a;
-            letter-spacing: -0.01em;
-            margin-bottom: 4px;
-            line-height: 1.25;
+            letter-spacing: -0.3px;
+            margin-bottom: 3px;
         }
-        .subtitle {
-            font-size: 12px;
+        .sub-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 3px;
+        }
+        .desc-text {
+            font-size: 11.5px;
             color: var(--text-secondary);
-            margin-bottom: 18px;
+            margin-bottom: 12px;
         }
-        .subtitle strong {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-        .table-wrap {
+        .table-container {
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 7px;
             overflow: hidden;
-            margin-bottom: 18px;
             background: #ffffff;
+            margin-bottom: 12px;
+            text-align: left;
         }
-        table {
+        .details-table {
             width: 100%;
             border-collapse: collapse;
-            text-align: left;
-            font-size: 11.5px;
         }
-        tr {
-            border-bottom: 1px solid #f1f5f9;
+        .details-table tr {
+            border-bottom: 1px solid var(--border-color);
         }
-        tr:last-child {
+        .details-table tr:last-child {
             border-bottom: none;
         }
-        th {
-            width: 32%;
-            background: #f8fafc;
-            padding: 8.5px 14px;
-            font-weight: 600;
+        .details-table th {
+            background-color: #f8fafc;
             color: #475569;
-            border-right: 1px solid #f1f5f9;
-            text-transform: uppercase;
-            font-size: 10.5px;
-            letter-spacing: 0.02em;
-        }
-        td {
-            padding: 8.5px 14px;
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 11.5px;
-            word-break: break-all;
-        }
-        .threat-alert {
-            color: #dc2626;
             font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            width: 190px;
+            padding: 7px 12px;
+            border-right: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        .details-table td {
+            color: #334155;
+            font-weight: 500;
+            font-size: 11.5px;
+            padding: 7px 12px;
+            vertical-align: middle;
+        }
+        .threat-row td {
+            background-color: #fff5f5 !important;
+            color: #991b1b !important;
+        }
+        .threat-cell-content {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            width: 100%;
+            gap: 8px;
+        }
+        .threat-text {
+            font-weight: 700;
+            color: #dc2626;
+            word-break: break-word;
         }
         .info-tag {
-            font-size: 9.5px;
-            font-weight: 700;
-            background: #fef2f2;
-            color: #ef4444;
-            padding: 1.5px 6px;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 7px;
             border-radius: 4px;
-            border: 1px solid #fee2e2;
-            font-family: var(--font-main);
-            text-transform: uppercase;
+            text-decoration: none;
+            white-space: nowrap;
         }
         .ip-wrap {
             display: flex;
             align-items: center;
-            gap: 7px;
+            gap: 8px;
         }
-        .flag-img {
+        .flag-svg {
             border-radius: 2px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            vertical-align: middle;
         }
         .why-header {
             font-size: 12.5px;
             font-weight: 700;
-            color: var(--text-primary);
+            color: #0f172a;
+            text-align: left;
             margin-bottom: 4px;
         }
         .why-desc {
-            font-size: 11.5px;
+            font-size: 11px;
             color: var(--text-secondary);
             line-height: 1.45;
-            margin-bottom: 14px;
+            text-align: left;
+            margin-bottom: 12px;
         }
         .ref-box {
-            background: #f8fafc;
+            background: #f1f5f9;
             border: 1px dashed var(--border-color);
-            padding: 9px 14px;
-            border-radius: 6px;
+            border-radius: 5px;
+            padding: 7px;
             font-family: var(--font-mono);
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 700;
-            color: var(--brand-1);
-            text-align: center;
-            margin-bottom: 16px;
+            color: #334155;
+            letter-spacing: 0.6px;
+            margin-bottom: 14px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s;
         }
         .ref-box:hover {
-            background: #f1f5f9;
             border-color: var(--brand-1);
+            color: var(--brand-1);
+            background: #eef2ff;
         }
         .actions {
             display: flex;
             align-items: center;
-            gap: 9px;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
         .btn {
@@ -214,68 +266,87 @@ export function initWaf(options = {}) {
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 8px 14px;
-            font-size: 11.5px;
-            font-weight: 600;
-            border-radius: 6px;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.15s ease;
             font-family: var(--font-main);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            cursor: pointer;
         }
         .btn-primary {
-            background: var(--brand-1);
+            background-color: #0f172a;
             color: #ffffff;
-            border: 1px solid var(--brand-1);
-            box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+            border: 1px solid #0f172a;
         }
         .btn-primary:hover {
-            background: #4338ca;
+            background-color: #1e293b;
+            border-color: #1e293b;
         }
         .btn-secondary {
-            background: #ffffff;
-            color: var(--text-primary);
+            background-color: #ffffff;
+            color: #334155;
             border: 1px solid var(--border-color);
         }
         .btn-secondary:hover {
-            background: #f8fafc;
+            background-color: #f8fafc;
             border-color: #94a3b8;
+            color: #0f172a;
         }
         .footer {
-            margin-top: 18px;
-            padding-top: 12px;
-            border-top: 1px solid #f1f5f9;
-            font-size: 10.5px;
+            font-size: 10px;
             color: var(--text-muted);
-            text-align: center;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 8px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="top-brand">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <!-- Shield Logo Header -->
+        <div class="logo-wrap">
+            <svg class="logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f8fafc" />
+                        <stop offset="30%" stop-color="#cbd5e1" />
+                        <stop offset="70%" stop-color="#94a3b8" />
+                        <stop offset="100%" stop-color="#475569" />
+                    </linearGradient>
+                    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#94a3b8" />
+                        <stop offset="50%" stop-color="#f1f5f9" />
+                        <stop offset="100%" stop-color="#475569" />
+                    </linearGradient>
+                    <linearGradient id="dragonColor" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#1e293b" />
+                        <stop offset="100%" stop-color="#0f172a" />
+                    </linearGradient>
+                </defs>
+                <path d="M60 10 C85 22 98 25 98 48 C98 75 75 98 60 108 C45 98 22 75 22 48 C22 25 35 22 60 10 Z" fill="url(#shieldBg)" stroke="url(#shieldBorder)" stroke-width="3" />
+                <path d="M60 18 C80 28 90 30 90 48 C90 70 70 90 60 98 C50 90 30 70 30 48 C30 30 40 28 60 18 Z" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="3 2" />
+                <path d="M60 28 C58 35 52 38 48 38 C44 38 43 42 45 44 C47 46 51 44 51 48 C51 52 46 55 42 53 C38 51 36 54 38 58 C40 62 45 60 48 64 C50 66 48 70 44 72 C48 74 54 75 58 72 C58 68 55 65 57 62 C59 59 63 61 65 58 C67 55 66 52 62 50 C64 45 68 46 70 42 C72 38 67 36 65 32 C63 28 61 25 60 28 Z" fill="url(#dragonColor)" />
             </svg>
-            MDEFENDER-PRO AI <span>&bull;</span> A.S.A.P. SECURITY FIREWALL <span>&bull;</span> <span class="creator">MAHABUB</span>
+            <div class="logo-text">MDefender-Pro AI</div>
         </div>
         
-        <div class="status-badge">
-            <div class="dot"></div>
-            403 — SECURITY ACTION REQUIRED &bull; Access Denied by Corporate WAF
-        </div>
+        <div class="fw-badge">A.S.A.P. Security Firewall</div>
+        <div class="fw-owner">Mahabub</div>
         
-        <h1>403 — Access Denied</h1>
-        <div class="subtitle">Access to <strong>${host}</strong> has been restricted by security policy.</div>
+        <h1 class="main-title">403 — SECURITY ACTION REQUIRED</h1>
+        <h2 class="sub-title">Access Denied by Corporate WAF</h2>
         
-        <div class="table-wrap">
-            <table>
-                <tr>
+        <div class="desc-text">Access to [${host}] restricted.</div>
+        
+        <div class="table-container">
+            <table class="details-table">
+                <tr class="threat-row">
                     <th>Attack Classification</th>
                     <td>
-                        <div class="threat-alert">
-                            <span>${attackType}</span>
-                            <span class="info-tag">Blocked Threat</span>
+                        <div class="threat-cell-content">
+                            <span class="threat-text">${classification}</span>
+                            <span class="info-tag">Detailed info tag</span>
                         </div>
                     </td>
                 </tr>
@@ -283,8 +354,11 @@ export function initWaf(options = {}) {
                     <th>Origin Client IP</th>
                     <td>
                         <div class="ip-wrap">
-                            <img id="flag-img" src="https://flagcdn.com/w40/bd.png" width="20" height="15" alt="Flag" class="flag-img">
-                            <span>::1<span id="geo-text"> (GeoIP: Dhaka, Bangladesh)</span></span>
+                            <svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="20" height="15" fill="#006a4e"/>
+                                <circle cx="9" cy="7.5" r="4" fill="#f42a41"/>
+                            </svg>
+                            <span><span id="client-ip-display" style="font-family: var(--font-mono); font-weight: 700;">103.151.30.111</span><span style="color: #64748b;"> (GeoIP: BD)</span></span>
                         </div>
                     </td>
                 </tr>
@@ -294,7 +368,7 @@ export function initWaf(options = {}) {
                 </tr>
                 <tr>
                     <th>Violation Reason</th>
-                    <td>Request blocked by rule ID: <span>${ruleId}</span> (Ref: ${attackType})</td>
+                    <td>Request blocked by rule ID: <span>${ruleId}</span> (Ref: ${classification})</td>
                 </tr>
                 <tr>
                     <th>Protocol Details</th>
@@ -309,7 +383,7 @@ export function initWaf(options = {}) {
         
         <h3 class="why-header">Why did this happen?</h3>
         <p class="why-desc">
-            To maintain system integrity, suspicious requests are automatically analyzed and filtered. If you believe this is a valid action, please share the Reference ID below with your local IT/Security operations.
+            To maintain system integrity, suspicious requests are automatically analyzed and filtered. If you believe this is a valid corporate action, please share the Reference ID below with your local IT/Security operations. Regular users should clear cache or contact support.
         </p>
         
         <div class="ref-box" id="ref-id-box" title="Click to copy Reference ID" onclick="copyRef()">
@@ -317,8 +391,8 @@ export function initWaf(options = {}) {
         </div>
         
         <div class="actions">
-            <a id="email-link" href="mailto:security@mdefender-pro.io?subject=WAF Block Reference: ${referenceId}" class="btn btn-primary">
-                ✉ Contact Security Operations
+            <a href="#" class="btn btn-primary" onclick="alert('Reference ID: ${referenceId}\\nContact your IT security team.'); return false;">
+                Contact Security Operations
             </a>
             <a href="/" class="btn btn-secondary">
                 Return to Homepage
@@ -338,109 +412,143 @@ export function initWaf(options = {}) {
         function copyRef() {
             navigator.clipboard.writeText(refId).then(() => {
                 const refBox = document.getElementById('ref-id-box');
-                const originalHtml = refBox.innerHTML;
-                refBox.innerHTML = 'COPIED TO CLIPBOARD! ✅';
-                refBox.style.color = '#10b981';
-                refBox.style.borderColor = '#10b981';
-                refBox.style.background = '#ecfdf5';
-                setTimeout(() => {
-                    refBox.innerHTML = originalHtml;
-                    refBox.style.color = '';
-                    refBox.style.borderColor = '';
-                    refBox.style.background = '';
-                }, 2000);
+                if (refBox) {
+                    const originalHtml = refBox.innerHTML;
+                    refBox.innerHTML = 'COPIED TO CLIPBOARD! ✅';
+                    refBox.style.color = '#10b981';
+                    refBox.style.borderColor = '#10b981';
+                    refBox.style.background = '#ecfdf5';
+                    setTimeout(() => {
+                        refBox.innerHTML = originalHtml;
+                        refBox.style.color = '';
+                        refBox.style.borderColor = '';
+                        refBox.style.background = '';
+                    }, 2000);
+                }
             });
         }
     </script>
 </body>
 </html>`;
 
-    document.open();
-    document.write(html);
-    document.close();
-  };
+    // Instant DOM Replacement
+    try { window.stop(); } catch (e) { }
+    document.documentElement.innerHTML = html;
 
-  // Helper to render server-provided WAF block page
-  const handleWafBlock = (htmlText) => {
-    if (htmlText && (htmlText.includes('MDefender-Pro') || htmlText.includes('Access Denied') || htmlText.includes('MDefender') || htmlText.includes('403'))) {
-      document.open();
-      document.write(htmlText);
-      document.close();
-      throw new Error("MDefender WAF Blocked Request");
-    }
-  };
-
-  // 1. Instant check on page load (0ms immediate response)
-  if (currentSearch) {
-    const attackRegex = /(<script|onerror|onload|javascript:|alert\(|confirm\(|prompt\(|\.\.\/|\.\.\\|union.*select|drop.*table|'\s*(or|and)\s+['\w]|etc\/passwd|;\s*(whoami|id|cat|ls|cmd|sh|bash))/i;
-    if (attackRegex.test(currentSearch)) {
-      // Instantly render block page in 0ms!
-      renderInstantBlockPage("XSS - Dangerous HTML Tag (<script>) #1");
-
-      // Background verify with server for audit logging
-      if (backendUrl) {
-        const origFetch = window.fetch;
-        const testUrl = backendUrl + '/api/books/' + window.location.search;
-        origFetch(testUrl)
-          .then(res => res.status === 403 ? res.text() : null)
-          .then(html => { if (html) handleWafBlock(html); })
-          .catch(() => {});
-      }
-      throw new Error("MDefender WAF Blocked Request");
-    }
-  }
-
-  // 2. Intercept window.fetch to propagate query params and catch 403
-  const originalFetch = window.fetch;
-  window.fetch = async (input, init, ...args) => {
-    let url = input;
-    const searchStr = window.location.search;
-    
-    if (searchStr) {
-      if (typeof url === 'string') {
-        if (url.startsWith('/') || url.includes(backendUrl) || url.includes('/api/')) {
-          const separator = url.includes('?') ? '&' : '?';
-          url = url + separator + searchStr.substring(1);
+    // Async Telemetry Beacon to MDefender Dashboard (recorded without blocking UI)
+    try {
+        const reportPayload = {
+            domain: domain || (typeof window !== 'undefined' ? window.location.hostname : 'localhost') || 'localhost',
+            request: {
+                method: 'GET',
+                url: typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/',
+                query_string: typeof window !== 'undefined' ? window.location.search : '',
+                ip: '127.0.0.1',
+                headers: { 'User-Agent': typeof navigator !== 'undefined' ? navigator.userAgent : 'Frontend-WAF' },
+                body: '',
+                attack_type: classification,
+                reference_id: referenceId
+            }
+        };
+        const endpoint = 'http://localhost:8000/api/v1/waf/analyze';
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            navigator.sendBeacon(endpoint, new Blob([JSON.stringify(reportPayload)], { type: 'application/json' }));
+        } else if (typeof fetch !== 'undefined') {
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(reportPayload)
+            }).catch(() => {});
         }
-      } else if (url instanceof Request) {
-        if (url.url.startsWith('/') || url.url.includes(backendUrl) || url.url.includes('/api/')) {
-          const separator = url.url.includes('?') ? '&' : '?';
-          const newUrl = url.url + separator + searchStr.substring(1);
-          url = new Request(newUrl, url);
-        }
-      }
-    }
-
-    const response = await originalFetch(url, init, ...args);
-    if (response.status === 403) {
-      const clone = response.clone();
-      try {
-        const text = await clone.text();
-        handleWafBlock(text);
-      } catch (e) {}
-    }
-    return response;
-  };
-
-  // 3. Intercept XMLHttpRequest.prototype.open to propagate query params
-  const originalOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    const searchStr = window.location.search;
-    if (searchStr && (url.startsWith('/') || url.includes(backendUrl) || url.includes('/api/'))) {
-      const separator = url.includes('?') ? '&' : '?';
-      url = url + separator + searchStr.substring(1);
-    }
-    return originalOpen.apply(this, [method, url, ...rest]);
-  };
-
-  // 4. Intercept XMLHttpRequest.prototype.send to catch 403
-  const originalSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(...args) {
-    this.addEventListener('load', function() {
-      if (this.status === 403) {
-        handleWafBlock(this.responseText);
-      }
-    });
-    return originalSend.apply(this, args);
-  };
+    } catch (e) {}
 }
+
+// 0ms Instant URL Inspection on Script Load
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const rawTarget = normalizeInput(window.location.search + ' ' + window.location.hash);
+    if (rawTarget.trim()) {
+        for (const pattern of ATTACK_PATTERNS) {
+            if (pattern.regex.test(rawTarget)) {
+                renderOfficialBlockPage(pattern.type);
+                throw new Error(`[MDefender WAF] Attack blocked on load (0ms): ${pattern.type}`);
+            }
+        }
+    }
+}
+
+/**
+ * Initialize MDefender Pro WAF client-side protection for SPAs & Frontend Websites.
+ * @param {Object} options - Client configuration
+ * @param {string} [options.backendUrl] - Base URL of your backend API server (e.g. 'http://localhost:5005' or 'http://localhost:8000')
+ * @param {string} [options.apiKey] - Your Website API key
+ * @param {string} [options.domain] - Your domain (e.g. 'localhost' or 'mysite.com')
+ * @param {boolean} [options.logBlocked] - Whether to log blocked attacks to console
+ */
+export function initWaf(options = {}) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    if (window.__MDEFENDER_WAF_INITIALIZED__) return;
+    window.__MDEFENDER_WAF_INITIALIZED__ = true;
+
+    const backendUrl = (options.backendUrl || 'http://localhost:8000').replace(/\/+$/, '');
+    const domain = options.domain || window.location.hostname || 'localhost';
+
+    // 1. Wrap window.fetch for outgoing requests
+    const originalFetch = window.fetch;
+    window.fetch = async (input, init, ...args) => {
+        let url = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+        let targetParamStr = '';
+        try {
+            if (url.includes('?')) targetParamStr = url.substring(url.indexOf('?'));
+            else if (url.includes('#')) targetParamStr = url.substring(url.indexOf('#'));
+        } catch (e) {}
+
+        if (targetParamStr) {
+            const normParams = normalizeInput(targetParamStr);
+            for (const pattern of ATTACK_PATTERNS) {
+                if (pattern.regex.test(normParams)) {
+                    renderOfficialBlockPage(pattern.type, null, domain);
+                    throw new Error(`[MDefender WAF] Outgoing API attack blocked: ${pattern.type}`);
+                }
+            }
+        }
+
+        try {
+            const response = await originalFetch(input, init, ...args);
+            if (response.status === 403) {
+                const clone = response.clone();
+                try {
+                    const text = await clone.text();
+                    if (text.includes('403') && (text.includes('MDefender') || text.includes('Access Denied'))) {
+                        renderOfficialBlockPage('Cross-Site Scripting (XSS)', null, domain);
+                    }
+                } catch (e) {}
+            }
+            return response;
+        } catch (err) {
+            throw err;
+        }
+    };
+
+    // 2. Wrap XMLHttpRequest
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+        let targetParamStr = '';
+        try {
+            const urlStr = String(url);
+            if (urlStr.includes('?')) targetParamStr = urlStr.substring(urlStr.indexOf('?'));
+        } catch (e) {}
+
+        if (targetParamStr) {
+            const normParams = normalizeInput(targetParamStr);
+            for (const pattern of ATTACK_PATTERNS) {
+                if (pattern.regex.test(normParams)) {
+                    renderOfficialBlockPage(pattern.type, null, domain);
+                    throw new Error(`[MDefender WAF] XHR attack blocked: ${pattern.type}`);
+                }
+            }
+        }
+        return originalOpen.apply(this, [method, url, ...rest]);
+    };
+}
+
+export default { initWaf, renderOfficialBlockPage };

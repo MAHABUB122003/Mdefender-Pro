@@ -582,7 +582,7 @@ module.exports = {
   domain: 'yourdomain.com',
 
   // Endpoint
-  apiEndpoint: 'https://mdefenderapi.onrender.com',
+  apiEndpoint: 'http://localhost:8000',
 
   // Mode: 'block' (active defense) or 'monitor' (log-only)
   mode: 'block',
@@ -1090,7 +1090,7 @@ curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"`}
 module.exports = {
   apiKey: "YOUR_API_KEY_HERE",
   domain: "yourdomain.com",
-  apiEndpoint: "https://mdefenderapi.onrender.com", // or http://localhost:8000 for local dev
+  apiEndpoint: "http://localhost:8000",
   mode: "block",
   logBlocked: true
 };`}
@@ -1410,7 +1410,7 @@ curl -i "http://localhost:5005/api/books"`}
 module.exports = {
   apiKey: process.env.MDEFENDER_API_KEY,
   domain: 'yourdomain.com',
-  apiEndpoint: 'https://mdefenderapi.onrender.com',
+  apiEndpoint: 'http://localhost:8000',
   mode: 'block',
   
   // Path to your custom HTML template with {{REFERENCE_ID}}, {{CLIENT_IP}}, etc.

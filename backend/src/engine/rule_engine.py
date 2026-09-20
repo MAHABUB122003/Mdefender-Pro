@@ -6,11 +6,13 @@ import logging
 _log = logging.getLogger(__name__)
 
 # Heuristic trigger characters - if none of these are present, request is 100% safe from injection
-_TRIGGER_CHARS = set("'\"<>;\\`|{}[]$%.@:?=\x00\r\n\t")
+_TRIGGER_CHARS = set("'\"<>;\\`|{}[]$%.@:?=\x00\r\n\t&#/")
 _TRIGGER_KEYWORDS = (
     "union", "select", "script", "alert", "exec", "eval", "etc/passwd", "sleep",
     "benchmark", "drop", "insert", "delete", "update", "or ", "and ", "--", "/*",
-    "xp_", "cmd", "169.254", "sqlmap", "nikto", "nuclei", "acunetix", "nmap", "nessus", "gobuster", "dirbuster"
+    "xp_", "cmd", "169.254", "sqlmap", "nikto", "nuclei", "acunetix", "nmap", "nessus", "gobuster", "dirbuster",
+    "onerror", "onload", "javascript:", "vbscript:", "data:text", "system", "whoami", "powershell", "wget", "curl",
+    "ignore previous", "jailbreak", "metadata.google", "latest/meta-data"
 )
 
 
@@ -149,24 +151,45 @@ class RuleEngine:
             if not any(kw in comb_lower for kw in _TRIGGER_KEYWORDS):
                 return []
 
+        # Check user-provided variants or construct variants
+        variants = request_data.get('normalized_variants')
+        if not variants:
+            variants = [combined]
+            try:
+                from src.engine.normalizer import DeepNormalizer
+                norm = DeepNormalizer().normalize(combined)
+                if norm != combined:
+                    variants.append(norm)
+            except Exception:
+                pass
+
         # Execute Batched Compiled Regexes (Evaluates 2,000 rules in < 5ms)
         matches = []
-        for compiled_batch, batch_rules in self._compiled_batches:
-            match = compiled_batch.search(combined)
-            if match:
-                # Find which rule inside the batch matched
-                matched_group = match.lastgroup
-                if matched_group:
-                    try:
-                        _, batch_idx, rule_idx = matched_group.split('_')
-                        rule = batch_rules[int(rule_idx)]
-                        matches.append({
-                            'rule_name': rule.get('name', 'Threat Detected'),
-                            'severity': rule.get('severity', 'critical'),
-                            'action': rule.get('action', 'block'),
-                            'category': rule.get('category', 'Generic')
-                        })
-                    except Exception:
+        for candidate_text in variants:
+            for compiled_batch, batch_rules in self._compiled_batches:
+                match = compiled_batch.search(candidate_text)
+                if match:
+                    # Find which rule inside the batch matched
+                    matched_group = match.lastgroup
+                    if matched_group:
+                        try:
+                            _, batch_idx, rule_idx = matched_group.split('_')
+                            rule = batch_rules[int(rule_idx)]
+                            matches.append({
+                                'rule_name': rule.get('name', 'Threat Detected'),
+                                'severity': rule.get('severity', 'critical'),
+                                'action': rule.get('action', 'block'),
+                                'category': rule.get('category', 'Generic')
+                            })
+                        except Exception:
+                            r0 = batch_rules[0]
+                            matches.append({
+                                'rule_name': r0.get('name', 'Threat Detected'),
+                                'severity': r0.get('severity', 'critical'),
+                                'action': r0.get('action', 'block'),
+                                'category': r0.get('category', 'Generic')
+                            })
+                    else:
                         r0 = batch_rules[0]
                         matches.append({
                             'rule_name': r0.get('name', 'Threat Detected'),
@@ -174,16 +197,10 @@ class RuleEngine:
                             'action': r0.get('action', 'block'),
                             'category': r0.get('category', 'Generic')
                         })
-                else:
-                    r0 = batch_rules[0]
-                    matches.append({
-                        'rule_name': r0.get('name', 'Threat Detected'),
-                        'severity': r0.get('severity', 'critical'),
-                        'action': r0.get('action', 'block'),
-                        'category': r0.get('category', 'Generic')
-                    })
-                
-                # Stop on first high-confidence rule match for maximum speed
+                    
+                    # Stop on first high-confidence rule match for maximum speed
+                    break
+            if matches:
                 break
 
         # Check user-defined custom rules if present
