@@ -16,7 +16,7 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.dirname(ROOT)
 PROJECT_DIR = os.path.dirname(BACKEND_DIR)
-DEFAULT_SRC = os.path.join(PROJECT_DIR, "temp_extracted", "mdefender-pro")
+DEFAULT_SRC = os.path.join(PROJECT_DIR, "plugin_source", "mdefender-pro")
 XAMPP_SRC = r"C:\xampp\htdocs\mahabub\wp-content\plugins\mdefender-pro"
 OUT_DIR = os.path.join(BACKEND_DIR, "downloads")
 OUT_FILE = os.path.join(OUT_DIR, "mdefender-pro.zip")

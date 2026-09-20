@@ -286,22 +286,82 @@ def _threat_label(score):
 
 def store_event(db, auth_data, req_data, decision, ip):
     try:
+        user_id_str = str(auth_data.get("user_id", ""))
+        website_id_str = str(auth_data.get("website_id", ""))
+        website = auth_data.get("website") or {}
+        domain = req_data.get("domain") or website.get("domain") or website.get("url") or "localhost"
+        now = datetime.now()
+
+        action = decision.get("action", "allow")
+        status = decision.get("action", "allow")
+        attack_type = decision.get("attack_type")
+        is_blocked = (action in ("block", "blocked") or status in ("block", "blocked") or decision.get("decision") == "BLOCK")
+
         event = {
-            "user_id": str(auth_data.get("user_id", "")),
-            "website_id": str(auth_data.get("website_id", "")),
-            "timestamp": datetime.now(),
+            "user_id": user_id_str,
+            "website_id": website_id_str,
+            "domain": domain,
+            "timestamp": now,
             "source_ip": ip or "127.0.0.1",
+            "ip": ip or "127.0.0.1",
             "method": req_data.get("method", "GET"),
             "endpoint": req_data.get("url", "/"),
-            "attack_type": decision.get("attack_type"),
+            "url": req_data.get("url", "/"),
+            "attack_type": attack_type,
             "detection_source": _detection_source(decision),
             "risk_score": decision.get("risk_score", 0),
-            "action": decision.get("action", "allow"),
-            "status": decision.get("action", "allow"),
+            "confidence": decision.get("confidence", 0.0),
+            "action": "blocked" if is_blocked else action,
+            "status": "blocked" if is_blocked else status,
             "reference_id": decision.get("reference_id"),
             "user_agent": (req_data.get("headers") or {}).get("User-Agent", ""),
+            "rule_matched": decision.get("reason", ""),
         }
         db.security_events.insert_one(event)
+
+        # Also store in attacks collection for unified user logs
+        if is_blocked or attack_type:
+            db.attacks.insert_one({
+                "user_id": user_id_str,
+                "website_id": website_id_str,
+                "domain": domain,
+                "ip": ip or "127.0.0.1",
+                "url": req_data.get("url", "/"),
+                "attack_type": attack_type or "Suspicious Request",
+                "confidence": decision.get("confidence", 0.85),
+                "status": "blocked",
+                "timestamp": now,
+                "method": req_data.get("method", "GET"),
+                "user_agent": (req_data.get("headers") or {}).get("User-Agent", ""),
+                "rule_matched": decision.get("reason", "ML/Rule Detection"),
+                "reference_id": decision.get("reference_id"),
+            })
+
+        # Update live real-time counters on website document
+        inc_website = {"total_requests": 1, "requests_today": 1}
+        if is_blocked:
+            inc_website["total_blocked"] = 1
+            inc_website["blocked_today"] = 1
+
+        db.websites.update_one(
+            {"_id": website_id_str},
+            {
+                "$inc": inc_website,
+                "$set": {
+                    "last_activity": now,
+                    "threat_level": _threat_label(decision.get("risk_score", 0)),
+                }
+            }
+        )
+
+        # Update live counters on user document
+        inc_user = {"total_requests": 1, "requests_today": 1}
+        if is_blocked:
+            inc_user["total_blocked"] = 1
+        db.users.update_one(
+            {"$or": [{"_id": user_id_str}, {"id": user_id_str}]},
+            {"$inc": inc_user, "$set": {"updated_at": now}}
+        )
     except Exception as e:
         print("[WAF] Failed to store event:", e)
 

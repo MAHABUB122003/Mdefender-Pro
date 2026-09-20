@@ -553,8 +553,9 @@ async def user_remove_website(request: Request, user: dict = Depends(verify_user
     return user_api.remove_website(user, website_id)
 
 @app.get("/api/user/dashboard")
-async def user_dashboard(user: dict = Depends(verify_user_token_compat)):
-    return user_api.get_dashboard_stats(user)
+async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
+    website_id = request.query_params.get('website_id')
+    return user_api.get_dashboard_stats(user, website_id=website_id)
 
 @app.post("/api/user/upgrade-plan")
 async def upgrade_user_plan(request: Request, user: dict = Depends(verify_user_token_compat)):

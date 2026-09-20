@@ -340,7 +340,7 @@ class UserAPI:
         logger.info(f"Password changed for: {user.get('email', 'unknown')}")
         return {'status': 'success', 'message': 'Password changed successfully'}
 
-    def get_dashboard_stats(self, user):
+    def get_dashboard_stats(self, user, website_id=None):
         today = datetime.now().strftime('%Y-%m-%d')
 
         if user.get('requests_today_date') != today:
@@ -353,19 +353,21 @@ class UserAPI:
         user_id_str = str(user['_id'])
 
         # Query websites from the websites collection scoped to the user
-        websites_cursor = self.db.websites.find({'user_id': user_id_str})
+        websites_cursor = list(self.db.websites.find({'user_id': user_id_str}))
         websites = []
         for w in websites_cursor:
             websites.append({
                 'id': str(w['_id']),
                 'domain': w.get('domain', ''),
                 'name': w.get('name', ''),
-                'platform': w.get('platform', 'Other'),
+                'platform': w.get('platform', 'WordPress'),
                 'origin_server': w.get('origin_server', ''),
                 'status': w.get('status', 'active'),
                 'added_at': w['added_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('added_at') else (w['connected_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('connected_at') else ''),
                 'requests_today': w.get('requests_today', 0),
                 'blocked_today': w.get('blocked_today', 0),
+                'total_requests': w.get('total_requests', 0),
+                'total_blocked': w.get('total_blocked', 0),
                 'waf_mode': w.get('waf_mode', 'protect'),
                 'malware_scanner': w.get('malware_scanner', 'active'),
                 'threat_level': w.get('threat_level', 'LOW'),
@@ -373,37 +375,47 @@ class UserAPI:
 
         website_domains = {w['id']: w.get('domain', '') for w in websites}
 
+        # Build filter query
+        base_query = {'user_id': user_id_str}
+        if website_id and website_id != 'all':
+            # Match by website_id or domain
+            base_query['$or'] = [{'website_id': website_id}, {'domain': website_id}]
+
+        attack_query = {**base_query, '$or': [{'action': {'$in': ['block', 'blocked']}}, {'status': {'$in': ['block', 'blocked']}}]}
+        if website_id and website_id != 'all':
+            attack_query = {
+                '$and': [
+                    {'user_id': user_id_str},
+                    {'$or': [{'website_id': website_id}, {'domain': website_id}]},
+                    {'$or': [{'action': {'$in': ['block', 'blocked']}}, {'status': {'$in': ['block', 'blocked']}}]}
+                ]
+            }
+
         # Retrieve recent activity (blocks) from security_events
-        attack_logs = list(self.db.security_events.find({
-            'user_id': user_id_str,
-            '$or': [{'action': 'block'}, {'status': 'block'}]
-        }).sort('timestamp', -1).limit(20))
+        attack_logs = list(self.db.security_events.find(attack_query).sort('timestamp', -1).limit(25))
 
         logs = []
         for log in attack_logs:
-            web_id = log.get('website_id')
-            domain_val = website_domains.get(web_id, '')
+            web_id = str(log.get('website_id', ''))
+            domain_val = website_domains.get(web_id, '') or log.get('domain', '')
             logs.append({
                 'id': str(log.get('_id', '')),
-                'ip': log.get('source_ip', ''),
-                'url': log.get('endpoint', ''),
-                'attack_type': log.get('attack_type') or 'Unknown',
-                'confidence': log.get('risk_score', 0) / 100.0,
+                'ip': log.get('source_ip') or log.get('ip', ''),
+                'url': log.get('endpoint') or log.get('url', ''),
+                'attack_type': log.get('attack_type') or 'Suspicious Request',
+                'confidence': log.get('confidence') or (log.get('risk_score', 0) / 100.0 if log.get('risk_score') else 0.85),
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
-                'status': log.get('action') or 'blocked',
-                'domain': domain_val or log.get('domain', ''),
+                'status': log.get('action') or log.get('status') or 'blocked',
+                'domain': domain_val or 'WordPress Site',
             })
 
         attack_type_map = {}
         attacker_ip_map = {}
-        all_attacks = list(self.db.security_events.find({
-            'user_id': user_id_str,
-            '$or': [{'action': 'block'}, {'status': 'block'}]
-        }))
+        all_attacks = list(self.db.security_events.find(attack_query).limit(500))
         for a in all_attacks:
             atype = a.get('attack_type', 'Unknown') or 'Unknown'
             attack_type_map[atype] = attack_type_map.get(atype, 0) + 1
-            ip = a.get('source_ip', '')
+            ip = a.get('source_ip') or a.get('ip', '')
             if ip:
                 attacker_ip_map[ip] = attacker_ip_map.get(ip, 0) + 1
 
@@ -421,17 +433,34 @@ class UserAPI:
         for i in range(7):
             day = datetime.now() - timedelta(days=6 - i)
             day_str = day.strftime('%Y-%m-%d')
-            count = self.db.security_events.count_documents({
-                'user_id': user_id_str,
-                'timestamp': {
-                    '$gte': datetime.strptime(day_str, '%Y-%m-%d'),
-                    '$lt': datetime.strptime(day_str, '%Y-%m-%d') + timedelta(days=1),
+            day_start = datetime.strptime(day_str, '%Y-%m-%d')
+            day_end = day_start + timedelta(days=1)
+            
+            day_q = {'user_id': user_id_str, 'timestamp': {'$gte': day_start, '$lt': day_end}}
+            if website_id and website_id != 'all':
+                day_q = {
+                    '$and': [
+                        {'user_id': user_id_str},
+                        {'$or': [{'website_id': website_id}, {'domain': website_id}]},
+                        {'timestamp': {'$gte': day_start, '$lt': day_end}}
+                    ]
                 }
-            })
+            count = self.db.security_events.count_documents(day_q)
             daily_requests.append(count)
 
-        # Get latest statistics
+        # Get latest user doc
         user_doc = self.db.users.find_one({'_id': user['_id']}) or user
+
+        # Calculate requests for selected website vs all
+        if website_id and website_id != 'all':
+            selected_site = next((w for w in websites if w['id'] == website_id or w['domain'] == website_id), None)
+            req_today = selected_site['requests_today'] if selected_site else 0
+            tot_req = selected_site['total_requests'] if selected_site else 0
+            tot_block = selected_site['total_blocked'] if selected_site else 0
+        else:
+            req_today = sum(w.get('requests_today', 0) for w in websites) or user_doc.get('requests_today', 0)
+            tot_req = sum(w.get('total_requests', 0) for w in websites) or user_doc.get('total_requests', 0)
+            tot_block = sum(w.get('total_blocked', 0) for w in websites) or user_doc.get('total_blocked', 0)
 
         return {
             'user': {
@@ -444,9 +473,9 @@ class UserAPI:
             },
             'api_key': user_doc.get('api_key', ''),
             'plan': user_doc.get('plan', 'free'),
-            'requests_today': user_doc.get('requests_today', 0),
-            'total_requests': user_doc.get('total_requests', 0),
-            'total_blocked': user_doc.get('total_blocked', 0),
+            'requests_today': req_today,
+            'total_requests': tot_req,
+            'total_blocked': tot_block,
             'websites_count': len(websites),
             'active_websites': len(websites),
             'websites': websites,
@@ -456,6 +485,7 @@ class UserAPI:
             'daily_requests': daily_requests,
             'top_attackers': top_attackers,
             'protection_status': 'active',
+            'selected_website': website_id or 'all',
         }
 
     def get_all_users(self):
@@ -561,17 +591,27 @@ class UserAPI:
         search = params.get('search', '')
         ip_filter = params.get('ip', '')
         attack_type = params.get('attack_type', '')
+        website_id = params.get('website_id', '')
         date_from = params.get('date_from', '')
         date_to = params.get('date_to', '')
         user_id_str = str(user['_id'])
+
         query = {'user_id': user_id_str}
+        if website_id and website_id != 'all':
+            query['$or'] = [{'website_id': website_id}, {'domain': website_id}]
+
         if search:
             search_conditions = [
                 {'ip': {'$regex': search, '$options': 'i'}},
                 {'url': {'$regex': search, '$options': 'i'}},
                 {'attack_type': {'$regex': search, '$options': 'i'}},
+                {'domain': {'$regex': search, '$options': 'i'}},
             ]
-            query = {'$and': [query, {'$or': search_conditions}]}
+            if '$or' in query:
+                query = {'$and': [{'user_id': user_id_str}, {'$or': query['$or']}, {'$or': search_conditions}]}
+            else:
+                query['$or'] = search_conditions
+
         if ip_filter:
             query['ip'] = ip_filter
         if attack_type:
@@ -586,21 +626,32 @@ class UserAPI:
                 try:
                     query['timestamp']['$lte'] = datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
                 except: pass
+
         total = self.db.attacks.count_documents(query)
         logs = list(self.db.attacks.find(query)
             .sort('timestamp', -1)
             .skip((page - 1) * per_page)
             .limit(per_page))
+
+        # Fallback if attacks is empty: query security_events
+        if total == 0:
+            total = self.db.security_events.count_documents(query)
+            logs = list(self.db.security_events.find(query)
+                .sort('timestamp', -1)
+                .skip((page - 1) * per_page)
+                .limit(per_page))
+
         result_logs = []
         for i, log in enumerate(logs):
             result_logs.append({
                 'id': str(log.get('_id', i)),
-                'ip': log.get('ip', ''),
-                'url': log.get('url', ''),
-                'attack_type': log.get('attack_type', 'Unknown'),
-                'status': log.get('status', 'blocked'),
+                'ip': log.get('source_ip') or log.get('ip', ''),
+                'url': log.get('endpoint') or log.get('url', ''),
+                'domain': log.get('domain', ''),
+                'attack_type': log.get('attack_type', 'Suspicious Request'),
+                'status': log.get('action') or log.get('status', 'blocked'),
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
-                'confidence': log.get('confidence', 0),
+                'confidence': log.get('confidence', 0.85),
                 'method': log.get('method', 'GET'),
                 'user_agent': log.get('user_agent', ''),
                 'rule_matched': log.get('rule_matched', ''),

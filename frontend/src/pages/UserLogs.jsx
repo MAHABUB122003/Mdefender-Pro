@@ -6,6 +6,8 @@ import userStore from '../utils/userStore'
 export default function UserLogs() {
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [logs, setLogs] = useState(() => userStore.get('logs_p1') || { logs: [], total: 0, total_pages: 0 })
+  const [websites, setWebsites] = useState([])
+  const [websiteFilter, setWebsiteFilter] = useState('')
   const [loading, setLoading] = useState(() => !userStore.get('logs_p1'))
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -19,8 +21,14 @@ export default function UserLogs() {
   const [ipLocations, setIpLocations] = useState({})
   const perPage = 20
 
+  useEffect(() => {
+    api.getUserDashboard().then(data => {
+      if (data?.websites) setWebsites(data.websites)
+    }).catch(() => {})
+  }, [])
+
   const fetchLogs = useCallback(async (manual = false) => {
-    const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}`;
+    const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
     const cached = userStore.get(cacheKey);
     if (cached && !manual) {
       setLogs(cached);
@@ -36,12 +44,13 @@ export default function UserLogs() {
       if (ipFilter) params.ip = ipFilter
       if (typeFilter) params.attack_type = typeFilter
       if (statusFilter) params.status = statusFilter
+      if (websiteFilter) params.website_id = websiteFilter
       if (dateFrom) params.date_from = dateFrom
       if (dateTo) params.date_to = dateTo
       const data = await api.getUserLogs(params)
       setLogs(data)
       userStore.set(cacheKey, data)
-      if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter) {
+      if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter && !websiteFilter) {
         userStore.set('logs_p1', data)
       }
     } catch (err) {
@@ -50,7 +59,7 @@ export default function UserLogs() {
       setLoading(false)
       if (manual) setTimeout(() => setRefreshing(false), 300)
     }
-  }, [page, search, ipFilter, typeFilter, statusFilter, dateFrom, dateTo, perPage])
+  }, [page, search, ipFilter, typeFilter, statusFilter, websiteFilter, dateFrom, dateTo, perPage])
 
   useEffect(() => {
     fetchLogs()
@@ -147,12 +156,21 @@ export default function UserLogs() {
     <>
       <div className="filters-bar" style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '20px' }}>
         <form onSubmit={handleFilter} className="filter-form" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <input type="text" placeholder="Search IP or URL..." value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', minWidth: '200px' }} />
+          <input type="text" placeholder="Search IP or URL..." value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', minWidth: '180px' }} />
+          
+          <select value={websiteFilter} onChange={e => setWebsiteFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '500' }}>
+            <option value="">🌐 All Websites ({websites.length})</option>
+            {websites.map(w => (
+              <option key={w.id} value={w.id}>🔒 {w.domain || w.name || w.id}</option>
+            ))}
+          </select>
+
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
             <option value="">All Traffic</option>
             <option value="blocked">Blocked Attacks Only</option>
             <option value="allowed">Allowed Traffic Only</option>
           </select>
+
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
             <option value="">All Attack Types</option>
             <option value="SQL Injection">SQL Injection</option>
@@ -160,7 +178,9 @@ export default function UserLogs() {
             <option value="LFI">LFI</option>
             <option value="Command Injection">Command Injection</option>
             <option value="Path Traversal">Path Traversal</option>
+            <option value="Suspicious Request">Suspicious Request</option>
           </select>
+
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="Date From" style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
           <button type="submit" className="btn-filter" style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '13px' }}>Filter</button>
           <button 
@@ -192,12 +212,12 @@ export default function UserLogs() {
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
               <th style={{ padding: '12px 16px', width: '60px', textAlign: 'center', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Type</th>
-              <th style={{ padding: '12px 16px', width: '180px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Location</th>
-              <th style={{ padding: '12px 16px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Page Visited</th>
-              <th style={{ padding: '12px 16px', width: '180px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Time</th>
-              <th style={{ padding: '12px 16px', width: '150px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>IP Address</th>
-              <th style={{ padding: '12px 16px', width: '150px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Hostname</th>
-              <th style={{ padding: '12px 16px', width: '90px', textAlign: 'center', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Response</th>
+              <th style={{ padding: '12px 16px', width: '150px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Website</th>
+              <th style={{ padding: '12px 16px', width: '160px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Location</th>
+              <th style={{ padding: '12px 16px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Page / Payload</th>
+              <th style={{ padding: '12px 16px', width: '160px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Time</th>
+              <th style={{ padding: '12px 16px', width: '130px', fontWeight: '700', color: '#475569', fontSize: '13px' }}>IP Address</th>
+              <th style={{ padding: '12px 16px', width: '80px', textAlign: 'center', fontWeight: '700', color: '#475569', fontSize: '13px' }}>Response</th>
               <th style={{ padding: '12px 16px', width: '75px', textAlign: 'center', fontWeight: '700', color: '#475569', fontSize: '13px' }}>View</th>
             </tr>
           </thead>
@@ -227,6 +247,11 @@ export default function UserLogs() {
                       <span style={{ display: 'inline-block', width: '10px', height: '10px', background: isBlocked ? '#dc2626' : '#10b981', borderRadius: '50%' }} title={isBlocked ? 'Blocked Action' : 'Allowed Action'}></span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
+                        {log.domain || 'Main Site'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {loc ? (
                           <>
@@ -243,7 +268,7 @@ export default function UserLogs() {
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span title={log.url} style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1e293b', wordBreak: 'break-all' }}>
-                        {log.url?.length > 50 ? log.url.slice(0, 50) + '...' : log.url}
+                        {log.url?.length > 45 ? log.url.slice(0, 45) + '...' : log.url}
                       </span>
                     </td>
                     <td style={{ fontSize: '12px', color: '#475569', padding: '12px 16px' }}>
@@ -251,9 +276,6 @@ export default function UserLogs() {
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <code style={{ fontSize: '12px', fontWeight: '600', color: '#0f172a' }}>{log.ip}</code>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '12px', color: '#64748b' }}>
-                      <code>{log.ip}</code>
                     </td>
                     <td style={{ textAlign: 'center', padding: '12px 16px' }}>
                       <span style={{ fontWeight: '700', color: isBlocked ? '#b91c1c' : '#15803d' }}>
@@ -295,14 +317,9 @@ export default function UserLogs() {
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px 16px', marginBottom: '14px', fontSize: '12.5px' }}>
+                              <div><strong style={{ color: '#64748b' }}>Protected Site:</strong> <span style={{ fontWeight: '700', color: '#2563eb', marginLeft: '4px' }}>{log.domain || 'Main Site'}</span></div>
                               <div><strong style={{ color: '#64748b' }}>IP Address:</strong> <code style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.ip}</code></div>
-                              <div><strong style={{ color: '#64748b' }}>Hostname:</strong> <code style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.ip}</code></div>
-                              <div>
-                                <strong style={{ color: '#64748b' }}>Visitor Type:</strong> 
-                                <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>
-                                  {/bot|crawl|spider|google|slurp|bing|yandex|duckduck/i.test(log.user_agent || '') ? 'Search Bot' : 'Human Client'}
-                                </span>
-                              </div>
+                              <div><strong style={{ color: '#64748b' }}>HTTP Method:</strong> <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.method || 'GET'}</span></div>
                               <div><strong style={{ color: '#64748b' }}>WAF Confidence:</strong> <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.confidence != null ? Number(log.confidence).toFixed(4) : 'N/A'}</span></div>
                             </div>
 
@@ -316,7 +333,6 @@ export default function UserLogs() {
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
                               <button onClick={() => handleBlockIp(log.ip)} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#b91c1c', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px' }}>BLOCK IP</button>
                               <a href={`https://whois.domaintools.com/${log.ip}`} target="_blank" rel="noreferrer" className="btn-small" style={{ borderColor: '#cbd5e1', color: '#0284c7', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: '11.5px' }}>RUN WHOIS</a>
-                              <button onClick={() => handleWhitelistIp(log.ip)} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#15803d', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px' }}>WHITELIST IP</button>
                             </div>
                           </div>
                         </div>

@@ -41,6 +41,7 @@ function StatCard({ icon, iconClass, value, label, trend, trendDir }) {
 
 export default function UserDashboard() {
   const navigate = useNavigate()
+  const [selectedWebsite, setSelectedWebsite] = useState('all')
   const [data, setData] = useState(() => userStore.get('dashboard'))
   const [loading, setLoading] = useState(() => !userStore.get('dashboard'))
   const [refreshing, setRefreshing] = useState(false)
@@ -50,10 +51,11 @@ export default function UserDashboard() {
   const [mlStatus, setMlStatus] = useState(null)
   const isPremium = data?.plan === 'premium' || localStorage.getItem('mdefender_user_plan') === 'premium'
 
-  const fetchData = useCallback(async (manual = false) => {
+  const fetchData = useCallback(async (manual = false, siteId = selectedWebsite) => {
     if (manual) setRefreshing(true)
     try {
-      const result = await api.getUserDashboard()
+      const params = siteId && siteId !== 'all' ? { website_id: siteId } : {}
+      const result = await api.getUserDashboard(params)
       setData(result)
       userStore.set('dashboard', result)
       setLastRefreshed(new Date())
@@ -65,13 +67,13 @@ export default function UserDashboard() {
       setLoading(false)
       if (manual) setTimeout(() => setRefreshing(false), 300)
     }
-  }, [])
+  }, [selectedWebsite])
 
   useEffect(() => {
-    fetchData(false)
+    fetchData(false, selectedWebsite)
     api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {})
     api.getMlStatus().then(r => setMlStatus(r)).catch(() => {})
-  }, [fetchData])
+  }, [fetchData, selectedWebsite])
 
   const handleDdosToggle = async () => {
     setDdosToggling(true)
@@ -91,7 +93,7 @@ export default function UserDashboard() {
     if (confirm(`Block ${ip}?`)) {
       try { 
         await api.userBlockIP(ip, 'Blocked from dashboard')
-        fetchData() 
+        fetchData(true, selectedWebsite) 
       } catch (e) { 
         alert(e.message) 
       }
@@ -217,16 +219,49 @@ export default function UserDashboard() {
             background: '#10b981', boxShadow: '0 0 10px rgba(16,185,129,0.7)',
           }}></div>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
-              WAF Protection Active & Filtering
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>WAF Protection Active</span>
+              <span className="badge success" style={{ fontSize: '11px' }}>
+                <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px' }}></i> LIVE
+              </span>
             </div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>
-              Real-time heuristic and rule inspection enabled for {data?.websites?.length || 0} website(s)
+              Multi-site telemetry enabled for {data?.websites?.length || 0} WordPress website(s)
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Multi-Website Filter Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '3px 8px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <i className="fab fa-wordpress" style={{ color: '#2563eb', fontSize: '15px' }}></i>
+            <select
+              value={selectedWebsite}
+              onChange={(e) => {
+                const siteId = e.target.value
+                setSelectedWebsite(siteId)
+                fetchData(true, siteId)
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#0f172a',
+                fontSize: '12.5px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                outline: 'none',
+                padding: '3px 0',
+              }}
+            >
+              <option value="all">🌐 All Websites ({data?.websites?.length || 0})</option>
+              {data?.websites?.map((w) => (
+                <option key={w.id} value={w.id}>
+                  🛡️ {w.domain || w.name || w.id}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Instant Refresh Section */}
           <div style={{
             display: 'flex',
@@ -242,7 +277,7 @@ export default function UserDashboard() {
               {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}
             </span>
             <button
-              onClick={() => fetchData(true)}
+              onClick={() => fetchData(true, selectedWebsite)}
               disabled={refreshing}
               title="Click to instantly refresh dashboard metrics"
               style={{
@@ -463,13 +498,20 @@ export default function UserDashboard() {
             {data?.recent_activity?.slice(0, 5).map((log, i) => (
               <div className="activity-item" key={i} style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <span className={`activity-type ${log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? 'critical' : log.attack_type === 'XSS' || log.attack_type === 'LFI' ? 'high' : 'medium'}`} style={{ fontSize: '11px' }}>
-                    <i className="fas fa-shield-halved"></i> {log.attack_type}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className={`activity-type ${log.attack_type === 'SQL Injection' || log.attack_type === 'SQLi' ? 'critical' : log.attack_type === 'XSS' || log.attack_type === 'LFI' ? 'high' : 'medium'}`} style={{ fontSize: '11px' }}>
+                      <i className="fas fa-shield-halved"></i> {log.attack_type}
+                    </span>
+                    {log.domain && (
+                      <span style={{ fontSize: '10px', background: '#eff6ff', color: '#2563eb', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                        {log.domain}
+                      </span>
+                    )}
+                  </div>
                   <span style={{ fontSize: '11px', color: '#94a3b8' }}>{log.timestamp || log.time || 'Just now'}</span>
                 </div>
                 <div style={{ fontSize: '12px', color: '#334155' }}>
-                  Source: <strong>{log.ip}</strong>
+                  Source IP: <code>{log.ip}</code>
                 </div>
                 <div className="activity-payload" style={{ fontSize: '11px', padding: '4px 8px', background: '#f8fafc', borderRadius: '4px', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {log.url}

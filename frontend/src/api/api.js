@@ -316,7 +316,12 @@ export const api = {
   regenerateApiKey: (data) => apiCall('/api/user/regenerate_key', { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
   removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
-  getUserDashboard: () => apiCall('/api/user/dashboard'),
+  getUserDashboard: (params = {}) => {
+    let qs = ''
+    if (typeof params === 'string') qs = `website_id=${encodeURIComponent(params)}`
+    else if (params && typeof params === 'object') qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/user/dashboard${qs ? '?' + qs : ''}`)
+  },
   upgradePlan: (days = 30) => apiCall('/api/user/upgrade-plan', { method: 'POST', body: JSON.stringify({ plan: 'premium', days }) }),
   downgradePlan: () => apiCall('/api/user/downgrade-plan', { method: 'POST' }),
   getPaymentConfig: () => apiCall('/api/payment/config'),
