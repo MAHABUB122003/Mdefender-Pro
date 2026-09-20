@@ -27,7 +27,8 @@ ENV/
 build/
 develop-eggs/
 dist/
-downloads/
+# downloads/
+!backend/downloads/
 eggs/
 .eggs/
 lib/
@@ -57,6 +58,7 @@ quarantine/
 # Large Datasets & Archives
 *.csv
 *.zip
+!backend/downloads/mdefender-pro.zip
 *.tar.gz
 *.rar
 waf_ml_dataset.csv

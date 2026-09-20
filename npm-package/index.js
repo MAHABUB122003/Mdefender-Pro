@@ -349,11 +349,12 @@ mdefender.loadConfig = loadConfig;
 mdefender.DEFAULT_CONFIG = DEFAULT_CONFIG;
 mdefender.sendAnalyzeRequest = sendAnalyzeRequest;
 
+module.exports = mdefender;
+
 try {
   const { autoHook } = require('./auto');
   mdefender.autoHook = autoHook;
 } catch (e) {}
 
-module.exports = mdefender;
 
 

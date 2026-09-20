@@ -1033,6 +1033,25 @@ async def api_get_logs(request: Request):
     return waf_api.get_logs(params, user_id=auth_data.get('user_id'), website_id=auth_data.get('website_id'))
 
 
+@app.get("/api/wordpress/plugin")
+@app.get("/api/download/wp-plugin")
+@app.get("/downloads/mdefender-pro.zip")
+async def download_wp_plugin_alias():
+    from fastapi.responses import FileResponse
+    from pathlib import Path
+    zip_path = Path(os.getenv(
+        "WAF_PLUGIN_ZIP_PATH",
+        str(Path(__file__).resolve().parent / "downloads" / "mdefender-pro.zip")
+    )).resolve()
+    if not zip_path.is_file():
+        raise HTTPException(status_code=404, detail="Plugin package not built yet")
+    return FileResponse(
+        zip_path,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="mdefender-pro.zip"'},
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.log_error(f"Unhandled exception: {exc}")
