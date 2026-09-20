@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/api'
+import userStore from '../utils/userStore'
 import PaymentModal from '../components/PaymentModal'
 
 export default function UserSettings() {
   const navigate = useNavigate()
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const cachedUser = userStore.get('profile') || userStore.get('dashboard')?.user || null
+  const [profile, setProfile] = useState(() => cachedUser)
+  const [loading, setLoading] = useState(() => !cachedUser)
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirmPassword: '' })
   const [emailForm, setEmailForm] = useState({ new_email: '', password: '' })
   const [msg, setMsg] = useState('')
@@ -30,7 +32,10 @@ export default function UserSettings() {
   const fetchProfile = async () => {
     try {
       const data = await api.getProfile()
-      setProfile(data.user || data)
+      const usr = data.user || data
+      setProfile(usr)
+      userStore.set('profile', usr)
+      if (usr?.plan) localStorage.setItem('mdefender_user_plan', usr.plan)
       const mfaData = await api.getMFAStatus()
       setMfaEnabled(mfaData.mfa_enabled || false)
       try {

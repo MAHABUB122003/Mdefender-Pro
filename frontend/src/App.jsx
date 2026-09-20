@@ -35,6 +35,8 @@ import PaymentSuccess from './pages/PaymentSuccess'
 
 import api from './api/api'
 
+import userStore from './utils/userStore'
+
 function App() {
   const [adminUser, setAdminUser] = useState(null)
   const [adminLoading, setAdminLoading] = useState(true)
@@ -48,6 +50,10 @@ function App() {
         setAdminUser(user)
       }
       setUserState(user)
+      userStore.set('profile', user)
+      if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan)
+      if (user.name) localStorage.setItem('mdefender_user_name', user.name)
+      userStore.prefetchUserData(api)
     }).catch(() => {
       setAdminUser(null)
       setUserState(null)
@@ -90,9 +96,6 @@ function App() {
       <Route path="/auth/forgot-password" element={<ForgotPassword />} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
       <Route path="/auth/google/callback" element={<GoogleCallback />} />
-      <Route path="/user/sessions" element={
-        userState ? <UserLayout onLogout={userLogout}><SessionsPage /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
 
       <Route path="/register" element={
         userState ? <Navigate to="/user/dashboard" replace /> : <Register />
@@ -100,27 +103,21 @@ function App() {
       <Route path="/user/login" element={
         userState ? <Navigate to="/user/dashboard" replace /> : <UserLogin />
       } />
-      <Route path="/user/dashboard" element={
-        userState ? <UserLayout onLogout={userLogout}><UserDashboard /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/logs" element={
-        userState ? <UserLayout onLogout={userLogout}><UserLogs /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/rules" element={
-        userState ? <UserLayout onLogout={userLogout}><UserRules /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/websites" element={
-        userState ? <UserLayout onLogout={userLogout}><UserWebsites /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/connect" element={
-        userState ? <UserLayout onLogout={userLogout}><UserConnect /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/blacklist" element={
-        userState ? <UserLayout onLogout={userLogout}><UserBlacklist /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
-      <Route path="/user/settings" element={
-        userState ? <UserLayout onLogout={userLogout}><UserSettings /></UserLayout> : <Navigate to="/user/login" replace />
-      } />
+
+      {/* Persistent User Layout with 0ms Instant Page Switching */}
+      <Route path="/user" element={
+        userState ? <UserLayout onLogout={userLogout} /> : <Navigate to="/user/login" replace />
+      }>
+        <Route index element={<Navigate to="/user/dashboard" replace />} />
+        <Route path="dashboard" element={<UserDashboard />} />
+        <Route path="logs" element={<UserLogs />} />
+        <Route path="rules" element={<UserRules />} />
+        <Route path="websites" element={<UserWebsites />} />
+        <Route path="connect" element={<UserConnect />} />
+        <Route path="blacklist" element={<UserBlacklist />} />
+        <Route path="settings" element={<UserSettings />} />
+        <Route path="sessions" element={<SessionsPage />} />
+      </Route>
 
       {!adminUser ? (
         <>

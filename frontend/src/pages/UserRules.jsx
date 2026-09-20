@@ -47,12 +47,8 @@ export default function UserRules() {
   }
 
   useEffect(() => {
-    if (!isPremium) {
-      setLoading(false)
-      return
-    }
     fetchRules(false)
-  }, [isPremium])
+  }, [])
 
   useEffect(() => {
     setCurrentPage(1)

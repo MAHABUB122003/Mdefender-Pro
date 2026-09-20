@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Outlet } from 'react-router-dom'
 import UserSidebar from './UserSidebar'
 import UserHeader from './UserHeader'
 
@@ -11,7 +12,7 @@ export default function UserLayout({ children, onLogout }) {
       <UserSidebar isOpen={sidebarOpen} />
       <div className="main-content">
         <UserHeader onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} onLogout={onLogout} />
-        {children}
+        {children || <Outlet />}
       </div>
     </>
   )

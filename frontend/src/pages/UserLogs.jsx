@@ -53,9 +53,8 @@ export default function UserLogs() {
   }, [page, search, ipFilter, typeFilter, statusFilter, dateFrom, dateTo, perPage])
 
   useEffect(() => {
-    if (!isPremium) { setLoading(false); return }
     fetchLogs()
-  }, [isPremium, page])
+  }, [fetchLogs, page])
 
   useEffect(() => {
     if (!logs.logs) return

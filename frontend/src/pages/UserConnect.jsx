@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/api'
+import userStore from '../utils/userStore'
 
 export default function UserConnect() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const cachedData = userStore.get('connect') || userStore.get('dashboard')
+  const [data, setData] = useState(() => cachedData)
+  const [loading, setLoading] = useState(() => !cachedData)
   const [activeTab, setActiveTab] = useState('wordpress')
   const [activeSubTab, setActiveSubTab] = useState('flask')
   const [copiedId, setCopiedId] = useState(null)
@@ -13,6 +15,8 @@ export default function UserConnect() {
     try {
       const result = await api.getUserDashboard()
       setData(result)
+      userStore.set('connect', result)
+      userStore.set('dashboard', result)
     } catch (err) {
       console.error(err)
     } finally {
@@ -36,7 +40,7 @@ export default function UserConnect() {
     }
   }
 
-  if (loading) {
+  if (loading && !data) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
   }
 

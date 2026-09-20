@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
+import userStore from '../utils/userStore'
 
 export default function UserWebsites() {
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const cachedData = userStore.get('websites') || userStore.get('dashboard')
+  const [data, setData] = useState(() => cachedData)
+  const [loading, setLoading] = useState(() => !cachedData)
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
   const [showKeyModal, setShowKeyModal] = useState(false)
@@ -15,6 +17,8 @@ export default function UserWebsites() {
     try {
       const result = await api.getUserDashboard()
       setData(result)
+      userStore.set('websites', result)
+      userStore.set('dashboard', result)
     } catch (err) {
       console.error(err)
     } finally {
@@ -76,7 +80,7 @@ export default function UserWebsites() {
     }
   }
 
-  if (loading) {
+  if (loading && !data) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
   }
 
