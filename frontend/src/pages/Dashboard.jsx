@@ -9,7 +9,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointE
 
 const doughnutColors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
-function useAnimatedNumber(target, duration = 800) {
+function useAnimatedNumber(target, duration = 600) {
   const [value, setValue] = useState(0)
   const ref = useRef(null)
   useEffect(() => {
@@ -31,7 +31,7 @@ function useAnimatedNumber(target, duration = 800) {
 function StatCard({ icon, iconClass, value, label, trend, trendDir, onReset }) {
   const animated = useAnimatedNumber(value)
   return (
-    <div className="stat-card" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
+    <div className="stat-card">
       <div className="stat-top">
         <div className={`stat-icon-wrap ${iconClass}`}><i className={`fas ${icon}`}></i></div>
         {onReset && (
@@ -40,7 +40,7 @@ function StatCard({ icon, iconClass, value, label, trend, trendDir, onReset }) {
           </button>
         )}
       </div>
-      <div className="stat-number" style={{ color: '#f8fafc' }}>{animated}</div>
+      <div className="stat-number">{animated}</div>
       <div className="stat-label">{label}</div>
       {trend && <div className={`stat-trend ${trendDir}`}><i className={`fas fa-arrow-${trendDir}`}></i> {trend}</div>}
     </div>
@@ -102,12 +102,12 @@ export default function Dashboard() {
     datasets: [{
       label: 'Attacks Blocked',
       data: dailyCounts,
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59, 130, 246, 0.08)',
+      borderColor: '#2563eb',
+      backgroundColor: 'rgba(37,99,235,0.06)',
       borderWidth: 2.5,
       fill: true,
-      tension: 0.4,
-      pointBackgroundColor: '#3b82f6',
+      tension: 0.35,
+      pointBackgroundColor: '#2563eb',
       pointBorderColor: '#fff',
       pointBorderWidth: 2,
       pointRadius: 4,
@@ -116,80 +116,74 @@ export default function Dashboard() {
 
   const doughnutOptions = {
     responsive: true,
-    maintainAspectRatio: true,
-    cutout: '65%',
+    maintainAspectRatio: false,
+    cutout: '68%',
     plugins: {
-      legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 }, color: '#94a3b8' } },
+      legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11, family: 'Inter' } } },
       tooltip: { backgroundColor: '#0f172a', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8 }
     }
   }
 
   const lineOptions = {
     responsive: true,
-    maintainAspectRatio: true,
+    maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+      y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
       x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } }
     }
   }
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px', color: '#94a3b8' }}>
-        <i className="fas fa-spinner fa-spin" style={{ fontSize: '32px', marginBottom: '12px', display: 'block' }}></i>
-        Initializing Super Admin Command Center...
+      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#94a3b8' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#2563eb', marginBottom: '12px' }}></i>
+        <div style={{ fontSize: '14px', fontWeight: '500' }}>Loading Super Admin Dashboard...</div>
       </div>
     )
   }
 
   return (
-    <div className="admin-dashboard" style={{ padding: '4px 0 50px' }}>
-      {/* Super Admin Status Ribbon */}
+    <>
+      {/* Top Security Status Ribbon */}
       <div style={{
-        background: 'linear-gradient(90deg, #1e1b4b, #0f172a)',
-        border: '1px solid rgba(99, 102, 241, 0.3)',
+        background: 'white',
         borderRadius: '12px',
-        padding: '16px 22px',
-        marginBottom: '24px',
+        border: '1px solid #e2e8f0',
+        padding: '16px 20px',
+        marginBottom: '20px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '14px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
             width: '42px',
             height: '42px',
             borderRadius: '10px',
-            background: 'rgba(99, 102, 241, 0.2)',
-            color: '#818cf8',
+            background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+            color: '#2563eb',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '20px'
+            fontSize: '19px'
           }}>
             <i className="fas fa-shield-halved"></i>
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+              <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
                 Super Admin Operations Command Center
               </h2>
-              <span style={{
-                padding: '2px 8px',
-                borderRadius: '10px',
-                background: 'rgba(16,185,129,0.15)',
-                color: '#34d399',
-                fontSize: '11px',
-                fontWeight: '700'
-              }}>
-                <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> LIVE PLATFORM
+              <span className="badge success">
+                <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px' }}></i> LIVE
               </span>
             </div>
-            <p style={{ margin: '3px 0 0', color: '#94a3b8', fontSize: '13px' }}>
-              Global WAF telemetry, user account diagnostics, and revenue pricing controls.
+            <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: '12.5px' }}>
+              Real-time platform telemetry, user issue management, and subscription pricing controls.
             </p>
           </div>
         </div>
@@ -201,11 +195,12 @@ export default function Dashboard() {
             className="btn-primary"
             style={{
               padding: '8px 16px',
-              fontSize: '13px',
-              fontWeight: '700',
+              fontSize: '12.5px',
+              fontWeight: '600',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              textDecoration: 'none'
             }}
           >
             <i className="fas fa-users-gear"></i> User Support Center
@@ -216,18 +211,18 @@ export default function Dashboard() {
             style={{
               padding: '8px 16px',
               borderRadius: '8px',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              color: '#fbbf24',
-              fontSize: '13px',
-              fontWeight: '700',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              color: '#d97706',
+              fontSize: '12.5px',
+              fontWeight: '600',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               textDecoration: 'none'
             }}
           >
-            <i className="fas fa-tags"></i> Edit Pro Pricing
+            <i className="fas fa-tags"></i> Edit Plan Pricing
           </Link>
         </div>
       </div>
@@ -246,69 +241,70 @@ export default function Dashboard() {
           icon="fa-crown"
           iconClass="purple"
           value={overview?.pro_subscribers ?? 0}
-          label="Active Pro / Enterprise"
-          trend="Paid Subscribers"
+          label="Active Pro Subscribers"
+          trend="Paid Tiers"
           trendDir="up"
         />
         <StatCard
           icon="fa-globe"
           iconClass="green"
           value={overview?.websites ?? stats?.active_clients ?? 0}
-          label="Connected Websites"
-          trend="Protected Domains"
+          label="Protected Websites"
+          trend="Active Nodes"
           trendDir="up"
         />
         <StatCard
           icon="fa-shield-halved"
           iconClass="red"
           value={stats?.total_attacks_blocked ?? 0}
-          label="Total Attacks Blocked"
-          trend="L7 & ML WAF"
+          label="Attacks Blocked"
+          trend="Global Defense"
           trendDir="up"
         />
       </div>
 
-      {/* System Health Diagnostics Row */}
+      {/* Engine Health Diagnostics Row */}
       {health?.checks && (
         <div style={{
-          background: '#0f172a',
+          background: 'white',
           borderRadius: '12px',
-          border: '1px solid #1e293b',
-          padding: '18px 24px',
-          marginBottom: '24px'
+          border: '1px solid #e2e8f0',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fas fa-server" style={{ color: '#10b981' }}></i>
-              Platform Engine Diagnostics & Microservice Health
+              Platform Engine Diagnostics & Microservice Status
             </h3>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Real-time ping</span>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Real-time health check</span>
           </div>
 
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '14px'
+            gap: '12px'
           }}>
             {Object.entries(health.checks).map(([key, item]) => (
               <div
                 key={key}
                 style={{
-                  background: '#070b14',
-                  padding: '12px 16px',
+                  background: '#f8fafc',
+                  padding: '12px 14px',
                   borderRadius: '8px',
-                  border: item.ok ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.3)',
+                  border: item.ok ? '1px solid #e2e8f0' : '1px solid #fecaca',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center'
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>
                     {item.label || key.replace('_', ' ').toUpperCase()}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-                    {item.version ? `Version v${item.version}` : item.patterns ? `${item.patterns} rules loaded` : 'Service online'}
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                    {item.version ? `v${item.version}` : item.patterns ? `${item.patterns} patterns` : 'Online'}
                   </div>
                 </div>
                 <span className={`badge ${item.ok ? 'success' : 'danger'}`}>
@@ -322,30 +318,30 @@ export default function Dashboard() {
 
       {/* Charts Grid */}
       <div className="charts-grid">
-        <div className="chart-card" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
+        <div className="chart-card" style={{ minHeight: '300px' }}>
           <div className="chart-header">
-            <h3><i className="fas fa-chart-pie" style={{ color: '#3b82f6', marginRight: '6px' }}></i> Global Attack Distribution</h3>
+            <h3><i className="fas fa-chart-pie" style={{ color: '#2563eb', marginRight: '6px' }}></i> Global Threat Types</h3>
             <span className="chart-action">Telemetry</span>
           </div>
-          <div className="chart-container">
+          <div className="chart-container" style={{ height: '220px' }}>
             <Doughnut ref={attackChartRef} data={attackChartData} options={doughnutOptions} />
           </div>
         </div>
 
-        <div className="chart-card" style={{ background: '#0f172a', border: '1px solid #1e293b' }}>
+        <div className="chart-card" style={{ minHeight: '300px' }}>
           <div className="chart-header">
-            <h3><i className="fas fa-chart-line" style={{ color: '#10b981', marginRight: '6px' }}></i> Mitigation Volume (Last 7 Days)</h3>
+            <h3><i className="fas fa-chart-line" style={{ color: '#10b981', marginRight: '6px' }}></i> Attack Mitigations (Last 7 Days)</h3>
             <span className="chart-action">Trend</span>
           </div>
-          <div className="chart-container">
+          <div className="chart-container" style={{ height: '220px' }}>
             <Line data={dailyChartData} options={lineOptions} />
           </div>
         </div>
       </div>
 
-      {/* Quick Access Control Grid */}
+      {/* Quick Access Navigation Grid */}
       <div style={{
-        marginTop: '24px',
+        marginTop: '20px',
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: '16px'
@@ -353,100 +349,104 @@ export default function Dashboard() {
         <Link
           to="/admin/users"
           style={{
-            background: '#0f172a',
-            border: '1px solid #1e293b',
+            background: 'white',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            padding: '20px',
+            padding: '18px 20px',
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            transition: 'border-color 0.2s'
+            gap: '14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            transition: 'transform 0.2s, box-shadow 0.2s'
           }}
         >
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
             <i className="fas fa-users-gear"></i>
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Users & Support</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Unlock, verify & grant plans</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Users & Support</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Unlock, verify & grant plans</div>
           </div>
         </Link>
 
         <Link
           to="/admin/pricing"
           style={{
-            background: '#0f172a',
-            border: '1px solid #1e293b',
+            background: 'white',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            padding: '20px',
+            padding: '18px 20px',
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            transition: 'border-color 0.2s'
+            gap: '14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            transition: 'transform 0.2s, box-shadow 0.2s'
           }}
         >
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
             <i className="fas fa-tags"></i>
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Pricing & Tiers</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Edit monthly/yearly prices</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Pricing & Plans</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Edit monthly & yearly rates</div>
           </div>
         </Link>
 
         <Link
           to="/admin/clients"
           style={{
-            background: '#0f172a',
-            border: '1px solid #1e293b',
+            background: 'white',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            padding: '20px',
+            padding: '18px 20px',
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            transition: 'border-color 0.2s'
+            gap: '14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            transition: 'transform 0.2s, box-shadow 0.2s'
           }}
         >
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
             <i className="fas fa-globe"></i>
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>Tenant Websites</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Manage user domains</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Tenant Websites</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Manage all user domains</div>
           </div>
         </Link>
 
         <Link
           to="/admin/rules"
           style={{
-            background: '#0f172a',
-            border: '1px solid #1e293b',
+            background: 'white',
+            border: '1px solid #e2e8f0',
             borderRadius: '12px',
-            padding: '20px',
+            padding: '18px 20px',
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            transition: 'border-color 0.2s'
+            gap: '14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            transition: 'transform 0.2s, box-shadow 0.2s'
           }}
         >
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#f5f3ff', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
             <i className="fas fa-shield"></i>
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>WAF Rules</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Signatures & Regex</div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>WAF Rules</div>
+            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Signatures & Custom Regex</div>
           </div>
         </Link>
       </div>
 
       {/* Malware Scanner Widget */}
-      <div className="scanner-section" style={{ marginTop: '24px' }}>
+      <div className="scanner-section" style={{ marginTop: '20px' }}>
         <MalwareScanner />
       </div>
-    </div>
+    </>
   )
 }

@@ -14,7 +14,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('')
   const [filterTab, setFilterTab] = useState('all') // all, active, locked, unverified, pro, suspended
   const [selectedUser, setSelectedUser] = useState(null)
-  const [modalType, setModalType] = useState(null) // 'plan', 'role', 'details', null
+  const [modalType, setModalType] = useState(null) // 'plan', 'role', null
   const [actionLoading, setActionLoading] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
@@ -227,7 +227,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="admin-users-page" style={{ padding: '4px 0 40px' }}>
+    <>
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
@@ -238,13 +238,12 @@ export default function AdminUsers() {
           color: '#ffffff',
           padding: '12px 20px',
           borderRadius: '8px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
           zIndex: 9999,
           fontWeight: '600',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          animation: 'slideIn 0.2s ease-out'
+          gap: '10px'
         }}>
           <i className={`fas ${toastMessage.isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
           {toastMessage.text}
@@ -253,26 +252,52 @@ export default function AdminUsers() {
 
       {/* Page Header */}
       <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '16px 20px',
+        marginBottom: '20px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '24px'
+        gap: '14px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <i className="fas fa-users-gear" style={{ color: '#3b82f6' }}></i>
-            User Management & Support Center
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0' }}>
-            Manage platform accounts, resolve login lockouts, manually verify emails, and grant plan upgrades.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+            color: '#2563eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '19px'
+          }}>
+            <i className="fas fa-users-gear"></i>
+          </div>
+          <div>
+            <h1 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+              User Management & Support Center
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '12.5px', margin: '3px 0 0' }}>
+              Manage platform accounts, unlock brute-force logins, force-verify emails, and manage plan tiers.
+            </p>
+          </div>
         </div>
+
         <button
           className="btn-primary"
           onClick={fetchUsers}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '12.5px',
+            padding: '8px 16px'
+          }}
         >
           <i className={`fas fa-arrows-rotate ${loading ? 'fa-spin' : ''}`}></i>
           Refresh Users
@@ -280,75 +305,61 @@ export default function AdminUsers() {
       </div>
 
       {/* Metrics Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
-        <div className="stat-card" style={{ padding: '16px 20px', background: '#0f172a', border: '1px solid #1e293b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '13px' }}>
-            <span>Total Registered</span>
-            <i className="fas fa-users" style={{ color: '#3b82f6' }}></i>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-top">
+            <div className="stat-icon-wrap blue"><i className="fas fa-users"></i></div>
+            <span className="stat-trend up"><i className="fas fa-arrow-up"></i> total</span>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#f8fafc', marginTop: '6px' }}>
-            {metrics.total_users}
-          </div>
+          <div className="stat-number">{metrics.total_users}</div>
+          <div className="stat-label">Total Registered Users</div>
         </div>
 
-        <div className="stat-card" style={{ padding: '16px 20px', background: '#0f172a', border: '1px solid #1e293b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '13px' }}>
-            <span>Verified Accounts</span>
-            <i className="fas fa-envelope-circle-check" style={{ color: '#10b981' }}></i>
+        <div className="stat-card">
+          <div className="stat-top">
+            <div className="stat-icon-wrap green"><i className="fas fa-envelope-circle-check"></i></div>
+            <span className="stat-trend up"><i className="fas fa-check"></i> verified</span>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#10b981', marginTop: '6px' }}>
-            {metrics.verified_users}
-          </div>
+          <div className="stat-number">{metrics.verified_users}</div>
+          <div className="stat-label">Verified Accounts</div>
         </div>
 
-        <div className="stat-card" style={{ padding: '16px 20px', background: '#0f172a', border: '1px solid #1e293b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '13px' }}>
-            <span>Pro / Paid Users</span>
-            <i className="fas fa-crown" style={{ color: '#f59e0b' }}></i>
+        <div className="stat-card">
+          <div className="stat-top">
+            <div className="stat-icon-wrap purple"><i className="fas fa-crown"></i></div>
+            <span className="stat-trend up"><i className="fas fa-star"></i> pro</span>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#f59e0b', marginTop: '6px' }}>
-            {metrics.pro_users}
-          </div>
+          <div className="stat-number">{metrics.pro_users}</div>
+          <div className="stat-label">Pro / Paid Subscribers</div>
         </div>
 
-        <div className="stat-card" style={{ padding: '16px 20px', background: '#0f172a', border: metrics.locked_users > 0 ? '1px solid #ef4444' : '1px solid #1e293b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '13px' }}>
-            <span>Locked Out Accounts</span>
-            <i className="fas fa-lock" style={{ color: '#ef4444' }}></i>
+        <div className="stat-card">
+          <div className="stat-top">
+            <div className="stat-icon-wrap red"><i className="fas fa-lock"></i></div>
+            <span className={`stat-trend ${metrics.locked_users > 0 ? 'down' : 'up'}`}>
+              <i className="fas fa-shield"></i> {metrics.locked_users > 0 ? 'action needed' : 'clean'}
+            </span>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: metrics.locked_users > 0 ? '#ef4444' : '#94a3b8', marginTop: '6px' }}>
+          <div className="stat-number" style={{ color: metrics.locked_users > 0 ? '#dc2626' : '#0f172a' }}>
             {metrics.locked_users}
           </div>
-        </div>
-
-        <div className="stat-card" style={{ padding: '16px 20px', background: '#0f172a', border: '1px solid #1e293b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '13px' }}>
-            <span>Suspended</span>
-            <i className="fas fa-user-slash" style={{ color: '#64748b' }}></i>
-          </div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#cbd5e1', marginTop: '6px' }}>
-            {metrics.suspended_users}
-          </div>
+          <div className="stat-label">Locked Out Accounts</div>
         </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}
       <div style={{
-        background: '#0f172a',
-        padding: '16px 20px',
+        background: 'white',
+        padding: '14px 18px',
         borderRadius: '12px',
-        border: '1px solid #1e293b',
+        border: '1px solid #e2e8f0',
         marginBottom: '20px',
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '16px',
+        gap: '14px',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
         {/* Tab Buttons */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -356,24 +367,25 @@ export default function AdminUsers() {
             { key: 'all', label: 'All Users', icon: 'fa-users' },
             { key: 'active', label: 'Active', icon: 'fa-check' },
             { key: 'unverified', label: 'Unverified Email', icon: 'fa-envelope-open' },
-            { key: 'pro', label: 'Pro / Enterprise', icon: 'fa-crown' },
+            { key: 'pro', label: 'Pro Subscribers', icon: 'fa-crown' },
             { key: 'suspended', label: 'Suspended', icon: 'fa-ban' },
           ].map(tab => (
             <button
               key={tab.key}
               onClick={() => setFilterTab(tab.key)}
               style={{
-                padding: '7px 14px',
+                padding: '6px 14px',
                 borderRadius: '8px',
-                fontSize: '13px',
+                fontSize: '12.5px',
                 fontWeight: '600',
-                border: filterTab === tab.key ? '1px solid #3b82f6' : '1px solid #1e293b',
-                background: filterTab === tab.key ? 'rgba(59, 130, 246, 0.15)' : '#1e293b',
-                color: filterTab === tab.key ? '#60a5fa' : '#94a3b8',
+                border: filterTab === tab.key ? '1px solid #2563eb' : '1px solid #e2e8f0',
+                background: filterTab === tab.key ? '#eff6ff' : '#ffffff',
+                color: filterTab === tab.key ? '#2563eb' : '#64748b',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                transition: 'all 0.15s'
               }}
             >
               <i className={`fas ${tab.icon}`}></i>
@@ -383,20 +395,20 @@ export default function AdminUsers() {
         </div>
 
         {/* Search Input */}
-        <div style={{ position: 'relative', minWidth: '260px', flex: '1', maxWidth: '400px' }}>
-          <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }}></i>
+        <div style={{ position: 'relative', minWidth: '260px', flex: '1', maxWidth: '380px' }}>
+          <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }}></i>
           <input
             type="text"
-            placeholder="Search by email, name, username..."
+            placeholder="Search email, name, username..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
               width: '100%',
-              padding: '9px 12px 9px 36px',
+              padding: '8px 12px 8px 34px',
               borderRadius: '8px',
-              border: '1px solid #1e293b',
-              background: '#070b14',
-              color: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#0f172a',
               fontSize: '13px',
               outline: 'none'
             }}
@@ -406,30 +418,31 @@ export default function AdminUsers() {
 
       {/* Users Table */}
       <div style={{
-        background: '#0f172a',
+        background: 'white',
         borderRadius: '12px',
-        border: '1px solid #1e293b',
-        overflow: 'hidden'
+        border: '1px solid #e2e8f0',
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
-              <tr style={{ background: '#1e293b', color: '#94a3b8', borderBottom: '1px solid #334155' }}>
-                <th style={{ padding: '14px 18px', fontWeight: '700' }}>User Profile</th>
-                <th style={{ padding: '14px 18px', fontWeight: '700' }}>Role</th>
-                <th style={{ padding: '14px 18px', fontWeight: '700' }}>Account Status</th>
-                <th style={{ padding: '14px 18px', fontWeight: '700' }}>Subscription Plan</th>
-                <th style={{ padding: '14px 18px', fontWeight: '700' }}>Websites</th>
-                <th style={{ padding: '14px 18px', fontWeight: '700' }}>Registered / Last Active</th>
-                <th style={{ padding: '14px 18px', fontWeight: '700', textAlign: 'right' }}>Quick Actions & Fixes</th>
+              <tr style={{ background: '#f8fafc', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase' }}>User Profile</th>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase' }}>Role</th>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase' }}>Status</th>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase' }}>Plan Tier</th>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase' }}>Websites</th>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase' }}>Registered / Active</th>
+                <th style={{ padding: '12px 18px', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', textAlign: 'right' }}>Actions & Fixes</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '50px', color: '#94a3b8' }}>
-                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginRight: '10px' }}></i>
-                    Loading users...
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginRight: '10px', color: '#2563eb' }}></i>
+                    Loading users list...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
@@ -443,33 +456,33 @@ export default function AdminUsers() {
                   const isSuspended = u.status === 'suspended' || u.is_active === false
                   const isPro = ['pro', 'premium', 'go', 'enterprise'].includes(u.plan?.toLowerCase())
                   return (
-                    <tr key={u.id} style={{ borderBottom: '1px solid #1e293b', transition: 'background 0.15s' }}>
+                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}>
                       {/* User Profile */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td style={{ padding: '12px 18px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
-                            background: isPro ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                            background: isPro ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #2563eb, #3b82f6)',
                             color: '#ffffff',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: '700',
-                            fontSize: '14px'
+                            fontSize: '13px'
                           }}>
                             {(u.name || u.email || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: '700', color: '#f8fafc' }}>
+                            <div style={{ fontWeight: '600', color: '#0f172a' }}>
                               {u.name || u.full_name || u.username || 'User'}
                             </div>
-                            <div style={{ color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ color: '#64748b', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>{u.email}</span>
                               <i
                                 className="fas fa-copy"
-                                style={{ cursor: 'pointer', color: '#64748b' }}
+                                style={{ cursor: 'pointer', color: '#94a3b8' }}
                                 title="Copy Email"
                                 onClick={() => copyToClipboard(u.email, 'Email')}
                               ></i>
@@ -479,71 +492,62 @@ export default function AdminUsers() {
                       </td>
 
                       {/* Role */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{
-                          padding: '3px 9px',
-                          borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          textTransform: 'uppercase',
-                          background: u.role === 'super_admin' ? 'rgba(239, 68, 68, 0.15)' : u.role === 'admin' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                          color: u.role === 'super_admin' ? '#f87171' : u.role === 'admin' ? '#a78bfa' : '#94a3b8',
-                          border: u.role === 'super_admin' ? '1px solid rgba(239, 68, 68, 0.3)' : 'none'
-                        }}>
+                      <td style={{ padding: '12px 18px' }}>
+                        <span className={`badge ${u.role === 'super_admin' ? 'danger' : u.role === 'admin' ? 'info' : 'warning'}`}>
                           {u.role || 'user'}
                         </span>
                       </td>
 
-                      {/* Account Status */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {/* Status */}
+                      <td style={{ padding: '12px 18px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span className={`status-dot ${isSuspended ? 'red' : 'green'}`}></span>
-                            <span style={{ color: isSuspended ? '#ef4444' : '#10b981', fontWeight: '600' }}>
+                            <span style={{ color: isSuspended ? '#dc2626' : '#059669', fontWeight: '600', fontSize: '12px' }}>
                               {isSuspended ? 'Suspended' : 'Active'}
                             </span>
                           </div>
                           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                             {u.email_verified ? (
-                              <span style={{ fontSize: '10px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                                <i className="fas fa-check"></i> Email Verified
+                              <span style={{ fontSize: '10.5px', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: '500' }}>
+                                Verified
                               </span>
                             ) : (
-                              <span style={{ fontSize: '10px', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                                <i className="fas fa-clock"></i> Unverified
+                              <span style={{ fontSize: '10.5px', color: '#d97706', background: '#fffbeb', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                                Unverified
                               </span>
                             )}
                             {u.is_locked && (
-                              <span style={{ fontSize: '10px', color: '#ef4444', background: 'rgba(239,68,68,0.15)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
-                                <i className="fas fa-lock"></i> Locked Out
+                              <span style={{ fontSize: '10.5px', color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                Locked Out
                               </span>
                             )}
                             {u.mfa_enabled && (
-                              <span style={{ fontSize: '10px', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                                <i className="fas fa-shield"></i> 2FA
+                              <span style={{ fontSize: '10.5px', color: '#2563eb', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px', fontWeight: '500' }}>
+                                2FA
                               </span>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Subscription Plan */}
-                      <td style={{ padding: '14px 18px' }}>
+                      {/* Plan */}
+                      <td style={{ padding: '12px 18px' }}>
                         <div>
                           <span style={{
                             padding: '3px 10px',
                             borderRadius: '12px',
                             fontSize: '11px',
-                            fontWeight: '800',
+                            fontWeight: '700',
                             textTransform: 'uppercase',
-                            background: isPro ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-                            color: isPro ? '#fbbf24' : '#60a5fa',
-                            border: isPro ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(59, 130, 246, 0.2)'
+                            background: isPro ? '#fffbeb' : '#eff6ff',
+                            color: isPro ? '#d97706' : '#2563eb',
+                            border: isPro ? '1px solid #fde68a' : '1px solid #bfdbfe'
                           }}>
                             {u.plan || 'Free'}
                           </span>
                           {u.plan_expires && (
-                            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>
+                            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '3px' }}>
                               Exp: {u.plan_expires}
                             </div>
                           )}
@@ -551,98 +555,96 @@ export default function AdminUsers() {
                       </td>
 
                       {/* Websites */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{ fontWeight: '700', color: '#f8fafc' }}>
-                          {u.websites_count || 0}
-                        </span>
+                      <td style={{ padding: '12px 18px' }}>
+                        <strong style={{ color: '#0f172a' }}>{u.websites_count || 0}</strong>
                         <span style={{ color: '#64748b', fontSize: '12px' }}> sites</span>
                       </td>
 
-                      {/* Timestamps */}
-                      <td style={{ padding: '14px 18px', color: '#94a3b8', fontSize: '12px' }}>
-                        <div>Joined: {u.created_at ? u.created_at.slice(0, 10) : '—'}</div>
-                        <div style={{ color: '#64748b', fontSize: '11px' }}>
-                          Active: {u.last_login ? u.last_login.slice(0, 16) : 'Never'}
+                      {/* Registered / Active */}
+                      <td style={{ padding: '12px 18px', color: '#64748b', fontSize: '12px' }}>
+                        <div>{u.created_at ? u.created_at.slice(0, 10) : '—'}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '11px' }}>
+                          {u.last_login ? u.last_login.slice(0, 16) : 'Never'}
                         </div>
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
+                      <td style={{ padding: '12px 18px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {/* Quick Issue Fix: Unlock Account */}
+                          {/* 1-Click Fix: Unlock Account */}
                           {u.is_locked && (
                             <button
                               onClick={() => handleUnlock(u)}
                               disabled={actionLoading}
                               style={{
-                                padding: '5px 10px',
+                                padding: '4px 8px',
                                 borderRadius: '6px',
-                                background: '#ef4444',
-                                color: '#ffffff',
-                                border: 'none',
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
                                 fontSize: '11px',
                                 fontWeight: '700',
                                 cursor: 'pointer'
                               }}
-                              title="Instantly clear brute force lockout"
+                              title="Unlock account immediately"
                             >
                               <i className="fas fa-lock-open"></i> Unlock
                             </button>
                           )}
 
-                          {/* Quick Issue Fix: Verify Email */}
+                          {/* 1-Click Fix: Verify Email */}
                           {!u.email_verified && (
                             <button
                               onClick={() => handleVerifyEmail(u)}
                               disabled={actionLoading}
                               style={{
-                                padding: '5px 10px',
+                                padding: '4px 8px',
                                 borderRadius: '6px',
-                                background: '#10b981',
-                                color: '#ffffff',
-                                border: 'none',
+                                background: '#ecfdf5',
+                                color: '#059669',
+                                border: '1px solid #a7f3d0',
                                 fontSize: '11px',
                                 fontWeight: '700',
                                 cursor: 'pointer'
                               }}
-                              title="Force verify email if activation link was lost"
+                              title="Force verify email"
                             >
-                              <i className="fas fa-envelope-circle-check"></i> Verify Email
+                              <i className="fas fa-check"></i> Verify Email
                             </button>
                           )}
 
-                          {/* Plan Modal Trigger */}
+                          {/* Plan Trigger */}
                           <button
                             onClick={() => openPlanModal(u)}
                             style={{
-                              padding: '5px 10px',
+                              padding: '4px 8px',
                               borderRadius: '6px',
-                              background: '#1e293b',
-                              color: '#fbbf24',
-                              border: '1px solid #334155',
+                              background: '#fffbeb',
+                              color: '#d97706',
+                              border: '1px solid #fde68a',
                               fontSize: '11px',
                               fontWeight: '600',
                               cursor: 'pointer'
                             }}
-                            title="Upgrade or change subscription plan"
+                            title="Assign or upgrade plan"
                           >
                             <i className="fas fa-crown"></i> Plan
                           </button>
 
-                          {/* Role Modal Trigger */}
+                          {/* Role Trigger */}
                           <button
                             onClick={() => openRoleModal(u)}
                             style={{
-                              padding: '5px 10px',
+                              padding: '4px 8px',
                               borderRadius: '6px',
-                              background: '#1e293b',
-                              color: '#94a3b8',
-                              border: '1px solid #334155',
+                              background: '#f8fafc',
+                              color: '#475569',
+                              border: '1px solid #e2e8f0',
                               fontSize: '11px',
                               fontWeight: '600',
                               cursor: 'pointer'
                             }}
-                            title="Change user role"
+                            title="Change role"
                           >
                             <i className="fas fa-user-shield"></i> Role
                           </button>
@@ -652,11 +654,11 @@ export default function AdminUsers() {
                             onClick={() => handleResetApiKey(u)}
                             disabled={actionLoading}
                             style={{
-                              padding: '5px 8px',
+                              padding: '4px 7px',
                               borderRadius: '6px',
-                              background: '#1e293b',
-                              color: '#60a5fa',
-                              border: '1px solid #334155',
+                              background: '#f8fafc',
+                              color: '#2563eb',
+                              border: '1px solid #e2e8f0',
                               fontSize: '11px',
                               cursor: 'pointer'
                             }}
@@ -671,11 +673,11 @@ export default function AdminUsers() {
                               onClick={() => handleResetMFA(u)}
                               disabled={actionLoading}
                               style={{
-                                padding: '5px 8px',
+                                padding: '4px 7px',
                                 borderRadius: '6px',
-                                background: '#1e293b',
-                                color: '#f87171',
-                                border: '1px solid #334155',
+                                background: '#f8fafc',
+                                color: '#ef4444',
+                                border: '1px solid #e2e8f0',
                                 fontSize: '11px',
                                 cursor: 'pointer'
                               }}
@@ -690,29 +692,29 @@ export default function AdminUsers() {
                             onClick={() => handleForceLogout(u)}
                             disabled={actionLoading}
                             style={{
-                              padding: '5px 8px',
+                              padding: '4px 7px',
                               borderRadius: '6px',
-                              background: '#1e293b',
+                              background: '#f8fafc',
                               color: '#f59e0b',
-                              border: '1px solid #334155',
+                              border: '1px solid #e2e8f0',
                               fontSize: '11px',
                               cursor: 'pointer'
                             }}
-                            title="Kill active sessions"
+                            title="Terminate sessions"
                           >
                             <i className="fas fa-right-from-bracket"></i>
                           </button>
 
-                          {/* Suspend / Unsuspend */}
+                          {/* Suspend / Activate */}
                           <button
                             onClick={() => handleToggleSuspend(u)}
                             disabled={actionLoading}
                             style={{
-                              padding: '5px 8px',
+                              padding: '4px 7px',
                               borderRadius: '6px',
-                              background: '#1e293b',
-                              color: isSuspended ? '#10b981' : '#ef4444',
-                              border: '1px solid #334155',
+                              background: '#f8fafc',
+                              color: isSuspended ? '#059669' : '#dc2626',
+                              border: '1px solid #e2e8f0',
                               fontSize: '11px',
                               cursor: 'pointer'
                             }}
@@ -726,15 +728,15 @@ export default function AdminUsers() {
                             onClick={() => handleDeleteUser(u)}
                             disabled={actionLoading}
                             style={{
-                              padding: '5px 8px',
+                              padding: '4px 7px',
                               borderRadius: '6px',
-                              background: 'rgba(239,68,68,0.1)',
-                              color: '#ef4444',
-                              border: '1px solid rgba(239,68,68,0.3)',
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
                               fontSize: '11px',
                               cursor: 'pointer'
                             }}
-                            title="Delete user permanently"
+                            title="Delete user"
                           >
                             <i className="fas fa-trash"></i>
                           </button>
@@ -752,37 +754,37 @@ export default function AdminUsers() {
       {/* Plan Management Modal */}
       {modalType === 'plan' && selectedUser && (
         <div className="modal" style={{ display: 'flex' }} onClick={() => setModalType(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', background: 'white' }}>
             <span className="close" onClick={() => setModalType(null)}>&times;</span>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fas fa-crown" style={{ color: '#fbbf24' }}></i>
+            <h2 style={{ fontSize: '17px', fontWeight: '700', color: '#0f172a', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-crown" style={{ color: '#d97706' }}></i>
               Manage Subscription Plan
             </h2>
-            <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '18px' }}>
               Set plan tier and access duration for <strong>{selectedUser.email}</strong>.
             </p>
 
             <form onSubmit={handleSavePlan}>
               <div className="form-group">
-                <label>Select Plan Tier</label>
+                <label style={{ color: '#334155', fontWeight: '600', fontSize: '13px' }}>Select Plan Tier</label>
                 <select
                   value={planForm.plan}
                   onChange={(e) => setPlanForm({ ...planForm, plan: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#f8fafc' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                 >
                   <option value="free">Starter Free ($0)</option>
-                  <option value="go">Developer Go ($9/mo - 5 Websites)</option>
-                  <option value="pro">Enterprise Pro ($29/mo - 25 Websites & 5.2M ML)</option>
-                  <option value="enterprise">Dedicated Enterprise ($99/mo - Unlimited)</option>
+                  <option value="go">Developer Go ($9/mo)</option>
+                  <option value="pro">Enterprise Pro ($29/mo)</option>
+                  <option value="enterprise">Dedicated Enterprise ($99/mo)</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Access Validity</label>
+                <label style={{ color: '#334155', fontWeight: '600', fontSize: '13px' }}>Access Validity Duration</label>
                 <select
                   value={planForm.durationDays}
                   onChange={(e) => setPlanForm({ ...planForm, durationDays: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#f8fafc' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                 >
                   <option value="30">30 Days (1 Month)</option>
                   <option value="90">90 Days (3 Months)</option>
@@ -796,7 +798,7 @@ export default function AdminUsers() {
                 type="submit"
                 className="btn-primary"
                 disabled={actionLoading}
-                style={{ width: '100%', marginTop: '10px' }}
+                style={{ width: '100%', marginTop: '12px', padding: '10px' }}
               >
                 {actionLoading ? 'Saving...' : 'Apply Plan Update'}
               </button>
@@ -808,27 +810,27 @@ export default function AdminUsers() {
       {/* Role Management Modal */}
       {modalType === 'role' && selectedUser && (
         <div className="modal" style={{ display: 'flex' }} onClick={() => setModalType(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', background: 'white' }}>
             <span className="close" onClick={() => setModalType(null)}>&times;</span>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fas fa-user-shield" style={{ color: '#3b82f6' }}></i>
+            <h2 style={{ fontSize: '17px', fontWeight: '700', color: '#0f172a', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-user-shield" style={{ color: '#2563eb' }}></i>
               Change Account Role
             </h2>
-            <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '18px' }}>
               Adjust platform permissions for <strong>{selectedUser.email}</strong>.
             </p>
 
             <form onSubmit={handleSaveRole}>
               <div className="form-group">
-                <label>User Role</label>
+                <label style={{ color: '#334155', fontWeight: '600', fontSize: '13px' }}>User Role</label>
                 <select
                   value={roleForm.role}
                   onChange={(e) => setRoleForm({ role: e.target.value })}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', background: '#0f172a', border: '1px solid #334155', color: '#f8fafc' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                 >
-                  <option value="user">Standard User (Dashboard & API Access)</option>
-                  <option value="admin">Platform Admin (WAF & Logs)</option>
-                  <option value="super_admin">Super Admin (Full Root Control)</option>
+                  <option value="user">Standard User (Client Dashboard & API Access)</option>
+                  <option value="admin">Platform Admin (WAF & Threat Logs)</option>
+                  <option value="super_admin">Super Admin (Full Root System Control)</option>
                 </select>
               </div>
 
@@ -836,7 +838,7 @@ export default function AdminUsers() {
                 type="submit"
                 className="btn-primary"
                 disabled={actionLoading}
-                style={{ width: '100%', marginTop: '10px' }}
+                style={{ width: '100%', marginTop: '12px', padding: '10px' }}
               >
                 {actionLoading ? 'Updating Role...' : 'Save Role'}
               </button>
@@ -844,6 +846,6 @@ export default function AdminUsers() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

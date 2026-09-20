@@ -3,9 +3,12 @@ import { useLocation, Link } from 'react-router-dom'
 
 const pageNames = {
   '/admin/dashboard': 'Dashboard',
+  '/admin/users': 'Users & Support',
+  '/admin/pricing': 'Pricing & Tiers',
+  '/admin/clients': 'Tenant Websites',
+  '/admin/ddos': 'DDoS Shield',
   '/admin/logs': 'Attack Logs',
   '/admin/rules': 'Rules Management',
-  '/admin/clients': 'Clients Management',
   '/admin/blacklist': 'Blacklist Management',
   '/admin/settings': 'Settings',
   '/admin/notices': 'Notice Board',
@@ -21,9 +24,12 @@ export default function Header({ onToggleSidebar, onLogout }) {
 
   const iconMap = {
     '/admin/dashboard': 'fa-chart-pie',
+    '/admin/users': 'fa-users-gear',
+    '/admin/pricing': 'fa-tags',
+    '/admin/clients': 'fa-globe',
+    '/admin/ddos': 'fa-shield-halved',
     '/admin/logs': 'fa-list',
     '/admin/rules': 'fa-shield',
-    '/admin/clients': 'fa-globe',
     '/admin/blacklist': 'fa-ban',
     '/admin/settings': 'fa-cog',
     '/admin/notices': 'fa-bullhorn',

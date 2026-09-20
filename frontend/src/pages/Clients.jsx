@@ -57,7 +57,7 @@ export default function Clients() {
   })
 
   return (
-    <div className="admin-websites-page" style={{ padding: '4px 0 40px' }}>
+    <>
       {toastMessage && (
         <div style={{
           position: 'fixed',
@@ -67,7 +67,7 @@ export default function Clients() {
           color: '#ffffff',
           padding: '12px 20px',
           borderRadius: '8px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
           zIndex: 9999,
           fontWeight: '600',
           display: 'flex',
@@ -81,38 +81,57 @@ export default function Clients() {
 
       {/* Header */}
       <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '16px 20px',
+        marginBottom: '20px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '24px'
+        gap: '14px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <i className="fas fa-globe" style={{ color: '#3b82f6' }}></i>
-            Multi-Tenant Protected Websites
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0' }}>
-            All web applications and WordPress sites connected across all tenant user accounts.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+            color: '#059669',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '19px'
+          }}>
+            <i className="fas fa-globe"></i>
+          </div>
+          <div>
+            <h1 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+              Multi-Tenant Protected Websites
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '12.5px', margin: '3px 0 0' }}>
+              All web applications and WordPress sites connected across all tenant accounts.
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ position: 'relative', minWidth: '260px' }}>
-            <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '11px', color: '#64748b' }}></i>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ position: 'relative', minWidth: '240px' }}>
+            <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }}></i>
             <input
               type="text"
-              placeholder="Search domain or user email..."
+              placeholder="Search domain or user..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 12px 8px 34px',
+                padding: '7px 12px 7px 34px',
                 borderRadius: '8px',
-                border: '1px solid #1e293b',
-                background: '#0f172a',
-                color: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#0f172a',
                 fontSize: '13px',
                 outline: 'none'
               }}
@@ -122,9 +141,15 @@ export default function Clients() {
           <button
             className="btn-primary"
             onClick={fetchWebsites}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12.5px',
+              padding: '7px 14px'
+            }}
           >
-            <i className={`fas fa-arrows-rotate ${loading ? 'fa-spin' : ''}`}></i>
+            <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'}`}></i>
             Refresh
           </button>
         </div>
@@ -134,19 +159,19 @@ export default function Clients() {
       <div className="clients-grid">
         {loading ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginRight: '8px' }}></i>
+            <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginRight: '8px', color: '#2563eb' }}></i>
             Loading tenant websites...
           </div>
         ) : filtered.length === 0 ? (
-          <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', background: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b' }}>
+          <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
             No connected websites found matching your search.
           </div>
         ) : (
           filtered.map(site => (
-            <div className="client-card" key={site.id} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-              <div className="client-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fas fa-shield-halved" style={{ color: '#3b82f6' }}></i>
+            <div className="client-card" key={site.id} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+              <div className="client-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-shield-halved" style={{ color: '#2563eb' }}></i>
                   {site.domain}
                 </h3>
                 <span className={`badge ${site.status === 'active' ? 'success' : 'danger'}`}>
@@ -154,33 +179,33 @@ export default function Clients() {
                 </span>
               </div>
 
-              <div className="client-body" style={{ fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="client-body" style={{ fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: '#94a3b8' }}>Owner Account:</strong>{' '}
-                  <span style={{ color: '#60a5fa', fontWeight: '600' }}>{site.user_email || 'System'}</span>
+                  <strong style={{ color: '#64748b' }}>Owner Account:</strong>{' '}
+                  <span style={{ color: '#2563eb', fontWeight: '600' }}>{site.user_email || 'System'}</span>
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: '#94a3b8' }}>Origin Server:</strong>{' '}
+                  <strong style={{ color: '#64748b' }}>Origin Target:</strong>{' '}
                   <code>{site.origin_server || 'Cloud Edge Proxy'}</code>
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: '#94a3b8' }}>Security Level:</strong>{' '}
+                  <strong style={{ color: '#64748b' }}>Security Level:</strong>{' '}
                   <span className={`badge severity-${site.security_level || 'high'}`}>{site.security_level || 'high'}</span>
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong style={{ color: '#94a3b8' }}>Created:</strong>{' '}
-                  <span>{site.created_at || '—'}</span>
+                  <strong style={{ color: '#64748b' }}>Created:</strong>{' '}
+                  <span style={{ color: '#64748b' }}>{site.created_at ? site.created_at.slice(0, 10) : '—'}</span>
                 </p>
               </div>
 
-              <div className="client-actions" style={{ marginTop: '18px', display: 'flex', gap: '8px', borderTop: '1px solid #1e293b', paddingTop: '14px' }}>
+              <div className="client-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
                 {site.api_key && (
                   <button
                     className="btn-small btn-key"
                     onClick={() => copyKey(site.api_key)}
                     style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
-                    <i className="fas fa-key"></i> Copy API Key
+                    <i className="fas fa-key"></i> Copy Key
                   </button>
                 )}
                 <button
@@ -195,6 +220,6 @@ export default function Clients() {
           ))
         )}
       </div>
-    </div>
+    </>
   )
 }

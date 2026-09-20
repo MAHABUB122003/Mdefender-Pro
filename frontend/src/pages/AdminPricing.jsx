@@ -125,7 +125,7 @@ export default function AdminPricing() {
     try {
       setSaving(true)
       await api.adminUpdatePricing(plans)
-      showToast('Pricing and plan tiers updated successfully! Changes are live across checkout and website quotas.')
+      showToast('Pricing and plan tiers updated successfully! Changes are live across checkout and quota validations.')
     } catch (err) {
       console.error(err)
       showToast(err.message || 'Failed to save pricing configuration', true)
@@ -142,14 +142,14 @@ export default function AdminPricing() {
   }
 
   const tierColors = {
-    free: { border: '#334155', tagBg: 'rgba(100,116,139,0.2)', tagColor: '#cbd5e1', icon: 'fa-shield' },
-    go: { border: '#2563eb', tagBg: 'rgba(37,99,235,0.2)', tagColor: '#60a5fa', icon: 'fa-bolt' },
-    pro: { border: '#f59e0b', tagBg: 'rgba(245,158,11,0.2)', tagColor: '#fbbf24', icon: 'fa-crown' },
-    enterprise: { border: '#8b5cf6', tagBg: 'rgba(139,92,246,0.2)', tagColor: '#c084fc', icon: 'fa-building-shield' },
+    free: { border: '#e2e8f0', tagBg: '#f1f5f9', tagColor: '#475569', icon: 'fa-shield', iconColor: '#64748b' },
+    go: { border: '#bfdbfe', tagBg: '#eff6ff', tagColor: '#2563eb', icon: 'fa-bolt', iconColor: '#2563eb' },
+    pro: { border: '#fde68a', tagBg: '#fffbeb', tagColor: '#d97706', icon: 'fa-crown', iconColor: '#d97706' },
+    enterprise: { border: '#ddd6fe', tagBg: '#f5f3ff', tagColor: '#7c3aed', icon: 'fa-building-shield', iconColor: '#7c3aed' },
   }
 
   return (
-    <div className="admin-pricing-page" style={{ padding: '4px 0 50px' }}>
+    <>
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
@@ -160,7 +160,7 @@ export default function AdminPricing() {
           color: '#ffffff',
           padding: '12px 20px',
           borderRadius: '8px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
           zIndex: 9999,
           fontWeight: '600',
           display: 'flex',
@@ -174,34 +174,53 @@ export default function AdminPricing() {
 
       {/* Header */}
       <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '16px 20px',
+        marginBottom: '20px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '28px'
+        gap: '14px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
       }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <i className="fas fa-tags" style={{ color: '#f59e0b' }}></i>
-            Subscription Pricing & Plan Tiers
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0' }}>
-            Configure live monthly/annual pricing, website limits, malware scan sizes, and ML WAF features for all user tiers.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+            color: '#d97706',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '19px'
+          }}>
+            <i className="fas fa-tags"></i>
+          </div>
+          <div>
+            <h1 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+              Subscription Pricing & Plan Tiers
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '12.5px', margin: '3px 0 0' }}>
+              Configure live monthly/annual rates, website quotas, malware scan limits, and ML WAF features.
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button
             type="button"
             onClick={handleResetDefaults}
             style={{
-              padding: '9px 16px',
+              padding: '8px 14px',
               borderRadius: '8px',
-              background: '#1e293b',
-              border: '1px solid #334155',
-              color: '#94a3b8',
-              fontSize: '13px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              color: '#64748b',
+              fontSize: '12.5px',
               fontWeight: '600',
               cursor: 'pointer'
             }}
@@ -215,31 +234,31 @@ export default function AdminPricing() {
             onClick={handleSave}
             disabled={saving || loading}
             style={{
-              padding: '9px 20px',
-              fontSize: '13px',
-              fontWeight: '700',
+              padding: '8px 18px',
+              fontSize: '12.5px',
+              fontWeight: '600',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '6px'
             }}
           >
             <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
-            {saving ? 'Saving Live Prices...' : 'Save All Changes'}
+            {saving ? 'Saving...' : 'Save All Changes'}
           </button>
         </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginRight: '10px' }}></i>
+          <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginRight: '10px', color: '#2563eb' }}></i>
           Loading pricing configuration...
         </div>
       ) : (
         <form onSubmit={handleSave}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
-            gap: '24px'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '20px'
           }}>
             {['free', 'go', 'pro', 'enterprise'].map(pid => {
               const p = plans[pid] || DEFAULT_PLANS[pid]
@@ -248,30 +267,29 @@ export default function AdminPricing() {
                 <div
                   key={pid}
                   style={{
-                    background: '#0f172a',
-                    borderRadius: '14px',
-                    border: `1.5px solid ${styleMeta.border}`,
-                    padding: '24px',
+                    background: 'white',
+                    borderRadius: '12px',
+                    border: `1px solid ${styleMeta.border}`,
+                    padding: '20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-                    position: 'relative'
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                   }}
                 >
                   {/* Top Badge */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <i className={`fas ${styleMeta.icon}`} style={{ color: styleMeta.tagColor, fontSize: '16px' }}></i>
-                      <span style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc' }}>
+                      <i className={`fas ${styleMeta.icon}`} style={{ color: styleMeta.iconColor, fontSize: '15px' }}></i>
+                      <span style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
                         {p.name || pid.toUpperCase()}
                       </span>
                     </div>
                     <span style={{
-                      padding: '3px 10px',
+                      padding: '3px 9px',
                       borderRadius: '12px',
                       fontSize: '11px',
-                      fontWeight: '800',
+                      fontWeight: '700',
                       textTransform: 'uppercase',
                       background: styleMeta.tagBg,
                       color: styleMeta.tagColor
@@ -282,19 +300,19 @@ export default function AdminPricing() {
 
                   {/* Pricing Inputs */}
                   <div style={{
-                    background: '#070b14',
-                    padding: '14px',
-                    borderRadius: '10px',
-                    border: '1px solid #1e293b',
-                    marginBottom: '18px'
+                    background: '#f8fafc',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    marginBottom: '16px'
                   }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div>
-                        <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>
+                        <label style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>
                           Monthly ($ USD)
                         </label>
-                        <div style={{ position: 'relative', marginTop: '4px' }}>
-                          <span style={{ position: 'absolute', left: '10px', top: '8px', color: '#64748b', fontWeight: '700' }}>$</span>
+                        <div style={{ position: 'relative', marginTop: '3px' }}>
+                          <span style={{ position: 'absolute', left: '8px', top: '7px', color: '#94a3b8', fontWeight: '600' }}>$</span>
                           <input
                             type="number"
                             min="0"
@@ -303,13 +321,13 @@ export default function AdminPricing() {
                             onChange={(e) => handleChange(pid, 'monthly_price', Number(e.target.value))}
                             style={{
                               width: '100%',
-                              padding: '8px 8px 8px 24px',
+                              padding: '6px 8px 6px 20px',
                               borderRadius: '6px',
-                              background: '#0f172a',
-                              border: '1px solid #334155',
-                              color: '#ffffff',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              color: '#0f172a',
                               fontWeight: '700',
-                              fontSize: '14px',
+                              fontSize: '13px',
                               outline: 'none'
                             }}
                           />
@@ -317,11 +335,11 @@ export default function AdminPricing() {
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>
+                        <label style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>
                           Yearly ($ USD)
                         </label>
-                        <div style={{ position: 'relative', marginTop: '4px' }}>
-                          <span style={{ position: 'absolute', left: '10px', top: '8px', color: '#64748b', fontWeight: '700' }}>$</span>
+                        <div style={{ position: 'relative', marginTop: '3px' }}>
+                          <span style={{ position: 'absolute', left: '8px', top: '7px', color: '#94a3b8', fontWeight: '600' }}>$</span>
                           <input
                             type="number"
                             min="0"
@@ -330,13 +348,13 @@ export default function AdminPricing() {
                             onChange={(e) => handleChange(pid, 'yearly_price', Number(e.target.value))}
                             style={{
                               width: '100%',
-                              padding: '8px 8px 8px 24px',
+                              padding: '6px 8px 6px 20px',
                               borderRadius: '6px',
-                              background: '#0f172a',
-                              border: '1px solid #334155',
-                              color: '#ffffff',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              color: '#0f172a',
                               fontWeight: '700',
-                              fontSize: '14px',
+                              fontSize: '13px',
                               outline: 'none'
                             }}
                           />
@@ -346,63 +364,63 @@ export default function AdminPricing() {
                   </div>
 
                   {/* Quotas & Limits */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                     <div>
-                      <label style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Protected Websites Limit</label>
+                      <label style={{ fontSize: '12px', color: '#334155', fontWeight: '600' }}>Protected Websites Limit</label>
                       <input
                         type="number"
                         min="1"
                         value={p.website_limit ?? 1}
                         onChange={(e) => handleChange(pid, 'website_limit', Number(e.target.value))}
-                        style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', background: '#070b14', border: '1px solid #1e293b', color: '#f8fafc', marginTop: '3px', outline: 'none' }}
+                        style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', marginTop: '2px', outline: 'none' }}
                       />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div>
-                        <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Daily Request Limit</label>
+                        <label style={{ fontSize: '11px', color: '#334155', fontWeight: '600' }}>Daily Requests</label>
                         <input
                           type="number"
                           min="100"
                           value={p.requests_per_day ?? 10000}
                           onChange={(e) => handleChange(pid, 'requests_per_day', Number(e.target.value))}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', background: '#070b14', border: '1px solid #1e293b', color: '#f8fafc', marginTop: '3px', outline: 'none' }}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', marginTop: '2px', outline: 'none' }}
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>Daily Scans Limit</label>
+                        <label style={{ fontSize: '11px', color: '#334155', fontWeight: '600' }}>Daily Scans</label>
                         <input
                           type="number"
                           min="1"
                           value={p.scans_per_day ?? 10}
                           onChange={(e) => handleChange(pid, 'scans_per_day', Number(e.target.value))}
-                          style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', background: '#070b14', border: '1px solid #1e293b', color: '#f8fafc', marginTop: '3px', outline: 'none' }}
+                          style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', marginTop: '2px', outline: 'none' }}
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Max Scan File Size (MB)</label>
+                      <label style={{ fontSize: '12px', color: '#334155', fontWeight: '600' }}>Max Scan Size (MB)</label>
                       <input
                         type="number"
                         min="1"
                         max="200"
                         value={p.max_scan_size_mb ?? 10}
                         onChange={(e) => handleChange(pid, 'max_scan_size_mb', Number(e.target.value))}
-                        style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', background: '#070b14', border: '1px solid #1e293b', color: '#f8fafc', marginTop: '3px', outline: 'none' }}
+                        style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', marginTop: '2px', outline: 'none' }}
                       />
                     </div>
 
                     {/* Features Toggle Checklist */}
                     <div style={{
-                      marginTop: '8px',
-                      paddingTop: '12px',
-                      borderTop: '1px solid #1e293b',
+                      marginTop: '6px',
+                      paddingTop: '10px',
+                      borderTop: '1px solid #f1f5f9',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '8px'
+                      gap: '6px'
                     }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#cbd5e1', fontSize: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#334155', fontSize: '12px' }}>
                         <input
                           type="checkbox"
                           checked={p.ml_waf ?? false}
@@ -411,16 +429,16 @@ export default function AdminPricing() {
                         <span><strong>5.2M Dataset ML WAF Classifier</strong></span>
                       </label>
 
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#cbd5e1', fontSize: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#334155', fontSize: '12px' }}>
                         <input
                           type="checkbox"
                           checked={p.malware_scanner ?? true}
                           onChange={(e) => handleChange(pid, 'malware_scanner', e.target.checked)}
                         />
-                        <span>Cloud Malware Scanner Engine</span>
+                        <span>Cloud Malware Scanner</span>
                       </label>
 
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#cbd5e1', fontSize: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#334155', fontSize: '12px' }}>
                         <input
                           type="checkbox"
                           checked={p.analytics ?? false}
@@ -429,7 +447,7 @@ export default function AdminPricing() {
                         <span>Telemetry Analytics & Alerts</span>
                       </label>
 
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#cbd5e1', fontSize: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#334155', fontSize: '12px' }}>
                         <input
                           type="checkbox"
                           checked={p.priority_support ?? false}
@@ -444,14 +462,14 @@ export default function AdminPricing() {
             })}
           </div>
 
-          <div style={{ marginTop: '28px', textAlign: 'right' }}>
+          <div style={{ marginTop: '24px', textAlign: 'right' }}>
             <button
               type="submit"
               className="btn-primary"
               disabled={saving}
               style={{
-                padding: '12px 28px',
-                fontSize: '14px',
+                padding: '10px 24px',
+                fontSize: '13px',
                 fontWeight: '700',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -464,6 +482,6 @@ export default function AdminPricing() {
           </div>
         </form>
       )}
-    </div>
+    </>
   )
 }
