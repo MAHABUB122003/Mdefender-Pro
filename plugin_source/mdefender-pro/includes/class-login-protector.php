@@ -545,13 +545,16 @@ class WAF_FW_Login_Protector {
     }
 
     private function get_client_ip() {
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+        }
+        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+            return trim($_SERVER['HTTP_X_REAL_IP']);
+        }
         if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
             $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
             return trim($ips[0]);
         }
-        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-            return $_SERVER['HTTP_X_REAL_IP'];
-        }
-        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        return trim($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
     }
 }
