@@ -74,7 +74,16 @@ export default function UserLogs() {
 
   useEffect(() => {
     fetchLogs()
-  }, [fetchLogs, page])
+
+    // Real-time automatic background polling every 3 seconds on page 1
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && page === 1 && !search) {
+        fetchLogs(false)
+      }
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [fetchLogs, page, search])
 
   useEffect(() => {
     if (!logs.logs) return

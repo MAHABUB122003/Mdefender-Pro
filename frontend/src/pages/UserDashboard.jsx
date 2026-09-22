@@ -73,6 +73,15 @@ export default function UserDashboard() {
     fetchData(false, selectedWebsite)
     api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {})
     api.getMlStatus().then(r => setMlStatus(r)).catch(() => {})
+
+    // Real-time automatic background polling every 3 seconds
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchData(false, selectedWebsite)
+      }
+    }, 3000)
+
+    return () => clearInterval(interval)
   }, [fetchData, selectedWebsite])
 
   const handleDdosToggle = async () => {
