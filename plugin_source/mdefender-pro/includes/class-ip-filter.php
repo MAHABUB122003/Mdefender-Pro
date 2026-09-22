@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 class WAF_FW_IP_Filter {
     private static $_instance = null;
-    private $whitelist = ['127.0.0.1', '::1', 'localhost'];
+    private $whitelist = [];
 
     public static function instance() {
         if (null === self::$_instance) {
@@ -47,6 +47,13 @@ class WAF_FW_IP_Filter {
     }
 
     public function is_whitelisted($ip) {
+        $custom = get_option('waf_fw_ip_whitelist', '');
+        if (!empty($custom)) {
+            $ips = array_map('trim', explode(',', $custom));
+            if (in_array($ip, $ips, true)) {
+                return true;
+            }
+        }
         return in_array($ip, $this->whitelist, true);
     }
 
