@@ -353,7 +353,7 @@ class UserAPI:
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
 
-        # Query websites from the websites collection scoped to the user
+        # Query websites from the websites and wordpress_sites collections scoped to the user
         websites_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
         websites_cursor = list(self.db.websites.find(websites_query))
 
@@ -361,7 +361,10 @@ class UserAPI:
         known_domains = {w.get('domain') for w in websites_cursor if w.get('domain')}
         event_domains = self.db.security_events.distinct('domain', {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
         attack_domains = self.db.attacks.distinct('domain', {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
-        all_discovered_domains = set(filter(None, event_domains + attack_domains))
+        wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+        wp_domains = [wp.get('domain') for wp in wp_sites if wp.get('domain')]
+        
+        all_discovered_domains = set(filter(None, event_domains + attack_domains + wp_domains))
 
         for d in all_discovered_domains:
             if d not in ('unknown', '') and d not in known_domains:
@@ -404,7 +407,7 @@ class UserAPI:
                 'platform': w.get('platform', 'WordPress'),
                 'origin_server': w.get('origin_server', ''),
                 'status': w.get('status', 'active'),
-                'added_at': w['added_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('added_at') else (w['connected_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('connected_at') else ''),
+                'added_at': w['added_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('added_at') and hasattr(w['added_at'], 'strftime') else (w['connected_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('connected_at') and hasattr(w['connected_at'], 'strftime') else str(w.get('added_at', ''))),
                 'requests_today': w.get('requests_today', 0),
                 'blocked_today': w.get('blocked_today', 0),
                 'total_requests': w.get('total_requests', 0),

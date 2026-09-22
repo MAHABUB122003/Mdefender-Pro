@@ -198,6 +198,42 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         updates["plugin_version"] = body.plugin_version
     if body.stats:
         updates["last_stats"] = body.stats
+        req_blocked = int(body.stats.get("requests_blocked", 0))
+        req_allowed = int(body.stats.get("requests_allowed", 0))
+        total_site_reqs = req_blocked + req_allowed
+        
+        if total_site_reqs > 0:
+            db.websites.update_one(
+                {"_id": auth_data["website_id"]},
+                {
+                    "$set": {
+                        "total_requests": max(total_site_reqs, website.get("total_requests", 0)),
+                        "total_blocked": max(req_blocked, website.get("total_blocked", 0)),
+                        "requests_today": max(total_site_reqs, website.get("requests_today", 0)),
+                        "blocked_today": max(req_blocked, website.get("blocked_today", 0)),
+                        "last_activity": datetime.now(),
+                    }
+                }
+            )
+            try:
+                from bson import ObjectId
+                u_id = auth_data.get("user_id")
+                u_matches = [{"_id": u_id}, {"id": u_id}]
+                if ObjectId.is_valid(str(u_id)):
+                    u_matches.append({"_id": ObjectId(str(u_id))})
+                db.users.update_one(
+                    {"$or": u_matches},
+                    {
+                        "$set": {
+                            "total_requests": max(total_site_reqs, 0),
+                            "total_blocked": max(req_blocked, 0),
+                            "requests_today": max(total_site_reqs, 0),
+                            "updated_at": datetime.now(),
+                        }
+                    }
+                )
+            except Exception:
+                pass
         
     website = auth_data["website"]
     db.websites.update_one(
