@@ -73,81 +73,36 @@ const threatVectors = [
 ]
 
 const codeExamples = {
-  nodejs: `// Step 1: Install official NPM package (includes bundled 403 Block Page)
-// npm install mdefender-pro
+  wordpress: `// 1. Download & Upload Plugin to your WordPress site
+// Path: wp-content/plugins/mdefender-pro/
 
-const express = require('express');
-const mdefender = require('mdefender-pro');
+// 2. Add your MDefender Pro API Key in WordPress Admin -> MDefender Pro -> Settings
+define('MDEFENDER_API_KEY', 'Ix2TtXbbBHJolIam3MYLui0jphKy9oRvF_D3AJjY1tO8MGfWU');
+define('MDEFENDER_CLOUD_URL', 'http://localhost:8000');
 
-const app = express();
-app.use(express.json());
+// 3. Instant Real-Time Protection & Scanning:
+// - Hybrid ML & Signature WAF Engine armed
+// - Automatic brute force & 2FA login defense
+// - Scheduled core & plugin malware scanner active
+// - Custom branded Cyber 403 Block Page served automatically`,
 
-// Step 2: Attach MDefender Pro WAF Middleware
-app.use(mdefender({
-  apiKey: process.env.MDEFENDER_API_KEY, // or configure in mdefender.config.js
-  domain: 'yourdomain.com',
-  mode: 'block' // Intercepts attacks & renders bundled Cyber 403 block page
-}));
-
-// Step 3: Your application routes
-app.get('/api/data', (req, res) => {
-  res.json({ message: 'Request safely passed WAF verification' });
-});
-
-app.listen(5000, () => console.log('Protected server running on port 5000'));`,
-
-  python: `# Install: pip install mdefender-python
-from fastapi import FastAPI
-from mdefender import MDefenderMiddleware
-
-app = FastAPI()
-
-# Attach MDefender Hybrid WAF Layer
-app.add_middleware(
-    MDefenderMiddleware,
-    api_key="mdef_live_sec_token_94812",
-    mode="block",
-    enable_ml=True, # Active ML Classifier v2.0
-    rate_limit_rpm=120
-)
-
-@app.get("/api/v1/data")
-def read_root():
-    return {"status": "protected", "waf": "armed", "ml_core": "5.2M_dataset_active"}`,
-
-  php: `<?php
-// Require Composer Autoloader
-require_once __DIR__ . '/vendor/autoload.php';
-
-use MDefender\\WafShield;
-
-// Enforce hybrid edge protection before routing
-$waf = new WafShield([
-    'api_key'    => getenv('MDEFENDER_API_KEY'),
-    'mode'       => 'block',
-    'enable_ml'  => true,
-    'block_page' => true
-]);
-
-$waf->inspectRequest(); // Evaluates 2,000 rules + 5.2M ML model in 0.4ms`,
-
-  curl: `# Test your protected endpoint with an obfuscated SQLi probe:
-curl -i -X POST "https://api.yourdomain.com/v1/auth/login" \\
-  -H "Content-Type: application/json" \\
+  curl: `# Test your WordPress protected site with an obfuscated SQLi probe:
+curl -i -X POST "https://your-wordpress-site.com/wp-login.php" \\
+  -H "Content-Type: application/x-www-form-urlencoded" \\
   -H "User-Agent: Mozilla/5.0 SecurityProbe" \\
-  -d '{"user": "admin", "pass": "' OR 1=1 --"}'
+  -d "log=admin' OR '1'='1&pwd=password"
 
 # Response:
 # HTTP/1.1 403 Forbidden
-# X-WAF-Engine: MDefender-Hybrid-Core
-# X-ML-Confidence: 0.9984 (SQL Injection Vector)
-# X-Inspection-Time: 0.42ms`
+# X-MDefender-Status: blocked
+# X-MDefender-Attack-Type: SQL Injection (SQLi)
+# X-Inspection-Latency: 0.42ms`
 }
 
 export default function Landing() {
   const { dark } = useTheme()
   const s = theme(dark)
-  const [selectedLang, setSelectedLang] = useState('nodejs')
+  const [selectedLang, setSelectedLang] = useState('wordpress')
 
   return (
     <div style={{
@@ -614,13 +569,13 @@ export default function Landing() {
                 padding: '3px 10px',
                 borderRadius: '20px',
                 border: '1px solid rgba(16, 185, 129, 0.25)'
-              }}>Bundled Block Page</span>
+              }}>Native Plugin</span>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '10px' }}>
-              Install NPM Package
+              Upload WP Plugin
             </h3>
             <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
-              Install the official package into your backend application. The 403 block page is automatically bundled inside:
+              Upload <code>mdefender-pro.zip</code> into your WordPress Admin &rarr; Plugins &rarr; Add New and activate it:
             </p>
             <div style={{
               background: '#04070e',
@@ -634,8 +589,8 @@ export default function Landing() {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <span>npm install mdefender-pro</span>
-              <i className="fa-solid fa-box" style={{ color: '#64748b' }}></i>
+              <span>wp-admin/plugins.php &rarr; Upload</span>
+              <i className="fab fa-wordpress" style={{ color: '#2563eb' }}></i>
             </div>
           </div>
 
@@ -672,10 +627,10 @@ export default function Landing() {
               }}>API Key Auth</span>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '10px' }}>
-              Get Your API Key
+              Connect API Key
             </h3>
             <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
-              Copy your unique tenant API Key from the MDefender dashboard under <Link to="/user/settings" style={{ color: '#38bdf8', textDecoration: 'none' }}>Settings</Link> or <Link to="/user/websites" style={{ color: '#38bdf8', textDecoration: 'none' }}>Websites</Link>:
+              Copy your unique tenant API Key from MDefender dashboard and paste into WordPress plugin settings:
             </p>
             <div style={{
               background: '#04070e',
@@ -723,13 +678,13 @@ export default function Landing() {
                 padding: '3px 10px',
                 borderRadius: '20px',
                 border: '1px solid rgba(59, 130, 246, 0.25)'
-              }}>Instant Active WAF</span>
+              }}>Armed &amp; Protected</span>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '10px' }}>
-              Attach Middleware
+              Real-Time Security
             </h3>
             <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
-              Add <code>app.use(mdefender())</code> to your Express app. Every request is inspected in &lt;1ms and threats are blocked with the 403 page!
+              Every request hitting WordPress is inspected in &lt;1ms. Threats, malware, and brute force logins are blocked!
             </p>
             <div style={{
               background: '#04070e',
@@ -743,7 +698,7 @@ export default function Landing() {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <span>app.use(mdefender())</span>
+              <span>Hybrid ML WAF Active</span>
               <i className="fa-solid fa-shield-halved" style={{ color: '#10b981' }}></i>
             </div>
           </div>
@@ -904,20 +859,18 @@ export default function Landing() {
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <h2 style={{ fontSize: '34px', fontWeight: '800', marginBottom: '12px', color: '#ffffff' }}>
-              Integrate in Minutes With Any Tech Stack
+              Built Exclusively for WordPress Websites
             </h2>
             <p style={{ fontSize: '15px', color: '#94a3b8' }}>
-              Drop in our lightweight SDK middleware without changing your core application architecture.
+              Connect your WordPress site with 1-click plugin activation and instant Cloud ML protection.
             </p>
           </div>
 
           {/* Code Tab Buttons */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
             {[
-              { id: 'nodejs', label: 'Node.js / Express', icon: 'fa-node-js' },
-              { id: 'python', label: 'Python / FastAPI', icon: 'fa-python' },
-              { id: 'php', label: 'PHP / Laravel', icon: 'fa-php' },
-              { id: 'curl', label: 'cURL Verification', icon: 'fa-terminal' }
+              { id: 'wordpress', label: 'WordPress Native Plugin', icon: 'fa-wordpress' },
+              { id: 'curl', label: 'Attack Test (cURL)', icon: 'fa-terminal' }
             ].map(tab => (
               <button
                 key={tab.id}
