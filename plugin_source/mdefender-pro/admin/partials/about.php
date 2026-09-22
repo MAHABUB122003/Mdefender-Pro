@@ -4,7 +4,7 @@
             <span class="dashicons dashicons-shield"></span>
         </div>
         <h2>MDefender-Pro</h2>
-        <div class="war-about-version">Version 3.5.0</div>
+        <div class="war-about-version">Version <?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.1.0'; ?></div>
         <p>AI/ML-Powered Web Application Firewall and Malware Scanner for WordPress, powered by the MDefender-Pro cloud service. Advanced threat detection using machine learning algorithms to protect against OWASP Top 10 vulnerabilities.</p>
 
         <div class="war-about-features">
@@ -56,7 +56,7 @@
     </div>
     <div class="war-footer" style="margin-top: 20px;">
         <div class="war-footer-left">
-            <span class="war-footer-brand">MDefender-Pro v3.5.0</span>
+            <span class="war-footer-brand">MDefender-Pro v<?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.1.0'; ?></span>
             <span class="war-footer-sep">|</span>
             <span>AI Powered Security</span>
         </div>
@@ -69,7 +69,6 @@
             <span>&copy; <?php echo date('Y'); ?> MDefender-Pro. All rights reserved.</span>
         </div>
     </div>
-</div>
 </div>
 
 <style>

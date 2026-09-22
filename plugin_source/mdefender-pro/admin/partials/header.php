@@ -3,8 +3,8 @@ if (!defined('ABSPATH')) exit;
 
 global $wpdb;
 
-$is_enabled = (bool) get_option('waf_fw_enabled', 1);
-$is_cloud_connected = (bool) get_option('waf_fw_cloud_connected', 0);
+$is_enabled = get_option('waf_fw_protection_enabled', 'yes') === 'yes';
+$is_cloud_connected = get_option('waf_fw_connected', 'no') === 'yes';
 $cloud_mode = get_option('waf_fw_cloud_mode', 'protect');
 $current_user = wp_get_current_user();
 $user_initial = $current_user && $current_user->display_name ? strtoupper(substr($current_user->display_name, 0, 1)) : 'A';

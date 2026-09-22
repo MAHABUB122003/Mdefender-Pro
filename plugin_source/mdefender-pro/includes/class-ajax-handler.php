@@ -181,13 +181,13 @@ class WAF_FW_Ajax_Handler {
     public function save_rule() {
         $this->check_access();
         $this->verify_nonce();
-        $data = json_decode(file_get_contents('php://input'), true);
+        $data = $this->get_json_input();
         $engine = WAF_FW_Rule_Engine::instance();
         $engine->add_rule([
-            'name' => sanitize_text_field($data['name']),
-            'pattern' => $data['pattern'],
-            'action' => sanitize_text_field($data['action']),
-            'severity' => sanitize_text_field($data['severity']),
+            'name' => sanitize_text_field($data['name'] ?? ''),
+            'pattern' => $data['pattern'] ?? '',
+            'action' => sanitize_text_field($data['action'] ?? 'block'),
+            'severity' => sanitize_text_field($data['severity'] ?? 'high'),
         ]);
         wp_send_json_success(['message' => 'Rule created successfully']);
     }
@@ -195,8 +195,8 @@ class WAF_FW_Ajax_Handler {
     public function update_rule() {
         $this->check_access();
         $this->verify_nonce();
-        $data = json_decode(file_get_contents('php://input'), true);
-        $id = intval($_GET['id'] ?? -1);
+        $data = $this->get_json_input();
+        $id = intval($_REQUEST['id'] ?? $data['id'] ?? -1);
         if ($id < 0) {
             wp_send_json_error(['message' => 'Invalid rule ID']);
         }
@@ -218,7 +218,7 @@ class WAF_FW_Ajax_Handler {
         $this->check_access();
         $this->verify_nonce();
         $engine = WAF_FW_Rule_Engine::instance();
-        $id = intval($_GET['id'] ?? -1);
+        $id = intval($_REQUEST['id'] ?? -1);
         if ($engine->delete_rule($id)) {
             wp_send_json_success(['message' => 'Rule deleted']);
         }
@@ -228,8 +228,8 @@ class WAF_FW_Ajax_Handler {
     public function toggle_rule() {
         $this->check_access();
         $this->verify_nonce();
-        $data = json_decode(file_get_contents('php://input'), true);
-        $id = intval($_GET['id'] ?? -1);
+        $data = $this->get_json_input();
+        $id = intval($_REQUEST['id'] ?? $data['id'] ?? -1);
         $engine = WAF_FW_Rule_Engine::instance();
         $engine->update_rule($id, ['enabled' => !empty($data['enabled'])]);
         wp_send_json_success();
@@ -259,7 +259,8 @@ class WAF_FW_Ajax_Handler {
     public function remove_blacklist() {
         $this->check_access();
         $this->verify_nonce();
-        $ip = sanitize_text_field($_GET['ip'] ?? '');
+        $data = $this->get_json_input();
+        $ip = sanitize_text_field($_REQUEST['ip'] ?? $data['ip'] ?? '');
         if (empty($ip)) {
             wp_send_json_error(['message' => 'IP is required']);
         }

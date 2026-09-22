@@ -5,12 +5,16 @@ var warDashboard = {
     isRefreshing: false,
 
     init: function() {
-        if (!document.getElementById('trafficChart') && !document.getElementById('warStatTotalRequests')) {
+        if (!document.getElementById('statTotalRequests') && !document.getElementById('timelineChart') && !document.getElementById('attackDistChart')) {
             return; // Not on the dashboard page
         }
+        this.initClock();
+        this.initToggle();
+        this.initNotifications();
+        this.initRefresh();
         this.loadData();
         var self = this;
-        this.refreshTimer = setInterval(function() { self.loadData(); }, 15000);
+        this.refreshTimer = setInterval(function() { self.loadData(); }, 10000);
     },
 
     initClock: function() {
