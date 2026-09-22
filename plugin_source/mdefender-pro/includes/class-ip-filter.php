@@ -31,15 +31,19 @@ class WAF_FW_IP_Filter {
             }
         }
 
-        // Fast opportunistic sync of cloud blacklist if cache is stale (> 30s)
-        if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
-            waf_fw_sync_cloud_blacklist_fast();
-        }
-
-        // Check local WAF blacklist cache synced from MDefender Cloud dashboard
+        // 1. Check local WAF blacklist cache synced from MDefender Cloud dashboard
         $cloud_blacklist = get_option('waf_fw_local_blacklist_cache', []);
         if (is_array($cloud_blacklist) && in_array($ip, $cloud_blacklist, true)) {
             return true;
+        }
+
+        // 2. Fast opportunistic sync of cloud blacklist if cache is stale or IP not found
+        if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+            waf_fw_sync_cloud_blacklist_fast();
+            $cloud_blacklist = get_option('waf_fw_local_blacklist_cache', []);
+            if (is_array($cloud_blacklist) && in_array($ip, $cloud_blacklist, true)) {
+                return true;
+            }
         }
 
         return false;

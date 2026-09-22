@@ -43,7 +43,7 @@ class WAF_FW_ML_Api_Client {
 
     /** True when the cloud connection can be attempted. */
     public function is_available() {
-        return !empty($this->base_url) && !empty($this->api_key) && get_option('waf_fw_connected', 'no') === 'yes';
+        return !empty($this->base_url) && !empty($this->api_key);
     }
 
     public function refresh_config() {
