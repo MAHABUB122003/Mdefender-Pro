@@ -27,8 +27,8 @@ class WAF_FW_ML_Api_Client {
     private $api_key;
     private $website_id;
     private $site_token;
-    private $timeout = 5;
-    private $scan_timeout = 20;
+    private $timeout = 10;
+    private $scan_timeout = 25;
 
     public static function instance() {
         if (null === self::$_instance) {
@@ -216,12 +216,12 @@ class WAF_FW_ML_Api_Client {
             'api_key'        => $this->api_key,
             'domain'         => $this->get_domain(),
             'site_token'     => $this->site_token,
-            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.0.0',
+            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.1.0',
             'status'         => 'online',
             'stats'          => (array) $stats,
         ]);
-        if (is_array($data) && !empty($data['success'])) {
-            return isset($data['data']) ? $data['data'] : $data;
+        if (is_array($data)) {
+            return $data;
         }
         return null;
     }

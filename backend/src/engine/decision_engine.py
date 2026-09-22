@@ -147,7 +147,7 @@ class DecisionEngine:
             decision = "BLOCK"
             confidence = max(0.95, ml_score)
             reason = f"Security rule matched: {first_rule_name}"
-        elif ml_score >= 0.85 and not is_auth_path:
+        elif ml_score >= 0.95 and risk_score >= 50 and not is_auth_path:
             decision = "BLOCK"
             confidence = ml_score
             reason = f"ML WAF detected {ml_result.get('category') or 'malicious'} request"

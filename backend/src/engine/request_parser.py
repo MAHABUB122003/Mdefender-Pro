@@ -7,10 +7,16 @@ class RequestParser:
         self.normalizer = DeepNormalizer()
 
     def parse(self, request_data):
-        raw_url = request_data.get('url', '')
+        raw_url = request_data.get('url', '') or request_data.get('path', '')
         parsed_url = urllib.parse.urlparse(raw_url)
         path = parsed_url.path or raw_url
-        query_str = request_data.get('query_string', '') or parsed_url.query
+        query_param_val = request_data.get('query_params', '')
+        if isinstance(query_param_val, dict):
+            query_param_str = urllib.parse.urlencode(query_param_val)
+        else:
+            query_param_str = str(query_param_val) if query_param_val else ''
+
+        query_str = request_data.get('query_string', '') or query_param_str or parsed_url.query
         
         parsed = {
             'url': raw_url if '?' in raw_url or not query_str else f"{path}?{query_str}",
@@ -19,7 +25,7 @@ class RequestParser:
             'method': request_data.get('method', 'GET'),
             'headers': request_data.get('headers', {}),
             'body': request_data.get('body', ''),
-            'query_params': request_data.get('query_params', {}),
+            'query_params': query_param_val if isinstance(query_param_val, dict) else urllib.parse.parse_qs(query_str),
             'ip': request_data.get('ip', ''),
             'user_agent': request_data.get('user_agent') or request_data.get('headers', {}).get('User-Agent', ''),
             'referer': request_data.get('referer') or request_data.get('headers', {}).get('Referer', ''),
