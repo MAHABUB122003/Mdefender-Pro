@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
+import copyToClipboardUtil from '../utils/clipboard'
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([])
@@ -31,46 +32,32 @@ export default function AdminUsers() {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
-      const params = {}
-      if (search) params.q = search
-      if (filterTab !== 'all') {
-        if (filterTab === 'active') params.status = 'active'
-        else if (filterTab === 'suspended') params.status = 'suspended'
-        else if (filterTab === 'unverified') params.status = 'unverified'
-        else if (filterTab === 'verified') params.status = 'verified'
-        else if (filterTab === 'pro') params.plan = 'pro'
-      }
-
-      const res = await api.adminGetUsers(params)
-      if (res && res.data) {
+      const res = await api.adminGetAllUsers({ search, status: filterTab })
+      if (res?.data) {
         setUsers(res.data.users || [])
         if (res.data.metrics) setMetrics(res.data.metrics)
-      } else if (Array.isArray(res)) {
-        setUsers(res)
+      } else if (res?.users) {
+        setUsers(res.users)
       }
     } catch (err) {
       console.error(err)
-      showToast('Failed to fetch users list', true)
+      showToast('Failed to load users list', true)
     } finally {
       setLoading(false)
     }
   }, [search, filterTab])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers()
-    }, 300)
-    return () => clearTimeout(timer)
+    fetchUsers()
   }, [fetchUsers])
 
   // ================= ACTION HANDLERS =================
 
   const handleUnlock = async (user) => {
-    if (!confirm(`Unlock account for ${user.email}? This will reset failed login attempts.`)) return
     try {
       setActionLoading(true)
       await api.adminUnlockUser(user.id)
-      showToast(`Account for ${user.email} unlocked successfully!`)
+      showToast(`Account ${user.email} unlocked successfully!`)
       fetchUsers()
     } catch (err) {
       showToast(err.message || 'Failed to unlock user', true)
@@ -80,11 +67,10 @@ export default function AdminUsers() {
   }
 
   const handleVerifyEmail = async (user) => {
-    if (!confirm(`Manually verify email address for ${user.email}?`)) return
     try {
       setActionLoading(true)
       await api.adminVerifyUserEmail(user.id)
-      showToast(`Email for ${user.email} verified!`)
+      showToast(`Email for ${user.email} marked verified!`)
       fetchUsers()
     } catch (err) {
       showToast(err.message || 'Failed to verify email', true)
@@ -100,7 +86,7 @@ export default function AdminUsers() {
       const res = await api.adminResetUserApiKey(user.id)
       const newKey = res?.data?.api_key || res?.api_key
       if (newKey) {
-        navigator.clipboard.writeText(newKey)
+        await copyToClipboardUtil(newKey)
         showToast(`New API Key generated and copied to clipboard!`)
       } else {
         showToast(`API Key regenerated!`)
@@ -221,9 +207,11 @@ export default function AdminUsers() {
     }
   }
 
-  const copyToClipboard = (text, label) => {
-    navigator.clipboard.writeText(text)
-    showToast(`${label} copied to clipboard!`)
+  const copyToClipboard = async (text, label) => {
+    const ok = await copyToClipboardUtil(text)
+    if (ok) {
+      showToast(`${label} copied to clipboard!`)
+    }
   }
 
   return (

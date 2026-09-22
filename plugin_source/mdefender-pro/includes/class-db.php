@@ -390,6 +390,10 @@ class WAF_FW_DB {
                 ));
             }
         }
+
+        // Clean up any legacy auto-blocked IP entries to ensure normal traffic is not blocked
+        $blacklist_table = $this->wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
+        $this->wpdb->query("DELETE FROM $blacklist_table WHERE auto_blocked = 1");
     }
 
     private function maybe_add_block_expires_at_column() {
@@ -439,7 +443,7 @@ class WAF_FW_DB {
             'waf_fw_login_threshold' => 10,
             'waf_fw_login_block_duration' => 86400,
             'waf_fw_login_lockout_enabled' => 'yes',
-            'waf_fw_attack_blocker_enabled' => 'yes',
+            'waf_fw_attack_blocker_enabled' => 'no',
             'waf_fw_protection_enabled' => 'yes',
             'waf_fw_attack_threshold' => 20,
             'waf_fw_attack_block_duration' => 86400,

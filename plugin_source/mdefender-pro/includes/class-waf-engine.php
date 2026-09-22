@@ -94,7 +94,6 @@ class WAF_FW_Engine {
             }
 
             if ($this->rate_limiter->is_rate_limited($ip)) {
-                $this->ip_filter->add_to_blacklist($ip, 'Rate limit exceeded', 'auto', true);
                 $this->logger->log_attack([
                     'ip' => $ip, 'url' => $url, 'method' => $method,
                     'attack_type' => 'Rate Limiting', 'confidence' => 1.0,
@@ -242,7 +241,7 @@ class WAF_FW_Engine {
         }
         // Report as "protect" even in monitor mode so the backend records the
         // block exactly as this plugin enforced it.
-        $domain = parse_url(home_url(), PHP_URL_HOST);
+        $domain = function_exists('home_url') ? parse_url(home_url(), PHP_URL_HOST) : ($_SERVER['HTTP_HOST'] ?? 'localhost');
         $this->ml_client->report_local_block($domain ? $domain : 'localhost', 'protect', $request_data, $ip);
     }
 
@@ -265,6 +264,7 @@ class WAF_FW_Engine {
     }
 
     private function blocked_result($ip, $url, $method, $attack_type, $confidence, $user_agent, $referer, $body, $message, $rule_matched = '') {
+        $ref_id = strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 8));
         return [
             'status' => 'blocked',
             'ip' => $ip,
@@ -277,7 +277,7 @@ class WAF_FW_Engine {
             'request_body' => $body,
             'rule_matched' => $rule_matched,
             'message' => $message,
-            'reference_id' => strtoupper(substr(wp_hash(uniqid('', true)), 0, 8)),
+            'reference_id' => $ref_id,
             'timestamp' => current_time('mysql'),
         ];
     }
@@ -295,9 +295,15 @@ class WAF_FW_Engine {
 
     private function get_ip_country($ip) {
         $transient_key = 'waf_fw_geoip_' . md5($ip);
-        $cached = get_transient($transient_key);
-        if ($cached !== false) {
-            return $cached;
+        if (function_exists('get_transient')) {
+            $cached = get_transient($transient_key);
+            if ($cached !== false) {
+                return $cached;
+            }
+        }
+
+        if (!function_exists('wp_remote_get') || !function_exists('wp_remote_retrieve_body') || !function_exists('is_wp_error')) {
+            return false;
         }
 
         $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 3]);
@@ -306,7 +312,10 @@ class WAF_FW_Engine {
         $country_code = $data['countryCode'] ?? '';
 
         // Cache resolved country code for 12 hours
-        set_transient($transient_key, $country_code, 12 * HOUR_IN_SECONDS);
+        if (function_exists('set_transient')) {
+            $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
+            set_transient($transient_key, $country_code, 12 * $hour);
+        }
         return $country_code ?: false;
     }
 

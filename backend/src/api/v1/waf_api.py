@@ -214,7 +214,7 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
     # Server-side context signals
     ip = req_data.get("ip", "")
     ip_filter = IPFilter()
-    is_blacklisted = bool(ip) and (ip_filter.is_blacklisted(ip) or website.get("status") == "suspended")
+    is_blacklisted = bool(ip) and (ip_filter.is_blacklisted(ip, user_id=auth_data.get("user_id")) or website.get("status") == "suspended")
     rate_limiter = RateLimiter()
     if ip:
         rate_limiter.increment(ip)
@@ -358,8 +358,15 @@ def store_event(db, auth_data, req_data, decision, ip):
         inc_user = {"total_requests": 1, "requests_today": 1}
         if is_blocked:
             inc_user["total_blocked"] = 1
+        user_matches = [{"_id": user_id_str}, {"id": user_id_str}]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(user_id_str):
+                user_matches.append({"_id": ObjectId(user_id_str)})
+        except Exception:
+            pass
         db.users.update_one(
-            {"$or": [{"_id": user_id_str}, {"id": user_id_str}]},
+            {"$or": user_matches},
             {"$inc": inc_user, "$set": {"updated_at": now}}
         )
     except Exception as e:

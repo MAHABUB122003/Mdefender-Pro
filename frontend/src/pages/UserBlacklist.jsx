@@ -29,13 +29,15 @@ export default function UserBlacklist() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!isPremium) { alert('Upgrade to Premium to block IPs'); return }
     setSubmitting(true)
     try {
-      await api.addUserBlacklist(form)
+      const res = await api.addUserBlacklist(form)
       setShowModal(false)
       setForm({ ip: '', reason: '', type: 'permanent' })
       fetchBlacklist()
+      if (res?.message) {
+        alert(res.message)
+      }
     } catch (err) {
       alert(err.message || 'Failed to block IP')
     } finally {

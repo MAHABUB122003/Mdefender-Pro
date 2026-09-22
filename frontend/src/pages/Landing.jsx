@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import PublicNavbar from '../components/PublicNavbar'
 import theme from '../utils/theme'
+import copyToClipboard from '../utils/clipboard'
 
 const threatVectors = [
   {
@@ -961,9 +962,11 @@ export default function Landing() {
             }}>
               <span>Snippet Configuration</span>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(codeExamples[selectedLang])
-                  alert('Code copied to clipboard!')
+                onClick={async () => {
+                  const ok = await copyToClipboard(codeExamples[selectedLang])
+                  if (ok) {
+                    alert('Code copied to clipboard!')
+                  }
                 }}
                 style={{
                   background: 'rgba(255,255,255,0.06)',

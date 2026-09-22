@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import PublicNavbar from '../components/PublicNavbar'
+import copyToClipboard from '../utils/clipboard'
 
 const docSections = [
   {
@@ -71,10 +72,12 @@ const docSections = [
 
 function CodeBlock({ code, language = 'javascript' }) {
   const [copied, setCopied] = useState(false)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(code)
+    if (ok) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   return (

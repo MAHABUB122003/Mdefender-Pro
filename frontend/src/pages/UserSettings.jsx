@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 import PaymentModal from '../components/PaymentModal'
+import copyToClipboard from '../utils/clipboard'
 
 export default function UserSettings() {
   const navigate = useNavigate()
@@ -157,11 +158,11 @@ export default function UserSettings() {
 
   const copyApiKey = async () => {
     if (!profile?.api_key) return
-    try {
-      await navigator.clipboard.writeText(profile.api_key)
+    const ok = await copyToClipboard(profile.api_key)
+    if (ok) {
       setCopiedApiKey(true)
       setTimeout(() => setCopiedApiKey(false), 2000)
-    } catch {}
+    }
   }
 
   if (loading) return (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
+import copyToClipboard from '../utils/clipboard'
 
 export default function Clients() {
   const [websites, setWebsites] = useState([])
@@ -30,9 +31,11 @@ export default function Clients() {
     fetchWebsites()
   }, [fetchWebsites])
 
-  const copyKey = (key) => {
-    navigator.clipboard.writeText(key)
-    showToast('API Key copied to clipboard!')
+  const copyKey = async (key) => {
+    const ok = await copyToClipboard(key)
+    if (ok) {
+      showToast('API Key copied to clipboard!')
+    }
   }
 
   const handleDelete = async (website) => {

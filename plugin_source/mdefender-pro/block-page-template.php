@@ -16,11 +16,11 @@ $country_code_lower = 'bd';
 
 if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && filter_var($client_ip, FILTER_VALIDATE_IP)) {
     $transient_key = 'waf_fw_geoip_' . md5($client_ip);
-    $cached = get_transient($transient_key);
+    $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
     if ($cached !== false && is_array($cached)) {
         $geoip_info = $cached['info'] ?? '';
         $country_code_lower = $cached['code'] ?? 'bd';
-    } else {
+    } elseif (function_exists('wp_remote_get') && function_exists('is_wp_error') && function_exists('wp_remote_retrieve_body')) {
         $response = wp_remote_get("http://ip-api.com/json/{$client_ip}?fields=status,country,city,countryCode", ['timeout' => 3]);
         if (!is_wp_error($response)) {
             $data = json_decode(wp_remote_retrieve_body($response), true);
@@ -29,7 +29,10 @@ if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && 
                 $country = !empty($data['country']) ? $data['country'] : '';
                 $country_code_lower = !empty($data['countryCode']) ? strtolower($data['countryCode']) : 'bd';
                 $geoip_info = $city && $country ? " (GeoIP: {$city}, {$country})" : ($country ? " (GeoIP: {$country})" : '');
-                set_transient($transient_key, ['info' => $geoip_info, 'code' => $country_code_lower], 12 * HOUR_IN_SECONDS);
+                if (function_exists('set_transient')) {
+                    $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
+                    set_transient($transient_key, ['info' => $geoip_info, 'code' => $country_code_lower], 12 * $hour);
+                }
             }
         }
     }

@@ -12,11 +12,13 @@ class WAF_FW_Attack_Blocker {
     }
 
     public function track_attack($ip) {
-        $enabled = get_option('waf_fw_attack_blocker_enabled', 'yes');
-        if ($enabled !== 'yes') return;
-
+        if (empty($ip)) return;
         $this->increment_attempts($ip);
-        $this->auto_block_if_needed($ip);
+
+        $enabled = get_option('waf_fw_attack_blocker_enabled', 'no');
+        if ($enabled === 'yes') {
+            $this->auto_block_if_needed($ip);
+        }
     }
 
     public function get_attempts($ip) {

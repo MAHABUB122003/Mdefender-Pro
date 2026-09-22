@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api/api'
+import copyToClipboard from '../utils/clipboard'
 
 export default function Connect({ token }) {
   const [clients, setClients] = useState([])
@@ -12,13 +13,15 @@ export default function Connect({ token }) {
     api.getClients().then(d => setClients(d.clients || [])).finally(() => setLoading(false))
   }, [])
 
-  const copyCode = (id) => {
+  const copyCode = async (id) => {
     const el = document.getElementById(id)
     if (el) {
       const text = el.innerText || el.textContent
-      navigator.clipboard.writeText(text)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
+      const ok = await copyToClipboard(text)
+      if (ok) {
+        setCopiedId(id)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
     }
   }
 

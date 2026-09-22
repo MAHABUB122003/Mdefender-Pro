@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
 import userStore from '../utils/userStore'
+import copyToClipboard from '../utils/clipboard'
 
 export default function UserWebsites() {
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
@@ -293,8 +294,12 @@ export default function UserWebsites() {
               </div>
               <button 
                 onClick={async () => {
-                  await navigator.clipboard.writeText(modalKey);
-                  alert('API Key copied to clipboard!');
+                  const ok = await copyToClipboard(modalKey);
+                  if (ok) {
+                    alert('API Key copied to clipboard!');
+                  } else {
+                    alert('Could not copy automatically. Please select and copy manually.');
+                  }
                 }}
                 style={{
                   padding: '14px 18px', background: '#2563eb', color: 'white', border: 'none',

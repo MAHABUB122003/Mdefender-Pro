@@ -6,13 +6,25 @@ class IPFilter:
         self.db = MongoDB()
         self._whitelist = set()
 
-    def is_blacklisted(self, ip):
-        entry = self.db.blacklist.find_one({'ip': ip})
+    def is_blacklisted(self, ip, user_id=None):
+        if not ip:
+            return False
+        query = {'ip': ip}
+        if user_id:
+            query = {
+                'ip': ip,
+                '$or': [
+                    {'added_by_user_id': str(user_id)},
+                    {'user_id': str(user_id)},
+                    {'is_global': True}
+                ]
+            }
+        entry = self.db.blacklist.find_one(query)
         if not entry:
             return False
         expires_at = entry.get('expires_at')
         if expires_at is not None and expires_at < datetime.now():
-            self.db.blacklist.delete_one({'ip': ip})
+            self.db.blacklist.delete_one({'_id': entry['_id']})
             return False
         return True
 

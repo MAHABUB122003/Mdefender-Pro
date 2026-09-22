@@ -234,8 +234,23 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "disable_file_editing": website.get("disable_file_editing", False),
     }
 
-    # Fetch active blacklisted IPs for local firewall cache
-    blacklist_cursor = db.blacklist.find()
+    # Fetch active blacklisted IPs for local firewall cache (scoped to user)
+    user_id = str(auth_data.get("user_id") or "")
+    now = datetime.now()
+    blacklist_cursor = db.blacklist.find({
+        "$or": [
+            {"added_by_user_id": user_id},
+            {"user_id": user_id},
+        ],
+        "$and": [
+            {
+                "$or": [
+                    {"expires_at": None},
+                    {"expires_at": {"$gt": now}},
+                ]
+            }
+        ]
+    })
     blacklist = [item["ip"] for item in blacklist_cursor if "ip" in item]
 
     return success({

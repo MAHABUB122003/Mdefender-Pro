@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 
+import copyToClipboard from '../utils/clipboard'
+
 export default function UserConnect() {
   const cachedData = userStore.get('connect') || userStore.get('dashboard')
   const [data, setData] = useState(() => cachedData)
@@ -30,13 +32,15 @@ export default function UserConnect() {
 
   const websites = data?.websites || []
 
-  const copyCode = (id) => {
+  const copyCode = async (id) => {
     const el = document.getElementById(id)
     if (el) {
       const text = el.innerText || el.textContent
-      navigator.clipboard.writeText(text)
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(null), 2000)
+      const ok = await copyToClipboard(text)
+      if (ok) {
+        setCopiedId(id)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
     }
   }
 

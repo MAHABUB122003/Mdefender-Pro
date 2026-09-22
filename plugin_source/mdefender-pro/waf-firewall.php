@@ -208,9 +208,8 @@ function waf_fw_analyze_request() {
     // Prevent double analysis in a single request lifecycle
     if (!empty($GLOBALS['waf_fw_analyzed'])) return;
 
-    // Do not bypass admin unless user is an authenticated administrator
-    if (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
-        // If testing explicitly with query parameter, still allow analysis
+    // In wp-admin panel, authenticated administrators are bypassed for admin tasks unless testing with ?waf_test=1
+    if (is_admin() && function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
         if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
             return;
         }
@@ -226,7 +225,9 @@ function waf_fw_analyze_request() {
     $result = $engine->analyze_current_request();
 
     if ($result['status'] === 'blocked') {
-        WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
+        if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
+            WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
+        }
         status_header(403);
         include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
         exit;
@@ -244,7 +245,9 @@ function waf_fw_analyze_rest_request() {
 
     $result = $engine->analyze_current_request();
     if ($result['status'] === 'blocked') {
-        WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
+        if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
+            WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
+        }
         wp_send_json([
             'status' => 'blocked',
             'attack_type' => $result['attack_type'],
@@ -260,7 +263,9 @@ add_filter('rest_pre_dispatch', function ($result, $server, $request) {
     $engine = WAF_FW_Engine::instance();
     $check = $engine->analyze_current_request();
     if ($check['status'] === 'blocked') {
-        WAF_FW_Attack_Blocker::instance()->track_attack($check['ip']);
+        if (($check['attack_type'] ?? '') !== 'Blacklisted IP') {
+            WAF_FW_Attack_Blocker::instance()->track_attack($check['ip']);
+        }
         return new WP_Error('waf_blocked', 'Request blocked by WAF', ['status' => 403]);
     }
     return $result;

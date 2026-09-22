@@ -697,31 +697,56 @@ async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_to
 @app.post("/api/user/block-ip")
 async def user_block_ip(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
-    ip = data.get('ip', '')
+    ip = data.get('ip', '').strip()
     reason = data.get('reason', 'Blocked by user')
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
+    
+    user_id_str = str(user['_id'])
+    user_email = user.get('email', 'unknown')
+    
     existing = db.blacklist.find_one({'ip': ip})
     if existing:
-        return {'status': 'error', 'message': 'IP already blacklisted'}
+        db.blacklist.update_one({'_id': existing['_id']}, {'$set': {
+            'reason': reason,
+            'type': data.get('type', 'permanent'),
+            'added_by': user_email,
+            'added_by_user_id': user_id_str,
+            'blocked_at': datetime.now(),
+        }})
+        return {'status': 'success', 'message': f'{ip} has been updated in blacklist'}
+    
     db.blacklist.insert_one({
-        'ip': ip, 'reason': reason, 'type': 'permanent',
-        'added_by': user.get('email', 'unknown'),
-        'added_by_user_id': str(user['_id']),
+        'ip': ip,
+        'reason': reason,
+        'type': data.get('type', 'permanent'),
+        'added_by': user_email,
+        'added_by_user_id': user_id_str,
         'blocked_at': datetime.now(),
     })
     return {'status': 'success', 'message': f'{ip} has been blocked'}
 
 @app.get("/api/user/blacklist")
 async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
-    user_id = str(user['_id'])
+    user_id_str = str(user['_id'])
+    user_email = user.get('email', '')
+    
+    query = {
+        '$or': [
+            {'added_by_user_id': user_id_str},
+            {'added_by_user_id': user['_id']},
+            {'added_by': user_email},
+            {'user_id': user_id_str},
+        ]
+    }
+    
     blacklist = []
-    for entry in db.blacklist.find({'added_by_user_id': user_id}).sort('blocked_at', -1):
+    for entry in db.blacklist.find(query).sort('blocked_at', -1):
         blacklist.append({
             'id': str(entry['_id']),
             'ip': entry.get('ip', ''),
             'reason': entry.get('reason', ''),
-            'blocked_at': entry['blocked_at'].strftime('%Y-%m-%d %H:%M:%S') if entry.get('blocked_at') else '',
+            'blocked_at': entry['blocked_at'].strftime('%Y-%m-%d %H:%M:%S') if entry.get('blocked_at') and hasattr(entry['blocked_at'], 'strftime') else str(entry.get('blocked_at', '')),
             'type': entry.get('type', 'permanent'),
             'auto_blocked': entry.get('auto_blocked', False),
             'added_by': entry.get('added_by', ''),
@@ -734,24 +759,51 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     ip = data.get('ip', '').strip()
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
+    
+    user_id_str = str(user['_id'])
+    user_email = user.get('email', 'unknown')
+    
     existing = db.blacklist.find_one({'ip': ip})
     if existing:
-        return {'status': 'error', 'message': 'IP already blacklisted'}
+        db.blacklist.update_one({'_id': existing['_id']}, {'$set': {
+            'reason': data.get('reason', 'Blocked by user'),
+            'type': data.get('type', 'permanent'),
+            'added_by': user_email,
+            'added_by_user_id': user_id_str,
+            'blocked_at': datetime.now(),
+        }})
+        return {'status': 'success', 'message': f'IP {ip} updated in blacklist'}
+        
     db.blacklist.insert_one({
-        'ip': ip, 'reason': data.get('reason', 'Blocked by user'),
+        'ip': ip,
+        'reason': data.get('reason', 'Blocked by user'),
         'type': data.get('type', 'permanent'),
-        'added_by': user.get('email', 'unknown'),
-        'added_by_user_id': str(user['_id']),
+        'added_by': user_email,
+        'added_by_user_id': user_id_str,
         'blocked_at': datetime.now(),
     })
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully'}
 
 @app.delete("/api/user/blacklist")
 async def user_delete_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
-    ip = request.query_params.get('ip', '')
+    ip = request.query_params.get('ip', '').strip()
     if not ip:
         return {'status': 'error', 'message': 'IP is required'}
-    db.blacklist.delete_one({'ip': ip, 'added_by_user_id': str(user['_id'])})
+    
+    user_id_str = str(user['_id'])
+    user_email = user.get('email', '')
+    
+    db.blacklist.delete_many({
+        'ip': ip,
+        '$or': [
+            {'added_by_user_id': user_id_str},
+            {'added_by_user_id': user['_id']},
+            {'added_by': user_email},
+            {'user_id': user_id_str},
+            {'added_by_user_id': {'$exists': False}},
+            {'added_by_user_id': None},
+        ]
+    })
     return {'status': 'success', 'message': f'IP {ip} removed from blacklist'}
 
 @app.get("/api/user/whitelist")
