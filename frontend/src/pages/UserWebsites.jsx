@@ -71,10 +71,14 @@ export default function UserWebsites() {
     }
   }
 
-  const handleRemoveWebsite = async (id) => {
-    if (!confirm('Remove this website?')) return
+  const handleRemoveWebsite = async (w) => {
+    const targetId = (typeof w === 'object') ? (w.id || w._id || w.domain || w.name) : w
+    const domainName = (typeof w === 'object') ? (w.domain || w.name || w.url || 'this website') : w
+    if (!confirm(`Are you sure you want to remove ${domainName}?`)) return
     try {
-      await api.removeUserWebsite(id)
+      await api.removeUserWebsite(targetId)
+      userStore.remove('websites')
+      userStore.remove('dashboard')
       fetchData()
     } catch (err) {
       alert(err.message || 'Failed to remove website')
@@ -240,7 +244,7 @@ export default function UserWebsites() {
                 >
                   <i className="fas fa-key"></i> Key
                 </button>
-                <button onClick={() => handleRemoveWebsite(w.id)} style={{
+                <button onClick={() => handleRemoveWebsite(w)} style={{
                   padding: '6px 12px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca',
                   borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', gap: '4px',

@@ -72,3 +72,62 @@ class IPFilter:
 
     def get_blacklist(self):
         return list(self.db.blacklist.find().sort('blocked_at', -1))
+
+    def get_ip_country(self, ip):
+        if not ip or ip in ('127.0.0.1', 'localhost', '::1') or ip.startswith(('192.168.', '10.', '172.16.')):
+            return {'country_code': 'LOCAL', 'country_name': 'Local Network'}
+        
+        if not hasattr(self, '_geo_cache'):
+            self._geo_cache = {}
+
+        now_ts = datetime.now().timestamp()
+        if ip in self._geo_cache:
+            entry, exp = self._geo_cache[ip]
+            if now_ts < exp:
+                return entry
+
+        try:
+            import requests
+            r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,countryCode", timeout=1.5)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get('status') == 'success':
+                    val = {
+                        'country_code': (data.get('countryCode') or '').upper(),
+                        'country_name': data.get('country') or ''
+                    }
+                    self._geo_cache[ip] = (val, now_ts + 3600)
+                    return val
+        except Exception:
+            pass
+
+        return {'country_code': 'UNKNOWN', 'country_name': 'Unknown'}
+
+    def is_country_blocked(self, ip, user_id=None):
+        geo = self.get_ip_country(ip)
+        cc = geo.get('country_code', '')
+        if not cc or cc in ('LOCAL', 'UNKNOWN'):
+            return False, geo
+        
+        from bson import ObjectId
+        query = {'country_code': cc}
+        if user_id:
+            u_str = str(user_id)
+            or_conditions = [
+                {'user_id': u_str},
+                {'added_by_user_id': u_str},
+                {'is_global': True}
+            ]
+            if ObjectId.is_valid(u_str):
+                or_conditions.append({'user_id': ObjectId(u_str)})
+                or_conditions.append({'added_by_user_id': ObjectId(u_str)})
+            query['$or'] = or_conditions
+            
+        entry = self.db.country_blocks.find_one(query)
+        if entry:
+            return True, {
+                'country_code': cc,
+                'country_name': entry.get('country_name') or geo.get('country_name', cc),
+                'reason': entry.get('reason', 'Geo-blocked')
+            }
+        return False, geo

@@ -875,6 +875,60 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
     }
 
 
+@app.get("/api/user/country-blocks")
+async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)):
+    from bson import ObjectId
+    u_str = str(user['_id'])
+    query = {
+        '$or': [
+            {'user_id': u_str},
+            {'added_by_user_id': u_str},
+        ]
+    }
+    blocks = list(db.country_blocks.find(query).sort('created_at', -1))
+    for b in blocks:
+        b['_id'] = str(b['_id'])
+        if isinstance(b.get('created_at'), datetime):
+            b['created_at'] = b['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+    return {'status': 'success', 'country_blocks': blocks}
+
+
+@app.post("/api/user/country-blocks")
+async def user_add_country_block(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    code = (data.get('country_code') or '').strip().upper()
+    name = (data.get('country_name') or code).strip()
+    reason = data.get('reason', 'Geo-restricted by administrator')
+    if not code:
+        return {'status': 'error', 'message': 'Country code is required'}
+    
+    u_str = str(user['_id'])
+    existing = db.country_blocks.find_one({'country_code': code, 'user_id': u_str})
+    if existing:
+        return {'status': 'error', 'message': f'Country {name} ({code}) is already blocked'}
+    
+    doc = {
+        'user_id': u_str,
+        'added_by_user_id': u_str,
+        'country_code': code,
+        'country_name': name,
+        'reason': reason,
+        'created_at': datetime.now()
+    }
+    db.country_blocks.insert_one(doc)
+    return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully'}
+
+
+@app.delete("/api/user/country-blocks")
+async def user_delete_country_block(request: Request, user: dict = Depends(verify_user_token_compat)):
+    code = (request.query_params.get('code') or '').strip().upper()
+    if not code:
+        return {'status': 'error', 'message': 'Country code is required'}
+    u_str = str(user['_id'])
+    db.country_blocks.delete_many({'country_code': code, 'user_id': u_str})
+    return {'status': 'success', 'message': f'Country {code} unblocked successfully'}
+
+
 @app.get("/api/admin/users")
 async def admin_get_users(user: str = Depends(verify_admin_token)):
     return user_api.get_all_users()

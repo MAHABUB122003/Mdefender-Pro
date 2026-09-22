@@ -412,7 +412,10 @@ export default function UserLogs() {
 
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
                               <button onClick={() => handleBlockIp(log.ip)} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#b91c1c', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px' }}>BLOCK IP</button>
-                              <a href={`https://whois.domaintools.com/${log.ip}`} target="_blank" rel="noreferrer" className="btn-small" style={{ borderColor: '#cbd5e1', color: '#0284c7', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontSize: '11.5px' }}>RUN WHOIS</a>
+                              <Link to={`/user/tools?ip=${encodeURIComponent(log.ip)}`} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#0284c7', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px' }}>
+                                <i className="fas fa-search-location"></i>
+                                <span>RUN WHOIS</span>
+                              </Link>
                             </div>
                           </div>
                         </div>

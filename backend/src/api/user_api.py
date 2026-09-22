@@ -287,13 +287,71 @@ class UserAPI:
         return {'status': 'success', 'website': website, 'api_key': raw_key, 'message': f'{domain} added successfully'}
 
     def remove_website(self, user, website_id):
-        user_id_str = str(user['_id'])
-        result = self.db.websites.delete_one({'_id': website_id, 'user_id': user_id_str})
-        if result.deleted_count == 0:
-            return {'status': 'error', 'message': 'Website not found'}
+        if not website_id:
+            return {'status': 'error', 'message': 'Website ID is required'}
         
-        self.db.api_keys.delete_many({'website_id': website_id})
-        return {'status': 'success', 'message': 'Website removed'}
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+        
+        # Build flexible ID queries
+        target_ids = [website_id]
+        if ObjectId.is_valid(website_id):
+            target_ids.append(ObjectId(website_id))
+
+        user_cond = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
+        
+        # Find website doc
+        site_doc = self.db.websites.find_one({
+            '$and': [
+                user_cond,
+                {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]}
+            ]
+        })
+
+        if not site_doc:
+            site_doc = self.db.websites.find_one({
+                '$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}]
+            })
+
+        domain = site_doc.get('domain') if site_doc else website_id
+        actual_id = site_doc['_id'] if site_doc else website_id
+
+        # 1. Delete from websites
+        del_query = {
+            '$or': [
+                {'_id': actual_id},
+                {'_id': website_id},
+            ]
+        }
+        if ObjectId.is_valid(str(website_id)):
+            del_query['$or'].append({'_id': ObjectId(str(website_id))})
+        if domain:
+            del_query['$or'].append({'domain': domain})
+
+        self.db.websites.delete_many(del_query)
+
+        # 2. Delete from wordpress_sites
+        if domain:
+            self.db.wordpress_sites.delete_many({'domain': domain})
+        self.db.wordpress_sites.delete_many({'website_id': str(actual_id)})
+
+        # 3. Delete associated API keys
+        self.db.api_keys.delete_many({
+            '$or': [
+                {'website_id': str(actual_id)},
+                {'website_id': str(website_id)},
+                {'website_id': domain} if domain else {'website_id': None}
+            ]
+        })
+
+        # 4. Remove from user's websites array if present
+        if domain:
+            self.db.users.update_one(
+                {'_id': user['_id']},
+                {'$pull': {'websites': domain}}
+            )
+
+        return {'status': 'success', 'message': f'Website {domain or website_id} removed successfully'}
 
     def update_profile(self, user, data):
         updates = {}
@@ -357,14 +415,12 @@ class UserAPI:
         websites_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
         websites_cursor = list(self.db.websites.find(websites_query))
 
-        # Auto-discover active domains from security_events / attacks if not yet in websites table
+        # Auto-discover active domains from connected wordpress_sites if not yet in websites table
         known_domains = {w.get('domain') for w in websites_cursor if w.get('domain')}
-        event_domains = self.db.security_events.distinct('domain', {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
-        attack_domains = self.db.attacks.distinct('domain', {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
         wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         wp_domains = [wp.get('domain') for wp in wp_sites if wp.get('domain')]
         
-        all_discovered_domains = set(filter(None, event_domains + attack_domains + wp_domains))
+        all_discovered_domains = set(filter(None, wp_domains))
 
         for d in all_discovered_domains:
             if d not in ('unknown', '') and d not in known_domains:

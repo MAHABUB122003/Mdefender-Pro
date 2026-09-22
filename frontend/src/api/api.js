@@ -347,8 +347,10 @@ export const api = {
   toggleDdos: (enabled) => apiCall('/api/user/ddos-toggle', { method: 'POST', body: JSON.stringify({ enabled }) }),
   getNotices: () => apiCall('/api/notices'),
   addNotice: (content) => apiCall('/api/notices', { method: 'POST', body: JSON.stringify({ content }) }),
-  deleteNotice: (id) => apiCall(`/api/notices?id=${id}`, { method: 'DELETE' }),
   whoisLookup: (ip) => apiCall(`/api/user/whois?ip=${encodeURIComponent(ip)}`),
+  getUserCountryBlocks: () => apiCall('/api/user/country-blocks'),
+  addUserCountryBlock: (data) => apiCall('/api/user/country-blocks', { method: 'POST', body: JSON.stringify(data) }),
+  removeUserCountryBlock: (code) => apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}`, { method: 'DELETE' }),
 }
 
 export default api

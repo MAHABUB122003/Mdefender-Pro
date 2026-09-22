@@ -185,6 +185,45 @@ class WAFAPI:
         is_blacklisted = self.attack_blocker.is_blacklisted(ip)
         is_rate_limited = self.rate_limiter.is_rate_limited(ip)
 
+        # Check Geo / Country Blocking
+        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id)
+        if is_geo_blocked and not is_whitelisted:
+            c_name = geo_info.get('country_name', 'Unknown Country')
+            c_code = geo_info.get('country_code', '')
+            log_entry = {
+                'ip': ip,
+                'url': url,
+                'attack_type': 'Country Block (Geo-Restriction)',
+                'status': 'blocked',
+                'confidence': 1.0,
+                'timestamp': datetime.now(),
+                'details': {
+                    'reason': f"Access restricted from {c_name} ({c_code})",
+                    'country_code': c_code,
+                    'country_name': c_name,
+                    'geo_block': True
+                },
+                'user_id': user_id or '',
+                'domain': domain or '',
+                'website_id': website_id or '',
+                'detection_source': 'geo_filter',
+            }
+            try:
+                self.db.attacks.insert_one(log_entry)
+                if website_id:
+                    self.db.waf_events.insert_one(log_entry.copy())
+            except Exception:
+                pass
+            return {
+                'decision': 'BLOCK',
+                'confidence': 1.0,
+                'reason': f"Access restricted from {c_name} ({c_code})",
+                'attack_type': 'Country Block',
+                'risk_score': 100,
+                'risk_level': 'critical',
+                'status': 'blocked'
+            }
+
         if is_rate_limited:
             self.attack_blocker.auto_block(ip, 'Rate limit exceeded', 1)
 
