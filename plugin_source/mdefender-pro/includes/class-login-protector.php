@@ -110,82 +110,147 @@ class WAF_FW_Login_Protector {
 <html <?php language_attributes(); ?>>
 <head>
     <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 Not Found &ndash; <?php echo esc_html($site_name); ?></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Page not found &#8211; <?php echo esc_html($site_name); ?></title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #0f172a;
-            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background-color: #ffffff;
+            color: #1a1a1a;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .wp-site-header {
+            padding: 24px 40px;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 24px;
+            justify-content: space-between;
         }
-        .card {
-            max-width: 480px;
-            width: 100%;
-            background: #1e293b;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 44px 32px;
-            text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-        .code {
-            font-size: 76px;
-            font-weight: 900;
-            line-height: 1;
-            letter-spacing: -2px;
-            background: linear-gradient(135deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 12px;
-        }
-        h1 {
-            font-size: 22px;
+        .wp-site-title {
+            font-size: 1.25rem;
             font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 10px;
+            color: #0f172a;
+            text-decoration: none;
+            letter-spacing: -0.01em;
         }
-        p {
-            font-size: 14.5px;
-            color: #94a3b8;
-            line-height: 1.6;
+        .wp-site-title:hover {
+            color: #2563eb;
+        }
+        .wp-main-content {
+            flex: 1;
+            max-width: 720px;
+            width: 100%;
+            margin: 70px auto;
+            padding: 0 24px;
+            text-align: left;
+        }
+        .wp-error-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+        .wp-error-desc {
+            font-size: 1.125rem;
+            color: #475569;
             margin-bottom: 28px;
+            line-height: 1.7;
         }
-        .btn {
+        .wp-search-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 36px;
+            max-width: 520px;
+        }
+        .wp-search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .wp-search-input:focus {
+            border-color: #0f172a;
+            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
+        }
+        .wp-search-btn {
+            padding: 12px 24px;
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .wp-search-btn:hover {
+            background: #334155;
+        }
+        .wp-back-home {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
-            color: #ffffff;
+            gap: 6px;
+            color: #2563eb;
             text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 14px;
             font-weight: 600;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+            font-size: 1rem;
         }
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
-            color: #ffffff;
+        .wp-back-home:hover {
+            text-decoration: underline;
+        }
+        .wp-site-footer {
+            padding: 24px 40px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            text-align: center;
+        }
+        .wp-site-footer a {
+            color: #64748b;
+            text-decoration: none;
+        }
+        .wp-site-footer a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
-<body>
-    <div class="card">
-        <div class="code">404</div>
-        <h1>Page Not Found</h1>
-        <p>The page you requested could not be found. It may have been moved or removed.</p>
-        <a href="<?php echo esc_url($home_url); ?>" class="btn">
-            &larr; Return to Homepage
-        </a>
-    </div>
+<body class="error404 wp-theme-default">
+    <header class="wp-site-header">
+        <a href="<?php echo esc_url($home_url); ?>" class="wp-site-title"><?php echo esc_html($site_name); ?></a>
+    </header>
+
+    <main class="wp-main-content">
+        <h1 class="wp-error-title">Page not found</h1>
+        <p class="wp-error-desc">Oops! That page can&rsquo;t be found. It looks like nothing was found at this location. Maybe try a search?</p>
+
+        <form role="search" method="get" class="wp-search-form" action="<?php echo esc_url($home_url); ?>">
+            <input type="search" class="wp-search-input" placeholder="Search..." name="s" value="" required>
+            <button type="submit" class="wp-search-btn">Search</button>
+        </form>
+
+        <p>
+            <a href="<?php echo esc_url($home_url); ?>" class="wp-back-home">&larr; Return to Homepage</a>
+        </p>
+    </main>
+
+    <footer class="wp-site-footer">
+        <p>&copy; <?php echo date('Y'); ?> <a href="<?php echo esc_url($home_url); ?>"><?php echo esc_html($site_name); ?></a>. All rights reserved.</p>
+    </footer>
 </body>
 </html>
         <?php
