@@ -243,23 +243,44 @@ class UserAPI:
         if not domain:
             return {'status': 'error', 'message': 'Domain is required'}
 
-        user_id_str = str(user['_id'])
-        plan = user.get('plan', 'free')
-        max_sites = 1 if plan == 'free' else 10
+        # Normalize domain: remove protocol, www/trailing slashes, and lowercase
+        domain = re.sub(r'^https?:\/\/', '', domain, flags=re.IGNORECASE).strip('/')
+        if not domain:
+            return {'status': 'error', 'message': 'Invalid domain format'}
 
-        current_websites_count = self.db.websites.count_documents({'user_id': user_id_str})
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+        plan = user.get('plan', 'free')
+        max_sites = 1 if plan == 'free' else 100
+
+        current_websites_count = self.db.websites.count_documents({
+            '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
+        })
 
         if current_websites_count >= max_sites:
-            return {'status': 'error', 'message': f'Your {plan} plan allows up to {max_sites} website(s). Upgrade for more.'}
+            return {'status': 'error', 'message': f'Your {plan} plan allows up to {max_sites} website(s). Upgrade to Premium to connect more domains.'}
 
-        if self.db.websites.find_one({'domain': domain}):
-            return {'status': 'error', 'message': 'Domain already registered'}
+        # Check if already added by this user
+        existing_site = self.db.websites.find_one({
+            '$and': [
+                {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
+                {'$or': [{'domain': domain}, {'url': domain}, {'name': domain}]}
+            ]
+        })
+        if existing_site:
+            return {'status': 'error', 'message': f'Domain "{domain}" is already connected to your account.'}
 
-        website_id = str(uuid.uuid4())
+        orphan_site = self.db.websites.find_one({
+            '$or': [{'domain': domain}, {'url': domain}]
+        })
+
+        website_id = str(orphan_site['_id']) if orphan_site else str(uuid.uuid4())
         website = {
             '_id': website_id,
             'user_id': user_id_str,
             'domain': domain,
+            'name': domain,
+            'url': domain,
             'platform': platform,
             'origin_server': origin,
             'status': 'active',
@@ -270,21 +291,37 @@ class UserAPI:
             'malware_scanner': 'active',
             'threat_level': 'LOW',
         }
-        self.db.websites.insert_one(website)
 
-        # Generate scoped API Key
-        raw_key = generate_api_key()
+        if orphan_site:
+            self.db.websites.update_one({'_id': orphan_site['_id']}, {'$set': website})
+        else:
+            self.db.websites.insert_one(website)
+
+        self.db.users.update_one(
+            {'_id': user['_id']},
+            {'$addToSet': {'websites': domain}}
+        )
+
+        # Generate scoped API Key or reuse user master key
+        raw_key = user.get('api_key') or generate_api_key()
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         
-        self.db.api_keys.insert_one({
-            'website_id': website_id,
-            'user_id': user_id_str,
-            'key_hash': key_hash,
-            'created_at': datetime.now(),
-            'status': 'active'
-        })
+        self.db.api_keys.update_one(
+            {'website_id': website_id},
+            {'$set': {
+                'website_id': website_id,
+                'user_id': user_id_str,
+                'key_hash': key_hash,
+                'created_at': datetime.now(),
+                'status': 'active'
+            }},
+            upsert=True
+        )
 
-        return {'status': 'success', 'website': website, 'api_key': raw_key, 'message': f'{domain} added successfully'}
+        website_out = dict(website)
+        website_out['id'] = website_id
+
+        return {'status': 'success', 'website': website_out, 'api_key': raw_key, 'message': f'{domain} connected successfully'}
 
     def remove_website(self, user, website_id):
         if not website_id:

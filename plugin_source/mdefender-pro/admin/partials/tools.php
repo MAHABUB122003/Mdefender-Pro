@@ -121,7 +121,7 @@ if (isset($_POST['waf_save_custom_login_url'])) {
                     </div>
                 </div>
                 <span class="waf-badge <?php echo $enabled_2fa ? 'waf-badge-pass' : 'waf-badge-warn'; ?>" style="font-size:12px;padding:6px 14px;">
-                    <?php echo $enabled_2fa ? '2FA ACTIVE ✅' : '2FA DISABLED ⚠️'; ?>
+                    <?php echo $enabled_2fa ? '2FA ACTIVE' : '2FA DISABLED'; ?>
                 </span>
             </div>
 
@@ -183,7 +183,7 @@ if (isset($_POST['waf_save_custom_login_url'])) {
 
         <div>
             <div class="war-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.03);margin-bottom:20px;">
-                <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;">🔑 Recovery Backup Codes</h4>
+                <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-admin-network" style="font-size:16px;width:16px;height:16px;"></span> Recovery Backup Codes</h4>
                 <p style="font-size:12px;color:#64748b;margin:0 0 10px;">Use these single-use codes if you lose access to your phone:</p>
                 <div style="background:#0f172a;color:#cbd5e1;padding:12px;border-radius:8px;font-family:monospace;font-size:12px;line-height:1.6;">
                     <?php if (!empty($recovery_codes)): ?>
@@ -214,7 +214,7 @@ if (isset($_POST['waf_save_custom_login_url'])) {
                 </div>
             </div>
             <span class="waf-badge <?php echo !empty($custom_login_slug) ? 'waf-badge-pass' : 'waf-badge-warn'; ?>" style="font-size:12px;padding:6px 14px;">
-                <?php echo !empty($custom_login_slug) ? 'LOGIN URL HIDDEN ✅' : 'DEFAULT LOGIN ACTIVE ⚠️'; ?>
+                <?php echo !empty($custom_login_slug) ? 'LOGIN URL HIDDEN' : 'DEFAULT LOGIN ACTIVE'; ?>
             </span>
         </div>
 
@@ -315,7 +315,7 @@ if (isset($_POST['waf_save_custom_login_url'])) {
     <div class="war-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.03);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <div>
-                <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">⚡ Live Admin Panel Attack Stream</h3>
+                <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-shield" style="font-size:18px;width:18px;height:18px;"></span> Live Admin Panel Attack Stream</h3>
                 <p style="margin:2px 0 0;font-size:12px;color:#64748b;">Real-time stream of incoming login attempts, brute-force probes, and /wp-admin/ access requests.</p>
             </div>
             <button type="button" class="button button-small" id="wafRefreshAttacksBtn">Refresh Stream</button>
@@ -345,7 +345,7 @@ if (isset($_POST['waf_save_custom_login_url'])) {
 <div id="waf-tools-diagnostics" class="war-tools-section" style="<?php echo $active_tab !== 'diagnostics' ? 'display:none;' : ''; ?>">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <div>
-            <h3 style="margin:0;font-size:18px;font-weight:800;color:#0f172a;">🛠️ System Environment Diagnostics Report</h3>
+            <h3 style="margin:0;font-size:18px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-admin-tools" style="font-size:20px;width:20px;height:20px;"></span> System Environment Diagnostics Report</h3>
             <p style="margin:2px 0 0;font-size:13px;color:#64748b;">Complete Wordfence-style environment audit including plugins, theme, PHP extensions, permissions, and database table health.</p>
         </div>
         <button type="button" class="button" id="wafReloadDiagBtn">Refresh Audit Report</button>
@@ -400,8 +400,8 @@ if (isset($_POST['waf_save_custom_login_url'])) {
 
         <div style="background:#f8fafc;padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
             <div style="display:flex;gap:10px;">
-                <button type="button" id="wafAttackModalBlockBtn" class="button" style="background:#ef4444;color:#fff;border-color:#dc2626;font-weight:700;font-size:12px;">🚫 Blacklist IP</button>
-                <button type="button" id="wafAttackModalWhitelistBtn" class="button" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;font-size:12px;">🛡️ Whitelist IP</button>
+                <button type="button" id="wafAttackModalBlockBtn" class="button" style="background:#ef4444;color:#fff;border-color:#dc2626;font-weight:700;font-size:12px;">Blacklist IP</button>
+                <button type="button" id="wafAttackModalWhitelistBtn" class="button" style="background:#10b981;color:#fff;border-color:#059669;font-weight:700;font-size:12px;">Whitelist IP</button>
             </div>
             <button type="button" class="button" onclick="wafCloseAdminAttackModal()">Close</button>
         </div>
@@ -452,7 +452,7 @@ jQuery(document).ready(function($) {
     $('#wafCopySecretBtnTools').on('click', function() {
         var secret = $('#waf2faSecretTxtTools').val();
         navigator.clipboard.writeText(secret).then(function() {
-            $('#wafCopySecretBtnTools').text('Copied! ✅');
+            $('#wafCopySecretBtnTools').text('Copied');
             setTimeout(function() { $('#wafCopySecretBtnTools').text('Copy'); }, 1500);
         });
     });
@@ -460,7 +460,7 @@ jQuery(document).ready(function($) {
     $('#wafCopyLoginUrlBtn').on('click', function() {
         var url = $('#wafSecretFullUrl').text();
         navigator.clipboard.writeText(url).then(function() {
-            $('#wafCopyLoginUrlBtn').text('Copied! ✅');
+            $('#wafCopyLoginUrlBtn').text('Copied');
             setTimeout(function() { $('#wafCopyLoginUrlBtn').text('Copy Link'); }, 1500);
         });
     });
@@ -571,7 +571,7 @@ jQuery(document).ready(function($) {
 
                 // Section 2: Installed Plugins Audit
                 html += '<div class="war-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.03);">';
-                html += '<h4 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#0f172a;">🔌 Installed Plugins Audit</h4>';
+                html += '<h4 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-admin-plugins" style="font-size:18px;width:18px;height:18px;"></span> Installed Plugins Audit</h4>';
                 html += '<table class="wp-list-table widefat fixed striped" style="border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">';
                 html += '<thead><tr style="background:#f8fafc;"><th>Plugin Name</th><th style="width:100px;">Version</th><th style="width:100px;">Status</th><th>Author</th></tr></thead><tbody>';
                 if (d.plugins && d.plugins.length > 0) {
@@ -586,12 +586,12 @@ jQuery(document).ready(function($) {
 
                 // Section 3: File System Permissions Audit
                 html += '<div class="war-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.03);">';
-                html += '<h4 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#0f172a;">📁 File System Permissions Audit</h4>';
+                html += '<h4 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-media-document" style="font-size:18px;width:18px;height:18px;"></span> File System Permissions Audit</h4>';
                 html += '<table class="wp-list-table widefat fixed striped" style="border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">';
                 html += '<thead><tr style="background:#f8fafc;"><th>Directory / File</th><th style="width:120px;">Octal Perms</th><th style="width:120px;">Writable</th></tr></thead><tbody>';
                 if (d.permissions) {
                     $.each(d.permissions, function(pathLabel, pInfo) {
-                        var wBadge = pInfo.writable ? '<span class="waf-badge waf-badge-pass">Writable ✅</span>' : '<span class="waf-badge waf-badge-fail">Read Only 🔒</span>';
+                        var wBadge = pInfo.writable ? '<span class="waf-badge waf-badge-pass">Writable</span>' : '<span class="waf-badge waf-badge-fail">Read Only</span>';
                         html += '<tr><td><code>' + pathLabel + '</code></td><td><code>' + pInfo.perms + '</code></td><td>' + wBadge + '</td></tr>';
                     });
                 }

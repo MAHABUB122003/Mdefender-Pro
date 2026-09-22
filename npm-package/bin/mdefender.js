@@ -9,7 +9,7 @@ const args = process.argv.slice(2);
 const command = args[0] || 'help';
 
 console.log(`\n\x1b[36m\x1b[1m====================================================\x1b[0m`);
-console.log(`\x1b[36m\x1b[1m       🛡️  MDefender Pro — Zero-Code WAF CLI       \x1b[0m`);
+console.log(`\x1b[36m\x1b[1m          MDefender Pro — Zero-Code WAF CLI         \x1b[0m`);
 console.log(`\x1b[36m\x1b[1m====================================================\x1b[0m\n`);
 
 if (command === 'run' || command === 'start') {

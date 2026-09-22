@@ -2,89 +2,89 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../api/api'
 
-// Comprehensive standard country list with flags & ISO-2 codes
+// Comprehensive standard country list with ISO-2 codes
 const ALL_COUNTRIES = [
-  { code: 'AF', name: 'Afghanistan', flag: '🇦🇫' },
-  { code: 'AL', name: 'Albania', flag: '🇦🇱' },
-  { code: 'DZ', name: 'Algeria', flag: '🇩🇿' },
-  { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
-  { code: 'AM', name: 'Armenia', flag: '🇦🇲' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { code: 'AT', name: 'Austria', flag: '🇦🇹' },
-  { code: 'AZ', name: 'Azerbaijan', flag: '🇦🇿' },
-  { code: 'BD', name: 'Bangladesh', flag: '🇧🇩' },
-  { code: 'BY', name: 'Belarus', flag: '🇧🇾' },
-  { code: 'BE', name: 'Belgium', flag: '🇧🇪' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'BG', name: 'Bulgaria', flag: '🇧🇬' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { code: 'CL', name: 'Chile', flag: '🇨🇱' },
-  { code: 'CN', name: 'China', flag: '🇨🇳' },
-  { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
-  { code: 'CU', name: 'Cuba', flag: '🇨🇺' },
-  { code: 'CY', name: 'Cyprus', flag: '🇨🇾' },
-  { code: 'CZ', name: 'Czech Republic', flag: '🇨🇿' },
-  { code: 'DK', name: 'Denmark', flag: '🇩🇰' },
-  { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
-  { code: 'EE', name: 'Estonia', flag: '🇪🇪' },
-  { code: 'FI', name: 'Finland', flag: '🇫🇮' },
-  { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'GE', name: 'Georgia', flag: '🇬🇪' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { code: 'GR', name: 'Greece', flag: '🇬🇷' },
-  { code: 'HK', name: 'Hong Kong', flag: '🇭🇰' },
-  { code: 'HU', name: 'Hungary', flag: '🇭🇺' },
-  { code: 'IN', name: 'India', flag: '🇮🇳' },
-  { code: 'ID', name: 'Indonesia', flag: '🇮🇩' },
-  { code: 'IR', name: 'Iran', flag: '🇮🇷' },
-  { code: 'IQ', name: 'Iraq', flag: '🇮🇶' },
-  { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
-  { code: 'IL', name: 'Israel', flag: '🇮🇱' },
-  { code: 'IT', name: 'Italy', flag: '🇮🇹' },
-  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  { code: 'KZ', name: 'Kazakhstan', flag: '🇰🇿' },
-  { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
-  { code: 'KP', name: 'North Korea', flag: '🇰🇵' },
-  { code: 'KR', name: 'South Korea', flag: '🇰🇷' },
-  { code: 'KW', name: 'Kuwait', flag: '🇰🇼' },
-  { code: 'LV', name: 'Latvia', flag: '🇱🇻' },
-  { code: 'LB', name: 'Lebanon', flag: '🇱🇧' },
-  { code: 'LT', name: 'Lithuania', flag: '🇱🇹' },
-  { code: 'MY', name: 'Malaysia', flag: '🇲🇾' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽' },
-  { code: 'MD', name: 'Moldova', flag: '🇲🇩' },
-  { code: 'MA', name: 'Morocco', flag: '🇲🇦' },
-  { code: 'MM', name: 'Myanmar', flag: '🇲🇲' },
-  { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
-  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
-  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
-  { code: 'NO', name: 'Norway', flag: '🇳🇴' },
-  { code: 'PK', name: 'Pakistan', flag: '🇵🇰' },
-  { code: 'PS', name: 'Palestine', flag: '🇵🇸' },
-  { code: 'PH', name: 'Philippines', flag: '🇵🇭' },
-  { code: 'PL', name: 'Poland', flag: '🇵🇱' },
-  { code: 'PT', name: 'Portugal', flag: '🇵🇹' },
-  { code: 'QA', name: 'Qatar', flag: '🇶🇦' },
-  { code: 'RO', name: 'Romania', flag: '🇷🇴' },
-  { code: 'RU', name: 'Russia', flag: '🇷🇺' },
-  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦' },
-  { code: 'RS', name: 'Serbia', flag: '🇷🇸' },
-  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
-  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸' },
-  { code: 'LK', name: 'Sri Lanka', flag: '🇱🇰' },
-  { code: 'SE', name: 'Sweden', flag: '🇸🇪' },
-  { code: 'CH', name: 'Switzerland', flag: '🇨🇭' },
-  { code: 'SY', name: 'Syria', flag: '🇸🇾' },
-  { code: 'TW', name: 'Taiwan', flag: '🇹🇼' },
-  { code: 'TH', name: 'Thailand', flag: '🇹🇭' },
-  { code: 'TR', name: 'Turkey', flag: '🇹🇷' },
-  { code: 'UA', name: 'Ukraine', flag: '🇺🇦' },
-  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'VN', name: 'Vietnam', flag: '🇻🇳' },
-  { code: 'YE', name: 'Yemen', flag: '🇾🇪' },
+  { code: 'AF', name: 'Afghanistan' },
+  { code: 'AL', name: 'Albania' },
+  { code: 'DZ', name: 'Algeria' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'AM', name: 'Armenia' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'AZ', name: 'Azerbaijan' },
+  { code: 'BD', name: 'Bangladesh' },
+  { code: 'BY', name: 'Belarus' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'CN', name: 'China' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'CU', name: 'Cuba' },
+  { code: 'CY', name: 'Cyprus' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'GE', name: 'Georgia' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'HK', name: 'Hong Kong' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'IN', name: 'India' },
+  { code: 'ID', name: 'Indonesia' },
+  { code: 'IR', name: 'Iran' },
+  { code: 'IQ', name: 'Iraq' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'KZ', name: 'Kazakhstan' },
+  { code: 'KE', name: 'Kenya' },
+  { code: 'KP', name: 'North Korea' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'KW', name: 'Kuwait' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LB', name: 'Lebanon' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'MD', name: 'Moldova' },
+  { code: 'MA', name: 'Morocco' },
+  { code: 'MM', name: 'Myanmar' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'NG', name: 'Nigeria' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'PK', name: 'Pakistan' },
+  { code: 'PS', name: 'Palestine' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'QA', name: 'Qatar' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'RS', name: 'Serbia' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'LK', name: 'Sri Lanka' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'SY', name: 'Syria' },
+  { code: 'TW', name: 'Taiwan' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'UA', name: 'Ukraine' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'US', name: 'United States' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'YE', name: 'Yemen' },
 ]
 
 export default function UserTools() {
@@ -243,11 +243,11 @@ Report Generated: ${new Date().toISOString()}`
     try {
       const res = await api.addUserCountryBlock({
         country_code: targetObj.code,
-        country_name: `${targetObj.flag} ${targetObj.name}`,
+        country_name: targetObj.name,
         reason: blockReason || 'Geo-restricted by admin'
       })
       if (res?.status === 'success') {
-        setGeoSuccessMsg(`✅ ${targetObj.flag} ${targetObj.name} (${targetObj.code}) is now BLOCKED. All visitors from this country will see a 403 Block Page.`)
+        setGeoSuccessMsg(`${targetObj.name} (${targetObj.code}) is now blocked. All visitors from this country will receive a 403 Forbidden page.`)
         fetchCountryBlocks()
       } else {
         setGeoErrorMsg(res?.message || 'Failed to block country.')
@@ -441,7 +441,7 @@ Report Generated: ${new Date().toISOString()}`
               }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '18px' }}>{threatScore >= 50 ? '⚠️' : '🛡️'}</span>
+                    <i className={`fas ${threatScore >= 50 ? 'fa-triangle-exclamation' : 'fa-shield-halved'}`} style={{ fontSize: '18px', color: threatScoreColor }}></i>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: threatScoreColor }}>
                       Threat Assessment: {threat.level || 'Normal'}
                     </h3>
@@ -621,7 +621,7 @@ Report Generated: ${new Date().toISOString()}`
                             <td style={{ padding: '10px' }}><span style={{ color: '#dc2626', fontWeight: 700 }}>{att.attack_type}</span></td>
                             <td style={{ padding: '10px' }}>
                               <span className={`badge ${att.status === 'blocked' ? 'danger' : 'success'}`} style={{ fontSize: '11px' }}>
-                                {att.status === 'blocked' ? '⛔ BLOCKED (403)' : 'PASSED'}
+                                {att.status === 'blocked' ? 'BLOCKED (403)' : 'PASSED'}
                               </span>
                             </td>
                           </tr>
@@ -631,7 +631,8 @@ Report Generated: ${new Date().toISOString()}`
                   </div>
                 ) : (
                   <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', fontSize: '13px', color: '#64748b', textAlign: 'center' }}>
-                    🛡️ Clean Record: This IP has not triggered any logged attack payloads against your connected websites.
+                    <i className="fas fa-shield-halved" style={{ color: '#10b981', marginRight: '8px' }}></i>
+                    Clean Record: This IP has not triggered any logged attack payloads against your connected websites.
                   </div>
                 )}
               </div>
@@ -726,7 +727,7 @@ Report Generated: ${new Date().toISOString()}`
                 >
                   {ALL_COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code} disabled={blockedCodesSet.has(c.code)}>
-                      {c.flag} {c.name} ({c.code}) {blockedCodesSet.has(c.code) ? '— [ALREADY BLOCKED]' : ''}
+                      {c.name} ({c.code}) {blockedCodesSet.has(c.code) ? '— [ALREADY BLOCKED]' : ''}
                     </option>
                   ))}
                 </select>
@@ -774,12 +775,12 @@ Report Generated: ${new Date().toISOString()}`
             <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Quick Select:</span>
               {[
-                { code: 'CN', name: 'China', flag: '🇨🇳' },
-                { code: 'RU', name: 'Russia', flag: '🇷🇺' },
-                { code: 'IR', name: 'Iran', flag: '🇮🇷' },
-                { code: 'KP', name: 'North Korea', flag: '🇰🇵' },
-                { code: 'SY', name: 'Syria', flag: '🇸🇾' },
-                { code: 'VN', name: 'Vietnam', flag: '🇻🇳' },
+                { code: 'CN', name: 'China' },
+                { code: 'RU', name: 'Russia' },
+                { code: 'IR', name: 'Iran' },
+                { code: 'KP', name: 'North Korea' },
+                { code: 'SY', name: 'Syria' },
+                { code: 'VN', name: 'Vietnam' },
               ].map((preset) => (
                 <button
                   key={preset.code}
@@ -789,10 +790,12 @@ Report Generated: ${new Date().toISOString()}`
                     background: selectedCountry === preset.code ? '#fee2e2' : 'var(--chip-bg, #f1f5f9)',
                     border: selectedCountry === preset.code ? '1px solid #f87171' : '1px solid var(--chip-border, #e2e8f0)',
                     color: selectedCountry === preset.code ? '#b91c1c' : 'var(--text-main, #334155)',
-                    fontSize: '12px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600
+                    fontSize: '12px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
+                    display: 'inline-flex', alignItems: 'center', gap: '5px'
                   }}
                 >
-                  {preset.flag} {preset.name} ({preset.code})
+                  <i className="fas fa-globe" style={{ fontSize: '11px', opacity: 0.7 }}></i>
+                  <span>{preset.name} ({preset.code})</span>
                 </button>
               ))}
             </div>
@@ -848,13 +851,12 @@ Report Generated: ${new Date().toISOString()}`
                   <tbody>
                     {countryBlocks.map((block) => {
                       const cObj = ALL_COUNTRIES.find(c => c.code === block.country_code)
-                      const flag = cObj ? cObj.flag : '🌐'
-                      const name = block.country_name || (cObj ? cObj.name : block.country_code)
+                      const name = (block.country_name || (cObj ? cObj.name : block.country_code)).replace(/[\U00010000-\U0010ffff\u2600-\u27bf]/g, '').trim()
 
                       return (
                         <tr key={block._id || block.country_code} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
                           <td style={{ padding: '14px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                            <span style={{ fontSize: '18px', marginRight: '8px' }}>{flag}</span>
+                            <i className="fas fa-globe" style={{ marginRight: '8px', color: '#64748b' }}></i>
                             <span>{name}</span>
                           </td>
                           <td style={{ padding: '14px' }}>
@@ -864,7 +866,7 @@ Report Generated: ${new Date().toISOString()}`
                           </td>
                           <td style={{ padding: '14px' }}>
                             <span className="badge danger" style={{ fontSize: '11px', padding: '3px 8px' }}>
-                              ⛔ 403 FORBIDDEN
+                              403 FORBIDDEN
                             </span>
                           </td>
                           <td style={{ padding: '14px', color: '#64748b' }}>

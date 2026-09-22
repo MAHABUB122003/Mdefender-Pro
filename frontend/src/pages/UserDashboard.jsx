@@ -262,10 +262,10 @@ export default function UserDashboard() {
                 padding: '3px 0',
               }}
             >
-              <option value="all">🌐 All Websites ({data?.websites?.length || 0})</option>
+              <option value="all">All Websites ({data?.websites?.length || 0})</option>
               {data?.websites?.map((w) => (
                 <option key={w.id} value={w.id}>
-                  🛡️ {w.domain || w.name || w.id}
+                  {w.domain || w.name || w.id}
                 </option>
               ))}
             </select>
@@ -306,7 +306,7 @@ export default function UserDashboard() {
               }}
             >
               <i className={`fas fa-rotate ${refreshing ? 'fa-spin' : ''}`}></i>
-              {refreshing ? 'Refreshing...' : '⚡ Quick Refresh'}
+              {refreshing ? 'Refreshing...' : 'Quick Refresh'}
             </button>
           </div>
 

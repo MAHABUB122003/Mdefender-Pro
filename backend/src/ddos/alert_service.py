@@ -118,7 +118,7 @@ class AlertService:
         if alerts.telegram_enabled and alerts.telegram_bot_token and alerts.telegram_chat_id:
             try:
                 telegram_msg = (
-                    f"🚨 *MDefender Alert*\n\n"
+                    f"*[MDefender Security Alert]*\n\n"
                     f"*Type:* `{alert_type}`\n"
                     f"*Severity:* `{severity}`\n"
                     f"*Message:* {message}"

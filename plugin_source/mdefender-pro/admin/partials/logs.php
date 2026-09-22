@@ -337,7 +337,7 @@ $logs = $logger->get_logs($_GET);
                     <?php else: ?>
                         <tr>
                             <td colspan="8" style="text-align:center;padding:36px;color:#64748b;">
-                                <div style="font-size:32px;margin-bottom:8px;">🛡️</div>
+                                <div style="margin-bottom:8px;color:#94a3b8;"><span class="dashicons dashicons-shield-alt" style="font-size:36px;width:36px;height:36px;"></span></div>
                                 <p style="font-size:14px;font-weight:600;margin:0;">No attack logs found</p>
                                 <p style="font-size:12px;color:#94a3b8;margin:4px 0 0;">All incoming requests are currently clean or matching filters.</p>
                             </td>

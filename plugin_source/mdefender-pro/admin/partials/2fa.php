@@ -70,7 +70,7 @@ if (isset($_POST['waf_save_2fa'])) {
                 </div>
             </div>
             <span class="waf-badge <?php echo $enabled ? 'waf-badge-pass' : 'waf-badge-warn'; ?>" style="font-size:12px;padding:6px 14px;">
-                <?php echo $enabled ? '2FA ACTIVE ✅' : '2FA DISABLED ⚠️'; ?>
+                <?php echo $enabled ? '2FA ACTIVE' : '2FA DISABLED'; ?>
             </span>
         </div>
 
@@ -133,7 +133,7 @@ if (isset($_POST['waf_save_2fa'])) {
     <!-- Quick Info Sidebar & Recovery Codes -->
     <div>
         <div class="war-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.03);margin-bottom:20px;">
-            <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;">🔑 Recovery Backup Codes</h4>
+            <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-admin-network" style="font-size:16px;width:16px;height:16px;"></span> Recovery Backup Codes</h4>
             <p style="font-size:12px;color:#64748b;margin:0 0 10px;">Use these single-use codes if you lose access to your phone:</p>
             <div style="background:#0f172a;color:#cbd5e1;padding:12px;border-radius:8px;font-family:monospace;font-size:12px;line-height:1.6;text-align:center;">
                 <?php if (!empty($recovery_codes)): ?>
@@ -147,7 +147,7 @@ if (isset($_POST['waf_save_2fa'])) {
         </div>
 
         <div class="war-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.03);margin-bottom:20px;">
-            <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;">📱 Supported Apps</h4>
+            <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-smartphone" style="font-size:16px;width:16px;height:16px;"></span> Supported Apps</h4>
             <ul style="margin:0;padding-left:18px;font-size:12.5px;color:#475569;line-height:1.6;">
                 <li>Google Authenticator</li>
                 <li>Authy by Twilio</li>
@@ -157,7 +157,7 @@ if (isset($_POST['waf_save_2fa'])) {
         </div>
 
         <div class="war-card" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:20px;">
-            <h4 style="margin:0 0 8px;font-size:14px;font-weight:700;color:#0f172a;">🛡️ Emergency Access</h4>
+            <h4 style="margin:0 0 8px;font-size:14px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px;"><span class="dashicons dashicons-shield-alt" style="font-size:16px;width:16px;height:16px;"></span> Emergency Access</h4>
             <p style="font-size:12px;color:#64748b;margin:0;line-height:1.5;">If you ever lose your phone or 2FA app, administrators can disable 2FA for your account using WP-CLI or by clearing the <code>_waf_2fa_enabled</code> user meta in your database.</p>
         </div>
     </div>
@@ -168,7 +168,7 @@ jQuery(document).ready(function($) {
     $('#wafCopySecretBtn').on('click', function() {
         var secret = $('#waf2faSecretTxt').val();
         navigator.clipboard.writeText(secret).then(function() {
-            $('#wafCopySecretBtn').text('Copied! ✅');
+            $('#wafCopySecretBtn').text('Copied');
             setTimeout(function() {
                 $('#wafCopySecretBtn').text('Copy');
             }, 1500);

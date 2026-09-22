@@ -43,9 +43,9 @@ app = FastAPI(title="MDefender Pro", version="2.0.0")
 async def startup_event():
     port = os.getenv('PORT', '8000')
     print("\n" + "="*45)
-    print("🔒 MDefender Pro Backend Server Ready & Connected")
-    print(f"🔗 API Endpoint: http://localhost:{port}/api")
-    print(f"🌐 Frontend App: http://localhost:5173")
+    print("MDefender Pro Backend Server Ready & Connected")
+    print(f"API Endpoint: http://localhost:{port}/api")
+    print(f"Frontend App: http://localhost:5173")
     print("="*45 + "\n")
 
 auth_config = AuthConfig()

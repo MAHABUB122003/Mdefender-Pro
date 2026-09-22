@@ -101,7 +101,7 @@ jQuery(document).ready(function($) {
     $('#copyWhoisTxt').on('click', function() {
         var txt = $('#rawWhoisContent').text();
         navigator.clipboard.writeText(txt).then(function() {
-            $('#copyWhoisTxt').text('Copied! ✅');
+            $('#copyWhoisTxt').text('Copied');
             setTimeout(function() {
                 $('#copyWhoisTxt').text('Copy text');
             }, 1500);

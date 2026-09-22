@@ -149,7 +149,7 @@ export default function AdminUsers() {
   }
 
   const handleDeleteUser = async (user) => {
-    if (!confirm(`⚠️ DANGER: Completely delete user ${user.email} and all their connected websites/keys? This cannot be undone.`)) return
+    if (!confirm(`WARNING: Completely delete user ${user.email} and all their connected websites/keys? This action cannot be undone.`)) return
     try {
       setActionLoading(true)
       await api.adminDeleteUser(user.id)

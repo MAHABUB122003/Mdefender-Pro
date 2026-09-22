@@ -4,12 +4,14 @@ import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
 
 export default function UserWebsites() {
-  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const cachedData = userStore.get('websites') || userStore.get('dashboard')
   const [data, setData] = useState(() => cachedData)
   const [loading, setLoading] = useState(() => !cachedData)
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
+
+  const userPlan = data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free'
+  const isPremium = userPlan === 'premium'
 
   // API Key & Integration Modal State
   const [showKeyModal, setShowKeyModal] = useState(false)
@@ -44,27 +46,39 @@ export default function UserWebsites() {
   const handleAddWebsite = async (e) => {
     e.preventDefault()
     if (!newWebsite.trim()) return
-    if (!isPremium && data?.websites?.length >= 1) {
-      alert('Free plan is limited to 1 website. Upgrade to Premium for unlimited websites.')
+
+    const cleanDomain = newWebsite.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    if (!cleanDomain) {
+      alert('Please enter a valid website domain.')
       return
     }
+
+    if (!isPremium && data?.websites?.length >= 1) {
+      alert('Free plan is limited to 1 website. Upgrade to Premium to connect unlimited websites.')
+      return
+    }
+
     setAdding(true)
     try {
-      const cleanDomain = newWebsite.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '')
       const res = await api.addUserWebsite({ domain: cleanDomain })
-      if (res && res.api_key) {
-        setModalKey(res.api_key)
-        setModalDomain(cleanDomain)
-        setModalWebsiteId(res.website?._id || '')
-        setIsMasked(false)
-        setShowKeyModal(true)
+      if (res?.status === 'error') {
+        alert(res.message || 'Failed to connect website.')
+        return
       }
+
+      const siteKey = res?.api_key || data?.api_key || data?.user?.api_key || ''
+      setModalKey(siteKey)
+      setModalDomain(cleanDomain)
+      setModalWebsiteId(res?.website?._id || res?.website?.id || '')
+      setIsMasked(false)
+      setShowKeyModal(true)
+
       setNewWebsite('')
       userStore.remove('websites')
       userStore.remove('dashboard')
-      fetchData()
+      await fetchData()
     } catch (err) {
-      alert(err.message || 'Failed to add website')
+      alert(err.message || 'Failed to connect website. Please try again.')
     } finally {
       setAdding(false)
     }
@@ -182,7 +196,7 @@ MDEFENDER_MODE=block`
           padding: '16px 20px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '22px' }}>⭐</span>
+            <i className="fas fa-crown" style={{ fontSize: '20px', color: '#d97706' }}></i>
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400e' }}>Free Plan: 1 Website Limit</div>
               <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Premium for unlimited protected domains, real-time ML rules & priority support.</div>
@@ -434,7 +448,7 @@ MDEFENDER_MODE=block`
               {/* Integration Snippet Tabs */}
               <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
                 <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a', marginBottom: '12px' }}>
-                  ⚡ Quick Integration (1-Minute Setup)
+                  <i className="fas fa-bolt" style={{ color: '#6366f1', marginRight: '6px' }}></i>Quick Integration (1-Minute Setup)
                 </div>
 
                 {/* Tabs switcher */}

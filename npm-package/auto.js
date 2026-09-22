@@ -35,7 +35,7 @@ function autoHook() {
     return;
   }
 
-  console.log(`\x1b[36m\x1b[1m🛡️ [MDefender Pro] Zero-Code WAF Protection Active\x1b[0m`);
+  console.log(`\x1b[36m\x1b[1m[MDefender Pro] Zero-Code WAF Protection Active\x1b[0m`);
   console.log(`\x1b[90m   Inspection Endpoint: ${activeConfig.apiEndpoint}\x1b[0m`);
   console.log(`\x1b[90m   Protected Domain   : ${activeConfig.domain || 'auto-detect'}\x1b[0m`);
   console.log(`\x1b[90m   Defense Mode       : ${activeConfig.mode.toUpperCase()}\x1b[0m\n`);

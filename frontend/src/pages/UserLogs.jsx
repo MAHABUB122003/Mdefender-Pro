@@ -222,9 +222,9 @@ export default function UserLogs() {
           <input type="text" placeholder="Search IP or URL..." value={search} onChange={e => setSearch(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', minWidth: '180px' }} />
           
           <select value={websiteFilter} onChange={e => setWebsiteFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '500' }}>
-            <option value="">🌐 All Websites ({websites.length})</option>
+            <option value="">All Websites ({websites.length})</option>
             {websites.map(w => (
-              <option key={w.id} value={w.id}>🔒 {w.domain || w.name || w.id}</option>
+              <option key={w.id} value={w.id}>{w.domain || w.name || w.id}</option>
             ))}
           </select>
 
@@ -265,7 +265,7 @@ export default function UserLogs() {
             }}
           >
             <i className={`fas fa-rotate ${refreshing ? 'fa-spin' : ''}`}></i>
-            {refreshing ? 'Refreshing...' : '⚡ Refresh Logs'}
+            {refreshing ? 'Refreshing...' : 'Refresh Logs'}
           </button>
         </form>
       </div>
@@ -290,7 +290,9 @@ export default function UserLogs() {
             ) : logs.logs?.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>🛡️</div>
+                  <div style={{ fontSize: '32px', marginBottom: '8px', color: '#94a3b8' }}>
+                    <i className="fas fa-shield-halved"></i>
+                  </div>
                   <p style={{ fontSize: '14px', fontWeight: '600', margin: '0' }}>No attack logs found</p>
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0' }}>All incoming requests are currently clean or matching filters.</p>
                 </td>

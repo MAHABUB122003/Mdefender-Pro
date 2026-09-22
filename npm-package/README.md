@@ -10,11 +10,11 @@
 
 ## Key Features
 
-- 🛡️ **Zero Setup Cyber Block Page**: Bundled automatically with the package &mdash; no external HTML or static file hosting required.
-- ⚡ **Sub-Millisecond In-Memory Caching**: Template and rules are cached in memory for instantaneous rendering (<5ms).
-- 🔑 **Flexible API Key Authentication**: Configure via `mdefender.config.js`, interactive CLI (`npx mdefender-pro init`), environment variables, or inline parameters.
-- 🚦 **Fail-Open Safety Mechanism**: If cloud telemetry times out, legitimate traffic passes smoothly without blocking customers.
-- 📦 **Zero External Runtime Dependencies**: Pure Node.js standard libraries (`http`, `https`, `crypto`).
+- **Zero Setup Cyber Block Page**: Bundled automatically with the package &mdash; no external HTML or static file hosting required.
+- **Sub-Millisecond In-Memory Caching**: Template and rules are cached in memory for instantaneous rendering (<5ms).
+- **Flexible API Key Authentication**: Configure via `mdefender.config.js`, interactive CLI (`npx mdefender-pro init`), environment variables, or inline parameters.
+- **Fail-Open Safety Mechanism**: If cloud telemetry times out, legitimate traffic passes smoothly without blocking customers.
+- **Zero External Runtime Dependencies**: Pure Node.js standard libraries (`http`, `https`, `crypto`).
 
 ---
 

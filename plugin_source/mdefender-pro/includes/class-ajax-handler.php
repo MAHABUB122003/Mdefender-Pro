@@ -841,7 +841,7 @@ class WAF_FW_Ajax_Handler {
             if (is_array($data)) {
                 foreach ($data as $k => $v) {
                     if (is_bool($v)) {
-                        $body .= "  " . ($v ? "⚠ " : "✓ ") . $k . "\n";
+                        $body .= "  " . ($v ? "[!] " : "[OK] ") . $k . "\n";
                     } elseif (is_string($v) || is_int($v)) {
                         $body .= "  • {$k}: {$v}\n";
                     }
