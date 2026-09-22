@@ -82,11 +82,6 @@ class WAF_FW_Admin {
                 'menu' => 'Firewall Rules',
                 'render' => 'render_rules',
             ],
-            'waf-firewall-blocked' => [
-                'title' => 'Blocked IPs',
-                'menu' => 'Blocked IPs',
-                'render' => 'render_blocked',
-            ],
             'waf-firewall-blacklist' => [
                 'title' => 'Blacklist',
                 'menu' => 'Blacklist',
@@ -106,11 +101,6 @@ class WAF_FW_Admin {
                 'title' => 'Website Hardening',
                 'menu' => 'Hardening',
                 'render' => 'render_hardening',
-            ],
-            'waf-firewall-2fa' => [
-                'title' => '2FA Authentication',
-                'menu' => '2FA Auth',
-                'render' => 'render_2fa',
             ],
             'waf-firewall-tools' => [
                 'title' => 'Tools & Security',
