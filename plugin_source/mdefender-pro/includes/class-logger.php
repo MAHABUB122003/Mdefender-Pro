@@ -337,8 +337,9 @@ class WAF_FW_Logger {
         $data_sql = "SELECT * FROM ($table_query) AS combined WHERE $where_sql ORDER BY created_at DESC LIMIT $per_page OFFSET $offset";
         $logs = $params ? $wpdb->get_results($wpdb->prepare($data_sql, $params)) : $wpdb->get_results($data_sql);
 
-        // Non-blocking transient cache lookup for instant rendering
+        // Resolve and populate country codes for distinct unique IPs (cached or on-the-fly)
         if (!empty($logs)) {
+            $unresolved_unique = [];
             foreach ($logs as $log_item) {
                 if (empty($log_item->country_code) && !empty($log_item->ip)) {
                     $ip = $log_item->ip;
@@ -348,6 +349,38 @@ class WAF_FW_Logger {
                         $cached = function_exists('get_transient') ? get_transient('waf_fw_geoip_' . md5($ip)) : false;
                         if (!empty($cached)) {
                             $log_item->country_code = $cached;
+                        } else {
+                            $unresolved_unique[$ip] = true;
+                        }
+                    }
+                }
+            }
+
+            // Resolve up to 5 distinct unique IPs on the fly and backfill in DB
+            if (!empty($unresolved_unique)) {
+                $resolved_map = [];
+                $count = 0;
+                foreach (array_keys($unresolved_unique) as $uip) {
+                    if ($count >= 5) break;
+                    $code = self::resolve_ip_country($uip);
+                    if (!empty($code)) {
+                        $resolved_map[$uip] = $code;
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE $attacks_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
+                            $code, $uip
+                        ));
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE $requests_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
+                            $code, $uip
+                        ));
+                    }
+                    $count++;
+                }
+
+                if (!empty($resolved_map)) {
+                    foreach ($logs as $log_item) {
+                        if (empty($log_item->country_code) && isset($resolved_map[$log_item->ip])) {
+                            $log_item->country_code = $resolved_map[$log_item->ip];
                         }
                     }
                 }
