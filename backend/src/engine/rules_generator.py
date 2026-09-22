@@ -147,7 +147,7 @@ def generate_2000_rules():
         rules.append({
             "name": f"XSS - Inline Event Handler ({ev}) #{i+1}",
             "category": "XSS",
-            "pattern": rf"(?i)(\b{ev}\s*=\s*['\"]?[^'\">\s]+|(?i)[<>/]\s*{ev}\s*=)",
+            "pattern": rf"(?i)(\b{ev}\s*=\s*['\"]?[^'\">\s]+|[<>/]\s*{ev}\s*=)",
             "action": "block",
             "severity": "high",
             "enabled": True
@@ -338,17 +338,18 @@ def generate_2000_rules():
     # 5. CMS & FRAMEWORK VULNERABILITIES (300 rules)
     # =========================================================================
     # WordPress Probes & Exploits (100 rules)
+    # WordPress Probes & Exploits (100 rules)
     wp_targets = [
-        "wp-config.php", "wp-config.bak", "wp-config.php.swp", "xmlrpc.php",
-        "wp-login.php", "wp-cron.php", "wp-json/wp/v2/users", "wp-admin/admin-ajax.php",
-        "revslider", "timthumb.php", "download-manager", "duplicator", "wp-file-manager"
+        "wp-config.bak", "wp-config.php.swp", "wp-config.old", "wp-config.txt",
+        "wp-config.php.bak", "wp-config.php.save", "wp-config.php~",
+        "revslider", "timthumb.php", "duplicator.sql", "wp-file-manager", "wp-links-opml.php"
     ]
     for i in range(100):
         target = wp_targets[i % len(wp_targets)]
         rules.append({
             "name": f"CMS - WordPress Vulnerability Probe ({target}) #{i+1}",
             "category": "CMS Vulnerabilities",
-            "pattern": rf"(?i)({target.replace('.', r'\.')})",
+            "pattern": rf"(?i)(\b{target.replace('.', r'\.')}\b)",
             "action": "block",
             "severity": "high",
             "enabled": True

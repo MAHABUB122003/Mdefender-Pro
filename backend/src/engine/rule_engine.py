@@ -77,6 +77,17 @@ class RuleEngine:
         defaults = self._get_default_rules()
         try:
             db = self._get_db()
+            # Clean out any legacy false-positive rules targeting standard WP paths
+            db.rules.delete_many({
+                "$or": [
+                    {"pattern": {"$regex": "wp-login", "$options": "i"}},
+                    {"pattern": {"$regex": "admin-ajax", "$options": "i"}},
+                    {"pattern": {"$regex": "wp-cron", "$options": "i"}},
+                    {"name": {"$regex": "wp-login", "$options": "i"}},
+                    {"name": {"$regex": "admin-ajax", "$options": "i"}},
+                    {"name": {"$regex": "wp-cron", "$options": "i"}},
+                ]
+            })
             db_rules = list(db.rules.find({'enabled': True}).sort('sort_order', 1))
             if db_rules and not force_refresh:
                 self.default_rules = []
