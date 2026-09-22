@@ -92,15 +92,32 @@ class WAF_FW_Login_Protector {
                 if ($redirect_type === '404') {
                     status_header(404);
                     nocache_headers();
+                    
                     global $wp_query;
-                    if (is_object($wp_query)) {
-                        $wp_query->set_404();
+                    if (!isset($wp_query) || !is_object($wp_query)) {
+                        $wp_query = new WP_Query();
                     }
-                    $template = get_404_template();
+                    $wp_query->set_404();
+
+                    $rendered = false;
+                    $template = function_exists('get_404_template') ? get_404_template() : '';
                     if ($template && file_exists($template)) {
-                        include $template;
-                    } else {
-                        wp_die('404 Not Found', 'Not Found', ['response' => 404]);
+                        ob_start();
+                        try {
+                            include $template;
+                            $out = ob_get_clean();
+                            if (!empty(trim($out))) {
+                                echo $out;
+                                $rendered = true;
+                            }
+                        } catch (\Throwable $e) {
+                            ob_end_clean();
+                            $rendered = false;
+                        }
+                    }
+
+                    if (!$rendered) {
+                        $this->render_fallback_404();
                     }
                     exit;
                 } else {
@@ -109,6 +126,95 @@ class WAF_FW_Login_Protector {
                 }
             }
         }
+    }
+
+    public function render_fallback_404() {
+        $site_name = get_bloginfo('name') ?: 'Website';
+        $home_url = home_url('/');
+        ?>
+<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo('charset'); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found &ndash; <?php echo esc_html($site_name); ?></title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .card {
+            max-width: 480px;
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 44px 32px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .code {
+            font-size: 76px;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 14.5px;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="code">404</div>
+        <h1>Page Not Found</h1>
+        <p>The page you requested could not be found. It may have been moved or removed.</p>
+        <a href="<?php echo esc_url($home_url); ?>" class="btn">
+            &larr; Return to Homepage
+        </a>
+    </div>
+</body>
+</html>
+        <?php
     }
 
     public function filter_site_url($url, $path = '', $scheme = null) {
