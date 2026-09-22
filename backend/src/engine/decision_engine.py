@@ -132,7 +132,8 @@ class DecisionEngine:
 
         # --- 9. Decision Evaluation ---
         url_path = parsed.get("path", "").lower()
-        is_auth_path = any(x in url_path for x in ['login', 'register', 'auth', 'signin', 'signup', 'logout'])
+        is_auth_path = any(x in url_path for x in ['login', 'register', 'auth', 'signin', 'signup', 'logout', 'wp-admin', 'admin-ajax'])
+        is_wp_admin_path = any(x in url_path for x in ['wp-login.php', 'wp-admin', 'admin-ajax.php'])
 
         decision = "ALLOW"
         if reputation_score >= 1.0:
@@ -143,6 +144,11 @@ class DecisionEngine:
             decision = "BLOCK"
             confidence = max(0.98, semantic_score)
             reason = f"Semantic threat detected: {first_semantic_reason or primary_threat}"
+        elif is_wp_admin_path and semantic_score < 0.85:
+            # Always whitelist legitimate WordPress login and admin dashboard visits
+            decision = "ALLOW"
+            confidence = 0.05
+            reason = "WordPress login/admin path allowed"
         elif rule_score >= 1.0:
             decision = "BLOCK"
             confidence = max(0.95, ml_score)

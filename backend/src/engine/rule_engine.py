@@ -81,9 +81,11 @@ class RuleEngine:
             db.rules.delete_many({
                 "$or": [
                     {"pattern": {"$regex": "wp-login", "$options": "i"}},
+                    {"pattern": {"$regex": "wp-admin", "$options": "i"}},
                     {"pattern": {"$regex": "admin-ajax", "$options": "i"}},
                     {"pattern": {"$regex": "wp-cron", "$options": "i"}},
                     {"name": {"$regex": "wp-login", "$options": "i"}},
+                    {"name": {"$regex": "wp-admin", "$options": "i"}},
                     {"name": {"$regex": "admin-ajax", "$options": "i"}},
                     {"name": {"$regex": "wp-cron", "$options": "i"}},
                 ]
