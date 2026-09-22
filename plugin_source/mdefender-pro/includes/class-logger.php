@@ -337,33 +337,19 @@ class WAF_FW_Logger {
         $data_sql = "SELECT * FROM ($table_query) AS combined WHERE $where_sql ORDER BY created_at DESC LIMIT $per_page OFFSET $offset";
         $logs = $params ? $wpdb->get_results($wpdb->prepare($data_sql, $params)) : $wpdb->get_results($data_sql);
 
-        // Auto-resolve any missing country codes and backfill in database
+        // Non-blocking transient cache lookup for instant rendering
         if (!empty($logs)) {
-            $resolved_cache = [];
-            $to_update = [];
             foreach ($logs as $log_item) {
                 if (empty($log_item->country_code) && !empty($log_item->ip)) {
                     $ip = $log_item->ip;
-                    if (!isset($resolved_cache[$ip])) {
-                        $resolved_cache[$ip] = self::resolve_ip_country($ip);
-                        if (!empty($resolved_cache[$ip])) {
-                            $to_update[$ip] = $resolved_cache[$ip];
+                    if ($ip === '127.0.0.1' || $ip === '::1' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $ip)) {
+                        $log_item->country_code = 'LOCAL';
+                    } else {
+                        $cached = function_exists('get_transient') ? get_transient('waf_fw_geoip_' . md5($ip)) : false;
+                        if (!empty($cached)) {
+                            $log_item->country_code = $cached;
                         }
                     }
-                    $log_item->country_code = $resolved_cache[$ip] ?? '';
-                }
-            }
-
-            if (!empty($to_update)) {
-                foreach ($to_update as $up_ip => $up_code) {
-                    $wpdb->query($wpdb->prepare(
-                        "UPDATE $attacks_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
-                        $up_code, $up_ip
-                    ));
-                    $wpdb->query($wpdb->prepare(
-                        "UPDATE $requests_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
-                        $up_code, $up_ip
-                    ));
                 }
             }
         }

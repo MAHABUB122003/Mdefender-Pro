@@ -64,6 +64,7 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_ignore_scan_issue', [$this, 'ignore_scan_issue']);
         add_action('wp_ajax_waf_fw_get_admin_attacks', [$this, 'get_admin_attacks']);
         add_action('wp_ajax_waf_fw_get_diagnostics', [$this, 'get_diagnostics']);
+        add_action('wp_ajax_waf_fw_save_geoip', [$this, 'save_geoip']);
     }
 
     private function check_access() {
@@ -1547,5 +1548,37 @@ class WAF_FW_Ajax_Handler {
             return true;
         }
         return false;
+    }
+
+    public function save_geoip() {
+        check_ajax_referer('waf_fw_ajax', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $ip = sanitize_text_field($_POST['ip'] ?? '');
+        $country_code = strtoupper(sanitize_text_field($_POST['country_code'] ?? ''));
+
+        if (!empty($ip) && !empty($country_code)) {
+            global $wpdb;
+            $db = WAF_FW_DB::instance();
+            $attacks_table = $db->get_attacks_table();
+            $requests_table = $db->get_requests_table();
+
+            $wpdb->query($wpdb->prepare(
+                "UPDATE $attacks_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
+                $country_code, $ip
+            ));
+            $wpdb->query($wpdb->prepare(
+                "UPDATE $requests_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
+                $country_code, $ip
+            ));
+
+            $duration = defined('DAY_IN_SECONDS') ? 30 * DAY_IN_SECONDS : 86400 * 30;
+            set_transient('waf_fw_geoip_' . md5($ip), $country_code, $duration);
+
+            wp_send_json_success(['ip' => $ip, 'country_code' => $country_code]);
+        }
+        wp_send_json_error('Missing parameters');
     }
 }
