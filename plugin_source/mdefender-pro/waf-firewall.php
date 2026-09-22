@@ -41,9 +41,6 @@ require_once WAF_FW_PLUGIN_DIR . 'includes/class-ajax-handler.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-scanner.php';
 require_once WAF_FW_PLUGIN_DIR . 'admin/class-admin.php';
 
-register_activation_hook(__FILE__, 'waf_fw_activate');
-register_deactivation_hook(__FILE__, 'waf_fw_deactivate');
-
 function waf_fw_activate() {
     try {
         $db = WAF_FW_DB::instance();

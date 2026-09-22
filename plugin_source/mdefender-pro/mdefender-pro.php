@@ -13,6 +13,9 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('WAF_FW_VERSION')) {
-    require_once __DIR__ . '/waf-firewall.php';
-}
+define('WAF_FW_MAIN_FILE', __FILE__);
+
+require_once __DIR__ . '/waf-firewall.php';
+
+register_activation_hook(__FILE__, 'waf_fw_activate');
+register_deactivation_hook(__FILE__, 'waf_fw_deactivate');
