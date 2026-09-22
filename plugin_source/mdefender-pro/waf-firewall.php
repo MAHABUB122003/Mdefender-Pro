@@ -107,6 +107,38 @@ add_action('waf_fw_file_integrity_check', ['WAF_FW_Scanner', 'run_file_integrity
 add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 10, 1);
 
 /**
+ * Fast sync for cloud blacklist and status (every 30 seconds opportunistically).
+ */
+function waf_fw_sync_cloud_blacklist_fast() {
+    $last_sync = get_transient('waf_fw_last_bl_sync');
+    if ($last_sync) return;
+    set_transient('waf_fw_last_bl_sync', 1, 30);
+
+    if (class_exists('WAF_FW_ML_Api_Client')) {
+        $client = WAF_FW_ML_Api_Client::instance();
+        if ($client->is_available()) {
+            $stats = [
+                'requests_blocked' => (int) get_option('waf_fw_stats_blocked', 0),
+                'requests_allowed' => (int) get_option('waf_fw_stats_allowed', 0),
+            ];
+            $res = $client->heartbeat($stats);
+            if ($res && is_array($res)) {
+                if (isset($res['blacklist']) && is_array($res['blacklist'])) {
+                    $ips = array_map('sanitize_text_field', $res['blacklist']);
+                    update_option('waf_fw_local_blacklist_cache', $ips);
+                }
+                if (!empty($res['config']) && is_array($res['config'])) {
+                    $config = $res['config'];
+                    if (isset($config['waf_mode'])) {
+                        update_option('waf_fw_cloud_mode', sanitize_text_field($config['waf_mode']));
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Hourly cloud heartbeat: pushes online status + local counters so the
  * MDefender-Pro dashboard reflects the real state of this site.
  */

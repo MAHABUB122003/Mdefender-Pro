@@ -9,21 +9,29 @@ class IPFilter:
     def is_blacklisted(self, ip, user_id=None):
         if not ip:
             return False
+        from bson import ObjectId
         query = {'ip': ip}
         if user_id:
+            u_str = str(user_id)
+            or_conditions = [
+                {'added_by_user_id': u_str},
+                {'user_id': u_str},
+                {'is_global': True},
+                {'added_by_user_id': {'$exists': False}},
+                {'added_by_user_id': None},
+            ]
+            if ObjectId.is_valid(u_str):
+                or_conditions.append({'added_by_user_id': ObjectId(u_str)})
+                or_conditions.append({'user_id': ObjectId(u_str)})
             query = {
                 'ip': ip,
-                '$or': [
-                    {'added_by_user_id': str(user_id)},
-                    {'user_id': str(user_id)},
-                    {'is_global': True}
-                ]
+                '$or': or_conditions
             }
         entry = self.db.blacklist.find_one(query)
         if not entry:
             return False
         expires_at = entry.get('expires_at')
-        if expires_at is not None and expires_at < datetime.now():
+        if expires_at is not None and hasattr(expires_at, '__gt__') and expires_at < datetime.now():
             self.db.blacklist.delete_one({'_id': entry['_id']})
             return False
         return True

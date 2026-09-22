@@ -13,6 +13,10 @@ class WAF_FW_IP_Filter {
     }
 
     public function is_blacklisted($ip) {
+        if (empty($ip)) {
+            return false;
+        }
+
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         $result = $wpdb->get_row($wpdb->prepare(
@@ -25,6 +29,11 @@ class WAF_FW_IP_Filter {
             } else {
                 return true;
             }
+        }
+
+        // Fast opportunistic sync of cloud blacklist if cache is stale (> 30s)
+        if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+            waf_fw_sync_cloud_blacklist_fast();
         }
 
         // Check local WAF blacklist cache synced from MDefender Cloud dashboard

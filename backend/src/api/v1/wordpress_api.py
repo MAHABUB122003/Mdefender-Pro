@@ -273,21 +273,31 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     # Fetch active blacklisted IPs for local firewall cache (scoped to user)
     user_id = str(auth_data.get("user_id") or "")
     now = datetime.now()
+    from bson import ObjectId
+    user_or_conditions = [
+        {"added_by_user_id": user_id},
+        {"user_id": user_id},
+        {"added_by_user_id": {"$exists": False}},
+        {"added_by_user_id": None},
+        {"is_global": True},
+    ]
+    if ObjectId.is_valid(user_id):
+        user_or_conditions.append({"added_by_user_id": ObjectId(user_id)})
+        user_or_conditions.append({"user_id": ObjectId(user_id)})
+
     blacklist_cursor = db.blacklist.find({
-        "$or": [
-            {"added_by_user_id": user_id},
-            {"user_id": user_id},
-        ],
+        "$or": user_or_conditions,
         "$and": [
             {
                 "$or": [
                     {"expires_at": None},
+                    {"expires_at": {"$exists": False}},
                     {"expires_at": {"$gt": now}},
                 ]
             }
         ]
     })
-    blacklist = [item["ip"] for item in blacklist_cursor if "ip" in item]
+    blacklist = list(set([item["ip"].strip() for item in blacklist_cursor if item.get("ip")]))
 
     return success({
         "status": "ok",

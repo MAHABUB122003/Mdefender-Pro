@@ -110,11 +110,16 @@ class WAF_FW_Engine {
                     'ip' => $ip, 'url' => $url, 'method' => $method,
                     'attack_type' => 'Blacklisted IP', 'confidence' => 1.0,
                     'user_agent' => $user_agent, 'referer' => $referer,
-                    'request_body' => $body, 'rule_matched' => '',
+                    'request_body' => $body, 'rule_matched' => 'Blacklist Rule',
                     'message' => 'IP is blacklisted', 'status' => 'blocked',
                     'timestamp' => current_time('mysql'),
                 ]);
-                return $this->blocked_result($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'IP is blacklisted');
+                $this->report_block_to_cloud($ip, $url, $method, $body, [
+                    'ip' => $ip, 'url' => $url, 'method' => $method, 'user_agent' => $user_agent,
+                    'headers' => $headers, 'attack_type' => 'Blacklisted IP',
+                ]);
+                waf_fw_bump_stat('blocked');
+                return $this->blocked_result($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'IP is blacklisted', 'Blacklist Rule');
             }
 
             $request_data = [
