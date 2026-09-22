@@ -213,12 +213,14 @@ class WAF_FW_Engine {
     }
 
     private function feature_based_block($features) {
-        $threshold = (float) get_option('waf_fw_confidence_threshold', 0.7);
-        if (($features['sql_score'] ?? 0) > 0.6) return true;
-        if (($features['xss_score'] ?? 0) > 0.6) return true;
-        if (($features['lfi_score'] ?? 0) > 0.6) return true;
-        if (($features['rce_score'] ?? 0) > 0.6) return true;
-        if (($features['total_attack_score'] ?? 0) > $threshold) return true;
+        $threshold = (float) get_option('waf_fw_confidence_threshold', 0.5);
+        if (($features['sql_score'] ?? 0) >= 0.2) return true;
+        if (($features['xss_score'] ?? 0) >= 0.2) return true;
+        if (($features['lfi_score'] ?? 0) >= 0.2) return true;
+        if (($features['rce_score'] ?? 0) >= 0.2) return true;
+        if (($features['ssti_score'] ?? 0) >= 0.2) return true;
+        if (($features['ssrf_score'] ?? 0) >= 0.2) return true;
+        if (($features['total_attack_score'] ?? 0) >= $threshold) return true;
         return false;
     }
 

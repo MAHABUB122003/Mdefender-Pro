@@ -48,7 +48,7 @@ class WAF_FW_ML_Api_Client {
 
     public function refresh_config() {
         $url = (string) get_option('waf_fw_ml_api_url', '');
-        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false || strpos($url, 'localhost:8000') !== false || strpos($url, '127.0.0.1:8000') !== false) {
+        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false) {
             $url = 'http://217.15.170.82';
             update_option('waf_fw_ml_api_url', $url);
         }

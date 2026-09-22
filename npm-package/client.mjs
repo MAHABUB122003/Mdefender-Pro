@@ -463,18 +463,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
     } catch (e) {}
 }
 
-// 0ms Instant URL Inspection on Script Load
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const rawTarget = normalizeInput(window.location.search + ' ' + window.location.hash);
-    if (rawTarget.trim()) {
-        for (const pattern of ATTACK_PATTERNS) {
-            if (pattern.regex.test(rawTarget)) {
-                renderOfficialBlockPage(pattern.type);
-                throw new Error(`[MDefender WAF] Attack blocked on load (0ms): ${pattern.type}`);
-            }
-        }
-    }
-}
+// Client-side initialization requires explicit initWaf() with apiKey
 
 /**
  * Initialize MDefender Pro WAF client-side protection for SPAs & Frontend Websites.

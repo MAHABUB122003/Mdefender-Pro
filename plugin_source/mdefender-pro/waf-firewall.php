@@ -212,14 +212,25 @@ add_action('admin_init', 'waf_fw_maybe_redirect_setup');
 function waf_fw_analyze_request() {
     if (php_sapi_name() === 'cli' || (defined('WP_CLI') && WP_CLI)) return;
     if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') return;
-    if (defined('DOING_AJAX') && DOING_AJAX) return;
     if (defined('DOING_CRON') && DOING_CRON) return;
+    
+    // Prevent double analysis in a single request lifecycle
+    if (!empty($GLOBALS['waf_fw_analyzed'])) return;
+
+    // Do not bypass admin unless user is an authenticated administrator
+    if (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
+        // If testing explicitly with query parameter, still allow analysis
+        if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+            return;
+        }
+    }
+
     if (defined('REST_REQUEST') && REST_REQUEST) {
         waf_fw_analyze_rest_request();
         return;
     }
-    if (is_admin()) return;
 
+    $GLOBALS['waf_fw_analyzed'] = true;
     $engine = WAF_FW_Engine::instance();
     $result = $engine->analyze_current_request();
 
@@ -230,9 +241,12 @@ function waf_fw_analyze_request() {
         exit;
     }
 }
+// Hook early at plugins_loaded priority 1 and keep init priority 1 as fallback
+add_action('plugins_loaded', 'waf_fw_analyze_request', 1);
 add_action('init', 'waf_fw_analyze_request', 1);
 
 function waf_fw_analyze_rest_request() {
+    $GLOBALS['waf_fw_analyzed'] = true;
     $engine = WAF_FW_Engine::instance();
     $route = $_SERVER['REQUEST_URI'] ?? '';
     if (strpos($route, '/wp-json/waf-fw/') !== false) return;
@@ -246,6 +260,7 @@ function waf_fw_analyze_rest_request() {
             'confidence' => $result['confidence'],
             'reference_id' => $result['reference_id']
         ], 403);
+        exit;
     }
 }
 
@@ -259,3 +274,4 @@ add_filter('rest_pre_dispatch', function ($result, $server, $request) {
     }
     return $result;
 }, 1, 3);
+
