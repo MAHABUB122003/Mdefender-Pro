@@ -13,7 +13,9 @@
 
 defined('ABSPATH') || exit;
 
-define('WAF_FW_MAIN_FILE', __FILE__);
+if (!defined('WAF_FW_MAIN_FILE')) {
+    define('WAF_FW_MAIN_FILE', __FILE__);
+}
 
 require_once __DIR__ . '/waf-firewall.php';
 

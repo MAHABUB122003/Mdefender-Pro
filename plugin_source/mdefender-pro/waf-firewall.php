@@ -7,22 +7,26 @@
 
 defined('ABSPATH') || exit;
 
-define('WAF_FW_VERSION', '4.1.0');
-define('WAF_FW_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('WAF_FW_PLUGIN_URL', plugin_dir_url(__FILE__));
+if (!defined('WAF_FW_VERSION')) define('WAF_FW_VERSION', '4.1.0');
+if (!defined('WAF_FW_PLUGIN_DIR')) define('WAF_FW_PLUGIN_DIR', plugin_dir_path(__FILE__));
+if (!defined('WAF_FW_PLUGIN_URL')) define('WAF_FW_PLUGIN_URL', plugin_dir_url(__FILE__));
+if (!defined('WAF_FW_MAIN_FILE')) define('WAF_FW_MAIN_FILE', __FILE__);
 
-define('WAF_FW_TABLE_ATTACKS', 'waf_attacks');
-define('WAF_FW_TABLE_REQUESTS', 'waf_requests');
-define('WAF_FW_TABLE_BLACKLIST', 'waf_blacklist');
-define('WAF_FW_TABLE_LOGIN_ATTEMPTS', 'waf_login_attempts');
-define('WAF_FW_TABLE_SCAN_RESULTS', 'waf_scan_results');
-define('WAF_FW_TABLE_FILE_INTEGRITY', 'waf_file_integrity');
-define('WAF_FW_TABLE_FILE_CHANGES', 'waf_file_changes');
-define('WAF_FW_TABLE_SCAN_QUEUE', 'waf_scan_queue');
-define('WAF_FW_TABLE_FIREWALL_RULES', 'waf_firewall_rules');
-define('WAF_FW_TABLE_HARDENING', 'waf_hardening_status');
-define('WAF_FW_TABLE_SCAN_FILES_QUEUE', 'waf_scan_files_queue');
-define('WAF_FW_TABLE_CLEANED_BACKUPS', 'waf_cleaned_backups');
+if (!defined('WAF_FW_TABLE_ATTACKS')) define('WAF_FW_TABLE_ATTACKS', 'waf_attacks');
+if (!defined('WAF_FW_TABLE_REQUESTS')) define('WAF_FW_TABLE_REQUESTS', 'waf_requests');
+if (!defined('WAF_FW_TABLE_BLACKLIST')) define('WAF_FW_TABLE_BLACKLIST', 'waf_blacklist');
+if (!defined('WAF_FW_TABLE_LOGIN_ATTEMPTS')) define('WAF_FW_TABLE_LOGIN_ATTEMPTS', 'waf_login_attempts');
+if (!defined('WAF_FW_TABLE_SCAN_RESULTS')) define('WAF_FW_TABLE_SCAN_RESULTS', 'waf_scan_results');
+if (!defined('WAF_FW_TABLE_FILE_INTEGRITY')) define('WAF_FW_TABLE_FILE_INTEGRITY', 'waf_file_integrity');
+if (!defined('WAF_FW_TABLE_FILE_CHANGES')) define('WAF_FW_TABLE_FILE_CHANGES', 'waf_file_changes');
+if (!defined('WAF_FW_TABLE_SCAN_QUEUE')) define('WAF_FW_TABLE_SCAN_QUEUE', 'waf_scan_queue');
+if (!defined('WAF_FW_TABLE_FIREWALL_RULES')) define('WAF_FW_TABLE_FIREWALL_RULES', 'waf_firewall_rules');
+if (!defined('WAF_FW_TABLE_HARDENING')) define('WAF_FW_TABLE_HARDENING', 'waf_hardening_status');
+if (!defined('WAF_FW_TABLE_SCAN_FILES_QUEUE')) define('WAF_FW_TABLE_SCAN_FILES_QUEUE', 'waf_scan_files_queue');
+if (!defined('WAF_FW_TABLE_CLEANED_BACKUPS')) define('WAF_FW_TABLE_CLEANED_BACKUPS', 'waf_cleaned_backups');
+
+register_activation_hook(__FILE__, 'waf_fw_activate');
+register_deactivation_hook(__FILE__, 'waf_fw_deactivate');
 
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-db.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-logger.php';
