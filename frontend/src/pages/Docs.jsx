@@ -37,12 +37,12 @@ const docSections = [
     ]
   },
   {
-    group: 'WordPress Security Suite',
+    group: 'Framework SDK Guides',
     items: [
-      { id: 'sdk-wordpress', label: 'Plugin Setup & Cloud Sync', icon: 'fa-wordpress' },
-      { id: 'wp-malware-scanner', label: 'Core & Theme Malware Scanner', icon: 'fa-bug-slash' },
-      { id: 'wp-2fa-login', label: '2FA & Brute Force Shield', icon: 'fa-key' },
-      { id: 'wp-hardening', label: 'WP Hardening & Headers', icon: 'fa-shield-halved' }
+      { id: 'sdk-nodejs', label: 'Node.js / Express', icon: 'fa-node-js' },
+      { id: 'sdk-python', label: 'Python / FastAPI / Django', icon: 'fa-python' },
+      { id: 'sdk-php', label: 'PHP / Laravel', icon: 'fa-php' },
+      { id: 'sdk-wordpress', label: 'WordPress Official Plugin', icon: 'fa-wordpress' }
     ]
   },
   {
@@ -510,6 +510,247 @@ print(result)
             </div>
           )}
 
+          {/* Section: Node.js SDK */}
+          {activeSection === 'sdk-nodejs' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  color: '#60a5fa',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Official npm Package</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Zero External Dependencies</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Node.js &amp; Express Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                Protect your Node.js, Express, or Next.js backend with <code>mdefender-pro</code>. When you install the package, our high-performance cyber-styled <strong>403 Block Page</strong> is automatically bundled &mdash; simply add your API key to activate real-time threat defense.
+              </p>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-1" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Install the NPM Package
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Run this in your website backend directory:
+                </p>
+                <CodeBlock language="bash" code={`npm install mdefender-pro`} />
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-2" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Initialize Configuration via CLI
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Run our 1-click interactive CLI generator to configure your API key and options:
+                </p>
+                <CodeBlock language="bash" code={`npx mdefender-pro init`} />
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '12px' }}>
+                  Or manually create <code>mdefender.config.js</code> in your project root:
+                </p>
+                <CodeBlock
+                  language="javascript"
+                  code={`// mdefender.config.js
+module.exports = {
+  // Your Secret API Key from MDefender Dashboard -> Websites
+  apiKey: process.env.MDEFENDER_API_KEY || 'Ix2TtXbbBHJolIam3MYLui0jphKy9oRvF_D3AJjY1tO8MGfWU-NCQzvDuwc_6Dri',
+
+  // Registered domain
+  domain: 'yourdomain.com',
+
+  // Endpoint
+  apiEndpoint: 'http://localhost:8000',
+
+  // Mode: 'block' (active defense) or 'monitor' (log-only)
+  mode: 'block',
+
+  // Safety timeout in ms (fails open if cloud unreachable)
+  timeout: 3000,
+
+  // Skip static assets
+  skipPaths: ['/favicon.ico', '/static', '/assets', '/health'],
+
+  // Log blocked attacks in console
+  logBlocked: true
+};`}
+                />
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-3" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Attach WAF Middleware to Express
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Place <code>mdefender()</code> right after body parsers (<code>express.json()</code>) and before your application routes:
+                </p>
+                <CodeBlock
+                  language="javascript"
+                  code={`const express = require('express');
+const cors = require('cors');
+const mdefender = require('mdefender-pro');
+
+const app = express();
+
+// 1. Standard body parsers
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 2. Attach MDefender Pro WAF Middleware
+// Automatically loads mdefender.config.js and serves bundled 403 block page
+app.use(mdefender());
+
+// 3. Application Routes
+app.use('/api/books', require('./routes/books'));
+app.use('/api/users', require('./routes/users'));
+
+app.listen(5000, () => {
+  console.log('Server running with MDefender Pro active protection!');
+});`}
+                />
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-4" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Bundled 403 Block Page Feature
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6' }}>
+                  No need to design or host your own block page. The <code>mdefender-pro</code> package comes bundled with a responsive, dark glassmorphic 403 page featuring:
+                </p>
+                <ul style={{ paddingLeft: '20px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.8', marginTop: '10px' }}>
+                  <li><strong>Instant Incident ID Generation</strong> (e.g. <code>MDF-8ABEF43C</code>) with 1-click clipboard copying.</li>
+                  <li><strong>Detected Attack Categorization</strong> (SQLi, XSS, RCE, LFI, Bot probes).</li>
+                  <li><strong>Client IP &amp; Incident Timestamp</strong> for security audits and reporting.</li>
+                  <li><strong>Sub-Millisecond Rendering</strong> directly from in-memory cache without extra network hops.</li>
+                </ul>
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-5" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Test Your Protection
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Send a benign simulated injection attack in your browser or terminal to verify instant 403 blocking:
+                </p>
+                <CodeBlock
+                  language="bash"
+                  code={`# 1. Test XSS Attack (Expect 403 Forbidden + Block Page)
+curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"
+
+# 2. Test SQL Injection Attack (Expect 403 Forbidden + Block Page)
+curl -i "http://localhost:5000/api/books?search=%27%20UNION%20SELECT%20null,password%20FROM%20users--"
+
+# 3. Test Safe Request (Expect 200 OK)
+curl -i "http://localhost:5000/api/books"`}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Section: Python SDK */}
+          {activeSection === 'sdk-python' && (
+            <div>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Python / FastAPI / Django Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1' }}>
+                Attach MDefender ASGI/WSGI middleware to FastAPI, Flask, or Django.
+              </p>
+
+              <CodeBlock
+                language="python"
+                code={`# FastAPI ASGI Integration Example
+from fastapi import FastAPI
+from mdefender import MDefenderMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    MDefenderMiddleware,
+    api_key="your_api_key_here",
+    mode="block",
+    enable_ml=True,
+    rate_limit_rpm=100
+)`}
+              />
+            </div>
+          )}
+
+          {/* Section: PHP / Laravel SDK */}
+          {activeSection === 'sdk-php' && (
+            <div>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>PHP &amp; Laravel Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                Integrate MDefender Pro WAF into any PHP 7.4+ or 8.x web application, Symfony, or Laravel framework.
+              </p>
+
+              <CodeBlock
+                language="php"
+                code={`<?php
+// Require Composer Autoloader
+require_once __DIR__ . '/vendor/autoload.php';
+
+use MDefender\\WafShield;
+
+// Initialize MDefender Hybrid WAF before routing
+$waf = new WafShield([
+    'api_key'    => getenv('MDEFENDER_API_KEY'),
+    'domain'     => 'yourdomain.com',
+    'mode'       => 'block', // 'block' | 'monitor'
+    'enable_ml'  => true,
+    'block_page' => true     // Serves bundled Cyber 403 block page
+]);
+
+// Inspect current incoming request
+$waf->inspectRequest();`}
+              />
+            </div>
+          )}
+
           {/* Section: WordPress Official Plugin */}
           {activeSection === 'sdk-wordpress' && (
             <div>
@@ -638,154 +879,6 @@ print(result)
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Section: WordPress Malware Scanner */}
-          {activeSection === 'wp-malware-scanner' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Filesystem &amp; Code Scanner</span>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  color: '#60a5fa',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Core Checksum Verification</span>
-              </div>
-
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>WordPress Malware Scanner &amp; Integrity Defense</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                The MDefender Pro scanner deeply analyzes all WordPress files, themes, and plugins against known malware signatures, eval code injections, web shells, and official WordPress repository core checksums.
-              </p>
-
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '24px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
-                  <i className="fa-solid fa-shield-virus" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
-                  What the Scanner Detects
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-                  <div style={{ background: '#090d18', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                    <strong style={{ color: '#f87171', display: 'block', marginBottom: '4px', fontSize: '13px' }}>Web Shells &amp; Backdoors</strong>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Detects c99, r57, WSO, b374k, and obfuscated base64 PHP backdoors.</span>
-                  </div>
-                  <div style={{ background: '#090d18', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                    <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px', fontSize: '13px' }}>Core File Tampering</strong>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Verifies MD5/SHA256 hashes against official WordPress.org releases.</span>
-                  </div>
-                  <div style={{ background: '#090d18', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                    <strong style={{ color: '#34d399', display: 'block', marginBottom: '4px', fontSize: '13px' }}>Dangerous Code Injection</strong>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Identifies malicious <code>eval()</code>, <code>assert()</code>, and obfuscated string execution.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Section: 2FA & Brute Force */}
-          {activeSection === 'wp-2fa-login' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(168, 85, 247, 0.15)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  color: '#c084fc',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>TOTP 2FA Authentication</span>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  color: '#f87171',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Brute Force Lockout</span>
-              </div>
-
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>2FA &amp; Login Brute Force Defense</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Protect WordPress administrator accounts against dictionary attacks, credential stuffing, and automated login botnets hitting <code>wp-login.php</code> and <code>xmlrpc.php</code>.
-              </p>
-
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '24px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
-                  <i className="fa-solid fa-lock" style={{ color: '#a78bfa', marginRight: '10px' }}></i>
-                  Login Defense Capabilities
-                </h3>
-                <ul style={{ paddingLeft: '20px', fontSize: '13.5px', color: '#cbd5e1', lineHeight: '1.9', margin: 0 }}>
-                  <li><strong>Configurable Lockout Thresholds:</strong> Set maximum failed attempts (e.g., 5 attempts in 10 minutes) before an IP is automatically banned.</li>
-                  <li><strong>Standard TOTP 2FA:</strong> Full compatibility with Google Authenticator, Microsoft Authenticator, and Authy.</li>
-                  <li><strong>XML-RPC Shield:</strong> Blocks brute force amplification attacks via multicall XML-RPC methods.</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Section: WP Hardening */}
-          {activeSection === 'wp-hardening' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  color: '#60a5fa',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>WordPress Hardening</span>
-              </div>
-
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>WordPress System Hardening &amp; Security Headers</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Instantly apply cybersecurity best practices to eliminate WordPress information disclosures and close common exploit pathways.
-              </p>
-
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '24px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
-                  <i className="fa-solid fa-wrench" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
-                  Automated Hardening Measures
-                </h3>
-                <ul style={{ paddingLeft: '20px', fontSize: '13.5px', color: '#cbd5e1', lineHeight: '1.9', margin: 0 }}>
-                  <li><strong>Disable XML-RPC:</strong> Prevents pingback DDoS and brute force reflection attacks.</li>
-                  <li><strong>Hide WordPress Version:</strong> Removes version generator meta tags from HTML head to stop automated vulnerability targeting.</li>
-                  <li><strong>Uploads Folder Shield:</strong> Blocks direct PHP file execution inside <code>wp-content/uploads/</code>.</li>
-                  <li><strong>HTTP Security Headers:</strong> Enforces <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, and <code>Referrer-Policy</code>.</li>
-                </ul>
               </div>
             </div>
           )}

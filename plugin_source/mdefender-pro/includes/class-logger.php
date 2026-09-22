@@ -19,7 +19,24 @@ class WAF_FW_Logger {
     public function log_attack($data) {
         global $wpdb;
         $ip = $data['ip'] ?? '';
-        $country_code = !empty($ip) ? self::resolve_ip_country($ip) : '';
+        $country_code = '';
+        if (!empty($ip)) {
+            $transient_key = 'waf_fw_geoip_' . md5($ip);
+            $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
+            if ($cached !== false && !empty($cached)) {
+                $country_code = $cached;
+            } elseif (function_exists('wp_remote_get') && function_exists('is_wp_error') && function_exists('wp_remote_retrieve_body')) {
+                $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 2]);
+                if (!is_wp_error($response)) {
+                    $json = json_decode(wp_remote_retrieve_body($response), true);
+                    $country_code = $json['countryCode'] ?? '';
+                    if (function_exists('set_transient')) {
+                        $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
+                        set_transient($transient_key, $country_code, 12 * $hour);
+                    }
+                }
+            }
+        }
 
         $wpdb->insert(
             $this->db->get_attacks_table(),
@@ -49,7 +66,24 @@ class WAF_FW_Logger {
     public function log_request($data) {
         global $wpdb;
         $ip = $data['ip'] ?? '';
-        $country_code = !empty($ip) ? self::resolve_ip_country($ip) : '';
+        $country_code = '';
+        if (!empty($ip)) {
+            $transient_key = 'waf_fw_geoip_' . md5($ip);
+            $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
+            if ($cached !== false && !empty($cached)) {
+                $country_code = $cached;
+            } elseif (function_exists('wp_remote_get') && function_exists('is_wp_error') && function_exists('wp_remote_retrieve_body')) {
+                $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 2]);
+                if (!is_wp_error($response)) {
+                    $json = json_decode(wp_remote_retrieve_body($response), true);
+                    $country_code = $json['countryCode'] ?? '';
+                    if (function_exists('set_transient')) {
+                        $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
+                        set_transient($transient_key, $country_code, 12 * $hour);
+                    }
+                }
+            }
+        }
 
         $wpdb->insert(
             $this->db->get_requests_table(),
@@ -337,56 +371,6 @@ class WAF_FW_Logger {
         $data_sql = "SELECT * FROM ($table_query) AS combined WHERE $where_sql ORDER BY created_at DESC LIMIT $per_page OFFSET $offset";
         $logs = $params ? $wpdb->get_results($wpdb->prepare($data_sql, $params)) : $wpdb->get_results($data_sql);
 
-        // Resolve and populate country codes for distinct unique IPs (cached or on-the-fly)
-        if (!empty($logs)) {
-            $unresolved_unique = [];
-            foreach ($logs as $log_item) {
-                if (empty($log_item->country_code) && !empty($log_item->ip)) {
-                    $ip = $log_item->ip;
-                    if ($ip === '127.0.0.1' || $ip === '::1' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $ip)) {
-                        $log_item->country_code = 'LOCAL';
-                    } else {
-                        $cached = function_exists('get_transient') ? get_transient('waf_fw_geoip_' . md5($ip)) : false;
-                        if (!empty($cached)) {
-                            $log_item->country_code = $cached;
-                        } else {
-                            $unresolved_unique[$ip] = true;
-                        }
-                    }
-                }
-            }
-
-            // Resolve up to 5 distinct unique IPs on the fly and backfill in DB
-            if (!empty($unresolved_unique)) {
-                $resolved_map = [];
-                $count = 0;
-                foreach (array_keys($unresolved_unique) as $uip) {
-                    if ($count >= 5) break;
-                    $code = self::resolve_ip_country($uip);
-                    if (!empty($code)) {
-                        $resolved_map[$uip] = $code;
-                        $wpdb->query($wpdb->prepare(
-                            "UPDATE $attacks_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
-                            $code, $uip
-                        ));
-                        $wpdb->query($wpdb->prepare(
-                            "UPDATE $requests_table SET country_code = %s WHERE ip = %s AND (country_code IS NULL OR country_code = '')",
-                            $code, $uip
-                        ));
-                    }
-                    $count++;
-                }
-
-                if (!empty($resolved_map)) {
-                    foreach ($logs as $log_item) {
-                        if (empty($log_item->country_code) && isset($resolved_map[$log_item->ip])) {
-                            $log_item->country_code = $resolved_map[$log_item->ip];
-                        }
-                    }
-                }
-            }
-        }
-
         return [
             'total' => $total,
             'page' => $page,
@@ -394,63 +378,5 @@ class WAF_FW_Logger {
             'total_pages' => ceil($total / $per_page),
             'logs' => $logs,
         ];
-    }
-
-    public static function resolve_ip_country($ip) {
-        $ip = trim($ip);
-        if (empty($ip) || $ip === '0.0.0.0') return '';
-
-        // Local / Private IP detection
-        if ($ip === '127.0.0.1' || $ip === '::1' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $ip)) {
-            return 'LOCAL';
-        }
-
-        $transient_key = 'waf_fw_geoip_' . md5($ip);
-        $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
-        if (!empty($cached)) {
-            return $cached;
-        }
-
-        $country_code = '';
-
-        if (function_exists('wp_remote_get') && function_exists('is_wp_error') && function_exists('wp_remote_retrieve_body')) {
-            // Provider 1: ip-api.com
-            $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 2]);
-            if (!is_wp_error($resp)) {
-                $data = json_decode(wp_remote_retrieve_body($resp), true);
-                if (!empty($data['countryCode'])) {
-                    $country_code = strtoupper($data['countryCode']);
-                }
-            }
-
-            // Provider 2: ipwho.is (fallback)
-            if (empty($country_code)) {
-                $resp = wp_remote_get("https://ipwho.is/{$ip}", ['timeout' => 2]);
-                if (!is_wp_error($resp)) {
-                    $data = json_decode(wp_remote_retrieve_body($resp), true);
-                    if (!empty($data['country_code'])) {
-                        $country_code = strtoupper($data['country_code']);
-                    }
-                }
-            }
-
-            // Provider 3: freeipapi.com (fallback)
-            if (empty($country_code)) {
-                $resp = wp_remote_get("https://freeipapi.com/api/json/{$ip}", ['timeout' => 2]);
-                if (!is_wp_error($resp)) {
-                    $data = json_decode(wp_remote_retrieve_body($resp), true);
-                    if (!empty($data['countryCode'])) {
-                        $country_code = strtoupper($data['countryCode']);
-                    }
-                }
-            }
-        }
-
-        if (!empty($country_code) && function_exists('set_transient')) {
-            $duration = defined('DAY_IN_SECONDS') ? 30 * DAY_IN_SECONDS : 86400 * 30;
-            set_transient($transient_key, $country_code, $duration);
-        }
-
-        return $country_code;
     }
 }

@@ -3,44 +3,41 @@ defined('ABSPATH') || exit;
 
 if (!function_exists('waf_get_country_name')) {
     function waf_get_country_name($code) {
-        $code = strtoupper(trim((string)$code));
-        if ($code === 'LOCAL' || $code === 'XX') return 'Localhost';
         $countries = [
-            'BD' => 'Bangladesh', 'US' => 'United States', 'RO' => 'Romania', 'IN' => 'India',
-            'PK' => 'Pakistan', 'GB' => 'United Kingdom', 'CA' => 'Canada', 'DE' => 'Germany',
-            'FR' => 'France', 'CN' => 'China', 'RU' => 'Russia', 'JP' => 'Japan',
-            'BR' => 'Brazil', 'AU' => 'Australia', 'IT' => 'Italy', 'NL' => 'Netherlands',
-            'ES' => 'Spain', 'SG' => 'Singapore', 'MY' => 'Malaysia', 'TH' => 'Thailand',
-            'ID' => 'Indonesia', 'TR' => 'Turkey', 'UA' => 'Ukraine', 'SA' => 'Saudi Arabia',
-            'AE' => 'United Arab Emirates', 'ZA' => 'South Africa', 'KR' => 'South Korea',
-            'IR' => 'Iran', 'KP' => 'North Korea', 'VN' => 'Vietnam', 'PH' => 'Philippines',
-            'SE' => 'Sweden', 'NO' => 'Norway', 'DK' => 'Denmark', 'FI' => 'Finland',
-            'PL' => 'Poland', 'CH' => 'Switzerland', 'AT' => 'Austria', 'BE' => 'Belgium',
-            'IE' => 'Ireland', 'PT' => 'Portugal', 'GR' => 'Greece', 'CZ' => 'Czech Republic',
-            'HU' => 'Hungary', 'BG' => 'Bulgaria', 'HR' => 'Croatia', 'RS' => 'Serbia',
-            'SK' => 'Slovakia', 'SI' => 'Slovenia', 'EE' => 'Estonia', 'LV' => 'Latvia',
-            'LT' => 'Lithuania', 'IS' => 'Iceland', 'LU' => 'Luxembourg', 'MT' => 'Malta',
-            'CY' => 'Cyprus', 'MX' => 'Mexico', 'AR' => 'Argentina', 'CL' => 'Chile',
-            'CO' => 'Colombia', 'PE' => 'Peru', 'VE' => 'Venezuela', 'EG' => 'Egypt',
-            'NG' => 'Nigeria', 'KE' => 'Kenya', 'MA' => 'Morocco', 'DZ' => 'Algeria',
-            'TN' => 'Tunisia', 'GH' => 'Ghana', 'ET' => 'Ethiopia', 'IL' => 'Israel',
-            'QA' => 'Qatar', 'KW' => 'Kuwait', 'OM' => 'Oman', 'BH' => 'Bahrain',
-            'JO' => 'Jordan', 'LB' => 'Lebanon', 'IQ' => 'Iraq', 'KZ' => 'Kazakhstan',
-            'UZ' => 'Uzbekistan', 'NZ' => 'New Zealand', 'HK' => 'Hong Kong', 'TW' => 'Taiwan',
-            'MO' => 'Macau', 'LK' => 'Sri Lanka', 'NP' => 'Nepal', 'MM' => 'Myanmar',
-            'KH' => 'Cambodia', 'MD' => 'Moldova', 'SC' => 'Seychelles', 'MU' => 'Mauritius',
-            'PA' => 'Panama', 'CR' => 'Costa Rica', 'DO' => 'Dominican Republic',
-            'PR' => 'Puerto Rico', 'UY' => 'Uruguay', 'PY' => 'Paraguay', 'AF' => 'Afghanistan',
-            'AL' => 'Albania', 'AM' => 'Armenia', 'AO' => 'Angola', 'AZ' => 'Azerbaijan',
-            'BA' => 'Bosnia and Herzegovina', 'BB' => 'Barbados', 'BO' => 'Bolivia',
-            'BW' => 'Botswana', 'BY' => 'Belarus', 'BZ' => 'Belize', 'CM' => 'Cameroon',
-            'CU' => 'Cuba', 'EC' => 'Ecuador', 'GE' => 'Georgia', 'GT' => 'Guatemala',
-            'HN' => 'Honduras', 'JM' => 'Jamaica', 'LY' => 'Libya', 'MN' => 'Mongolia',
-            'MZ' => 'Mozambique', 'NA' => 'Namibia', 'NI' => 'Nicaragua', 'SV' => 'El Salvador',
-            'SY' => 'Syria', 'TZ' => 'Tanzania', 'UG' => 'Uganda', 'YE' => 'Yemen',
-            'ZM' => 'Zambia', 'ZW' => 'Zimbabwe',
+            'BD' => 'Bangladesh',
+            'US' => 'United States',
+            'RO' => 'Romania',
+            'IN' => 'India',
+            'PK' => 'Pakistan',
+            'GB' => 'United Kingdom',
+            'CA' => 'Canada',
+            'DE' => 'Germany',
+            'FR' => 'France',
+            'CN' => 'China',
+            'RU' => 'Russia',
+            'JP' => 'Japan',
+            'BR' => 'Brazil',
+            'AU' => 'Australia',
+            'IT' => 'Italy',
+            'NL' => 'Netherlands',
+            'ES' => 'Spain',
+            'SG' => 'Singapore',
+            'MY' => 'Malaysia',
+            'TH' => 'Thailand',
+            'ID' => 'Indonesia',
+            'TR' => 'Turkey',
+            'UA' => 'Ukraine',
+            'SA' => 'Saudi Arabia',
+            'AE' => 'United Arab Emirates',
+            'ZA' => 'South Africa',
+            'KR' => 'South Korea',
+            'IR' => 'Iran',
+            'KP' => 'North Korea',
+            'VN' => 'Vietnam',
+            'PH' => 'Philippines',
         ];
-        return $countries[$code] ?? (!empty($code) ? $code : 'Unknown Location');
+        $code = strtoupper($code);
+        return $countries[$code] ?? $code;
     }
 }
 
@@ -201,22 +198,15 @@ $logs = $logger->get_logs($_GET);
                                 <!-- Location Flag & Country Name -->
                                 <td data-label="Location">
                                     <div style="display:flex;align-items:center;gap:6px;">
-                                        <?php 
-                                        $cc = !empty($log->country_code) ? strtoupper($log->country_code) : '';
-                                        if ($cc === 'LOCAL' || $cc === 'XX'): ?>
-                                            <span class="dashicons dashicons-admin-network" title="Local Network" style="font-size:16px;width:16px;height:16px;color:#64748b;display:inline-block;vertical-align:middle;"></span>
-                                            <span style="font-size:12.5px;font-weight:600;color:#334155;">Local Network</span>
-                                        <?php elseif (!empty($cc)): ?>
-                                            <img src="https://flagcdn.com/16x12/<?php echo strtolower($cc); ?>.png" 
-                                                 title="<?php echo esc_attr($cc); ?>" 
-                                                 alt="<?php echo esc_attr($cc); ?>" 
+                                        <?php if (!empty($log->country_code)): ?>
+                                            <img src="https://flagcdn.com/16x12/<?php echo strtolower($log->country_code); ?>.png" 
+                                                 title="<?php echo esc_attr($log->country_code); ?>" 
+                                                 alt="<?php echo esc_attr($log->country_code); ?>" 
                                                  style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle;" />
-                                            <span style="font-size:12.5px;font-weight:600;color:#334155;"><?php echo esc_html(waf_get_country_name($cc)); ?></span>
+                                            <span style="font-size:12.5px;font-weight:600;color:#334155;"><?php echo esc_html(waf_get_country_name($log->country_code)); ?></span>
                                         <?php else: ?>
-                                            <span class="waf-lazy-geoip" data-ip="<?php echo esc_attr($log->ip); ?>">
-                                                <span class="dashicons dashicons-admin-site" title="Resolving..." style="font-size:16px;width:16px;height:16px;color:#94a3b8;display:inline-block;vertical-align:middle;"></span>
-                                                <span style="font-size:12.5px;color:#64748b;">Resolving...</span>
-                                            </span>
+                                            <span class="dashicons dashicons-admin-site" title="Unknown Location" style="font-size:16px;width:16px;height:16px;color:#94a3b8;display:inline-block;vertical-align:middle;"></span>
+                                            <span style="font-size:12.5px;color:#64748b;">Unknown Location</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -474,45 +464,4 @@ function wafFwClearLogs() {
         }
     });
 }
-
-// Fast non-blocking GeoIP resolver for un-cached IPs
-jQuery(document).ready(function($) {
-    const pendingIps = {};
-    $('.waf-lazy-geoip').each(function() {
-        const ip = $(this).data('ip');
-        if (ip && ip !== '0.0.0.0' && ip !== '127.0.0.1' && ip !== '::1') {
-            pendingIps[ip] = pendingIps[ip] || [];
-            pendingIps[ip].push($(this));
-        }
-    });
-
-    Object.keys(pendingIps).forEach(function(ip) {
-        fetch('https://ipwho.is/' + encodeURIComponent(ip))
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data && data.success && data.country_code) {
-                    const cc = data.country_code.toLowerCase();
-                    const country = data.country || data.country_code;
-                    const flagHtml = '<img src="https://flagcdn.com/16x12/' + cc + '.png" title="' + country + '" alt="' + country + '" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle; margin-right:4px;" /><span style="font-size:12.5px;font-weight:600;color:#334155;">' + country + '</span>';
-                    
-                    pendingIps[ip].forEach(function(el) {
-                        el.html(flagHtml);
-                    });
-
-                    // Save to database in background
-                    if (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.ajax_url) {
-                        $.post(waf_fw_ajax.ajax_url, {
-                            action: 'waf_fw_save_geoip',
-                            nonce: waf_fw_ajax.nonce,
-                            ip: ip,
-                            country_code: data.country_code
-                        });
-                    }
-                }
-            })
-            .catch(function(err) {
-                console.log('GeoIP resolver error for ' + ip, err);
-            });
-    });
-});
 </script>
