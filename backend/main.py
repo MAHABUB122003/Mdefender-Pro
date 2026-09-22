@@ -846,31 +846,163 @@ async def user_delete_whitelist(request: Request, user: dict = Depends(verify_us
 @app.get("/api/user/whois")
 async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_compat)):
     import requests
+    import socket
+    import re
+    from bson import ObjectId
+
+    ip = (ip or '').strip()
+    if not ip:
+        return {'status': 'error', 'message': 'IP address is required'}
+
+    # 1. Reverse DNS Hostname
+    hostname = ''
+    try:
+        hostname = socket.gethostbyaddr(ip)[0]
+    except Exception:
+        hostname = 'No PTR record'
+
+    # 2. Rich Geolocation & Network Intelligence
     geo_data = {}
     try:
-        r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query", timeout=4)
+        r = requests.get(
+            f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,asname,reverse,mobile,proxy,hosting,query",
+            timeout=4
+        )
         if r.status_code == 200:
             geo_data = r.json()
-    except Exception: pass
+    except Exception:
+        pass
 
+    if not geo_data.get('reverse') and hostname != 'No PTR record':
+        geo_data['reverse'] = hostname
+
+    # 3. Official RIR WHOIS Records & Key Extraction
     raw_whois = "No whois record found."
+    parsed_whois = {
+        'netname': '',
+        'inetnum': '',
+        'cidr': '',
+        'abuse_email': '',
+        'organization': '',
+        'country': '',
+        'source': '',
+        'last_modified': '',
+    }
+
     try:
-        r = requests.get(f"https://stat.ripe.net/data/whois/data.json?resource={ip}", timeout=4)
+        r = requests.get(f"https://stat.ripe.net/data/whois/data.json?resource={ip}", timeout=5)
         if r.status_code == 200:
             data = r.json()
             records = data.get('data', {}).get('records', [])
             output = ""
             for rec in records:
                 for line in rec:
-                    output += f"{line.get('key')}: {line.get('value')}\n"
+                    k = (line.get('key') or '').strip().lower()
+                    v = (line.get('value') or '').strip()
+                    output += f"{line.get('key')}: {v}\n"
+
+                    # Auto-extract key fields
+                    if k in ('netname', 'net-name') and not parsed_whois['netname']:
+                        parsed_whois['netname'] = v
+                    elif k in ('inetnum', 'inet6num', 'cidr', 'route') and not parsed_whois['inetnum']:
+                        parsed_whois['inetnum'] = v
+                    elif k in ('abuse-mailbox', 'e-mail', 'abuse-email', 'notify') and not parsed_whois['abuse_email']:
+                        emails = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', v)
+                        if emails:
+                            parsed_whois['abuse_email'] = emails[0]
+                    elif k in ('org-name', 'organization', 'descr') and not parsed_whois['organization']:
+                        parsed_whois['organization'] = v
+                    elif k in ('country', 'country-code') and not parsed_whois['country']:
+                        parsed_whois['country'] = v.upper()
+                    elif k in ('source', 'source-rir') and not parsed_whois['source']:
+                        parsed_whois['source'] = v.upper()
+                    elif k in ('last-modified', 'changed') and not parsed_whois['last_modified']:
+                        parsed_whois['last_modified'] = v
+
                 output += "\n" + "-"*40 + "\n\n"
+
             if output:
                 raw_whois = output
     except Exception as e:
         raw_whois = f"Whois query failed: {str(e)}"
 
+    # 4. Local User Attack History for this IP
+    u_str = str(user['_id'])
+    user_cond = {'$or': [{'user_id': u_str}, {'added_by_user_id': u_str}]}
+
+    attack_query = {'$and': [{'ip': ip}, user_cond]}
+    local_attacks_count = db.attacks.count_documents(attack_query)
+    recent_attacks = list(db.attacks.find(attack_query).sort('timestamp', -1).limit(5))
+
+    attack_history = []
+    for a in recent_attacks:
+        attack_history.append({
+            'url': a.get('url', '/'),
+            'attack_type': a.get('attack_type', 'Attack Attempt'),
+            'status': a.get('status', 'blocked'),
+            'timestamp': a['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if a.get('timestamp') and hasattr(a['timestamp'], 'strftime') else str(a.get('timestamp', '')),
+            'confidence': a.get('confidence', 1.0),
+        })
+
+    # 5. Blacklist & Geo-Block Status Checks
+    is_blacklisted = ip_filter.is_blacklisted(ip, user_id=u_str)
+    is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=u_str)
+
+    # 6. Calculate Threat Score & Risk Assessment
+    threat_score = 0
+    threat_level = "Low"
+    threat_reasons = []
+
+    if local_attacks_count > 0:
+        threat_score += min(50, local_attacks_count * 15)
+        threat_reasons.append(f"Recorded {local_attacks_count} attack attempt(s) on your websites")
+
+    if is_blacklisted:
+        threat_score = max(threat_score, 90)
+        threat_reasons.append("IP is in your active Blacklist")
+
+    if is_geo_blocked:
+        threat_score = max(threat_score, 85)
+        threat_reasons.append(f"Origin country ({geo_info.get('country_name')}) is restricted by policy")
+
+    if geo_data.get('proxy'):
+        threat_score += 25
+        threat_reasons.append("Known Proxy / VPN exit node")
+
+    if geo_data.get('hosting'):
+        threat_score += 15
+        threat_reasons.append("Datacenter / Cloud Hosting IP (common for automated bots)")
+
+    threat_score = min(100, max(5, threat_score))
+    if threat_score >= 80:
+        threat_level = "Critical / High Risk"
+    elif threat_score >= 50:
+        threat_level = "Suspicious"
+    elif threat_score >= 25:
+        threat_level = "Moderate"
+    else:
+        threat_level = "Clean / Low Risk"
+
     return {
+        'status': 'success',
+        'ip': ip,
+        'hostname': hostname,
         'geo': geo_data,
+        'parsed_whois': parsed_whois,
+        'threat_assessment': {
+            'score': threat_score,
+            'level': threat_level,
+            'reasons': threat_reasons,
+            'is_blacklisted': is_blacklisted,
+            'is_geo_blocked': is_geo_blocked,
+            'is_proxy': bool(geo_data.get('proxy')),
+            'is_hosting': bool(geo_data.get('hosting')),
+            'is_mobile': bool(geo_data.get('mobile')),
+        },
+        'user_attack_history': {
+            'total_attacks': local_attacks_count,
+            'recent_attacks': attack_history,
+        },
         'raw': raw_whois
     }
 

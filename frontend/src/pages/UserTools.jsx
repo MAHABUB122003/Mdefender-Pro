@@ -98,6 +98,8 @@ export default function UserTools() {
   const [whoisResult, setWhoisResult] = useState(null)
   const [whoisError, setWhoisError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [copiedAbuse, setCopiedAbuse] = useState(false)
+  const [copiedDossier, setCopiedDossier] = useState(false)
   const [blacklisting, setBlacklisting] = useState(false)
   const [blacklistMsg, setBlacklistMsg] = useState('')
 
@@ -154,19 +156,53 @@ export default function UserTools() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleCopyAbuse = (email) => {
+    if (!email) return
+    navigator.clipboard.writeText(email)
+    setCopiedAbuse(true)
+    setTimeout(() => setCopiedAbuse(false), 2000)
+  }
+
+  const handleCopyDossier = () => {
+    if (!whoisResult) return
+    const dossierText = `=== MDEFENDER THREAT INTELLIGENCE REPORT ===
+Target IP: ${whoisResult.ip}
+Reverse DNS: ${whoisResult.hostname || whoisResult.geo?.reverse || 'None'}
+Country: ${whoisResult.geo?.country} (${whoisResult.geo?.countryCode})
+City / Region: ${whoisResult.geo?.city}, ${whoisResult.geo?.regionName}
+ISP: ${whoisResult.geo?.isp}
+Org / Network: ${whoisResult.parsed_whois?.organization || whoisResult.geo?.org}
+ASN: ${whoisResult.geo?.as}
+NetName: ${whoisResult.parsed_whois?.netname || 'N/A'}
+Subnet (CIDR): ${whoisResult.parsed_whois?.inetnum || 'N/A'}
+Abuse Contact: ${whoisResult.parsed_whois?.abuse_email || 'N/A'}
+RIR Source: ${whoisResult.parsed_whois?.source || 'N/A'}
+Threat Score: ${whoisResult.threat_assessment?.score}/100 (${whoisResult.threat_assessment?.level})
+Proxy / VPN: ${whoisResult.threat_assessment?.is_proxy ? 'YES' : 'NO'}
+Hosting / Datacenter: ${whoisResult.threat_assessment?.is_hosting ? 'YES' : 'NO'}
+Total Attacks on Your Sites: ${whoisResult.user_attack_history?.total_attacks || 0}
+Report Generated: ${new Date().toISOString()}`
+
+    navigator.clipboard.writeText(dossierText)
+    setCopiedDossier(true)
+    setTimeout(() => setCopiedDossier(false), 2000)
+  }
+
   const handleBlacklist = async () => {
-    const ip = whoisResult?.geo?.query || ipInput.trim()
+    const ip = whoisResult?.ip || whoisResult?.geo?.query || ipInput.trim()
     if (!ip) return
-    if (!confirm(`Are you sure you want to add ${ip} to your blacklist?`)) return
+    if (!confirm(`Are you sure you want to add ${ip} to your permanent blacklist?`)) return
     setBlacklisting(true)
     setBlacklistMsg('')
     try {
       const res = await api.addUserBlacklist({
         ip: ip,
-        reason: `Blacklisted from Whois Lookup (ISP: ${whoisResult?.geo?.isp || 'Unknown'})`,
+        reason: `Blacklisted via Threat Intel Lookup (ISP: ${whoisResult?.geo?.isp || 'Unknown'})`,
         type: 'permanent'
       })
       setBlacklistMsg(res?.message || `IP ${ip} successfully added to Blacklist!`)
+      // Refresh current lookup so threat score reflects blacklisted status
+      handleWhoisLookup(ip)
     } catch (err) {
       alert(err.message || 'Failed to blacklist IP')
     } finally {
@@ -234,76 +270,71 @@ export default function UserTools() {
     }
   }
 
-  const filteredCountries = useMemo(() => {
-    const q = countrySearch.toLowerCase().trim()
-    if (!q) return ALL_COUNTRIES
-    return ALL_COUNTRIES.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
-  }, [countrySearch])
-
   const blockedCodesSet = useMemo(() => {
     return new Set(countryBlocks.map(b => b.country_code))
   }, [countryBlocks])
 
   const geo = whoisResult?.geo || {}
+  const parsed = whoisResult?.parsed_whois || {}
+  const threat = whoisResult?.threat_assessment || {}
+  const history = whoisResult?.user_attack_history || {}
+
+  // Threat badge color determination
+  const threatScore = threat.score || 0
+  let threatScoreColor = '#10b981'
+  let threatBgColor = '#ecfdf5'
+  if (threatScore >= 80) {
+    threatScoreColor = '#ef4444'
+    threatBgColor = '#fef2f2'
+  } else if (threatScore >= 50) {
+    threatScoreColor = '#f97316'
+    threatBgColor = '#fff7ed'
+  } else if (threatScore >= 25) {
+    threatScoreColor = '#eab308'
+    threatBgColor = '#fefce8'
+  }
 
   return (
-    <div className="user-tools-page" style={{ padding: '4px 0 30px' }}>
+    <div className="user-tools-page" style={{ padding: '4px 0 40px' }}>
       {/* Page Header */}
       <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main, #0f172a)', margin: '0 0 6px', letterSpacing: '-0.4px' }}>
-          Security Tools & Utilities
+        <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main, #0f172a)', margin: '0 0 6px', letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+            <i className="fas fa-satellite-dish"></i>
+          </span>
+          Forensic Threat Intelligence &amp; Security Tools
         </h2>
         <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--text-muted, #64748b)' }}>
-          Enterprise IP socket intelligence and Geolocation restriction tools to safeguard your web applications.
+          Deep socket RIR WHOIS, automated ASN threat scoring, proxy/bot detection, and country-level geo-firewall defense.
         </p>
       </div>
 
       {/* Tabs Switcher */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'var(--bg-secondary, #f1f5f9)', padding: '5px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', maxWidth: '520px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'var(--bg-secondary, #f1f5f9)', padding: '5px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', maxWidth: '540px' }}>
         <button
           type="button"
           onClick={() => setActiveTab('whois')}
           style={{
-            flex: 1,
-            height: '40px',
-            border: 'none',
-            borderRadius: '9px',
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
+            flex: 1, height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             background: activeTab === 'whois' ? 'var(--card-bg, #ffffff)' : 'transparent',
             color: activeTab === 'whois' ? '#0284c7' : 'var(--text-muted, #64748b)',
-            boxShadow: activeTab === 'whois' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.2s'
+            boxShadow: activeTab === 'whois' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s'
           }}
         >
-          <i className="fas fa-search-location"></i>
-          <span>Whois IP Lookup</span>
+          <i className="fas fa-radar"></i>
+          <span>Attacker IP Threat Intel</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('geo')}
           style={{
-            flex: 1,
-            height: '40px',
-            border: 'none',
-            borderRadius: '9px',
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
+            flex: 1, height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             background: activeTab === 'geo' ? 'var(--card-bg, #ffffff)' : 'transparent',
             color: activeTab === 'geo' ? '#dc2626' : 'var(--text-muted, #64748b)',
-            boxShadow: activeTab === 'geo' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.2s'
+            boxShadow: activeTab === 'geo' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s'
           }}
         >
           <i className="fas fa-globe-americas"></i>
@@ -312,7 +343,7 @@ export default function UserTools() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: WHOIS REGISTRY IP LOOKUP */}
+      {/* TAB 1: ATTACKER IP THREAT INTEL & WHOIS */}
       {/* ========================================================================= */}
       {activeTab === 'whois' && (
         <div>
@@ -320,25 +351,17 @@ export default function UserTools() {
           <div className="card" style={{ padding: '20px 24px', marginBottom: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
             <form onSubmit={(e) => { e.preventDefault(); handleWhoisLookup(); }} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 320px', position: 'relative' }}>
-                <i className="fas fa-network-wired" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '15px' }}></i>
+                <i className="fas fa-crosshairs" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '15px' }}></i>
                 <input
                   type="text"
                   value={ipInput}
                   onChange={(e) => setIpInput(e.target.value)}
-                  placeholder="Enter IP Address (e.g. 104.21.52.12 or 8.8.8.8)"
+                  placeholder="Enter Attacker IP (e.g. 103.151.30.111, 185.220.101.5, or 8.8.8.8)"
                   style={{
-                    width: '100%',
-                    height: '46px',
-                    padding: '0 16px 0 44px',
-                    borderRadius: '10px',
-                    border: '1.5px solid var(--border-color, #cbd5e1)',
-                    background: 'var(--input-bg, #f8fafc)',
-                    color: 'var(--text-main, #0f172a)',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    fontFamily: 'monospace',
-                    outline: 'none',
-                    boxSizing: 'border-box'
+                    width: '100%', height: '46px', padding: '0 16px 0 44px', borderRadius: '10px',
+                    border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--input-bg, #f8fafc)',
+                    color: 'var(--text-main, #0f172a)', fontSize: '14px', fontWeight: 600, fontFamily: 'monospace',
+                    outline: 'none', boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -347,55 +370,45 @@ export default function UserTools() {
                 disabled={whoisLoading}
                 className="btn-primary"
                 style={{
-                  height: '46px',
-                  padding: '0 28px',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  cursor: whoisLoading ? 'not-allowed' : 'pointer'
+                  height: '46px', padding: '0 28px', borderRadius: '10px', fontSize: '14px', fontWeight: 700,
+                  display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: whoisLoading ? 'not-allowed' : 'pointer'
                 }}
               >
                 {whoisLoading ? (
                   <>
                     <i className="fas fa-spinner fa-spin"></i>
-                    <span>Querying...</span>
+                    <span>Analyzing...</span>
                   </>
                 ) : (
                   <>
-                    <i className="fas fa-radar"></i>
-                    <span>Lookup IP</span>
+                    <i className="fas fa-magnifying-glass-location"></i>
+                    <span>Analyze Threat</span>
                   </>
                 )}
               </button>
             </form>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>Quick Test:</span>
-              {['8.8.8.8 (Google)', '1.1.1.1 (Cloudflare)', '9.9.9.9 (Quad9)', '208.67.222.222 (OpenDNS)'].map((chip) => {
-                const ip = chip.split(' ')[0]
-                return (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => { setIpInput(ip); handleWhoisLookup(ip); }}
-                    style={{
-                      background: 'var(--chip-bg, #f1f5f9)',
-                      border: '1px solid var(--chip-border, #e2e8f0)',
-                      color: 'var(--text-main, #334155)',
-                      fontSize: '11.5px',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: 600
-                    }}
-                  >
-                    {chip}
-                  </button>
-                )
-              })}
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>Investigate Sample:</span>
+              {[
+                { ip: '103.151.30.111', label: '103.151.30.111 (Attacker IP)' },
+                { ip: '185.220.101.5', label: '185.220.101.5 (Tor Exit Node)' },
+                { ip: '8.8.8.8', label: '8.8.8.8 (Google DNS)' },
+                { ip: '1.1.1.1', label: '1.1.1.1 (Cloudflare)' },
+              ].map((chip) => (
+                <button
+                  key={chip.ip}
+                  type="button"
+                  onClick={() => { setIpInput(chip.ip); handleWhoisLookup(chip.ip); }}
+                  style={{
+                    background: 'var(--chip-bg, #f1f5f9)', border: '1px solid var(--chip-border, #e2e8f0)',
+                    color: 'var(--text-main, #334155)', fontSize: '11.5px', padding: '4px 10px',
+                    borderRadius: '6px', cursor: 'pointer', fontWeight: 600
+                  }}
+                >
+                  {chip.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -414,76 +427,243 @@ export default function UserTools() {
           {whoisLoading && (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
               <i className="fas fa-spinner fa-spin" style={{ fontSize: '32px', color: '#0284c7', marginBottom: '14px' }}></i>
-              <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Querying WHOIS registries & Geo Intelligence sockets...</p>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Executing multi-RIR WHOIS sockets, PTR reverse lookup &amp; threat intelligence analysis...</p>
             </div>
           )}
 
           {!whoisLoading && whoisResult && (
             <>
-              {/* Intelligence Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Target IP & Status</div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <code style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>{geo.query || ipInput}</code>
-                    <span className="badge success" style={{ fontSize: '11px', padding: '3px 8px' }}>Active</span>
+              {/* Threat Overview Banner */}
+              <div style={{
+                background: threatBgColor, border: `1.5px solid ${threatScoreColor}`, borderRadius: '14px',
+                padding: '20px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', flexWrap: 'wrap', gap: '16px'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '18px' }}>{threatScore >= 50 ? '⚠️' : '🛡️'}</span>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: threatScoreColor }}>
+                      Threat Assessment: {threat.level || 'Normal'}
+                    </h3>
                   </div>
+                  <div style={{ fontSize: '13px', color: '#334155', display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    <span>Target IP: <strong>{whoisResult.ip}</strong></span>
+                    <span>•</span>
+                    <span>Reverse Hostname: <strong>{whoisResult.hostname || geo.reverse || 'No PTR Record'}</strong></span>
+                    <span>•</span>
+                    <span>Subnet (CIDR): <strong>{parsed.inetnum || 'N/A'}</strong></span>
+                  </div>
+                  {threat.reasons && threat.reasons.length > 0 && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      {threat.reasons.map((r, idx) => (
+                        <span key={idx} style={{ background: 'rgba(0,0,0,0.06)', color: '#0f172a', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 700 }}>
+                          <i className="fas fa-triangle-exclamation" style={{ marginRight: '4px', color: threatScoreColor }}></i>{r}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Origin Country</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                    {geo.country ? `${geo.country} (${geo.countryCode || ''})` : 'Unknown'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ textAlign: 'center', padding: '10px 18px', background: '#fff', borderRadius: '10px', border: `1px solid ${threatScoreColor}`, minWidth: '100px' }}>
+                    <div style={{ fontSize: '24px', fontWeight: 900, color: threatScoreColor }}>
+                      {threatScore}<span style={{ fontSize: '13px', color: '#94a3b8' }}>/100</span>
+                    </div>
+                    <div style={{ fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>Risk Score</div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                </div>
+              </div>
+
+              {/* Forensic Intelligence Cards Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                {/* Geolocation & Region */}
+                <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Geolocation Origin</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-earth-asia" style={{ color: '#0284c7' }}></i>
+                    <span>{geo.country ? `${geo.country} (${geo.countryCode || ''})` : 'Unknown'}</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '4px' }}>
                     {geo.city ? `${geo.city}, ${geo.regionName || ''}` : 'Region details unavailable'}
                   </div>
+                  {geo.lat && geo.lon && (
+                    <div style={{ marginTop: '8px' }}>
+                      <a
+                        href={`https://www.google.com/maps?q=${geo.lat},${geo.lon}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: '11.5px', color: '#2563eb', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <i className="fas fa-map-pin"></i> View on Map ({geo.lat}, {geo.lon})
+                      </a>
+                    </div>
+                  )}
                 </div>
 
+                {/* ISP & Autonomous System */}
                 <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>ISP / Organization</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {geo.isp || geo.org || 'Unknown Provider'}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                    Org: {geo.org || 'N/A'}
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Autonomous System (ASN)</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Network &amp; ASN</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {geo.as || 'Unknown ASN'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                    TZ: {geo.timezone || 'UTC'} | Lat/Lon: {geo.lat ? `${geo.lat}, ${geo.lon}` : 'N/A'}
+                  <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    ISP: {geo.isp || 'N/A'}
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>
+                    Org: {parsed.organization || geo.org || 'N/A'}
+                  </div>
+                </div>
+
+                {/* Registry & NetName */}
+                <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>RIR Registry &amp; Subnet</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    {parsed.source ? `${parsed.source} Registry` : 'RIR Socket'}
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '4px' }}>
+                    NetName: <strong>{parsed.netname || 'N/A'}</strong>
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>
+                    Range: <code style={{ fontSize: '11.5px', color: '#0f172a', fontWeight: 700 }}>{parsed.inetnum || 'N/A'}</code>
+                  </div>
+                </div>
+
+                {/* Abuse Contact & Proxy Status */}
+                <div className="card" style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Abuse Contact &amp; Type</div>
+                  {parsed.abuse_email ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                      <code style={{ fontSize: '12px', color: '#b91c1c', fontWeight: 700, wordBreak: 'break-all' }}>{parsed.abuse_email}</code>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyAbuse(parsed.abuse_email)}
+                        style={{ background: '#fee2e2', border: 'none', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        {copiedAbuse ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>No direct abuse mailbox published</div>
+                  )}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    <span className={`badge ${threat.is_proxy ? 'danger' : 'success'}`} style={{ fontSize: '10.5px' }}>
+                      {threat.is_proxy ? 'Proxy/VPN' : 'Direct IP'}
+                    </span>
+                    <span className={`badge ${threat.is_hosting ? 'warning' : 'success'}`} style={{ fontSize: '10.5px' }}>
+                      {threat.is_hosting ? 'Datacenter/Cloud' : 'Residential/ISP'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Action Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                  <i className="fas fa-terminal" style={{ color: '#6366f1', marginRight: '8px' }}></i>
-                  Official Registry WHOIS Record
+              {/* Local Incident History against User's Websites */}
+              <div className="card" style={{ padding: '20px 24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: history.total_attacks > 0 ? '#fee2e2' : '#ecfdf5', color: history.total_attacks > 0 ? '#ef4444' : '#10b981', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}>
+                      <i className={`fas ${history.total_attacks > 0 ? 'fa-skull-crossbones' : 'fa-shield-check'}`}></i>
+                    </span>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                        Attacker Activity on Your Connected Websites ({history.total_attacks || 0} Incident{history.total_attacks === 1 ? '' : 's'})
+                      </h4>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        Historical attack log correlation for IP {whoisResult.ip}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleCopyDossier}
+                      style={{
+                        background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a',
+                        fontWeight: 700, fontSize: '12px', padding: '6px 14px', borderRadius: '6px',
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      <i className={`fas ${copiedDossier ? 'fa-check text-green-600' : 'fa-file-lines'}`}></i>
+                      <span>{copiedDossier ? 'Dossier Copied!' : 'Export Threat Dossier'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBlacklist}
+                      disabled={blacklisting || threat.is_blacklisted}
+                      style={{
+                        background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700,
+                        fontSize: '12px', padding: '6px 14px', borderRadius: '6px', cursor: (blacklisting || threat.is_blacklisted) ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: threat.is_blacklisted ? 0.7 : 1
+                      }}
+                    >
+                      <i className="fas fa-ban"></i>
+                      <span>{threat.is_blacklisted ? 'Already Blacklisted' : 'Blacklist Attacker IP'}</span>
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button type="button" onClick={handleCopyRaw} className="btn-small" style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}>
-                    <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`} style={{ marginRight: '6px' }}></i>{copied ? 'Copied!' : 'Copy Record'}
-                  </button>
-                  <button type="button" onClick={handleBlacklist} disabled={blacklisting} className="btn-small" style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}>
-                    <i className="fas fa-ban" style={{ marginRight: '6px' }}></i>{blacklisting ? 'Blacklisting...' : 'Blacklist IP'}
-                  </button>
-                </div>
+
+                {history.recent_attacks && history.recent_attacks.length > 0 ? (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                          <th style={{ padding: '8px 10px', fontWeight: 700 }}>Timestamp</th>
+                          <th style={{ padding: '8px 10px', fontWeight: 700 }}>Target Endpoint</th>
+                          <th style={{ padding: '8px 10px', fontWeight: 700 }}>Attack Classification</th>
+                          <th style={{ padding: '8px 10px', fontWeight: 700 }}>Firewall Verdict</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.recent_attacks.map((att, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '10px', color: '#64748b', whiteSpace: 'nowrap' }}>{att.timestamp}</td>
+                            <td style={{ padding: '10px' }}><code style={{ color: '#0f172a', fontWeight: 700 }}>{att.url}</code></td>
+                            <td style={{ padding: '10px' }}><span style={{ color: '#dc2626', fontWeight: 700 }}>{att.attack_type}</span></td>
+                            <td style={{ padding: '10px' }}>
+                              <span className={`badge ${att.status === 'blocked' ? 'danger' : 'success'}`} style={{ fontSize: '11px' }}>
+                                {att.status === 'blocked' ? '⛔ BLOCKED (403)' : 'PASSED'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', fontSize: '13px', color: '#64748b', textAlign: 'center' }}>
+                    🛡️ Clean Record: This IP has not triggered any logged attack payloads against your connected websites.
+                  </div>
+                )}
               </div>
 
-              {/* Raw WHOIS Terminal */}
+              {/* Action Bar & Raw WHOIS Terminal */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-terminal" style={{ color: '#6366f1' }}></i>
+                  <span>Official RIR Socket Transcript (APNIC / RIPE / ARIN)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyRaw}
+                  className="btn-small"
+                  style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}
+                >
+                  <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`} style={{ marginRight: '6px' }}></i>{copied ? 'Copied Transcript!' : 'Copy Full WHOIS'}
+                </button>
+              </div>
+
+              {/* Raw WHOIS Terminal Console */}
               <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #1e293b', boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}>
                 <div style={{ background: '#0f172a', padding: '12px 20px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>whois-query: {geo.query || ipInput}</span>
-                  <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>RIPE / ARIN Socket Protocol</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444' }}></span>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }}></span>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></span>
+                    <span style={{ marginLeft: '8px', fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>whois -h whois.ripe.net {whoisResult.ip}</span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>Raw RIR Query Stream</span>
                 </div>
-                <pre style={{ margin: 0, background: '#090d16', color: '#38bdf8', padding: '20px 24px', fontFamily: 'monospace', fontSize: '12.5px', lineHeight: '1.6', maxHeight: '480px', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+                <pre style={{ margin: 0, background: '#090d16', color: '#38bdf8', padding: '20px 24px', fontFamily: 'Consolas, Monaco, monospace', fontSize: '12.5px', lineHeight: '1.6', maxHeight: '440px', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
                   {whoisResult.raw || 'No raw WHOIS text available for this IP range.'}
                 </pre>
               </div>
@@ -540,15 +720,8 @@ export default function UserTools() {
                   value={selectedCountry}
                   onChange={(e) => setSelectedCountry(e.target.value)}
                   style={{
-                    width: '100%',
-                    height: '44px',
-                    borderRadius: '8px',
-                    border: '1.5px solid var(--border-color, #cbd5e1)',
-                    background: 'var(--input-bg, #f8fafc)',
-                    color: 'var(--text-main, #0f172a)',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    padding: '0 12px'
+                    width: '100%', height: '44px', borderRadius: '8px', border: '1.5px solid var(--border-color, #cbd5e1)',
+                    background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontSize: '14px', fontWeight: 600, padding: '0 12px'
                   }}
                 >
                   {ALL_COUNTRIES.map((c) => (
@@ -567,16 +740,8 @@ export default function UserTools() {
                   onChange={(e) => setBlockReason(e.target.value)}
                   placeholder="e.g. Restricted geographical region"
                   style={{
-                    width: '100%',
-                    height: '44px',
-                    borderRadius: '8px',
-                    border: '1.5px solid var(--border-color, #cbd5e1)',
-                    background: 'var(--input-bg, #f8fafc)',
-                    color: 'var(--text-main, #0f172a)',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    padding: '0 14px',
-                    boxSizing: 'border-box'
+                    width: '100%', height: '44px', borderRadius: '8px', border: '1.5px solid var(--border-color, #cbd5e1)',
+                    background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontSize: '14px', fontWeight: 500, padding: '0 14px', boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -585,18 +750,9 @@ export default function UserTools() {
                 type="submit"
                 disabled={savingBlock || blockedCodesSet.has(selectedCountry)}
                 style={{
-                  height: '44px',
-                  background: '#ef4444',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '13.5px',
-                  cursor: (savingBlock || blockedCodesSet.has(selectedCountry)) ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
+                  height: '44px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px',
+                  fontWeight: 700, fontSize: '13.5px', cursor: (savingBlock || blockedCodesSet.has(selectedCountry)) ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   opacity: blockedCodesSet.has(selectedCountry) ? 0.6 : 1
                 }}
               >
@@ -633,11 +789,7 @@ export default function UserTools() {
                     background: selectedCountry === preset.code ? '#fee2e2' : 'var(--chip-bg, #f1f5f9)',
                     border: selectedCountry === preset.code ? '1px solid #f87171' : '1px solid var(--chip-border, #e2e8f0)',
                     color: selectedCountry === preset.code ? '#b91c1c' : 'var(--text-main, #334155)',
-                    fontSize: '12px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: 600
+                    fontSize: '12px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600
                   }}
                 >
                   {preset.flag} {preset.name} ({preset.code})
@@ -726,15 +878,9 @@ export default function UserTools() {
                               type="button"
                               onClick={() => handleRemoveCountryBlock(block.country_code, name)}
                               style={{
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
-                                color: '#0f172a',
-                                padding: '5px 12px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
+                                background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a',
+                                padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                                cursor: 'pointer', transition: 'all 0.15s'
                               }}
                             >
                               <i className="fas fa-unlock" style={{ marginRight: '6px', color: '#10b981' }}></i>
