@@ -25,6 +25,7 @@ import UserRules from './pages/UserRules'
 import UserSettings from './pages/UserSettings'
 import UserConnect from './pages/UserConnect'
 import UserBlacklist from './pages/UserBlacklist'
+import UserTools from './pages/UserTools'
 import DDoSDashboard from './pages/DDoSDashboard'
 import NoticeBoard from './pages/NoticeBoard'
 import Docs from './pages/Docs'
@@ -115,6 +116,7 @@ function App() {
         <Route path="logs" element={<UserLogs />} />
         <Route path="rules" element={<UserRules />} />
         <Route path="websites" element={<UserWebsites />} />
+        <Route path="tools" element={<UserTools />} />
         <Route path="connect" element={<UserConnect />} />
         <Route path="blacklist" element={<UserBlacklist />} />
         <Route path="settings" element={<UserSettings />} />

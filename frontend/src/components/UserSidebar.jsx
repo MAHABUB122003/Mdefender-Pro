@@ -44,6 +44,10 @@ export default function UserSidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-globe"></i></span>
             <span>Websites</span>
           </NavLink>
+          <NavLink to="/user/tools">
+            <span className="nav-icon"><i className="fas fa-screwdriver-wrench"></i></span>
+            <span>Tools</span>
+          </NavLink>
           <NavLink to="/user/settings">
             <span className="nav-icon"><i className="fas fa-cog"></i></span>
             <span>Settings</span>

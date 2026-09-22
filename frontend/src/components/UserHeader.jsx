@@ -7,6 +7,9 @@ const pageNames = {
   '/user/rules': 'Rules Management',
   '/user/notices': 'Notice Board',
   '/user/websites': 'My Websites',
+  '/user/tools': 'Security Tools',
+  '/user/connect': 'Connect Website',
+  '/user/blacklist': 'IP Blacklist',
   '/user/settings': 'Settings',
 }
 
@@ -16,6 +19,9 @@ const iconMap = {
   '/user/rules': 'fa-shield',
   '/user/notices': 'fa-bullhorn',
   '/user/websites': 'fa-globe',
+  '/user/tools': 'fa-screwdriver-wrench',
+  '/user/connect': 'fa-link',
+  '/user/blacklist': 'fa-ban',
   '/user/settings': 'fa-cog',
 }
 

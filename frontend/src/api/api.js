@@ -348,6 +348,7 @@ export const api = {
   getNotices: () => apiCall('/api/notices'),
   addNotice: (content) => apiCall('/api/notices', { method: 'POST', body: JSON.stringify({ content }) }),
   deleteNotice: (id) => apiCall(`/api/notices?id=${id}`, { method: 'DELETE' }),
+  whoisLookup: (ip) => apiCall(`/api/user/whois?ip=${encodeURIComponent(ip)}`),
 }
 
 export default api
