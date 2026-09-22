@@ -152,12 +152,10 @@ class WAF_FW_Engine {
             }
 
             $cloud_mode = (string) get_option('waf_fw_cloud_mode', 'protect');
-            $cloud_scope = (string) get_option('waf_fw_cloud_scope', 'all');
             $ml_confidence = 0.0;
 
-            // Cloud ML WAF. Consulted for every request when cloud_scope is
-            // "all"; otherwise only when a local attack signal is present.
-            if ($cloud_mode !== 'off' && ($cloud_scope === 'all' || $has_attack_signal) && $this->ml_client->is_available()) {
+            // Cloud ML WAF. Consulted for requests when cloud is available to enforce cloud decisions, blacklists, and ML scoring.
+            if ($cloud_mode !== 'off' && $this->ml_client->is_available()) {
                 $ml_result = $this->ml_client->analyze($request_data);
                 if (is_array($ml_result)) {
                     $cloud_decision = strtoupper((string) ($ml_result['decision'] ?? ''));
@@ -167,8 +165,8 @@ class WAF_FW_Engine {
                     if ($cloud_decision === 'BLOCK' || in_array($cloud_action, ['block', 'rate_limit'], true)) {
                         $attack_type = !empty($ml_result['attack_type'])
                             ? $ml_result['attack_type']
-                            : ($this->feature_extractor->get_attack_type($features) ?: 'Suspicious');
-                        $confidence = $ml_confidence > 0 ? $ml_confidence : 0.95;
+                            : ($this->feature_extractor->get_attack_type($features) ?: 'Blacklisted IP');
+                        $confidence = $ml_confidence > 0 ? $ml_confidence : 1.0;
                         $reason = !empty($ml_result['reason'])
                             ? $ml_result['reason']
                             : ("Cloud ML WAF detected $attack_type");
