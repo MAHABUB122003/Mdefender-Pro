@@ -92,33 +92,7 @@ class WAF_FW_Login_Protector {
                 if ($redirect_type === '404') {
                     status_header(404);
                     nocache_headers();
-                    
-                    global $wp_query;
-                    if (!isset($wp_query) || !is_object($wp_query)) {
-                        $wp_query = new WP_Query();
-                    }
-                    $wp_query->set_404();
-
-                    $rendered = false;
-                    $template = function_exists('get_404_template') ? get_404_template() : '';
-                    if ($template && file_exists($template)) {
-                        ob_start();
-                        try {
-                            include $template;
-                            $out = ob_get_clean();
-                            if (!empty(trim($out))) {
-                                echo $out;
-                                $rendered = true;
-                            }
-                        } catch (\Throwable $e) {
-                            ob_end_clean();
-                            $rendered = false;
-                        }
-                    }
-
-                    if (!$rendered) {
-                        $this->render_fallback_404();
-                    }
+                    $this->render_fallback_404();
                     exit;
                 } else {
                     wp_redirect(home_url(), 301);
