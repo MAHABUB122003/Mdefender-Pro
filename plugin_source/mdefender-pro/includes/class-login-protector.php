@@ -26,8 +26,12 @@ class WAF_FW_Login_Protector {
         if ($this->custom_login_slug) {
             add_action('plugins_loaded', [$this, 'handle_custom_login_url'], 1);
             add_action('init', [$this, 'handle_custom_login_url'], 1);
-            add_filter('site_url', [$this, 'filter_login_url'], 10, 3);
-            add_filter('network_site_url', [$this, 'filter_login_url'], 10, 3);
+            add_filter('site_url', [$this, 'filter_site_url'], 10, 3);
+            add_filter('network_site_url', [$this, 'filter_site_url'], 10, 3);
+            add_filter('login_url', [$this, 'filter_login_url'], 10, 3);
+            add_filter('logout_url', [$this, 'filter_logout_url'], 10, 2);
+            add_filter('lostpassword_url', [$this, 'filter_lostpassword_url'], 10, 2);
+            add_filter('register_url', [$this, 'filter_register_url'], 10, 2);
             add_filter('wp_redirect', [$this, 'filter_login_redirect'], 10, 2);
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
@@ -45,14 +49,26 @@ class WAF_FW_Login_Protector {
         if (!$slug) return;
 
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
-        $request_path = parse_url($request_uri, PHP_URL_PATH);
-        $request_path = trim($request_path, '/');
+        $raw_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
+        
+        $home_path = parse_url(home_url(), PHP_URL_PATH) ?: '';
+        $path = $raw_path;
+        if (!empty($home_path) && strpos($path, $home_path) === 0) {
+            $path = substr($path, strlen($home_path));
+        }
+        $trimmed_path = trim($path, '/');
 
         // 1. Serving the custom secret login URL
-        if ($request_path === $slug || $request_path === $slug . '/') {
+        if ($trimmed_path === $slug) {
             if (!defined('MDEFENDER_ALLOWED_LOGIN')) {
                 define('MDEFENDER_ALLOWED_LOGIN', true);
             }
+            
+            global $error, $interim_login, $action, $user_login, $user_ID, $current_site, $wp_hasher;
+            
+            $_SERVER['SCRIPT_NAME'] = '/wp-login.php';
+            $_SERVER['PHP_SELF'] = '/wp-login.php';
+
             $login_path = ABSPATH . 'wp-login.php';
             if (file_exists($login_path)) {
                 status_header(200);
@@ -62,22 +78,30 @@ class WAF_FW_Login_Protector {
         }
 
         // 2. Intercept direct access to default wp-login.php or wp-admin
-        $is_login_path = (strpos($request_path, 'wp-login.php') !== false);
-        $is_admin_path = ($request_path === 'wp-admin' || strpos($request_path, 'wp-admin/') === 0);
+        $is_login_path = (strpos($raw_path, 'wp-login.php') !== false);
+        $is_admin_path = ($trimmed_path === 'wp-admin' || strpos($trimmed_path, 'wp-admin/') === 0);
 
         if ($is_login_path || ($is_admin_path && !is_user_logged_in())) {
             $is_ajax = (defined('DOING_AJAX') && DOING_AJAX) || (strpos($request_uri, 'admin-ajax.php') !== false);
             $is_cron = (defined('DOING_CRON') && DOING_CRON);
             $is_admin_post = (strpos($request_uri, 'admin-post.php') !== false);
-            $is_allowed = defined('MDEFENDER_ALLOWED_LOGIN') && MDEFENDER_ALLOWED_LOGIN;
+            $is_allowed = (defined('MDEFENDER_ALLOWED_LOGIN') && MDEFENDER_ALLOWED_LOGIN);
 
             if (!$is_ajax && !$is_cron && !$is_admin_post && !$is_allowed) {
-                // Block & Render 404 / 301 Redirect
                 $redirect_type = get_option('waf_harden_login_redirect_type', '404');
                 if ($redirect_type === '404') {
                     status_header(404);
                     nocache_headers();
-                    include get_query_template('404');
+                    global $wp_query;
+                    if (is_object($wp_query)) {
+                        $wp_query->set_404();
+                    }
+                    $template = get_404_template();
+                    if ($template && file_exists($template)) {
+                        include $template;
+                    } else {
+                        wp_die('404 Not Found', 'Not Found', ['response' => 404]);
+                    }
                     exit;
                 } else {
                     wp_redirect(home_url(), 301);
@@ -87,15 +111,46 @@ class WAF_FW_Login_Protector {
         }
     }
 
-    public function filter_login_url($url, $path, $scheme) {
-        if ($path && strpos($path, 'wp-login.php') !== false && !empty($this->custom_login_slug)) {
+    public function filter_site_url($url, $path = '', $scheme = null) {
+        if (empty($this->custom_login_slug)) return $url;
+        if ($path && strpos($path, 'wp-login.php') !== false) {
             if (is_admin() && !wp_doing_ajax()) return $url;
-            return home_url($this->custom_login_slug . '/' . (strpos($path, '?') !== false ? strstr($path, '?') : ''), $scheme);
+            $query = strpos($path, '?') !== false ? strstr($path, '?') : '';
+            return home_url($this->custom_login_slug . '/' . $query, $scheme);
         }
         return $url;
     }
 
+    public function filter_login_url($url, $redirect = '', $force_reauth = false) {
+        if (empty($this->custom_login_slug)) return $url;
+        $args = [];
+        if (!empty($redirect)) $args['redirect_to'] = urlencode($redirect);
+        if ($force_reauth) $args['reauth'] = '1';
+        return add_query_arg($args, home_url($this->custom_login_slug . '/'));
+    }
+
+    public function filter_logout_url($url, $redirect = '') {
+        if (empty($this->custom_login_slug)) return $url;
+        $args = ['action' => 'logout'];
+        if (!empty($redirect)) $args['redirect_to'] = urlencode($redirect);
+        $args['_wpnonce'] = wp_create_nonce('log-out');
+        return add_query_arg($args, home_url($this->custom_login_slug . '/'));
+    }
+
+    public function filter_lostpassword_url($url, $redirect = '') {
+        if (empty($this->custom_login_slug)) return $url;
+        $args = ['action' => 'lostpassword'];
+        if (!empty($redirect)) $args['redirect_to'] = urlencode($redirect);
+        return add_query_arg($args, home_url($this->custom_login_slug . '/'));
+    }
+
+    public function filter_register_url($url) {
+        if (empty($this->custom_login_slug)) return $url;
+        return add_query_arg(['action' => 'register'], home_url($this->custom_login_slug . '/'));
+    }
+
     public function filter_login_redirect($location, $status) {
+        if (empty($this->custom_login_slug)) return $location;
         if (strpos($location, 'wp-login.php') !== false) {
             $location = str_replace('wp-login.php', $this->custom_login_slug, $location);
         }

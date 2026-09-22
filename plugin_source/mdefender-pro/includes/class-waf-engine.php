@@ -122,9 +122,11 @@ class WAF_FW_Engine {
                 return $this->blocked_result($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'IP is blacklisted', 'Blacklist Rule');
             }
 
-            // Whitelist legitimate WordPress login and admin dashboard access
+            // Whitelist legitimate WordPress login, custom login URL, and admin dashboard access
             $url_path = strtolower(parse_url($url, PHP_URL_PATH) ?? $url);
-            $is_wp_admin_path = (strpos($url_path, 'wp-login.php') !== false || strpos($url_path, 'wp-admin') !== false || strpos($url_path, 'admin-ajax.php') !== false);
+            $custom_slug = trim(get_option('waf_harden_login_rename', ''));
+            $is_custom_login = (!empty($custom_slug) && (strpos($url_path, '/' . strtolower($custom_slug)) !== false || trim($url_path, '/') === strtolower($custom_slug)));
+            $is_wp_admin_path = ($is_custom_login || strpos($url_path, 'wp-login.php') !== false || strpos($url_path, 'wp-admin') !== false || strpos($url_path, 'admin-ajax.php') !== false);
             if ($is_wp_admin_path && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
                 $features = $this->feature_extractor->extract_features($url . ' ' . $body . ' ' . $query_string);
                 $has_dangerous_attack = false;
