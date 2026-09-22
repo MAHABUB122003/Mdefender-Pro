@@ -152,7 +152,7 @@ export default function Landing() {
             boxShadow: '0 0 20px rgba(37,99,235,0.2)'
           }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-            <span>HYBRID THREAT DEFENSE ENGINE &middot; 2,000 WAF RULES + 5.2M+ DATASET ML CORE</span>
+            <span>NEXT-GEN WORDPRESS WAF &middot; 2,000+ RULES + 5.2M+ DATASET CLOUD ML CORE</span>
           </div>
 
           {/* Main Title */}
@@ -165,13 +165,13 @@ export default function Landing() {
             margin: '0 auto 22px',
             color: '#ffffff'
           }}>
-            Autonomous Web Application Firewall Powered by{' '}
+            Autonomous WordPress WAF &amp; Malware Defense Powered by{' '}
             <span style={{
               background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #c084fc 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
-              5.2 Million Attack Signatures
+              5.2 Million Threat Signatures
             </span>
           </h1>
 
@@ -180,10 +180,10 @@ export default function Landing() {
             fontSize: 'clamp(16px, 2.1vw, 20px)',
             lineHeight: '1.6',
             color: '#94a3b8',
-            maxWidth: '780px',
+            maxWidth: '820px',
             margin: '0 auto 38px'
           }}>
-            MDefender Pro unites a deterministic <strong>2,000-rule regex engine</strong> with an advanced <strong>Machine Learning model trained on 5.2M+ real-world attack payloads</strong> to stop zero-day exploits, volumetric DDoS, and automated bots in sub-millisecond time.
+            MDefender Pro combines a native WordPress security engine with our <strong>central AI Machine Learning cloud</strong> to stop zero-day SQLi, XSS, theme/plugin exploits, brute force logins, and hidden file malware in sub-millisecond latency.
           </p>
 
           {/* Action CTAs */}

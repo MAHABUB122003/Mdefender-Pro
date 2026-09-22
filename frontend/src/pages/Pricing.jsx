@@ -7,63 +7,63 @@ import PaymentModal from '../components/PaymentModal'
 const plans = [
   {
     id: 'free',
-    name: 'Starter',
+    name: 'WP Starter',
     badge: 'Free Forever',
     monthly: 0,
     yearly: 0,
-    desc: 'Essential security for personal web apps, APIs, and staging sites.',
+    desc: 'Essential security for personal WordPress blogs, portfolios, and staging sites.',
     features: [
-      { text: '1 Protected Website', included: true },
-      { text: '10,000 requests / month', included: true },
+      { text: '1 Protected WordPress Site', included: true },
+      { text: '10,000 WAF requests / month', included: true },
       { text: 'Core WAF Rule Signatures', included: true },
-      { text: 'Basic Anomaly Detection', included: true },
+      { text: 'Login Brute Force Protection', included: true },
       { text: 'Community Support', included: true },
-      { text: '2,000 Advanced WAF Rules', included: false },
-      { text: '5.2M Dataset ML Classifier', included: false },
-      { text: 'Custom Regex Rules Builder', included: false },
-      { text: 'Dedicated SLA Response', included: false },
+      { text: '2,000 Advanced WP Signatures', included: false },
+      { text: '5.2M Dataset Cloud ML Core', included: false },
+      { text: 'Core & Theme Malware Scanner', included: false },
+      { text: '2FA Admin Security Shield', included: false },
     ],
     btnText: 'Start Free',
     highlight: false
   },
   {
     id: 'go',
-    name: 'Developer Go',
-    badge: 'Growing Apps',
+    name: 'WP Business Go',
+    badge: 'Growing Sites',
     monthly: 9,
     yearly: 90,
-    desc: 'For small business applications, SaaS backends, and multi-site projects.',
+    desc: 'Advanced security for WooCommerce stores, agency clients, and multi-site networks.',
     features: [
-      { text: '5 Protected Websites', included: true },
-      { text: '100,000 requests / month', included: true },
-      { text: 'Core WAF + Heuristic Filters', included: true },
-      { text: '5.2M Dataset ML Detection', included: true },
-      { text: '20 Custom Regex Rules', included: true },
+      { text: '5 Protected WordPress Sites', included: true },
+      { text: '100,000 WAF requests / month', included: true },
+      { text: 'Real-Time Cloud ML Threat Engine', included: true },
+      { text: 'Automated Core & Theme Malware Scan', included: true },
+      { text: '2FA TOTP Login Authentication', included: true },
+      { text: '20 Custom Regex Firewall Rules', included: true },
       { text: 'Real-Time Email Security Alerts', included: true },
-      { text: 'Attack Logs & IP Blacklist', included: true },
-      { text: 'Priority Email Support', included: true },
+      { text: 'Live Attack Logs & IP Banlist', included: true },
       { text: 'Dedicated Account Manager', included: false },
     ],
-    btnText: 'Upgrade to Go',
+    btnText: 'Upgrade to Business Go',
     highlight: false
   },
   {
     id: 'pro',
-    name: 'Enterprise Pro',
+    name: 'Enterprise Pro WP',
     badge: 'Most Popular',
     monthly: 29,
     yearly: 290,
-    desc: 'Maximum cybersecurity defense for mission-critical infrastructure.',
+    desc: 'Maximum cybersecurity defense for high-traffic WordPress & WooCommerce enterprises.',
     features: [
-      { text: 'Unlimited Protected Websites', included: true },
+      { text: 'Unlimited Protected WP Sites', included: true },
       { text: 'Unlimited Request Volume', included: true },
-      { text: 'Full 2,000 WAF Rules Catalog', included: true },
+      { text: 'Full 2,000+ WP Threat Signatures', included: true },
       { text: '5.2M Dataset Deep ML Core', included: true },
-      { text: 'Unlimited Custom Regex Rules', included: true },
+      { text: 'Deep Malware Scanner & Quarantine', included: true },
       { text: 'Layer 7 Volumetric DDoS Shield', included: true },
       { text: 'Sub-Millisecond Edge Telemetry', included: true },
-      { text: 'Automated Bot & Scanner Ban', included: true },
-      { text: '24/7 Priority SLA Response', included: true },
+      { text: 'Automated Bot & Exploit Scanner Ban', included: true },
+      { text: '24/7 Priority SLA Cybersecurity Support', included: true },
     ],
     btnText: 'Upgrade to Enterprise Pro',
     highlight: true
@@ -72,20 +72,24 @@ const plans = [
 
 const faqs = [
   {
-    q: 'How does the 5.2M dataset Machine Learning model protect my website?',
-    a: 'MDefender Pro combines 2,000 static WAF rules with an active Machine Learning classifier trained on over 5.2 million real-world attack vectors. It identifies zero-day exploits and obfuscated evasion attempts in under 0.85ms.'
+    q: 'How does MDefender Pro protect my WordPress website?',
+    a: 'MDefender Pro operates as a native WordPress plugin coupled with our central cloud intelligence. It inspects all HTTP traffic hitting wp-login.php, xmlrpc.php, contact forms, and REST APIs, blocking SQLi, XSS, RCE, and brute-force attacks in under 0.5ms.'
+  },
+  {
+    q: 'Does MDefender Pro slow down my WordPress website?',
+    a: 'Not at all. Static assets (images, CSS, JS) bypass inspection. Dynamic requests are checked with optimized in-memory rules and asynchronous cloud ML evaluation with sub-millisecond latency (<0.5ms).'
+  },
+  {
+    q: 'How does the Core & Plugin Malware Scanner work?',
+    a: 'The malware scanner inspects core WordPress files, installed plugins, and active themes. It compares checksums against official WordPress repository releases and scans for obfuscated backdoors, eval injections, and web shells.'
+  },
+  {
+    q: 'Can I switch between Monthly and Yearly billing?',
+    a: 'Yes! Upgrading to annual billing gives you up to 18% savings (equivalent to 2 months free). You can switch billing cycles at any time from your account settings.'
   },
   {
     q: 'What payment methods do you accept?',
     a: 'We accept all major Credit/Debit Cards (Visa, Mastercard, American Express, Discover), Direct Bank Wire Transfers (SWIFT / IBAN / ACH), and Online Wallets (PayPal & bKash merchant).'
-  },
-  {
-    q: 'Can I switch between Monthly and Yearly billing?',
-    a: 'Yes. Upgrading to annual billing saves up to 18% (2 months free). You can upgrade or switch billing cycles at any time from your account settings.'
-  },
-  {
-    q: 'What happens if our traffic spikes during a DDoS attack?',
-    a: 'MDefender Pro includes automatic token-bucket rate limiting and L7 volumetric DDoS mitigation that drops flood requests at the edge without taking down your server.'
   }
 ]
 
@@ -139,7 +143,7 @@ export default function Pricing() {
           textTransform: 'uppercase',
           letterSpacing: '0.04em'
         }}>
-          <i className="fas fa-shield-check"></i> Enterprise Cybersecurity Pricing
+          <i className="fab fa-wordpress"></i> WordPress Cloud Security Pricing
         </div>
 
         <h1 style={{
@@ -149,17 +153,17 @@ export default function Pricing() {
           marginBottom: '16px',
           color: '#ffffff'
         }}>
-          Predictable Plans for Modern Web Apps
+          Complete WordPress Security &amp; Cloud ML
         </h1>
 
         <p style={{
           fontSize: '16px',
           color: '#94a3b8',
-          maxWidth: '620px',
+          maxWidth: '680px',
           margin: '0 auto 36px',
           lineHeight: '1.6'
         }}>
-          Scale from single-endpoint projects to high-traffic distributed clusters with our 2,000 WAF rules and 5.2M dataset ML engine.
+          Arm your WordPress websites with our 5.2M dataset ML classifier, 2,000+ threat signatures, 2FA defense, and real-time malware scanner.
         </p>
 
         {/* Monthly / Yearly Toggle */}

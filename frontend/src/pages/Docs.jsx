@@ -37,9 +37,12 @@ const docSections = [
     ]
   },
   {
-    group: 'WordPress Integration Guide',
+    group: 'WordPress Security Suite',
     items: [
-      { id: 'sdk-wordpress', label: 'WordPress Official Plugin', icon: 'fa-wordpress' }
+      { id: 'sdk-wordpress', label: 'Plugin Setup & Cloud Sync', icon: 'fa-wordpress' },
+      { id: 'wp-malware-scanner', label: 'Core & Theme Malware Scanner', icon: 'fa-bug-slash' },
+      { id: 'wp-2fa-login', label: '2FA & Brute Force Shield', icon: 'fa-key' },
+      { id: 'wp-hardening', label: 'WP Hardening & Headers', icon: 'fa-shield-halved' }
     ]
   },
   {
@@ -635,6 +638,154 @@ print(result)
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section: WordPress Malware Scanner */}
+          {activeSection === 'wp-malware-scanner' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Filesystem &amp; Code Scanner</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  color: '#60a5fa',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Core Checksum Verification</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>WordPress Malware Scanner &amp; Integrity Defense</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                The MDefender Pro scanner deeply analyzes all WordPress files, themes, and plugins against known malware signatures, eval code injections, web shells, and official WordPress repository core checksums.
+              </p>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
+                  <i className="fa-solid fa-shield-virus" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  What the Scanner Detects
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                  <div style={{ background: '#090d18', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                    <strong style={{ color: '#f87171', display: 'block', marginBottom: '4px', fontSize: '13px' }}>Web Shells &amp; Backdoors</strong>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Detects c99, r57, WSO, b374k, and obfuscated base64 PHP backdoors.</span>
+                  </div>
+                  <div style={{ background: '#090d18', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                    <strong style={{ color: '#fbbf24', display: 'block', marginBottom: '4px', fontSize: '13px' }}>Core File Tampering</strong>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Verifies MD5/SHA256 hashes against official WordPress.org releases.</span>
+                  </div>
+                  <div style={{ background: '#090d18', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                    <strong style={{ color: '#34d399', display: 'block', marginBottom: '4px', fontSize: '13px' }}>Dangerous Code Injection</strong>
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Identifies malicious <code>eval()</code>, <code>assert()</code>, and obfuscated string execution.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section: 2FA & Brute Force */}
+          {activeSection === 'wp-2fa-login' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  color: '#c084fc',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>TOTP 2FA Authentication</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#f87171',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Brute Force Lockout</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>2FA &amp; Login Brute Force Defense</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                Protect WordPress administrator accounts against dictionary attacks, credential stuffing, and automated login botnets hitting <code>wp-login.php</code> and <code>xmlrpc.php</code>.
+              </p>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
+                  <i className="fa-solid fa-lock" style={{ color: '#a78bfa', marginRight: '10px' }}></i>
+                  Login Defense Capabilities
+                </h3>
+                <ul style={{ paddingLeft: '20px', fontSize: '13.5px', color: '#cbd5e1', lineHeight: '1.9', margin: 0 }}>
+                  <li><strong>Configurable Lockout Thresholds:</strong> Set maximum failed attempts (e.g., 5 attempts in 10 minutes) before an IP is automatically banned.</li>
+                  <li><strong>Standard TOTP 2FA:</strong> Full compatibility with Google Authenticator, Microsoft Authenticator, and Authy.</li>
+                  <li><strong>XML-RPC Shield:</strong> Blocks brute force amplification attacks via multicall XML-RPC methods.</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Section: WP Hardening */}
+          {activeSection === 'wp-hardening' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  color: '#60a5fa',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>WordPress Hardening</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>WordPress System Hardening &amp; Security Headers</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                Instantly apply cybersecurity best practices to eliminate WordPress information disclosures and close common exploit pathways.
+              </p>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
+                  <i className="fa-solid fa-wrench" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Automated Hardening Measures
+                </h3>
+                <ul style={{ paddingLeft: '20px', fontSize: '13.5px', color: '#cbd5e1', lineHeight: '1.9', margin: 0 }}>
+                  <li><strong>Disable XML-RPC:</strong> Prevents pingback DDoS and brute force reflection attacks.</li>
+                  <li><strong>Hide WordPress Version:</strong> Removes version generator meta tags from HTML head to stop automated vulnerability targeting.</li>
+                  <li><strong>Uploads Folder Shield:</strong> Blocks direct PHP file execution inside <code>wp-content/uploads/</code>.</li>
+                  <li><strong>HTTP Security Headers:</strong> Enforces <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, and <code>Referrer-Policy</code>.</li>
+                </ul>
               </div>
             </div>
           )}
