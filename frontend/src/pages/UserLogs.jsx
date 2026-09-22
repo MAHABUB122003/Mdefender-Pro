@@ -87,18 +87,61 @@ export default function UserLogs() {
 
   useEffect(() => {
     if (!logs.logs) return
-    const uniqueIps = [...new Set(logs.logs.map(l => l.ip))].filter(ip => ip && ip !== '127.0.0.1' && ip !== '::1' && ip !== 'unknown' && !ipLocations[ip])
+    const uniqueIps = [...new Set(logs.logs.map(l => l.ip))].filter(ip => ip && ip !== '127.0.0.1' && ip !== '::1' && ip !== 'localhost' && ip !== 'unknown' && !ipLocations[ip])
+    
     uniqueIps.forEach(ip => {
-      fetch(`https://ip-api.com/json/${ip}?fields=countryCode,country`)
+      // Handle local / private subnet IPs immediately
+      if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
+        setIpLocations(prev => ({
+          ...prev,
+          [ip]: { code: 'bd', name: 'Local / Private Network', flagUrl: 'https://flagcdn.com/16x12/bd.png' }
+        }))
+        return
+      }
+
+      // 1. Primary GeoIP lookup via ipwho.is (free, HTTPS, CORS enabled)
+      fetch(`https://ipwho.is/${ip}`)
         .then(r => r.json())
         .then(data => {
-          if (data.countryCode) {
+          if (data && data.success && data.country_code) {
+            const code = data.country_code.toLowerCase()
+            const name = data.country || code.toUpperCase()
+            const flagUrl = data.flag?.img || `https://flagcdn.com/16x12/${code}.png`
             setIpLocations(prev => ({
               ...prev,
-              [ip]: { code: data.countryCode.toLowerCase(), name: data.country }
+              [ip]: { code, name, flagUrl }
             }))
+          } else {
+            // 2. Secondary fallback via freeipapi.com
+            fetch(`https://freeipapi.com/api/json/${ip}`)
+              .then(r => r.json())
+              .then(data2 => {
+                if (data2 && data2.countryCode) {
+                  const code = data2.countryCode.toLowerCase()
+                  const name = data2.countryName || code.toUpperCase()
+                  setIpLocations(prev => ({
+                    ...prev,
+                    [ip]: { code, name, flagUrl: `https://flagcdn.com/16x12/${code}.png` }
+                  }))
+                }
+              }).catch(() => {})
           }
-        }).catch(() => {})
+        })
+        .catch(() => {
+          // 2. Secondary fallback via freeipapi.com
+          fetch(`https://freeipapi.com/api/json/${ip}`)
+            .then(r => r.json())
+            .then(data2 => {
+              if (data2 && data2.countryCode) {
+                const code = data2.countryCode.toLowerCase()
+                const name = data2.countryName || code.toUpperCase()
+                setIpLocations(prev => ({
+                  ...prev,
+                  [ip]: { code, name, flagUrl: `https://flagcdn.com/16x12/${code}.png` }
+                }))
+              }
+            }).catch(() => {})
+        })
     })
   }, [logs.logs])
 
@@ -254,7 +297,9 @@ export default function UserLogs() {
               </tr>
             ) : logs.logs?.map((log, i) => {
               const isBlocked = log.status === 'blocked'
-              const loc = ipLocations[log.ip] || (log.ip === '127.0.0.1' || log.ip === '::1' ? { code: 'bd', name: 'Bangladesh (Local)' } : null)
+              const loc = ipLocations[log.ip] || 
+                (log.country_code ? { code: log.country_code.toLowerCase(), name: log.country || log.country_code, flagUrl: `https://flagcdn.com/16x12/${log.country_code.toLowerCase()}.png` } : null) ||
+                (log.ip === '127.0.0.1' || log.ip === '::1' || log.ip === 'localhost' ? { code: 'bd', name: 'Bangladesh (Local)', flagUrl: 'https://flagcdn.com/16x12/bd.png' } : null)
               const isExpanded = expandedRow === i
 
               return (
@@ -276,9 +321,14 @@ export default function UserLogs() {
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {loc ? (
+                        {loc && loc.code ? (
                           <>
-                            <img src={`https://flagcdn.com/16x12/${loc.code}.png`} alt={loc.code.toUpperCase()} style={{ borderRadius: '2px', width: '16px', height: '12px', display: 'inline-block' }} />
+                            <img 
+                              src={loc.flagUrl || `https://flagcdn.com/16x12/${loc.code}.png`} 
+                              alt={loc.code.toUpperCase()} 
+                              onError={(e) => { e.target.style.display = 'none' }}
+                              style={{ borderRadius: '2px', width: '16px', height: '12px', display: 'inline-block', objectFit: 'cover' }} 
+                            />
                             <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#334155' }}>{loc.name}</span>
                           </>
                         ) : (
@@ -333,7 +383,14 @@ export default function UserLogs() {
 
                           <div style={{ flex: '1', fontSize: '13.5px', color: '#334155', lineHeight: '1.6', textAlign: 'left' }}>
                             <div style={{ marginBottom: '14px', background: '#fff', padding: '14px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#1e293b', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                              {loc && <img src={`https://flagcdn.com/16x12/${loc.code}.png`} style={{ borderRadius: '2px', width: '16px', height: '12px', marginRight: '6px', verticalAlign: '-1px', display: 'inline-block' }} alt="" />}
+                              {loc && loc.code && (
+                                <img 
+                                  src={loc.flagUrl || `https://flagcdn.com/16x12/${loc.code}.png`} 
+                                  style={{ borderRadius: '2px', width: '16px', height: '12px', marginRight: '6px', verticalAlign: '-1px', display: 'inline-block', objectFit: 'cover' }} 
+                                  alt={loc.code.toUpperCase()} 
+                                  onError={(e) => { e.target.style.display = 'none' }}
+                                />
+                              )}
                               <strong>{loc?.name || 'Unknown Location'}</strong> ({log.ip}) was {isBlocked ? 'blocked by firewall for ' : 'allowed access to page ' }
                               <strong>{isBlocked ? log.attack_type : ''}</strong> {isBlocked ? 'in request: ' : ''}
                               <code style={{ fontSize: '12.5px', color: '#dc2626' }}>{isBlocked ? log.rule_matched || log.attack_type : ''}</code> at <a href={log.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>{log.url}</a> at {formatDateTime(log.timestamp)}

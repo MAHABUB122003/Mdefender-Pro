@@ -455,33 +455,30 @@
 
         if (serverDetectedIp && serverDetectedIp !== '127.0.0.1' && serverDetectedIp !== '::1' && serverDetectedIp !== 'localhost' && serverDetectedIp !== 'unknown') {
             // Real public IP forwarded by server
-            fetch(`https://ip-api.com/json/${serverDetectedIp}?fields=status,country,city,countryCode,query`)
+            fetch(`https://ipwho.is/${serverDetectedIp}`)
                 .then(r => r.json())
                 .then(data => {
-                    if (data.status === 'success') {
-                        updateGeoDisplay(data.query || serverDetectedIp, data.countryCode, data.city, data.country);
+                    if (data && data.success && data.country_code) {
+                        updateGeoDisplay(data.ip || serverDetectedIp, data.country_code, data.city || '', data.country);
+                    } else {
+                        updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
                     }
                 }).catch(err => {
                     updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
                 });
         } else {
             // Local / private IP - discover visitor's public GeoIP from browser client
-            fetch('https://ipapi.co/json/')
+            fetch('https://ipwho.is/')
                 .then(r => r.json())
                 .then(data => {
-                    if (data && data.ip) {
-                        updateGeoDisplay(data.ip, data.country_code, data.city, data.country_name);
+                    if (data && data.success && data.country_code) {
+                        updateGeoDisplay(data.ip || serverDetectedIp, data.country_code, data.city || '', data.country);
+                    } else {
+                        updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
                     }
                 })
                 .catch(() => {
-                    fetch('https://api.country.is')
-                        .then(r => r.json())
-                        .then(cData => {
-                            if (cData && cData.country) {
-                                updateGeoDisplay(cData.ip || serverDetectedIp, cData.country, '', cData.country);
-                            }
-                        })
-                        .catch(() => {});
+                    updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
                 });
         }
 

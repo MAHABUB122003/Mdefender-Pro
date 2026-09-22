@@ -734,6 +734,8 @@ class UserAPI:
                 'method': log.get('method', 'GET'),
                 'user_agent': log.get('user_agent', ''),
                 'rule_matched': log.get('rule_matched', ''),
+                'country_code': log.get('country_code') or log.get('countryCode') or '',
+                'country': log.get('country') or log.get('country_name') or '',
             })
         return {
             'total': total,
