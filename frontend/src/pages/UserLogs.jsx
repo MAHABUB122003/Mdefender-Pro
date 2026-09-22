@@ -23,9 +23,20 @@ export default function UserLogs() {
 
   useEffect(() => {
     api.getUserDashboard().then(data => {
-      if (data?.websites) setWebsites(data.websites)
+      if (data?.websites && data.websites.length > 0) {
+        setWebsites(data.websites)
+      }
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (logs?.logs?.length && websites.length === 0) {
+      const domains = [...new Set(logs.logs.map(l => l.domain).filter(Boolean))]
+      if (domains.length) {
+        setWebsites(domains.map(d => ({ id: d, domain: d, name: d })))
+      }
+    }
+  }, [logs, websites.length])
 
   const fetchLogs = useCallback(async (manual = false) => {
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
@@ -243,8 +254,11 @@ export default function UserLogs() {
                     style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', background: isExpanded ? '#f1f5f9' : 'none' }}
                     onClick={() => setExpandedRow(isExpanded ? null : i)}
                   >
-                    <td style={{ textAlign: 'center', padding: '12px 16px' }}>
-                      <span style={{ display: 'inline-block', width: '10px', height: '10px', background: isBlocked ? '#dc2626' : '#10b981', borderRadius: '50%' }} title={isBlocked ? 'Blocked Action' : 'Allowed Action'}></span>
+                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                      <span className={`badge ${isBlocked ? 'danger' : 'success'}`} style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%' }}></span>
+                        {log.attack_type || (isBlocked ? 'Blocked Attack' : 'Clean Request')}
+                      </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
