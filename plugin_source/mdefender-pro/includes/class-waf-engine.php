@@ -147,7 +147,7 @@ class WAF_FW_Engine {
             }
 
             $cloud_mode = (string) get_option('waf_fw_cloud_mode', 'protect');
-            $cloud_scope = (string) get_option('waf_fw_cloud_scope', 'signal');
+            $cloud_scope = (string) get_option('waf_fw_cloud_scope', 'all');
             $ml_confidence = 0.0;
 
             // Cloud ML WAF. Consulted for every request when cloud_scope is

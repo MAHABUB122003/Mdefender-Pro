@@ -57,44 +57,20 @@ def verify_api_key(db, api_key, domain=None):
         return None
     api_key = api_key.strip()
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    
+    # 1. Scoped API key (from db.api_keys)
     record = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
     if record:
         website = db.websites.find_one({"_id": record.get("website_id")})
         if website:
-            if domain:
-                expected_raw = _hostname(domain)
-                expected_clean = _clean_host(domain)
-                web_domain_clean = _clean_host(website.get("domain"))
-                web_url_clean = _clean_host(website.get("url"))
-
-                is_local = (
-                    expected_raw in ("localhost", "127.0.0.1", "::1", "", "unknown")
-                    or expected_raw.endswith(".local")
-                    or expected_raw.endswith(".test")
-                )
-                is_web_local = (
-                    web_domain_clean in ("localhost", "127.0.0.1", "::1", "")
-                    or web_url_clean in ("localhost", "127.0.0.1", "::1", "")
-                )
-
-                matches = (
-                    is_local
-                    or is_web_local
-                    or expected_clean == web_domain_clean
-                    or expected_clean == web_url_clean
-                    or (bool(web_domain_clean) and expected_clean.endswith("." + web_domain_clean))
-                    or (bool(expected_clean) and web_domain_clean.endswith("." + expected_clean))
-                )
-
-                if not matches:
-                    return None
+            user_id_str = str(record.get("user_id") or website.get("user_id", ""))
             return {
-                "user_id": str(record.get("user_id", "")),
+                "user_id": user_id_str,
                 "website_id": record.get("website_id"),
                 "website": website,
             }
 
-    # Also check if api_key is a User Master Account API key (users.api_key)
+    # 2. Master Account API key (from db.users)
     user = db.users.find_one({"api_key": api_key})
     if user:
         user_id_str = str(user["_id"])
@@ -136,13 +112,13 @@ def verify_api_key(db, api_key, domain=None):
                 try:
                     db.websites.insert_one(website)
                 except Exception:
-                    # Domain already claimed; fetch existing website record
                     existing = db.websites.find_one({"domain": expected})
                     if existing:
+                        db.websites.update_one({"_id": existing["_id"]}, {"$set": {"user_id": user_id_str}})
                         website = existing
+                        website["user_id"] = user_id_str
                         site_id = str(existing.get("_id"))
                 
-                # Upsert API key record so duplicate key_hash never throws
                 db.api_keys.update_one(
                     {"key_hash": key_hash},
                     {"$set": {
@@ -157,7 +133,6 @@ def verify_api_key(db, api_key, domain=None):
                     upsert=True
                 )
             except Exception:
-                # Fallback to any user website
                 website = db.websites.find_one({"user_id": user_id_str})
                 if not website:
                     return None
