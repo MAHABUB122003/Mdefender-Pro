@@ -1,27 +1,25 @@
 <?php
 defined('ABSPATH') || exit;
+
+// Dynamic variables extracted from WAF analysis context
 $attack_type  = !empty($result['attack_type']) ? $result['attack_type'] : 'Security Threat';
 $client_ip    = !empty($result['ip']) ? $result['ip'] : ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
-$reason       = !empty($result['message']) ? $result['message'] : 'This request has been blocked by Web Application Firewall';
+$reason       = !empty($result['message']) ? $result['message'] : 'Request blocked by security firewall rule';
 $reference_id = !empty($result['reference_id']) ? $result['reference_id'] : ('MDF-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)));
 $timestamp    = !empty($result['timestamp']) ? $result['timestamp'] : current_time('mysql');
-$colors       = get_option('waf_fw_block_colors', '#4f46e5,#6366f1');
-$message      = get_option('waf_fw_block_message', 'This request has been blocked by Web Application Firewall');
-$site_name    = get_bloginfo('name') ?: 'Website Security';
+$site_name    = get_bloginfo('name') ?: 'MAHABUB';
+$site_host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-$colors_arr = explode(',', $colors);
-$color1 = trim($colors_arr[0] ?? '#4f46e5');
-$color2 = trim($colors_arr[1] ?? '#6366f1');
-
-// Dynamic GeoIP details resolution with transient cache
+// GeoIP Resolution (with fallback matching design)
 $geoip_info = '';
-$country_code_lower = '';
+$country_code_lower = 'bd';
+
 if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && filter_var($client_ip, FILTER_VALIDATE_IP)) {
-    $transient_key = 'waf_fw_geoip_full_new_' . md5($client_ip);
+    $transient_key = 'waf_fw_geoip_' . md5($client_ip);
     $cached = get_transient($transient_key);
     if ($cached !== false && is_array($cached)) {
         $geoip_info = $cached['info'] ?? '';
-        $country_code_lower = $cached['code'] ?? '';
+        $country_code_lower = $cached['code'] ?? 'bd';
     } else {
         $response = wp_remote_get("http://ip-api.com/json/{$client_ip}?fields=status,country,city,countryCode", ['timeout' => 3]);
         if (!is_wp_error($response)) {
@@ -29,477 +27,468 @@ if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && 
             if (!empty($data['status']) && $data['status'] === 'success') {
                 $city = !empty($data['city']) ? $data['city'] : '';
                 $country = !empty($data['country']) ? $data['country'] : '';
-                $cc = !empty($data['countryCode']) ? strtolower($data['countryCode']) : '';
-                
-                if ($city && $country) {
-                    $geoip_info = " (GeoIP: {$city}, {$country})";
-                } elseif ($country) {
-                    $geoip_info = " (GeoIP: {$country})";
-                }
-                
-                $country_code_lower = $cc;
+                $country_code_lower = !empty($data['countryCode']) ? strtolower($data['countryCode']) : 'bd';
+                $geoip_info = $city && $country ? " (GeoIP: {$city}, {$country})" : ($country ? " (GeoIP: {$country})" : '');
                 set_transient($transient_key, ['info' => $geoip_info, 'code' => $country_code_lower], 12 * HOUR_IN_SECONDS);
             }
         }
     }
-} else {
-    // Local / private IP fallback matching example mockup
+}
+
+if (empty($geoip_info)) {
     $geoip_info = " (GeoIP: Dhaka, Bangladesh)";
     $country_code_lower = 'bd';
 }
 
-// Convert MySQL timestamp to UTC format & get Unix ref
+// Convert timestamp to UTC & get Unix ref
 try {
-    $dt = new DateTime($timestamp);
+    $dt = new DateTime($timestamp, new DateTimeZone('UTC'));
     $utc_timestamp = $dt->format('Y-m-d H:i:s') . ' UTC';
     $unix_ref = $dt->getTimestamp();
 } catch (Exception $e) {
-    $utc_timestamp = $timestamp;
+    $utc_timestamp = gmdate('Y-m-d H:i:s') . ' UTC';
     $unix_ref = time();
 }
 
 // Rule details parsing
 $rule_name = !empty($result['rule_matched']) ? $result['rule_matched'] : '';
-$rule_id = '90001';
-if (!empty($rule_name)) {
-    $rule_id = (abs(crc32($rule_name)) % 10000) + 90000;
-} else {
-    $rule_name = 'System Command Injection';
+if (empty($rule_name)) {
+    $rule_name = !empty($result['attack_type']) && $result['attack_type'] !== 'Security Threat' ? $result['attack_type'] : 'System Command Injection';
 }
+$rule_id = (abs(crc32($rule_name)) % 10000) + 90000;
 
-// Server Host details
+// Server Host
 $server_host = function_exists('gethostname') ? gethostname() : ($_SERVER['SERVER_NAME'] ?? 'app-srv-01-prod-us-east.net');
-if (strpos($server_host, '.') === false) {
+if (strpos($server_host, '.') === false || $server_host === 'localhost') {
     $server_host = '(e.g.) app-srv-01-prod-us-east.net';
 }
+
+$admin_email = get_option('admin_email') ?: 'security@' . $site_host;
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>403 &mdash; Security Action Required</title>
+    <title>403 &mdash; SECURITY ACTION REQUIRED</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-1: <?php echo esc_attr($color1); ?>;
-            --brand-2: <?php echo esc_attr($color2); ?>;
-            --bg-color: #f8fafc;
+            --bg: #f8fafc;
             --card-bg: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
+            --text-main: #0f172a;
+            --text-body: #475569;
             --text-muted: #94a3b8;
-            --border-color: #cbd5e1;
-            --font-main: 'Outfit', sans-serif;
+            --border-table: #cbd5e1;
+            --border-card: #e2e8f0;
+            --primary-btn: #1e3a8a;
+            --primary-hover: #172554;
+            --danger: #dc2626;
+            --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: var(--font-main);
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.02) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.02) 0%, transparent 40%);
-            color: var(--text-primary);
+            font-family: var(--font-family);
+            background-color: var(--bg);
+            color: var(--text-main);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
         }
-        .container {
+
+        .block-card {
             width: 100%;
-            max-width: 850px;
+            max-width: 780px;
             background: var(--card-bg);
-            border: 1px solid rgba(226, 232, 240, 0.9);
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
-            padding: 48px;
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+            padding: 48px 44px;
             text-align: center;
-            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .logo-wrap {
-            margin-bottom: 20px;
+
+        /* Top Brand Header */
+        .shield-icon-wrapper {
+            margin-bottom: 16px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
         }
-        .logo-svg {
-            width: 80px;
-            height: 80px;
+
+        .shield-badge {
+            width: 68px;
+            height: 68px;
+            filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.08));
         }
-        .logo-text {
-            font-size: 18px;
+
+        .brand-title {
+            font-size: 17px;
             font-weight: 800;
-            color: #1e293b;
+            color: #0f172a;
             letter-spacing: 0.5px;
-            margin-top: 6px;
             text-transform: uppercase;
+            margin-bottom: 6px;
         }
-        .fw-badge {
-            font-size: 11.5px;
+
+        .brand-subtitle {
+            font-size: 11px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 2.2px;
             margin-bottom: 4px;
         }
-        .fw-owner {
-            font-size: 15px;
+
+        .brand-owner {
+            font-size: 14px;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             margin-bottom: 24px;
         }
-        .main-title {
-            font-size: 25px;
+
+        /* Main Headlines */
+        .headline-403 {
+            font-size: 24px;
             font-weight: 800;
             color: #0f172a;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.3px;
             margin-bottom: 6px;
         }
-        .sub-title {
-            font-size: 19px;
+
+        .headline-waf {
+            font-size: 18px;
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
-        .desc-text {
-            font-size: 13.5px;
-            color: var(--text-secondary);
+
+        .headline-restricted {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-body);
             margin-bottom: 28px;
         }
-        
-        .table-container {
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
+
+        /* Details Table */
+        .table-wrap {
+            border: 1px solid var(--border-table);
+            border-radius: 10px;
             overflow: hidden;
             background: #ffffff;
-            margin-bottom: 24px;
+            margin-bottom: 26px;
             text-align: left;
         }
+
         .details-table {
             width: 100%;
             border-collapse: collapse;
         }
+
         .details-table tr {
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-table);
         }
+
         .details-table tr:last-child {
             border-bottom: none;
         }
+
         .details-table th {
+            width: 250px;
             background-color: #f8fafc;
             color: #475569;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 12.5px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            width: 240px;
+            letter-spacing: 0.6px;
             padding: 14px 20px;
-            border-right: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-table);
             vertical-align: middle;
         }
+
         .details-table td {
             color: #334155;
             font-weight: 500;
             font-size: 13.5px;
             padding: 14px 20px;
             vertical-align: middle;
+            background-color: #ffffff;
         }
-        
-        .threat-row td {
-            background-color: #fff5f5 !important;
-            color: #991b1b !important;
+
+        /* Classification Row */
+        .classification-row th {
+            background-color: #f8fafc;
         }
-        .threat-cell-content {
+
+        .classification-row td {
+            background-color: #fff8f8;
+        }
+
+        .classification-flex {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            width: 100%;
         }
-        .threat-text {
+
+        .classification-text {
+            color: var(--danger);
             font-weight: 700;
-            color: #dc2626;
+            font-size: 13.5px;
         }
+
         .info-tag {
             background: #f1f5f9;
             color: #475569;
             border: 1px solid #cbd5e1;
             font-size: 11.5px;
             font-weight: 600;
-            padding: 3px 10px;
+            padding: 3px 12px;
             border-radius: 4px;
-            text-decoration: none;
+            letter-spacing: 0.2px;
         }
-        
-        .ip-wrap {
+
+        .ip-content {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .flag-img {
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            border-radius: 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+
+        .country-flag {
             display: inline-block;
+            border-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             vertical-align: middle;
         }
-        
-        .why-header {
+
+        /* Why did this happen */
+        .why-heading {
             font-size: 15px;
             font-weight: 700;
             color: #0f172a;
-            margin-top: 24px;
             margin-bottom: 8px;
         }
-        .why-desc {
-            font-size: 13.5px;
-            color: var(--text-secondary);
+
+        .why-paragraph {
+            font-size: 13px;
             line-height: 1.6;
-            max-width: 680px;
-            margin: 0 auto 24px;
+            color: var(--text-body);
+            max-width: 660px;
+            margin: 0 auto 22px;
         }
-        
-        .ref-box {
+
+        /* Reference Box */
+        .reference-badge {
+            display: inline-block;
             background: #f8fafc;
-            border: 1px dashed var(--border-color);
+            border: 1px dashed #cbd5e1;
             border-radius: 6px;
-            padding: 12px 24px;
+            padding: 11px 26px;
             font-family: var(--font-mono);
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 700;
             color: #0f172a;
-            display: inline-block;
-            margin-bottom: 30px;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             cursor: pointer;
+            margin-bottom: 24px;
             transition: all 0.2s ease;
         }
-        .ref-box:hover {
+
+        .reference-badge:hover {
             background: #f1f5f9;
             border-color: #94a3b8;
-            transform: scale(1.01);
         }
-        
-        .actions {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
-        .btn {
+
+        /* Action Button */
+        .btn-contact {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 12px 28px;
-            border-radius: 6px;
+            gap: 8px;
+            background-color: var(--primary-btn);
+            color: #ffffff;
+            font-family: var(--font-family);
             font-size: 13.5px;
             font-weight: 600;
             text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            gap: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        .btn-primary {
-            background-color: #1e3a8a;
-            color: #ffffff;
+            padding: 11px 28px;
+            border-radius: 6px;
             border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.06);
         }
-        .btn-primary:hover {
-            background-color: #172554;
+
+        .btn-contact:hover {
+            background-color: var(--primary-hover);
             transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
-        
-        .footer {
+
+        /* Footer */
+        .block-footer {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-card);
             font-size: 12px;
             color: var(--text-muted);
-            border-top: 1px solid var(--border-color);
-            padding-top: 24px;
-            margin-top: 24px;
         }
-        
-        @media (max-width: 768px) {
-            .container { padding: 24px; }
+
+        @media (max-width: 640px) {
+            .block-card {
+                padding: 28px 18px;
+            }
             .details-table th, .details-table td {
                 display: block;
                 width: 100%;
                 border-right: none;
             }
             .details-table th {
-                background-color: #f8fafc;
-                padding-bottom: 6px;
+                padding-bottom: 4px;
             }
             .details-table td {
-                padding-top: 6px;
-                border-bottom: none;
+                padding-top: 4px;
             }
             .details-table tr {
-                border-bottom: 1px solid var(--border-color);
-                display: block;
+                padding: 8px 0;
             }
-            .threat-cell-content {
+            .classification-flex {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 8px;
-            }
-            .actions {
-                flex-direction: column;
-                width: 100%;
-                max-width: 400px;
-                margin: 0 auto 12px;
-            }
-            .btn {
-                width: 100%;
+                gap: 6px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Logo Header -->
-        <div class="logo-wrap">
-            <svg class="logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <div class="block-card">
+        <!-- Shield Logo Badge -->
+        <div class="shield-icon-wrapper">
+            <svg class="shield-badge" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#f8fafc" />
-                        <stop offset="30%" stop-color="#cbd5e1" />
-                        <stop offset="70%" stop-color="#94a3b8" />
-                        <stop offset="100%" stop-color="#475569" />
+                    <linearGradient id="shieldFill" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#cbd5e1" />
+                        <stop offset="50%" stop-color="#94a3b8" />
+                        <stop offset="100%" stop-color="#64748b" />
                     </linearGradient>
-                    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#94a3b8" />
-                        <stop offset="50%" stop-color="#f1f5f9" />
-                        <stop offset="100%" stop-color="#475569" />
+                    <linearGradient id="innerShield" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#f1f5f9" />
+                        <stop offset="100%" stop-color="#cbd5e1" />
                     </linearGradient>
-                    <linearGradient id="dragonColor" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#1e293b" />
-                        <stop offset="100%" stop-color="#0f172a" />
-                    </linearGradient>
-                    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
-                        <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.15" />
-                    </filter>
                 </defs>
-                <path d="M60 10 C85 22 98 25 98 48 C98 75 75 98 60 108 C45 98 22 75 22 48 C22 25 35 22 60 10 Z" fill="url(#shieldBg)" stroke="url(#shieldBorder)" stroke-width="3" filter="url(#dropShadow)" />
-                <path d="M60 18 C80 28 90 30 90 48 C90 70 70 90 60 98 C50 90 30 70 30 48 C30 30 40 28 60 18 Z" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="3 2" />
-                <path d="M60 28 C58 35 52 38 48 38 C44 38 43 42 45 44 C47 46 51 44 51 48 C51 52 46 55 42 53 C38 51 36 54 38 58 C40 62 45 60 48 64 C50 66 48 70 44 72 C48 74 54 75 58 72 C58 68 55 65 57 62 C59 59 63 61 65 58 C67 55 66 52 62 50 C64 45 68 46 70 42 C72 38 67 36 65 32 C63 28 61 25 60 28 Z" fill="url(#dragonColor)" />
+                <!-- Shield Base -->
+                <path d="M50 8C72 18 84 21 84 42C84 66 64 85 50 94C36 85 16 66 16 42C16 21 28 18 50 8Z" fill="url(#shieldFill)" stroke="#475569" stroke-width="2" />
+                <path d="M50 14C68 23 78 26 78 43C78 63 61 79 50 87C39 79 22 63 22 43C22 26 32 23 50 14Z" fill="url(#innerShield)" />
+                <!-- Dark Stylized Emblem -->
+                <path d="M50 25C48 31 43 33 40 33C37 33 36 36 38 38C40 40 43 38 43 42C43 45 39 48 35 46C32 44 30 47 32 50C34 53 38 52 40 55C42 57 40 60 37 62C40 64 45 65 48 62C48 59 46 56 47 54C49 51 52 53 54 50C56 48 55 45 52 43C53 39 57 40 58 37C60 33 56 32 54 28C52 25 51 22 50 25Z" fill="#1e293b" />
             </svg>
-            <div class="logo-text">MDefender-Pro AI</div>
         </div>
-        
-        <div class="fw-badge">A.S.A.P. Security Firewall</div>
-        <div class="fw-owner">Mahabub</div>
-        
-        <h1 class="main-title">403 — SECURITY ACTION REQUIRED</h1>
-        <h2 class="sub-title">Access Denied by Corporate WAF</h2>
-        
-        <?php if ($message && $message !== 'This request has been blocked by Web Application Firewall'): ?>
-            <div class="desc-text"><?php echo esc_html($message); ?></div>
-        <?php else: ?>
-            <div class="desc-text">Access to [<?php echo esc_html($_SERVER['HTTP_HOST'] ?? 'target_domain_here.com'); ?>] restricted.</div>
-        <?php endif; ?>
-        
-        <!-- Table Section -->
-        <div class="table-container">
+
+        <div class="brand-title">MDEFENDER-PRO AI</div>
+        <div class="brand-subtitle">A.S.A.P. SECURITY FIREWALL</div>
+        <div class="brand-owner"><?php echo esc_html(strtoupper($site_name)); ?></div>
+
+        <h1 class="headline-403">403 &mdash; SECURITY ACTION REQUIRED</h1>
+        <h2 class="headline-waf">Access Denied by Corporate WAF</h2>
+        <div class="headline-restricted">Access to [<?php echo esc_html($site_host); ?>] restricted.</div>
+
+        <!-- Details Table -->
+        <div class="table-wrap">
             <table class="details-table">
-                <tr class="threat-row">
-                    <th>Attack Classification</th>
+                <tr class="classification-row">
+                    <th>ATTACK CLASSIFICATION</th>
                     <td>
-                        <div class="threat-cell-content">
-                            <span class="threat-text"><?php echo esc_html($attack_type); ?></span>
+                        <div class="classification-flex">
+                            <span class="classification-text"><?php echo esc_html($attack_type); ?></span>
                             <span class="info-tag">Detailed info tag</span>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <th>Origin Client IP</th>
+                    <th>ORIGIN CLIENT IP</th>
                     <td>
-                        <div class="ip-wrap">
+                        <div class="ip-content">
                             <?php if (!empty($country_code_lower)): ?>
                                 <img src="https://flagcdn.com/w40/<?php echo esc_attr($country_code_lower); ?>.png" 
                                      srcset="https://flagcdn.com/w80/<?php echo esc_attr($country_code_lower); ?>.png 2x" 
                                      width="20" height="15" 
                                      alt="<?php echo esc_attr(strtoupper($country_code_lower)); ?>"
-                                     class="flag-img">
+                                     class="country-flag">
                             <?php endif; ?>
                             <span><?php echo esc_html($client_ip); ?><?php echo esc_html($geoip_info); ?></span>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <th>Event Timestamp</th>
+                    <th>EVENT TIMESTAMP</th>
                     <td><?php echo esc_html($utc_timestamp); ?> (Ref: <?php echo esc_html($unix_ref); ?>)</td>
                 </tr>
                 <tr>
-                    <th>Violation Reason</th>
+                    <th>VIOLATION REASON</th>
                     <td>Request blocked by rule ID: <?php echo esc_html($rule_id); ?> (Ref: <?php echo esc_html($rule_name); ?>)</td>
                 </tr>
                 <tr>
-                    <th>Protocol Details</th>
-                    <td><?php echo esc_html($_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1'); ?> (WAF_VER: <?php echo esc_html(defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.1.0'); ?>)</td>
+                    <th>PROTOCOL DETAILS</th>
+                    <td><?php echo esc_html($_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1'); ?> (WAF_VER: 4.1.0)</td>
                 </tr>
                 <tr>
-                    <th>Server Host</th>
+                    <th>SERVER HOST</th>
                     <td><?php echo esc_html($server_host); ?></td>
                 </tr>
             </table>
         </div>
-        
-        <!-- Bottom Explanatory Section -->
-        <h3 class="why-header">Why did this happen?</h3>
-        <p class="why-desc">
+
+        <!-- Explanatory Section -->
+        <div class="why-heading">Why did this happen?</div>
+        <p class="why-paragraph">
             To maintain system integrity, suspicious requests are automatically analyzed and filtered. If you believe this is a valid corporate action, please share the Reference ID below with your local IT/Security operations. Regular users should clear cache or contact support.
         </p>
-        
-        <div class="ref-box" id="ref-id-box" title="Click to copy Reference ID" onclick="copyRef()">
+
+        <!-- Reference ID -->
+        <div class="reference-badge" id="refIdBadge" onclick="copyRefId()" title="Click to copy Reference ID">
             REFERENCE ID: <?php echo esc_html($reference_id); ?>
         </div>
-        
-        <!-- Actions Button Section -->
-        <div class="actions">
-            <a href="mailto:<?php echo esc_attr(get_option('admin_email')); ?>?subject=WAF Block Reference: <?php echo esc_attr($reference_id); ?>&body=Hello,%0D%0A%0D%0AMy request was blocked by the security firewall. Details below:%0D%0A- Reference ID: <?php echo esc_attr($reference_id); ?>%0D%0A- IP: <?php echo esc_attr($client_ip); ?>%0D%0A- Domain: <?php echo esc_attr($_SERVER['HTTP_HOST'] ?? ''); ?>" 
-               class="btn btn-primary" onclick="copyRef()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
+
+        <!-- Action Button -->
+        <div>
+            <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=WAF Block Reference: <?php echo esc_attr($reference_id); ?>&body=Security Support,%0D%0A%0D%0AMy request was restricted by MDefender-Pro AI Firewall.%0D%0A%0D%0ADetails:%0D%0A- Reference ID: <?php echo esc_attr($reference_id); ?>%0D%0A- Client IP: <?php echo esc_attr($client_ip); ?>%0D%0A- Host: <?php echo esc_attr($site_host); ?>" 
+               class="btn-contact">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                     <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
                 Contact Security Operations
             </a>
         </div>
-        
-        <div class="footer">
+
+        <div class="block-footer">
             Secured by MDefender-Pro AI Firewall. All critical system events are logged and audited.
         </div>
     </div>
 
     <script>
-        function copyRef() {
+        function copyRefId() {
             const refText = "<?php echo esc_js($reference_id); ?>";
             navigator.clipboard.writeText(refText).then(() => {
-                const refBox = document.getElementById('ref-id-box');
-                const originalHtml = refBox.innerHTML;
-                refBox.innerHTML = 'COPIED TO CLIPBOARD! ✅';
-                refBox.style.color = '#10b981';
-                refBox.style.borderColor = '#10b981';
-                refBox.style.background = '#ecfdf5';
+                const el = document.getElementById('refIdBadge');
+                const orig = el.innerText;
+                el.innerText = 'COPIED TO CLIPBOARD! ✅';
+                el.style.borderColor = '#10b981';
+                el.style.color = '#10b981';
                 setTimeout(() => {
-                    refBox.innerHTML = originalHtml;
-                    refBox.style.color = '';
-                    refBox.style.borderColor = '';
-                    refBox.style.background = '';
+                    el.innerText = orig;
+                    el.style.borderColor = '';
+                    el.style.color = '';
                 }, 2000);
-            }).catch(err => {
-                console.error('Could not copy Reference ID: ', err);
             });
         }
     </script>
