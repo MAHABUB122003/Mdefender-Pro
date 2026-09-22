@@ -477,17 +477,34 @@ class WAFAPI:
         is_blacklisted = self.attack_blocker.is_blacklisted(ip)
         is_rate_limited = self.rate_limiter.is_rate_limited(ip)
 
-        decision_engine = DecisionEngine(ml_detector=self.ml_detector)
-        decision = decision_engine.evaluate(
-            request_data,
-            ip=ip,
-            is_blacklisted=is_blacklisted,
-            is_rate_limited=is_rate_limited,
-            allowlist=is_whitelisted,
-            user_id=user_id,
-            website_id=website_id,
-            domain=domain
-        )
+        # Check Geo / Country Blocking
+        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id)
+        if is_geo_blocked and not is_whitelisted:
+            c_name = geo_info.get('country_name', 'Unknown Country')
+            c_code = geo_info.get('country_code', '')
+            decision = {
+                'decision': 'BLOCK',
+                'action': 'block',
+                'confidence': 1.0,
+                'reason': f"Access restricted from {c_name} ({c_code})",
+                'attack_type': 'Country Block (Geo-Restriction)',
+                'risk_score': 100,
+                'risk_level': 'critical',
+                'status': 'blocked',
+                'reference_id': 'GEO-BLOCK',
+            }
+        else:
+            decision_engine = DecisionEngine(ml_detector=self.ml_detector)
+            decision = decision_engine.evaluate(
+                request_data,
+                ip=ip,
+                is_blacklisted=is_blacklisted,
+                is_rate_limited=is_rate_limited,
+                allowlist=is_whitelisted,
+                user_id=user_id,
+                website_id=website_id,
+                domain=domain
+            )
 
         is_blocked = decision['decision'] == 'BLOCK'
         confidence = decision['confidence']

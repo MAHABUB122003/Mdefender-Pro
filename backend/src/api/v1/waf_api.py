@@ -195,6 +195,35 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
         rate_limiter.increment(ip)
     is_rate_limited = bool(ip) and rate_limiter.is_rate_limited(ip)
 
+    # Check Geo / Country Blocking
+    if ip:
+        is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=auth_data.get("user_id"))
+        if is_geo_blocked and not ip_filter.is_whitelisted(ip):
+            c_name = geo_info.get('country_name', 'Unknown Country')
+            c_code = geo_info.get('country_code', '')
+            geo_decision = {
+                "decision": "BLOCK",
+                "action": "block",
+                "reason": f"Access restricted from {c_name} ({c_code})",
+                "attack_type": "Country Block (Geo-Restriction)",
+                "risk_score": 100,
+                "risk_level": "critical",
+                "confidence": 1.0,
+                "reference_id": "GEO-BLOCK",
+                "rule_matched": "Geo-Firewall Policy",
+            }
+            store_event(db, auth_data, req_data, geo_decision, ip)
+            return success({
+                "decision": "BLOCK",
+                "action": "block",
+                "reason": f"Access restricted from {c_name} ({c_code})",
+                "attack_type": "Country Block (Geo-Restriction)",
+                "risk_score": 100,
+                "risk_level": "critical",
+                "confidence": 1.0,
+                "reference_id": "GEO-BLOCK",
+            })
+
     mode = body.mode or website.get("waf_mode", "protect")
     threshold_override = mode in ("monitor", "off")
 
