@@ -763,25 +763,23 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     user_id_str = str(user['_id'])
     user_email = user.get('email', 'unknown')
     
-    existing = db.blacklist.find_one({'ip': ip})
-    if existing:
-        db.blacklist.update_one({'_id': existing['_id']}, {'$set': {
-            'reason': data.get('reason', 'Blocked by user'),
-            'type': data.get('type', 'permanent'),
-            'added_by': user_email,
-            'added_by_user_id': user_id_str,
-            'blocked_at': datetime.now(),
-        }})
-        return {'status': 'success', 'message': f'IP {ip} updated in blacklist'}
-        
-    db.blacklist.insert_one({
+    payload = {
         'ip': ip,
         'reason': data.get('reason', 'Blocked by user'),
         'type': data.get('type', 'permanent'),
         'added_by': user_email,
         'added_by_user_id': user_id_str,
+        'user_id': user_id_str,
         'blocked_at': datetime.now(),
-    })
+        'is_global': False,
+    }
+    
+    existing = db.blacklist.find_one({'ip': ip})
+    if existing:
+        db.blacklist.update_one({'_id': existing['_id']}, {'$set': payload})
+        return {'status': 'success', 'message': f'IP {ip} updated in blacklist'}
+        
+    db.blacklist.insert_one(payload)
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully'}
 
 @app.delete("/api/user/blacklist")

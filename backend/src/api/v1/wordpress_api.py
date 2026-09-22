@@ -285,18 +285,17 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         user_or_conditions.append({"added_by_user_id": ObjectId(user_id)})
         user_or_conditions.append({"user_id": ObjectId(user_id)})
 
-    blacklist_cursor = db.blacklist.find({
-        "$or": user_or_conditions,
-        "$and": [
-            {
-                "$or": [
-                    {"expires_at": None},
-                    {"expires_at": {"$exists": False}},
-                    {"expires_at": {"$gt": now}},
-                ]
-            }
-        ]
-    })
+    find_conditions = [
+        {"$or": user_or_conditions},
+        {
+            "$or": [
+                {"expires_at": None},
+                {"expires_at": {"$exists": False}},
+                {"expires_at": {"$gt": now}},
+            ]
+        }
+    ]
+    blacklist_cursor = db.blacklist.find({"$and": find_conditions})
     blacklist = list(set([item["ip"].strip() for item in blacklist_cursor if item.get("ip")]))
 
     return success({
