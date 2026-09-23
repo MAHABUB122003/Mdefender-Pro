@@ -26,8 +26,10 @@ if (!defined('WAF_FW_TABLE_SCAN_FILES_QUEUE')) define('WAF_FW_TABLE_SCAN_FILES_Q
 if (!defined('WAF_FW_TABLE_CLEANED_BACKUPS')) define('WAF_FW_TABLE_CLEANED_BACKUPS', 'waf_cleaned_backups');
 if (!defined('WAF_FW_TABLE_SECURITY_EVENTS')) define('WAF_FW_TABLE_SECURITY_EVENTS', 'waf_security_events');
 
-register_activation_hook(__FILE__, 'waf_fw_activate');
-register_deactivation_hook(__FILE__, 'waf_fw_deactivate');
+if (defined('WAF_FW_MAIN_FILE')) {
+    register_activation_hook(WAF_FW_MAIN_FILE, 'waf_fw_activate');
+    register_deactivation_hook(WAF_FW_MAIN_FILE, 'waf_fw_deactivate');
+}
 
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-db.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-logger.php';
