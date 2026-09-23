@@ -1394,28 +1394,34 @@
         });
     });
 
+    $(document).on('click', '.waf-btn-details-toggle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var card = $(this).closest('.waf-finding-card');
+        var body = card.find('.waf-finding-body');
+        var toggleLabel = $(this).find('span:last-child');
+        var toggleIcon = $(this).find('.dashicons');
+
+        if (body.is(':visible')) {
+            body.slideUp(200);
+            toggleLabel.text('DETAILS');
+            toggleIcon.removeClass('dashicons-arrow-up-alt2').addClass('dashicons-search');
+            card.removeClass('is-expanded');
+        } else {
+            body.slideDown(200);
+            toggleLabel.text('HIDE');
+            toggleIcon.removeClass('dashicons-search').addClass('dashicons-arrow-up-alt2');
+            card.addClass('is-expanded');
+        }
+    });
+
     $(document).on('click', '.waf-finding-header', function(e) {
-        if ($(e.target).closest('.waf-btn-ignore-file, .waf-btn-hide-file, .waf-btn-ignore-item, .waf-btn-view-diff, .waf-btn-view-file, .waf-btn-clean-file, .waf-btn-restore-file, button, a').length > 0) {
+        if ($(e.target).closest('.waf-btn-details-toggle, .waf-btn-ignore-file, .waf-btn-hide-file, .waf-btn-ignore-item, .waf-btn-view-diff, .waf-btn-view-file, .waf-btn-clean-file, .waf-btn-restore-file, button, a').length > 0) {
             return;
         }
         e.preventDefault();
         var card = $(this).closest('.waf-finding-card');
-        var body = card.find('.waf-finding-body');
-        var toggle = card.find('.waf-btn-details-toggle');
-        var toggleLabel = toggle.find('span:last-child');
-        var toggleIcon = toggle.find('.dashicons');
-
-        body.slideToggle(200, function() {
-            if ($(this).is(':visible')) {
-                toggleLabel.text('HIDE');
-                toggleIcon.removeClass('dashicons-search').addClass('dashicons-arrow-up-alt2');
-                card.addClass('is-expanded');
-            } else {
-                toggleLabel.text('DETAILS');
-                toggleIcon.removeClass('dashicons-arrow-up-alt2').addClass('dashicons-search');
-                card.removeClass('is-expanded');
-            }
-        });
+        card.find('.waf-btn-details-toggle').trigger('click');
     });
 
     function loadBackups() {
@@ -1669,14 +1675,6 @@
         loadScanHistory();
         loadBackups();
         $('#wafClearHistory').on('click', clearScanHistory);
-
-        // Accordion details toggle click handler
-        $(document).on('click', '.waf-btn-details-toggle, .waf-finding-header', function(e) {
-            if ($(e.target).closest('.waf-btn-ignore-item, .waf-btn-view-diff, .waf-btn-ignore-file, .waf-btn-hide-file, .button').length > 0) return;
-            e.preventDefault();
-            var card = $(this).closest('.waf-finding-card');
-            card.find('.waf-finding-body').slideToggle(150);
-        });
 
         // View Diff Click Handler
         $(document).on('click', '.waf-btn-view-diff', function(e) {
