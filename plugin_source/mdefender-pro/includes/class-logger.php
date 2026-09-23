@@ -19,24 +19,7 @@ class WAF_FW_Logger {
     public function log_attack($data) {
         global $wpdb;
         $ip = $data['ip'] ?? '';
-        $country_code = '';
-        if (!empty($ip)) {
-            $transient_key = 'waf_fw_geoip_' . md5($ip);
-            $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
-            if ($cached !== false && !empty($cached)) {
-                $country_code = $cached;
-            } elseif (function_exists('wp_remote_get') && function_exists('is_wp_error') && function_exists('wp_remote_retrieve_body')) {
-                $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 2]);
-                if (!is_wp_error($response)) {
-                    $json = json_decode(wp_remote_retrieve_body($response), true);
-                    $country_code = $json['countryCode'] ?? '';
-                    if (function_exists('set_transient')) {
-                        $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
-                        set_transient($transient_key, $country_code, 12 * $hour);
-                    }
-                }
-            }
-        }
+        $country_code = $this->fast_get_country_code($ip);
 
         $wpdb->insert(
             $this->db->get_attacks_table(),
@@ -64,26 +47,17 @@ class WAF_FW_Logger {
     }
 
     public function log_request($data) {
+        // Fast-path: Only do heavy DB insert if detailed logging or learning mode is active
+        $learning_mode = get_option('waf_fw_learning_mode', 'no') === 'yes';
+        $detailed_log = get_option('waf_fw_detailed_traffic_log', 'no') === 'yes';
+
+        if (!$learning_mode && !$detailed_log) {
+            return;
+        }
+
         global $wpdb;
         $ip = $data['ip'] ?? '';
-        $country_code = '';
-        if (!empty($ip)) {
-            $transient_key = 'waf_fw_geoip_' . md5($ip);
-            $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
-            if ($cached !== false && !empty($cached)) {
-                $country_code = $cached;
-            } elseif (function_exists('wp_remote_get') && function_exists('is_wp_error') && function_exists('wp_remote_retrieve_body')) {
-                $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 2]);
-                if (!is_wp_error($response)) {
-                    $json = json_decode(wp_remote_retrieve_body($response), true);
-                    $country_code = $json['countryCode'] ?? '';
-                    if (function_exists('set_transient')) {
-                        $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
-                        set_transient($transient_key, $country_code, 12 * $hour);
-                    }
-                }
-            }
-        }
+        $country_code = $this->fast_get_country_code($ip);
 
         $wpdb->insert(
             $this->db->get_requests_table(),
@@ -97,6 +71,29 @@ class WAF_FW_Logger {
                 'created_at' => current_time('mysql'),
             ]
         );
+    }
+
+    /**
+     * Fast GeoIP country resolution without blocking external HTTP calls
+     */
+    private function fast_get_country_code($ip) {
+        if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1') {
+            return 'LOCAL';
+        }
+        if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+            return strtoupper(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY']), 0, 2));
+        }
+        if (!empty($_SERVER['GEOIP_COUNTRY_CODE'])) {
+            return strtoupper(substr(trim($_SERVER['GEOIP_COUNTRY_CODE']), 0, 2));
+        }
+        $transient_key = 'waf_fw_geoip_' . md5($ip);
+        if (function_exists('get_transient')) {
+            $cached = get_transient($transient_key);
+            if ($cached !== false && !empty($cached)) {
+                return $cached;
+            }
+        }
+        return '';
     }
 
     public function get_stats() {

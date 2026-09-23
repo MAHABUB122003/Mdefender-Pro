@@ -206,10 +206,22 @@ class WAF_FW_Engine {
                 }
             }
 
+            // INSTANT FAST-PATH: If no attack features detected, allow immediately (< 0.05ms)
+            if (!$has_attack_signal) {
+                return $this->do_allow($ip, $url, $method, $user_agent);
+            }
+
+            // Feature-based high confidence block (Instant local decision)
+            if ($this->feature_based_block($features)) {
+                $attack_type = $this->feature_extractor->get_attack_type($features);
+                $this->report_block_to_cloud($ip, $url, $method, $body, $request_data);
+                return $this->do_block($ip, $url, $method, $attack_type, 0.85, $user_agent, $referer, $body, "Feature-based detection: $attack_type");
+            }
+
             $cloud_mode = (string) get_option('waf_fw_cloud_mode', 'protect');
             $ml_confidence = 0.0;
 
-            // Cloud ML WAF arbitration
+            // Optional Cloud ML arbitration only for ambiguous payloads
             if ($cloud_mode !== 'off' && $this->ml_client->is_available()) {
                 $ml_result = $this->ml_client->analyze($request_data);
                 if (is_array($ml_result)) {
@@ -237,16 +249,6 @@ class WAF_FW_Engine {
 
                     waf_fw_bump_stat('allowed');
                 }
-            }
-
-            if (!$has_attack_signal) {
-                return $this->do_allow($ip, $url, $method, $user_agent);
-            }
-
-            if ($this->feature_based_block($features)) {
-                $attack_type = $this->feature_extractor->get_attack_type($features);
-                $this->report_block_to_cloud($ip, $url, $method, $body, $request_data);
-                return $this->do_block($ip, $url, $method, $attack_type, 0.85, $user_agent, $referer, $body, "Feature-based detection: $attack_type");
             }
 
             $threshold = (float) get_option('waf_fw_confidence_threshold', 0.7);

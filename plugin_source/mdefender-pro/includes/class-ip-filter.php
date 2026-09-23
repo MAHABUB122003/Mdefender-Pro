@@ -12,9 +12,15 @@ class WAF_FW_IP_Filter {
         return self::$_instance;
     }
 
+    private $runtime_blacklist_cache = [];
+
     public function is_blacklisted($ip) {
         if (empty($ip)) {
             return false;
+        }
+
+        if (isset($this->runtime_blacklist_cache[$ip])) {
+            return $this->runtime_blacklist_cache[$ip];
         }
 
         global $wpdb;
@@ -27,25 +33,19 @@ class WAF_FW_IP_Filter {
             if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= current_time('timestamp')) {
                 $wpdb->delete($table, ['ip' => $ip]);
             } else {
+                $this->runtime_blacklist_cache[$ip] = true;
                 return true;
             }
         }
 
-        // 1. Check local WAF blacklist cache synced from MDefender Cloud dashboard
+        // Check local WAF blacklist cache synced from MDefender Cloud dashboard
         $cloud_blacklist = get_option('waf_fw_local_blacklist_cache', []);
         if (is_array($cloud_blacklist) && in_array($ip, $cloud_blacklist, true)) {
+            $this->runtime_blacklist_cache[$ip] = true;
             return true;
         }
 
-        // 2. Fast opportunistic sync of cloud blacklist if cache is stale or IP not found
-        if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
-            waf_fw_sync_cloud_blacklist_fast();
-            $cloud_blacklist = get_option('waf_fw_local_blacklist_cache', []);
-            if (is_array($cloud_blacklist) && in_array($ip, $cloud_blacklist, true)) {
-                return true;
-            }
-        }
-
+        $this->runtime_blacklist_cache[$ip] = false;
         return false;
     }
 

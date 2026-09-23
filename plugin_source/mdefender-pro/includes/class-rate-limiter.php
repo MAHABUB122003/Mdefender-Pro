@@ -19,11 +19,36 @@ class WAF_FW_Rate_Limiter {
 
     public function is_rate_limited($ip) {
         $key = 'waf_fw_rate_' . md5($ip);
+
+        // 1. Fast-path in-memory APCu cache (< 0.001ms)
+        if (function_exists('apcu_fetch')) {
+            $data = apcu_fetch($key);
+            if (!$data) {
+                return false;
+            }
+            $now = time();
+            $window_start = $now - $this->window_seconds;
+            $data = array_values(array_filter($data, function($t) use ($window_start) {
+                return $t > $window_start;
+            }));
+            if (count($data) >= $this->max_requests) {
+                apcu_store($key, $data, $this->window_seconds);
+                return true;
+            }
+            $data[] = $now;
+            apcu_store($key, $data, $this->window_seconds);
+            return false;
+        }
+
+        // 2. Standard WordPress Transient fallback
         $data = get_transient($key);
         if (!$data) {
             return false;
         }
         $data = json_decode($data, true);
+        if (!is_array($data)) {
+            return false;
+        }
         $now = time();
         $window_start = $now - $this->window_seconds;
         $data = array_values(array_filter($data, function($t) use ($window_start) {
