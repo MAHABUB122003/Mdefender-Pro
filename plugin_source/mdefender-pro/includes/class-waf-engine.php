@@ -385,28 +385,23 @@ class WAF_FW_Engine {
     }
 
     private function get_ip_country($ip) {
+        if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0') {
+            return 'LOCAL';
+        }
+        if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+            return strtoupper(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY']), 0, 2));
+        }
+        if (!empty($_SERVER['GEOIP_COUNTRY_CODE'])) {
+            return strtoupper(substr(trim($_SERVER['GEOIP_COUNTRY_CODE']), 0, 2));
+        }
         $transient_key = 'waf_fw_geoip_' . md5($ip);
         if (function_exists('get_transient')) {
             $cached = get_transient($transient_key);
-            if ($cached !== false) {
+            if ($cached !== false && !empty($cached)) {
                 return $cached;
             }
         }
-
-        if (!function_exists('wp_remote_get') || !function_exists('wp_remote_retrieve_body') || !function_exists('is_wp_error')) {
-            return false;
-        }
-
-        $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 3]);
-        if (is_wp_error($response)) return false;
-        $data = json_decode(wp_remote_retrieve_body($response), true);
-        $country_code = $data['countryCode'] ?? '';
-
-        if (function_exists('set_transient')) {
-            $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
-            set_transient($transient_key, $country_code, 12 * $hour);
-        }
-        return $country_code ?: false;
+        return '';
     }
 
     public function set_learning_mode($enabled) {
