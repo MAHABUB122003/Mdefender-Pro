@@ -545,6 +545,31 @@
         config_exposure: 'hidden', known_files_check: 'yes-alt', file_changes: 'edit',
     };
 
+    function isCoreFile(filePath) {
+        if (!filePath || typeof filePath !== 'string') return false;
+        var p = filePath.replace(/\\/g, '/').replace(/^\/+/, '');
+        var rootCore = [
+            'wp-config.php', 'wp-config-sample.php', 'index.php', '.htaccess',
+            'wp-settings.php', 'wp-load.php', 'wp-login.php', 'wp-blog-header.php',
+            'wp-activate.php', 'wp-comments-post.php', 'wp-cron.php', 'wp-links-opml.php',
+            'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php',
+            'license.txt', 'readme.html'
+        ];
+        if (p.indexOf('/') === -1 && rootCore.indexOf(p.toLowerCase()) !== -1) {
+            return true;
+        }
+        if (p.indexOf('wp-admin/') === 0 || p.indexOf('wp-includes/') === 0) {
+            return true;
+        }
+        if (p === 'wp-content/index.php' || p === 'wp-content/plugins/index.php' || p === 'wp-content/themes/index.php' || p === 'wp-content/uploads/index.php') {
+            return true;
+        }
+        if (p.indexOf('wp-content/plugins/mdefender-pro/') === 0 || p.indexOf('wp-content/plugins/wp-waf-firewall1/') === 0) {
+            return true;
+        }
+        return false;
+    }
+
     function parseFindingsFromScanData(scanData) {
         var findings = [];
 
@@ -595,6 +620,19 @@
             var checksums = scanData.malware_scan.wp_checksums;
             if (checksums.modified_files && checksums.modified_files.length > 0) {
                 checksums.modified_files.forEach(function(f, idx) {
+                    var isConfig = (f.file.indexOf('wp-config.php') !== -1);
+                    var headerActs = [
+                        { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
+                        { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
+                    ];
+                    var cardActs = [
+                        { label: 'View Code', class: 'waf-btn-view-file', file: f.file }
+                    ];
+                    if (!isConfig) {
+                        headerActs.unshift({ label: 'VIEW DIFFERENCES', icon: 'dashicons-randomize', class: 'waf-btn-view-diff' });
+                        cardActs.unshift({ label: 'View Differences (Diff)', class: 'waf-btn-view-diff', file: f.file });
+                        cardActs.push({ label: 'Restore Core File', class: 'waf-btn-restore-file', file: f.file });
+                    }
                     findings.push({
                         id: 'checksum_mismatch_' + idx,
                         title: 'WordPress core file modified: ' + f.file,
@@ -602,19 +640,11 @@
                         severity: 'critical',
                         severityLabel: 'Critical',
                         date: new Date().toLocaleString(),
-                        details: 'Official checksum verification failed. The WordPress core file <code>' + f.file + '</code> has been modified or corrupted. This could indicate a malware injection or unauthorized edit.',
+                        details: 'Official checksum verification failed. The WordPress core file <code>' + f.file + '</code> has been modified or corrupted. This could indicate a malware injection or unauthorized edit.<br><strong>Safety Protection:</strong> Core WordPress files cannot be deleted; use "Restore Core File" to restore pristine official files directly from WordPress.org.',
                         paths: 'File path: <code>' + f.file + '</code>',
                         file: f.file,
-                        headerActions: [
-                            { label: 'VIEW DIFFERENCES', icon: 'dashicons-randomize', class: 'waf-btn-view-diff' },
-                            { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
-                            { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
-                        ],
-                        actions: [
-                            { label: 'View Differences (Diff)', class: 'waf-btn-view-diff', file: f.file },
-                            { label: 'View Code', class: 'waf-btn-view-file', file: f.file },
-                            { label: 'Restore Core File', class: 'waf-btn-restore-file', file: f.file }
-                        ]
+                        headerActions: headerActs,
+                        actions: cardActs
                     });
                 });
             }
@@ -624,6 +654,17 @@
         if (scanData.malware_scan && scanData.malware_scan.secrets_found) {
             scanData.malware_scan.secrets_found.forEach(function(s, idx) {
                 var findingsList = s.findings ? s.findings.join('<br>') : 'Exposed credential or high-entropy secret signature matched.';
+                var isCore = isCoreFile(s.file);
+                var acts = [
+                    { label: 'View Code', class: 'waf-btn-view-file', file: s.file }
+                ];
+                if (isCore) {
+                    if (s.file.indexOf('wp-config.php') === -1) {
+                        acts.push({ label: 'Restore Core File', class: 'waf-btn-restore-file', file: s.file });
+                    }
+                } else {
+                    acts.push({ label: 'Clean File', class: 'waf-btn-clean-file', file: s.file });
+                }
                 findings.push({
                     id: 'exposed_secret_' + idx,
                     title: 'Exposed Secrets & Credentials in: ' + s.file,
@@ -631,17 +672,14 @@
                     severity: 'critical',
                     severityLabel: 'Critical',
                     date: new Date().toLocaleString(),
-                    details: 'A file containing sensitive secrets, API keys, or database credentials was found exposed. Leaving secrets plain-text in reachable directories poses severe security risks.<br><strong>Findings:</strong><br>' + findingsList,
+                    details: 'A file containing sensitive secrets, API keys, or database credentials was found exposed.<br><strong>Findings:</strong><br>' + findingsList + (isCore ? '<br><em>Notice: This is a core WordPress file; please inspect and edit it safely using View Code or Restore Core File.</em>' : ''),
                     paths: 'File path: <code>' + s.file + '</code> (Score: ' + s.score + ')',
                     file: s.file,
                     headerActions: [
                         { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
                         { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
                     ],
-                    actions: [
-                        { label: 'View Code', class: 'waf-btn-view-file', file: s.file },
-                        { label: 'Clean File', class: 'waf-btn-clean-file', file: s.file }
-                    ]
+                    actions: acts
                 });
             });
         }
@@ -650,24 +688,36 @@
         if (scanData.malware_scan && scanData.malware_scan.suspicious_files) {
             scanData.malware_scan.suspicious_files.forEach(function(f, idx) {
                 var findingsList = f.findings ? f.findings.join('<br>') : 'Suspicious malware signature or script injection matched.';
+                var isCore = isCoreFile(f.file);
+                var headerActs = [
+                    { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
+                    { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
+                ];
+                var cardActs = [
+                    { label: 'View Code', class: 'waf-btn-view-file', file: f.file }
+                ];
+                if (isCore) {
+                    if (f.file.indexOf('wp-config.php') === -1) {
+                        headerActs.unshift({ label: 'VIEW DIFFERENCES', icon: 'dashicons-randomize', class: 'waf-btn-view-diff' });
+                        cardActs.unshift({ label: 'View Differences (Diff)', class: 'waf-btn-view-diff', file: f.file });
+                        cardActs.push({ label: 'Restore Core File', class: 'waf-btn-restore-file', file: f.file });
+                    }
+                } else {
+                    cardActs.push({ label: 'Clean File', class: 'waf-btn-clean-file', file: f.file });
+                }
+
                 findings.push({
                     id: 'suspicious_file_' + idx,
-                    title: 'Suspicious file detected (potential malware): ' + f.file,
-                    type: 'Malware Threat',
+                    title: (isCore ? '[WordPress Core Modified] ' : 'Suspicious file detected (potential malware): ') + f.file,
+                    type: isCore ? 'Core File Threat' : 'Malware Threat',
                     severity: f.score >= 50 ? 'critical' : 'warning',
                     severityLabel: f.score >= 50 ? 'Critical' : 'Warning',
                     date: new Date().toLocaleString(),
-                    details: 'Our scanner detected suspicious code patterns or known malware signatures inside this file.<br><strong>Threat Details:</strong><br>' + findingsList,
+                    details: (isCore ? '<strong>Core File Protection Notice: This is an essential WordPress file. It cannot be deleted because deletion breaks WordPress. Please click "Restore Core File" to replace it with pristine official code from WordPress.org.</strong><br>' : '') + 'Our scanner detected suspicious code patterns or known malware signatures inside this file.<br><strong>Threat Details:</strong><br>' + findingsList,
                     paths: 'File path: <code>' + f.file + '</code> (Score: ' + f.score + ')',
                     file: f.file,
-                    headerActions: [
-                        { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
-                        { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
-                    ],
-                    actions: [
-                        { label: 'View Code', class: 'waf-btn-view-file', file: f.file },
-                        { label: 'Clean File', class: 'waf-btn-clean-file', file: f.file }
-                    ]
+                    headerActions: headerActs,
+                    actions: cardActs
                 });
             });
         }
@@ -678,24 +728,36 @@
             var allMl = (ml.malicious_files || []).concat(ml.suspicious_files || []);
             allMl.forEach(function(f, idx) {
                 var reasons = f.reasons ? f.reasons.join('<br>') : 'Potential webshell, obfuscated script, or backdoor.';
+                var isCore = isCoreFile(f.file);
+                var headerActs = [
+                    { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
+                    { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
+                ];
+                var cardActs = [
+                    { label: 'View Code', class: 'waf-btn-view-file', file: f.file }
+                ];
+                if (isCore) {
+                    if (f.file.indexOf('wp-config.php') === -1) {
+                        headerActs.unshift({ label: 'VIEW DIFFERENCES', icon: 'dashicons-randomize', class: 'waf-btn-view-diff' });
+                        cardActs.unshift({ label: 'View Differences (Diff)', class: 'waf-btn-view-diff', file: f.file });
+                        cardActs.push({ label: 'Restore Core File', class: 'waf-btn-restore-file', file: f.file });
+                    }
+                } else {
+                    cardActs.push({ label: 'Clean File', class: 'waf-btn-clean-file', file: f.file });
+                }
+
                 findings.push({
                     id: 'ml_malware_' + idx,
-                    title: 'Cloud AI-Malware threat detected: ' + f.file,
-                    type: 'AI Malware Detection',
+                    title: (isCore ? '[WordPress Core Modified] ' : 'Cloud AI-Malware threat detected: ') + f.file,
+                    type: isCore ? 'Core File AI Threat' : 'AI Malware Detection',
                     severity: f.verdict === 'malicious' ? 'critical' : 'warning',
                     severityLabel: f.verdict === 'malicious' ? 'Critical' : 'Warning',
                     date: new Date().toLocaleString(),
-                    details: 'MDefender Cloud AI analysis flagged this file as malicious.<br><strong>Verdict:</strong> ' + f.verdict.toUpperCase() + ' (Confidence: ' + f.confidence + ')<br><strong>Reasons:</strong><br>' + reasons,
+                    details: (isCore ? '<strong>Core File Protection Notice: This is an essential WordPress file. Use "Restore Core File" to repair it with clean code from WordPress.org.</strong><br>' : '') + 'MDefender Cloud AI analysis flagged this file as malicious.<br><strong>Verdict:</strong> ' + f.verdict.toUpperCase() + ' (Confidence: ' + f.confidence + ')<br><strong>Reasons:</strong><br>' + reasons,
                     paths: 'File path: <code>' + f.file + '</code>',
                     file: f.file,
-                    headerActions: [
-                        { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
-                        { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
-                    ],
-                    actions: [
-                        { label: 'View Code', class: 'waf-btn-view-file', file: f.file },
-                        { label: 'Clean File', class: 'waf-btn-clean-file', file: f.file }
-                    ]
+                    headerActions: headerActs,
+                    actions: cardActs
                 });
             });
         }
@@ -1104,9 +1166,10 @@
             var filePath = f.file || 'Unknown file';
             var severityColor = f.score >= 50 ? '#dc2626' : '#d97706';
             var severityBg = f.score >= 50 ? '#fef2f2' : '#fffbeb';
+            var isCore = isCoreFile(filePath);
             html += '<div style="padding:10px;margin:6px 0;background:' + severityBg + ';border-left:3px solid ' + severityColor + ';border-radius:6px;" class="waf-scan-issue-item">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:6px;">';
-            html += '<span style="font-weight:600;font-size:12px;color:#1e293b;word-break:break-all;">' + filePath + '</span>';
+            html += '<span style="font-weight:600;font-size:12px;color:#1e293b;word-break:break-all;">' + (isCore ? '<span class="waf-badge" style="background:#0284c7;color:#fff;margin-right:6px;">WP CORE</span>' : '') + filePath + '</span>';
             html += '<span class="waf-badge" style="background:' + severityColor + ';color:#fff;">Score: ' + (f.score || 0) + '</span>';
             html += '</div>';
             if (f.size) html += '<div style="font-size:11px;color:#64748b;margin-bottom:6px;">Size: ' + f.size + ' bytes</div>';
@@ -1118,10 +1181,14 @@
             }
             html += '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,0.05);display:flex;gap:8px;flex-wrap:wrap;">';
             html += '<button type="button" class="button button-small waf-btn-view-file" data-file="' + filePath + '">View Code</button>';
-            if (filePath.indexOf('wp-admin/') === 0 || filePath.indexOf('wp-includes/') === 0 || filePath.indexOf('wp-') === 0 || filePath === 'index.php') {
-                html += '<button type="button" class="button button-small button-primary waf-btn-restore-file" data-file="' + filePath + '">Restore Core</button>';
+            if (isCore) {
+                if (filePath.indexOf('wp-config.php') === -1) {
+                    html += '<button type="button" class="button button-small waf-btn-view-diff" data-file="' + filePath + '">View Diff</button>';
+                    html += '<button type="button" class="button button-small button-primary waf-btn-restore-file" data-file="' + filePath + '">Restore Core File</button>';
+                }
+            } else {
+                html += '<button type="button" class="button button-small waf-btn-clean-file" data-file="' + filePath + '" style="color:#dc2626;border-color:#fca5a5;">Delete File</button>';
             }
-            html += '<button type="button" class="button button-small waf-btn-clean-file" data-file="' + filePath + '" style="color:#dc2626;border-color:#fca5a5;">Clean File</button>';
             html += '<button type="button" class="button button-small waf-btn-ignore-file" data-file="' + filePath + '">Ignore</button>';
             html += '</div>';
             html += '</div>';
@@ -1135,12 +1202,14 @@
         var all = malicious.concat(suspicious);
         for (var i = 0; i < all.length; i++) {
             var f = all[i];
+            var filePath = f.file || 'Unknown file';
             var isMalicious = f.verdict === 'malicious';
             var color = isMalicious ? '#dc2626' : '#d97706';
             var bg = isMalicious ? '#fef2f2' : '#fffbeb';
-            html += '<div style="padding:8px;margin:4px 0;background:' + bg + ';border-left:3px solid ' + color + ';border-radius:4px;">';
+            var isCore = isCoreFile(filePath);
+            html += '<div style="padding:10px;margin:6px 0;background:' + bg + ';border-left:3px solid ' + color + ';border-radius:6px;">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap;">';
-            html += '<span style="font-weight:600;font-size:12px;color:#1e293b;">' + (f.file || 'Unknown file') + '</span>';
+            html += '<span style="font-weight:600;font-size:12px;color:#1e293b;">' + (isCore ? '<span class="waf-badge" style="background:#0284c7;color:#fff;margin-right:6px;">WP CORE</span>' : '') + filePath + '</span>';
             html += '<span class="waf-badge" style="background:' + color + ';color:#fff;">' + f.verdict.toUpperCase() + ' - Risk: ' + f.risk_score + '</span>';
             html += '</div>';
             html += '<div style="font-size:11px;color:#64748b;display:flex;gap:12px;flex-wrap:wrap;">';
@@ -1155,6 +1224,18 @@
                 }
                 html += '</div>';
             }
+            html += '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,0.05);display:flex;gap:8px;flex-wrap:wrap;">';
+            html += '<button type="button" class="button button-small waf-btn-view-file" data-file="' + filePath + '">View Code</button>';
+            if (isCore) {
+                if (filePath.indexOf('wp-config.php') === -1) {
+                    html += '<button type="button" class="button button-small waf-btn-view-diff" data-file="' + filePath + '">View Diff</button>';
+                    html += '<button type="button" class="button button-small button-primary waf-btn-restore-file" data-file="' + filePath + '">Restore Core File</button>';
+                }
+            } else {
+                html += '<button type="button" class="button button-small waf-btn-clean-file" data-file="' + filePath + '" style="color:#dc2626;border-color:#fca5a5;">Delete File</button>';
+            }
+            html += '<button type="button" class="button button-small waf-btn-ignore-file" data-file="' + filePath + '">Ignore</button>';
+            html += '</div>';
             html += '</div>';
         }
         return html;
@@ -1656,7 +1737,11 @@
         $('#wafCodeModalTitle').text('Viewing: ' + file);
         $('#wafCodeModalMeta').text('Loading file contents...');
         $('#wafModalCode').text('Loading source code...');
-        $('#wafCodeModalCleanBtn').data('file', file).show();
+        if (isCoreFile(file)) {
+            $('#wafCodeModalCleanBtn').hide();
+        } else {
+            $('#wafCodeModalCleanBtn').data('file', file).text('Quarantine & Delete File').show();
+        }
         modal.css('display', 'flex');
 
         $.get(waf_fw_ajax.ajax_url + '?action=waf_fw_view_scan_file&file=' + encodeURIComponent(file), function(r) {
@@ -1761,7 +1846,11 @@
         $('#wafCodeModalCleanBtn').on('click', function() {
             var file = $(this).data('file');
             if (!file) return;
-            if (!confirm('Are you sure you want to clean/quarantine this file?\n' + file)) return;
+            if (isCoreFile(file)) {
+                alert('Protected File Notice: This is a critical WordPress core file and cannot be deleted. Please use "Restore Core File" to repair it.');
+                return;
+            }
+            if (!confirm('Are you sure you want to clean/delete this file?\n' + file)) return;
             
             $.ajax({
                 url: waf_fw_ajax.ajax_url + '?action=waf_fw_clean_file',
@@ -1784,7 +1873,7 @@
         // Bulk Clean Button ("Delete All Deletable Files")
         $('#wafBulkCleanBtn').on('click', function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to quarantine and delete all detected malware files?\nAll files will be backed up before removal.')) return;
+            if (!confirm('Are you sure you want to quarantine and delete all detected standalone malware files?\n\nNOTE: Protected WordPress core files will NOT be deleted to prevent breaking your website. To repair modified core files, use "Repair All Repairable Files".')) return;
             
             var btn = $(this);
             btn.prop('disabled', true).text('Cleaning files...');
@@ -1797,7 +1886,7 @@
                 success: function(r) {
                     btn.prop('disabled', false).text('Delete All Deletable Files');
                     if (r.success) {
-                        alert(r.data.message || 'All malware files cleaned successfully.');
+                        alert(r.data.message || 'All deletable malware files cleaned successfully.');
                         loadBackups();
                         if (r.data.cleaned && r.data.cleaned.length > 0) {
                             r.data.cleaned.forEach(function(f) {

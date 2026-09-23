@@ -1067,6 +1067,45 @@ class WAF_FW_Ajax_Handler {
         return $out;
     }
 
+    public static function is_protected_system_file($file) {
+        if (empty($file) || !is_string($file)) {
+            return true;
+        }
+        $rel = ltrim(str_replace('\\', '/', trim($file)), '/');
+        $base = basename($rel);
+
+        $root_core = [
+            'wp-config.php', 'wp-config-sample.php', 'index.php', '.htaccess',
+            'wp-settings.php', 'wp-load.php', 'wp-login.php', 'wp-blog-header.php',
+            'wp-activate.php', 'wp-comments-post.php', 'wp-cron.php', 'wp-links-opml.php',
+            'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php',
+            'license.txt', 'readme.html'
+        ];
+
+        if (strpos($rel, '/') === false && in_array(strtolower($base), array_map('strtolower', $root_core), true)) {
+            return true;
+        }
+
+        if (strpos($rel, 'wp-admin/') === 0 || strpos($rel, 'wp-includes/') === 0) {
+            return true;
+        }
+
+        if (in_array($rel, [
+            'wp-content/index.php',
+            'wp-content/plugins/index.php',
+            'wp-content/themes/index.php',
+            'wp-content/uploads/index.php'
+        ], true)) {
+            return true;
+        }
+
+        if (strpos($rel, 'wp-content/plugins/mdefender-pro/') === 0 || strpos($rel, 'wp-content/plugins/wp-waf-firewall1/') === 0) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function delete_scan_file() {
         $this->check_access();
         $this->verify_nonce();
@@ -1074,7 +1113,13 @@ class WAF_FW_Ajax_Handler {
         $file = sanitize_text_field($data['file'] ?? '');
         if (empty($file)) wp_send_json_error(['message' => 'File path is required']);
 
-        $path = wp_normalize_path(ABSPATH . $file);
+        $rel = ltrim(str_replace('\\', '/', $file), '/');
+        if (self::is_protected_system_file($rel)) {
+            wp_send_json_error(['message' => 'Protection Alert: ' . esc_html($rel) . ' is a critical WordPress core file and cannot be deleted. Use "Restore Core File" to repair it safely.']);
+            return;
+        }
+
+        $path = wp_normalize_path(ABSPATH . $rel);
         if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
             wp_send_json_error(['message' => 'Invalid file path']);
         }
@@ -1083,7 +1128,7 @@ class WAF_FW_Ajax_Handler {
             wp_send_json_error(['message' => 'File does not exist']);
         }
 
-        $this->perform_file_backup($file);
+        $this->perform_file_backup($rel);
 
         if (@unlink($path)) {
             wp_send_json_success(['message' => 'File deleted and backed up successfully']);
@@ -1099,31 +1144,25 @@ class WAF_FW_Ajax_Handler {
         $file = sanitize_text_field($data['file'] ?? '');
         if (empty($file)) wp_send_json_error(['message' => 'File path is required']);
 
-        $path = wp_normalize_path(ABSPATH . $file);
+        $rel = ltrim(str_replace('\\', '/', $file), '/');
+        if (basename($rel) === 'wp-config.php') {
+            wp_send_json_error(['message' => 'wp-config.php contains your local database configuration and cannot be replaced from WordPress.org repository.']);
+            return;
+        }
+
+        $path = wp_normalize_path(ABSPATH . $rel);
         if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
             wp_send_json_error(['message' => 'Invalid file path']);
         }
 
-        $is_core = false;
-        $core_prefixes = ['wp-admin/', 'wp-includes/', 'index.php', 'wp-activate.php', 'wp-blog-header.php', 'wp-comments-post.php', 'wp-cron.php', 'wp-links-opml.php', 'wp-load.php', 'wp-login.php', 'wp-mail.php', 'wp-settings.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php'];
-        foreach ($core_prefixes as $prefix) {
-            if (strpos($file, $prefix) === 0 || dirname($file) === '.') {
-                $is_core = true;
-                break;
-            }
-        }
-        if (!$is_core) {
-            wp_send_json_error(['message' => 'Only core files can be automatically restored.']);
-        }
-
         global $wp_version;
-        $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $file;
+        $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $rel;
         $response = wp_remote_get($url, ['timeout' => 15]);
         $content = '';
         if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
             $content = wp_remote_retrieve_body($response);
         } else {
-            $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $file;
+            $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $rel;
             $fb_res = wp_remote_get($fallback_url, ['timeout' => 15]);
             if (!is_wp_error($fb_res) && wp_remote_retrieve_response_code($fb_res) === 200) {
                 $content = wp_remote_retrieve_body($fb_res);
@@ -1135,10 +1174,10 @@ class WAF_FW_Ajax_Handler {
         }
 
         // Back up before overwriting for safety
-        $this->perform_file_backup($file);
+        $this->perform_file_backup($rel);
 
         if (@file_put_contents($path, $content) !== false) {
-            wp_send_json_success(['message' => 'Official core file restored successfully from WordPress.org.']);
+            wp_send_json_success(['message' => 'Official core file (' . esc_html($rel) . ') restored successfully from WordPress.org.']);
         } else {
             wp_send_json_error(['message' => 'Failed to overwrite core file. Check permissions.']);
         }
@@ -1149,7 +1188,8 @@ class WAF_FW_Ajax_Handler {
         $file = sanitize_text_field($_GET['file'] ?? ($_POST['file'] ?? ''));
         if (empty($file)) wp_send_json_error(['message' => 'File path is required']);
 
-        $path = wp_normalize_path(ABSPATH . $file);
+        $rel = ltrim(str_replace('\\', '/', $file), '/');
+        $path = wp_normalize_path(ABSPATH . $rel);
         if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
             wp_send_json_error(['message' => 'Invalid file path']);
         }
@@ -1164,13 +1204,13 @@ class WAF_FW_Ajax_Handler {
         }
 
         global $wp_version;
-        $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $file;
+        $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $rel;
         $response = wp_remote_get($url, ['timeout' => 15]);
         $original_content = '';
         if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
             $original_content = wp_remote_retrieve_body($response);
         } else {
-            $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $file;
+            $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $rel;
             $fb_res = wp_remote_get($fallback_url, ['timeout' => 15]);
             if (!is_wp_error($fb_res) && wp_remote_retrieve_response_code($fb_res) === 200) {
                 $original_content = wp_remote_retrieve_body($fb_res);
@@ -1182,7 +1222,7 @@ class WAF_FW_Ajax_Handler {
         }
 
         wp_send_json_success([
-            'file' => $file,
+            'file' => $rel,
             'wp_version' => $wp_version,
             'original_content' => $original_content,
             'local_content' => $local_content,
@@ -1210,6 +1250,14 @@ class WAF_FW_Ajax_Handler {
                         $files[] = $mf['file'];
                     }
                 }
+                if (!empty($results['malware_scan']['suspicious_files'])) {
+                    foreach ($results['malware_scan']['suspicious_files'] as $sf) {
+                        $rel = ltrim(str_replace('\\', '/', $sf['file']), '/');
+                        if (self::is_protected_system_file($rel) && basename($rel) !== 'wp-config.php' && !in_array($sf['file'], $files, true)) {
+                            $files[] = $sf['file'];
+                        }
+                    }
+                }
             }
         }
 
@@ -1223,19 +1271,24 @@ class WAF_FW_Ajax_Handler {
 
         foreach ($files as $file) {
             $file = sanitize_text_field($file);
-            $path = wp_normalize_path(ABSPATH . $file);
+            $rel = ltrim(str_replace('\\', '/', $file), '/');
+            if (basename($rel) === 'wp-config.php') {
+                continue;
+            }
+
+            $path = wp_normalize_path(ABSPATH . $rel);
             if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
                 continue;
             }
 
-            $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $file;
+            $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $rel;
             $res = wp_remote_get($url, ['timeout' => 10]);
             $body = '';
             if (!is_wp_error($res) && wp_remote_retrieve_response_code($res) === 200) {
                 $body = wp_remote_retrieve_body($res);
             }
             if (empty($body)) {
-                $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $file;
+                $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $rel;
                 $fb_res = wp_remote_get($fallback_url, ['timeout' => 10]);
                 if (!is_wp_error($fb_res) && wp_remote_retrieve_response_code($fb_res) === 200) {
                     $body = wp_remote_retrieve_body($fb_res);
@@ -1243,19 +1296,24 @@ class WAF_FW_Ajax_Handler {
             }
 
             if (!empty($body)) {
-                $this->perform_file_backup($file);
+                $this->perform_file_backup($rel);
                 if (@file_put_contents($path, $body) !== false) {
-                    $restored[] = $file;
+                    $restored[] = $rel;
                 } else {
-                    $errors[] = "Failed to write $file";
+                    $errors[] = "Failed to write $rel";
                 }
             } else {
-                $errors[] = "Could not fetch official $file";
+                $errors[] = "Could not fetch official $rel";
             }
         }
 
+        if (empty($restored) && !empty($errors)) {
+            wp_send_json_error(['message' => 'Failed to restore core files: ' . implode(', ', $errors)]);
+            return;
+        }
+
         wp_send_json_success([
-            'message' => count($restored) . ' core file(s) restored successfully.',
+            'message' => count($restored) . ' core file(s) restored successfully from official WordPress.org release.',
             'restored' => $restored,
             'errors' => $errors
         ]);
@@ -1291,11 +1349,14 @@ class WAF_FW_Ajax_Handler {
         }
 
         $cleaned = [];
+        $skipped_core = [];
         $errors = [];
 
         foreach ($files as $file) {
             $file = sanitize_text_field($file);
-            $path = wp_normalize_path(ABSPATH . $file);
+            $rel = ltrim(str_replace('\\', '/', $file), '/');
+            $path = wp_normalize_path(ABSPATH . $rel);
+
             if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
                 continue;
             }
@@ -1303,25 +1364,46 @@ class WAF_FW_Ajax_Handler {
                 continue;
             }
 
-            $protect = ['wp-config.php', 'index.php', '.htaccess', 'wp-settings.php', 'wp-load.php', 'wp-login.php'];
-            if (in_array(basename($file), $protect) && dirname($file) === '.') {
+            if (self::is_protected_system_file($rel)) {
+                $skipped_core[] = $rel;
                 continue;
             }
 
-            if ($this->perform_file_backup($file)) {
+            if ($this->perform_file_backup($rel)) {
                 if (@unlink($path)) {
-                    $cleaned[] = $file;
+                    $cleaned[] = $rel;
                 } else {
-                    $errors[] = "Failed to delete $file";
+                    $errors[] = "Failed to delete $rel";
                 }
             } else {
-                $errors[] = "Failed to backup $file";
+                $errors[] = "Failed to backup $rel";
             }
         }
 
+        if (empty($cleaned) && !empty($skipped_core)) {
+            wp_send_json_success([
+                'message' => 'Protected core file(s) (' . implode(', ', array_slice($skipped_core, 0, 3)) . (count($skipped_core) > 3 ? ' and ' . (count($skipped_core) - 3) . ' more' : '') . ') were protected from deletion. Use "Repair All Repairable Files" to restore them safely.',
+                'cleaned' => [],
+                'skipped_core' => $skipped_core,
+                'errors' => $errors
+            ]);
+            return;
+        }
+
+        if (empty($cleaned) && empty($skipped_core)) {
+            wp_send_json_error(['message' => 'No deletable malware files found.']);
+            return;
+        }
+
+        $msg = count($cleaned) . ' standalone malware file(s) safely quarantined and removed.';
+        if (!empty($skipped_core)) {
+            $msg .= ' (' . count($skipped_core) . ' core file(s) preserved for safety).';
+        }
+
         wp_send_json_success([
-            'message' => count($cleaned) . ' malware file(s) safely quarantined and removed.',
+            'message' => $msg,
             'cleaned' => $cleaned,
+            'skipped_core' => $skipped_core,
             'errors' => $errors
         ]);
     }
@@ -1493,7 +1575,13 @@ class WAF_FW_Ajax_Handler {
         $scan_id = intval($data['scan_id'] ?? 0);
         if (empty($file)) wp_send_json_error(['message' => 'File path is required']);
 
-        $path = wp_normalize_path(ABSPATH . $file);
+        $rel = ltrim(str_replace('\\', '/', $file), '/');
+        if (self::is_protected_system_file($rel)) {
+            wp_send_json_error(['message' => 'Protection Alert: ' . esc_html($rel) . ' is a critical WordPress core file and cannot be deleted. Deleting it will break your website. Please use "Restore Core File" to safely repair it.']);
+            return;
+        }
+
+        $path = wp_normalize_path(ABSPATH . $rel);
         if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
             wp_send_json_error(['message' => 'Invalid file path']);
         }
@@ -1502,7 +1590,7 @@ class WAF_FW_Ajax_Handler {
             wp_send_json_error(['message' => 'File does not exist']);
         }
 
-        $backup_success = $this->perform_file_backup($file, $scan_id);
+        $backup_success = $this->perform_file_backup($rel, $scan_id);
         if (!$backup_success) {
             wp_send_json_error(['message' => 'Failed to create backup. Clean aborted for safety.']);
         }
