@@ -24,6 +24,7 @@ if (!defined('WAF_FW_TABLE_FIREWALL_RULES')) define('WAF_FW_TABLE_FIREWALL_RULES
 if (!defined('WAF_FW_TABLE_HARDENING')) define('WAF_FW_TABLE_HARDENING', 'waf_hardening_status');
 if (!defined('WAF_FW_TABLE_SCAN_FILES_QUEUE')) define('WAF_FW_TABLE_SCAN_FILES_QUEUE', 'waf_scan_files_queue');
 if (!defined('WAF_FW_TABLE_CLEANED_BACKUPS')) define('WAF_FW_TABLE_CLEANED_BACKUPS', 'waf_cleaned_backups');
+if (!defined('WAF_FW_TABLE_SECURITY_EVENTS')) define('WAF_FW_TABLE_SECURITY_EVENTS', 'waf_security_events');
 
 register_activation_hook(__FILE__, 'waf_fw_activate');
 register_deactivation_hook(__FILE__, 'waf_fw_deactivate');

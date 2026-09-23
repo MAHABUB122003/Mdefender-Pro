@@ -394,10 +394,6 @@
         }
         var completedDate = data.created_at || data.completed_at || new Date().toISOString();
         $('#wafScanDate').text(formatScanDate(completedDate));
-        
-        var totalIssues = (data.issues_found || 0) + 1;
-        $('#wafResultsFoundCount').text(totalIssues);
-        $('#wafSummaryResultsCount').text(totalIssues);
 
         var checks = countChecks(scanData);
         var filesScanned = (scanData.malware_scan && scanData.malware_scan.total_scanned) || 0;
@@ -407,8 +403,21 @@
         $('#wafScanChecks').text(checks);
         $('#wafScannedFiles').text(filesScanned);
 
+        if (scanData.real_metrics) {
+            var rm = scanData.real_metrics;
+            $('#wafSummaryFilesCount').text((rm.total_files || 0).toLocaleString());
+            $('#wafSummaryThemesCount').text(((rm.plugin_files || 0) + (rm.theme_files || 0)).toLocaleString());
+            $('#wafSummaryUsersCount').text((rm.users_checked || 0).toLocaleString());
+            $('#wafSummaryUrlsCount').text(((rm.posts_scanned || 0) + (rm.comments_scanned || 0)).toLocaleString());
+        } else {
+            $('#wafSummaryFilesCount').text(filesScanned.toLocaleString());
+            $('#wafSummaryThemesCount').text('-');
+            $('#wafSummaryUsersCount').text('-');
+            $('#wafSummaryUrlsCount').text('-');
+        }
+
         var modulesRun = Object.keys(scanData).filter(function(k) {
-            return typeof scanData[k] === 'object' && scanData[k] !== null && k !== 'security_status';
+            return typeof scanData[k] === 'object' && scanData[k] !== null && k !== 'security_status' && k !== 'real_metrics';
         }).length;
         $('#wafScanModules').text(modulesRun);
 
@@ -475,7 +484,7 @@
     function countChecks(data) {
         var count = 0;
         for (var key in data) {
-            if (typeof data[key] === 'object' && data[key] !== null) count++;
+            if (typeof data[key] === 'object' && data[key] !== null && key !== 'real_metrics') count++;
         }
         return count;
     }
@@ -572,48 +581,6 @@
 
     function parseFindingsFromScanData(scanData) {
         var findings = [];
-
-        // 1. Always prepend the Skipped Paths finding matching Wordfence mockup
-        findings.push({
-            id: 'skipped_paths_issue',
-            title: '1 path was skipped for the malware scan due to scan settings',
-            type: 'Skipped Paths',
-            severity: 'low',
-            severityLabel: 'Low',
-            date: 'December 12, 2024 10:22 pm',
-            details: 'The option "Scan files outside your WordPress installation" is off by default, which means 1 path and its file(s) will not be scanned for malware or unauthorized changes. To continue skipping these paths, you may ignore this issue. Or to start scanning them, enable the option and subsequent scans will include them. Some paths may not be necessary to scan, so this is optional. <a href="#" style="color:#0284c7;text-decoration:none;font-weight:600;">Learn More</a>',
-            paths: 'The path skipped is <code>/home/mahabu/public_html/.tmb</code>',
-            headerActions: [
-                { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
-                { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
-            ],
-            actions: [
-                { label: 'Go To Option', class: 'waf-go-to-option' },
-                { label: 'Mark As Fixed', class: 'waf-mark-as-fixed' }
-            ]
-        });
-
-        // 2. Add Debug Log configuration exposure as default Critical finding matching Wordfence mockup
-        findings.push({
-            id: 'exposed_debug_log',
-            title: 'Publicly accessible config, backup, or log file found: wp-content/debug.log',
-            type: 'Publicly Accessible Config/Backup/Log',
-            severity: 'critical',
-            severityLabel: 'Critical',
-            date: 'December 12, 2024 10:22 pm',
-            details: 'A publicly accessible log file was found: <code>wp-content/debug.log</code>. Log files can expose sensitive site parameters, database error logs, or user session data to the public.',
-            paths: 'File path: <code>wp-content/debug.log</code>',
-            file: 'wp-content/debug.log',
-            headerActions: [
-                { label: 'HIDE FILE', icon: 'dashicons-media-document', class: 'waf-btn-hide-file' },
-                { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
-                { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
-            ],
-            actions: [
-                { label: 'Hide File', class: 'waf-btn-hide-file', file: 'wp-content/debug.log' },
-                { label: 'View Code', class: 'waf-btn-view-file', file: 'wp-content/debug.log' }
-            ]
-        });
 
         // 3. Parse WordPress Core Checksum Mismatches
         if (scanData.malware_scan && scanData.malware_scan.wp_checksums) {
@@ -880,6 +847,54 @@
                 ],
                 actions: [
                     { label: 'Upgrade WordPress', class: 'waf-go-to-options' }
+                ]
+            });
+        }
+
+        // 12. Publicly exposed sensitive configuration or backup files
+        if (scanData.config_exposure && scanData.config_exposure.exposed_files && scanData.config_exposure.exposed_files.length > 0) {
+            scanData.config_exposure.exposed_files.forEach(function(ef, idx) {
+                var cleanFile = ef.path ? ef.path.replace(/^\/+/, '') : '';
+                findings.push({
+                    id: 'exposed_config_' + idx,
+                    title: 'Publicly accessible config, backup, or log file found: ' + cleanFile,
+                    type: 'Publicly Accessible Config/Backup/Log',
+                    severity: ef.severity || 'critical',
+                    severityLabel: ef.severity === 'critical' ? 'Critical' : 'Warning',
+                    date: new Date().toLocaleString(),
+                    details: 'A publicly accessible file was found: <code>' + cleanFile + '</code> (' + (ef.description || 'Exposed sensitive file') + '). This can expose database passwords or sensitive logs.',
+                    paths: 'URL: <code>' + (ef.url || ef.path) + '</code> (HTTP ' + (ef.status || 200) + ')',
+                    file: cleanFile,
+                    headerActions: [
+                        { label: 'HIDE FILE', icon: 'dashicons-media-document', class: 'waf-btn-hide-file' },
+                        { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
+                        { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
+                    ],
+                    actions: [
+                        { label: 'Hide File', class: 'waf-btn-hide-file', file: cleanFile },
+                        { label: 'View Code', class: 'waf-btn-view-file', file: cleanFile }
+                    ]
+                });
+            });
+        }
+
+        // 13. Mass Rapid File Changes Detection
+        if (scanData.mass_file_changes && scanData.mass_file_changes.mass_change_alert) {
+            findings.push({
+                id: 'mass_file_changes_alert',
+                title: 'High volume of rapid file modifications (' + scanData.mass_file_changes.recent_changes_count + ' files in 15 minutes)',
+                type: 'Continuous Integrity Alert',
+                severity: 'critical',
+                severityLabel: 'Critical',
+                date: new Date().toLocaleString(),
+                details: 'Continuous file integrity monitoring detected rapid, high-volume file modifications across your WordPress filesystem. This may indicate an ongoing ransomware encryption attempt or mass backdoor injection.',
+                paths: 'Detected ' + scanData.mass_file_changes.recent_changes_count + ' file changes within a 15-minute window.',
+                headerActions: [
+                    { label: 'IGNORE', icon: 'dashicons-hidden', class: 'waf-btn-ignore-file' },
+                    { label: 'DETAILS', icon: 'dashicons-search', class: 'waf-btn-details-toggle' }
+                ],
+                actions: [
+                    { label: 'View File Integrity', class: 'waf-go-to-integrity' }
                 ]
             });
         }

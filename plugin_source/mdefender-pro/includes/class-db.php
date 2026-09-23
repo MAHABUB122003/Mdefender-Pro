@@ -105,13 +105,25 @@ class WAF_FW_DB {
         $file_integrity = "CREATE TABLE IF NOT EXISTS {$this->wpdb->prefix}" . WAF_FW_TABLE_FILE_INTEGRITY . " (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             file_path TEXT NOT NULL,
+            relative_path VARCHAR(255) DEFAULT '',
             file_hash VARCHAR(64) NOT NULL,
             file_size BIGINT UNSIGNED DEFAULT 0,
+            mtime INT UNSIGNED DEFAULT 0,
+            permissions VARCHAR(10) DEFAULT '0644',
+            file_owner VARCHAR(50) DEFAULT '',
+            file_type VARCHAR(20) DEFAULT 'php',
+            component_type VARCHAR(50) DEFAULT 'unknown',
+            component_slug VARCHAR(100) DEFAULT '',
+            component_version VARCHAR(50) DEFAULT '',
+            baseline_source VARCHAR(50) DEFAULT 'local_initial',
             modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_verified DATETIME DEFAULT CURRENT_TIMESTAMP,
             status VARCHAR(20) DEFAULT 'known',
             INDEX idx_file_hash (file_hash),
-            INDEX idx_status (status)
+            INDEX idx_status (status),
+            INDEX idx_rel_path (relative_path(191)),
+            INDEX idx_component (component_type, component_slug(50))
         ) $charset;";
 
         $file_changes = "CREATE TABLE IF NOT EXISTS {$this->wpdb->prefix}" . WAF_FW_TABLE_FILE_CHANGES . " (
@@ -121,6 +133,10 @@ class WAF_FW_DB {
             new_hash VARCHAR(64),
             change_type VARCHAR(20) DEFAULT 'modified',
             file_size BIGINT UNSIGNED DEFAULT 0,
+            severity VARCHAR(20) DEFAULT 'medium',
+            confidence FLOAT DEFAULT 0,
+            evidence LONGTEXT,
+            is_quarantined TINYINT(1) DEFAULT 0,
             detected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             status VARCHAR(20) DEFAULT 'new',
             INDEX idx_change_type (change_type),
@@ -131,6 +147,7 @@ class WAF_FW_DB {
         $scan_queue = "CREATE TABLE IF NOT EXISTS {$this->wpdb->prefix}" . WAF_FW_TABLE_SCAN_QUEUE . " (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             scan_type VARCHAR(20) DEFAULT 'full',
+            scan_mode VARCHAR(30) DEFAULT 'full',
             status VARCHAR(20) DEFAULT 'pending',
             progress INT DEFAULT 0,
             current_stage VARCHAR(100),
@@ -138,6 +155,7 @@ class WAF_FW_DB {
             completed_at DATETIME,
             total_files INT DEFAULT 0,
             scanned_files INT DEFAULT 0,
+            real_stats LONGTEXT,
             results LONGTEXT,
             INDEX idx_status (status),
             INDEX idx_scan_type (scan_type)
@@ -187,6 +205,21 @@ class WAF_FW_DB {
             INDEX idx_scan_id (scan_id)
         ) $charset;";
 
+        $security_events = "CREATE TABLE IF NOT EXISTS {$this->wpdb->prefix}" . WAF_FW_TABLE_SECURITY_EVENTS . " (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            event_type VARCHAR(50) NOT NULL,
+            severity VARCHAR(20) DEFAULT 'warning',
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            details LONGTEXT,
+            status VARCHAR(20) DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_event_type (event_type),
+            INDEX idx_severity (severity),
+            INDEX idx_status (status),
+            INDEX idx_created_at (created_at)
+        ) $charset;";
+
         if (!function_exists('dbDelta')) {
             if (defined('ABSPATH') && file_exists(ABSPATH . 'wp-admin/includes/upgrade.php')) {
                 require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -205,6 +238,7 @@ class WAF_FW_DB {
             dbDelta($hardening_status);
             dbDelta($scan_files_queue);
             dbDelta($cleaned_backups);
+            dbDelta($security_events);
         }
 
         $this->maybe_add_block_expires_at_column();
@@ -504,6 +538,10 @@ class WAF_FW_DB {
 
     public function get_hardening_table() {
         return $this->wpdb->prefix . WAF_FW_TABLE_HARDENING;
+    }
+
+    public function get_security_events_table() {
+        return $this->wpdb->prefix . WAF_FW_TABLE_SECURITY_EVENTS;
     }
 
     public static function cleanup_old_logs() {

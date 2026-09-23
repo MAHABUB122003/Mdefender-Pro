@@ -63,6 +63,8 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_view_scan_file', [$this, 'view_scan_file']);
         add_action('wp_ajax_waf_fw_ignore_scan_issue', [$this, 'ignore_scan_issue']);
         add_action('wp_ajax_waf_fw_get_admin_attacks', [$this, 'get_admin_attacks']);
+        add_action('wp_ajax_waf_fw_get_security_events', [$this, 'get_security_events']);
+        add_action('wp_ajax_waf_fw_get_real_metrics', [$this, 'get_real_metrics']);
         add_action('wp_ajax_waf_fw_get_diagnostics', [$this, 'get_diagnostics']);
     }
 
@@ -1472,6 +1474,21 @@ class WAF_FW_Ajax_Handler {
             }
         }
         wp_send_json_success($results);
+    }
+
+    public function get_security_events() {
+        $this->check_access();
+        global $wpdb;
+        $table = WAF_FW_DB::instance()->get_security_events_table();
+        $events = $wpdb->get_results("SELECT * FROM $table ORDER BY id DESC LIMIT 50", ARRAY_A);
+        wp_send_json_success($events ?: []);
+    }
+
+    public function get_real_metrics() {
+        $this->check_access();
+        $scanner = WAF_FW_Scanner::instance();
+        $metrics = $scanner->gather_real_scan_metrics();
+        wp_send_json_success($metrics);
     }
 
     public function get_diagnostics() {

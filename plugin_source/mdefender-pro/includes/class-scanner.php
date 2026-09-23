@@ -858,6 +858,9 @@ class WAF_FW_Scanner {
                     break;
 
                 case 'complete':
+                    $results['real_metrics'] = $this->gather_real_scan_metrics();
+                    $results['mass_file_changes'] = $this->detect_mass_file_changes();
+
                     $issues_found = $this->count_issues($results);
                     $score = $this->calculate_score($results);
                     $duration = (int) (microtime(true) - strtotime($scan->started_at));
@@ -870,6 +873,8 @@ class WAF_FW_Scanner {
                         'scan_type' => $scan->scan_type,
                         'target_url' => $target_url,
                         'security_status' => $security_status,
+                        'real_metrics' => $results['real_metrics'],
+                        'mass_file_changes' => $results['mass_file_changes'],
                     ];
 
                     $this->save_scan_result($scan->scan_type, $target_url, $results, $summary, $score, $issues_found, $duration);
@@ -922,114 +927,247 @@ class WAF_FW_Scanner {
         ];
     }
 
+    public function analyze_php_ast_dataflow($path, $content) {
+        if (!function_exists('token_get_all')) {
+            return ['score' => 0, 'confidence' => 'LOW', 'findings' => [], 'classification' => 'CLEAN'];
+        }
+
+        $tokens = @token_get_all($content);
+        if (empty($tokens)) {
+            return ['score' => 0, 'confidence' => 'LOW', 'findings' => [], 'classification' => 'CLEAN'];
+        }
+
+        $untrusted_sources = [
+            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_SERVER', '$_FILES', '$_ENV',
+            '$HTTP_RAW_POST_DATA', '$GLOBALS'
+        ];
+
+        $dangerous_sinks = [
+            'eval', 'assert', 'system', 'exec', 'shell_exec', 'passthru',
+            'proc_open', 'popen', 'pcntl_exec', 'create_function'
+        ];
+
+        $transform_functions = [
+            'base64_decode', 'gzinflate', 'gzuncompress', 'str_rot13', 'hex2bin',
+            'pack', 'strrev', 'rawurldecode', 'urldecode', 'chr'
+        ];
+
+        $tainted_vars = [];
+        $findings = [];
+        $score = 0;
+        $confidence = 'LOW';
+        $classification = 'SAFE';
+
+        $token_count = count($tokens);
+        for ($i = 0; $i < $token_count; $i++) {
+            $token = $tokens[$i];
+            $t_id = is_array($token) ? $token[0] : null;
+            $t_text = is_array($token) ? $token[1] : $token;
+            $t_line = is_array($token) ? $token[2] : 0;
+
+            // 1. Variable Assignment Analysis: $var = <expr>;
+            if ($t_id === T_VARIABLE) {
+                $var_name = $t_text;
+                
+                $next_idx = $i + 1;
+                while ($next_idx < $token_count && (is_array($tokens[$next_idx]) && in_array($tokens[$next_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
+                    $next_idx++;
+                }
+
+                if ($next_idx < $token_count && $tokens[$next_idx] === '=') {
+                    $expr_tokens = [];
+                    $j = $next_idx + 1;
+                    $paren_depth = 0;
+                    while ($j < $token_count) {
+                        $cur = $tokens[$j];
+                        if ($cur === '(') $paren_depth++;
+                        if ($cur === ')') $paren_depth--;
+                        if ($cur === ';' && $paren_depth <= 0) break;
+                        $expr_tokens[] = $cur;
+                        $j++;
+                    }
+
+                    $has_source = false;
+                    $source_found = '';
+                    $transforms = [];
+                    $references_tainted_var = false;
+                    $tainted_parent = null;
+
+                    foreach ($expr_tokens as $et) {
+                        $et_id = is_array($et) ? $et[0] : null;
+                        $et_text = is_array($et) ? $et[1] : $et;
+
+                        if ($et_id === T_VARIABLE) {
+                            if (in_array($et_text, $untrusted_sources)) {
+                                $has_source = true;
+                                $source_found = $et_text;
+                            } elseif (isset($tainted_vars[$et_text])) {
+                                $references_tainted_var = true;
+                                $tainted_parent = $tainted_vars[$et_text];
+                            }
+                        } elseif ($et_id === T_STRING) {
+                            if (in_array(strtolower($et_text), $transform_functions)) {
+                                $transforms[] = strtolower($et_text);
+                            }
+                        }
+                    }
+
+                    if ($has_source) {
+                        $tainted_vars[$var_name] = [
+                            'source' => $source_found,
+                            'transforms' => $transforms,
+                            'line' => $t_line
+                        ];
+                    } elseif ($references_tainted_var && $tainted_parent) {
+                        $all_transforms = array_merge($tainted_parent['transforms'], $transforms);
+                        $tainted_vars[$var_name] = [
+                            'source' => $tainted_parent['source'],
+                            'transforms' => array_unique($all_transforms),
+                            'line' => $t_line
+                        ];
+                    }
+                }
+            }
+
+            // 2. Direct Sinks: eval, assert, system, exec, etc.
+            if ($t_id === T_EVAL || ($t_id === T_STRING && in_array(strtolower($t_text), $dangerous_sinks))) {
+                $sink_name = strtolower($t_text);
+                
+                $arg_idx = $i + 1;
+                while ($arg_idx < $token_count && (is_array($tokens[$arg_idx]) && in_array($tokens[$arg_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
+                    $arg_idx++;
+                }
+
+                if ($arg_idx < $token_count && $tokens[$arg_idx] === '(') {
+                    $arg_tokens = [];
+                    $k = $arg_idx + 1;
+                    $depth = 1;
+                    while ($k < $token_count && $depth > 0) {
+                        $cur = $tokens[$k];
+                        if ($cur === '(') $depth++;
+                        elseif ($cur === ')') $depth--;
+                        if ($depth > 0) $arg_tokens[] = $cur;
+                        $k++;
+                    }
+
+                    $arg_has_source = false;
+                    $arg_source = '';
+                    $arg_taint = null;
+                    $arg_transforms = [];
+
+                    foreach ($arg_tokens as $at) {
+                        $at_id = is_array($at) ? $at[0] : null;
+                        $at_text = is_array($at) ? $at[1] : $at;
+
+                        if ($at_id === T_VARIABLE) {
+                            if (in_array($at_text, $untrusted_sources)) {
+                                $arg_has_source = true;
+                                $arg_source = $at_text;
+                            } elseif (isset($tainted_vars[$at_text])) {
+                                $arg_taint = $tainted_vars[$at_text];
+                            }
+                        } elseif ($at_id === T_STRING) {
+                            if (in_array(strtolower($at_text), $transform_functions)) {
+                                $arg_transforms[] = strtolower($at_text);
+                            }
+                        }
+                    }
+
+                    if ($arg_has_source) {
+                        $chain = $arg_source . (!empty($arg_transforms) ? ' -> ' . implode(' -> ', $arg_transforms) : '') . ' -> ' . $sink_name . '()';
+                        $findings[] = "AST Taint Flow [Line {$t_line}]: Untrusted Input reaches Execution Sink ({$chain})";
+                        $score = max($score, 95);
+                        $confidence = 'HIGH';
+                        $classification = 'CONFIRMED_MALWARE';
+                    } elseif ($arg_taint !== null) {
+                        $all_tr = array_merge($arg_taint['transforms'], $arg_transforms);
+                        $chain = $arg_taint['source'] . (!empty($all_tr) ? ' -> ' . implode(' -> ', $all_tr) : '') . ' -> ' . $sink_name . '()';
+                        $findings[] = "AST Taint Flow [Line {$t_line}]: Tainted variable ({$arg_taint['source']}) reaches Execution Sink ({$chain})";
+                        $score = max($score, 95);
+                        $confidence = 'HIGH';
+                        $classification = 'CONFIRMED_MALWARE';
+                    } elseif (!empty($arg_transforms) && in_array('base64_decode', $arg_transforms)) {
+                        $chain = implode(' -> ', $arg_transforms) . ' -> ' . $sink_name . '()';
+                        $findings[] = "AST Obfuscated Execution [Line {$t_line}]: Dynamic decode to execution sink ({$chain})";
+                        $score = max($score, 85);
+                        $confidence = 'HIGH';
+                        $classification = 'CONFIRMED_MALWARE';
+                    }
+                }
+            }
+
+            // 3. Dynamic Variable Function Invocations: $func($arg)
+            if ($t_id === T_VARIABLE && isset($tainted_vars[$t_text])) {
+                $next_idx = $i + 1;
+                while ($next_idx < $token_count && (is_array($tokens[$next_idx]) && in_array($tokens[$next_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
+                    $next_idx++;
+                }
+                if ($next_idx < $token_count && $tokens[$next_idx] === '(') {
+                    $taint_info = $tainted_vars[$t_text];
+                    $findings[] = "AST Dynamic Execution [Line {$t_line}]: Tainted variable {$t_text} (from {$taint_info['source']}) invoked as variable function";
+                    $score = max($score, 90);
+                    $confidence = 'HIGH';
+                    $classification = 'CONFIRMED_MALWARE';
+                }
+            }
+        }
+
+        // Structural webshell signatures check
+        if (preg_match('/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i', $content) ||
+            preg_match('/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i', $content) ||
+            preg_match('/(?:c99shell|r57shell|b374k|FilesMan|Weevely|alfa-team|madspot|wso\s*\d)/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Webshell Fingerprint: Known webshell panel signature / backdoor header detected";
+        }
+
+        // Stealth single-line webshell / backdoor dispatcher check
+        if (preg_match('/\$_(?:GET|POST|REQUEST|COOKIE)\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\[/i', $content) ||
+            preg_match('/@\s*(?:eval|assert|system|exec|shell_exec|passthru)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Stealth Webshell Signature: Direct superglobal parameter invocation";
+        }
+
+        return [
+            'score' => $score,
+            'confidence' => $confidence,
+            'findings' => array_unique($findings),
+            'classification' => $classification
+        ];
+    }
+
     private function get_malware_patterns() {
         return [
             'backdoor' => [
-                'weight' => 45,
+                'weight' => 50,
                 'patterns' => [
-                    '/\beval\s*\(\s*\$_/i',
-                    '/\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)/i',
-                    '/\bassert\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|\$_)/i',
-                    '/\bsystem\s*\(\s*\$_/i',
-                    '/\bexec\s*\(\s*\$_/i',
-                    '/\bshell_exec\s*\(\s*\$_/i',
-                    '/\bpassthru\s*\(\s*\$_/i',
-                    '/\bassert\s*\(\s*\$_/i',
-                    '/call_user_func\s*\(\s*\$_/i',
-                    '/array_map\s*\(\s*[\'"](?:exec|system|shell_exec|passthru|eval|assert)[\'"]/i',
+                    '/\beval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)/i',
+                    '/\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(/i',
+                    '/\bassert\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|\$_(?:GET|POST|REQUEST|COOKIE))/i',
+                    '/\bsystem\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/\bexec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/\bshell_exec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/\bpassthru\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/\bassert\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/call_user_func\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/array_map\s*\(\s*[\'"](?:exec|system|shell_exec|passthru|eval|assert)[\'"]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
                     '/preg_replace\s*\(\s*[\'"]\/[^\/]*e[\'"]\s*,/i',
-                    '/\/\*.*GLOBALS.*\*\//i',
-                    '/\$GLOBALS\[[\'"]\w+[\'"]\]\s*=\s*\$_/i',
-                    '/\$_[\(\[]/i',
+                    '/\$GLOBALS\[[\'"]\w+[\'"]\]\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
                     '/\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot)/i',
                     '/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i',
                     '/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i',
                 ],
             ],
-            'execution' => [
-                'weight' => 20,
-                'patterns' => [
-                    '/\bcreate_function\s*\(/i',
-                    '/\bpopen\s*\(/i',
-                    '/\bproc_open\s*\(/i',
-                    '/\bpcntl_exec\s*\(/i',
-                    '/\bexec\s*\(\s*[\'"]/i',
-                    '/\bsystem\s*\(\s*[\'"]/i',
-                    '/\bshell_exec\s*\(/i',
-                    '/\bpassthru\s*\(\s*[\'"]/i',
-                    '/`[^`]{20,}`/',
-                    '/\$(?:\(|{)\(.*\)\s*;/',
-                    '/\beval\s*\(\s*\$[a-z]/i',
-                    '/\bassert\s*\(\s*\$[a-z]/i',
-                ],
-            ],
-            'filesystem' => [
-                'weight' => 15,
-                'patterns' => [
-                    '/file_put_contents\s*\(\s*\$_/i',
-                    '/fwrite\s*\(\s*\$_/i',
-                    '/fputs\s*\(\s*\$_/i',
-                    '/move_uploaded_file\s*\(/i',
-                    '/chmod\s*\(\s*\$_[^)]+\),\s*0/i',
-                    '/file_get_contents\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                    '/unlink\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                    '/rename\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                    '/copy\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                    '/fopen\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                ],
-            ],
-            'network' => [
-                'weight' => 15,
-                'patterns' => [
-                    '/fsockopen\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                    '/curl_exec\s*\(\s*\$[a-z]/i',
-                    '/curl_setopt\s*\(.*CURLOPT_RETURNTRANSFER/i',
-                    '/wp_remote_(get|post|request)\s*\(\s*\$_[^)]/i',
-                    '/stream_socket_client\s*\(\s*\$_[^)]/i',
-                    '/socket_create\s*\(/i',
-                    '/dns_get_record\s*\(/i',
-                ],
-            ],
-            'obfuscation' => [
-                'weight' => 10,
-                'patterns' => [
-                    '/base64_decode\s*\(\s*[\'\"][A-Za-z0-9+\/=]{50,}[\'\"]\s*\)/i',
-                    '/gzinflate\s*\(\s*base64_decode/i',
-                    '/str_rot13\s*\(\s*[\'\"][^\'\"]{20,}[\'\"]\s*\)/i',
-                    '/\\\x[0-9a-f]{2}(?:\\\x[0-9a-f]{2}){4,}/i',
-                    '/chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(/i',
-                    '/\$\w+\s*=\s*[\'\"][\^][^\'\"]+[\'\"]\s*;/',
-                    '/pack\s*\(\s*[\'\"]H\*[\'\"]\s*,\s*[\'\"][A-F0-9]{20,}[\'\"]\s*\)/i',
-                    '/hex2bin\s*\(\s*[\'\"][A-F0-9]{20,}[\'\"]\s*\)/i',
-                    '/convert_uudecode\s*\(/i',
-                    '/str_replace\s*\(\s*array\s*\([^)]+\)\s*,\s*array\s*\([^)]+\)\s*,\s*\$[a-z]/i',
-                ],
-            ],
-            'evasion' => [
-                'weight' => 15,
-                'patterns' => [
-                    '/ini_set\s*\(\s*[\'\"](display_errors|memory_limit|max_execution_time)[\'\"]/i',
-                    '/error_reporting\s*\(\s*0\s*\)/i',
-                    '/@\s*(eval|system|exec|shell_exec|passthru|assert)/i',
-                    '/header\s*\(\s*[\'\"]Content-Type/i',
-                    '/set_time_limit\s*\(\s*0\s*\)/i',
-                    '/ignore_user_abort\s*\(\s*true\s*\)/i',
-                    '/ob_start\s*\(\s*[\'\"][\w]+[\'\"]/i',
-                    '/preg_replace\s*\(\s*array\s*\(/i',
-                    '/array_map\s*\(\s*[\'\"]\w+[\'\"]\s*,\s*\$_(GET|POST|REQUEST)/i',
-                ],
-            ],
             'crypto' => [
-                'weight' => 20,
+                'weight' => 40,
                 'patterns' => [
-                    '/network\s*\(\s*[\'\"]pool/i',
                     '/stratum\s*:\/\//i',
                     '/mine\.\w+\.\w+/i',
                     '/Monero|xmr\b/i',
                     '/cryptonight/i',
-                    '/hashimoto/i',
-                    '/ethash/i',
-                    '/scrypt\s*\(/i',
                     '/wallet\s*=\s*[\'\"][13][a-km-zA-HJ-NP-Z0-9]{26,33}[\'\"]/i',
                 ],
             ],
@@ -1252,146 +1390,102 @@ class WAF_FW_Scanner {
             $file_class = 'PLUGIN';
         } elseif (strpos($rel_path, 'wp-content/themes/') === 0) {
             $file_class = 'THEME';
-        } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $cat === 'uploads') {
+        } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $category === 'uploads') {
             $file_class = 'UPLOAD';
-        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($name, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php'])) {
+        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($name, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php'])) {
             $file_class = 'WORDPRESS_CORE';
         }
 
         $findings = [];
         $total_score = 0;
         $confidence = 'LOW';
+        $classification = 'SAFE';
 
         $is_php = in_array($ext, ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc']);
 
-        // 1b. Dangerous Executable in Uploads directory (Critical security risk)
-        if ($is_php && ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false)) {
-            $total_score += 85;
-            $confidence = 'HIGH';
-            $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
-        }
-
-        // 2. Wordpress Core Verification
-        if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
-            $core_hashes = $this->get_core_checksums();
-            if (!empty($core_hashes) && isset($core_hashes[$rel_path])) {
-                $expected_md5 = $core_hashes[$rel_path];
-                $actual_md5 = hash_file('md5', $path);
-                if ($expected_md5 !== $actual_md5) {
-                    $total_score += 30;
-                    $findings[] = 'Core Checksum Mismatch: modified core file detected';
-                    $confidence = 'HIGH';
-                } else {
-                    return null; // clean core file
-                }
-            }
-        }
-
-        // 2b. Known-Bad Hash Match (definitive signal)
+        // 2. Known-Bad Hash Match (definitive 100% signal)
         $known_bad = self::lookup_known_bad_hash($path);
         if (!empty($known_bad)) {
             return [
                 'file'     => $rel_path,
                 'score'    => 100,
                 'severity' => 'critical',
+                'confidence' => 'HIGH',
                 'classification' => 'CONFIRMED_MALWARE',
                 'findings' => ['Known-bad hash match: CONFIRMED_MALWARE (family: ' . $known_bad['family'] . ')'],
                 'size'     => $size,
                 'hash'     => $known_bad['hash'],
             ];
         }
-        
-        // Strip strings/comments for code analysis if PHP
+
+        // 3. Dangerous Executable in Uploads directory (Strict rule)
+        if ($is_php && ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false)) {
+            $total_score = max($total_score, 90);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
+        }
+
+        // 4. PHP AST Dataflow Taint Analysis
         if ($is_php) {
-            $stripped = preg_replace('/\'(?:[^\'\\\\]|\\\\.)*\'/s', '', $content);
-            $stripped = preg_replace('/"(?:[^"\\\\]|\\\\.)*"/s', '', $stripped);
-            $stripped = preg_replace('/\/\/.*$/m', '', $stripped);
-            $stripped = preg_replace('#/\*.*?\*/#s', '', $stripped);
-        } else {
-            $stripped = $content;
-        }
-
-        // 3. Obfuscation & Entropy Analysis
-        $entropy = $this->calculate_entropy($content);
-        $line_count = substr_count($content, "\n") + 1;
-        $long_line = false;
-        foreach (explode("\n", $content) as $line) {
-            if (strlen(trim($line)) > 3000) { $long_line = true; break; }
-        }
-
-        $is_minified_or_bundled = false;
-        if ($ext === 'js' && ($long_line || $entropy > 6.5)) {
-            if (strpos($rel_path, 'elementor/') !== false || strpos($rel_path, 'blocksy/') !== false || strpos($content, 'wp-bootstrap') !== false || strpos($content, 'jQuery') !== false || strpos($content, 'webpackJsonp') !== false || strpos($content, 'use strict') !== false) {
-                $is_minified_or_bundled = true;
-            }
-        }
-
-        if ($entropy > 6.5 && strlen($content) > 500) {
-            $points = $is_minified_or_bundled ? 2 : 10;
-            $total_score += $points;
-            $findings[] = 'obfuscation: High entropy content (' . number_format($entropy, 2) . ')';
-        }
-
-        if ($long_line && $line_count < 15) {
-            $points = $is_minified_or_bundled ? 1 : 8;
-            $total_score += $points;
-            $findings[] = 'obfuscation: Minified/encoded file format';
-        }
-
-        // 4. Filename checks
-        $webshell_names = ['cmd.php', 'backdoor.php', 'webshell.php', 'wso.php', 'c99.php', 'c100.php', 'r57.php', 'b374k.php', 'shell.php', 'eval.php', 'upload.php', 'conn.php', 'config.php.bak', 'db.php.bak', 'adminer.php', 'phpmyadmin.php', 'tinyeditor.php', 'elfinder.php', 'webshells.php', 'safe.php', 'hack.php', 'shells.php', 'c99shell.php', 'r57shell.php', 'knull.php', 'bypass.php', 'wso2.php', 'wso3.php', 'up.php', 'upld.php', 'files.php', 'filemanager.php'];
-        if (in_array($name, $webshell_names)) {
-            if ($name === 'upload.php' && $file_class === 'WORDPRESS_CORE') {
-                // legitimate core file
-            } else {
-                $total_score += 35;
-                $findings[] = 'Suspicious filename: ' . $name . ' in unexpected directory';
-            }
-        }
-
-        // 5. Signature Checks
-        $patterns = $this->get_malware_patterns();
-        foreach ($patterns as $category => $data) {
-            if ($category !== 'crypto' && !$is_php) {
-                continue;
-            }
-
-            $matches_stripped = $this->check_malware_patterns($stripped, $data['patterns']);
-            $matches_raw = $this->check_malware_patterns($content, $data['patterns']);
-            $matches = array_unique(array_merge($matches_stripped, $matches_raw));
-
-            if (!empty($matches)) {
-                $weight = $data['weight'];
-                
-                if ($category === 'crypto') {
-                    $has_pool = preg_match('/stratum|pool|mine\./i', $content);
-                    $has_coin = preg_match('/Monero|xmr/i', $content);
-                    if ($has_pool && $has_coin) {
-                        $total_score += 60;
-                        $findings[] = 'crypto: Miner signatures detected';
-                        $confidence = 'HIGH';
-                    } else {
-                        $total_score += 5;
-                        $findings[] = 'crypto: Reference to Monero/XMR or mining';
-                    }
-                } else {
-                    $total_score += $weight * min(count($matches), 3);
-                    foreach ($matches as $m) {
-                        $findings[] = $category . ': ' . substr(trim($m), 0, 80);
-                    }
-                    if ($weight >= 30) {
-                        $confidence = 'HIGH';
-                    }
+            $ast_result = $this->analyze_php_ast_dataflow($path, $content);
+            if ($ast_result['score'] > 0) {
+                $total_score = max($total_score, $ast_result['score']);
+                if ($ast_result['confidence'] === 'HIGH') {
+                    $confidence = 'HIGH';
+                }
+                if ($ast_result['classification'] === 'CONFIRMED_MALWARE') {
+                    $classification = 'CONFIRMED_MALWARE';
+                }
+                foreach ($ast_result['findings'] as $f) {
+                    $findings[] = $f;
                 }
             }
         }
 
-        // 6. Secrets/Credentials Detection
+        // 5. WordPress Core Verification & Integrity Check
+        $is_core_modified = false;
+        if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
+            $core_hashes = $this->get_core_checksums();
+            if (!empty($core_hashes) && isset($core_hashes[$rel_path])) {
+                $expected_md5 = $core_hashes[$rel_path];
+                $actual_md5 = hash_file('md5', $path);
+                if ($expected_md5 !== $actual_md5) {
+                    $is_core_modified = true;
+                    $findings[] = "Core Checksum Mismatch: modified official WordPress core file";
+                    if ($total_score >= 70) {
+                        $classification = 'CONFIRMED_MALWARE';
+                        $findings[] = "Infected Core File: Backdoor or taint flow detected inside modified core file";
+                    } else {
+                        $classification = 'MODIFIED';
+                        $total_score = max($total_score, 45);
+                    }
+                    $confidence = 'HIGH';
+                } elseif ($total_score === 0) {
+                    return null; // clean pristine core file
+                }
+            }
+        }
+
+        // 6. Signature Checks (Crypto miners & Backdoors)
+        $patterns = $this->get_malware_patterns();
+        foreach ($patterns as $cat_key => $data) {
+            $matches = $this->check_malware_patterns($content, $data['patterns']);
+            if (!empty($matches)) {
+                $total_score = max($total_score, $data['weight']);
+                $confidence = 'HIGH';
+                if ($cat_key === 'backdoor') {
+                    $classification = 'CONFIRMED_MALWARE';
+                }
+                foreach ($matches as $m) {
+                    $findings[] = $cat_key . ': ' . substr(trim($m), 0, 80);
+                }
+            }
+        }
+
+        // 7. Secrets/Credentials Detection
         $secrets = $this->get_secret_patterns();
-        $secret_matches = array_unique(array_merge(
-            $this->check_malware_patterns($stripped, $secrets),
-            $this->check_malware_patterns($content, $secrets)
-        ));
+        $secret_matches = $this->check_malware_patterns($content, $secrets);
         if (!empty($secret_matches)) {
             foreach ($secret_matches as $m) {
                 if (preg_match('/password\s*[=:]\s*[\'\"]([^\'\"]{6,})[\'\"]/i', $m, $sub_match)) {
@@ -1399,42 +1493,41 @@ class WAF_FW_Scanner {
                     if (in_array(strtolower($val), ['password', '123456', 'root', 'admin', 'pass', 'db_pass', 'db_password', 'secret', 'undefined', 'null'])) {
                         continue;
                     }
-                    $total_score += 25;
+                    $total_score = max($total_score, 35);
                     $findings[] = 'Exposed Credentials: password pattern with value';
                 } else {
-                    $total_score += 40;
+                    $total_score = max($total_score, 40);
                     $findings[] = 'Exposed Secret: ' . substr(trim($m), 0, 60) . '...';
                     $confidence = 'HIGH';
+                }
+                if ($classification === 'SAFE') {
+                    $classification = 'SUSPICIOUS';
                 }
             }
         }
 
         if ($total_score > 0) {
-            $classification = 'SAFE';
             $severity = 'info';
 
-            if ($total_score >= 75 && $confidence === 'HIGH') {
+            if ($total_score >= 80 && $confidence === 'HIGH') {
                 $classification = 'CONFIRMED_MALWARE';
                 $severity = 'critical';
-            } elseif ($total_score >= 50) {
+            } elseif ($total_score >= 60) {
                 $classification = 'HIGH_RISK';
                 $severity = 'critical';
-            } elseif ($total_score >= 25) {
-                $classification = 'SUSPICIOUS';
+            } elseif ($total_score >= 35) {
+                if ($classification === 'SAFE') $classification = 'SUSPICIOUS';
                 $severity = 'warning';
             } elseif ($total_score > 10) {
-                $classification = 'MODIFIED';
+                if ($classification === 'SAFE') $classification = 'MODIFIED';
                 $severity = 'info';
-            }
-
-            if ($is_minified_or_bundled && $total_score < 25) {
-                return null;
             }
 
             return [
                 'file' => $rel_path,
                 'score' => min(100, $total_score),
                 'severity' => $severity,
+                'confidence' => $confidence,
                 'classification' => $classification,
                 'findings' => array_slice(array_unique($findings), 0, 15),
                 'size' => $size,
@@ -4332,5 +4425,172 @@ class WAF_FW_Scanner {
         $results['total_modified'] = count($results['modified_core_files']);
 
         return $results;
+    }
+
+    public function gather_real_scan_metrics() {
+        global $wpdb;
+
+        $core_files = 0;
+        $plugin_files = 0;
+        $theme_files = 0;
+        $upload_files = 0;
+
+        $dirs_map = [
+            'core' => [ABSPATH . 'wp-admin/', ABSPATH . 'wp-includes/'],
+            'plugins' => [ABSPATH . 'wp-content/plugins/'],
+            'themes' => [ABSPATH . 'wp-content/themes/'],
+            'uploads' => [ABSPATH . 'wp-content/uploads/'],
+        ];
+
+        foreach ($dirs_map as $category => $dirs) {
+            foreach ($dirs as $d) {
+                if (!is_dir($d)) continue;
+                try {
+                    $it = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($d, RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::SELF_FIRST
+                    );
+                    foreach ($it as $file) {
+                        if ($file->isFile()) {
+                            if ($category === 'core') $core_files++;
+                            elseif ($category === 'plugins') $plugin_files++;
+                            elseif ($category === 'themes') $theme_files++;
+                            elseif ($category === 'uploads') $upload_files++;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Ignore inaccessible subdirs
+                }
+            }
+        }
+
+        $posts_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts}");
+        $comments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->comments}");
+        $users_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->users}");
+        $options_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->options}");
+        $tables_count = count($wpdb->get_results("SHOW TABLES", ARRAY_N));
+
+        $total_files = $core_files + $plugin_files + $theme_files + $upload_files;
+
+        return [
+            'total_files' => $total_files,
+            'core_files' => $core_files,
+            'plugin_files' => $plugin_files,
+            'theme_files' => $theme_files,
+            'upload_files' => $upload_files,
+            'database_tables' => $tables_count,
+            'posts_scanned' => $posts_count,
+            'comments_scanned' => $comments_count,
+            'users_checked' => $users_count,
+            'options_checked' => $options_count,
+            'generated_at' => current_time('mysql')
+        ];
+    }
+
+    public function detect_mass_file_changes() {
+        global $wpdb;
+        $changes_table = $this->db->get_file_changes_table();
+        
+        $fifteen_mins_ago = date('Y-m-d H:i:s', time() - 900);
+        $recent_changes = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $changes_table WHERE detected_at >= %s",
+            $fifteen_mins_ago
+        ));
+
+        $is_mass_change = $recent_changes >= 50;
+        if ($is_mass_change) {
+            $this->log_security_event('MASS_FILE_MODIFICATION', 'critical', [
+                'recent_changes' => $recent_changes,
+                'time_window' => '15 minutes',
+                'message' => "High volume of rapid file modifications ({$recent_changes} files) detected within 15 minutes."
+            ]);
+        }
+
+        return [
+            'recent_changes_count' => $recent_changes,
+            'threshold' => 50,
+            'mass_change_alert' => $is_mass_change
+        ];
+    }
+
+    public function log_security_event($event_type, $severity, $details = []) {
+        global $wpdb;
+        $events_table = $this->db->get_security_events_table();
+        $wpdb->insert($events_table, [
+            'event_type' => $event_type,
+            'severity' => $severity,
+            'details' => is_array($details) ? json_encode($details) : (string)$details,
+            'created_at' => current_time('mysql'),
+            'resolved' => 0
+        ]);
+        return $wpdb->insert_id;
+    }
+
+    public function repair_core_file($rel_path) {
+        global $wp_version;
+        $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
+
+        $is_core = (strpos($rel_path, 'wp-admin/') === 0 || 
+                    strpos($rel_path, 'wp-includes/') === 0 || 
+                    in_array($rel_path, ['index.php', 'wp-login.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php']));
+
+        if (!$is_core || strpos($rel_path, 'wp-config') !== false || strpos($rel_path, 'wp-content') !== false) {
+            return ['success' => false, 'message' => 'File is not an officially restorable WordPress core file or is protected.'];
+        }
+
+        $local_full_path = ABSPATH . $rel_path;
+
+        $clean_url = "https://core.svn.wordpress.org/tags/{$wp_version}/{$rel_path}";
+        $response = wp_remote_get($clean_url, ['timeout' => 15]);
+
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            $git_url = "https://raw.githubusercontent.com/WordPress/WordPress/{$wp_version}/{$rel_path}";
+            $response = wp_remote_get($git_url, ['timeout' => 15]);
+            if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+                return ['success' => false, 'message' => 'Unable to fetch pristine core file from WordPress.org repository.'];
+            }
+        }
+
+        $pristine_content = wp_remote_retrieve_body($response);
+        if (empty($pristine_content)) {
+            return ['success' => false, 'message' => 'Retrieved pristine file content is empty.'];
+        }
+
+        if (file_exists($local_full_path)) {
+            $quarantine_dir = WP_CONTENT_DIR . '/uploads/waf-quarantine/';
+            if (!is_dir($quarantine_dir)) {
+                @wp_mkdir_p($quarantine_dir);
+                @file_put_contents($quarantine_dir . '.htaccess', "Order deny,allow\nDeny from all\n");
+                @file_put_contents($quarantine_dir . 'index.php', "<?php // Silence\n");
+            }
+            $backup_name = str_replace('/', '_', $rel_path) . '.bak.' . time();
+            @copy($local_full_path, $quarantine_dir . $backup_name);
+        }
+
+        $written = @file_put_contents($local_full_path, $pristine_content);
+        if ($written === false) {
+            return ['success' => false, 'message' => 'Failed to write restored content to ' . $rel_path . ' (check file permissions).'];
+        }
+
+        $table = $this->db->get_file_integrity_table();
+        $new_hash = hash_file('sha256', $local_full_path);
+        global $wpdb;
+        $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE file_path = %s", $rel_path));
+        if ($existing) {
+            $wpdb->update($table, [
+                'file_hash' => $new_hash,
+                'file_size' => filesize($local_full_path),
+                'modified_at' => current_time('mysql'),
+                'status' => 'restored'
+            ], ['id' => $existing]);
+        }
+
+        $this->log_security_event('CORE_FILE_RESTORED', 'info', [
+            'file' => $rel_path,
+            'wp_version' => $wp_version,
+            'timestamp' => current_time('mysql')
+        ]);
+
+        return ['success' => true, 'message' => "Core file {$rel_path} successfully restored to official WordPress {$wp_version} pristine version."];
     }
 }
