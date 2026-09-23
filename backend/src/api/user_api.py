@@ -1137,13 +1137,38 @@ class UserAPI:
     def reset_user_stats(self, user, data=None):
         data = data or {}
         website_id = data.get('website_id', 'all')
+        stat_type = data.get('type') or data.get('stat_type', 'all')
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
 
         try:
-            self.clean_user_logs(user, {'website_id': website_id, 'days': 0})
+            site_filter = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
+            if website_id and website_id != 'all':
+                site_filter = {'$and': [
+                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
+                    {'$or': [{'_id': website_id}, {'domain': website_id}]}
+                ]}
 
-            if website_id == 'all':
+            if stat_type == 'requests_today':
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'today'})
+                self.db.users.update_one({'_id': user['_id']}, {'$set': {'requests_today': 0, 'updated_at': datetime.now()}})
+                self.db.websites.update_many(site_filter, {'$set': {'requests_today': 0}})
+                msg = "Requests Today counter cleaned successfully."
+
+            elif stat_type == 'total_requests':
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all'})
+                self.db.users.update_one({'_id': user['_id']}, {'$set': {'total_requests': 0, 'requests_today': 0, 'updated_at': datetime.now()}})
+                self.db.websites.update_many(site_filter, {'$set': {'total_requests': 0, 'requests_today': 0}})
+                msg = "Total Lifetime Traffic counter cleaned successfully."
+
+            elif stat_type == 'total_blocked':
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all'})
+                self.db.users.update_one({'_id': user['_id']}, {'$set': {'total_blocked': 0, 'blocked_today': 0, 'updated_at': datetime.now()}})
+                self.db.websites.update_many(site_filter, {'$set': {'total_blocked': 0, 'blocked_today': 0}})
+                msg = "Attacks Blocked counter cleaned successfully."
+
+            else:
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 0})
                 self.db.users.update_one(
                     {'_id': user['_id']},
                     {'$set': {
@@ -1155,20 +1180,6 @@ class UserAPI:
                     }}
                 )
                 self.db.websites.update_many(
-                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
-                    {'$set': {
-                        'requests_today': 0,
-                        'blocked_today': 0,
-                        'total_requests': 0,
-                        'total_blocked': 0,
-                    }}
-                )
-            else:
-                site_filter = {'$and': [
-                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
-                    {'$or': [{'_id': website_id}, {'domain': website_id}]}
-                ]}
-                self.db.websites.update_many(
                     site_filter,
                     {'$set': {
                         'requests_today': 0,
@@ -1177,8 +1188,9 @@ class UserAPI:
                         'total_blocked': 0,
                     }}
                 )
+                msg = "All dashboard statistics reset to 0 successfully."
 
-            return {'status': 'success', 'message': 'Dashboard statistics and metrics reset successfully.'}
+            return {'status': 'success', 'message': msg}
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
 

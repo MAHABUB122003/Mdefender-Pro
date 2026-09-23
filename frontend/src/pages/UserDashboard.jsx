@@ -21,17 +21,48 @@ function useAnimatedNumber(target, duration = 400) {
   return (value || 0).toLocaleString()
 }
 
-function StatCard({ icon, iconClass, value, label, trend, trendDir }) {
+function StatCard({ icon, iconClass, value, label, trend, trendDir, onClean, cleaning }) {
   const animated = useAnimatedNumber(value)
   return (
-    <div className="stat-card">
+    <div className="stat-card" style={{ position: 'relative' }}>
       <div className="stat-top">
         <div className={`stat-icon-wrap ${iconClass}`}>
           <i className={`fas ${icon}`}></i>
         </div>
-        <span className={`stat-trend ${trendDir}`}>
-          <i className={`fas fa-arrow-${trendDir}`}></i> {trend}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {onClean && (
+            <button
+              type="button"
+              className="stat-clean-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClean()
+              }}
+              disabled={cleaning}
+              title={`Clean ${label}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#64748b',
+                cursor: cleaning ? 'not-allowed' : 'pointer',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '600',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <i className={`fas ${cleaning ? 'fa-spinner fa-spin' : 'fa-trash-can'}`} style={{ color: cleaning ? '#2563eb' : '#ef4444' }}></i>
+              <span>{cleaning ? 'Cleaning...' : 'Clean'}</span>
+            </button>
+          )}
+          <span className={`stat-trend ${trendDir}`}>
+            <i className={`fas fa-arrow-${trendDir}`}></i> {trend}
+          </span>
+        </div>
       </div>
       <div className="stat-number">{animated}</div>
       <div className="stat-label">{label}</div>
@@ -97,24 +128,23 @@ export default function UserDashboard() {
     }
   }
 
-  const [resettingStats, setResettingStats] = useState(false)
+  const [cleaningCategory, setCleaningCategory] = useState(null)
 
-  const handleResetStats = async () => {
+  const handleCleanCategory = async (type, label) => {
     const scopeName = selectedWebsite === 'all' ? 'all websites' : 'the selected website'
-    if (!confirm(`Are you sure you want to reset traffic, blocked requests, and telemetry counters for ${scopeName} to 0?`)) {
+    if (!confirm(`Are you sure you want to clean "${label}" for ${scopeName}?`)) {
       return
     }
-    setResettingStats(true)
+    setCleaningCategory(type)
     try {
-      const res = await api.userResetStats({ website_id: selectedWebsite })
-      userStore.set('dashboard', null)
+      const res = await api.userResetStats({ website_id: selectedWebsite, type })
       userStore.clear()
       await fetchData(true, selectedWebsite)
-      alert(res.message || 'Dashboard statistics reset successfully.')
+      alert(res.message || `${label} cleaned successfully.`)
     } catch (err) {
-      alert(err.message || 'Failed to reset dashboard statistics')
+      alert(err.message || `Failed to clean ${label}`)
     } finally {
-      setResettingStats(false)
+      setCleaningCategory(null)
     }
   }
 
@@ -353,29 +383,6 @@ export default function UserDashboard() {
             DDoS Shield: {ddosEnabled ? 'ON' : 'OFF'}
           </button>
 
-          <button
-            onClick={handleResetStats}
-            disabled={resettingStats}
-            title="Clean & Reset Dashboard Metrics & Telemetry"
-            style={{
-              padding: '6px 14px',
-              borderRadius: '8px',
-              border: '1px solid #fecaca',
-              background: '#fff1f2',
-              color: '#e11d48',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: resettingStats ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s'
-            }}
-          >
-            <i className={`fas ${resettingStats ? 'fa-spinner fa-spin' : 'fa-trash-can'}`}></i>
-            {resettingStats ? 'Resetting...' : 'Reset Stats'}
-          </button>
-
           <Link
             to="/user/rules"
             style={{
@@ -418,7 +425,7 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* 4 Core Stat Cards */}
+      {/* 4 Core Stat Cards with Individual Clean Options */}
       <div className="stats-grid">
         <StatCard 
           icon="fa-chart-line" 
@@ -427,6 +434,8 @@ export default function UserDashboard() {
           label="Requests Today" 
           trend="active" 
           trendDir="up" 
+          onClean={() => handleCleanCategory('requests_today', 'Requests Today')}
+          cleaning={cleaningCategory === 'requests_today'}
         />
         <StatCard 
           icon="fa-globe" 
@@ -435,6 +444,8 @@ export default function UserDashboard() {
           label="Total Traffic (Lifetime)" 
           trend="cumulative" 
           trendDir="up" 
+          onClean={() => handleCleanCategory('total_requests', 'Total Traffic (Lifetime)')}
+          cleaning={cleaningCategory === 'total_requests'}
         />
         <StatCard 
           icon="fa-shield-halved" 
@@ -443,6 +454,8 @@ export default function UserDashboard() {
           label="Attacks Blocked" 
           trend="protected" 
           trendDir="up" 
+          onClean={() => handleCleanCategory('total_blocked', 'Attacks Blocked')}
+          cleaning={cleaningCategory === 'total_blocked'}
         />
         <StatCard 
           icon="fa-server" 
