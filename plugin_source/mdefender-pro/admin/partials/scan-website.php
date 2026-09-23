@@ -41,16 +41,17 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin: 30px 0;
+                margin: 32px 0 24px;
                 position: relative;
                 padding: 0 10px;
+                overflow-x: auto;
             }
             .waf-wordfence-pipeline::before {
                 content: '';
                 position: absolute;
-                top: 20px;
-                left: 4%;
-                right: 4%;
+                top: 19px;
+                left: 36px;
+                right: 36px;
                 height: 3px;
                 background: #cbd5e1;
                 z-index: 1;
@@ -62,26 +63,36 @@
                 position: relative;
                 z-index: 2;
                 flex: 1;
+                min-width: 75px;
                 text-align: center;
             }
             .waf-wf-icon-wrap {
-                width: 40px;
-                height: 40px;
+                width: 38px;
+                height: 38px;
                 border-radius: 50%;
                 background: #ffffff;
-                border: 3px solid #cbd5e1;
+                border: 2.5px solid #00a86b;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 margin-bottom: 8px;
-                transition: all 0.3s ease;
-                color: #94a3b8;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                color: #00a86b;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            }
+            .waf-wf-icon-wrap .dashicons {
+                font-size: 22px;
+                width: 22px;
+                height: 22px;
+                font-weight: 900;
+                line-height: 22px;
             }
             .waf-wf-icon-wrap.active {
-                border-color: #007cba;
-                background: #f0f9ff;
-                color: #007cba;
-                box-shadow: 0 0 8px rgba(0,124,186,0.3);
+                border-color: #2563eb;
+                background: #eff6ff;
+                color: #2563eb;
+                box-shadow: 0 0 0 4px rgba(37,99,235,0.25);
+                animation: wafPulseRing 1.5s infinite;
             }
             .waf-wf-icon-wrap.warning {
                 border-color: #f59e0b;
@@ -94,24 +105,22 @@
                 color: #ef4444;
             }
             .waf-wf-icon-wrap.check {
-                border-color: #10b981;
-                background: #f0fdf4;
-                color: #10b981;
+                border-color: #00a86b;
+                background: #ffffff;
+                color: #00a86b;
+            }
+            @keyframes wafPulseRing {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,99,235,0.4); }
+                70% { transform: scale(1.06); box-shadow: 0 0 0 7px rgba(37,99,235,0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37,99,235,0); }
             }
             .waf-wf-label {
                 font-size: 11px;
                 font-weight: 600;
                 color: #334155;
-                max-width: 100px;
-                line-height: 1.3;
-            }
-            .waf-wf-link {
-                font-size: 11px;
-                color: #0284c7;
-                text-decoration: underline;
-                margin-top: 2px;
-                font-weight: 500;
-                display: inline-block;
+                max-width: 90px;
+                line-height: 1.35;
+                word-wrap: break-word;
             }
         </style>
 
@@ -212,47 +221,52 @@
     <div id="wafScanResults" style="display:none;">
         <!-- Completed header info -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid #cbd5e1;padding-bottom:12px;margin-top:20px;">
-            <span style="font-size:13px;color:#475569;font-weight:500;">Scan completed on <span id="wafScanDate">August 27, 2026 2:37 pm</span></span>
+            <span style="font-size:13px;color:#475569;font-weight:500;">Scan completed on <span id="wafScanDate">Just now</span></span>
             <div style="display:flex;gap:16px;font-size:12px;font-weight:600;">
-                <a href="#" style="color:#0284c7;text-decoration:none;">EMAIL ACTIVITY LOG</a>
-                <a href="#" style="color:#0284c7;text-decoration:none;">VIEW FULL LOG</a>
-                <a href="#" style="color:#0284c7;text-decoration:none;" id="wafShowLogBtn">SHOW LOG</a>
+                <a href="#" style="color:#0284c7;text-decoration:none;" id="wafEmailReport">EMAIL ACTIVITY LOG</a>
+                <a href="#" style="color:#0284c7;text-decoration:none;" id="wafShowLogBtn">VIEW FULL LOG</a>
             </div>
         </div>
 
         <!-- Tab bar row -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #cbd5e1;padding-bottom:0;margin-bottom:16px;">
-            <div style="display:flex;gap:4px;margin-bottom:-1px;">
-                <button type="button" class="waf-scan-tab active" data-tab="all" style="background:#ffffff;border:1px solid #cbd5e1;border-bottom:none;border-top-left-radius:6px;border-top-right-radius:6px;padding:10px 20px;font-weight:700;font-size:13.5px;color:#0284c7;cursor:pointer;outline:none;">Results Found (<span id="wafResultsFoundCount">1</span>)</button>
-                <button type="button" class="waf-scan-tab" data-tab="ignored" style="background:#f1f5f9;border:1px solid #cbd5e1;border-top-left-radius:6px;border-top-right-radius:6px;padding:10px 20px;font-weight:600;font-size:13.5px;color:#475569;cursor:pointer;outline:none;border-bottom:1px solid #cbd5e1;">Ignored Results (0)</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #cbd5e1;padding-bottom:0;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;gap:4px;margin-bottom:-1px;flex-wrap:wrap;">
+                <button type="button" class="waf-scan-tab active" data-tab="all" style="background:#ffffff;border:1px solid #cbd5e1;border-bottom:none;border-top-left-radius:6px;border-top-right-radius:6px;padding:9px 18px;font-weight:700;font-size:13px;color:#0284c7;cursor:pointer;outline:none;">Results Found (<span id="wafResultsFoundCount">0</span>)</button>
+                <button type="button" class="waf-scan-tab" data-tab="critical" style="background:#f8fafc;border:1px solid #cbd5e1;border-top-left-radius:6px;border-top-right-radius:6px;padding:9px 18px;font-weight:600;font-size:13px;color:#ef4444;cursor:pointer;outline:none;border-bottom:1px solid #cbd5e1;">Critical (<span id="wafCriticalCount">0</span>)</button>
+                <button type="button" class="waf-scan-tab" data-tab="warning" style="background:#f8fafc;border:1px solid #cbd5e1;border-top-left-radius:6px;border-top-right-radius:6px;padding:9px 18px;font-weight:600;font-size:13px;color:#d97706;cursor:pointer;outline:none;border-bottom:1px solid #cbd5e1;">Warnings (<span id="wafWarningCount">0</span>)</button>
+                <button type="button" class="waf-scan-tab" data-tab="ignored" style="background:#f8fafc;border:1px solid #cbd5e1;border-top-left-radius:6px;border-top-right-radius:6px;padding:9px 18px;font-weight:600;font-size:13px;color:#64748b;cursor:pointer;outline:none;border-bottom:1px solid #cbd5e1;">Ignored Results (0)</button>
             </div>
-            <div style="display:flex;gap:10px;margin-bottom:8px;">
-                <button type="button" class="button" id="wafBulkCleanBtn" style="border-color:#cbd5e1;color:#0284c7;font-weight:700;font-size:11.5px;padding:2px 14px;height:30px;line-height:28px;text-transform:uppercase;background:#fff;">Delete All Deletable Files</button>
-                <button type="button" class="button" id="wafBulkRestoreBtn" style="border-color:#cbd5e1;color:#0284c7;font-weight:700;font-size:11.5px;padding:2px 14px;height:30px;line-height:28px;text-transform:uppercase;background:#fff;">Repair All Repairable Files</button>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                <button type="button" class="button" id="wafToggleAllDetailsBtn" style="border-color:#cbd5e1;color:#0284c7;font-weight:700;font-size:11.5px;padding:2px 12px;height:30px;line-height:28px;background:#fff;display:flex;align-items:center;gap:4px;">
+                    <span class="dashicons dashicons-editor-expand" style="font-size:15px;width:15px;height:15px;margin-top:2px;"></span>
+                    <span id="wafToggleAllText">Expand All</span>
+                </button>
+                <button type="button" class="button" id="wafBulkCleanBtn" style="border-color:#cbd5e1;color:#dc2626;font-weight:700;font-size:11.5px;padding:2px 12px;height:30px;line-height:28px;text-transform:uppercase;background:#fff;">Delete All Deletable Files</button>
+                <button type="button" class="button" id="wafBulkRestoreBtn" style="border-color:#cbd5e1;color:#059669;font-weight:700;font-size:11.5px;padding:2px 12px;height:30px;line-height:28px;text-transform:uppercase;background:#fff;">Repair All Core Files</button>
             </div>
         </div>
 
         <!-- Summary metrics bar -->
-        <div style="display:grid;grid-template-columns:repeat(5, 1fr);border:1px solid #cbd5e1;border-radius:4px;background:#ffffff;margin-bottom:20px;overflow:hidden;">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:13px;color:#475569;">
+        <div style="display:grid;grid-template-columns:repeat(5, 1fr);border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:12.5px;color:#475569;">
                 <span>Posts, Comments, & Files</span>
-                <strong style="color:#0f172a;font-size:14px;" id="wafSummaryFilesCount">0</strong>
+                <strong style="color:#0f172a;font-size:13.5px;" id="wafSummaryFilesCount">0</strong>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:13px;color:#475569;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:12.5px;color:#475569;">
                 <span>Themes & Plugins</span>
-                <strong style="color:#0f172a;font-size:14px;" id="wafSummaryThemesCount">0</strong>
+                <strong style="color:#0f172a;font-size:13.5px;" id="wafSummaryThemesCount">0</strong>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:13px;color:#475569;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:12.5px;color:#475569;">
                 <span>Users Checked</span>
-                <strong style="color:#0f172a;font-size:14px;" id="wafSummaryUsersCount">0</strong>
+                <strong style="color:#0f172a;font-size:13.5px;" id="wafSummaryUsersCount">0</strong>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:13px;color:#475569;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-right:1px solid #cbd5e1;font-size:12.5px;color:#475569;">
                 <span>URLs Checked</span>
-                <strong style="color:#0f172a;font-size:14px;" id="wafSummaryUrlsCount">0</strong>
+                <strong style="color:#0f172a;font-size:13.5px;" id="wafSummaryUrlsCount">0</strong>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:13px;color:#475569;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:12.5px;color:#475569;">
                 <span>Results Found</span>
-                <strong style="color:#0f172a;font-size:14px;" id="wafSummaryResultsCount">1</strong>
+                <strong style="color:#0f172a;font-size:13.5px;" id="wafSummaryResultsCount">0</strong>
             </div>
         </div>
 

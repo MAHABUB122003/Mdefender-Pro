@@ -464,13 +464,85 @@ class WAF_FW_Ajax_Handler {
     public function get_active_or_last_scan() {
         $this->check_access();
         global $wpdb;
-        $table = WAF_FW_DB::instance()->get_scan_queue_table();
+        $queue_table = WAF_FW_DB::instance()->get_scan_queue_table();
+        $results_table = WAF_FW_DB::instance()->get_scan_results_table();
         
         // Clean up stale scans older than 2 minutes
-        $wpdb->query("UPDATE $table SET status = 'interrupted' WHERE status = 'running' AND created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
+        $wpdb->query("UPDATE $queue_table SET status = 'interrupted' WHERE status = 'running' AND created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
 
-        // Check for the last completed scan to show past results safely
-        $last = $wpdb->get_row("SELECT * FROM $table WHERE status IN ('completed', 'completed_with_issues') ORDER BY id DESC LIMIT 1");
+        $requested_id = intval($_GET['scan_id'] ?? 0);
+
+        if ($requested_id > 0) {
+            $scan_res = $wpdb->get_row($wpdb->prepare("SELECT * FROM $results_table WHERE id = %d", $requested_id));
+            if ($scan_res) {
+                $results = json_decode($scan_res->vulnerabilities, true);
+                $summary = json_decode($scan_res->summary, true);
+                wp_send_json_success([
+                    'type' => 'completed',
+                    'scan_id' => intval($scan_res->id),
+                    'status' => $scan_res->status,
+                    'progress' => 100,
+                    'score' => intval($scan_res->score),
+                    'issues_found' => intval($scan_res->issues_found),
+                    'duration' => intval($scan_res->duration_seconds),
+                    'results' => $results,
+                    'summary' => $summary,
+                    'created_at' => $scan_res->created_at,
+                ]);
+            }
+            $scan_q = $wpdb->get_row($wpdb->prepare("SELECT * FROM $queue_table WHERE id = %d", $requested_id));
+            if ($scan_q) {
+                $results = json_decode($scan_q->results, true);
+                wp_send_json_success([
+                    'type' => 'completed',
+                    'queue_id' => intval($scan_q->id),
+                    'status' => $scan_q->status,
+                    'progress' => 100,
+                    'score' => intval($scan_q->score),
+                    'issues_found' => intval($scan_q->issues_found),
+                    'duration' => intval($scan_q->duration_seconds),
+                    'results' => $results,
+                    'created_at' => $scan_q->created_at,
+                    'completed_at' => $scan_q->completed_at,
+                ]);
+            }
+        }
+
+        // Check for currently running scan in queue
+        $running = $wpdb->get_row("SELECT * FROM $queue_table WHERE status = 'running' ORDER BY id DESC LIMIT 1");
+        if ($running) {
+            wp_send_json_success([
+                'type' => 'running',
+                'queue_id' => intval($running->id),
+                'status' => 'running',
+                'progress' => intval($running->progress),
+                'current_stage' => $running->current_stage,
+                'total_files' => intval($running->total_files),
+                'scanned_files' => intval($running->scanned_files),
+            ]);
+        }
+
+        // Check for latest in results table
+        $last_res = $wpdb->get_row("SELECT * FROM $results_table ORDER BY id DESC LIMIT 1");
+        if ($last_res) {
+            $results = json_decode($last_res->vulnerabilities, true);
+            $summary = json_decode($last_res->summary, true);
+            wp_send_json_success([
+                'type' => 'completed',
+                'scan_id' => intval($last_res->id),
+                'status' => $last_res->status,
+                'progress' => 100,
+                'score' => intval($last_res->score),
+                'issues_found' => intval($last_res->issues_found),
+                'duration' => intval($last_res->duration_seconds),
+                'results' => $results,
+                'summary' => $summary,
+                'created_at' => $last_res->created_at,
+            ]);
+        }
+
+        // Fallback: Check queue table
+        $last = $wpdb->get_row("SELECT * FROM $queue_table WHERE status IN ('completed', 'completed_with_issues') ORDER BY id DESC LIMIT 1");
         if ($last) {
             $results = json_decode($last->results, true);
             wp_send_json_success([

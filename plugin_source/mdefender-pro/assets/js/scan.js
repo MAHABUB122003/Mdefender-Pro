@@ -829,10 +829,25 @@
         var findings = parseFindingsFromScanData(data);
         var html = '';
 
+        var criticalCount = 0;
+        var warningCount = 0;
+        findings.forEach(function(f) {
+            if (f.severity === 'critical') criticalCount++;
+            else warningCount++;
+        });
+
+        $('#wafResultsFoundCount').text(findings.length);
+        $('#wafSummaryResultsCount').text(findings.length);
+        $('#wafCriticalCount').text(criticalCount);
+        $('#wafWarningCount').text(warningCount);
+
         if (findings.length === 0) {
-            html = '<div style="padding:30px;text-align:center;color:#64748b;background:#fff;border:1px solid #cbd5e1;border-radius:4px;">' +
-                   '    <span class="dashicons dashicons-yes" style="font-size:32px;width:32px;height:32px;color:#10b981;margin-bottom:8px;"></span>' +
-                   '    <h4 style="margin:0;font-size:15px;color:#1e293b;">No security issues found! Your site is secure.</h4>' +
+            html = '<div style="padding:40px 20px;text-align:center;color:#64748b;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">' +
+                   '    <div style="width:52px;height:52px;border-radius:50%;background:#ecfdf5;border:2px solid #a7f3d0;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">' +
+                   '        <span class="dashicons dashicons-yes" style="font-size:32px;width:32px;height:32px;color:#10b981;"></span>' +
+                   '    </div>' +
+                   '    <h4 style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">No security issues found!</h4>' +
+                   '    <p style="margin:0;font-size:13px;color:#64748b;">All core checksums, malware patterns, and configurations passed inspection.</p>' +
                    '</div>';
             $('#wafScanDetails').html(html);
             return;
@@ -858,23 +873,23 @@
                 iconClass = 'dashicons-edit';
             }
 
-            html += '<div style="border:1px solid #cbd5e1;border-left:4px solid ' + severityDot + ';border-radius:4px;background:#ffffff;margin-bottom:16px;overflow:hidden;" class="waf-finding-card" data-severity="' + f.severity + '">';
+            html += '<div style="border:1px solid #cbd5e1;border-left:4px solid ' + severityDot + ';border-radius:6px;background:#ffffff;margin-bottom:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.03);" class="waf-finding-card" data-severity="' + f.severity + '">';
             html += '    <!-- Issue Header -->';
-            html += '    <div class="waf-finding-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:#ffffff;">';
-            html += '        <div style="display:flex;align-items:center;gap:14px;flex:1;">';
+            html += '    <div class="waf-finding-header" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:#ffffff;user-select:none;">';
+            html += '        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0;padding-right:12px;">';
             html += '            <!-- Icon -->';
-            html += '            <div style="width:36px;height:36px;border-radius:4px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#64748b;flex-shrink:0;border:1px solid #cbd5e1;">';
+            html += '            <div style="width:36px;height:36px;border-radius:6px;background:#f8fafc;display:flex;align-items:center;justify-content:center;color:#475569;flex-shrink:0;border:1px solid #e2e8f0;">';
             html += '                <span class="dashicons ' + iconClass + '" style="font-size:20px;width:20px;height:20px;"></span>';
             html += '            </div>';
             html += '            <!-- Header Text -->';
-            html += '            <div style="text-align:left;">';
-            html += '                <div style="font-weight:700;font-size:13.5px;color:#334155;line-height:1.4;">' + f.title + '</div>';
+            html += '            <div style="text-align:left;overflow:hidden;text-overflow:ellipsis;">';
+            html += '                <div style="font-weight:700;font-size:13.5px;color:#1e293b;line-height:1.4;word-break:break-word;">' + f.title + '</div>';
             html += '                <div style="font-size:12px;color:#64748b;margin-top:2px;">Type: ' + f.type + '</div>';
             html += '            </div>';
             html += '        </div>';
             html += '        ';
             html += '        <!-- Status & Time -->';
-            html += '        <div style="display:flex;align-items:center;gap:30px;margin-right:20px;text-align:right;">';
+            html += '        <div style="display:flex;align-items:center;gap:24px;margin-right:20px;text-align:right;flex-shrink:0;">';
             html += '            <div>';
             html += '                <div style="font-size:11.5px;color:#64748b;">Issue Found ' + f.date + '</div>';
             html += '                <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:12px;font-weight:700;color:' + severityColor + ';margin-top:2px;">';
@@ -884,21 +899,21 @@
             html += '        </div>';
             html += '        ';
             html += '        <!-- Actions -->';
-            html += '        <div style="display:flex;align-items:center;gap:16px;">';
+            html += '        <div style="display:flex;align-items:center;gap:14px;flex-shrink:0;">';
             if (f.headerActions && f.headerActions.length > 0) {
                 f.headerActions.forEach(function(act) {
                     var fileAttr = f.file ? ' data-file="' + f.file + '"' : '';
-                    html += '            <div class="' + act.class + '"' + fileAttr + ' style="display:flex;flex-direction:column;align-items:center;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;">';
+                    html += '            <div class="' + act.class + '"' + fileAttr + ' style="display:flex;flex-direction:column;align-items:center;color:#0284c7;font-size:10px;font-weight:700;cursor:pointer;padding:2px 4px;">';
                     html += '                <span class="dashicons ' + act.icon + '" style="font-size:18px;width:18px;height:18px;margin-bottom:2px;"></span>';
                     html += '                <span>' + act.label + '</span>';
                     html += '            </div>';
                 });
             } else {
-                html += '            <div class="waf-btn-ignore-item" data-file="' + (f.file || '') + '" style="display:flex;flex-direction:column;align-items:center;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;">';
+                html += '            <div class="waf-btn-ignore-item" data-file="' + (f.file || '') + '" style="display:flex;flex-direction:column;align-items:center;color:#64748b;font-size:10px;font-weight:700;cursor:pointer;padding:2px 4px;">';
                 html += '                <span class="dashicons dashicons-hidden" style="font-size:18px;width:18px;height:18px;margin-bottom:2px;"></span>';
                 html += '                <span>IGNORE</span>';
                 html += '            </div>';
-                html += '            <div class="waf-btn-details-toggle" style="display:flex;flex-direction:column;align-items:center;color:#0284c7;font-size:10px;font-weight:700;cursor:pointer;">';
+                html += '            <div class="waf-btn-details-toggle" style="display:flex;flex-direction:column;align-items:center;color:#0284c7;font-size:10px;font-weight:700;cursor:pointer;padding:2px 4px;">';
                 html += '                <span class="dashicons dashicons-search" style="font-size:18px;width:18px;height:18px;margin-bottom:2px;"></span>';
                 html += '                <span>DETAILS</span>';
                 html += '            </div>';
@@ -907,14 +922,16 @@
             html += '    </div>';
             html += '    ';
             html += '    <!-- Issue Details Panel -->';
-            html += '    <div class="waf-finding-body" style="border-top:1px solid #cbd5e1;padding:18px 20px;background:#ffffff;display:none;text-align:left;">';
+            html += '    <div class="waf-finding-body" style="border-top:1px solid #e2e8f0;padding:18px 20px;background:#f8fafc;display:none;text-align:left;">';
             html += '        <p style="font-size:13px;color:#334155;line-height:1.6;margin-bottom:12px;">';
             html += '            <strong>Details:</strong> ' + f.details;
             html += '        </p>';
-            html += '        <p style="font-size:13px;color:#334155;line-height:1.6;margin-bottom:16px;">';
-            html += '            ' + f.paths;
-            html += '        </p>';
-            html += '        <div style="display:flex;gap:10px;" class="waf-scan-issue-item">';
+            if (f.paths) {
+                html += '        <p style="font-size:13px;color:#334155;line-height:1.6;margin-bottom:16px;">';
+                html += '            ' + f.paths;
+                html += '        </p>';
+            }
+            html += '        <div style="display:flex;gap:10px;flex-wrap:wrap;" class="waf-scan-issue-item">';
 
             // Render specific actions
             if (f.actions && f.actions.length > 0) {
@@ -1235,7 +1252,10 @@
                     html += '<td data-label="Issues">' + scan.issues_found + '</td>';
                     html += '<td data-label="Duration">' + scan.duration_seconds + 's</td>';
                     html += '<td data-label="Status"><span class="waf-badge ' + statusBadge + '">' + statusLabel + '</span></td>';
-                    html += '<td data-label="Actions"><button class="button button-small waf-email-history-report" data-scan-id="' + scan.id + '" title="Email report">Email</button></td>';
+                    html += '<td data-label="Actions" style="text-align:right;">';
+                    html += '<button type="button" class="button button-small button-primary waf-view-history-details" data-scan-id="' + scan.id + '" style="margin-right:6px;background:#2563eb;border-color:#2563eb;">View Details</button>';
+                    html += '<button type="button" class="button button-small waf-email-history-report" data-scan-id="' + scan.id + '" title="Email report">Email</button>';
+                    html += '</td>';
                     html += '</tr>';
                 });
                 $('#wafScanHistoryBody').html(html);
@@ -1247,6 +1267,31 @@
             }
         });
     }
+
+    $(document).on('click', '.waf-view-history-details', function(e) {
+        e.preventDefault();
+        var scanId = $(this).data('scan-id');
+        var btn = $(this);
+        var origText = btn.text();
+        btn.prop('disabled', true).text('Loading...');
+        $.get(ajaxurl + '?action=waf_fw_get_active_or_last_scan&scan_id=' + scanId, function(r) {
+            btn.prop('disabled', false).text(origText);
+            if (r.success && r.data) {
+                displayScanResults(r.data);
+                updatePipelineFinalColors(r.data.results || r.data);
+                if ($('#wafScanResults').length) {
+                    $('html, body').animate({
+                        scrollTop: $('#wafScanResults').offset().top - 30
+                    }, 350);
+                }
+            } else {
+                alert('Could not load scan details.');
+            }
+        }).fail(function() {
+            btn.prop('disabled', false).text(origText);
+            alert('Network error loading scan details.');
+        });
+    });
 
     function clearScanHistory() {
         if (!confirm('Permanently delete all scan history?')) return;
@@ -1349,14 +1394,28 @@
         });
     });
 
-    $(document).on('click', '.waf-finding-header, .waf-btn-details-toggle', function(e) {
-        if ($(e.target).closest('.waf-btn-ignore-file, .waf-btn-hide-file, .waf-btn-ignore-item').length > 0) {
+    $(document).on('click', '.waf-finding-header', function(e) {
+        if ($(e.target).closest('.waf-btn-ignore-file, .waf-btn-hide-file, .waf-btn-ignore-item, .waf-btn-view-diff, .waf-btn-view-file, .waf-btn-clean-file, .waf-btn-restore-file, button, a').length > 0) {
             return;
         }
         e.preventDefault();
         var card = $(this).closest('.waf-finding-card');
         var body = card.find('.waf-finding-body');
-        body.slideToggle(200);
+        var toggle = card.find('.waf-btn-details-toggle');
+        var toggleLabel = toggle.find('span:last-child');
+        var toggleIcon = toggle.find('.dashicons');
+
+        body.slideToggle(200, function() {
+            if ($(this).is(':visible')) {
+                toggleLabel.text('HIDE');
+                toggleIcon.removeClass('dashicons-search').addClass('dashicons-arrow-up-alt2');
+                card.addClass('is-expanded');
+            } else {
+                toggleLabel.text('DETAILS');
+                toggleIcon.removeClass('dashicons-arrow-up-alt2').addClass('dashicons-search');
+                card.removeClass('is-expanded');
+            }
+        });
     });
 
     function loadBackups() {
@@ -1867,6 +1926,29 @@
             } else {
                 $('#wafCustomSelectWrap').slideUp(200);
                 $('#wafScanType').val(type);
+            }
+        });
+
+        // Expand All / Collapse All button toggle
+        $('#wafToggleAllDetailsBtn').on('click', function(e) {
+            e.preventDefault();
+            var isExpanded = $(this).data('expanded') === true;
+            if (isExpanded) {
+                $('.waf-finding-body').slideUp(200);
+                $('.waf-finding-card').removeClass('is-expanded');
+                $('.waf-btn-details-toggle span:last-child').text('DETAILS');
+                $('.waf-btn-details-toggle .dashicons').removeClass('dashicons-arrow-up-alt2').addClass('dashicons-search');
+                $('#wafToggleAllText').text('Expand All');
+                $('#wafToggleAllDetailsBtn .dashicons').removeClass('dashicons-editor-contract').addClass('dashicons-editor-expand');
+                $(this).data('expanded', false);
+            } else {
+                $('.waf-finding-body').slideDown(200);
+                $('.waf-finding-card').addClass('is-expanded');
+                $('.waf-btn-details-toggle span:last-child').text('HIDE');
+                $('.waf-btn-details-toggle .dashicons').removeClass('dashicons-search').addClass('dashicons-arrow-up-alt2');
+                $('#wafToggleAllText').text('Collapse All');
+                $('#wafToggleAllDetailsBtn .dashicons').removeClass('dashicons-editor-expand').addClass('dashicons-editor-contract');
+                $(this).data('expanded', true);
             }
         });
 
