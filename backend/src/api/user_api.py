@@ -1085,7 +1085,8 @@ class UserAPI:
 
     def clean_user_logs(self, user, data=None):
         data = data or {}
-        days = int(data.get('days', 0))
+        days_param = str(data.get('days', '0')).strip().lower()
+        mode = data.get('mode', '')
         website_id = data.get('website_id', '')
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
@@ -1102,9 +1103,21 @@ class UserAPI:
         if website_id and website_id != 'all':
             conditions.append({'$or': [{'website_id': website_id}, {'domain': website_id}]})
 
-        if days > 0:
-            cutoff = datetime.now() - timedelta(days=days)
-            conditions.append({'timestamp': {'$lt': cutoff}})
+        now = datetime.now()
+        time_desc = "all"
+        if days_param == 'today' or mode == 'today':
+            today_start = datetime(now.year, now.month, now.day)
+            conditions.append({'timestamp': {'$gte': today_start}})
+            time_desc = "today's"
+        elif days_param and days_param not in ('0', 'all'):
+            try:
+                days = int(days_param)
+                if days > 0:
+                    cutoff = now - timedelta(days=days)
+                    conditions.append({'timestamp': {'$lt': cutoff}})
+                    time_desc = f"older than {days} day{'s' if days > 1 else ''}"
+            except ValueError:
+                pass
 
         final_query = {'$and': conditions} if len(conditions) > 1 else conditions[0]
 
@@ -1116,7 +1129,7 @@ class UserAPI:
             return {
                 'status': 'success',
                 'deleted': total_deleted,
-                'message': f'Cleaned {total_deleted} log records successfully.'
+                'message': f'Successfully cleared {total_deleted} {time_desc} log record(s).'
             }
         except Exception as e:
             return {'status': 'error', 'message': str(e)}

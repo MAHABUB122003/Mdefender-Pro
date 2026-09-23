@@ -152,19 +152,42 @@ export default function UserLogs() {
   }
 
   const [cleaningLogs, setCleaningLogs] = useState(false)
+  const [showCleanModal, setShowCleanModal] = useState(false)
+  const [selectedCleanRange, setSelectedCleanRange] = useState('7')
 
-  const handleCleanLogs = async (days = 0) => {
-    const scope = websiteFilter ? `for the selected website` : `for all your websites`
-    const duration = days === 0 ? 'ALL log records' : `log records older than ${days} days`
-    if (!confirm(`Are you sure you want to permanently delete ${duration} ${scope}?`)) {
+  const handleCleanLogs = async () => {
+    const scope = websiteFilter 
+      ? `for website: ${websites.find(w => String(w.id) === String(websiteFilter))?.domain || websiteFilter}` 
+      : `for all your connected websites`
+    
+    const labels = {
+      'today': "today's logs",
+      '1': 'logs older than 1 day',
+      '2': 'logs older than 2 days',
+      '3': 'logs older than 3 days',
+      '4': 'logs older than 4 days',
+      '5': 'logs older than 5 days',
+      '7': 'logs older than 7 days (1 week)',
+      '30': 'logs older than 30 days (1 month)',
+      '90': 'logs older than 90 days (3 months)',
+      'all': 'ALL log records'
+    }
+    const label = labels[selectedCleanRange] || `${selectedCleanRange} days`
+
+    if (!confirm(`Confirm deletion: Are you sure you want to permanently clear ${label} ${scope}?`)) {
       return
     }
+
     setCleaningLogs(true)
     try {
-      const res = await api.userCleanLogs({ website_id: websiteFilter, days })
+      const res = await api.userCleanLogs({ 
+        website_id: websiteFilter, 
+        days: selectedCleanRange 
+      })
       userStore.clear()
       setPage(1)
       await fetchLogs(true)
+      setShowCleanModal(false)
       alert(res.message || 'Logs cleaned successfully.')
     } catch (err) {
       alert(err.message || 'Failed to clear logs')
@@ -292,9 +315,9 @@ export default function UserLogs() {
 
           <button 
             type="button" 
-            onClick={() => handleCleanLogs(0)} 
+            onClick={() => setShowCleanModal(true)} 
             disabled={cleaningLogs}
-            title="Permanently clear attack and traffic logs"
+            title="Open Clean Logs Manager"
             style={{ 
               padding: '8px 14px', 
               background: '#fff1f2', 
@@ -302,7 +325,7 @@ export default function UserLogs() {
               border: '1px solid #fecaca', 
               borderRadius: '6px', 
               fontWeight: '600', 
-              cursor: cleaningLogs ? 'not-allowed' : 'pointer', 
+              cursor: 'pointer', 
               fontSize: '13px',
               display: 'flex',
               alignItems: 'center',
@@ -310,8 +333,8 @@ export default function UserLogs() {
               marginLeft: 'auto'
             }}
           >
-            <i className={`fas ${cleaningLogs ? 'fa-spinner fa-spin' : 'fa-trash-can'}`}></i>
-            {cleaningLogs ? 'Clearing...' : 'Clear Logs'}
+            <i className="fas fa-trash-can"></i>
+            Clear Logs
           </button>
         </form>
       </div>
@@ -491,6 +514,222 @@ export default function UserLogs() {
           </div>
         </div>
       )}
+
+      {/* Clear Logs Timeframe Selection Modal */}
+      {showCleanModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #cbd5e1',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: '#ffe4e6',
+                  color: '#e11d48',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px'
+                }}>
+                  <i className="fas fa-trash-can"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Clear Traffic & Attack Logs</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Select the timeframe for logs you want to permanently delete</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCleanModal(false)}
+                disabled={cleaningLogs}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  padding: '4px 8px'
+                }}
+              >
+                <i className="fas fa-xmark"></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px 24px' }}>
+              {/* Target Scope Pill */}
+              <div style={{
+                marginBottom: '16px',
+                padding: '10px 14px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12.5px',
+                color: '#166534'
+              }}>
+                <i className="fas fa-globe"></i>
+                <span>
+                  <strong>Target Website:</strong> {websiteFilter ? (websites.find(w => String(w.id) === String(websiteFilter))?.domain || websiteFilter) : 'All Connected Websites'}
+                </span>
+              </div>
+
+              {/* Timeframe Options List */}
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
+                Retention / Cleanup Timeframe:
+              </label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
+                {[
+                  { value: 'today', label: "Today's logs only", icon: 'fa-calendar-day', desc: 'Clear only logs generated today' },
+                  { value: '1', label: 'Older than 1 day', icon: 'fa-clock-rotate-left', desc: 'Keep only past 24 hours' },
+                  { value: '2', label: 'Older than 2 days', icon: 'fa-clock-rotate-left', desc: 'Keep only past 48 hours' },
+                  { value: '3', label: 'Older than 3 days', icon: 'fa-clock-rotate-left', desc: 'Keep only past 3 days' },
+                  { value: '4', label: 'Older than 4 days', icon: 'fa-clock-rotate-left', desc: 'Keep only past 4 days' },
+                  { value: '5', label: 'Older than 5 days', icon: 'fa-clock-rotate-left', desc: 'Keep only past 5 days' },
+                  { value: '7', label: 'Older than 7 days (1 wk)', icon: 'fa-calendar-week', desc: 'Keep only past 1 week' },
+                  { value: '30', label: 'Older than 30 days (1 mo)', icon: 'fa-calendar-alt', desc: 'Keep only past 30 days' },
+                  { value: '90', label: 'Older than 90 days (3 mo)', icon: 'fa-calendar', desc: 'Keep only past quarter' },
+                  { value: 'all', label: 'All logs (Lifetime)', icon: 'fa-fire-flame-curved', desc: 'Wipe all historical records' },
+                ].map(opt => {
+                  const isSelected = selectedCleanRange === opt.value
+                  return (
+                    <div
+                      key={opt.value}
+                      onClick={() => setSelectedCleanRange(opt.value)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        background: isSelected ? '#eff6ff' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: '600', color: isSelected ? '#1d4ed8' : '#0f172a' }}>
+                          <i className={`fas ${opt.icon}`} style={{ marginRight: '6px', color: isSelected ? '#2563eb' : '#64748b' }}></i>
+                          {opt.label}
+                        </span>
+                        <input
+                          type="radio"
+                          name="clean_range"
+                          checked={isSelected}
+                          onChange={() => setSelectedCleanRange(opt.value)}
+                          style={{ accentColor: '#2563eb', cursor: 'pointer' }}
+                        />
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '20px' }}>{opt.desc}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Warning Alert */}
+              <div style={{
+                padding: '10px 14px',
+                background: '#fff1f2',
+                border: '1px solid #fecaca',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: '#9f1239',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <i className="fas fa-triangle-exclamation" style={{ color: '#e11d48' }}></i>
+                <span>This action is permanent and cannot be undone.</span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowCleanModal(false)}
+                disabled={cleaningLogs}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCleanLogs}
+                disabled={cleaningLogs}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#e11d48',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: cleaningLogs ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 4px rgba(225,29,72,0.25)'
+                }}
+              >
+                <i className={`fas ${cleaningLogs ? 'fa-spinner fa-spin' : 'fa-trash-can'}`}></i>
+                {cleaningLogs ? 'Clearing...' : 'Clear Selected Logs'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
+
