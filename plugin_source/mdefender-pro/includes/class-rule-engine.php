@@ -103,40 +103,40 @@ class WAF_FW_Rule_Engine {
             $combined .= ' ' . implode(' ', array_values($data['headers']));
         }
 
-        // Multi-Pass Recursive De-obfuscation
+        // Multi-Pass Recursive De-obfuscation (Only executed ONCE)
         $normalized = $combined;
         if ($this->deobfuscator) {
             $normalized = $this->deobfuscator->deobfuscate($combined);
 
             // 1. Semantic Intent Tokenizer Analysis (Libinjection AST)
-            $sql_intent = $this->deobfuscator->analyze_sql_intent($combined);
+            $sql_intent = $this->deobfuscator->analyze_sql_intent($normalized, true);
             if ($sql_intent['is_sqli']) {
-                $matches[] = [
+                return [[
                     'rule_name' => 'Semantic WAAP: ' . $sql_intent['type'],
                     'pattern' => 'LIBINJECTION_AST_PARSER',
                     'action' => 'block',
                     'severity' => 'critical',
-                ];
+                ]];
             }
 
-            $xss_intent = $this->deobfuscator->analyze_xss_intent($combined);
+            $xss_intent = $this->deobfuscator->analyze_xss_intent($normalized, true);
             if ($xss_intent['is_xss']) {
-                $matches[] = [
+                return [[
                     'rule_name' => 'Semantic WAAP: ' . $xss_intent['type'],
                     'pattern' => 'XSS_CONTEXT_PARSER',
                     'action' => 'block',
                     'severity' => 'critical',
-                ];
+                ]];
             }
 
-            $ai_intent = $this->deobfuscator->analyze_ai_prompt_injection($combined);
+            $ai_intent = $this->deobfuscator->analyze_ai_prompt_injection($normalized, true);
             if ($ai_intent['is_injection']) {
-                $matches[] = [
+                return [[
                     'rule_name' => 'Semantic WAAP: ' . $ai_intent['type'],
                     'pattern' => 'AI_JAILBREAK_DETECTOR',
                     'action' => 'block',
                     'severity' => 'high',
-                ];
+                ]];
             }
         }
 
@@ -153,6 +153,10 @@ class WAF_FW_Rule_Engine {
                     'action' => $rule['action'],
                     'severity' => $rule['severity'],
                 ];
+                // Early exit on first blocking rule
+                if ($rule['action'] === 'block') {
+                    return $matches;
+                }
             }
         }
         return $matches;

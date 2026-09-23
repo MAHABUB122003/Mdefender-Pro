@@ -94,8 +94,8 @@ class WAF_FW_Semantic_Deobfuscator {
      * @param string $input Normalized or raw input
      * @return array Detection result with confidence and matched fingerprint
      */
-    public function analyze_sql_intent($input) {
-        $normalized = $this->deobfuscate($input);
+    public function analyze_sql_intent($input, $is_already_normalized = false) {
+        $normalized = $is_already_normalized ? $input : $this->deobfuscate($input);
 
         // Check for SQL comment terminations and stacked queries
         $has_comment_term = preg_match('/(?:--|\#|\/\*|;)/', $normalized);
@@ -149,8 +149,8 @@ class WAF_FW_Semantic_Deobfuscator {
     /**
      * Detect XSS intent in normalized text.
      */
-    public function analyze_xss_intent($input) {
-        $normalized = $this->deobfuscate($input);
+    public function analyze_xss_intent($input, $is_already_normalized = false) {
+        $normalized = $is_already_normalized ? $input : $this->deobfuscate($input);
 
         // 1. Explicit HTML script tags
         if (preg_match('/<\s*script\b[^>]*>/i', $normalized)) {
@@ -174,8 +174,8 @@ class WAF_FW_Semantic_Deobfuscator {
      * Detect AI Prompt Injection & LLM System Override Payloads.
      * Protects WordPress AI/LLM chatbots, search plugins, and automated agents from jailbreaks.
      */
-    public function analyze_ai_prompt_injection($input) {
-        $normalized = $this->deobfuscate($input);
+    public function analyze_ai_prompt_injection($input, $is_already_normalized = false) {
+        $normalized = $is_already_normalized ? $input : $this->deobfuscate($input);
 
         $prompt_patterns = [
             'System Prompt Override' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now)/i',

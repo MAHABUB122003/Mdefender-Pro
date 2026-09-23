@@ -273,11 +273,15 @@ function waf_fw_analyze_request() {
     $result = $engine->analyze_current_request();
 
     if ($result['status'] === 'blocked') {
+        status_header(403);
+        header('X-Protected-By: MDefender-Pro-WAAP');
+        include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
         if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
             WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
         }
-        status_header(403);
-        include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
         exit;
     }
 }
@@ -293,15 +297,21 @@ function waf_fw_analyze_rest_request() {
 
     $result = $engine->analyze_current_request();
     if ($result['status'] === 'blocked') {
-        if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
-            WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
-        }
-        wp_send_json([
+        status_header(403);
+        header('Content-Type: application/json; charset=UTF-8');
+        header('X-Protected-By: MDefender-Pro-WAAP');
+        echo json_encode([
             'status' => 'blocked',
             'attack_type' => $result['attack_type'],
             'confidence' => $result['confidence'],
             'reference_id' => $result['reference_id']
-        ], 403);
+        ]);
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
+            WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
+        }
         exit;
     }
 }
