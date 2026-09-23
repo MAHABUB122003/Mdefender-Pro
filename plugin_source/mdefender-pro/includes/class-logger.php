@@ -47,14 +47,6 @@ class WAF_FW_Logger {
     }
 
     public function log_request($data) {
-        // Fast-path: Only do heavy DB insert if detailed logging or learning mode is active
-        $learning_mode = get_option('waf_fw_learning_mode', 'no') === 'yes';
-        $detailed_log = get_option('waf_fw_detailed_traffic_log', 'no') === 'yes';
-
-        if (!$learning_mode && !$detailed_log) {
-            return;
-        }
-
         global $wpdb;
         $ip = $data['ip'] ?? '';
         $country_code = $this->fast_get_country_code($ip);
