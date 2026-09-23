@@ -13,7 +13,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 load_dotenv()
 
 from src.database.mongodb_connection import MongoDB
@@ -549,20 +553,33 @@ async def user_add_website(request: Request, user: dict = Depends(verify_user_to
     except Exception:
         data = {}
     try:
-        return user_api.add_website(user, data)
+        res = user_api.add_website(user, data)
+        status_code = 200 if res.get('status') != 'error' else 400
+        return JSONResponse(status_code=status_code, content=res)
     except Exception as e:
         print(f"[Error] user_add_website exception: {e}")
         return JSONResponse(status_code=400, content={'status': 'error', 'message': str(e)})
 
 @app.delete("/api/user/websites")
 async def user_remove_website(request: Request, user: dict = Depends(verify_user_token_compat)):
-    website_id = request.query_params.get('id')
-    return user_api.remove_website(user, website_id)
+    try:
+        website_id = request.query_params.get('id')
+        res = user_api.remove_website(user, website_id)
+        status_code = 200 if res.get('status') != 'error' else 400
+        return JSONResponse(status_code=status_code, content=res)
+    except Exception as e:
+        print(f"[Error] user_remove_website exception: {e}")
+        return JSONResponse(status_code=400, content={'status': 'error', 'message': str(e)})
 
 @app.get("/api/user/dashboard")
 async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
-    website_id = request.query_params.get('website_id')
-    return user_api.get_dashboard_stats(user, website_id=website_id)
+    try:
+        website_id = request.query_params.get('website_id')
+        res = user_api.get_dashboard_stats(user, website_id=website_id)
+        return JSONResponse(status_code=200, content=res)
+    except Exception as e:
+        print(f"[Error] user_dashboard exception: {e}")
+        return JSONResponse(status_code=500, content={'status': 'error', 'message': str(e)})
 
 @app.post("/api/user/upgrade-plan")
 async def upgrade_user_plan(request: Request, user: dict = Depends(verify_user_token_compat)):

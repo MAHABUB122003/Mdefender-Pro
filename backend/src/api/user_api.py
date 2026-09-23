@@ -20,6 +20,17 @@ class UserAPI:
         self.password_service = PasswordService()
         self.email_service = EmailService()
 
+    @staticmethod
+    def _format_dt(val, fmt='%Y-%m-%d %H:%M:%S', default=''):
+        if not val:
+            return default
+        if hasattr(val, 'strftime'):
+            try:
+                return val.strftime(fmt)
+            except Exception:
+                return str(val)
+        return str(val)
+
     def _resolve_id(self, user_id):
         if isinstance(user_id, ObjectId):
             return user_id
@@ -302,17 +313,23 @@ class UserAPI:
 
         if orphan_site:
             website_id = str(orphan_site['_id'])
-            self.db.websites.update_one({'_id': orphan_site['_id']}, {'$set': update_fields})
+            try:
+                self.db.websites.update_one({'_id': orphan_site['_id']}, {'$set': update_fields})
+            except Exception:
+                pass
         else:
             website_id = str(uuid.uuid4())
             new_doc = {'_id': website_id, **update_fields}
             try:
                 self.db.websites.insert_one(new_doc)
             except Exception:
-                self.db.websites.update_one({'domain': domain}, {'$set': update_fields}, upsert=True)
-                existing = self.db.websites.find_one({'domain': domain})
-                if existing:
-                    website_id = str(existing['_id'])
+                try:
+                    self.db.websites.update_one({'domain': domain}, {'$set': update_fields}, upsert=True)
+                    existing = self.db.websites.find_one({'domain': domain})
+                    if existing:
+                        website_id = str(existing['_id'])
+                except Exception:
+                    pass
 
         try:
             self.db.users.update_one(
@@ -322,24 +339,22 @@ class UserAPI:
         except Exception:
             pass
 
-        # Generate scoped API Key or reuse user master key
-        raw_key = user.get('api_key') or generate_api_key()
+        # Generate unique scoped API Key for this website
+        raw_key = generate_api_key()
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         
         try:
-            self.db.api_keys.update_one(
-                {'website_id': website_id},
-                {'$set': {
-                    'website_id': website_id,
-                    'user_id': user_id_str,
-                    'key_hash': key_hash,
-                    'created_at': now_dt,
-                    'status': 'active'
-                }},
-                upsert=True
-            )
-        except Exception:
-            pass
+            self.db.api_keys.delete_many({'website_id': website_id})
+            self.db.api_keys.insert_one({
+                'website_id': website_id,
+                'user_id': user_id_str,
+                'key_hash': key_hash,
+                'label': platform or 'WordPress',
+                'created_at': now_dt,
+                'status': 'active'
+            })
+        except Exception as e:
+            logger.warning(f"Could not record API key for website {website_id}: {e}")
 
         website_out = {
             'id': str(website_id),
@@ -531,6 +546,7 @@ class UserAPI:
 
         websites = []
         for w in websites_cursor:
+            added_at_val = self._format_dt(w.get('added_at') or w.get('connected_at'))
             websites.append({
                 'id': str(w['_id']),
                 'domain': w.get('domain', ''),
@@ -538,7 +554,7 @@ class UserAPI:
                 'platform': w.get('platform', 'WordPress'),
                 'origin_server': w.get('origin_server', ''),
                 'status': w.get('status', 'active'),
-                'added_at': w['added_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('added_at') and hasattr(w['added_at'], 'strftime') else (w['connected_at'].strftime('%Y-%m-%d %H:%M:%S') if w.get('connected_at') and hasattr(w['connected_at'], 'strftime') else str(w.get('added_at', ''))),
+                'added_at': added_at_val,
                 'requests_today': w.get('requests_today', 0),
                 'blocked_today': w.get('blocked_today', 0),
                 'total_requests': w.get('total_requests', 0),
@@ -581,7 +597,7 @@ class UserAPI:
                 'url': log.get('endpoint') or log.get('url', ''),
                 'attack_type': log.get('attack_type') or 'Suspicious Request',
                 'confidence': log.get('confidence') or (log.get('risk_score', 0) / 100.0 if log.get('risk_score') else 0.85),
-                'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') else '',
+                'timestamp': self._format_dt(log.get('timestamp')),
                 'status': log.get('action') or log.get('status') or 'blocked',
                 'domain': domain_val or 'WordPress Site',
             })
@@ -650,11 +666,11 @@ class UserAPI:
         return {
             'user': {
                 'id': str(user_doc['_id']),
-                'email': user_doc['email'],
+                'email': user_doc.get('email', ''),
                 'name': user_doc.get('name', user_doc.get('full_name', '')),
                 'plan': user_doc.get('plan', 'free'),
-                'created_at': user_doc['created_at'].strftime('%Y-%m-%d') if user_doc.get('created_at') else '',
-                'last_login': user_doc['last_login'].strftime('%Y-%m-%d %H:%M:%S') if user_doc.get('last_login') else '',
+                'created_at': self._format_dt(user_doc.get('created_at'), '%Y-%m-%d'),
+                'last_login': self._format_dt(user_doc.get('last_login')),
             },
             'api_key': user_doc.get('api_key', ''),
             'plan': user_doc.get('plan', 'free'),
@@ -684,8 +700,8 @@ class UserAPI:
                 'role': u.get('role', 'readonly'),
                 'status': u.get('status', 'active'),
                 'api_key': u.get('api_key', ''),
-                'created_at': u['created_at'].strftime('%Y-%m-%d %H:%M:%S') if u.get('created_at') else '',
-                'last_login': u['last_login'].strftime('%Y-%m-%d %H:%M:%S') if u.get('last_login') else 'Never',
+                'created_at': self._format_dt(u.get('created_at')),
+                'last_login': self._format_dt(u.get('last_login'), default='Never'),
                 'total_requests': u.get('total_requests', 0),
                 'total_blocked': u.get('total_blocked', 0),
                 'websites_count': len(u.get('websites', [])),
