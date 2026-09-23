@@ -7,7 +7,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('WAF_FW_VERSION')) define('WAF_FW_VERSION', '4.1.0');
+if (!defined('WAF_FW_VERSION')) define('WAF_FW_VERSION', '4.2.0');
 if (!defined('WAF_FW_PLUGIN_DIR')) define('WAF_FW_PLUGIN_DIR', plugin_dir_path(__FILE__));
 if (!defined('WAF_FW_PLUGIN_URL')) define('WAF_FW_PLUGIN_URL', plugin_dir_url(__FILE__));
 if (!defined('WAF_FW_MAIN_FILE')) define('WAF_FW_MAIN_FILE', __FILE__);
