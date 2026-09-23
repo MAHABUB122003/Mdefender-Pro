@@ -688,6 +688,22 @@ async def user_get_logs(request: Request, user: dict = Depends(verify_user_token
     params = dict(request.query_params)
     return user_api.get_user_logs(user, params)
 
+@app.post("/api/user/clean-logs")
+async def user_clean_logs(request: Request, user: dict = Depends(verify_user_token_compat)):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    return user_api.clean_user_logs(user, data)
+
+@app.post("/api/user/reset-stats")
+async def user_reset_stats(request: Request, user: dict = Depends(verify_user_token_compat)):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    return user_api.reset_user_stats(user, data)
+
 @app.get("/api/user/rules")
 async def user_get_rules(user: dict = Depends(verify_user_token_compat)):
     return user_api.get_user_rules(user)

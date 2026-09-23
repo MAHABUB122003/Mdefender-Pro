@@ -351,6 +351,8 @@ export const api = {
   getUserCountryBlocks: () => apiCall('/api/user/country-blocks'),
   addUserCountryBlock: (data) => apiCall('/api/user/country-blocks', { method: 'POST', body: JSON.stringify(data) }),
   removeUserCountryBlock: (code) => apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}`, { method: 'DELETE' }),
+  userCleanLogs: (data = {}) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
+  userResetStats: (data = {}) => apiCall('/api/user/reset-stats', { method: 'POST', body: JSON.stringify(data) }),
 }
 
 export default api

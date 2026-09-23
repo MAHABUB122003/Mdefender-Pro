@@ -97,6 +97,27 @@ export default function UserDashboard() {
     }
   }
 
+  const [resettingStats, setResettingStats] = useState(false)
+
+  const handleResetStats = async () => {
+    const scopeName = selectedWebsite === 'all' ? 'all websites' : 'the selected website'
+    if (!confirm(`Are you sure you want to reset traffic, blocked requests, and telemetry counters for ${scopeName} to 0?`)) {
+      return
+    }
+    setResettingStats(true)
+    try {
+      const res = await api.userResetStats({ website_id: selectedWebsite })
+      userStore.set('dashboard', null)
+      userStore.clear()
+      await fetchData(true, selectedWebsite)
+      alert(res.message || 'Dashboard statistics reset successfully.')
+    } catch (err) {
+      alert(err.message || 'Failed to reset dashboard statistics')
+    } finally {
+      setResettingStats(false)
+    }
+  }
+
   const blockTopIP = async (ip) => {
     if (!isPremium) { alert('Upgrade to Premium to block IPs'); return }
     if (confirm(`Block ${ip}?`)) {
@@ -330,6 +351,29 @@ export default function UserDashboard() {
           >
             <i className={`fas ${ddosToggling ? 'fa-spinner fa-spin' : ddosEnabled ? 'fa-shield-halved' : 'fa-shield-slash'}`}></i>
             DDoS Shield: {ddosEnabled ? 'ON' : 'OFF'}
+          </button>
+
+          <button
+            onClick={handleResetStats}
+            disabled={resettingStats}
+            title="Clean & Reset Dashboard Metrics & Telemetry"
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: '1px solid #fecaca',
+              background: '#fff1f2',
+              color: '#e11d48',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: resettingStats ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <i className={`fas ${resettingStats ? 'fa-spinner fa-spin' : 'fa-trash-can'}`}></i>
+            {resettingStats ? 'Resetting...' : 'Reset Stats'}
           </button>
 
           <Link

@@ -151,6 +151,28 @@ export default function UserLogs() {
     fetchLogs()
   }
 
+  const [cleaningLogs, setCleaningLogs] = useState(false)
+
+  const handleCleanLogs = async (days = 0) => {
+    const scope = websiteFilter ? `for the selected website` : `for all your websites`
+    const duration = days === 0 ? 'ALL log records' : `log records older than ${days} days`
+    if (!confirm(`Are you sure you want to permanently delete ${duration} ${scope}?`)) {
+      return
+    }
+    setCleaningLogs(true)
+    try {
+      const res = await api.userCleanLogs({ website_id: websiteFilter, days })
+      userStore.clear()
+      setPage(1)
+      await fetchLogs(true)
+      alert(res.message || 'Logs cleaned successfully.')
+    } catch (err) {
+      alert(err.message || 'Failed to clear logs')
+    } finally {
+      setCleaningLogs(false)
+    }
+  }
+
   const handleBlockIp = async (ip) => {
     if (!confirm(`Block IP ${ip} permanently?`)) return
     try {
@@ -266,6 +288,30 @@ export default function UserLogs() {
           >
             <i className={`fas fa-rotate ${refreshing ? 'fa-spin' : ''}`}></i>
             {refreshing ? 'Refreshing...' : 'Refresh Logs'}
+          </button>
+
+          <button 
+            type="button" 
+            onClick={() => handleCleanLogs(0)} 
+            disabled={cleaningLogs}
+            title="Permanently clear attack and traffic logs"
+            style={{ 
+              padding: '8px 14px', 
+              background: '#fff1f2', 
+              color: '#e11d48', 
+              border: '1px solid #fecaca', 
+              borderRadius: '6px', 
+              fontWeight: '600', 
+              cursor: cleaningLogs ? 'not-allowed' : 'pointer', 
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginLeft: 'auto'
+            }}
+          >
+            <i className={`fas ${cleaningLogs ? 'fa-spinner fa-spin' : 'fa-trash-can'}`}></i>
+            {cleaningLogs ? 'Clearing...' : 'Clear Logs'}
           </button>
         </form>
       </div>

@@ -1082,3 +1082,90 @@ class UserAPI:
             }
         )
         return {'status': 'success', 'message': 'Plan downgraded to Free', 'plan': 'free'}
+
+    def clean_user_logs(self, user, data=None):
+        data = data or {}
+        days = int(data.get('days', 0))
+        website_id = data.get('website_id', '')
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+
+        user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+        user_domains = [w.get('domain') for w in user_sites if w.get('domain')]
+
+        user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
+        if user_domains:
+            user_scope.append({'domain': {'$in': user_domains}})
+        
+        conditions = [{'$or': user_scope} if len(user_scope) > 1 else user_scope[0]]
+
+        if website_id and website_id != 'all':
+            conditions.append({'$or': [{'website_id': website_id}, {'domain': website_id}]})
+
+        if days > 0:
+            cutoff = datetime.now() - timedelta(days=days)
+            conditions.append({'timestamp': {'$lt': cutoff}})
+
+        final_query = {'$and': conditions} if len(conditions) > 1 else conditions[0]
+
+        try:
+            r1 = self.db.security_events.delete_many(final_query)
+            r2 = self.db.attacks.delete_many(final_query)
+            r3 = self.db.requests.delete_many(final_query)
+            total_deleted = r1.deleted_count + r2.deleted_count + r3.deleted_count
+            return {
+                'status': 'success',
+                'deleted': total_deleted,
+                'message': f'Cleaned {total_deleted} log records successfully.'
+            }
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
+    def reset_user_stats(self, user, data=None):
+        data = data or {}
+        website_id = data.get('website_id', 'all')
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+
+        try:
+            self.clean_user_logs(user, {'website_id': website_id, 'days': 0})
+
+            if website_id == 'all':
+                self.db.users.update_one(
+                    {'_id': user['_id']},
+                    {'$set': {
+                        'requests_today': 0,
+                        'total_requests': 0,
+                        'total_blocked': 0,
+                        'blocked_today': 0,
+                        'updated_at': datetime.now()
+                    }}
+                )
+                self.db.websites.update_many(
+                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
+                    {'$set': {
+                        'requests_today': 0,
+                        'blocked_today': 0,
+                        'total_requests': 0,
+                        'total_blocked': 0,
+                    }}
+                )
+            else:
+                site_filter = {'$and': [
+                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
+                    {'$or': [{'_id': website_id}, {'domain': website_id}]}
+                ]}
+                self.db.websites.update_many(
+                    site_filter,
+                    {'$set': {
+                        'requests_today': 0,
+                        'blocked_today': 0,
+                        'total_requests': 0,
+                        'total_blocked': 0,
+                    }}
+                )
+
+            return {'status': 'success', 'message': 'Dashboard statistics and metrics reset successfully.'}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
