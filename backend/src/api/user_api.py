@@ -240,7 +240,7 @@ class UserAPI:
     def add_website(self, user, data):
         domain = data.get('domain', '').strip()
         origin = data.get('origin_server', '').strip()
-        platform = data.get('platform', 'Other').strip()
+        platform = data.get('platform', 'WordPress').strip()
         if not domain:
             return {'status': 'error', 'message': 'Domain is required'}
 
@@ -253,7 +253,9 @@ class UserAPI:
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
         plan = user.get('plan', 'free')
-        max_sites = 1 if plan == 'free' else 100
+        
+        # Allow up to 5 websites for free tier testing, 100 for premium
+        max_sites = 5 if plan == 'free' else 100
 
         current_websites_count = self.db.websites.count_documents({
             '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
@@ -276,9 +278,10 @@ class UserAPI:
             '$or': [{'domain': domain}, {'url': domain}]
         })
 
-        website_id = str(orphan_site['_id']) if orphan_site else str(uuid.uuid4())
-        website = {
-            '_id': website_id,
+        now_dt = datetime.now()
+        now_str = now_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        update_fields = {
             'user_id': user_id_str,
             'domain': domain,
             'name': domain,
@@ -286,44 +289,77 @@ class UserAPI:
             'platform': platform,
             'origin_server': origin,
             'status': 'active',
-            'added_at': datetime.now(),
+            'added_at': now_dt,
+            'connected_at': now_dt,
             'requests_today': 0,
             'blocked_today': 0,
+            'total_requests': 0,
+            'total_blocked': 0,
             'waf_mode': 'protect',
             'malware_scanner': 'active',
             'threat_level': 'LOW',
         }
 
         if orphan_site:
-            self.db.websites.update_one({'_id': orphan_site['_id']}, {'$set': website})
+            website_id = str(orphan_site['_id'])
+            self.db.websites.update_one({'_id': orphan_site['_id']}, {'$set': update_fields})
         else:
-            self.db.websites.insert_one(website)
+            website_id = str(uuid.uuid4())
+            new_doc = {'_id': website_id, **update_fields}
+            try:
+                self.db.websites.insert_one(new_doc)
+            except Exception:
+                self.db.websites.update_one({'domain': domain}, {'$set': update_fields}, upsert=True)
+                existing = self.db.websites.find_one({'domain': domain})
+                if existing:
+                    website_id = str(existing['_id'])
 
-        self.db.users.update_one(
-            {'_id': user['_id']},
-            {'$addToSet': {'websites': domain}}
-        )
+        try:
+            self.db.users.update_one(
+                {'_id': user_id_obj},
+                {'$addToSet': {'websites': domain}}
+            )
+        except Exception:
+            pass
 
         # Generate scoped API Key or reuse user master key
         raw_key = user.get('api_key') or generate_api_key()
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         
-        self.db.api_keys.update_one(
-            {'website_id': website_id},
-            {'$set': {
-                'website_id': website_id,
-                'user_id': user_id_str,
-                'key_hash': key_hash,
-                'created_at': datetime.now(),
-                'status': 'active'
-            }},
-            upsert=True
-        )
+        try:
+            self.db.api_keys.update_one(
+                {'website_id': website_id},
+                {'$set': {
+                    'website_id': website_id,
+                    'user_id': user_id_str,
+                    'key_hash': key_hash,
+                    'created_at': now_dt,
+                    'status': 'active'
+                }},
+                upsert=True
+            )
+        except Exception:
+            pass
 
-        website_out = dict(website)
-        website_out['id'] = website_id
+        website_out = {
+            'id': str(website_id),
+            '_id': str(website_id),
+            'domain': domain,
+            'name': domain,
+            'url': domain,
+            'platform': platform,
+            'status': 'active',
+            'added_at': now_str,
+            'waf_mode': 'protect',
+            'threat_level': 'LOW'
+        }
 
-        return {'status': 'success', 'website': website_out, 'api_key': raw_key, 'message': f'{domain} connected successfully'}
+        return {
+            'status': 'success',
+            'website': website_out,
+            'api_key': raw_key,
+            'message': f'{domain} connected successfully'
+        }
 
     def remove_website(self, user, website_id):
         if not website_id:

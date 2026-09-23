@@ -544,8 +544,15 @@ async def user_regenerate_key(request: Request, user: dict = Depends(verify_user
 
 @app.post("/api/user/websites")
 async def user_add_website(request: Request, user: dict = Depends(verify_user_token_compat)):
-    data = await request.json()
-    return user_api.add_website(user, data)
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    try:
+        return user_api.add_website(user, data)
+    except Exception as e:
+        print(f"[Error] user_add_website exception: {e}")
+        return JSONResponse(status_code=400, content={'status': 'error', 'message': str(e)})
 
 @app.delete("/api/user/websites")
 async def user_remove_website(request: Request, user: dict = Depends(verify_user_token_compat)):
