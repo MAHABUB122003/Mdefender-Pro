@@ -363,15 +363,22 @@
     }
 
     function displayScanResults(data) {
+        if (!data) return;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch(e) { return; }
+        }
         $('#wafScanResults').show();
-        var score = data.score || 0;
+        var score = (data.score !== undefined) ? data.score : 100;
         var issues = data.issues_found || 0;
-        var duration = data.duration || 0;
-        var scanData = data.results || data;
+        var duration = data.duration || data.duration_seconds || 0;
+        var scanData = data.results || data.vulnerabilities || data;
+        if (typeof scanData === 'string') {
+            try { scanData = JSON.parse(scanData); } catch(e) { scanData = {}; }
+        }
         
         updatePipelineFinalColors(scanData);
 
-        lastScanId = data.queue_id || 0;
+        lastScanId = data.queue_id || data.scan_id || 0;
 
         updateScoreCard(score);
         $('#wafScanIssues').text(issues);
@@ -581,6 +588,11 @@
 
     function parseFindingsFromScanData(scanData) {
         var findings = [];
+        if (!scanData) return findings;
+        if (typeof scanData === 'string') {
+            try { scanData = JSON.parse(scanData); } catch (e) { return findings; }
+        }
+        if (typeof scanData !== 'object') return findings;
 
         // 3. Parse WordPress Core Checksum Mismatches
         if (scanData.malware_scan && scanData.malware_scan.wp_checksums) {
@@ -1370,7 +1382,7 @@
         var btn = $(this);
         var origText = btn.text();
         btn.prop('disabled', true).text('Loading...');
-        $.get(ajaxurl + '?action=waf_fw_get_active_or_last_scan&scan_id=' + scanId, function(r) {
+        $.get(ajaxurl + '?action=waf_fw_get_active_or_last_scan&scan_id=' + scanId + '&_t=' + Date.now(), function(r) {
             btn.prop('disabled', false).text(origText);
             if (r.success && r.data) {
                 displayScanResults(r.data);

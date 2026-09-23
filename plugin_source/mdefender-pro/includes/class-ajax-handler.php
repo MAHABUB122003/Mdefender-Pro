@@ -472,13 +472,19 @@ class WAF_FW_Ajax_Handler {
         // Clean up stale scans older than 2 minutes
         $wpdb->query("UPDATE $queue_table SET status = 'interrupted' WHERE status = 'running' AND created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
 
-        $requested_id = intval($_GET['scan_id'] ?? 0);
+        $requested_id = intval($_REQUEST['scan_id'] ?? 0);
 
         if ($requested_id > 0) {
             $scan_res = $wpdb->get_row($wpdb->prepare("SELECT * FROM $results_table WHERE id = %d", $requested_id));
             if ($scan_res) {
-                $results = json_decode($scan_res->vulnerabilities, true);
-                $summary = json_decode($scan_res->summary, true);
+                $results = !empty($scan_res->vulnerabilities) ? json_decode($scan_res->vulnerabilities, true) : [];
+                if (is_string($results)) {
+                    $results = json_decode($results, true);
+                }
+                $summary = !empty($scan_res->summary) ? json_decode($scan_res->summary, true) : [];
+                if (is_string($summary)) {
+                    $summary = json_decode($summary, true);
+                }
                 wp_send_json_success([
                     'type' => 'completed',
                     'scan_id' => intval($scan_res->id),
@@ -487,23 +493,26 @@ class WAF_FW_Ajax_Handler {
                     'score' => intval($scan_res->score),
                     'issues_found' => intval($scan_res->issues_found),
                     'duration' => intval($scan_res->duration_seconds),
-                    'results' => $results,
-                    'summary' => $summary,
+                    'results' => is_array($results) ? $results : [],
+                    'summary' => is_array($summary) ? $summary : [],
                     'created_at' => $scan_res->created_at,
                 ]);
             }
             $scan_q = $wpdb->get_row($wpdb->prepare("SELECT * FROM $queue_table WHERE id = %d", $requested_id));
             if ($scan_q) {
-                $results = json_decode($scan_q->results, true);
+                $results = !empty($scan_q->results) ? json_decode($scan_q->results, true) : [];
+                if (is_string($results)) {
+                    $results = json_decode($results, true);
+                }
                 wp_send_json_success([
                     'type' => 'completed',
                     'queue_id' => intval($scan_q->id),
                     'status' => $scan_q->status,
                     'progress' => 100,
-                    'score' => intval($scan_q->score),
-                    'issues_found' => intval($scan_q->issues_found),
-                    'duration' => intval($scan_q->duration_seconds),
-                    'results' => $results,
+                    'score' => intval($scan_q->score ?? 100),
+                    'issues_found' => intval($scan_q->issues_found ?? 0),
+                    'duration' => intval($scan_q->duration_seconds ?? 0),
+                    'results' => is_array($results) ? $results : [],
                     'created_at' => $scan_q->created_at,
                     'completed_at' => $scan_q->completed_at,
                 ]);
