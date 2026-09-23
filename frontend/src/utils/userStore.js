@@ -57,6 +57,14 @@ export const userStore = {
     }
   },
 
+  remove(key) {
+    this.invalidate(key);
+  },
+
+  clear(key) {
+    this.invalidate(key);
+  },
+
   // Background prefetch for all user tabs so clicks are 100% instant
   async prefetchUserData(api) {
     if (!api) return;

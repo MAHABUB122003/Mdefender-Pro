@@ -75,7 +75,7 @@ export default function UserWebsites() {
         return
       }
 
-      const siteKey = res?.api_key || data?.api_key || data?.user?.api_key || ''
+      const siteKey = res?.api_key || res?.website?.api_key || ''
       setModalKey(siteKey)
       setModalDomain(cleanDomain)
       setModalWebsiteId(res?.website?._id || res?.website?.id || '')
@@ -85,8 +85,8 @@ export default function UserWebsites() {
 
       setNewWebsite('')
       setFeedbackMsg({ type: 'success', text: `Website "${cleanDomain}" connected successfully!` })
-      userStore.remove('websites')
-      userStore.remove('dashboard')
+      userStore.invalidate('websites')
+      userStore.invalidate('dashboard')
       await fetchData()
     } catch (err) {
       const errMsg = err.message || 'Failed to connect website. Please try again.'
@@ -127,8 +127,8 @@ export default function UserWebsites() {
       if (res && res.api_key) {
         setModalKey(res.api_key)
         setIsMasked(false)
-        userStore.remove('websites')
-        userStore.remove('dashboard')
+        userStore.invalidate('websites')
+        userStore.invalidate('dashboard')
         fetchData()
       } else {
         alert('Failed to regenerate key')
@@ -147,8 +147,8 @@ export default function UserWebsites() {
     try {
       await api.removeUserWebsite(targetId)
       setFeedbackMsg({ type: 'success', text: `Website "${domainName}" removed.` })
-      userStore.remove('websites')
-      userStore.remove('dashboard')
+      userStore.invalidate('websites')
+      userStore.invalidate('dashboard')
       fetchData()
     } catch (err) {
       setFeedbackMsg({ type: 'error', text: err.message || 'Failed to remove website' })

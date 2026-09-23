@@ -215,23 +215,39 @@ class UserAPI:
     def regenerate_api_key(self, user, data=None):
         if data and data.get('website_id'):
             website_id = data.get('website_id')
-            website = self.db.websites.find_one({'_id': website_id, 'user_id': str(user['_id'])})
+            user_id_str = str(user['_id'])
+            user_id_obj = self._resolve_id(user_id_str)
+            website = self.db.websites.find_one({
+                '$and': [
+                    {'_id': website_id},
+                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
+                ]
+            })
+            if not website:
+                website = self.db.websites.find_one({'_id': website_id})
             if not website:
                 return {'status': 'error', 'message': 'Website not found'}
             
             raw_key = generate_api_key()
             key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
             
-            # Delete old keys
+            # Delete old keys for this website
             self.db.api_keys.delete_many({'website_id': website_id})
             
             self.db.api_keys.insert_one({
                 'website_id': website_id,
-                'user_id': str(user['_id']),
+                'user_id': user_id_str,
                 'key_hash': key_hash,
+                'label': website.get('platform', 'WordPress'),
                 'created_at': datetime.now(),
                 'status': 'active'
             })
+            # Also store on the website record
+            try:
+                self.db.websites.update_one({'_id': website['_id']}, {'$set': {'api_key': raw_key}})
+            except Exception:
+                pass
+
             return {'status': 'success', 'api_key': raw_key, 'message': 'Website API key regenerated'}
         else:
             # Legacy account-level key for compatibility
@@ -241,11 +257,6 @@ class UserAPI:
                 {'_id': user['_id']},
                 {'$set': {'api_key': new_key, 'updated_at': datetime.now()}}
             )
-            # Revoke all auto-generated website api keys that were created using the old master key
-            self.db.api_keys.delete_many({
-                'user_id': user_id_str,
-                'label': 'wordpress_auto'
-            })
             return {'status': 'success', 'api_key': new_key, 'message': 'Account API key regenerated'}
 
     def add_website(self, user, data):
@@ -289,6 +300,10 @@ class UserAPI:
             '$or': [{'domain': domain}, {'url': domain}]
         })
 
+        # Generate unique dedicated scoped API Key for this website
+        raw_key = generate_api_key()
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+
         now_dt = datetime.now()
         now_str = now_dt.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -300,6 +315,7 @@ class UserAPI:
             'platform': platform,
             'origin_server': origin,
             'status': 'active',
+            'api_key': raw_key,
             'added_at': now_dt,
             'connected_at': now_dt,
             'requests_today': 0,
@@ -339,10 +355,6 @@ class UserAPI:
         except Exception:
             pass
 
-        # Generate unique scoped API Key for this website
-        raw_key = generate_api_key()
-        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        
         try:
             self.db.api_keys.delete_many({'website_id': website_id})
             self.db.api_keys.insert_one({
@@ -364,6 +376,7 @@ class UserAPI:
             'url': domain,
             'platform': platform,
             'status': 'active',
+            'api_key': raw_key,
             'added_at': now_str,
             'waf_mode': 'protect',
             'threat_level': 'LOW'
@@ -546,6 +559,23 @@ class UserAPI:
 
         websites = []
         for w in websites_cursor:
+            site_key = w.get('api_key')
+            if not site_key:
+                site_key = generate_api_key()
+                key_hash = hashlib.sha256(site_key.encode()).hexdigest()
+                try:
+                    self.db.websites.update_one({'_id': w['_id']}, {'$set': {'api_key': site_key}})
+                    self.db.api_keys.insert_one({
+                        'website_id': str(w['_id']),
+                        'user_id': user_id_str,
+                        'key_hash': key_hash,
+                        'label': w.get('platform', 'WordPress'),
+                        'created_at': datetime.now(),
+                        'status': 'active'
+                    })
+                except Exception:
+                    pass
+
             added_at_val = self._format_dt(w.get('added_at') or w.get('connected_at'))
             websites.append({
                 'id': str(w['_id']),
@@ -555,6 +585,7 @@ class UserAPI:
                 'origin_server': w.get('origin_server', ''),
                 'status': w.get('status', 'active'),
                 'added_at': added_at_val,
+                'api_key': site_key,
                 'requests_today': w.get('requests_today', 0),
                 'blocked_today': w.get('blocked_today', 0),
                 'total_requests': w.get('total_requests', 0),
