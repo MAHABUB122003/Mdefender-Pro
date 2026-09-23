@@ -830,16 +830,28 @@ class UserAPI:
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
 
-        # Get all website domains owned by user
+        # Get all website domains and IDs owned by user (from both websites and wordpress_sites)
         user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         user_domains = [w.get('domain') for w in user_sites if w.get('domain')]
+        user_site_ids = [str(w.get('_id')) for w in user_sites if w.get('_id')]
 
-        # Base user scope
+        wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+        for wp in wp_sites:
+            d = wp.get('domain')
+            if d and d not in user_domains:
+                user_domains.append(d)
+            w_id = str(wp.get('_id')) if wp.get('_id') else None
+            if w_id and w_id not in user_site_ids:
+                user_site_ids.append(w_id)
+
+        # Base user scope across user_id, website_ids, and domains
         user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
+        if user_site_ids:
+            user_scope.append({'website_id': {'$in': user_site_ids}})
         if user_domains:
             user_scope.append({'domain': {'$in': user_domains}})
         
-        conditions = [{'$or': user_scope} if len(user_scope) > 1 else user_scope[0]]
+        conditions = [{'$or': user_scope}]
 
         if website_id and website_id != 'all':
             conditions.append({'$or': [{'website_id': website_id}, {'domain': website_id}]})
@@ -883,7 +895,7 @@ class UserAPI:
 
         final_query = {'$and': conditions} if len(conditions) > 1 else (conditions[0] if conditions else {})
 
-        # Primary source: security_events
+        # Primary source: security_events (contains all requests: normal & blocked)
         total = self.db.security_events.count_documents(final_query)
         logs = list(self.db.security_events.find(final_query)
             .sort('timestamp', -1)
@@ -900,15 +912,25 @@ class UserAPI:
 
         result_logs = []
         for i, log in enumerate(logs):
+            status_val = log.get('status') or log.get('action') or 'allowed'
+            if str(status_val).lower() in ('block', 'blocked', 'b'):
+                status_val = 'blocked'
+            elif str(status_val).lower() in ('allow', 'allowed', 'pass', 'passed', 'a'):
+                status_val = 'allowed'
+            
+            is_blocked = (status_val == 'blocked')
+            raw_atype = log.get('attack_type')
+            attack_type_str = raw_atype if raw_atype else ('Blocked Attack' if is_blocked else 'Clean Request')
+
             result_logs.append({
                 'id': str(log.get('_id', i)),
                 'ip': log.get('source_ip') or log.get('ip', ''),
                 'url': log.get('endpoint') or log.get('url', ''),
                 'domain': log.get('domain', ''),
-                'attack_type': log.get('attack_type', 'Suspicious Request'),
-                'status': log.get('action') or log.get('status', 'blocked'),
+                'attack_type': attack_type_str,
+                'status': status_val,
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') and hasattr(log['timestamp'], 'strftime') else str(log.get('timestamp', '')),
-                'confidence': log.get('confidence', 0.85),
+                'confidence': log.get('confidence', 0.95 if is_blocked else 0.0),
                 'method': log.get('method', 'GET'),
                 'user_agent': log.get('user_agent', ''),
                 'rule_matched': log.get('rule_matched', ''),

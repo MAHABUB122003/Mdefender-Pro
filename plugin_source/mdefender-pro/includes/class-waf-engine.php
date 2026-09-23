@@ -104,7 +104,7 @@ class WAF_FW_Engine {
             $headers = getallheaders();
 
             if ($this->ip_filter->is_whitelisted($ip)) {
-                return $this->allowed_result($ip, $url, $method, 'Whitelisted IP');
+                return $this->do_allow($ip, $url, $method, $user_agent, 'Whitelisted IP');
             }
 
             if ($this->learning_mode) {
