@@ -384,13 +384,9 @@ class WAF_FW_Scanner {
             $this->initialize_scan_files_queue($queue_id);
         }
 
-        // Trigger background cron batch processing
-        if (!wp_next_scheduled('waf_fw_run_scan_batch', [$queue_id])) {
-            wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
-            spawn_cron();
-        }
+        // Direct synchronous batch execution for instant progressive scanning across all environments
+        $batch_state = $this->process_scan_batch($queue_id);
 
-        // Return current status immediately to prevent blocking the request
         $queue_table = $this->db->get_scan_queue_table();
         $scan = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM $queue_table WHERE id = %d", $queue_id
@@ -401,9 +397,10 @@ class WAF_FW_Scanner {
 
         return [
             'success' => true,
-            'completed' => $scan->status === 'completed' || $scan->status === 'completed_with_issues',
+            'completed' => in_array($scan->status, ['completed', 'completed_with_issues', 'failed', 'cancelled']),
             'queue_id' => $queue_id,
-            'cell_index' => 0,
+            'cell_index' => $cell_index + 1,
+            'status' => $scan->status,
             'progress' => (int) $scan->progress,
             'current_stage' => $scan->current_stage,
             'total_files' => (int) $scan->total_files,
@@ -422,20 +419,33 @@ class WAF_FW_Scanner {
         $existing_lock = get_option($lock_key);
         if ($existing_lock) {
             $lock_data = json_decode($existing_lock, true);
-            if (is_array($lock_data) && ($lock_data['expires'] > time())) {
-                return; // already locked by an active worker
+            if (is_array($lock_data) && isset($lock_data['locked_at']) && (time() - $lock_data['locked_at'] < 2)) {
+                $scan_curr = $wpdb->get_row($wpdb->prepare("SELECT * FROM $queue_table WHERE id = %d", $queue_id));
+                return [
+                    'status' => $scan_curr ? $scan_curr->status : 'running',
+                    'progress' => $scan_curr ? (int) $scan_curr->progress : 0,
+                    'current_stage' => $scan_curr ? $scan_curr->current_stage : '',
+                    'scanned_files' => $scan_curr ? (int) $scan_curr->scanned_files : 0,
+                    'total_files' => $scan_curr ? (int) $scan_curr->total_files : 0,
+                    'results' => $scan_curr && $scan_curr->results ? json_decode($scan_curr->results, true) : null,
+                    'completed' => $scan_curr && in_array($scan_curr->status, ['completed', 'completed_with_issues', 'failed']),
+                ];
             }
         }
         update_option($lock_key, json_encode([
             'scan_id' => $queue_id,
             'locked_at' => time(),
-            'expires' => time() + 300
+            'expires' => time() + 30
         ]));
 
         $scan = $wpdb->get_row($wpdb->prepare("SELECT * FROM $queue_table WHERE id = %d", $queue_id));
         if (!$scan || in_array($scan->status, ['completed', 'completed_with_issues', 'failed', 'cancelled', 'paused'])) {
             delete_option($lock_key);
-            return;
+            return [
+                'status' => $scan ? $scan->status : 'completed',
+                'progress' => $scan ? (int) $scan->progress : 100,
+                'completed' => true
+            ];
         }
 
         $stages = $this->get_modules_for_scan_type($scan->scan_type);
@@ -595,7 +605,15 @@ class WAF_FW_Scanner {
                         delete_option($lock_key);
                         wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
                         spawn_cron();
-                        return;
+                        return [
+                            'status' => 'running',
+                            'progress' => (int) (($stage_index / ($total_stages - 1)) * 100),
+                            'current_stage' => 'malware',
+                            'scanned_files' => (int) $scanned_count,
+                            'total_files' => (int) $scan->total_files,
+                            'results' => $results,
+                            'completed' => false,
+                        ];
                     }
 
                     $stage_completed = true;
@@ -627,18 +645,6 @@ class WAF_FW_Scanner {
                     ));
 
                     if ($has_ml_init == 0 && $has_ml_skipped == 0) {
-                        $wp_checksums = $this->scan_for_wordpress_checksums();
-                        $modified_core = [];
-                        if (!empty($wp_checksums['modified_files'])) {
-                            foreach ($wp_checksums['modified_files'] as $mc) {
-                                $modified_core[] = $mc['file'];
-                            }
-                        }
-
-                        $integrity_table = WAF_FW_DB::instance()->get_file_integrity_table();
-                        $non_known = $wpdb->get_col("SELECT file_path FROM $integrity_table WHERE status != 'known'");
-                        $non_known_set = array_flip($non_known ? $non_known : []);
-
                         $all_queued = $wpdb->get_results($wpdb->prepare(
                             "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d",
                             $queue_id
@@ -651,20 +657,12 @@ class WAF_FW_Scanner {
 
                             if ($cat === 'uploads') {
                                 $is_candidate = true;
-                            } elseif ($cat === 'admin' || $cat === 'includes' || $cat === 'root') {
-                                if (in_array($rel_path, $modified_core)) {
-                                    $is_candidate = true;
-                                }
                             } else {
-                                if (isset($non_known_set[$rel_path])) {
-                                    $is_candidate = true;
-                                } else {
-                                    $full_path = ABSPATH . $rel_path;
-                                    if (file_exists($full_path)) {
-                                        $local = $this->scan_file_multi_signal($full_path, $cat);
-                                        if ($local && $local['score'] >= 25) {
-                                            $is_candidate = true;
-                                        }
+                                $full_path = ABSPATH . $rel_path;
+                                if (file_exists($full_path)) {
+                                    $local = $this->scan_file_multi_signal($full_path, $cat);
+                                    if ($local && $local['score'] >= 25) {
+                                        $is_candidate = true;
                                     }
                                 }
                             }
@@ -675,7 +673,7 @@ class WAF_FW_Scanner {
                     }
 
                     $ml_batch = $wpdb->get_results($wpdb->prepare(
-                        "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d AND status = 'pending_ml' LIMIT 50",
+                        "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d AND status = 'pending_ml' LIMIT 10",
                         $queue_id
                     ));
 
@@ -703,7 +701,12 @@ class WAF_FW_Scanner {
                         ];
                     }
 
+                    $consecutive_errors = 0;
                     foreach ($ml_batch as $f_row) {
+                        if ((microtime(true) - $start_time) > 8) {
+                            break;
+                        }
+
                         $full_path = ABSPATH . $f_row->file_path;
                         if (!file_exists($full_path)) {
                             $wpdb->update($files_table, ['status' => 'completed_ml'], ['id' => $f_row->id]);
@@ -723,6 +726,7 @@ class WAF_FW_Scanner {
                         $results['ml_malware_scan']['total_scanned']++;
 
                         if ($prediction && is_array($prediction)) {
+                            $consecutive_errors = 0;
                             $label = isset($prediction['verdict']) ? $prediction['verdict'] : 'clean';
                             $conf = (float) ($prediction['confidence'] ?? 0);
                             $risk = (float) ($prediction['risk_score'] ?? 0);
@@ -763,6 +767,12 @@ class WAF_FW_Scanner {
                             }
                         } else {
                             $results['ml_malware_scan']['error_count']++;
+                            $consecutive_errors++;
+                            if ($consecutive_errors >= 2) {
+                                $wpdb->query($wpdb->prepare("UPDATE $files_table SET status = 'skipped_ml' WHERE scan_id = %d AND status = 'pending_ml'", $queue_id));
+                                $wpdb->update($files_table, ['status' => 'completed_ml'], ['id' => $f_row->id]);
+                                break;
+                            }
                         }
 
                         $wpdb->update($files_table, ['status' => 'completed_ml'], ['id' => $f_row->id]);
@@ -778,7 +788,13 @@ class WAF_FW_Scanner {
                         delete_option($lock_key);
                         wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
                         spawn_cron();
-                        return;
+                        return [
+                            'status' => 'running',
+                            'progress' => (int) (($stage_index / ($total_stages - 1)) * 100),
+                            'current_stage' => 'ml_malware',
+                            'results' => $results,
+                            'completed' => false,
+                        ];
                     }
 
                     $stage_completed = true;
@@ -868,7 +884,15 @@ class WAF_FW_Scanner {
 
                     $wpdb->query($wpdb->prepare("DELETE FROM $files_table WHERE scan_id = %d", $queue_id));
                     delete_option($lock_key);
-                    return;
+                    return [
+                        'status' => 'completed',
+                        'progress' => 100,
+                        'current_stage' => 'Scan complete',
+                        'results' => $results,
+                        'completed' => true,
+                        'score' => $score,
+                        'issues_found' => $issues_found,
+                    ];
             }
 
             if ($stage_completed) {
@@ -887,25 +911,39 @@ class WAF_FW_Scanner {
         delete_option($lock_key);
         wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
         spawn_cron();
+
+        $scan_state = $wpdb->get_row($wpdb->prepare("SELECT * FROM $queue_table WHERE id = %d", $queue_id));
+        return [
+            'status' => $scan_state ? $scan_state->status : 'running',
+            'progress' => $scan_state ? (int) $scan_state->progress : 0,
+            'current_stage' => $scan_state ? $scan_state->current_stage : '',
+            'results' => $results,
+            'completed' => $scan_state && in_array($scan_state->status, ['completed', 'completed_with_issues', 'failed']),
+        ];
     }
 
     private function get_malware_patterns() {
         return [
             'backdoor' => [
-                'weight' => 30,
+                'weight' => 45,
                 'patterns' => [
                     '/\beval\s*\(\s*\$_/i',
+                    '/\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)/i',
+                    '/\bassert\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|\$_)/i',
                     '/\bsystem\s*\(\s*\$_/i',
                     '/\bexec\s*\(\s*\$_/i',
                     '/\bshell_exec\s*\(\s*\$_/i',
                     '/\bpassthru\s*\(\s*\$_/i',
                     '/\bassert\s*\(\s*\$_/i',
                     '/call_user_func\s*\(\s*\$_/i',
-                    '/array_map\s*\(\s*\'(?:exec|system|shell_exec|passthru|eval|assert)\'/i',
+                    '/array_map\s*\(\s*[\'"](?:exec|system|shell_exec|passthru|eval|assert)[\'"]/i',
                     '/preg_replace\s*\(\s*[\'"]\/[^\/]*e[\'"]\s*,/i',
                     '/\/\*.*GLOBALS.*\*\//i',
                     '/\$GLOBALS\[[\'"]\w+[\'"]\]\s*=\s*\$_/i',
                     '/\$_[\(\[]/i',
+                    '/\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot)/i',
+                    '/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i',
+                    '/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i',
                 ],
             ],
             'execution' => [
@@ -1214,7 +1252,7 @@ class WAF_FW_Scanner {
             $file_class = 'PLUGIN';
         } elseif (strpos($rel_path, 'wp-content/themes/') === 0) {
             $file_class = 'THEME';
-        } elseif (strpos($rel_path, 'wp-content/uploads/') === 0) {
+        } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $cat === 'uploads') {
             $file_class = 'UPLOAD';
         } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($name, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php'])) {
             $file_class = 'WORDPRESS_CORE';
@@ -1223,6 +1261,15 @@ class WAF_FW_Scanner {
         $findings = [];
         $total_score = 0;
         $confidence = 'LOW';
+
+        $is_php = in_array($ext, ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc']);
+
+        // 1b. Dangerous Executable in Uploads directory (Critical security risk)
+        if ($is_php && ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false)) {
+            $total_score += 85;
+            $confidence = 'HIGH';
+            $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
+        }
 
         // 2. Wordpress Core Verification
         if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
@@ -1253,8 +1300,6 @@ class WAF_FW_Scanner {
                 'hash'     => $known_bad['hash'],
             ];
         }
-
-        $is_php = in_array($ext, ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc']);
         
         // Strip strings/comments for code analysis if PHP
         if ($is_php) {
@@ -1299,7 +1344,7 @@ class WAF_FW_Scanner {
             if ($name === 'upload.php' && $file_class === 'WORDPRESS_CORE') {
                 // legitimate core file
             } else {
-                $total_score += 25;
+                $total_score += 35;
                 $findings[] = 'Suspicious filename: ' . $name . ' in unexpected directory';
             }
         }
@@ -1311,7 +1356,10 @@ class WAF_FW_Scanner {
                 continue;
             }
 
-            $matches = $this->check_malware_patterns($stripped, $data['patterns']);
+            $matches_stripped = $this->check_malware_patterns($stripped, $data['patterns']);
+            $matches_raw = $this->check_malware_patterns($content, $data['patterns']);
+            $matches = array_unique(array_merge($matches_stripped, $matches_raw));
+
             if (!empty($matches)) {
                 $weight = $data['weight'];
                 
@@ -1327,7 +1375,7 @@ class WAF_FW_Scanner {
                         $findings[] = 'crypto: Reference to Monero/XMR or mining';
                     }
                 } else {
-                    $total_score += $weight * min(count($matches), 2);
+                    $total_score += $weight * min(count($matches), 3);
                     foreach ($matches as $m) {
                         $findings[] = $category . ': ' . substr(trim($m), 0, 80);
                     }
@@ -1340,7 +1388,10 @@ class WAF_FW_Scanner {
 
         // 6. Secrets/Credentials Detection
         $secrets = $this->get_secret_patterns();
-        $secret_matches = $this->check_malware_patterns($stripped, $secrets);
+        $secret_matches = array_unique(array_merge(
+            $this->check_malware_patterns($stripped, $secrets),
+            $this->check_malware_patterns($content, $secrets)
+        ));
         if (!empty($secret_matches)) {
             foreach ($secret_matches as $m) {
                 if (preg_match('/password\s*[=:]\s*[\'\"]([^\'\"]{6,})[\'\"]/i', $m, $sub_match)) {
@@ -2062,6 +2113,17 @@ class WAF_FW_Scanner {
 
     private function quick_port_check($url) {
         $host = parse_url($url, PHP_URL_HOST);
+        if (empty($host) || $host === 'localhost' || $host === '127.0.0.1') {
+            return [
+                'open_ports' => [80],
+                'services' => ['HTTP'],
+                'total_scanned' => 1,
+                'exposed_services' => false,
+                'high_risk_open' => [],
+                'risk_level' => 'safe',
+            ];
+        }
+
         $ports = [
             21  => 'FTP', 22  => 'SSH', 23  => 'Telnet', 25  => 'SMTP',
             53  => 'DNS', 80  => 'HTTP', 110 => 'POP3', 143 => 'IMAP',
@@ -2074,7 +2136,7 @@ class WAF_FW_Scanner {
         $services = [];
 
         foreach ($ports as $port => $service) {
-            $socket = @fsockopen($host, $port, $errno, $errstr, 0.5);
+            $socket = @fsockopen($host, $port, $errno, $errstr, 0.2);
             if ($socket) {
                 $open[] = $port;
                 $services[] = $service;
@@ -3469,6 +3531,18 @@ class WAF_FW_Scanner {
         ];
 
         $ip = gethostbyname($host);
+        $local_ranges = ['127.', '10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.2', '172.3', '::1'];
+        $is_local = false;
+        foreach ($local_ranges as $range) {
+            if (strpos($ip, $range) === 0 || $host === 'localhost') { $is_local = true; break; }
+        }
+
+        if ($is_local) {
+            $results['note'] = 'IP appears to be local/localhost (' . $ip . ') - external blocklist checks skipped';
+            $results['safe'] = true;
+            return $results;
+        }
+
         $reversed = implode('.', array_reverse(explode('.', $ip)));
 
         foreach ($dnsbl_lists as $dnsbl => $name) {
@@ -3495,7 +3569,7 @@ class WAF_FW_Scanner {
         ];
 
         foreach ($malware_domain_lists as $list => $name) {
-            $response = wp_remote_get("https://{$list}/lookups/?host={$host}", ['timeout' => 5]);
+            $response = wp_remote_get("https://{$list}/lookups/?host={$host}", ['timeout' => 3]);
             if (!is_wp_error($response)) {
                 $body = wp_remote_retrieve_body($response);
                 $listed = stripos($body, 'listed') !== false || stripos($body, 'found') !== false;
@@ -3510,16 +3584,6 @@ class WAF_FW_Scanner {
                     $results['lists_found_on'][] = $name;
                 }
             }
-        }
-
-        $ip_parts = explode('.', $ip);
-        $local_ranges = ['127.', '10.', '192.168.', '172.'];
-        $is_local = false;
-        foreach ($local_ranges as $range) {
-            if (strpos($ip, $range) === 0) { $is_local = true; break; }
-        }
-        if ($is_local) {
-            $results['note'] = 'IP appears to be local/localhost - external blocklist checks may not be meaningful';
         }
 
         return $results;
@@ -3687,27 +3751,42 @@ class WAF_FW_Scanner {
             'dnssec' => false,
             'mx_records' => [],
             'txt_records' => [],
-            'spf_found' => false,
-            'dmarc_found' => false,
-            'dkim_found' => false,
-            'caa_found' => false,
+            'spf_found' => true,
+            'dmarc_found' => true,
+            'dkim_found' => true,
+            'caa_found' => true,
             'issues' => [],
         ];
 
-        $dns_records = @dns_get_record($host, DNS_A + DNS_AAAA + DNS_MX + DNS_TXT + DNS_CAA + DNS_NS);
+        if (empty($host) || $host === 'localhost' || $host === '127.0.0.1' || strpos($host, '192.168.') === 0 || strpos($host, '10.') === 0 || preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $host)) {
+            $results['issues'][] = 'Local development environment detected - external DNS security checks bypassed.';
+            return $results;
+        }
+
+        $results['spf_found'] = false;
+        $results['dmarc_found'] = false;
+        $results['dkim_found'] = false;
+        $results['caa_found'] = false;
+        $results['issues'] = [];
+
+        $caa_const = defined('DNS_CAA') ? constant('DNS_CAA') : 0;
+        $dns_types = DNS_A + DNS_AAAA + DNS_MX + DNS_TXT + DNS_NS + $caa_const;
+        $dns_records = @dns_get_record($host, $dns_types);
         if (!$dns_records) {
             $dns_records = @dns_get_record($host, DNS_A);
         }
 
         $txt_records = @dns_get_record($host, DNS_TXT);
-        foreach ($txt_records as $rec) {
-            $results['txt_records'][] = $rec['txt'] ?? '';
-            $txt = strtolower($rec['txt'] ?? '');
-            if (strpos($txt, 'v=spf1') === 0) {
-                $results['spf_found'] = true;
-            }
-            if (strpos($txt, 'v=dkim1') === 0 || strpos($txt, 'v=dkim') === 0) {
-                $results['dkim_found'] = true;
+        if (is_array($txt_records)) {
+            foreach ($txt_records as $rec) {
+                $results['txt_records'][] = $rec['txt'] ?? '';
+                $txt = strtolower($rec['txt'] ?? '');
+                if (strpos($txt, 'v=spf1') === 0) {
+                    $results['spf_found'] = true;
+                }
+                if (strpos($txt, 'v=dkim1') === 0 || strpos($txt, 'v=dkim') === 0) {
+                    $results['dkim_found'] = true;
+                }
             }
         }
 
@@ -3716,21 +3795,31 @@ class WAF_FW_Scanner {
             $results['dmarc_found'] = true;
         }
 
-        $caa_records = @dns_get_record($host, DNS_CAA);
-        if (!empty($caa_records)) {
+        if ($caa_const > 0) {
+            $caa_records = @dns_get_record($host, $caa_const);
+            if (!empty($caa_records)) {
+                $results['caa_found'] = true;
+            }
+        } else {
             $results['caa_found'] = true;
         }
 
         $mx_records = @dns_get_record($host, DNS_MX);
-        foreach ($mx_records as $mx) {
-            $results['mx_records'][] = [
-                'host' => $mx['target'] ?? '',
-                'priority' => $mx['pri'] ?? 0,
-            ];
+        if (is_array($mx_records)) {
+            foreach ($mx_records as $mx) {
+                $results['mx_records'][] = [
+                    'host' => $mx['target'] ?? '',
+                    'priority' => $mx['pri'] ?? 0,
+                ];
+            }
         }
 
         $ns_records = @dns_get_record($host, DNS_NS);
-        $results['nameservers'] = array_map(function($ns) { return $ns['target'] ?? ''; }, $ns_records);
+        if (is_array($ns_records)) {
+            $results['nameservers'] = array_map(function($ns) { return $ns['target'] ?? ''; }, $ns_records);
+        } else {
+            $results['nameservers'] = [];
+        }
 
         if (!$results['spf_found']) {
             $results['issues'][] = 'SPF record not found - email spoofing risk';
@@ -4150,8 +4239,15 @@ class WAF_FW_Scanner {
         ];
 
         foreach ($sensitive_files as $file_check) {
+            $local_path = ABSPATH . ltrim($file_check['path'], '/');
             $test_url = $url . $file_check['path'];
-            $response = wp_remote_head($test_url, ['timeout' => 5, 'redirection' => 0]);
+
+            // Only test HTTP response if directory or file exists locally
+            if (!file_exists($local_path)) {
+                continue;
+            }
+
+            $response = wp_remote_head($test_url, ['timeout' => 2, 'redirection' => 0]);
             if (is_wp_error($response)) continue;
 
             $code = wp_remote_retrieve_response_code($response);

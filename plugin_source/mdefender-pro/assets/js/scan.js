@@ -106,7 +106,7 @@
 
     function scheduleContinue() {
         if (scanRetryTimer) clearTimeout(scanRetryTimer);
-        scanRetryTimer = setTimeout(continueScanning, 2000); // Poll status every 2 seconds
+        scanRetryTimer = setTimeout(continueScanning, 1200);
     }
 
     function continueScanning() {
@@ -114,12 +114,15 @@
         if (scanPaused) return;
 
         $.ajax({
-            url: ajaxurl + '?action=waf_fw_get_scan_status&queue_id=' + scanQueueId,
-            method: 'GET',
+            url: ajaxurl + '?action=waf_fw_continue_scan',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ queue_id: scanQueueId, cell_index: scanCellIndex }),
             success: function(r) {
                 if (r.success && r.data) {
                     var data = r.data;
-                    if (data.status === 'completed' || data.status === 'completed_with_issues') {
+                    scanCellIndex = data.cell_index || (scanCellIndex + 1);
+                    if (data.status === 'completed' || data.status === 'completed_with_issues' || data.completed) {
                         scanComplete(data);
                     } else if (data.status === 'failed') {
                         scanError(data.last_error || 'Scan execution failed');
@@ -128,7 +131,7 @@
                         scanPaused = false;
                         stopElapsedTimer();
                         $('#wafScanProgress').hide();
-                        $('#wafStartScan').prop('disabled', false).text('Start Scan');
+                        resetScanButtons();
                         $('#wafPauseScan').hide();
                         $('#wafCancelScan').hide();
                     } else {
