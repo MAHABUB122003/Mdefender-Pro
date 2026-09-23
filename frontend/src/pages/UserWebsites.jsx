@@ -8,7 +8,9 @@ export default function UserWebsites() {
   const [data, setData] = useState(() => cachedData)
   const [loading, setLoading] = useState(() => !cachedData)
   const [newWebsite, setNewWebsite] = useState('')
+  const [platform, setPlatform] = useState('wordpress')
   const [adding, setAdding] = useState(false)
+  const [feedbackMsg, setFeedbackMsg] = useState(null)
 
   const userPlan = data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free'
   const isPremium = userPlan === 'premium'
@@ -18,11 +20,15 @@ export default function UserWebsites() {
   const [modalKey, setModalKey] = useState('')
   const [modalDomain, setModalDomain] = useState('')
   const [modalWebsiteId, setModalWebsiteId] = useState('')
-  const [modalTab, setModalTab] = useState('express') // 'express' | 'wordpress' | 'env'
+  const [modalTab, setModalTab] = useState('wordpress')
   const [isMasked, setIsMasked] = useState(true)
   const [copiedKey, setCopiedKey] = useState(false)
+  const [copiedEndpoint, setCopiedEndpoint] = useState(false)
   const [copiedSnippet, setCopiedSnippet] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
+
+  // Upgrade prompt modal state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const apiEndpoint = window.location.origin
 
@@ -33,7 +39,7 @@ export default function UserWebsites() {
       userStore.set('websites', result)
       userStore.set('dashboard', result)
     } catch (err) {
-      console.error(err)
+      console.error('Error fetching websites dashboard:', err)
     } finally {
       setLoading(false)
     }
@@ -45,24 +51,27 @@ export default function UserWebsites() {
 
   const handleAddWebsite = async (e) => {
     e.preventDefault()
+    setFeedbackMsg(null)
     if (!newWebsite.trim()) return
 
-    const cleanDomain = newWebsite.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-    if (!cleanDomain) {
-      alert('Please enter a valid website domain.')
-      return
-    }
+    // Clean up domain: strip http(s)://, trailing slash, path
+    let cleanDomain = newWebsite.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    cleanDomain = cleanDomain.split('/')[0].trim().toLowerCase()
 
-    if (!isPremium && data?.websites?.length >= 1) {
-      alert('Free plan is limited to 1 website. Upgrade to Premium to connect unlimited websites.')
+    if (!cleanDomain) {
+      setFeedbackMsg({ type: 'error', text: 'Please enter a valid website domain or hostname.' })
       return
     }
 
     setAdding(true)
     try {
-      const res = await api.addUserWebsite({ domain: cleanDomain })
+      const res = await api.addUserWebsite({ domain: cleanDomain, platform })
       if (res?.status === 'error') {
-        alert(res.message || 'Failed to connect website.')
+        if (res.message && res.message.toLowerCase().includes('upgrade to premium')) {
+          setShowUpgradeModal(true)
+        } else {
+          setFeedbackMsg({ type: 'error', text: res.message || 'Failed to connect website.' })
+        }
         return
       }
 
@@ -70,15 +79,22 @@ export default function UserWebsites() {
       setModalKey(siteKey)
       setModalDomain(cleanDomain)
       setModalWebsiteId(res?.website?._id || res?.website?.id || '')
+      setModalTab(platform === 'node' || platform === 'express' ? 'express' : (platform || 'wordpress'))
       setIsMasked(false)
       setShowKeyModal(true)
 
       setNewWebsite('')
+      setFeedbackMsg({ type: 'success', text: `Website "${cleanDomain}" connected successfully!` })
       userStore.remove('websites')
       userStore.remove('dashboard')
       await fetchData()
     } catch (err) {
-      alert(err.message || 'Failed to connect website. Please try again.')
+      const errMsg = err.message || 'Failed to connect website. Please try again.'
+      if (errMsg.toLowerCase().includes('upgrade') || errMsg.toLowerCase().includes('limit')) {
+        setShowUpgradeModal(true)
+      } else {
+        setFeedbackMsg({ type: 'error', text: errMsg })
+      }
     } finally {
       setAdding(false)
     }
@@ -89,11 +105,17 @@ export default function UserWebsites() {
     const id = w.id || w._id || ''
     setModalDomain(domain)
     setModalWebsiteId(id)
-    // If a site-specific key is not cached, fallback to user account API key
     const key = w.api_key || data?.api_key || ''
     setModalKey(key)
     setIsMasked(true)
-    setModalTab('express')
+
+    const p = (w.platform || '').toLowerCase()
+    if (p.includes('express') || p.includes('node')) setModalTab('express')
+    else if (p.includes('python') || p.includes('fastapi') || p.includes('django')) setModalTab('python')
+    else if (p.includes('react')) setModalTab('react')
+    else if (p.includes('php') || p.includes('laravel')) setModalTab('php')
+    else setModalTab('wordpress')
+
     setShowKeyModal(true)
   }
 
@@ -121,14 +143,15 @@ export default function UserWebsites() {
   const handleRemoveWebsite = async (w) => {
     const targetId = (typeof w === 'object') ? (w.id || w._id || w.domain || w.name) : w
     const domainName = (typeof w === 'object') ? (w.domain || w.name || w.url || 'this website') : w
-    if (!confirm(`Are you sure you want to remove ${domainName}?`)) return
+    if (!confirm(`Are you sure you want to remove ${domainName}? This will disconnect all protection.`)) return
     try {
       await api.removeUserWebsite(targetId)
+      setFeedbackMsg({ type: 'success', text: `Website "${domainName}" removed.` })
       userStore.remove('websites')
       userStore.remove('dashboard')
       fetchData()
     } catch (err) {
-      alert(err.message || 'Failed to remove website')
+      setFeedbackMsg({ type: 'error', text: err.message || 'Failed to remove website' })
     }
   }
 
@@ -137,7 +160,15 @@ export default function UserWebsites() {
     const ok = await copyToClipboard(modalKey)
     if (ok) {
       setCopiedKey(true)
-      setTimeout(() => setCopiedKey(false), 2000)
+      setTimeout(() => setCopiedKey(false), 2200)
+    }
+  }
+
+  const handleCopyEndpoint = async () => {
+    const ok = await copyToClipboard(apiEndpoint)
+    if (ok) {
+      setCopiedEndpoint(true)
+      setTimeout(() => setCopiedEndpoint(false), 2200)
     }
   }
 
@@ -145,7 +176,7 @@ export default function UserWebsites() {
     const ok = await copyToClipboard(code)
     if (ok) {
       setCopiedSnippet(true)
-      setTimeout(() => setCopiedSnippet(false), 2000)
+      setTimeout(() => setCopiedSnippet(false), 2200)
     }
   }
 
@@ -181,7 +212,82 @@ app.get('/', (req, res) => {
 
 app.listen(3000, () => console.log('Server running on port 3000'));`
 
-  const envSnippet = `# .env file
+  const pythonSnippet = `# 1. Install required dependencies
+# pip install requests fastapi uvicorn
+
+import requests
+from fastapi import FastAPI, Request, HTTPException
+
+app = FastAPI()
+
+MDEFENDER_KEY = "${modalKey || 'YOUR_API_KEY_HERE'}"
+MDEFENDER_ENDPOINT = "${apiEndpoint}/api/v1/waf/analyze"
+
+@app.middleware("http")
+async def mdefender_waf_middleware(request: Request, call_next):
+    # Live WAF inspect
+    client_ip = request.client.host
+    try:
+        res = requests.post(MDEFENDER_ENDPOINT, json={
+            "api_key": MDEFENDER_KEY,
+            "ip": client_ip,
+            "path": request.url.path,
+            "method": request.method
+        }, timeout=0.8)
+        if res.status_code == 200 and res.json().get("action") == "block":
+            raise HTTPException(status_code=403, detail="Request blocked by MDefender Pro WAF")
+    except HTTPException:
+        raise
+    except Exception:
+        pass # Fail open on network glitch
+    return await call_next(request)`
+
+  const phpSnippet = `<?php
+// 1. MDefender Pro PHP Integration
+define('MDEFENDER_API_KEY', '${modalKey || 'YOUR_API_KEY_HERE'}');
+define('MDEFENDER_API_ENDPOINT', '${apiEndpoint}');
+
+function mdefender_waf_protect() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $uri = $_SERVER['REQUEST_URI'] ?? '/';
+    
+    $payload = json_encode([
+        'api_key' => MDEFENDER_API_KEY,
+        'ip' => $ip,
+        'path' => $uri,
+        'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET'
+    ]);
+    
+    $ch = curl_init(MDEFENDER_API_ENDPOINT . '/api/v1/waf/analyze');
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 800);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    
+    $result = json_decode($response, true);
+    if ($result && isset($result['action']) && $result['action'] === 'block') {
+        http_response_code(403);
+        die('<h1>403 Forbidden</h1><p>Access blocked by MDefender Pro WAF.</p>');
+    }
+}
+mdefender_waf_protect();
+?>`
+
+  const reactSnippet = `// 1. Install official NPM package
+// npm install mdefender-pro
+
+import { initWaf } from 'mdefender-pro/client';
+
+// 2. Initialize in your main.jsx or App.jsx
+initWaf({
+  apiKey: '${modalKey || 'YOUR_API_KEY_HERE'}',
+  backendUrl: '${apiEndpoint}',
+  mode: 'block'
+});`
+
+  const envSnippet = `# .env Configuration
 MDEFENDER_API_KEY=${modalKey || 'YOUR_API_KEY_HERE'}
 MDEFENDER_DOMAIN=${modalDomain || 'yourdomain.com'}
 MDEFENDER_API_ENDPOINT=${apiEndpoint}
@@ -198,8 +304,8 @@ MDEFENDER_MODE=block`
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <i className="fas fa-crown" style={{ fontSize: '20px', color: '#d97706' }}></i>
             <div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400e' }}>Free Plan: 1 Website Limit</div>
-              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Premium for unlimited protected domains, real-time ML rules & priority support.</div>
+              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400e' }}>Free Tier Active</div>
+              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Premium for unlimited protected domains, real-time ML rules &amp; priority telemetry.</div>
             </div>
           </div>
           <a href="/user/settings" style={{
@@ -208,6 +314,28 @@ MDEFENDER_MODE=block`
           }}>
             <i className="fas fa-arrow-up"></i> Upgrade to Premium
           </a>
+        </div>
+      )}
+
+      {/* Feedback Banner */}
+      {feedbackMsg && (
+        <div style={{
+          padding: '12px 18px', borderRadius: '10px', marginBottom: '20px', fontSize: '13.5px', fontWeight: '600',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: feedbackMsg.type === 'success' ? '#ecfdf5' : '#fef2f2',
+          border: `1px solid ${feedbackMsg.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
+          color: feedbackMsg.type === 'success' ? '#065f46' : '#991b1b',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <i className={`fas ${feedbackMsg.type === 'success' ? 'fa-check-circle' : 'fa-circle-exclamation'}`}></i>
+            <span>{feedbackMsg.text}</span>
+          </div>
+          <button
+            onClick={() => setFeedbackMsg(null)}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '16px' }}
+          >
+            &times;
+          </button>
         </div>
       )}
 
@@ -221,35 +349,58 @@ MDEFENDER_MODE=block`
             <i className="fas fa-plus"></i>
           </span>
           Connect New Website
-          {!isPremium && data?.websites?.length >= 1 && (
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#d97706', background: '#fef3c7', padding: '2px 8px', borderRadius: '6px', marginLeft: '6px' }}>LIMIT REACHED</span>
-          )}
         </h3>
 
-        <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            placeholder={(!isPremium && data?.websites?.length >= 1) ? "Upgrade to Premium to add more domains" : "e.g. mycompany.com or store.example.org"}
-            value={newWebsite}
-            onChange={e => setNewWebsite(e.target.value)}
-            disabled={!isPremium && data?.websites?.length >= 1}
-            style={{
-              flex: '1 1 280px', height: '46px', padding: '0 16px', border: '1.5px solid var(--border-color, #cbd5e1)', borderRadius: '10px',
-              fontSize: '14px', fontFamily: 'inherit', background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontWeight: '600'
-            }}
-            required
-          />
+        <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Domain input */}
+          <div style={{ flex: '2 1 240px', position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="e.g. mycompany.com or store.example.org"
+              value={newWebsite}
+              onChange={e => setNewWebsite(e.target.value)}
+              style={{
+                width: '100%', height: '46px', padding: '0 16px', border: '1.5px solid var(--border-color, #cbd5e1)', borderRadius: '10px',
+                fontSize: '14px', fontFamily: 'inherit', background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontWeight: '600',
+                boxSizing: 'border-box'
+              }}
+              required
+            />
+          </div>
+
+          {/* Platform select */}
+          <div style={{ flex: '1 1 180px' }}>
+            <select
+              value={platform}
+              onChange={e => setPlatform(e.target.value)}
+              style={{
+                width: '100%', height: '46px', padding: '0 14px', border: '1.5px solid var(--border-color, #cbd5e1)', borderRadius: '10px',
+                fontSize: '13.5px', fontFamily: 'inherit', background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontWeight: '600',
+                boxSizing: 'border-box', cursor: 'pointer'
+              }}
+            >
+              <option value="wordpress">WordPress Plugin</option>
+              <option value="express">Node.js / Express</option>
+              <option value="python">Python / FastAPI / Django</option>
+              <option value="php">PHP / Laravel</option>
+              <option value="react">React / Frontend SPA</option>
+              <option value="other">Custom API / Other</option>
+            </select>
+          </div>
+
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={adding || (!isPremium && data?.websites?.length >= 1)}
+            disabled={adding}
             className="btn-primary"
             style={{
               height: '46px', padding: '0 26px', borderRadius: '10px', fontSize: '14px', fontWeight: '700',
-              display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: (adding || (!isPremium && data?.websites?.length >= 1)) ? 'not-allowed' : 'pointer',
-              opacity: (!isPremium && data?.websites?.length >= 1) ? 0.6 : 1
+              display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: adding ? 'not-allowed' : 'pointer',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#ffffff', border: 'none',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', flexShrink: 0
             }}
           >
-            <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-shield'}`}></i>
+            <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-shield-halved'}`}></i>
             <span>{adding ? 'Connecting...' : 'Add & Protect'}</span>
           </button>
         </form>
@@ -269,8 +420,9 @@ MDEFENDER_MODE=block`
               Manage website API keys, protection status, and integration settings.
             </p>
           </div>
-          <button onClick={fetchData} className="btn-small" style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-            <i className="fas fa-rotate" style={{ marginRight: '6px' }}></i>Refresh
+          <button onClick={fetchData} className="btn-small" style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <i className="fas fa-rotate"></i>
+            <span>Refresh</span>
           </button>
         </div>
 
@@ -343,84 +495,170 @@ MDEFENDER_MODE=block`
       </div>
 
       {/* ========================================================================= */}
-      {/* HIGH-END API KEY & INTEGRATION DRAWER/MODAL */}
+      {/* ENTERPRISE-GRADE PRO API KEY & INTEGRATION HUB MODAL */}
       {/* ========================================================================= */}
       {showKeyModal && (
         <div
           onClick={() => setShowKeyModal(false)}
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(7, 10, 19, 0.78)', backdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
-            padding: '20px'
+            padding: '24px 16px',
+            animation: 'fadeIn 0.2s ease-out'
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.3)', width: '100%', maxWidth: '640px',
-              maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column'
+              background: '#0d1322', borderRadius: '22px',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 30px 90px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(56, 189, 248, 0.1)',
+              width: '100%', maxWidth: '720px', maxHeight: '90vh',
+              overflowY: 'auto', display: 'flex', flexDirection: 'column',
+              color: '#f8fafc',
+              position: 'relative'
             }}
           >
+            {/* Modal Ambient Glow Background */}
+            <div style={{
+              position: 'absolute', top: '-60px', right: '-60px', width: '240px', height: '240px',
+              background: 'radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(37, 99, 235, 0.05) 50%, transparent 70%)',
+              pointerEvents: 'none', zIndex: 0
+            }}></div>
+            <div style={{
+              position: 'absolute', top: '40%', left: '-80px', width: '200px', height: '200px',
+              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
+              pointerEvents: 'none', zIndex: 0
+            }}></div>
+
             {/* Modal Header */}
-            <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', padding: '22px 28px', color: '#ffffff', borderTopLeftRadius: '17px', borderTopRightRadius: '17px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #38bdf8, #0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>
+            <div style={{
+              position: 'relative', zIndex: 1,
+              padding: '26px 30px 22px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0) 100%)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px', height: '46px', borderRadius: '13px',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  boxShadow: '0 8px 20px -4px rgba(2, 132, 199, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '20px', color: '#ffffff'
+                }}>
                   <i className="fas fa-key"></i>
                 </div>
                 <div>
-                  <h3 style={{ margin: '0 0 2px', fontSize: '17px', fontWeight: '800', color: '#fff' }}>
-                    API Key &amp; Integration Guide
-                  </h3>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                    Domain: <strong style={{ color: '#38bdf8' }}>{modalDomain}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.2px' }}>
+                      API Key &amp; Integration Hub
+                    </h3>
+                    <span style={{
+                      fontSize: '11px', fontWeight: '700', color: '#10b981',
+                      background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)',
+                      padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                      Active WAF
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Target Host:</span>
+                    <strong style={{ color: '#38bdf8', fontFamily: 'Consolas, Monaco, monospace' }}>{modalDomain}</strong>
                   </div>
                 </div>
               </div>
+
+              {/* Close Button */}
               <button
                 onClick={() => setShowKeyModal(false)}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#cbd5e1', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                aria-label="Close modal"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#94a3b8', width: '36px', height: '36px', borderRadius: '10px',
+                  cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.color = '#ffffff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
               >
-                &times;
+                <i className="fas fa-xmark"></i>
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '24px 28px' }}>
-              {/* API Key Box */}
-              <div style={{ marginBottom: '22px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Website Secret API Key
-                  </label>
+            <div style={{ position: 'relative', zIndex: 1, padding: '26px 30px' }}>
+              
+              {/* API Key Vault Card */}
+              <div style={{
+                background: 'linear-gradient(145deg, #131d31, #0a0f1d)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
+                borderRadius: '16px', padding: '18px 20px', marginBottom: '24px',
+                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(0, 0, 0, 0.3)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fas fa-lock" style={{ fontSize: '12px', color: '#38bdf8' }}></i>
+                    <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#cbd5e1' }}>
+                      Secret API Key
+                    </span>
+                    <span style={{
+                      fontSize: '10px', fontWeight: '700', color: '#94a3b8',
+                      background: 'rgba(255, 255, 255, 0.06)', padding: '1px 6px', borderRadius: '4px',
+                      marginLeft: '4px'
+                    }}>
+                      PRODUCTION
+                    </span>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setIsMasked(!isMasked)}
-                    style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)',
+                      color: '#38bdf8', padding: '4px 10px', borderRadius: '6px',
+                      fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: '5px',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.18)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.08)'; }}
                   >
                     <i className={`fas ${isMasked ? 'fa-eye' : 'fa-eye-slash'}`}></i>
                     <span>{isMasked ? 'Reveal Key' : 'Hide Key'}</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                {/* Key Display & One-Click Copy */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: '#060913', border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px', padding: '6px 6px 6px 14px'
+                }}>
                   <div style={{
-                    flex: 1, padding: '12px 16px', background: '#0f172a', border: '1.5px solid #334155',
-                    borderRadius: '10px', fontSize: '13.5px', fontFamily: 'Consolas, Monaco, monospace',
-                    color: '#38bdf8', wordBreak: 'break-all', userSelect: 'all', fontWeight: '700',
-                    display: 'flex', alignItems: 'center'
+                    flex: 1, fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                    fontSize: '13.5px', color: isMasked ? '#64748b' : '#38bdf8',
+                    letterSpacing: isMasked ? '2px' : '0.4px', wordBreak: 'break-all',
+                    fontWeight: '700', userSelect: isMasked ? 'none' : 'all'
                   }}>
-                    {isMasked ? (modalKey ? '•'.repeat(Math.min(modalKey.length, 36)) : '••••••••••••••••••••••••••••••••••••') : (modalKey || 'No key generated')}
+                    {isMasked
+                      ? (modalKey ? '•'.repeat(Math.min(modalKey.length || 32, 34)) : '••••••••••••••••••••••••••••••••')
+                      : (modalKey || 'No API key generated')}
                   </div>
+
                   <button
                     type="button"
                     onClick={handleCopyKey}
                     style={{
-                      padding: '0 20px', background: '#0284c7', color: '#ffffff', border: 'none',
-                      borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '13px',
-                      display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'background 0.2s',
-                      whiteSpace: 'nowrap'
+                      padding: '10px 18px',
+                      background: copiedKey ? '#10b981' : 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                      color: '#ffffff', border: 'none', borderRadius: '8px',
+                      cursor: 'pointer', fontWeight: '700', fontSize: '12.5px',
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      boxShadow: copiedKey ? '0 0 16px rgba(16, 185, 129, 0.4)' : '0 4px 12px rgba(2, 132, 199, 0.3)',
+                      transition: 'all 0.2s ease', whiteSpace: 'nowrap', flexShrink: 0
                     }}
                   >
                     <i className={`fas ${copiedKey ? 'fa-check' : 'fa-copy'}`}></i>
@@ -428,16 +666,23 @@ MDEFENDER_MODE=block`
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                  <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                    <i className="fas fa-lock" style={{ marginRight: '4px', color: '#10b981' }}></i>
-                    Keep this key private in your backend environment.
-                  </span>
+                {/* Security footer under key */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fas fa-shield-halved" style={{ color: '#10b981' }}></i>
+                    <span>Store this secret key securely in your environment variables.</span>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleRegenerateKey}
                     disabled={regenerating}
-                    style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    style={{
+                      background: 'none', border: 'none', color: '#f43f5e',
+                      fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      opacity: regenerating ? 0.6 : 1
+                    }}
                   >
                     <i className={`fas ${regenerating ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'}`}></i>
                     <span>{regenerating ? 'Regenerating...' : 'Regenerate Key'}</span>
@@ -445,132 +690,328 @@ MDEFENDER_MODE=block`
                 </div>
               </div>
 
-              {/* Integration Snippet Tabs */}
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
-                <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a', marginBottom: '12px' }}>
-                  <i className="fas fa-bolt" style={{ color: '#6366f1', marginRight: '6px' }}></i>Quick Integration (1-Minute Setup)
-                </div>
-
-                {/* Tabs switcher */}
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
-                  {[
-                    { id: 'express', label: 'Node.js / Express', icon: 'fa-node-js' },
-                    { id: 'wordpress', label: 'WordPress Plugin', icon: 'fa-wordpress' },
-                    { id: 'env', label: '.env / Config', icon: 'fa-file-code' },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setModalTab(tab.id)}
-                      style={{
-                        flex: 1, padding: '8px 12px', border: 'none', borderRadius: '7px',
-                        fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                        background: modalTab === tab.id ? '#ffffff' : 'transparent',
-                        color: modalTab === tab.id ? '#0f172a' : '#64748b',
-                        boxShadow: modalTab === tab.id ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                      }}
-                    >
-                      <i className={`fab ${tab.icon} ${modalTab === tab.id ? 'text-blue-500' : ''}`}></i>
-                      <span>{tab.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab 1: Express / Node */}
-                {modalTab === 'express' && (
+              {/* Integration Guides Hub */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <div>
-                    <div style={{ position: 'relative' }}>
-                      <pre style={{
-                        margin: 0, background: '#090d16', color: '#cbd5e1', padding: '16px 18px',
-                        borderRadius: '10px', fontSize: '12px', fontFamily: 'Consolas, Monaco, monospace',
-                        lineHeight: '1.5', overflowX: 'auto', maxHeight: '240px'
-                      }}>
-                        {expressSnippet}
-                      </pre>
-                      <button
-                        type="button"
-                        onClick={() => handleCopySnippet(expressSnippet)}
-                        style={{
-                          position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.15)',
-                          border: 'none', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
-                          fontWeight: '700', cursor: 'pointer'
-                        }}
-                      >
-                        <i className={`fas ${copiedSnippet ? 'fa-check text-green-400' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
-                        {copiedSnippet ? 'Copied' : 'Copy Code'}
-                      </button>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <i className="fas fa-bolt" style={{ color: '#f59e0b' }}></i>
+                      <span>Fast Integration (1-Minute Setup)</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                      Choose your backend or CMS stack for plug-and-play setup instructions.
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Tab 2: WordPress */}
+                {/* Modern Pill Tabs */}
+                <div style={{
+                  display: 'flex', gap: '6px', marginBottom: '16px',
+                  background: 'rgba(15, 23, 42, 0.8)', padding: '5px', borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.08)', flexWrap: 'wrap'
+                }}>
+                  {[
+                    { id: 'wordpress', label: 'WordPress', icon: 'fa-wordpress', color: '#38bdf8' },
+                    { id: 'express', label: 'Node / Express', icon: 'fa-node-js', color: '#22c55e' },
+                    { id: 'python', label: 'Python / FastAPI', icon: 'fa-python', color: '#facc15' },
+                    { id: 'php', label: 'PHP / Laravel', icon: 'fa-php', color: '#818cf8' },
+                    { id: 'react', label: 'React SPA', icon: 'fa-react', color: '#06b6d4' },
+                    { id: 'env', label: '.env Config', icon: 'fa-file-code', color: '#94a3b8' },
+                  ].map(tab => {
+                    const isActive = modalTab === tab.id
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setModalTab(tab.id)}
+                        style={{
+                          flex: '1 1 95px', padding: '8px 12px', border: 'none', borderRadius: '8px',
+                          fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                          background: isActive ? 'linear-gradient(135deg, #1e293b, #0f172a)' : 'transparent',
+                          color: isActive ? '#ffffff' : '#94a3b8',
+                          boxShadow: isActive ? '0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+                          border: isActive ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <i className={`fab ${tab.icon}`} style={{ color: isActive ? tab.color : 'inherit' }}></i>
+                        <span>{tab.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* ================= TAB 1: WordPress ================= */}
                 {modalTab === 'wordpress' && (
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px' }}>
-                    <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#334155', lineHeight: '1.8' }}>
-                      <li>Download the official <strong>MDefender Pro WordPress Plugin</strong> (.zip).</li>
-                      <li>In your WP Dashboard, go to <strong>Plugins &rarr; Add New &rarr; Upload Plugin</strong>.</li>
-                      <li>Activate the plugin and paste your <strong>Site Token / API Key</strong>:
-                        <div style={{ background: '#0f172a', color: '#38bdf8', padding: '6px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px', margin: '6px 0', wordBreak: 'break-all' }}>
-                          {modalKey || 'API_KEY_HERE'}
+                  <div style={{
+                    background: '#090d16', border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '14px', padding: '20px', color: '#e2e8f0'
+                  }}>
+                    {/* WordPress Download Card */}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(37, 99, 235, 0.05))',
+                      border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '12px',
+                      padding: '16px 18px', marginBottom: '18px', flexWrap: 'wrap', gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '42px', height: '42px', borderRadius: '10px',
+                          background: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', fontSize: '22px'
+                        }}>
+                          <i className="fab fa-wordpress"></i>
                         </div>
-                      </li>
-                      <li>Set API Endpoint to: <code style={{ fontWeight: '700' }}>{apiEndpoint}</code></li>
-                    </ol>
-                    <div style={{ marginTop: '14px' }}>
+                        <div>
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#ffffff' }}>
+                            MDefender Pro WordPress Security Plugin
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>
+                            Official release v2.0 • Real-time WAF &amp; Malware scanner
+                          </div>
+                        </div>
+                      </div>
+
                       <a
                         href="/api/v1/wordpress/download"
                         download="mdefender-pro.zip"
                         style={{
-                          display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px',
-                          background: '#10b981', color: '#ffffff', borderRadius: '8px', fontSize: '12.5px',
-                          fontWeight: '700', textDecoration: 'none'
+                          padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)',
+                          color: '#ffffff', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                          textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
                         }}
                       >
-                        <i className="fas fa-download"></i> Download mdefender-pro.zip
+                        <i className="fas fa-download"></i>
+                        <span>Download .ZIP</span>
                       </a>
+                    </div>
+
+                    {/* Step-by-Step Setup */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <span style={{
+                          width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38bdf8', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                          alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                        }}>1</span>
+                        <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#cbd5e1' }}>
+                          Upload the plugin in your WP Dashboard under <strong>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</strong> and click <strong>Activate</strong>.
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <span style={{
+                          width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38bdf8', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                          alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                        }}>2</span>
+                        <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#cbd5e1', flex: 1 }}>
+                          In WP Admin &rarr; <strong>MDefender Pro &rarr; Settings</strong>, paste your <strong>Site Secret API Key</strong>:
+                          <div style={{
+                            marginTop: '6px', background: '#040711', border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
+                            alignItems: 'center', gap: '8px'
+                          }}>
+                            <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#38bdf8', wordBreak: 'break-all', fontWeight: '700' }}>
+                              {modalKey || 'API_KEY_HERE'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCopyKey}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.08)', border: 'none', color: '#ffffff',
+                                padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                                cursor: 'pointer', whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <i className={`fas ${copiedKey ? 'fa-check text-green-400' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
+                              {copiedKey ? 'Copied' : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <span style={{
+                          width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38bdf8', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                          alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                        }}>3</span>
+                        <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#cbd5e1', flex: 1 }}>
+                          Set <strong>API Endpoint URL</strong> to:
+                          <div style={{
+                            marginTop: '6px', background: '#040711', border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
+                            alignItems: 'center', gap: '8px'
+                          }}>
+                            <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#a78bfa', fontWeight: '700' }}>
+                              {apiEndpoint}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCopyEndpoint}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.08)', border: 'none', color: '#ffffff',
+                                padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                                cursor: 'pointer', whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <i className={`fas ${copiedEndpoint ? 'fa-check text-green-400' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
+                              {copiedEndpoint ? 'Copied' : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Tab 3: .env */}
-                {modalTab === 'env' && (
-                  <div>
-                    <div style={{ position: 'relative' }}>
-                      <pre style={{
-                        margin: 0, background: '#090d16', color: '#38bdf8', padding: '16px 18px',
-                        borderRadius: '10px', fontSize: '12.5px', fontFamily: 'Consolas, Monaco, monospace',
-                        lineHeight: '1.6', overflowX: 'auto'
-                      }}>
-                        {envSnippet}
-                      </pre>
+                {/* ================= CODE TABS (Express, Python, PHP, React, .env) ================= */}
+                {modalTab !== 'wordpress' && (
+                  <div style={{
+                    background: '#070a13', border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '14px', overflow: 'hidden'
+                  }}>
+                    {/* IDE Header Bar */}
+                    <div style={{
+                      background: 'rgba(15, 23, 42, 0.9)', padding: '10px 16px',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                        </div>
+                        <span style={{ fontSize: '11.5px', fontFamily: 'Consolas, monospace', color: '#94a3b8', marginLeft: '6px', fontWeight: '600' }}>
+                          {modalTab === 'express' ? 'server.js' : modalTab === 'python' ? 'main.py' : modalTab === 'php' ? 'mdefender_waf.php' : modalTab === 'react' ? 'main.jsx' : '.env'}
+                        </span>
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => handleCopySnippet(envSnippet)}
+                        onClick={() => handleCopySnippet(
+                          modalTab === 'express' ? expressSnippet :
+                          modalTab === 'python' ? pythonSnippet :
+                          modalTab === 'php' ? phpSnippet :
+                          modalTab === 'react' ? reactSnippet : envSnippet
+                        )}
                         style={{
-                          position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.15)',
-                          border: 'none', color: '#fff', padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
-                          fontWeight: '700', cursor: 'pointer'
+                          background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.12)',
+                          color: '#ffffff', padding: '4px 12px', borderRadius: '6px', fontSize: '11.5px',
+                          fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
                         }}
                       >
-                        <i className={`fas ${copiedSnippet ? 'fa-check text-green-400' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
-                        {copiedSnippet ? 'Copied' : 'Copy'}
+                        <i className={`fas ${copiedSnippet ? 'fa-check text-green-400' : 'fa-copy'}`}></i>
+                        <span>{copiedSnippet ? 'Copied Code!' : 'Copy Code'}</span>
                       </button>
                     </div>
+
+                    {/* Pre Code Box */}
+                    <pre style={{
+                      margin: 0, padding: '16px 20px', color: '#e2e8f0',
+                      fontSize: '12.5px', fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                      lineHeight: '1.6', overflowX: 'auto', maxHeight: '250px', background: '#050811'
+                    }}>
+                      <code>
+                        {modalTab === 'express' && expressSnippet}
+                        {modalTab === 'python' && pythonSnippet}
+                        {modalTab === 'php' && phpSnippet}
+                        {modalTab === 'react' && reactSnippet}
+                        {modalTab === 'env' && envSnippet}
+                      </code>
+                    </pre>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div style={{ background: '#f8fafc', padding: '16px 28px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', borderBottomLeftRadius: '17px', borderBottomRightRadius: '17px' }}>
+            <div style={{
+              position: 'relative', zIndex: 1,
+              padding: '16px 30px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'rgba(15, 23, 42, 0.6)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-book-open" style={{ color: '#0284c7' }}></i>
+                <span>Need more setup help? Check the <a href="/docs" target="_blank" rel="noreferrer" style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: '700' }}>WAF Documentation &rarr;</a></span>
+              </div>
+
               <button
                 onClick={() => setShowKeyModal(false)}
                 className="btn-primary"
-                style={{ height: '38px', padding: '0 24px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}
+                style={{
+                  height: '40px', padding: '0 26px', borderRadius: '10px', fontSize: '13.5px', fontWeight: '800',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)', color: '#ffffff',
+                  border: 'none', boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)', cursor: 'pointer'
+                }}
               >
-                Done
+                Done &amp; Activated
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Limit Prompt Modal */}
+      {showUpgradeModal && (
+        <div
+          onClick={() => setShowUpgradeModal(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(7, 10, 19, 0.8)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#0f172a', borderRadius: '20px', border: '1px solid rgba(245, 158, 11, 0.3)',
+              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.6)', width: '100%', maxWidth: '480px',
+              padding: '30px', textAlign: 'center', color: '#f8fafc'
+            }}
+          >
+            <div style={{
+              width: '58px', height: '58px', borderRadius: '16px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px',
+              marginBottom: '18px', boxShadow: '0 8px 20px rgba(217, 119, 6, 0.3)'
+            }}>
+              <i className="fas fa-crown"></i>
+            </div>
+            <h3 style={{ fontSize: '19px', fontWeight: '800', color: '#ffffff', margin: '0 0 10px' }}>
+              Upgrade to Premium Plan
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#94a3b8', lineHeight: '1.6', margin: '0 0 24px' }}>
+              Your current plan website limit has been reached. Upgrade to Premium to connect unlimited websites, unlock real-time ML threat detection, and priority support.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(false)}
+                style={{
+                  padding: '11px 22px', background: 'rgba(255, 255, 255, 0.08)', color: '#cbd5e1', border: 'none',
+                  borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+              <a
+                href="/user/settings"
+                style={{
+                  padding: '11px 24px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '800',
+                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  boxShadow: '0 4px 14px rgba(217, 119, 6, 0.4)'
+                }}
+              >
+                <i className="fas fa-bolt"></i> Upgrade Now
+              </a>
             </div>
           </div>
         </div>

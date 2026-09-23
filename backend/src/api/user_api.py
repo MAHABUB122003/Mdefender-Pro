@@ -5,6 +5,7 @@ from src.services.email_service import EmailService
 from src.utils.api_key import generate_api_key
 from datetime import datetime, timedelta
 from bson import ObjectId
+import re
 import uuid
 import hashlib
 import logging
@@ -243,8 +244,9 @@ class UserAPI:
         if not domain:
             return {'status': 'error', 'message': 'Domain is required'}
 
-        # Normalize domain: remove protocol, www/trailing slashes, and lowercase
+        # Normalize domain: remove protocol, trailing slashes, and path
         domain = re.sub(r'^https?:\/\/', '', domain, flags=re.IGNORECASE).strip('/')
+        domain = domain.split('/')[0].strip().lower()
         if not domain:
             return {'status': 'error', 'message': 'Invalid domain format'}
 
