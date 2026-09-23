@@ -31,6 +31,9 @@ register_deactivation_hook(__FILE__, 'waf_fw_deactivate');
 
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-db.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-logger.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-semantic-deobfuscator.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-ja4-fingerprint.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-rasp-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/hardening/class-website-hardening.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/hardening/class-admin-panel-ip.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-rule-engine.php';
@@ -70,6 +73,9 @@ function waf_fw_activate() {
         }
         if (!wp_next_scheduled('waf_fw_cloud_heartbeat')) {
             wp_schedule_event(time(), 'hourly', 'waf_fw_cloud_heartbeat');
+        }
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
         }
     } catch (\Throwable $e) {
         error_log('MDefender-Pro activation error: ' . $e->getMessage());
@@ -224,6 +230,9 @@ function waf_fw_init() {
     WAF_FW_Login_Protector::instance()->register_hooks();
     WAF_FW_2FA::instance();
     WAF_FW_Website_Hardening::instance();
+    if (class_exists('WAF_FW_RASP_Engine')) {
+        WAF_FW_RASP_Engine::instance();
+    }
 }
 add_action('plugins_loaded', 'waf_fw_init');
 

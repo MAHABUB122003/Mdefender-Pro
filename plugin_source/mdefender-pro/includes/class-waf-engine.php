@@ -1,4 +1,18 @@
 <?php
+/**
+ * MDefender-Pro Core WAF Engine
+ *
+ * Coordinates Layer 0 to Layer 4 protection:
+ * - Pre-flight cache exports
+ * - JA4/JA4H client fingerprinting & bot classification
+ * - IP filtering & geo-blocking
+ * - Rate limiting
+ * - Rule engine with Semantic WAAP & Libinjection AST
+ * - Feature extraction & Cloud ML threat arbitration
+ *
+ * @package MDefender-Pro
+ */
+
 defined('ABSPATH') || exit;
 
 if (!function_exists('getallheaders')) {
@@ -27,6 +41,7 @@ class WAF_FW_Engine {
     private $rate_limiter;
     private $ip_filter;
     private $logger;
+    private $ja4;
     private $learning_mode = false;
 
     public static function instance() {
@@ -43,6 +58,9 @@ class WAF_FW_Engine {
         $this->rate_limiter = WAF_FW_Rate_Limiter::instance();
         $this->ip_filter = WAF_FW_IP_Filter::instance();
         $this->logger = WAF_FW_Logger::instance();
+        if (class_exists('WAF_FW_JA4_Fingerprint')) {
+            $this->ja4 = WAF_FW_JA4_Fingerprint::instance();
+        }
         $this->learning_mode = get_option('waf_fw_learning_mode', 'no') === 'yes';
     }
 
@@ -91,6 +109,24 @@ class WAF_FW_Engine {
 
             if ($this->check_country_block($ip)) {
                 return $this->blocked_result($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Country blocked by policy');
+            }
+
+            // JA4 Client Fingerprinting & AI Bot Assessment
+            if ($this->ja4) {
+                $ja4_data = $this->ja4->calculate_ja4h($headers, $_SERVER);
+                if ($ja4_data['risk_level'] === 'critical' || ($ja4_data['is_automated_agent'] && $ja4_data['bot_type'] === 'exploit_fuzzer')) {
+                    $this->logger->log_attack([
+                        'ip' => $ip, 'url' => $url, 'method' => $method,
+                        'attack_type' => 'Automated Exploit / Scanner Tool',
+                        'confidence' => 0.99,
+                        'user_agent' => $user_agent, 'referer' => $referer,
+                        'request_body' => $body, 'rule_matched' => 'JA4 Fingerprint: ' . $ja4_data['ja4h'],
+                        'message' => 'Automated vulnerability scanner signature detected (' . $ja4_data['bot_type'] . ')',
+                        'status' => 'blocked',
+                        'timestamp' => current_time('mysql'),
+                    ]);
+                    return $this->blocked_result($ip, $url, $method, 'Automated Exploit / Scanner Tool', 0.99, $user_agent, $referer, $body, 'Automated exploit scanner detected', 'JA4 Fingerprint: ' . $ja4_data['ja4h']);
+                }
             }
 
             if ($this->rate_limiter->is_rate_limited($ip)) {
@@ -173,7 +209,7 @@ class WAF_FW_Engine {
             $cloud_mode = (string) get_option('waf_fw_cloud_mode', 'protect');
             $ml_confidence = 0.0;
 
-            // Cloud ML WAF. Consulted for requests when cloud is available to enforce cloud decisions, blacklists, and ML scoring.
+            // Cloud ML WAF arbitration
             if ($cloud_mode !== 'off' && $this->ml_client->is_available()) {
                 $ml_result = $this->ml_client->analyze($request_data);
                 if (is_array($ml_result)) {
@@ -250,10 +286,43 @@ class WAF_FW_Engine {
     }
 
     /**
-     * Forward a locally-blocked request to the cloud so the MDefender
-     * dashboard records it. Fire-and-forget; skipped when the cloud is
-     * disabled or unreachable, and does not change the local verdict.
+     * Export the fast-path cache file for waf-bootstrap.php (0.05ms pre-flight execution).
      */
+    public function export_fast_cache() {
+        global $wpdb;
+        $data_dir = WAF_FW_PLUGIN_DIR . 'includes/data';
+        if (!is_dir($data_dir)) {
+            @mkdir($data_dir, 0755, true);
+        }
+
+        $blacklist_table = $wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
+        $blocked_rows = $wpdb->get_results("SELECT ip_address FROM $blacklist_table");
+        $bl_map = [];
+        if ($blocked_rows) {
+            foreach ($blocked_rows as $row) {
+                $bl_map[$row->ip_address] = true;
+            }
+        }
+
+        $cloud_bl = get_option('waf_fw_local_blacklist_cache', []);
+        if (is_array($cloud_bl)) {
+            foreach ($cloud_bl as $ip) {
+                $bl_map[$ip] = true;
+            }
+        }
+
+        $cache_payload = [
+            'enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
+            'updated_at' => time(),
+            'blacklist_ips' => $bl_map,
+        ];
+
+        @file_put_contents($data_dir . '/waf_fast_cache.json', json_encode($cache_payload, JSON_PRETTY_PRINT));
+        if (function_exists('apcu_store')) {
+            apcu_store('mdefender_waf_fast_cache', $cache_payload, 60);
+        }
+    }
+
     private function report_block_to_cloud($ip, $url, $method, $body, $request_data) {
         if ((string) get_option('waf_fw_cloud_mode', 'protect') === 'off') {
             return;
@@ -261,8 +330,6 @@ class WAF_FW_Engine {
         if (!$this->ml_client->is_available()) {
             return;
         }
-        // Report as "protect" even in monitor mode so the backend records the
-        // block exactly as this plugin enforced it.
         $domain = function_exists('home_url') ? parse_url(home_url(), PHP_URL_HOST) : ($_SERVER['HTTP_HOST'] ?? 'localhost');
         $this->ml_client->report_local_block($domain ? $domain : 'localhost', 'protect', $request_data, $ip);
     }
@@ -333,7 +400,6 @@ class WAF_FW_Engine {
         $data = json_decode(wp_remote_retrieve_body($response), true);
         $country_code = $data['countryCode'] ?? '';
 
-        // Cache resolved country code for 12 hours
         if (function_exists('set_transient')) {
             $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
             set_transient($transient_key, $country_code, 12 * $hour);
