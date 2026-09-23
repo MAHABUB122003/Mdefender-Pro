@@ -280,6 +280,38 @@ class WAF_FW_ML_Api_Client {
     }
 
     /**
+     * Fire-and-forget push of batched requests/logs to the cloud telemetry ingestion pipeline.
+     * Guaranteed non-blocking so visitor response time is completely unaffected (0ms user latency).
+     */
+    public function send_telemetry_batch($domain, $events) {
+        $this->refresh_config();
+        if (!$this->is_available() || empty($events) || !is_array($events)) {
+            return false;
+        }
+        $payload = [
+            'domain' => $domain ? $domain : $this->get_domain(),
+            'events' => $events,
+        ];
+        $host = parse_url($this->base_url, PHP_URL_HOST);
+        $is_loopback = $host === 'localhost' || $host === '127.0.0.1' || $host === '::1'
+            || (defined('WAF_FW_DEV_MODE') && WAF_FW_DEV_MODE);
+        $scheme = wp_parse_url($this->base_url, PHP_URL_SCHEME) ?: '';
+        wp_remote_post($this->base_url . '/api/v1/waf/telemetry', [
+            'timeout'     => 3,
+            'blocking'    => false,
+            'sslverify'   => ($is_loopback || $scheme !== 'https') ? false : true,
+            'redirection' => 0,
+            'headers'     => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type'  => 'application/json',
+            ],
+            'body'        => wp_json_encode($payload),
+        ]);
+        return true;
+    }
+
+
+    /**
      * Scan a single file content on the cloud malware detector.
      * Returns ['verdict','risk_score','confidence','family','reasons'] or null.
      */

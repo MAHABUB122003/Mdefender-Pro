@@ -44,6 +44,9 @@ class WAF_FW_Engine {
     private $ja4;
     private $learning_mode = false;
 
+    private static $telemetry_buffer = [];
+    private static $shutdown_registered = false;
+
     public static function instance() {
         if (null === self::$_instance) {
             self::$_instance = new self();
@@ -62,6 +65,11 @@ class WAF_FW_Engine {
             $this->ja4 = WAF_FW_JA4_Fingerprint::instance();
         }
         $this->learning_mode = get_option('waf_fw_learning_mode', 'no') === 'yes';
+
+        if (!self::$shutdown_registered) {
+            add_action('shutdown', [__CLASS__, 'flush_telemetry']);
+            self::$shutdown_registered = true;
+        }
     }
 
     public function get_client_ip() {
@@ -100,62 +108,27 @@ class WAF_FW_Engine {
             }
 
             if ($this->learning_mode) {
-                $this->logger->log_request([
-                    'ip' => $ip, 'url' => $url, 'method' => $method,
-                    'status' => 'learning', 'user_agent' => $user_agent,
-                ]);
-                return $this->allowed_result($ip, $url, $method, 'Learning mode - allowing all');
+                return $this->do_allow($ip, $url, $method, $user_agent, 'Learning mode - allowing all');
             }
 
             if ($this->check_country_block($ip)) {
-                return $this->blocked_result($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Country blocked by policy');
+                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Country blocked by policy', 'GeoIP Rule');
             }
 
             // JA4 Client Fingerprinting & AI Bot Assessment
             if ($this->ja4) {
                 $ja4_data = $this->ja4->calculate_ja4h($headers, $_SERVER);
                 if ($ja4_data['risk_level'] === 'critical' || ($ja4_data['is_automated_agent'] && $ja4_data['bot_type'] === 'exploit_fuzzer')) {
-                    $this->logger->log_attack([
-                        'ip' => $ip, 'url' => $url, 'method' => $method,
-                        'attack_type' => 'Automated Exploit / Scanner Tool',
-                        'confidence' => 0.99,
-                        'user_agent' => $user_agent, 'referer' => $referer,
-                        'request_body' => $body, 'rule_matched' => 'JA4 Fingerprint: ' . $ja4_data['ja4h'],
-                        'message' => 'Automated vulnerability scanner signature detected (' . $ja4_data['bot_type'] . ')',
-                        'status' => 'blocked',
-                        'timestamp' => current_time('mysql'),
-                    ]);
-                    return $this->blocked_result($ip, $url, $method, 'Automated Exploit / Scanner Tool', 0.99, $user_agent, $referer, $body, 'Automated exploit scanner detected', 'JA4 Fingerprint: ' . $ja4_data['ja4h']);
+                    return $this->do_block($ip, $url, $method, 'Automated Exploit / Scanner Tool', 0.99, $user_agent, $referer, $body, 'Automated vulnerability scanner signature detected (' . $ja4_data['bot_type'] . ')', 'JA4 Fingerprint: ' . $ja4_data['ja4h']);
                 }
             }
 
             if ($this->rate_limiter->is_rate_limited($ip)) {
-                $this->logger->log_attack([
-                    'ip' => $ip, 'url' => $url, 'method' => $method,
-                    'attack_type' => 'Rate Limiting', 'confidence' => 1.0,
-                    'user_agent' => $user_agent, 'referer' => $referer,
-                    'request_body' => $body, 'rule_matched' => '',
-                    'message' => 'Rate limit exceeded', 'status' => 'blocked',
-                    'timestamp' => current_time('mysql'),
-                ]);
-                return $this->blocked_result($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, $body, 'Rate limit exceeded');
+                return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, $body, 'Rate limit exceeded', 'Rate Limit Rule');
             }
 
             if ($this->ip_filter->is_blacklisted($ip)) {
-                $this->logger->log_attack([
-                    'ip' => $ip, 'url' => $url, 'method' => $method,
-                    'attack_type' => 'Blacklisted IP', 'confidence' => 1.0,
-                    'user_agent' => $user_agent, 'referer' => $referer,
-                    'request_body' => $body, 'rule_matched' => 'Blacklist Rule',
-                    'message' => 'IP is blacklisted', 'status' => 'blocked',
-                    'timestamp' => current_time('mysql'),
-                ]);
-                $this->report_block_to_cloud($ip, $url, $method, $body, [
-                    'ip' => $ip, 'url' => $url, 'method' => $method, 'user_agent' => $user_agent,
-                    'headers' => $headers, 'attack_type' => 'Blacklisted IP',
-                ]);
-                waf_fw_bump_stat('blocked');
-                return $this->blocked_result($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'IP is blacklisted', 'Blacklist Rule');
+                return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'IP is blacklisted', 'Blacklist Rule');
             }
 
             // Whitelist legitimate WordPress login, custom login URL, and admin dashboard access
@@ -298,25 +271,38 @@ class WAF_FW_Engine {
         }
 
         $blacklist_table = $wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
-        $blocked_rows = $wpdb->get_results("SELECT ip_address FROM $blacklist_table");
+        $blocked_rows = $wpdb->get_results("SELECT ip FROM $blacklist_table");
         $bl_map = [];
         if ($blocked_rows) {
             foreach ($blocked_rows as $row) {
-                $bl_map[$row->ip_address] = true;
+                if (!empty($row->ip)) {
+                    $bl_map[$row->ip] = true;
+                }
             }
         }
 
         $cloud_bl = get_option('waf_fw_local_blacklist_cache', []);
         if (is_array($cloud_bl)) {
             foreach ($cloud_bl as $ip) {
-                $bl_map[$ip] = true;
+                if (!empty($ip)) {
+                    $bl_map[$ip] = true;
+                }
             }
+        }
+
+        $raw_countries = get_option('waf_fw_blocked_countries', '');
+        $blocked_countries = [];
+        if (is_array($raw_countries)) {
+            $blocked_countries = array_values(array_filter(array_map('strtoupper', array_map('trim', $raw_countries))));
+        } elseif (is_string($raw_countries) && !empty($raw_countries)) {
+            $blocked_countries = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_countries)))));
         }
 
         $cache_payload = [
             'enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
             'updated_at' => time(),
             'blacklist_ips' => $bl_map,
+            'blocked_countries' => $blocked_countries,
         ];
 
         @file_put_contents($data_dir . '/waf_fast_cache.json', json_encode($cache_payload, JSON_PRETTY_PRINT));
@@ -336,14 +322,50 @@ class WAF_FW_Engine {
         $this->ml_client->report_local_block($domain ? $domain : 'localhost', 'protect', $request_data, $ip);
     }
 
+    public function buffer_telemetry($event) {
+        if (!is_array($event)) return;
+        self::$telemetry_buffer[] = $event;
+    }
+
+    public static function flush_telemetry() {
+        if (empty(self::$telemetry_buffer)) return;
+        $events = self::$telemetry_buffer;
+        self::$telemetry_buffer = [];
+
+        $client = WAF_FW_ML_Api_Client::instance();
+        if ($client && $client->is_available()) {
+            $domain = function_exists('home_url') ? parse_url(home_url(), PHP_URL_HOST) : ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $client->send_telemetry_batch($domain ?: 'localhost', $events);
+        }
+    }
+
     private function do_block($ip, $url, $method, $attack_type, $confidence, $user_agent, $referer, $body, $message, $rule_matched = '') {
         $result = $this->blocked_result($ip, $url, $method, $attack_type, $confidence, $user_agent, $referer, $body, $message, $rule_matched);
         $this->rate_limiter->increment($ip);
         $this->logger->log_attack($result);
+        waf_fw_bump_stat('blocked');
+
+        $this->buffer_telemetry([
+            'event_type' => 'blocked',
+            'ip' => $ip,
+            'url' => $url,
+            'method' => $method,
+            'attack_type' => $attack_type,
+            'confidence' => $confidence,
+            'user_agent' => $user_agent,
+            'referer' => $referer,
+            'rule_matched' => $rule_matched,
+            'message' => $message,
+            'reference_id' => $result['reference_id'] ?? '',
+            'status' => 'blocked',
+            'timestamp' => current_time('mysql'),
+        ]);
+
+        self::flush_telemetry();
         return $result;
     }
 
-    private function do_allow($ip, $url, $method, $user_agent) {
+    private function do_allow($ip, $url, $method, $user_agent, $message = 'Request allowed') {
         $this->logger->log_request([
             'ip' => $ip,
             'url' => $url,
@@ -351,7 +373,19 @@ class WAF_FW_Engine {
             'status' => 'allowed',
             'user_agent' => $user_agent,
         ]);
-        return $this->allowed_result($ip, $url, $method, 'Request allowed');
+        waf_fw_bump_stat('allowed');
+
+        $this->buffer_telemetry([
+            'event_type' => 'allowed',
+            'ip' => $ip,
+            'url' => $url,
+            'method' => $method,
+            'user_agent' => $user_agent,
+            'status' => 'allowed',
+            'timestamp' => current_time('mysql'),
+        ]);
+
+        return $this->allowed_result($ip, $url, $method, $message);
     }
 
     private function blocked_result($ip, $url, $method, $attack_type, $confidence, $user_agent, $referer, $body, $message, $rule_matched = '') {
@@ -374,14 +408,20 @@ class WAF_FW_Engine {
     }
 
     private function check_country_block($ip) {
-        $blocked_countries = get_option('waf_fw_blocked_countries', '');
-        if (empty($blocked_countries)) return false;
+        $raw = get_option('waf_fw_blocked_countries', '');
+        if (empty($raw)) return false;
+
+        if (is_array($raw)) {
+            $blocked = array_map('strtoupper', array_map('trim', $raw));
+        } else {
+            $blocked = array_filter(array_map('trim', explode(',', strtoupper($raw))));
+        }
+        if (empty($blocked)) return false;
 
         $country_code = $this->get_ip_country($ip);
         if (!$country_code) return false;
 
-        $blocked = array_map('trim', explode(',', strtoupper($blocked_countries)));
-        return in_array($country_code, $blocked);
+        return in_array($country_code, $blocked, true);
     }
 
     private function get_ip_country($ip) {

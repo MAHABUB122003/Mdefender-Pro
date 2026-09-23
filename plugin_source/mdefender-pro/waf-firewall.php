@@ -120,12 +120,13 @@ add_action('waf_fw_file_integrity_check', ['WAF_FW_Scanner', 'run_file_integrity
 add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 10, 1);
 
 /**
- * Fast sync for cloud blacklist and status (every 30 seconds opportunistically).
+ * Fast sync for cloud blacklist, country blocks, user rules, and status.
+ * Throttled to every 30 seconds opportunistically on WP requests.
  */
 function waf_fw_sync_cloud_blacklist_fast() {
     $last_sync = get_transient('waf_fw_last_bl_sync');
     if ($last_sync) return;
-    set_transient('waf_fw_last_bl_sync', 1, 10);
+    set_transient('waf_fw_last_bl_sync', 1, 30);
 
     if (class_exists('WAF_FW_ML_Api_Client')) {
         $client = WAF_FW_ML_Api_Client::instance();
@@ -140,16 +141,34 @@ function waf_fw_sync_cloud_blacklist_fast() {
                     $ips = array_map('sanitize_text_field', $res['blacklist']);
                     update_option('waf_fw_local_blacklist_cache', $ips);
                 }
+                if (isset($res['blocked_countries']) && is_array($res['blocked_countries'])) {
+                    $countries = array_map('sanitize_text_field', $res['blocked_countries']);
+                    update_option('waf_fw_blocked_countries', implode(',', $countries));
+                }
+                if (isset($res['user_rules']) && is_array($res['user_rules'])) {
+                    update_option('waf_fw_cloud_rules_cache', $res['user_rules']);
+                }
                 if (!empty($res['config']) && is_array($res['config'])) {
                     $config = $res['config'];
                     if (isset($config['waf_mode'])) {
                         update_option('waf_fw_cloud_mode', sanitize_text_field($config['waf_mode']));
                     }
+                    if (isset($config['learning_mode'])) {
+                        update_option('waf_fw_learning_mode', $config['learning_mode'] ? 'yes' : 'no');
+                    }
+                    if (isset($config['confidence_threshold'])) {
+                        update_option('waf_fw_confidence_threshold', (float) $config['confidence_threshold']);
+                    }
+                }
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
                 }
             }
         }
     }
 }
+add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
+add_action('wp_loaded', 'waf_fw_sync_cloud_blacklist_fast');
 
 /**
  * Hourly cloud heartbeat: pushes online status + local counters so the
@@ -201,6 +220,22 @@ function waf_fw_cloud_heartbeat() {
             update_option('waf_fw_local_blacklist_cache', $ips);
         }
 
+        // Sync Country Blocks
+        if (isset($res['blocked_countries']) && is_array($res['blocked_countries'])) {
+            $countries = array_map('sanitize_text_field', $res['blocked_countries']);
+            update_option('waf_fw_blocked_countries', implode(',', $countries));
+        }
+
+        // Sync User Custom Rules
+        if (isset($res['user_rules']) && is_array($res['user_rules'])) {
+            update_option('waf_fw_cloud_rules_cache', $res['user_rules']);
+        }
+
+        // Update fast-cache preflight json
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
         // Execute scan command if triggered
         if (!empty($res['command']) && is_array($res['command'])) {
             $cmd = $res['command'];
@@ -214,6 +249,7 @@ function waf_fw_cloud_heartbeat() {
     }
 }
 add_action('waf_fw_cloud_heartbeat', 'waf_fw_cloud_heartbeat');
+
 
 /**
  * Increment the local cloud-stat counters used by the heartbeat. Called by

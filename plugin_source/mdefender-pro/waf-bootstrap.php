@@ -70,7 +70,16 @@ if (isset($ip_blacklist[$mdefender_ip])) {
     $block_reason = 'Your IP address has been flagged for malicious activity.';
 }
 
-// 2. Fast JA4 / Bot User-Agent Blacklist Check
+// 2. Fast Country Block Check
+if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
+    $geo_country = strtoupper(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY'] ?? $_SERVER['GEOIP_COUNTRY_CODE'] ?? ''), 0, 2));
+    if (!empty($geo_country) && in_array($geo_country, (array)$mdefender_cache_data['blocked_countries'], true)) {
+        $is_blocked = true;
+        $block_reason = 'Access from your country/region is restricted by security policy.';
+    }
+}
+
+// 3. Fast JA4 / Bot User-Agent Blacklist Check
 if (!$is_blocked) {
     $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
     if (!empty($ua)) {

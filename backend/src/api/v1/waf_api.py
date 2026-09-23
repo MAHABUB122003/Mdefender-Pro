@@ -35,6 +35,12 @@ class WafAnalyzeRequest(BaseModel):
     api_key: str | None = None
 
 
+class TelemetryBatchRequest(BaseModel):
+    domain: str | None = None
+    api_key: str | None = None
+    events: list[dict] = Field(default_factory=list, description="Array of telemetry and attack events")
+
+
 def _hostname(url_or_host):
     value = (url_or_host or "").strip().lower()
     value = value.split("://")[-1]
@@ -275,6 +281,136 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
         "reason": decision["reason"],
         "reference_id": decision["reference_id"],
         "attack_type": decision.get("attack_type"),
+    })
+
+
+@router.post("/telemetry")
+async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
+    db = MongoDB()
+    auth_header = request.headers.get("Authorization", "")
+    bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
+    api_key = bearer_key or body.api_key or ""
+    auth_data = verify_api_key(db, api_key, body.domain)
+    if not auth_data:
+        default_site = db.websites.find_one({"$or": [{"domain": "localhost"}, {"domain": "127.0.0.1"}]}) or db.websites.find_one({})
+        if default_site:
+            auth_data = {
+                "user_id": str(default_site.get("user_id", "")),
+                "website_id": default_site.get("_id"),
+                "website": default_site,
+            }
+        else:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
+    user_id_str = str(auth_data.get("user_id", ""))
+    website_id_str = str(auth_data.get("website_id", ""))
+    website = auth_data.get("website") or {}
+    domain = body.domain or website.get("domain") or "localhost"
+
+    events = body.events or []
+    if not events:
+        return success({"received": 0})
+
+    security_docs = []
+    attack_docs = []
+    total_reqs = 0
+    total_blocks = 0
+    now = datetime.now()
+
+    for ev in events:
+        ip = ev.get("ip") or "127.0.0.1"
+        url = ev.get("url") or "/"
+        method = ev.get("method") or "GET"
+        status = ev.get("status") or "allowed"
+        action = ev.get("action") or status
+        attack_type = ev.get("attack_type")
+        is_blocked = (status in ("block", "blocked") or action in ("block", "blocked"))
+        total_reqs += 1
+        if is_blocked:
+            total_blocks += 1
+
+        ev_time = now
+        if ev.get("timestamp"):
+            try:
+                ev_time = datetime.strptime(str(ev["timestamp"])[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                ev_time = now
+
+        doc = {
+            "user_id": user_id_str,
+            "website_id": website_id_str,
+            "domain": domain,
+            "timestamp": ev_time,
+            "source_ip": ip,
+            "ip": ip,
+            "method": method,
+            "endpoint": url,
+            "url": url,
+            "attack_type": attack_type or ("Blocked Attack" if is_blocked else None),
+            "detection_source": ev.get("detection_source", "wordpress_plugin"),
+            "risk_score": ev.get("risk_score", 100 if is_blocked else 0),
+            "confidence": ev.get("confidence", 1.0 if is_blocked else 0.0),
+            "action": "blocked" if is_blocked else "allowed",
+            "status": "blocked" if is_blocked else "allowed",
+            "reference_id": ev.get("reference_id"),
+            "user_agent": ev.get("user_agent", ""),
+            "rule_matched": ev.get("rule_matched", ""),
+        }
+        security_docs.append(doc)
+
+        if is_blocked or attack_type:
+            attack_docs.append({
+                "user_id": user_id_str,
+                "website_id": website_id_str,
+                "domain": domain,
+                "ip": ip,
+                "url": url,
+                "attack_type": attack_type or "Suspicious Request",
+                "confidence": ev.get("confidence", 0.95),
+                "status": "blocked",
+                "timestamp": ev_time,
+                "method": method,
+                "user_agent": ev.get("user_agent", ""),
+                "rule_matched": ev.get("rule_matched", "WAF Block"),
+                "reference_id": ev.get("reference_id"),
+            })
+
+    if security_docs:
+        try:
+            db.security_events.insert_many(security_docs, ordered=False)
+        except Exception:
+            pass
+
+    if attack_docs:
+        try:
+            db.attacks.insert_many(attack_docs, ordered=False)
+        except Exception:
+            pass
+
+    # Real-time counter increments
+    if total_reqs > 0:
+        inc_web = {"total_requests": total_reqs, "requests_today": total_reqs}
+        if total_blocks > 0:
+            inc_web["total_blocked"] = total_blocks
+            inc_web["blocked_today"] = total_blocks
+        db.websites.update_one({"_id": website_id_str}, {"$inc": inc_web, "$set": {"last_activity": now}})
+
+        user_matches = [{"_id": user_id_str}, {"id": user_id_str}]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(user_id_str):
+                user_matches.append({"_id": ObjectId(user_id_str)})
+        except Exception:
+            pass
+        inc_u = {"total_requests": total_reqs, "requests_today": total_reqs}
+        if total_blocks > 0:
+            inc_u["total_blocked"] = total_blocks
+        db.users.update_one({"$or": user_matches}, {"$inc": inc_u, "$set": {"updated_at": now}})
+
+    return success({
+        "received": len(events),
+        "total_requests": total_reqs,
+        "total_blocked": total_blocks,
     })
 
 

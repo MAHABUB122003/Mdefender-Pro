@@ -298,11 +298,36 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     blacklist_cursor = db.blacklist.find({"$and": find_conditions})
     blacklist = list(set([item["ip"].strip() for item in blacklist_cursor if item.get("ip")]))
 
+    # Fetch active country blocks (scoped to user)
+    country_query = [{"user_id": user_id}]
+    if ObjectId.is_valid(user_id):
+        country_query.append({"user_id": ObjectId(user_id)})
+    country_cursor = db.country_blocks.find({"$or": country_query})
+    blocked_countries = list(set([item["country_code"].strip().upper() for item in country_cursor if item.get("country_code")]))
+
+    # Fetch custom firewall rules (scoped to user)
+    rules_query = [{"user_id": user_id}]
+    if ObjectId.is_valid(user_id):
+        rules_query.append({"user_id": ObjectId(user_id)})
+    rules_cursor = db.user_rules.find({"$or": rules_query})
+    user_rules = []
+    for r in rules_cursor:
+        user_rules.append({
+            "id": str(r.get("_id", "")),
+            "name": r.get("name", ""),
+            "pattern": r.get("pattern", ""),
+            "action": r.get("action", "block"),
+            "severity": r.get("severity", "high"),
+            "enabled": bool(r.get("enabled", True)),
+        })
+
     return success({
         "status": "ok",
         "config": config,
         "command": command,
-        "blacklist": blacklist
+        "blacklist": blacklist,
+        "blocked_countries": blocked_countries,
+        "user_rules": user_rules,
     })
 
 
