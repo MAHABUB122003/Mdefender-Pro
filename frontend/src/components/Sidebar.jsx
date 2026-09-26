@@ -38,6 +38,10 @@ export default function Sidebar({ isOpen }) {
           </NavLink>
 
           <div className="nav-label">WAF Security Engine</div>
+          <NavLink to="/admin/learning">
+            <span className="nav-icon"><i className="fas fa-brain"></i></span>
+            <span>Attack Learning Lab</span>
+          </NavLink>
           <NavLink to="/admin/ddos">
             <span className="nav-icon"><i className="fas fa-shield-halved"></i></span>
             <span>DDoS Shield</span>
@@ -56,10 +60,6 @@ export default function Sidebar({ isOpen }) {
           </NavLink>
 
           <div className="nav-label">Platform Admin</div>
-          <NavLink to="/admin/notices">
-            <span className="nav-icon"><i className="fas fa-bullhorn"></i></span>
-            <span>Notice Broadcast</span>
-          </NavLink>
           <NavLink to="/admin/settings">
             <span className="nav-icon"><i className="fas fa-cog"></i></span>
             <span>System Settings</span>

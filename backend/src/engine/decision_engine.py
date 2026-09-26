@@ -15,6 +15,7 @@ The engine is deterministic, auditable, and sub-millisecond optimized: every dec
 carries contributing components and a safe, non-sensitive `reason` string with full telemetry.
 """
 
+import re
 from src.engine.ml_detector import MLDetector
 from src.engine.rule_engine import RuleEngine
 from src.engine.feature_extractor import FeatureExtractor
@@ -46,6 +47,45 @@ class DecisionEngine:
         self.feature_extractor = FeatureExtractor()
         self.request_parser = RequestParser()
         self.semantic_analyzer = SemanticAnalyzer()
+        self._db = None
+
+    def _get_db(self):
+        if self._db is None:
+            try:
+                from src.database.mongodb_connection import MongoDB
+                self._db = MongoDB()
+            except Exception:
+                pass
+        return self._db
+
+    def _check_whitelists(self, parsed):
+        try:
+            db = self._get_db()
+            if db is not None:
+                whitelists = list(db.waf_whitelists.find({"is_active": True}))
+                if whitelists:
+                    combined = parsed.get("combined_raw", "") or parsed.get("combined_normalized", "")
+                    url_path = parsed.get("path", "")
+                    for wl in whitelists:
+                        pat = wl.get("pattern", "")
+                        mtype = wl.get("match_type", "contains")
+                        if not pat:
+                            continue
+                        if mtype == "contains" and pat in combined:
+                            return wl.get("name") or "Custom Whitelist"
+                        elif mtype == "exact" and pat.strip() == combined.strip():
+                            return wl.get("name") or "Custom Whitelist"
+                        elif mtype == "regex":
+                            try:
+                                if re.search(pat, combined, re.IGNORECASE):
+                                    return wl.get("name") or "Custom Whitelist"
+                            except Exception:
+                                pass
+                        elif mtype == "url_path" and (pat in url_path or url_path.startswith(pat)):
+                            return wl.get("name") or "Path Whitelist"
+        except Exception:
+            pass
+        return None
 
     def _risk_level(self, score: int) -> str:
         if score >= 80:
@@ -83,6 +123,33 @@ class DecisionEngine:
 
         # --- 3. Request parsing & Deep normalization ---
         parsed = self.request_parser.parse(request_data)
+
+        # --- 3.1 Dynamic Whitelist Rule Check ---
+        matched_whitelist = self._check_whitelists(parsed)
+        if matched_whitelist and not is_blacklisted:
+            return {
+                "decision": "ALLOW",
+                "action": "allow",
+                "risk_score": 0,
+                "risk_level": "low",
+                "confidence": 1.0,
+                "reason": f"Whitelisted: {matched_whitelist}",
+                "reference_id": reference_id,
+                "components": {
+                    "semantic_score": 0,
+                    "rule_score": 0,
+                    "ml_score": 0,
+                    "reputation_score": 0,
+                    "rate_limit_score": 0,
+                    "behavior_score": 0,
+                },
+                "signals": {
+                    "whitelist_matched": matched_whitelist,
+                    "reputation_source": None,
+                },
+                "attack_type": None,
+                "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
+            }
         
         # --- 4. Semantic AST & Context Analysis (WAF 3.0) ---
         # Analyze raw combined and normalized strings

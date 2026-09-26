@@ -353,6 +353,27 @@ export const api = {
   removeUserCountryBlock: (code) => apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}`, { method: 'DELETE' }),
   userCleanLogs: (data = {}) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
   userResetStats: (data = {}) => apiCall('/api/user/reset-stats', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Attack Learning Hub & Feedback Center
+  reportFalsePositive: (data) => apiCall('/api/v1/waf/report-false-positive', { method: 'POST', body: JSON.stringify(data) }),
+  adminGetLearningStats: () => apiCall('/api/v1/admin/learning/stats'),
+  adminGetLearningReports: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/admin/learning/reports${qs ? '?' + qs : ''}`)
+  },
+  adminDeleteLearningReport: (id) => apiCall(`/api/v1/admin/learning/reports/${id}`, { method: 'DELETE' }),
+  adminWhitelistPattern: (data) => apiCall('/api/v1/admin/learning/whitelist', { method: 'POST', body: JSON.stringify(data) }),
+  adminBlacklistAttack: (data) => apiCall('/api/v1/admin/learning/blacklist', { method: 'POST', body: JSON.stringify(data) }),
+  adminTestSandbox: (data) => apiCall('/api/v1/admin/learning/test', { method: 'POST', body: JSON.stringify(data) }),
+  adminRetrainWafModel: () => apiCall('/api/v1/admin/learning/retrain', { method: 'POST' }),
+  adminGetLearnedSamples: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/admin/learning/samples${qs ? '?' + qs : ''}`)
+  },
+  adminAddLearnedSample: (data) => apiCall('/api/v1/admin/learning/samples', { method: 'POST', body: JSON.stringify(data) }),
+  adminDeleteLearnedSample: (id) => apiCall(`/api/v1/admin/learning/samples/${id}`, { method: 'DELETE' }),
+  adminGetWhitelists: () => apiCall('/api/v1/admin/learning/whitelists'),
+  adminDeleteWhitelist: (id) => apiCall(`/api/v1/admin/learning/whitelists/${id}`, { method: 'DELETE' }),
 }
 
 export default api

@@ -27,7 +27,7 @@ import UserConnect from './pages/UserConnect'
 import UserBlacklist from './pages/UserBlacklist'
 import UserTools from './pages/UserTools'
 import DDoSDashboard from './pages/DDoSDashboard'
-import NoticeBoard from './pages/NoticeBoard'
+import AttackLearning from './pages/AttackLearning'
 import Docs from './pages/Docs'
 import VerifyEmail from './pages/auth/VerifyEmail'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -140,7 +140,7 @@ function App() {
           <Route path="/admin/rules" element={<Layout onLogout={adminLogout}><Rules /></Layout>} />
           <Route path="/admin/blacklist" element={<Layout onLogout={adminLogout}><Blacklist /></Layout>} />
           <Route path="/admin/settings" element={<Layout onLogout={adminLogout}><Settings /></Layout>} />
-          <Route path="/admin/notices" element={<Layout onLogout={adminLogout}><NoticeBoard /></Layout>} />
+          <Route path="/admin/learning" element={<Layout onLogout={adminLogout}><AttackLearning /></Layout>} />
           <Route path="/connect" element={<Layout onLogout={adminLogout}><Connect /></Layout>} />
           <Route path="/admin/ddos" element={<Layout onLogout={adminLogout}><DDoSDashboard /></Layout>} />
         </>

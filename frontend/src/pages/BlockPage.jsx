@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import theme from '../utils/theme'
+import api from '../api/api'
 
 export default function BlockPage() {
   const { dark } = useTheme()
@@ -13,6 +15,37 @@ export default function BlockPage() {
   const reason = params.get('reason') || 'Request blocked by security rules'
   const timestamp = params.get('timestamp') || new Date().toISOString().replace('T', ' ').slice(0, 19)
   const referenceId = params.get('reference_id') || 'REF-' + Math.random().toString(36).substr(2, 8).toUpperCase()
+  const targetUrl = params.get('url') || window.location.pathname
+
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+  const [userComment, setUserComment] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const handleReportSubmit = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setErrorMsg('')
+    try {
+      await api.reportFalsePositive({
+        reference_id: referenceId,
+        client_ip: realIp,
+        url: targetUrl,
+        payload: window.location.search || targetUrl,
+        attack_type: attackType,
+        reason: reason,
+        user_email: userEmail,
+        comments: userComment,
+      })
+      setSubmitted(true)
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to submit report. Please email security@example.com.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div style={{
@@ -49,7 +82,7 @@ export default function BlockPage() {
         .block-content { padding: 40px 32px; text-align: center; }
         .block-icon { 
           width: 64px; height: 64px; background: rgba(239, 68, 68, 0.1); 
-          border-radius: 50%; display: flex; align-items: center; justifyContent: center; 
+          border-radius: 50%; display: flex; align-items: center; justify-content: center; 
           margin: 0 auto 24px; color: #ef4444; font-size: 28px;
         }
         .block-title { font-size: 28px; font-weight: 800; color: ${s.text}; letter-spacing: -0.5px; margin-bottom: 12px; }
@@ -75,6 +108,12 @@ export default function BlockPage() {
         .btn-primary:hover { background: #dc2626; transform: translateY(-1px); }
         .btn-secondary { background: transparent; color: ${s.text}; border: 1px solid ${s.border}; }
         .btn-secondary:hover { background: ${dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+        .modal-box { background: ${s.bgCard}; border: 1px solid ${s.border}; border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: left; }
+        .modal-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid ${s.border}; background: ${dark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.9)'}; color: ${s.text}; font-size: 14px; margin-bottom: 14px; box-sizing: border-box; }
+        .modal-input:focus { outline: none; border-color: #ef4444; }
+
         @media (max-width: 600px) {
           .block-content { padding: 32px 20px; }
           .detail-row { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -123,9 +162,9 @@ export default function BlockPage() {
               <button className="btn btn-primary" onClick={() => window.location.href = '/'}>
                 <i className="fas fa-arrow-left"></i> Return Home
               </button>
-              <a href={`mailto:security@example.com?subject=False Positive: ${referenceId}&body=Reference ID: ${referenceId}%0AIP: ${clientIp}%0AAttack Type: ${attackType}`} className="btn btn-secondary">
-                <i className="fas fa-envelope"></i> Report False Positive
-              </a>
+              <button className="btn btn-secondary" onClick={() => setReportModalOpen(true)}>
+                <i className="fas fa-flag"></i> Report False Positive
+              </button>
             </div>
           </div>
           
@@ -134,6 +173,81 @@ export default function BlockPage() {
           </div>
         </div>
       </div>
+
+      {/* False Positive Report Modal */}
+      {reportModalOpen && (
+        <div className="modal-overlay" onClick={() => setReportModalOpen(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
+                <i className="fas fa-flag"></i> Report False Positive
+              </h3>
+              <button style={{ background: 'transparent', border: 'none', color: s.textMuted, fontSize: '18px', cursor: 'pointer' }} onClick={() => setReportModalOpen(false)}>
+                &times;
+              </button>
+            </div>
+
+            {submitted ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <i className="fas fa-check"></i>
+                </div>
+                <h3 style={{ margin: '0 0 8px 0' }}>Report Submitted!</h3>
+                <p style={{ fontSize: '14px', color: s.textMuted, margin: '0 0 20px 0' }}>
+                  Reference ID <strong>{referenceId}</strong> has been logged to the Security Operations Center. Our security team will review and whitelist this pattern.
+                </p>
+                <button className="btn btn-primary" onClick={() => setReportModalOpen(false)}>
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleReportSubmit}>
+                <p style={{ fontSize: '13px', color: s.textMuted, marginBottom: '16px' }}>
+                  If your legitimate request was incorrectly blocked by the firewall, submit this form and our administrators can whitelist it with 1 click.
+                </p>
+
+                {errorMsg && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontSize: '13px', marginBottom: '14px' }}>
+                    {errorMsg}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: s.textSecondary }}>Reference ID</div>
+                <input type="text" className="modal-input" value={referenceId} disabled style={{ opacity: 0.7 }} />
+
+                <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: s.textSecondary }}>Your Email (Optional)</div>
+                <input
+                  type="email"
+                  className="modal-input"
+                  placeholder="your.email@example.com"
+                  value={userEmail}
+                  onChange={e => setUserEmail(e.target.value)}
+                />
+
+                <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: s.textSecondary }}>Describe what you were doing</div>
+                <textarea
+                  rows={3}
+                  className="modal-input"
+                  placeholder="e.g. I was saving an article containing HTML code..."
+                  value={userComment}
+                  onChange={e => setUserComment(e.target.value)}
+                  style={{ resize: 'vertical' }}
+                />
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setReportModalOpen(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    <i className={`fas ${submitting ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+                    {submitting ? 'Submitting...' : 'Submit to SOC'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

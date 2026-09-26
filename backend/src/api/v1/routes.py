@@ -13,6 +13,7 @@ from src.api.v1 import (
     websites_api,
     waf_api,
     wordpress_api,
+    learning_api,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -24,6 +25,8 @@ v1_router.include_router(wordpress_api.router)
 v1_router.include_router(billing_api.router)
 v1_router.include_router(notifications_api.router)
 v1_router.include_router(admin_api.router)
+v1_router.include_router(learning_api.router)
+v1_router.include_router(learning_api.public_router)
 
 
 def get_v1_router():
