@@ -73,28 +73,56 @@ const threatVectors = [
 ]
 
 const codeExamples = {
-  nodejs: `// Step 1: Install official NPM package (includes bundled 403 Block Page)
+  nodejs: `// 1. Install official NPM package
 // npm install mdefender-pro
 
 const express = require('express');
+const cors = require('cors');
 const mdefender = require('mdefender-pro');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Step 2: Attach MDefender Pro WAF Middleware
+// 2. Attach MDefender Pro WAF Middleware (Inspects all requests in real-time)
 app.use(mdefender({
-  apiKey: process.env.MDEFENDER_API_KEY, // or configure in mdefender.config.js
-  domain: 'yourdomain.com',
-  mode: 'block' // Intercepts attacks & renders bundled Cyber 403 block page
+  apiKey: process.env.MDEFENDER_API_KEY, // from Dashboard -> Settings
+  domain: 'localhost',                  // your domain
+  apiEndpoint: 'http://217.15.170.82',  // Cloud WAF Engine
+  mode: 'block'                         // Renders bundled 403 Block Page on attack
 }));
 
-// Step 3: Your application routes
-app.get('/api/data', (req, res) => {
-  res.json({ message: 'Request safely passed WAF verification' });
+// 3. Application Routes
+app.use('/api/books', require('./routes/books'));
+app.use('/api/orders', require('./routes/orders'));
+
+app.listen(5000, () => console.log('Protected server running on port 5000!'));`,
+
+  react_vite: `// 1. In src/main.jsx (Client SPA Protection Shield):
+import { initWaf } from 'mdefender-pro/client';
+
+initWaf({
+  apiKey: 'YOUR_MDEFENDER_API_KEY', // from Dashboard -> Settings
+  domain: 'localhost',
+  apiEndpoint: 'http://217.15.170.82'
 });
 
-app.listen(5000, () => console.log('Protected server running on port 5000'));`,
+// 2. In vite.config.js (Vite 403 Server Middleware Plugin):
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { mdefenderVite } from 'mdefender-pro/vite';
+
+export default defineConfig({
+  plugins: [
+    mdefenderVite({
+      apiKey: 'YOUR_MDEFENDER_API_KEY',
+      domain: 'localhost',
+      apiEndpoint: 'http://217.15.170.82'
+    }),
+    react()
+  ]
+});`,
 
   python: `# Install: pip install mdefender-python
 from fastapi import FastAPI
@@ -105,9 +133,10 @@ app = FastAPI()
 # Attach MDefender Hybrid WAF Layer
 app.add_middleware(
     MDefenderMiddleware,
-    api_key="mdef_live_sec_token_94812",
+    api_key="YOUR_MDEFENDER_API_KEY",
+    api_endpoint="http://217.15.170.82",
     mode="block",
-    enable_ml=True, # Active ML Classifier v2.0
+    enable_ml=True, # Active 5.2M ML Model
     rate_limit_rpm=120
 )
 
@@ -123,25 +152,23 @@ use MDefender\\WafShield;
 
 // Enforce hybrid edge protection before routing
 $waf = new WafShield([
-    'api_key'    => getenv('MDEFENDER_API_KEY'),
-    'mode'       => 'block',
-    'enable_ml'  => true,
-    'block_page' => true
+    'api_key'      => getenv('MDEFENDER_API_KEY'),
+    'api_endpoint' => 'http://217.15.170.82',
+    'mode'         => 'block',
+    'enable_ml'    => true,
+    'block_page'   => true // Serves bundled Cyber 403 block page
 ]);
 
 $waf->inspectRequest(); // Evaluates 2,000 rules + 5.2M ML model in 0.4ms`,
 
-  curl: `# Test your protected endpoint with an obfuscated SQLi probe:
-curl -i -X POST "https://api.yourdomain.com/v1/auth/login" \\
-  -H "Content-Type: application/json" \\
-  -H "User-Agent: Mozilla/5.0 SecurityProbe" \\
-  -d '{"user": "admin", "pass": "' OR 1=1 --"}'
+  curl: `# 1. Test XSS Attack (Expect 403 Forbidden & Cyber Block Page):
+curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"
 
-# Response:
-# HTTP/1.1 403 Forbidden
-# X-WAF-Engine: MDefender-Hybrid-Core
-# X-ML-Confidence: 0.9984 (SQL Injection Vector)
-# X-Inspection-Time: 0.42ms`
+# 2. Test SQL Injection (Expect 403 Forbidden & Cyber Block Page):
+curl -i "http://localhost:5000/api/books?search=%27%20UNION%20SELECT%20null,password%20FROM%20users--"
+
+# 3. Test Safe Query (Expect 200 OK with data):
+curl -i "http://localhost:5000/api/books"`
 }
 
 export default function Landing() {
@@ -791,7 +818,8 @@ export default function Landing() {
           {/* Code Tab Buttons */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
             {[
-              { id: 'nodejs', label: 'Node.js / Express', icon: 'fa-node-js' },
+              { id: 'nodejs', label: 'Node.js / Express (Backend)', icon: 'fa-node-js' },
+              { id: 'react_vite', label: 'React / Vite (Frontend)', icon: 'fa-react' },
               { id: 'python', label: 'Python / FastAPI', icon: 'fa-python' },
               { id: 'php', label: 'PHP / Laravel', icon: 'fa-php' },
               { id: 'curl', label: 'cURL Verification', icon: 'fa-terminal' }
