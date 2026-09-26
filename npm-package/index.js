@@ -35,7 +35,7 @@ function getDefaultTemplate() {
 const DEFAULT_CONFIG = {
   apiKey: '',
   domain: '',
-  apiEndpoint: process.env.MDEFENDER_API_ENDPOINT || 'http://localhost:8000',
+  apiEndpoint: process.env.MDEFENDER_API_ENDPOINT || 'http://217.15.170.82',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
   timeout: 10000,
@@ -158,7 +158,7 @@ function sendAnalyzeRequest(endpointUrl, apiKey, data, timeoutMs = 5000) {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(postData),
           'Authorization': `Bearer ${apiKey}`,
-          'X-MDefender-Version': '1.2.4'
+          'X-MDefender-Version': '1.2.6'
         }
       };
 

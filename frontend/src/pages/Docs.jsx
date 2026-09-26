@@ -11,8 +11,7 @@ const docSections = [
       { id: 'intro', label: 'What is MDefender Pro', icon: 'fa-shield-halved' },
       { id: 'hybrid-architecture', label: 'Hybrid WAF + ML Engine', icon: 'fa-network-wired' },
       { id: 'quickstart', label: '5-Minute Quickstart', icon: 'fa-bolt' },
-      { id: 'website-connect', label: 'Connect Website Guide', icon: 'fa-plug-circle-bolt' },
-      { id: 'block-page-template', label: '403 Block Page Template', icon: 'fa-shield-virus' }
+      { id: 'website-connect', label: 'Connect Website Guide', icon: 'fa-plug-circle-bolt' }
     ]
   },
   {
@@ -39,7 +38,9 @@ const docSections = [
   {
     group: 'Framework SDK Guides',
     items: [
-      { id: 'sdk-nodejs', label: 'Node.js / Express', icon: 'fa-node-js' },
+      { id: 'sdk-nodejs', label: 'Node.js / Express (Backend)', icon: 'fa-node-js' },
+      { id: 'sdk-react-vite', label: 'React / Vite / SPA (Frontend)', icon: 'fa-react' },
+      { id: 'sdk-fullstack', label: 'Full-Stack Web App (End-to-End)', icon: 'fa-layer-group' },
       { id: 'sdk-python', label: 'Python / FastAPI / Django', icon: 'fa-python' },
       { id: 'sdk-php', label: 'PHP / Laravel', icon: 'fa-php' },
       { id: 'sdk-wordpress', label: 'WordPress Official Plugin', icon: 'fa-wordpress' }
@@ -689,6 +690,253 @@ curl -i "http://localhost:5000/api/books?search=%27%20UNION%20SELECT%20null,pass
 # 3. Test Safe Request (Expect 200 OK)
 curl -i "http://localhost:5000/api/books"`}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Section: React / Vite / SPA Frontend SDK */}
+          {activeSection === 'sdk-react-vite' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  color: '#38bdf8',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Frontend &amp; Single Page Apps</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>0ms Client Shield + Vite Server Plugin</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>React / Vite / SPA Frontend Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                Protect Single Page Applications built with <strong>React, Vite, Vue, Svelte, or Next.js</strong>. MDefender Pro provides <strong>dual-layer frontend protection</strong>: client-side 0ms DOM/URL/Fetch protection and Vite dev/preview server 403 network blocking.
+              </p>
+
+              {/* Step 1: Install */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-1" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Install the NPM Package
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Install <code>mdefender-pro</code> in your frontend project:
+                </p>
+                <CodeBlock language="bash" code={`npm install mdefender-pro`} />
+              </div>
+
+              {/* Step 2: Client SPA Protection */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-2" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Initialize Client Guard in <code>main.jsx</code> / <code>index.jsx</code>
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Call <code>initWaf()</code> at the very top of your application entry point:
+                </p>
+                <CodeBlock
+                  language="javascript"
+                  code={`// src/main.jsx (or src/index.js)
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
+
+// 1. Import and initialize MDefender Client Shield
+import { initWaf } from 'mdefender-pro/client';
+
+initWaf({
+  apiKey: 'YOUR_MDEFENDER_API_KEY', // from Dashboard -> Settings
+  domain: 'localhost',              // or your production domain
+  apiEndpoint: 'http://217.15.170.82' // MDefender Cloud Endpoint
+});
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`}
+                />
+                <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(59,130,246,0.3)', marginTop: '14px' }}>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: '#93c5fd', lineHeight: '1.6' }}>
+                    <strong>What <code>initWaf()</code> protects:</strong> Automatically intercepts malicious URL query parameters (XSS, LFI, SQLi), outgoing <code>fetch</code> &amp; <code>axios</code> payloads, and swaps the DOM with the 403 Security Screen while dispatching real-time incident telemetry to your dashboard.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3: Vite Server Plugin */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-3" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Add the Vite Server Plugin in <code>vite.config.js</code>
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Add <code>mdefenderVite</code> to your plugins so Vite returns a real <code>HTTP 403 Forbidden</code> status code over the network:
+                </p>
+                <CodeBlock
+                  language="javascript"
+                  code={`// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { mdefenderVite } from 'mdefender-pro/vite';
+
+export default defineConfig({
+  plugins: [
+    mdefenderVite({
+      apiKey: 'YOUR_MDEFENDER_API_KEY',
+      domain: 'localhost',
+      apiEndpoint: 'http://217.15.170.82'
+    }),
+    react()
+  ],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true
+      }
+    }
+  }
+});`}
+                />
+              </div>
+
+              {/* Step 4: Testing Frontend Attacks */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-4" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                  Test Frontend URL Injections
+                </h3>
+                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                  Open these test URLs in your browser to verify instant 403 blocking:
+                </p>
+                <ul style={{ paddingLeft: '20px', fontSize: '13px', color: '#cbd5e1', lineHeight: '1.9', margin: 0 }}>
+                  <li><code>http://localhost:5173/books?search=%3Cscript%3Ealert(1)%3C/script%3E</code> &rarr; <strong>Blocked (XSS)</strong></li>
+                  <li><code>http://localhost:5173/books?id=../../etc/passwd</code> &rarr; <strong>Blocked (LFI)</strong></li>
+                  <li><code>http://localhost:5173/books?id=1%27%20or%20%271%27=%271%20--%20-</code> &rarr; <strong>Blocked (SQLi)</strong></li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Section: Full-Stack Web Apps */}
+          {activeSection === 'sdk-fullstack' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(124,58,237,0.2))',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  color: '#60a5fa',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Full-Stack Architecture</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Backend + Frontend Unified Defense</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Connecting Full-Stack Web Projects</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+                For modern applications with a separate <strong>Backend API (e.g. Express on Port 4000)</strong> and <strong>Frontend SPA (e.g. React/Vite on Port 5173)</strong>, connect both sides using the same API Key for complete end-to-end telemetry and defense.
+              </p>
+
+              {/* Architecture diagram card */}
+              <div style={{
+                background: '#0a0e1a',
+                border: '1px solid #1e293b',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
+                  <i className="fa-solid fa-diagram-project" style={{ color: '#38bdf8', marginRight: '8px' }}></i>
+                  Unified Full-Stack Protection Flow
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div style={{ background: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
+                    <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
+                      <i className="fab fa-react" style={{ marginRight: '6px' }}></i> Frontend Layer (Port 5173)
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.8' }}>
+                      <li><code>mdefenderVite</code> in <code>vite.config.js</code></li>
+                      <li><code>initWaf()</code> in <code>main.jsx</code></li>
+                      <li>Blocks direct URL/DOM attacks with 403 block page</li>
+                      <li>Captures client telemetry to MDefender Cloud</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ background: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
+                    <div style={{ color: '#10b981', fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
+                      <i className="fab fa-node-js" style={{ marginRight: '6px' }}></i> Backend Layer (Port 4000)
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.8' }}>
+                      <li><code>app.use(mdefender())</code> in <code>index.js</code></li>
+                      <li>Inspects API endpoints (<code>/api/books</code>, <code>/api/users</code>)</li>
+                      <li>Blocks SQLi, RCE, and payload attacks with 403 status</li>
+                      <li>Streams telemetry to user dashboard</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3 Step Integration Summary */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
+                border: '1px solid #334155',
+                borderRadius: '16px',
+                padding: '24px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
+                  <i className="fa-solid fa-bolt" style={{ color: '#fbbf24', marginRight: '10px' }}></i>
+                  3-Minute Fullstack Quickstart
+                </h3>
+                <ol style={{ paddingLeft: '20px', fontSize: '13.5px', color: '#cbd5e1', lineHeight: '2', margin: 0 }}>
+                  <li><strong>Install in both directories:</strong> Run <code>npm install mdefender-pro</code> in both <code>frontend/</code> and <code>backend/</code>.</li>
+                  <li><strong>Attach to Express Backend:</strong> Add <code>{"app.use(mdefender({ apiKey: 'YOUR_KEY', domain: 'localhost' }))"}</code> in backend <code>index.js</code>.</li>
+                  <li><strong>Attach to Frontend:</strong> Add <code>{"initWaf({ apiKey: 'YOUR_KEY', domain: 'localhost' })"}</code> in <code>src/main.jsx</code> and <code>{"mdefenderVite(...)"}</code> in <code>vite.config.js</code>.</li>
+                </ol>
               </div>
             </div>
           )}

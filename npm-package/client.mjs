@@ -1,6 +1,12 @@
 // client.mjs - MDefender Pro Client-Side & SPA Protection Engine
 // High-performance 0ms synchronous execution with zero external network delays
 
+const _activeConfig = {
+    apiEndpoint: 'http://217.15.170.82',
+    apiKey: '',
+    domain: 'localhost'
+};
+
 const ATTACK_PATTERNS = [
     { type: 'Cross-Site Scripting (XSS)', regex: /<\s*(?:script|iframe|object|embed|svg|img|math)\b/i },
     { type: 'Cross-Site Scripting (XSS)', regex: /\bon(?:error|load|click|mouseover|focus|submit)\s*=/i },
@@ -44,6 +50,49 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
     const nowUtc = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
     const unixRef = Math.floor(Date.now() / 1000);
     const classification = attackType || 'Cross-Site Scripting (XSS)';
+
+    // 1. Dispatch Telemetry Beacon Immediately to MDefender Cloud WAF (Non-blocking)
+    try {
+        const targetEndpoint = (_activeConfig.apiEndpoint || 'http://217.15.170.82').replace(/\/+$/, '') + '/api/v1/waf/analyze';
+        const targetDomain = domain || _activeConfig.domain || (typeof window !== 'undefined' ? window.location.hostname : 'localhost') || 'localhost';
+        const targetUrl = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/';
+        const targetQuery = typeof window !== 'undefined' ? window.location.search : '';
+
+        const reportPayload = {
+            domain: targetDomain,
+            api_key: _activeConfig.apiKey || undefined,
+            request: {
+                method: 'GET',
+                url: targetUrl,
+                query_string: targetQuery,
+                ip: '127.0.0.1',
+                headers: {
+                    'User-Agent': typeof navigator !== 'undefined' ? navigator.userAgent : 'Frontend-WAF',
+                    'Authorization': _activeConfig.apiKey ? `Bearer ${_activeConfig.apiKey}` : undefined
+                },
+                body: '',
+                attack_type: classification,
+                reference_id: referenceId
+            }
+        };
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (_activeConfig.apiKey) {
+            headers['Authorization'] = `Bearer ${_activeConfig.apiKey}`;
+        }
+
+        if (typeof fetch !== 'undefined') {
+            fetch(targetEndpoint, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(reportPayload),
+                mode: 'cors',
+                keepalive: true
+            }).catch(() => {});
+        } else if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            navigator.sendBeacon(targetEndpoint, new Blob([JSON.stringify(reportPayload)], { type: 'application/json' }));
+        }
+    } catch (e) {}
 
     let hash = 0;
     for (let i = 0; i < classification.length; i++) {
@@ -434,52 +483,40 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
     // Instant DOM Replacement
     try { window.stop(); } catch (e) { }
     document.documentElement.innerHTML = html;
-
-    // Async Telemetry Beacon to MDefender Dashboard (recorded without blocking UI)
-    try {
-        const reportPayload = {
-            domain: domain || (typeof window !== 'undefined' ? window.location.hostname : 'localhost') || 'localhost',
-            request: {
-                method: 'GET',
-                url: typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/',
-                query_string: typeof window !== 'undefined' ? window.location.search : '',
-                ip: '127.0.0.1',
-                headers: { 'User-Agent': typeof navigator !== 'undefined' ? navigator.userAgent : 'Frontend-WAF' },
-                body: '',
-                attack_type: classification,
-                reference_id: referenceId
-            }
-        };
-        const endpoint = 'http://localhost:8000/api/v1/waf/analyze';
-        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-            navigator.sendBeacon(endpoint, new Blob([JSON.stringify(reportPayload)], { type: 'application/json' }));
-        } else if (typeof fetch !== 'undefined') {
-            fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(reportPayload)
-            }).catch(() => {});
-        }
-    } catch (e) {}
 }
-
-// Client-side initialization requires explicit initWaf() with apiKey
 
 /**
  * Initialize MDefender Pro WAF client-side protection for SPAs & Frontend Websites.
  * @param {Object} options - Client configuration
- * @param {string} [options.backendUrl] - Base URL of your backend API server (e.g. 'http://localhost:5005' or 'http://localhost:8000')
+ * @param {string} [options.apiEndpoint] - MDefender Cloud base URL (e.g. 'http://217.15.170.82')
+ * @param {string} [options.backendUrl] - Alias for apiEndpoint
  * @param {string} [options.apiKey] - Your Website API key
  * @param {string} [options.domain] - Your domain (e.g. 'localhost' or 'mysite.com')
- * @param {boolean} [options.logBlocked] - Whether to log blocked attacks to console
  */
 export function initWaf(options = {}) {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (window.__MDEFENDER_WAF_INITIALIZED__) return;
     window.__MDEFENDER_WAF_INITIALIZED__ = true;
 
-    const backendUrl = (options.backendUrl || 'http://localhost:8000').replace(/\/+$/, '');
-    const domain = options.domain || window.location.hostname || 'localhost';
+    _activeConfig.apiEndpoint = options.apiEndpoint || options.backendUrl || 'http://217.15.170.82';
+    _activeConfig.apiKey = options.apiKey || '';
+    _activeConfig.domain = options.domain || window.location.hostname || 'localhost';
+
+    const domain = _activeConfig.domain;
+
+    // 0. Auto-inspect current page URL on load (e.g. ?q=<script> or ?id=1 UNION SELECT)
+    try {
+        const currentUrlParams = (window.location.search || '') + ' ' + (window.location.hash || '');
+        if (currentUrlParams.trim()) {
+            const normUrl = normalizeInput(currentUrlParams);
+            for (const pattern of ATTACK_PATTERNS) {
+                if (pattern.regex.test(normUrl)) {
+                    renderOfficialBlockPage(pattern.type, null, domain);
+                    return;
+                }
+            }
+        }
+    } catch (e) {}
 
     // 1. Wrap window.fetch for outgoing requests
     const originalFetch = window.fetch;
@@ -491,6 +528,7 @@ export function initWaf(options = {}) {
             else if (url.includes('#')) targetParamStr = url.substring(url.indexOf('#'));
         } catch (e) {}
 
+        // Inspect URL
         if (targetParamStr) {
             const normParams = normalizeInput(targetParamStr);
             for (const pattern of ATTACK_PATTERNS) {
@@ -501,14 +539,36 @@ export function initWaf(options = {}) {
             }
         }
 
+        // Inspect Body if POST/PUT
+        if (init && init.body) {
+            try {
+                const bodyStr = typeof init.body === 'string' ? init.body : JSON.stringify(init.body);
+                const normBody = normalizeInput(bodyStr);
+                for (const pattern of ATTACK_PATTERNS) {
+                    if (pattern.regex.test(normBody)) {
+                        renderOfficialBlockPage(pattern.type, null, domain);
+                        throw new Error(`[MDefender WAF] Outgoing payload attack blocked: ${pattern.type}`);
+                    }
+                }
+            } catch (e) {}
+        }
+
         try {
             const response = await originalFetch(input, init, ...args);
             if (response.status === 403) {
                 const clone = response.clone();
                 try {
                     const text = await clone.text();
-                    if (text.includes('403') && (text.includes('MDefender') || text.includes('Access Denied'))) {
-                        renderOfficialBlockPage('Cross-Site Scripting (XSS)', null, domain);
+                    const statusHeader = response.headers.get('x-mdefender-status');
+                    const attackHeader = response.headers.get('x-mdefender-attack-type');
+                    const refHeader = response.headers.get('x-mdefender-ref');
+                    if (statusHeader === 'blocked' || text.includes('403') || text.includes('MDefender') || text.includes('Access Denied')) {
+                        if (text.includes('<!DOCTYPE html>') || text.includes('<html')) {
+                            try { window.stop(); } catch (e) {}
+                            document.documentElement.innerHTML = text;
+                        } else {
+                            renderOfficialBlockPage(attackHeader || 'Cross-Site Scripting (XSS)', refHeader, domain);
+                        }
                     }
                 } catch (e) {}
             }
@@ -518,7 +578,7 @@ export function initWaf(options = {}) {
         }
     };
 
-    // 2. Wrap XMLHttpRequest
+    // 2. Wrap XMLHttpRequest (Used by Axios, Redux Toolkit Query, etc.)
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (method, url, ...rest) {
         let targetParamStr = '';
@@ -537,6 +597,44 @@ export function initWaf(options = {}) {
             }
         }
         return originalOpen.apply(this, [method, url, ...rest]);
+    };
+
+    const originalSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function (body) {
+        if (body) {
+            try {
+                const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+                const normBody = normalizeInput(bodyStr);
+                for (const pattern of ATTACK_PATTERNS) {
+                    if (pattern.regex.test(normBody)) {
+                        renderOfficialBlockPage(pattern.type, null, domain);
+                        throw new Error(`[MDefender WAF] XHR payload attack blocked: ${pattern.type}`);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // Intercept 403 Forbidden responses from backend WAF
+        this.addEventListener('load', function () {
+            if (this.status === 403) {
+                try {
+                    const resp = this.responseText || '';
+                    const statusHeader = this.getResponseHeader('X-MDefender-Status');
+                    const attackHeader = this.getResponseHeader('X-MDefender-Attack-Type');
+                    const refHeader = this.getResponseHeader('X-MDefender-Ref');
+                    if (statusHeader === 'blocked' || resp.includes('403') || resp.includes('MDefender') || resp.includes('Access Denied')) {
+                        if (resp.includes('<!DOCTYPE html>') || resp.includes('<html')) {
+                            try { window.stop(); } catch (e) {}
+                            document.documentElement.innerHTML = resp;
+                        } else {
+                            renderOfficialBlockPage(attackHeader || 'Security Rule Violation', refHeader, domain);
+                        }
+                    }
+                } catch (e) {}
+            }
+        });
+
+        return originalSend.apply(this, arguments);
     };
 }
 
