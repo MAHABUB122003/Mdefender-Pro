@@ -255,6 +255,7 @@ class WAF_FW_ML_Api_Client {
             return false;
         }
         $payload = [
+            'api_key' => $this->api_key,
             'domain'  => $domain,
             'mode'    => $mode ? $mode : 'protect',
             'request' => is_array($request_data)
@@ -289,15 +290,40 @@ class WAF_FW_ML_Api_Client {
             return false;
         }
         $payload = [
-            'domain' => $domain ? $domain : $this->get_domain(),
-            'events' => $events,
+            'api_key' => $this->api_key,
+            'domain'  => $domain ? $domain : $this->get_domain(),
+            'events'  => $events,
         ];
         $host = parse_url($this->base_url, PHP_URL_HOST);
         $is_loopback = $host === 'localhost' || $host === '127.0.0.1' || $host === '::1'
             || (defined('WAF_FW_DEV_MODE') && WAF_FW_DEV_MODE);
         $scheme = wp_parse_url($this->base_url, PHP_URL_SCHEME) ?: '';
-        wp_remote_post($this->base_url . '/api/v1/waf/telemetry', [
-            'timeout'     => 3,
+        $url = $this->base_url . '/api/v1/waf/telemetry';
+        $json_body = wp_json_encode($payload);
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $json_body);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $this->api_key,
+                'Content-Type: application/json',
+                'User-Agent: WordPress/' . get_bloginfo('version') . '; ' . home_url()
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+            if ($is_loopback || $scheme !== 'https') {
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            }
+            @curl_exec($ch);
+            @curl_close($ch);
+            return true;
+        }
+
+        wp_remote_post($url, [
+            'timeout'     => 2,
             'blocking'    => false,
             'sslverify'   => ($is_loopback || $scheme !== 'https') ? false : true,
             'redirection' => 0,
@@ -305,7 +331,7 @@ class WAF_FW_ML_Api_Client {
                 'Authorization' => 'Bearer ' . $this->api_key,
                 'Content-Type'  => 'application/json',
             ],
-            'body'        => wp_json_encode($payload),
+            'body'        => $json_body,
         ]);
         return true;
     }

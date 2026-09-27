@@ -186,9 +186,26 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     if not auth_data:
         raise HTTPException(status_code=401, detail="Invalid API key or domain mismatch")
 
-    stored = db.wordpress_sites.find_one({"website_id": auth_data["website_id"]})
+    website = auth_data.get("website") or {}
+    website_id = auth_data.get("website_id")
+    user_id = auth_data.get("user_id")
+
+    stored = db.wordpress_sites.find_one({"website_id": website_id})
     if not stored:
-        raise HTTPException(status_code=403, detail="Website not connected to WordPress")
+        db.wordpress_sites.update_one(
+            {"website_id": website_id},
+            {"$set": {
+                "website_id": website_id,
+                "user_id": user_id,
+                "domain": body.domain,
+                "connected": True,
+                "connected_at": datetime.now(),
+                "last_heartbeat": datetime.now(),
+                "plugin_version": body.plugin_version,
+                "status": "online",
+            }},
+            upsert=True
+        )
 
     updates = {
         "status": body.status,
@@ -204,7 +221,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         
         if total_site_reqs > 0:
             db.websites.update_one(
-                {"_id": auth_data["website_id"]},
+                {"_id": website_id},
                 {
                     "$set": {
                         "total_requests": max(total_site_reqs, website.get("total_requests", 0)),
@@ -235,9 +252,8 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             except Exception:
                 pass
         
-    website = auth_data["website"]
     db.websites.update_one(
-        {"_id": auth_data["website_id"]},
+        {"_id": website_id},
         {"$set": {"last_activity": datetime.now()}},
     )
 

@@ -343,6 +343,7 @@ class WAF_FW_Engine {
         $this->logger->log_attack($result);
         waf_fw_bump_stat('blocked');
 
+        $country = $this->get_ip_country($ip);
         $this->buffer_telemetry([
             'event_type' => 'blocked',
             'ip' => $ip,
@@ -356,6 +357,8 @@ class WAF_FW_Engine {
             'message' => $message,
             'reference_id' => $result['reference_id'] ?? '',
             'status' => 'blocked',
+            'action' => 'blocked',
+            'country_code' => $country,
             'timestamp' => current_time('mysql'),
         ]);
 
@@ -372,6 +375,23 @@ class WAF_FW_Engine {
             'user_agent' => $user_agent,
         ]);
         waf_fw_bump_stat('allowed');
+
+        $country = $this->get_ip_country($ip);
+        $this->buffer_telemetry([
+            'event_type' => 'allowed',
+            'ip' => $ip,
+            'url' => $url,
+            'method' => $method,
+            'attack_type' => null,
+            'confidence' => 0.0,
+            'user_agent' => $user_agent,
+            'rule_matched' => '',
+            'message' => $message,
+            'status' => 'allowed',
+            'action' => 'allowed',
+            'country_code' => $country,
+            'timestamp' => current_time('mysql'),
+        ]);
 
         return $this->allowed_result($ip, $url, $method, $message);
     }

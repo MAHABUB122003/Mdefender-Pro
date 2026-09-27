@@ -597,16 +597,43 @@ class UserAPI:
 
         website_domains = {w['id']: w.get('domain', '') for w in websites}
         website_domains_list = [w['domain'] for w in websites if w.get('domain')]
+        website_ids_list = [w['id'] for w in websites if w.get('id')]
 
-        # Build user scope query
+        # Build user scope query across user_id, all website_ids, and all domain aliases
         user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
+        if website_ids_list:
+            user_scope.append({'website_id': {'$in': website_ids_list}})
+            user_scope.append({'website_id': {'$in': [self._resolve_id(wid) for wid in website_ids_list if wid]}})
         if website_domains_list:
             user_scope.append({'domain': {'$in': website_domains_list}})
         user_filter = {'$or': user_scope} if len(user_scope) > 1 else user_scope[0]
 
         # Base query for stats and logs
         if website_id and website_id != 'all':
-            base_query = {'$and': [user_filter, {'$or': [{'website_id': website_id}, {'domain': website_id}]}]}
+            target_ids = [website_id]
+            target_domains = [website_id]
+            clean_filter = website_id.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
+            if clean_filter:
+                target_domains.append(clean_filter)
+
+            for s in websites:
+                sid = str(s.get('id') or s.get('_id', ''))
+                sdom = s.get('domain', '')
+                surl = s.get('url', '')
+                sname = s.get('name', '')
+                clean_sdom = sdom.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0] if sdom else ''
+                if website_id in (sid, sdom, surl, sname, clean_sdom) or clean_filter in (sdom, surl, sname, clean_sdom):
+                    if sid: target_ids.append(sid)
+                    if sdom: target_domains.append(sdom)
+                    if clean_sdom: target_domains.append(clean_sdom)
+                    if surl: target_domains.append(surl)
+
+            site_filter = {'$or': [
+                {'website_id': {'$in': target_ids}},
+                {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
+                {'domain': {'$in': target_domains}}
+            ]}
+            base_query = {'$and': [user_filter, site_filter]}
         else:
             base_query = user_filter
 
@@ -675,11 +702,9 @@ class UserAPI:
         # Count real live telemetry numbers from database
         events_total = self.db.security_events.count_documents(base_query)
         attacks_total = self.db.attacks.count_documents(base_query)
-        tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in websites), user_doc.get('total_requests', 0))
-
+        
         blocked_events_count = self.db.security_events.count_documents(attack_query)
         blocked_attacks_count = self.db.attacks.count_documents(base_query)
-        tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in websites), user_doc.get('total_blocked', 0))
 
         today_start = datetime.strptime(today, '%Y-%m-%d')
         today_end = today_start + timedelta(days=1)
@@ -690,7 +715,16 @@ class UserAPI:
             today_events_count = self.db.attacks.count_documents({
                 '$and': [base_query, {'timestamp': {'$gte': today_start, '$lt': today_end}}]
             })
-        req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in websites), user_doc.get('requests_today', 0))
+
+        if website_id and website_id != 'all':
+            matching_sites = [w for w in websites if w['id'] in target_ids or w.get('domain') in target_domains]
+            tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in matching_sites))
+            tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in matching_sites))
+            req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in matching_sites))
+        else:
+            tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in websites), user_doc.get('total_requests', 0))
+            tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in websites), user_doc.get('total_blocked', 0))
+            req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in websites), user_doc.get('requests_today', 0))
 
         active_sites_count = len(websites)
 

@@ -346,6 +346,17 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
             except Exception:
                 ev_time = now
 
+        cc = ev.get("country_code") or ""
+        cname = ev.get("country") or ""
+        if not cc and ip and ip not in ("127.0.0.1", "::1", "localhost", "0.0.0.0"):
+            try:
+                ip_filt = IPFilter()
+                g_info = ip_filt.get_ip_country(ip)
+                cc = g_info.get("country_code", "")
+                cname = g_info.get("country_name", "")
+            except Exception:
+                pass
+
         doc = {
             "user_id": user_id_str,
             "website_id": website_id_str,
@@ -365,6 +376,8 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
             "reference_id": ev.get("reference_id"),
             "user_agent": ev.get("user_agent", ""),
             "rule_matched": ev.get("rule_matched", ""),
+            "country_code": cc,
+            "country": cname,
         }
         security_docs.append(doc)
 
@@ -383,6 +396,8 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
                 "user_agent": ev.get("user_agent", ""),
                 "rule_matched": ev.get("rule_matched", "WAF Block"),
                 "reference_id": ev.get("reference_id"),
+                "country_code": cc,
+                "country": cname,
             })
 
     if security_docs:
