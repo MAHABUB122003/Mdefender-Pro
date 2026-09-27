@@ -76,6 +76,16 @@ def verify_api_key(db, api_key, domain=None):
                 "website": website,
             }
 
+    # 1b. Direct Website API key (from db.websites)
+    direct_site = db.websites.find_one({"api_key": api_key})
+    if direct_site:
+        user_id_str = str(direct_site.get("user_id", ""))
+        return {
+            "user_id": user_id_str,
+            "website_id": str(direct_site["_id"]),
+            "website": direct_site,
+        }
+
     # 2. Master Account API key (from db.users)
     user = db.users.find_one({"api_key": api_key})
     if user:

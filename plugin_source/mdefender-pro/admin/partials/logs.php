@@ -4,39 +4,18 @@ defined('ABSPATH') || exit;
 if (!function_exists('waf_get_country_name')) {
     function waf_get_country_name($code) {
         $countries = [
-            'BD' => 'Bangladesh',
-            'US' => 'United States',
-            'RO' => 'Romania',
-            'IN' => 'India',
-            'PK' => 'Pakistan',
-            'GB' => 'United Kingdom',
-            'CA' => 'Canada',
-            'DE' => 'Germany',
-            'FR' => 'France',
-            'CN' => 'China',
-            'RU' => 'Russia',
-            'JP' => 'Japan',
-            'BR' => 'Brazil',
-            'AU' => 'Australia',
-            'IT' => 'Italy',
-            'NL' => 'Netherlands',
-            'ES' => 'Spain',
-            'SG' => 'Singapore',
-            'MY' => 'Malaysia',
-            'TH' => 'Thailand',
-            'ID' => 'Indonesia',
-            'TR' => 'Turkey',
-            'UA' => 'Ukraine',
-            'SA' => 'Saudi Arabia',
-            'AE' => 'United Arab Emirates',
-            'ZA' => 'South Africa',
-            'KR' => 'South Korea',
-            'IR' => 'Iran',
-            'KP' => 'North Korea',
-            'VN' => 'Vietnam',
-            'PH' => 'Philippines',
+            'BD' => 'Bangladesh', 'US' => 'United States', 'RO' => 'Romania', 'IN' => 'India',
+            'PK' => 'Pakistan', 'GB' => 'United Kingdom', 'CA' => 'Canada', 'DE' => 'Germany',
+            'FR' => 'France', 'CN' => 'China', 'RU' => 'Russia', 'JP' => 'Japan',
+            'BR' => 'Brazil', 'AU' => 'Australia', 'IT' => 'Italy', 'NL' => 'Netherlands',
+            'ES' => 'Spain', 'SG' => 'Singapore', 'MY' => 'Malaysia', 'TH' => 'Thailand',
+            'ID' => 'Indonesia', 'TR' => 'Turkey', 'UA' => 'Ukraine', 'SA' => 'Saudi Arabia',
+            'AE' => 'United Arab Emirates', 'ZA' => 'South Africa', 'KR' => 'South Korea',
+            'IR' => 'Iran', 'KP' => 'North Korea', 'VN' => 'Vietnam', 'PH' => 'Philippines',
+            'LOCAL' => 'Local / Private Network'
         ];
-        $code = strtoupper($code);
+        $code = strtoupper(trim((string)$code));
+        if ($code === 'LOCAL' || $code === '127.0.0.1' || $code === '::1') return 'Local / Private Network';
         return $countries[$code] ?? $code;
     }
 }
@@ -196,17 +175,23 @@ $logs = $logger->get_logs($_GET);
                                 </td>
 
                                 <!-- Location Flag & Country Name -->
-                                <td data-label="Location">
+                                <td data-label="Location" class="waf-geo-cell" data-ip="<?php echo esc_attr($log->ip); ?>" data-cc="<?php echo esc_attr($log->country_code); ?>">
                                     <div style="display:flex;align-items:center;gap:6px;">
-                                        <?php if (!empty($log->country_code)): ?>
+                                        <?php if (!empty($log->country_code) && $log->country_code !== 'LOCAL'): ?>
                                             <img src="https://flagcdn.com/16x12/<?php echo strtolower($log->country_code); ?>.png" 
                                                  title="<?php echo esc_attr($log->country_code); ?>" 
                                                  alt="<?php echo esc_attr($log->country_code); ?>" 
+                                                 class="waf-flag-img"
                                                  style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle;" />
-                                            <span style="font-size:12.5px;font-weight:600;color:#334155;"><?php echo esc_html(waf_get_country_name($log->country_code)); ?></span>
+                                            <span class="waf-country-name" style="font-size:12.5px;font-weight:600;color:#334155;"><?php echo esc_html(waf_get_country_name($log->country_code)); ?></span>
+                                        <?php elseif ($log->country_code === 'LOCAL' || in_array($log->ip, ['127.0.0.1', '::1', 'localhost'], true) || strpos($log->ip, '192.168.') === 0 || strpos($log->ip, '10.') === 0): ?>
+                                            <img src="https://flagcdn.com/16x12/bd.png" 
+                                                 title="Local Network" alt="Local" class="waf-flag-img"
+                                                 style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle;" />
+                                            <span class="waf-country-name" style="font-size:12.5px;font-weight:600;color:#334155;">Local / Private Network</span>
                                         <?php else: ?>
-                                            <span class="dashicons dashicons-admin-site" title="Unknown Location" style="font-size:16px;width:16px;height:16px;color:#94a3b8;display:inline-block;vertical-align:middle;"></span>
-                                            <span style="font-size:12.5px;color:#64748b;">Unknown Location</span>
+                                            <span class="dashicons dashicons-admin-site waf-flag-icon" title="Resolving Location..." style="font-size:16px;width:16px;height:16px;color:#94a3b8;display:inline-block;vertical-align:middle;"></span>
+                                            <span class="waf-country-name" style="font-size:12.5px;color:#64748b;">Loading Location...</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -270,16 +255,16 @@ $logs = $logger->get_logs($_GET);
 
                                         <!-- Right Side Details Description Column -->
                                         <div style="flex:1;font-size:13.5px;color:#334155;line-height:1.6;text-align:left;">
-                                            <div style="margin-bottom:14px;background:#fff;padding:14px 16px;border-radius:8px;border:1px solid #cbd5e1;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                                            <div class="waf-detail-narrative" data-ip="<?php echo esc_attr($log->ip); ?>" style="margin-bottom:14px;background:#fff;padding:14px 16px;border-radius:8px;border:1px solid #cbd5e1;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.02);">
                                                 <?php
                                                 $locName = waf_get_country_name($log->country_code);
-                                                $flagHtml = !empty($log->country_code) ? '<img src="https://flagcdn.com/16x12/' . strtolower($log->country_code) . '.png" style="border-radius:2px;width:16px;height:12px;margin-right:6px;vertical-align:-1px;display:inline-block;" />' : '';
+                                                $flagHtml = (!empty($log->country_code) && $log->country_code !== 'LOCAL') ? '<img src="https://flagcdn.com/16x12/' . strtolower($log->country_code) . '.png" style="border-radius:2px;width:16px;height:12px;margin-right:6px;vertical-align:-1px;display:inline-block;" />' : '<img src="https://flagcdn.com/16x12/bd.png" style="border-radius:2px;width:16px;height:12px;margin-right:6px;vertical-align:-1px;display:inline-block;" />';
                                                 $formattedTime = date('M d, Y h:i:s A', strtotime($log->created_at));
                                                 
                                                 if ($log->status === 'blocked') {
-                                                    echo $flagHtml . '<strong>' . esc_html($locName) . '</strong> (' . esc_html($log->ip) . ') was blocked by firewall for <strong>' . esc_html($log->attack_type) . '</strong> in request: <code>' . esc_html($log->rule_matched) . '</code> at <a href="' . esc_url($log->url) . '" target="_blank">' . esc_html($log->url) . '</a> at ' . esc_html($formattedTime);
+                                                    echo '<span class="waf-narrative-content">' . $flagHtml . '<strong>' . esc_html($locName) . '</strong> (' . esc_html($log->ip) . ') was blocked by firewall for <strong>' . esc_html($log->attack_type) . '</strong> in request: <code>' . esc_html($log->rule_matched) . '</code> at <a href="' . esc_url($log->url) . '" target="_blank">' . esc_html($log->url) . '</a> at ' . esc_html($formattedTime) . '</span>';
                                                 } else {
-                                                    echo $flagHtml . '<strong>' . esc_html($locName) . '</strong> (' . esc_html($log->ip) . ') visited the site and was allowed. Page: <a href="' . esc_url($log->url) . '" target="_blank">' . esc_html($log->url) . '</a> at ' . esc_html($formattedTime);
+                                                    echo '<span class="waf-narrative-content">' . $flagHtml . '<strong>' . esc_html($locName) . '</strong> (' . esc_html($log->ip) . ') visited the site and was allowed. Page: <a href="' . esc_url($log->url) . '" target="_blank">' . esc_html($log->url) . '</a> at ' . esc_html($formattedTime) . '</span>';
                                                 }
                                                 ?>
                                             </div>
@@ -415,6 +400,70 @@ jQuery(document).ready(function($) {
             $row.css('background', '');
         }
     });
+
+    // Dynamic Client-side GeoIP Flag resolution (matching User Dashboard)
+    var ipCache = {};
+    $('.waf-geo-cell').each(function() {
+        var $cell = $(this);
+        var ip = $cell.data('ip');
+        if (!ip || ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return;
+        if (ip.indexOf('192.168.') === 0 || ip.indexOf('10.') === 0 || ip.indexOf('172.16.') === 0 || ip.indexOf('172.17.') === 0 || ip.indexOf('172.18.') === 0 || ip.indexOf('172.19.') === 0 || ip.indexOf('172.2') === 0 || ip.indexOf('172.30.') === 0 || ip.indexOf('172.31.') === 0) return;
+
+        if (ipCache[ip]) {
+            applyGeo(ip, ipCache[ip]);
+            return;
+        }
+
+        fetch('https://ipwho.is/' + encodeURIComponent(ip))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data && data.success && data.country_code) {
+                    var geo = {
+                        code: data.country_code.toLowerCase(),
+                        name: data.country || data.country_code,
+                        flag: data.flag && data.flag.img ? data.flag.img : ('https://flagcdn.com/16x12/' + data.country_code.toLowerCase() + '.png')
+                    };
+                    ipCache[ip] = geo;
+                    applyGeo(ip, geo);
+                } else {
+                    fallbackGeo(ip);
+                }
+            })
+            .catch(function() {
+                fallbackGeo(ip);
+            });
+    });
+
+    function fallbackGeo(ip) {
+        fetch('https://freeipapi.com/api/json/' + encodeURIComponent(ip))
+            .then(function(r) { return r.json(); })
+            .then(function(data2) {
+                if (data2 && data2.countryCode) {
+                    var geo = {
+                        code: data2.countryCode.toLowerCase(),
+                        name: data2.countryName || data2.countryCode,
+                        flag: 'https://flagcdn.com/16x12/' + data2.countryCode.toLowerCase() + '.png'
+                    };
+                    ipCache[ip] = geo;
+                    applyGeo(ip, geo);
+                }
+            })
+            .catch(function() {});
+    }
+
+    function applyGeo(ip, geo) {
+        $('.waf-geo-cell[data-ip="' + ip + '"]').each(function() {
+            var $c = $(this);
+            $c.find('.waf-flag-icon').remove();
+            var $img = $c.find('.waf-flag-img');
+            if (!$img.length) {
+                $img = $('<img class="waf-flag-img" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle; margin-right:4px;" />');
+                $c.find('div').prepend($img);
+            }
+            $img.attr('src', geo.flag).attr('title', geo.name).attr('alt', geo.code);
+            $c.find('.waf-country-name').text(geo.name);
+        });
+    }
 });
 
 function wafFwActionBlockIp(ip) {

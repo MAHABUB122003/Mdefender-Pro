@@ -76,6 +76,14 @@ class WAFAPI:
             self._key_cache[cache_key] = (res_val, now_ts + 60)
             return res_val
 
+        # 1b. Direct Website API key (from db.websites)
+        site_match = self.db.websites.find_one({'api_key': api_key})
+        if site_match:
+            user_id = str(site_match.get('user_id', ''))
+            res_val = {'user_id': user_id, 'website_id': str(site_match.get('_id')), 'api_key': api_key, 'website': site_match}
+            self._key_cache[cache_key] = (res_val, now_ts + 60)
+            return res_val
+
         # Legacy fallback (user master account key)
         user = self.db.users.find_one({
             'api_key': api_key,

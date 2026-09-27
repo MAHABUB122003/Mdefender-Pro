@@ -832,8 +832,20 @@ class UserAPI:
 
         # Get all website domains and IDs owned by user (from both websites and wordpress_sites)
         user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
-        user_domains = [w.get('domain') for w in user_sites if w.get('domain')]
-        user_site_ids = [str(w.get('_id')) for w in user_sites if w.get('_id')]
+        user_domains = []
+        user_site_ids = []
+
+        for w in user_sites:
+            if w.get('_id'):
+                user_site_ids.append(str(w['_id']))
+            for key in ('domain', 'url', 'name'):
+                val = w.get(key)
+                if val and isinstance(val, str):
+                    clean_val = val.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
+                    if clean_val and clean_val not in user_domains:
+                        user_domains.append(clean_val)
+                    if val not in user_domains:
+                        user_domains.append(val)
 
         wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         for wp in wp_sites:
@@ -848,13 +860,36 @@ class UserAPI:
         user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
         if user_site_ids:
             user_scope.append({'website_id': {'$in': user_site_ids}})
+            user_scope.append({'website_id': {'$in': [self._resolve_id(sid) for sid in user_site_ids if sid]}})
         if user_domains:
             user_scope.append({'domain': {'$in': user_domains}})
         
         conditions = [{'$or': user_scope}]
 
         if website_id and website_id != 'all':
-            conditions.append({'$or': [{'website_id': website_id}, {'domain': website_id}]})
+            target_ids = [website_id]
+            target_domains = [website_id]
+            clean_filter = website_id.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
+            if clean_filter:
+                target_domains.append(clean_filter)
+
+            for s in user_sites:
+                sid = str(s.get('_id', ''))
+                sdom = s.get('domain', '')
+                surl = s.get('url', '')
+                sname = s.get('name', '')
+                clean_sdom = sdom.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
+                if website_id in (sid, sdom, surl, sname, clean_sdom) or clean_filter in (sdom, surl, sname, clean_sdom):
+                    if sid: target_ids.append(sid)
+                    if sdom: target_domains.append(sdom)
+                    if clean_sdom: target_domains.append(clean_sdom)
+                    if surl: target_domains.append(surl)
+
+            conditions.append({'$or': [
+                {'website_id': {'$in': target_ids}},
+                {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
+                {'domain': {'$in': target_domains}}
+            ]})
 
         if status_filter:
             if status_filter in ('block', 'blocked'):

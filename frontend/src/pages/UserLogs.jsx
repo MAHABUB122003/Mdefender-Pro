@@ -21,22 +21,32 @@ export default function UserLogs() {
   const [ipLocations, setIpLocations] = useState({})
   const perPage = 20
 
-  useEffect(() => {
-    api.getUserDashboard().then(data => {
-      if (data?.websites && data.websites.length > 0) {
+  const fetchWebsites = useCallback(async () => {
+    try {
+      const data = await api.getUserDashboard()
+      if (data?.websites && Array.isArray(data.websites)) {
         setWebsites(data.websites)
       }
-    }).catch(() => {})
+    } catch (err) {
+      console.error('Error loading websites:', err)
+    }
   }, [])
 
   useEffect(() => {
-    if (logs?.logs?.length && websites.length === 0) {
-      const domains = [...new Set(logs.logs.map(l => l.domain).filter(Boolean))]
-      if (domains.length) {
-        setWebsites(domains.map(d => ({ id: d, domain: d, name: d })))
-      }
+    fetchWebsites()
+  }, [fetchWebsites])
+
+  useEffect(() => {
+    if (logs?.logs?.length) {
+      const logDomains = [...new Set(logs.logs.map(l => l.domain).filter(Boolean))]
+      setWebsites(prev => {
+        const existingDomains = new Set(prev.map(w => w.domain || w.id || w.name))
+        const missing = logDomains.filter(d => !existingDomains.has(d))
+        if (missing.length === 0) return prev
+        return [...prev, ...missing.map(d => ({ id: d, domain: d, name: d }))]
+      })
     }
-  }, [logs, websites.length])
+  }, [logs])
 
   const fetchLogs = useCallback(async (manual = false) => {
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
