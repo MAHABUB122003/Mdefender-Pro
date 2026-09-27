@@ -49,10 +49,10 @@ if (command === 'run' || command === 'start') {
 
   rl.question('\x1b[32mEnter your MDefender Pro API Key (from Dashboard): \x1b[0m', (apiKey) => {
     rl.question('\x1b[32mEnter your Website Domain (e.g. localhost or mysite.com): \x1b[0m', (domain) => {
-      rl.question('\x1b[32mEnter MDefender API Endpoint (default http://localhost:8000): \x1b[0m', (endpoint) => {
+      rl.question('\x1b[32mEnter MDefender API Endpoint (default http://217.15.170.82): \x1b[0m', (endpoint) => {
         const trimmedKey = (apiKey || 'YOUR_API_KEY_HERE').trim();
         const trimmedDomain = (domain || 'localhost').trim();
-        const trimmedEndpoint = (endpoint || 'http://localhost:8000').trim();
+        const trimmedEndpoint = (endpoint || 'http://217.15.170.82').trim();
 
         const configTemplate = `/**
  * MDefender Pro Web Application Firewall Configuration

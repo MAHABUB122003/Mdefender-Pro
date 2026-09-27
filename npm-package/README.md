@@ -55,8 +55,8 @@ module.exports = {
   // Domain registered in MDefender
   domain: 'yourdomain.com',
 
-  // WAF Cloud / Self-hosted endpoint
-  apiEndpoint: 'https://mdefender-pro-6e3r.onrender.com', // or 'http://127.0.0.1:8000' for local dev
+  // WAF Cloud endpoint
+  apiEndpoint: 'http://217.15.170.82',
 
   // Protection mode: 'block' (active) | 'monitor' (log-only) | 'off'
   mode: 'block',
@@ -68,7 +68,42 @@ module.exports = {
 
 ---
 
-## 3. Attach Middleware to Express
+## 3. React / Vite / SPA Frontend Protection
+
+MDefender Pro also provides client-side DOM/URL shield and Vite dev-server 403 blocking:
+
+### Client SPA Initialization (`src/main.jsx`)
+```js
+import { initWaf } from 'mdefender-pro/client';
+
+initWaf({
+  apiKey: 'your_api_key_here',
+  domain: 'localhost',
+  apiEndpoint: 'http://217.15.170.82'
+});
+```
+
+### Vite Dev Server Middleware (`vite.config.js`)
+```js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { mdefenderVite } from 'mdefender-pro/vite';
+
+export default defineConfig({
+  plugins: [
+    mdefenderVite({
+      apiKey: 'your_api_key_here',
+      domain: 'localhost',
+      apiEndpoint: 'http://217.15.170.82'
+    }),
+    react()
+  ]
+});
+```
+
+---
+
+## 4. Attach Middleware to Express Backend
 
 Add `app.use(mdefender())` after your standard body parsers (`express.json()`) and before your routes:
 
@@ -99,15 +134,15 @@ app.listen(5000, () => {
 
 ---
 
-## 4. Inline Configuration (Alternative)
+## 5. Inline Configuration (Alternative)
 
 If you prefer not using a config file, pass options directly:
 
 ```js
 app.use(mdefender({
-  apiKey: 'your_64_char_api_key_here',
+  apiKey: 'your_api_key_here',
   domain: 'yourdomain.com',
-  apiEndpoint: 'http://127.0.0.1:8000',
+  apiEndpoint: 'http://217.15.170.82',
   mode: 'block'
 }));
 ```

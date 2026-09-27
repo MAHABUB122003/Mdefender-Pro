@@ -32,17 +32,19 @@ function getDefaultTemplate() {
   return cachedDefaultTemplate;
 }
 
+const STATIC_ASSET_REGEX = /\.(js|jsx|ts|tsx|mjs|cjs|css|scss|sass|less|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|otf|map|wasm|mp4|webm|mp3)(\?.*)?$/i;
+
 const DEFAULT_CONFIG = {
   apiKey: '',
   domain: '',
   apiEndpoint: process.env.MDEFENDER_API_ENDPOINT || 'http://217.15.170.82',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
-  timeout: 10000,
+  timeout: 3000,
   maxBodySize: 1024 * 1024, // 1MB
   logBlocked: true,
   customBlockPage: null,
-  skipPaths: ['/health', '/favicon.ico'],
+  skipPaths: ['/health', '/favicon.ico', '/robots.txt', '/@vite', '/@react-refresh', '/@fs', '/__vite_ping', '/node_modules'],
   skipUserAgents: [],
   skipMethods: [],
   headers: true,
@@ -255,9 +257,11 @@ function mdefender(overrides = {}) {
   getDefaultTemplate();
 
   return async function mdefenderMiddleware(req, res, next) {
-    // 1. Skip paths
-    const urlPath = (req.originalUrl || req.url || '').split('?')[0];
+    // 1. Skip paths & Vite dev internals
+    const rawUrl = req.originalUrl || req.url || '';
+    const urlPath = rawUrl.split('?')[0];
     if (config.skipPaths.some(p => urlPath.startsWith(p))) return next();
+    if (STATIC_ASSET_REGEX.test(urlPath) && !rawUrl.includes('?') && req.method === 'GET') return next();
     
     // 2. Skip methods
     if (config.skipMethods.includes(req.method)) return next();
