@@ -1062,13 +1062,14 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
 async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
     u_str = str(user['_id'])
-    query = {
-        '$or': [
-            {'user_id': u_str},
-            {'added_by_user_id': u_str},
-        ]
-    }
-    blocks = list(db.country_blocks.find(query).sort('created_at', -1))
+    conds = [
+        {'user_id': u_str},
+        {'added_by_user_id': u_str},
+    ]
+    if ObjectId.is_valid(u_str):
+        conds.append({'user_id': ObjectId(u_str)})
+        conds.append({'added_by_user_id': ObjectId(u_str)})
+    blocks = list(db.country_blocks.find({'$or': conds}).sort('created_at', -1))
     for b in blocks:
         b['_id'] = str(b['_id'])
         if isinstance(b.get('created_at'), datetime):
@@ -1085,8 +1086,12 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
     
+    from bson import ObjectId
     u_str = str(user['_id'])
-    existing = db.country_blocks.find_one({'country_code': code, 'user_id': u_str})
+    exist_conds = [{'country_code': code, 'user_id': u_str}, {'country_code': code, 'added_by_user_id': u_str}]
+    if ObjectId.is_valid(u_str):
+        exist_conds.append({'country_code': code, 'user_id': ObjectId(u_str)})
+    existing = db.country_blocks.find_one({'$or': exist_conds})
     if existing:
         return {'status': 'error', 'message': f'Country {name} ({code}) is already blocked'}
     
@@ -1109,8 +1114,13 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
     code = (request.query_params.get('code') or '').strip().upper()
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
+    from bson import ObjectId
     u_str = str(user['_id'])
-    db.country_blocks.delete_many({'country_code': code, 'user_id': u_str})
+    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
+    if ObjectId.is_valid(u_str):
+        del_conds.append({'user_id': ObjectId(u_str)})
+        del_conds.append({'added_by_user_id': ObjectId(u_str)})
+    db.country_blocks.delete_many({'country_code': code, '$or': del_conds})
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
     push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'Country {code} unblocked successfully'}

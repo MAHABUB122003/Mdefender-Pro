@@ -851,7 +851,7 @@ Report Generated: ${new Date().toISOString()}`
                   <tbody>
                     {countryBlocks.map((block) => {
                       const cObj = ALL_COUNTRIES.find(c => c.code === block.country_code)
-                      const name = (block.country_name || (cObj ? cObj.name : block.country_code)).replace(/[\U00010000-\U0010ffff\u2600-\u27bf]/g, '').trim()
+                      const name = (block.country_name || (cObj ? cObj.name : block.country_code)).trim()
 
                       return (
                         <tr key={block._id || block.country_code} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
