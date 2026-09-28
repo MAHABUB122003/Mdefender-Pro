@@ -165,7 +165,6 @@ class WAF_FW_Engine {
 
             if (!empty($rule_matches)) {
                 $attack_type = $rule_matches[0]['rule_name'];
-                $this->report_block_to_cloud($ip, $url, $method, $body, $request_data);
                 return $this->do_block($ip, $url, $method, $attack_type, 0.9, $user_agent, $referer, $body, "Blocked by rule: $attack_type", $rule_matches[0]['rule_name']);
             }
 
@@ -187,7 +186,6 @@ class WAF_FW_Engine {
             // Feature-based high confidence block (Instant local decision)
             if ($this->feature_based_block($features)) {
                 $attack_type = $this->feature_extractor->get_attack_type($features);
-                $this->report_block_to_cloud($ip, $url, $method, $body, $request_data);
                 return $this->do_block($ip, $url, $method, $attack_type, 0.85, $user_agent, $referer, $body, "Feature-based detection: $attack_type");
             }
 
@@ -305,17 +303,6 @@ class WAF_FW_Engine {
         }
     }
 
-    private function report_block_to_cloud($ip, $url, $method, $body, $request_data) {
-        if ((string) get_option('waf_fw_cloud_mode', 'protect') === 'off') {
-            return;
-        }
-        if (!$this->ml_client->is_available()) {
-            return;
-        }
-        $domain = function_exists('home_url') ? parse_url(home_url(), PHP_URL_HOST) : ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        $this->ml_client->report_local_block($domain ? $domain : 'localhost', 'protect', $request_data, $ip);
-    }
-
     public function buffer_telemetry($event) {
         if (!is_array($event)) return;
         self::$telemetry_buffer[] = $event;
@@ -343,26 +330,29 @@ class WAF_FW_Engine {
         $this->logger->log_attack($result);
         waf_fw_bump_stat('blocked');
 
-        $country = $this->get_ip_country($ip);
-        $this->buffer_telemetry([
-            'event_type' => 'blocked',
-            'ip' => $ip,
-            'url' => $url,
-            'method' => $method,
-            'attack_type' => $attack_type,
-            'confidence' => $confidence,
-            'user_agent' => $user_agent,
-            'referer' => $referer,
-            'rule_matched' => $rule_matched,
-            'message' => $message,
-            'reference_id' => $result['reference_id'] ?? '',
-            'status' => 'blocked',
-            'action' => 'blocked',
-            'country_code' => $country,
-            'timestamp' => current_time('mysql'),
-        ]);
+        // Only buffer and flush telemetry if this block was NOT already analyzed & logged by cloud_ml_waf
+        if ($rule_matched !== 'cloud_ml_waf') {
+            $country = $this->get_ip_country($ip);
+            $this->buffer_telemetry([
+                'event_type' => 'blocked',
+                'ip' => $ip,
+                'url' => $url,
+                'method' => $method,
+                'attack_type' => $attack_type,
+                'confidence' => $confidence,
+                'user_agent' => $user_agent,
+                'referer' => $referer,
+                'rule_matched' => $rule_matched,
+                'message' => $message,
+                'reference_id' => $result['reference_id'] ?? '',
+                'status' => 'blocked',
+                'action' => 'blocked',
+                'country_code' => $country,
+                'timestamp' => current_time('mysql'),
+            ]);
 
-        self::flush_telemetry();
+            self::flush_telemetry();
+        }
         return $result;
     }
 
@@ -447,6 +437,19 @@ class WAF_FW_Engine {
             $cached = get_transient($transient_key);
             if ($cached !== false && !empty($cached)) {
                 return $cached;
+            }
+        }
+        if (function_exists('wp_remote_get')) {
+            $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", ['timeout' => 2]);
+            if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                $geo = json_decode(wp_remote_retrieve_body($resp), true);
+                if (!empty($geo['countryCode'])) {
+                    $code = strtoupper(trim($geo['countryCode']));
+                    if (function_exists('set_transient')) {
+                        set_transient($transient_key, $code, 86400);
+                    }
+                    return $code;
+                }
             }
         }
         return '';

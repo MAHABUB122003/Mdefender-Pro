@@ -315,9 +315,14 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     blacklist = list(set([item["ip"].strip() for item in blacklist_cursor if item.get("ip")]))
 
     # Fetch active country blocks (scoped to user)
-    country_query = [{"user_id": user_id}]
+    country_query = [
+        {"user_id": user_id},
+        {"added_by_user_id": user_id},
+        {"is_global": True},
+    ]
     if ObjectId.is_valid(user_id):
         country_query.append({"user_id": ObjectId(user_id)})
+        country_query.append({"added_by_user_id": ObjectId(user_id)})
     country_cursor = db.country_blocks.find({"$or": country_query})
     blocked_countries = list(set([item["country_code"].strip().upper() for item in country_cursor if item.get("country_code")]))
 

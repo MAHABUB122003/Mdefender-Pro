@@ -979,6 +979,19 @@ class UserAPI:
                 .skip((page - 1) * per_page)
                 .limit(per_page))
 
+        site_domain_map = {}
+        for s in user_sites:
+            s_id = str(s.get('_id', ''))
+            s_dom = s.get('domain') or s.get('name') or ''
+            if s_id and s_dom:
+                site_domain_map[s_id] = s_dom
+
+        for wp in wp_sites:
+            wp_id = str(wp.get('website_id') or wp.get('_id') or '')
+            wp_dom = wp.get('domain') or ''
+            if wp_id and wp_dom:
+                site_domain_map[wp_id] = wp_dom
+
         result_logs = []
         for i, log in enumerate(logs):
             status_val = log.get('status') or log.get('action') or 'allowed'
@@ -991,11 +1004,14 @@ class UserAPI:
             raw_atype = log.get('attack_type')
             attack_type_str = raw_atype if raw_atype else ('Blocked Attack' if is_blocked else 'Clean Request')
 
+            web_id = str(log.get('website_id', ''))
+            domain_val = log.get('domain') or site_domain_map.get(web_id, '') or 'mahabubur.shop'
+
             result_logs.append({
                 'id': str(log.get('_id', i)),
                 'ip': log.get('source_ip') or log.get('ip', ''),
                 'url': log.get('endpoint') or log.get('url', ''),
-                'domain': log.get('domain', ''),
+                'domain': domain_val,
                 'attack_type': attack_type_str,
                 'status': status_val,
                 'timestamp': log['timestamp'].strftime('%Y-%m-%d %H:%M:%S') if log.get('timestamp') and hasattr(log['timestamp'], 'strftime') else str(log.get('timestamp', '')),

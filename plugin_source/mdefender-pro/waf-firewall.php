@@ -126,7 +126,7 @@ add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 1
 function waf_fw_sync_cloud_blacklist_fast() {
     $last_sync = get_transient('waf_fw_last_bl_sync');
     if ($last_sync) return;
-    set_transient('waf_fw_last_bl_sync', 1, 30);
+    set_transient('waf_fw_last_bl_sync', 1, 15);
 
     if (class_exists('WAF_FW_ML_Api_Client')) {
         $client = WAF_FW_ML_Api_Client::instance();
@@ -168,7 +168,7 @@ function waf_fw_sync_cloud_blacklist_fast() {
     }
 }
 add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
-// Do NOT hook to wp_loaded on front-end requests to ensure 0ms latency for visitors
+add_action('init', 'waf_fw_sync_cloud_blacklist_fast');
 
 /**
  * Hourly cloud heartbeat: pushes online status + local counters so the
