@@ -4,16 +4,23 @@ import api from '../api/api'
 import userStore from '../utils/userStore'
 
 export default function UserLogs() {
-  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [logs, setLogs] = useState(() => {
-    const cached = userStore.get('logs_p1')
-    return (cached && Array.isArray(cached?.logs)) ? cached : { logs: [], total: 0, total_pages: 0 }
+    try {
+      const cached = userStore.get('logs_p1')
+      return (cached && Array.isArray(cached?.logs)) ? cached : { logs: [], total: 0, total_pages: 0 }
+    } catch {
+      return { logs: [], total: 0, total_pages: 0 }
+    }
   })
   const [websites, setWebsites] = useState([])
   const [websiteFilter, setWebsiteFilter] = useState('')
   const [loading, setLoading] = useState(() => {
-    const cached = userStore.get('logs_p1')
-    return !(cached && Array.isArray(cached?.logs))
+    try {
+      const cached = userStore.get('logs_p1')
+      return !(cached && Array.isArray(cached?.logs) && cached.logs.length > 0)
+    } catch {
+      return true
+    }
   })
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -56,12 +63,16 @@ export default function UserLogs() {
 
   const fetchLogs = useCallback(async (manual = false) => {
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
-    const cached = userStore.get(cacheKey);
-    if (cached && Array.isArray(cached?.logs) && !manual) {
-      setLogs(cached);
-      setLoading(false);
-    } else if (!cached && !manual) {
-      setLoading(true);
+    try {
+      const cached = userStore.get(cacheKey);
+      if (cached && Array.isArray(cached?.logs) && !manual) {
+        setLogs(cached);
+        setLoading(false);
+      } else if (!cached && !manual) {
+        setLoading(true);
+      }
+    } catch {
+      if (!manual) setLoading(true);
     }
     if (manual) setRefreshing(true);
 
@@ -74,17 +85,32 @@ export default function UserLogs() {
       if (websiteFilter) params.website_id = websiteFilter
       if (dateFrom) params.date_from = dateFrom
       if (dateTo) params.date_to = dateTo
+      
       const data = await api.getUserLogs(params)
-      const safeData = (data && Array.isArray(data.logs))
-        ? data
-        : { logs: Array.isArray(data) ? data : [], total: data?.total || 0, total_pages: data?.total_pages || 1 }
-      setLogs(safeData)
-      userStore.set(cacheKey, safeData)
-      if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter && !websiteFilter) {
-        userStore.set('logs_p1', safeData)
+      let safeLogs = []
+      let total = 0
+      let totalPages = 1
+
+      if (data && Array.isArray(data.logs)) {
+        safeLogs = data.logs
+        total = Number(data.total) || safeLogs.length
+        totalPages = Number(data.total_pages) || Math.max(1, Math.ceil(total / perPage))
+      } else if (Array.isArray(data)) {
+        safeLogs = data
+        total = safeLogs.length
+        totalPages = Math.max(1, Math.ceil(total / perPage))
       }
+
+      const normalizedData = { logs: safeLogs, total, total_pages: totalPages }
+      setLogs(normalizedData)
+      try {
+        userStore.set(cacheKey, normalizedData)
+        if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter && !websiteFilter) {
+          userStore.set('logs_p1', normalizedData)
+        }
+      } catch {}
     } catch (err) {
-      console.error(err)
+      console.error('Error fetching logs:', err)
     } finally {
       setLoading(false)
       if (manual) setTimeout(() => setRefreshing(false), 300)
@@ -94,7 +120,6 @@ export default function UserLogs() {
   useEffect(() => {
     fetchLogs()
 
-    // Real-time automatic background polling every 4 seconds on page 1
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible' && page === 1 && !search) {
         fetchLogs(false)
@@ -114,21 +139,20 @@ export default function UserLogs() {
     uniqueIps.forEach(rawIp => {
       const ip = String(rawIp).trim()
       if (!ip) return
-      // Handle local / private subnet IPs immediately
+      
       if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
         setIpLocations(prev => ({
           ...prev,
-          [ip]: { code: 'bd', name: 'Local / Private Network', flagUrl: 'https://flagcdn.com/16x12/bd.png' }
+          [ip]: { code: 'bd', name: 'Local Network', flagUrl: 'https://flagcdn.com/16x12/bd.png' }
         }))
         return
       }
 
-      // 1. Primary GeoIP lookup via ipwho.is (free, HTTPS, CORS enabled)
       fetch(`https://ipwho.is/${encodeURIComponent(ip)}`)
         .then(r => r.json())
         .then(data => {
           if (data && data.success && data.country_code) {
-            const code = data.country_code.toLowerCase()
+            const code = String(data.country_code).toLowerCase()
             const name = data.country || code.toUpperCase()
             const flagUrl = data.flag?.img || `https://flagcdn.com/16x12/${code}.png`
             setIpLocations(prev => ({
@@ -139,7 +163,7 @@ export default function UserLogs() {
         })
         .catch(() => {})
     })
-  }, [logs?.logs])
+  }, [logs?.logs, ipLocations])
 
   const handleFilter = (e) => {
     e.preventDefault()
@@ -180,55 +204,61 @@ export default function UserLogs() {
         website_id: websiteFilter, 
         days: selectedCleanRange 
       })
-      userStore.clear()
+      try { userStore.clear() } catch {}
       setPage(1)
       await fetchLogs(true)
       setShowCleanModal(false)
-      alert(res.message || 'Logs cleaned successfully.')
+      alert(res?.message || 'Logs cleaned successfully.')
     } catch (err) {
-      alert(err.message || 'Failed to clear logs')
+      alert(err?.message || 'Failed to clear logs')
     } finally {
       setCleaningLogs(false)
     }
   }
 
-  const handleBlockIp = async (ip) => {
+  const handleBlockIp = async (rawIp) => {
+    const ip = String(rawIp || '').trim()
+    if (!ip) return
     if (!confirm(`Block IP ${ip} permanently?`)) return
     try {
       const res = await api.addUserBlacklist({ ip, type: 'blacklist', reason: 'Blocked from attack log details' })
-      if (res.status === 'success' || res.message) {
+      if (res?.status === 'success' || res?.message) {
         alert(`IP ${ip} blocked successfully.`)
       } else {
         alert('Could not block IP.')
       }
     } catch (err) {
-      alert('Error blocking IP: ' + err.message)
-    }
-  }
-
-  const handleWhitelistIp = async (ip) => {
-    if (!confirm(`Add IP ${ip} to Whitelist?`)) return
-    try {
-      const res = await api.addUserBlacklist({ ip, type: 'whitelist', reason: 'Whitelisted from attack log details' })
-      if (res.status === 'success' || res.message) {
-        alert(`IP ${ip} whitelisted successfully.`)
-      } else {
-        alert('Could not whitelist IP.')
-      }
-    } catch (err) {
-      alert('Error whitelisting IP: ' + err.message)
+      alert('Error blocking IP: ' + (err?.message || String(err)))
     }
   }
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return 'N/A'
     try {
+      const s = String(dateStr)
       const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }
-      return new Date(dateStr.replace(' ', 'T')).toLocaleString('en-US', options)
+      const parsed = new Date(s.includes('T') ? s : s.replace(' ', 'T'))
+      return isNaN(parsed.getTime()) ? s : parsed.toLocaleString('en-US', options)
     } catch (e) {
-      return dateStr
+      return String(dateStr)
     }
   }
+
+  const getLoc = (log) => {
+    if (!log) return null
+    const ipStr = String(log.ip || '').trim()
+    if (ipLocations[ipStr]) return ipLocations[ipStr]
+    if (log.country_code) {
+      const cc = String(log.country_code).toLowerCase()
+      return { code: cc, name: String(log.country || log.country_code), flagUrl: `https://flagcdn.com/16x12/${cc}.png` }
+    }
+    if (ipStr === '127.0.0.1' || ipStr === '::1' || ipStr === 'localhost') {
+      return { code: 'bd', name: 'Local Network', flagUrl: 'https://flagcdn.com/16x12/bd.png' }
+    }
+    return null
+  }
+
+  const logsList = Array.isArray(logs?.logs) ? logs.logs : []
 
   return (
     <>
@@ -239,7 +269,7 @@ export default function UserLogs() {
           <select value={websiteFilter} onChange={e => setWebsiteFilter(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '500' }}>
             <option value="">All Websites ({websites.length})</option>
             {websites.map(w => (
-              <option key={w.id} value={w.id}>{w.domain || w.name || w.id}</option>
+              <option key={w?.id || w?._id || w?.domain} value={w?.id || w?._id || w?.domain}>{w?.domain || w?.name || w?.id || 'Site'}</option>
             ))}
           </select>
 
@@ -326,7 +356,7 @@ export default function UserLogs() {
           <tbody>
             {loading ? (
               <tr><td colSpan="8" style={{ textAlign: 'center', color: '#64748b', padding: '40px', fontSize: '14px' }}><i className="fas fa-spinner fa-spin"></i> Loading...</td></tr>
-            ) : logs.logs?.length === 0 ? (
+            ) : logsList.length === 0 ? (
               <tr>
                 <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
                   <div style={{ fontSize: '32px', marginBottom: '8px', color: '#94a3b8' }}>
@@ -336,15 +366,14 @@ export default function UserLogs() {
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0' }}>All incoming requests are currently clean or matching filters.</p>
                 </td>
               </tr>
-            ) : logs.logs?.map((log, i) => {
-              const isBlocked = log.status === 'blocked'
-              const loc = ipLocations[log.ip] || 
-                (log.country_code ? { code: log.country_code.toLowerCase(), name: log.country || log.country_code, flagUrl: `https://flagcdn.com/16x12/${log.country_code.toLowerCase()}.png` } : null) ||
-                (log.ip === '127.0.0.1' || log.ip === '::1' || log.ip === 'localhost' ? { code: 'bd', name: 'Bangladesh (Local)', flagUrl: 'https://flagcdn.com/16x12/bd.png' } : null)
+            ) : logsList.map((log, i) => {
+              const isBlocked = log?.status === 'blocked' || log?.action === 'blocked'
+              const loc = getLoc(log)
               const isExpanded = expandedRow === i
+              const urlStr = String(log?.url || '')
 
               return (
-                <Fragment key={i}>
+                <Fragment key={log?.id || i}>
                   <tr 
                     style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', background: isExpanded ? '#f1f5f9' : 'none' }}
                     onClick={() => setExpandedRow(isExpanded ? null : i)}
@@ -352,12 +381,12 @@ export default function UserLogs() {
                     <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       <span className={`badge ${isBlocked ? 'danger' : 'success'}`} style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                         <span style={{ width: '6px', height: '6px', background: 'currentColor', borderRadius: '50%' }}></span>
-                        {log.attack_type || (isBlocked ? 'Blocked Attack' : 'Clean Request')}
+                        {log?.attack_type || (isBlocked ? 'Blocked Attack' : 'Clean Request')}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ fontSize: '11px', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
-                        {log.domain || 'Main Site'}
+                        {log?.domain || 'Main Site'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
@@ -366,7 +395,7 @@ export default function UserLogs() {
                           <>
                             <img 
                               src={loc.flagUrl || `https://flagcdn.com/16x12/${loc.code}.png`} 
-                              alt={loc.code.toUpperCase()} 
+                              alt={String(loc.code).toUpperCase()} 
                               onError={(e) => { e.target.style.display = 'none' }}
                               style={{ borderRadius: '2px', width: '16px', height: '12px', display: 'inline-block', objectFit: 'cover' }} 
                             />
@@ -381,15 +410,15 @@ export default function UserLogs() {
                       </div>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span title={log.url} style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1e293b', wordBreak: 'break-all' }}>
-                        {log.url?.length > 45 ? log.url.slice(0, 45) + '...' : log.url}
+                      <span title={urlStr} style={{ fontFamily: 'monospace', fontSize: '12px', color: '#1e293b', wordBreak: 'break-all' }}>
+                        {urlStr.length > 45 ? urlStr.slice(0, 45) + '...' : (urlStr || '/')}
                       </span>
                     </td>
                     <td style={{ fontSize: '12px', color: '#475569', padding: '12px 16px' }}>
-                      {formatDateTime(log.timestamp)}
+                      {formatDateTime(log?.timestamp)}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <code style={{ fontSize: '12px', fontWeight: '600', color: '#0f172a' }}>{log.ip}</code>
+                      <code style={{ fontSize: '12px', fontWeight: '600', color: '#0f172a' }}>{log?.ip || 'N/A'}</code>
                     </td>
                     <td style={{ textAlign: 'center', padding: '12px 16px' }}>
                       <span style={{ fontWeight: '700', color: isBlocked ? '#b91c1c' : '#15803d' }}>
@@ -411,9 +440,9 @@ export default function UserLogs() {
                             <div style={{
                               width: '56px', height: '56px', borderRadius: '50%',
                               background: isBlocked ? '#dc2626' : '#10b981',
-                              display: 'flex', alignItems: 'center', justifycontent: 'center',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
                               color: '#fff', boxShadow: isBlocked ? '0 3px 8px rgba(220,38,38,0.2)' : '0 3px 8px rgba(16,185,129,0.2)',
-                              marginBottom: '8px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                              marginBottom: '8px', fontSize: '20px'
                             }}>
                               <i className={`fas ${isBlocked ? 'fa-times' : 'fa-check'}`}></i>
                             </div>
@@ -428,23 +457,23 @@ export default function UserLogs() {
                                 <img 
                                   src={loc.flagUrl || `https://flagcdn.com/16x12/${loc.code}.png`} 
                                   style={{ borderRadius: '2px', width: '16px', height: '12px', marginRight: '6px', verticalAlign: '-1px', display: 'inline-block', objectFit: 'cover' }} 
-                                  alt={loc.code.toUpperCase()} 
+                                  alt={String(loc.code).toUpperCase()} 
                                   onError={(e) => { e.target.style.display = 'none' }}
                                 />
                               )}
-                              <strong>{loc?.name || 'Unknown Location'}</strong> ({log.ip}) was {isBlocked ? 'blocked by firewall for ' : 'allowed access to page ' }
-                              <strong>{isBlocked ? log.attack_type : ''}</strong> {isBlocked ? 'in request: ' : ''}
-                              <code style={{ fontSize: '12.5px', color: '#dc2626' }}>{isBlocked ? log.rule_matched || log.attack_type : ''}</code> at <a href={log.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>{log.url}</a> at {formatDateTime(log.timestamp)}
+                              <strong>{loc?.name || 'Unknown Location'}</strong> ({log?.ip}) was {isBlocked ? 'blocked by firewall for ' : 'allowed access to page ' }
+                              <strong>{isBlocked ? log?.attack_type : ''}</strong> {isBlocked ? 'in request: ' : ''}
+                              <code style={{ fontSize: '12.5px', color: '#dc2626' }}>{isBlocked ? log?.rule_matched || log?.attack_type : ''}</code> at <a href={log?.url || '#'} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>{log?.url || '/'}</a> at {formatDateTime(log?.timestamp)}
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px 16px', marginBottom: '14px', fontSize: '12.5px' }}>
-                              <div><strong style={{ color: '#64748b' }}>Protected Site:</strong> <span style={{ fontWeight: '700', color: '#2563eb', marginLeft: '4px' }}>{log.domain || 'Main Site'}</span></div>
-                              <div><strong style={{ color: '#64748b' }}>IP Address:</strong> <code style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.ip}</code></div>
-                              <div><strong style={{ color: '#64748b' }}>HTTP Method:</strong> <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.method || 'GET'}</span></div>
-                              <div><strong style={{ color: '#64748b' }}>WAF Confidence:</strong> <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log.confidence != null ? Number(log.confidence).toFixed(4) : 'N/A'}</span></div>
+                              <div><strong style={{ color: '#64748b' }}>Protected Site:</strong> <span style={{ fontWeight: '700', color: '#2563eb', marginLeft: '4px' }}>{log?.domain || 'Main Site'}</span></div>
+                              <div><strong style={{ color: '#64748b' }}>IP Address:</strong> <code style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log?.ip}</code></div>
+                              <div><strong style={{ color: '#64748b' }}>HTTP Method:</strong> <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log?.method || 'GET'}</span></div>
+                              <div><strong style={{ color: '#64748b' }}>WAF Confidence:</strong> <span style={{ fontWeight: '700', color: '#0f172a', marginLeft: '4px' }}>{log?.confidence != null && !isNaN(log?.confidence) ? Number(log.confidence).toFixed(4) : 'N/A'}</span></div>
                             </div>
 
-                            {log.user_agent && (
+                            {log?.user_agent && (
                               <div style={{ marginBottom: '16px' }}>
                                 <strong style={{ color: '#64748b', display: 'block', marginBottom: '4px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>User Agent:</strong>
                                 <div style={{ background: '#fff', color: '#475569', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '11.5px', wordBreak: 'break-all', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>{log.user_agent}</div>
@@ -452,8 +481,8 @@ export default function UserLogs() {
                             )}
 
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-                              <button onClick={() => handleBlockIp(log.ip)} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#b91c1c', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px' }}>BLOCK IP</button>
-                              <Link to={`/user/tools?ip=${encodeURIComponent(log.ip)}`} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#0284c7', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px' }}>
+                              <button onClick={() => handleBlockIp(log?.ip)} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#b91c1c', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px' }}>BLOCK IP</button>
+                              <Link to={`/user/tools?ip=${encodeURIComponent(log?.ip || '')}`} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#0284c7', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px' }}>
                                 <i className="fas fa-search-location"></i>
                                 <span>RUN WHOIS</span>
                               </Link>
@@ -470,7 +499,7 @@ export default function UserLogs() {
         </table>
       </div>
 
-      {logs.total_pages > 1 && (
+      {(Number(logs?.total_pages) || 0) > 1 && (
         <div className="pagination">
           <div className="page-info">Page {page} of {logs.total_pages} ({logs.total} total records)</div>
           <div className="page-buttons">
@@ -571,7 +600,7 @@ export default function UserLogs() {
               }}>
                 <i className="fas fa-globe"></i>
                 <span>
-                  <strong>Target Website:</strong> {websiteFilter ? (websites.find(w => String(w.id) === String(websiteFilter))?.domain || websiteFilter) : 'All Connected Websites'}
+                  <strong>Target Website:</strong> {websiteFilter ? (websites.find(w => String(w?.id || w?._id || w?.domain) === String(websiteFilter))?.domain || websiteFilter) : 'All Connected Websites'}
                 </span>
               </div>
 
@@ -702,4 +731,3 @@ export default function UserLogs() {
     </>
   )
 }
-
