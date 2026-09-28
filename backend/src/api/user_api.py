@@ -600,13 +600,13 @@ class UserAPI:
         website_ids_list = [w['id'] for w in websites if w.get('id')]
 
         # Build user scope query across user_id, all website_ids, and all domain aliases
-        user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
+        user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if website_ids_list:
             user_scope.append({'website_id': {'$in': website_ids_list}})
             user_scope.append({'website_id': {'$in': [self._resolve_id(wid) for wid in website_ids_list if wid]}})
         if website_domains_list:
             user_scope.append({'domain': {'$in': website_domains_list}})
-        user_filter = {'$or': user_scope} if len(user_scope) > 1 else user_scope[0]
+        user_filter = {'$or': user_scope}
 
         # Base query for stats and logs
         if website_id and website_id != 'all':
@@ -891,7 +891,7 @@ class UserAPI:
                 user_site_ids.append(w_id)
 
         # Base user scope across user_id, website_ids, and domains
-        user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
+        user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if user_site_ids:
             user_scope.append({'website_id': {'$in': user_site_ids}})
             user_scope.append({'website_id': {'$in': [self._resolve_id(sid) for sid in user_site_ids if sid]}})
@@ -1185,11 +1185,11 @@ class UserAPI:
         user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         user_domains = [w.get('domain') for w in user_sites if w.get('domain')]
 
-        user_scope = [{'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}]
+        user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if user_domains:
             user_scope.append({'domain': {'$in': user_domains}})
         
-        conditions = [{'$or': user_scope} if len(user_scope) > 1 else user_scope[0]]
+        conditions = [{'$or': user_scope}]
 
         if website_id and website_id != 'all':
             conditions.append({'$or': [{'website_id': website_id}, {'domain': website_id}]})
