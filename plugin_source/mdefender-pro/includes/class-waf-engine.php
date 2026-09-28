@@ -268,7 +268,10 @@ class WAF_FW_Engine {
         if ($blocked_rows) {
             foreach ($blocked_rows as $row) {
                 if (!empty($row->ip)) {
-                    $bl_map[$row->ip] = true;
+                    $cand = trim((string) $row->ip);
+                    $bl_map[$cand] = true;
+                    if ($cand === '127.0.0.1') { $bl_map['::1'] = true; $bl_map['0.0.0.0'] = true; }
+                    if ($cand === '::1') { $bl_map['127.0.0.1'] = true; $bl_map['0.0.0.0'] = true; }
                 }
             }
         }
@@ -277,7 +280,10 @@ class WAF_FW_Engine {
         if (is_array($cloud_bl)) {
             foreach ($cloud_bl as $ip) {
                 if (!empty($ip)) {
-                    $bl_map[$ip] = true;
+                    $cand = trim((string) $ip);
+                    $bl_map[$cand] = true;
+                    if ($cand === '127.0.0.1') { $bl_map['::1'] = true; $bl_map['0.0.0.0'] = true; }
+                    if ($cand === '::1') { $bl_map['127.0.0.1'] = true; $bl_map['0.0.0.0'] = true; }
                 }
             }
         }
@@ -410,41 +416,82 @@ class WAF_FW_Engine {
         if (empty($raw)) return false;
 
         if (is_array($raw)) {
-            $blocked = array_map('strtoupper', array_map('trim', $raw));
+            $blocked = array_values(array_filter(array_map('strtoupper', array_map('trim', $raw))));
         } else {
-            $blocked = array_filter(array_map('trim', explode(',', strtoupper($raw))));
+            $blocked = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw)))));
         }
         if (empty($blocked)) return false;
 
         $country_code = $this->get_ip_country($ip);
-        if (!$country_code) return false;
+        if (empty($country_code)) return false;
 
         return in_array($country_code, $blocked, true);
     }
 
     private function get_ip_country($ip) {
-        if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0') {
+        // 1. Direct Edge Headers from CDN / Reverse Proxies / GeoIP modules
+        $header_keys = [
+            'HTTP_CF_IPCOUNTRY',
+            'GEOIP_COUNTRY_CODE',
+            'HTTP_GEOIP_COUNTRY_CODE',
+            'HTTP_X_COUNTRY_CODE',
+            'HTTP_X_GEOIP_COUNTRY',
+            'HTTP_X_REAL_IP_COUNTRY',
+        ];
+        foreach ($header_keys as $hk) {
+            if (!empty($_SERVER[$hk])) {
+                $h_code = strtoupper(substr(trim($_SERVER[$hk]), 0, 2));
+                if (strlen($h_code) === 2 && ctype_alpha($h_code) && $h_code !== 'XX' && $h_code !== 'T1') {
+                    return $h_code;
+                }
+            }
+        }
+
+        if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0) {
             return 'LOCAL';
         }
-        if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
-            return strtoupper(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY']), 0, 2));
-        }
-        if (!empty($_SERVER['GEOIP_COUNTRY_CODE'])) {
-            return strtoupper(substr(trim($_SERVER['GEOIP_COUNTRY_CODE']), 0, 2));
-        }
+
         $transient_key = 'waf_fw_geoip_' . md5($ip);
         if (function_exists('get_transient')) {
             $cached = get_transient($transient_key);
             if ($cached !== false && !empty($cached)) {
-                return $cached;
+                return strtoupper((string) $cached);
             }
         }
+
         if (function_exists('wp_remote_get')) {
+            // Service 1: ip-api.com
             $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", ['timeout' => 2]);
             if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
                 $geo = json_decode(wp_remote_retrieve_body($resp), true);
                 if (!empty($geo['countryCode'])) {
                     $code = strtoupper(trim($geo['countryCode']));
+                    if (function_exists('set_transient')) {
+                        set_transient($transient_key, $code, 86400);
+                    }
+                    return $code;
+                }
+            }
+
+            // Service 2: ipwho.is fallback
+            $resp2 = wp_remote_get("https://ipwho.is/{$ip}", ['timeout' => 2]);
+            if (!is_wp_error($resp2) && wp_remote_retrieve_response_code($resp2) === 200) {
+                $geo2 = json_decode(wp_remote_retrieve_body($resp2), true);
+                if (!empty($geo2['country_code'])) {
+                    $code = strtoupper(trim($geo2['country_code']));
+                    if (function_exists('set_transient')) {
+                        set_transient($transient_key, $code, 86400);
+                    }
+                    return $code;
+                }
+            }
+
+            // Service 3: freeipapi.com fallback
+            $resp3 = wp_remote_get("https://freeipapi.com/api/json/{$ip}", ['timeout' => 2]);
+            if (!is_wp_error($resp3) && wp_remote_retrieve_response_code($resp3) === 200) {
+                $geo3 = json_decode(wp_remote_retrieve_body($resp3), true);
+                if (!empty($geo3['countryCode'])) {
+                    $code = strtoupper(trim($geo3['countryCode']));
                     if (function_exists('set_transient')) {
                         set_transient($transient_key, $code, 86400);
                     }

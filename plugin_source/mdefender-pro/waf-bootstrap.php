@@ -65,9 +65,17 @@ $ip_blacklist = $mdefender_cache_data['blacklist_ips'] ?? [];
 $is_blocked = false;
 $block_reason = '';
 
-if (isset($ip_blacklist[$mdefender_ip])) {
-    $is_blocked = true;
-    $block_reason = 'Your IP address has been flagged for malicious activity.';
+$candidates = [$mdefender_ip];
+if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0') {
+    $candidates = ['127.0.0.1', '::1', '0.0.0.0', 'localhost'];
+}
+
+foreach ($candidates as $cand) {
+    if (isset($ip_blacklist[$cand])) {
+        $is_blocked = true;
+        $block_reason = 'Your IP address has been flagged for malicious activity.';
+        break;
+    }
 }
 
 // 2. Fast Country Block Check

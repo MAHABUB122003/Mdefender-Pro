@@ -750,8 +750,11 @@ async def user_block_ip(request: Request, user: dict = Depends(verify_user_token
             'type': data.get('type', 'permanent'),
             'added_by': user_email,
             'added_by_user_id': user_id_str,
+            'user_id': user_id_str,
             'blocked_at': datetime.now(),
         }})
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user['_id'])
         return {'status': 'success', 'message': f'{ip} has been updated in blacklist'}
     
     db.blacklist.insert_one({
@@ -760,8 +763,12 @@ async def user_block_ip(request: Request, user: dict = Depends(verify_user_token
         'type': data.get('type', 'permanent'),
         'added_by': user_email,
         'added_by_user_id': user_id_str,
+        'user_id': user_id_str,
         'blocked_at': datetime.now(),
+        'is_global': False,
     })
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'{ip} has been blocked'}
 
 @app.get("/api/user/blacklist")
@@ -815,9 +822,13 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     existing = db.blacklist.find_one({'ip': ip})
     if existing:
         db.blacklist.update_one({'_id': existing['_id']}, {'$set': payload})
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user['_id'])
         return {'status': 'success', 'message': f'IP {ip} updated in blacklist'}
         
     db.blacklist.insert_one(payload)
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully'}
 
 @app.delete("/api/user/blacklist")
@@ -840,6 +851,8 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
             {'added_by_user_id': None},
         ]
     })
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'IP {ip} removed from blacklist'}
 
 @app.get("/api/user/whitelist")
@@ -1086,6 +1099,8 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
         'created_at': datetime.now()
     }
     db.country_blocks.insert_one(doc)
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully'}
 
 
@@ -1096,6 +1111,8 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
         return {'status': 'error', 'message': 'Country code is required'}
     u_str = str(user['_id'])
     db.country_blocks.delete_many({'country_code': code, 'user_id': u_str})
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'Country {code} unblocked successfully'}
 
 

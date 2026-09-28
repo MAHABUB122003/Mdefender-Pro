@@ -288,8 +288,16 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
     # Fetch active blacklisted IPs for local firewall cache (scoped to user)
     user_id = str(auth_data.get("user_id") or "")
-    now = datetime.now()
+    user_doc = None
     from bson import ObjectId
+    if user_id:
+        u_find = [{"_id": user_id}, {"id": user_id}]
+        if ObjectId.is_valid(user_id):
+            u_find.append({"_id": ObjectId(user_id)})
+        user_doc = db.users.find_one({"$or": u_find})
+    user_email = user_doc.get("email", "") if user_doc else ""
+
+    now = datetime.now()
     user_or_conditions = [
         {"added_by_user_id": user_id},
         {"user_id": user_id},
@@ -297,6 +305,8 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         {"added_by_user_id": None},
         {"is_global": True},
     ]
+    if user_email:
+        user_or_conditions.append({"added_by": user_email})
     if ObjectId.is_valid(user_id):
         user_or_conditions.append({"added_by_user_id": ObjectId(user_id)})
         user_or_conditions.append({"user_id": ObjectId(user_id)})
@@ -312,14 +322,24 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         }
     ]
     blacklist_cursor = db.blacklist.find({"$and": find_conditions})
-    blacklist = list(set([item["ip"].strip() for item in blacklist_cursor if item.get("ip")]))
+    raw_blacklist = [item["ip"].strip() for item in blacklist_cursor if item.get("ip")]
+    bl_set = set(raw_blacklist)
+    if "127.0.0.1" in bl_set or "::1" in bl_set:
+        bl_set.add("127.0.0.1")
+        bl_set.add("::1")
+        bl_set.add("0.0.0.0")
+    blacklist = list(bl_set)
 
     # Fetch active country blocks (scoped to user)
     country_query = [
         {"user_id": user_id},
         {"added_by_user_id": user_id},
         {"is_global": True},
+        {"added_by_user_id": {"$exists": False}},
+        {"added_by_user_id": None},
     ]
+    if user_email:
+        country_query.append({"added_by": user_email})
     if ObjectId.is_valid(user_id):
         country_query.append({"user_id": ObjectId(user_id)})
         country_query.append({"added_by_user_id": ObjectId(user_id)})
@@ -350,6 +370,42 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "blocked_countries": blocked_countries,
         "user_rules": user_rules,
     })
+
+
+def push_instant_sync_to_wordpress(user_id=None, website_id=None):
+    """Background fire-and-forget sync notification to all connected WordPress sites for this user."""
+    import threading
+    import requests
+
+    def _do_sync():
+        try:
+            db = MongoDB()
+            from bson import ObjectId
+            query = {}
+            if user_id:
+                u_str = str(user_id)
+                conds = [{"user_id": u_str}, {"added_by_user_id": u_str}]
+                if ObjectId.is_valid(u_str):
+                    conds.append({"user_id": ObjectId(u_str)})
+                query["$or"] = conds
+            if website_id:
+                query["website_id"] = str(website_id)
+
+            w_sites = list(db.websites.find(query if query else {}))
+            for ws in w_sites:
+                domain = ws.get("domain", "")
+                url = ws.get("url") or (f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}")
+                api_key = ws.get("api_key") or ""
+                if url:
+                    try:
+                        clean_url = url.rstrip("/")
+                        requests.get(f"{clean_url}/?waf_cloud_sync=1&api_key={api_key}", timeout=2, verify=False)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    threading.Thread(target=_do_sync, daemon=True).start()
 
 
 @router.get("/site/{website_id}")

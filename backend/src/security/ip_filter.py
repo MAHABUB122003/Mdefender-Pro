@@ -9,10 +9,24 @@ class IPFilter:
     def is_blacklisted(self, ip, user_id=None):
         if not ip:
             return False
+        ip = str(ip).strip()
         from bson import ObjectId
-        query = {'ip': ip}
+        
+        candidates = [ip]
+        if ip in ('127.0.0.1', '::1', '0.0.0.0', 'localhost'):
+            candidates = ['127.0.0.1', '::1', '0.0.0.0', 'localhost']
+
+        ip_cond = {'ip': {'$in': candidates}} if len(candidates) > 1 else {'ip': ip}
+        query = ip_cond
         if user_id:
             u_str = str(user_id)
+            user_doc = None
+            if ObjectId.is_valid(u_str):
+                user_doc = self.db.users.find_one({'_id': ObjectId(u_str)})
+            elif u_str:
+                user_doc = self.db.users.find_one({'$or': [{'_id': u_str}, {'id': u_str}]})
+            u_email = user_doc.get('email', '') if user_doc else ''
+
             or_conditions = [
                 {'added_by_user_id': u_str},
                 {'user_id': u_str},
@@ -20,12 +34,16 @@ class IPFilter:
                 {'added_by_user_id': {'$exists': False}},
                 {'added_by_user_id': None},
             ]
+            if u_email:
+                or_conditions.append({'added_by': u_email})
             if ObjectId.is_valid(u_str):
                 or_conditions.append({'added_by_user_id': ObjectId(u_str)})
                 or_conditions.append({'user_id': ObjectId(u_str)})
             query = {
-                'ip': ip,
-                '$or': or_conditions
+                '$and': [
+                    ip_cond,
+                    {'$or': or_conditions}
+                ]
             }
         entry = self.db.blacklist.find_one(query)
         if not entry:
@@ -116,7 +134,9 @@ class IPFilter:
             or_conditions = [
                 {'user_id': u_str},
                 {'added_by_user_id': u_str},
-                {'is_global': True}
+                {'is_global': True},
+                {'added_by_user_id': {'$exists': False}},
+                {'added_by_user_id': None}
             ]
             if ObjectId.is_valid(u_str):
                 or_conditions.append({'user_id': ObjectId(u_str)})

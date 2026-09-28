@@ -19,33 +19,78 @@ class WAF_FW_IP_Filter {
             return false;
         }
 
+        $ip = trim((string) $ip);
         if (isset($this->runtime_blacklist_cache[$ip])) {
             return $this->runtime_blacklist_cache[$ip];
         }
 
+        $candidates = [$ip];
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0') {
+            $candidates = ['127.0.0.1', '::1', '0.0.0.0', 'localhost'];
+        }
+
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
-        $result = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table WHERE ip = %s",
-            $ip
-        ));
-        if ($result) {
-            if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= current_time('timestamp')) {
-                $wpdb->delete($table, ['ip' => $ip]);
-            } else {
-                $this->runtime_blacklist_cache[$ip] = true;
-                return true;
+        
+        foreach ($candidates as $cand) {
+            $result = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $table WHERE ip = %s",
+                $cand
+            ));
+            if ($result) {
+                if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= current_time('timestamp')) {
+                    $wpdb->delete($table, ['ip' => $cand]);
+                } else {
+                    $this->runtime_blacklist_cache[$ip] = true;
+                    return true;
+                }
             }
         }
 
         // Check local WAF blacklist cache synced from MDefender Cloud dashboard
         $cloud_blacklist = get_option('waf_fw_local_blacklist_cache', []);
-        if (is_array($cloud_blacklist) && in_array($ip, $cloud_blacklist, true)) {
-            $this->runtime_blacklist_cache[$ip] = true;
-            return true;
+        if (is_array($cloud_blacklist) && !empty($cloud_blacklist)) {
+            foreach ($cloud_blacklist as $b_ip) {
+                $b_ip = trim((string) $b_ip);
+                if (empty($b_ip)) continue;
+                if (in_array($b_ip, $candidates, true)) {
+                    $this->runtime_blacklist_cache[$ip] = true;
+                    return true;
+                }
+                if (strpos($b_ip, '/') !== false && $this->ip_in_range($ip, $b_ip)) {
+                    $this->runtime_blacklist_cache[$ip] = true;
+                    return true;
+                }
+            }
+        }
+
+        // Check Global Threat Intel Cache
+        $threat_ips = get_transient('waf_fw_cloud_threat_ips');
+        if (is_array($threat_ips) && !empty($threat_ips)) {
+            foreach ($candidates as $cand) {
+                if (in_array($cand, $threat_ips, true)) {
+                    $this->runtime_blacklist_cache[$ip] = true;
+                    return true;
+                }
+            }
         }
 
         $this->runtime_blacklist_cache[$ip] = false;
+        return false;
+    }
+
+    private function ip_in_range($ip, $range) {
+        if (strpos($range, '/') === false) {
+            return $ip === $range;
+        }
+        list($subnet, $bits) = explode('/', $range, 2);
+        $bits = (int) $bits;
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $ip_dec = ip2long($ip);
+            $subnet_dec = ip2long($subnet);
+            $mask = ~((1 << (32 - $bits)) - 1);
+            return ($ip_dec & $mask) === ($subnet_dec & $mask);
+        }
         return false;
     }
 

@@ -121,11 +121,14 @@ add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 1
 
 /**
  * Fast sync for cloud blacklist, country blocks, user rules, and status.
- * Throttled to every 30 seconds opportunistically on WP requests.
+ * Syncs from cloud backend and refreshes waf_fast_cache.json.
  */
-function waf_fw_sync_cloud_blacklist_fast() {
-    $last_sync = get_transient('waf_fw_last_bl_sync');
-    if ($last_sync) return;
+function waf_fw_sync_cloud_blacklist_fast($force = false) {
+    if (!$force) {
+        $last_sync = get_transient('waf_fw_last_bl_sync');
+        $has_cached_bl = get_option('waf_fw_local_blacklist_cache', null);
+        if ($last_sync && $has_cached_bl !== null) return;
+    }
     set_transient('waf_fw_last_bl_sync', 1, 15);
 
     if (class_exists('WAF_FW_ML_Api_Client')) {
@@ -138,11 +141,11 @@ function waf_fw_sync_cloud_blacklist_fast() {
             $res = $client->heartbeat($stats);
             if ($res && is_array($res)) {
                 if (isset($res['blacklist']) && is_array($res['blacklist'])) {
-                    $ips = array_map('sanitize_text_field', $res['blacklist']);
+                    $ips = array_values(array_filter(array_map('sanitize_text_field', $res['blacklist'])));
                     update_option('waf_fw_local_blacklist_cache', $ips);
                 }
                 if (isset($res['blocked_countries']) && is_array($res['blocked_countries'])) {
-                    $countries = array_map('sanitize_text_field', $res['blocked_countries']);
+                    $countries = array_values(array_filter(array_map('sanitize_text_field', $res['blocked_countries'])));
                     update_option('waf_fw_blocked_countries', implode(',', $countries));
                 }
                 if (isset($res['user_rules']) && is_array($res['user_rules'])) {
@@ -167,8 +170,45 @@ function waf_fw_sync_cloud_blacklist_fast() {
         }
     }
 }
+// Run early on plugins_loaded priority 0 (before WAF analysis at priority 1), init, and admin_init
+add_action('plugins_loaded', 'waf_fw_sync_cloud_blacklist_fast', 0);
 add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
 add_action('init', 'waf_fw_sync_cloud_blacklist_fast');
+
+/**
+ * Real-time cloud sync webhook listener.
+ * Can be triggered directly by MDefender backend upon dashboard blacklist/country updates.
+ */
+function waf_fw_handle_cloud_sync_webhook() {
+    if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
+        $token = sanitize_text_field($_GET['site_token'] ?? $_GET['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? '');
+        $stored_token = (string) get_option('waf_fw_site_token', '');
+        $api_key = sanitize_text_field($_GET['api_key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '');
+        $stored_key = (string) get_option('waf_fw_ml_api_key', '');
+
+        $is_authorized = (!empty($token) && !empty($stored_token) && hash_equals($stored_token, $token))
+            || (!empty($api_key) && !empty($stored_key) && (strpos($api_key, $stored_key) !== false || hash_equals($stored_key, $api_key)))
+            || current_user_can('manage_options');
+
+        if ($is_authorized) {
+            delete_transient('waf_fw_last_bl_sync');
+            waf_fw_sync_cloud_blacklist_fast(true);
+            if (!headers_sent()) {
+                header('Content-Type: application/json; charset=UTF-8');
+            }
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'MDefender cloud blacklist & country rules synced successfully',
+                'blacklist_count' => count(get_option('waf_fw_local_blacklist_cache', [])),
+                'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
+                'synced_at' => current_time('mysql')
+            ]);
+            exit;
+        }
+    }
+}
+add_action('init', 'waf_fw_handle_cloud_sync_webhook', 1);
+add_action('plugins_loaded', 'waf_fw_handle_cloud_sync_webhook', 0);
 
 /**
  * Hourly cloud heartbeat: pushes online status + local counters so the
