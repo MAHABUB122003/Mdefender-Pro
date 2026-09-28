@@ -5,10 +5,16 @@ import userStore from '../utils/userStore'
 
 export default function UserLogs() {
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
-  const [logs, setLogs] = useState(() => userStore.get('logs_p1') || { logs: [], total: 0, total_pages: 0 })
+  const [logs, setLogs] = useState(() => {
+    const cached = userStore.get('logs_p1')
+    return (cached && Array.isArray(cached?.logs)) ? cached : { logs: [], total: 0, total_pages: 0 }
+  })
   const [websites, setWebsites] = useState([])
   const [websiteFilter, setWebsiteFilter] = useState('')
-  const [loading, setLoading] = useState(() => !userStore.get('logs_p1'))
+  const [loading, setLoading] = useState(() => {
+    const cached = userStore.get('logs_p1')
+    return !(cached && Array.isArray(cached?.logs))
+  })
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [ipFilter, setIpFilter] = useState('')
@@ -37,8 +43,8 @@ export default function UserLogs() {
   }, [fetchWebsites])
 
   useEffect(() => {
-    if (logs?.logs?.length) {
-      const logDomains = [...new Set(logs.logs.map(l => l.domain).filter(Boolean))]
+    if (logs?.logs && Array.isArray(logs.logs) && logs.logs.length > 0) {
+      const logDomains = [...new Set(logs.logs.map(l => l?.domain).filter(Boolean))]
       setWebsites(prev => {
         const existingDomains = new Set(prev.map(w => w.domain || w.id || w.name))
         const missing = logDomains.filter(d => !existingDomains.has(d))
@@ -46,12 +52,12 @@ export default function UserLogs() {
         return [...prev, ...missing.map(d => ({ id: d, domain: d, name: d }))]
       })
     }
-  }, [logs])
+  }, [logs?.logs])
 
   const fetchLogs = useCallback(async (manual = false) => {
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
     const cached = userStore.get(cacheKey);
-    if (cached && !manual) {
+    if (cached && Array.isArray(cached?.logs) && !manual) {
       setLogs(cached);
       setLoading(false);
     } else if (!cached && !manual) {
@@ -69,10 +75,13 @@ export default function UserLogs() {
       if (dateFrom) params.date_from = dateFrom
       if (dateTo) params.date_to = dateTo
       const data = await api.getUserLogs(params)
-      setLogs(data)
-      userStore.set(cacheKey, data)
+      const safeData = (data && Array.isArray(data.logs))
+        ? data
+        : { logs: Array.isArray(data) ? data : [], total: data?.total || 0, total_pages: data?.total_pages || 1 }
+      setLogs(safeData)
+      userStore.set(cacheKey, safeData)
       if (page === 1 && !search && !ipFilter && !typeFilter && !statusFilter && !websiteFilter) {
-        userStore.set('logs_p1', data)
+        userStore.set('logs_p1', safeData)
       }
     } catch (err) {
       console.error(err)
@@ -85,21 +94,26 @@ export default function UserLogs() {
   useEffect(() => {
     fetchLogs()
 
-    // Real-time automatic background polling every 3 seconds on page 1
+    // Real-time automatic background polling every 4 seconds on page 1
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible' && page === 1 && !search) {
         fetchLogs(false)
       }
-    }, 3000)
+    }, 4000)
 
     return () => clearInterval(interval)
   }, [fetchLogs, page, search])
 
   useEffect(() => {
-    if (!logs.logs) return
-    const uniqueIps = [...new Set(logs.logs.map(l => l.ip))].filter(ip => ip && ip !== '127.0.0.1' && ip !== '::1' && ip !== 'localhost' && ip !== 'unknown' && !ipLocations[ip])
+    if (!logs?.logs || !Array.isArray(logs.logs)) return
+    const uniqueIps = [...new Set(logs.logs.map(l => l?.ip).filter(Boolean))].filter(rawIp => {
+      const s = String(rawIp).trim()
+      return s && s !== '127.0.0.1' && s !== '::1' && s !== 'localhost' && s !== 'unknown' && !ipLocations[s]
+    })
     
-    uniqueIps.forEach(ip => {
+    uniqueIps.forEach(rawIp => {
+      const ip = String(rawIp).trim()
+      if (!ip) return
       // Handle local / private subnet IPs immediately
       if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.') || ip.startsWith('172.17.') || ip.startsWith('172.18.') || ip.startsWith('172.19.') || ip.startsWith('172.2') || ip.startsWith('172.30.') || ip.startsWith('172.31.')) {
         setIpLocations(prev => ({
@@ -110,7 +124,7 @@ export default function UserLogs() {
       }
 
       // 1. Primary GeoIP lookup via ipwho.is (free, HTTPS, CORS enabled)
-      fetch(`https://ipwho.is/${ip}`)
+      fetch(`https://ipwho.is/${encodeURIComponent(ip)}`)
         .then(r => r.json())
         .then(data => {
           if (data && data.success && data.country_code) {
@@ -121,39 +135,11 @@ export default function UserLogs() {
               ...prev,
               [ip]: { code, name, flagUrl }
             }))
-          } else {
-            // 2. Secondary fallback via freeipapi.com
-            fetch(`https://freeipapi.com/api/json/${ip}`)
-              .then(r => r.json())
-              .then(data2 => {
-                if (data2 && data2.countryCode) {
-                  const code = data2.countryCode.toLowerCase()
-                  const name = data2.countryName || code.toUpperCase()
-                  setIpLocations(prev => ({
-                    ...prev,
-                    [ip]: { code, name, flagUrl: `https://flagcdn.com/16x12/${code}.png` }
-                  }))
-                }
-              }).catch(() => {})
           }
         })
-        .catch(() => {
-          // 2. Secondary fallback via freeipapi.com
-          fetch(`https://freeipapi.com/api/json/${ip}`)
-            .then(r => r.json())
-            .then(data2 => {
-              if (data2 && data2.countryCode) {
-                const code = data2.countryCode.toLowerCase()
-                const name = data2.countryName || code.toUpperCase()
-                setIpLocations(prev => ({
-                  ...prev,
-                  [ip]: { code, name, flagUrl: `https://flagcdn.com/16x12/${code}.png` }
-                }))
-              }
-            }).catch(() => {})
-        })
+        .catch(() => {})
     })
-  }, [logs.logs])
+  }, [logs?.logs])
 
   const handleFilter = (e) => {
     e.preventDefault()
@@ -242,32 +228,6 @@ export default function UserLogs() {
     } catch (e) {
       return dateStr
     }
-  }
-
-  if (!isPremium) {
-    return (
-      <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{
-          width: '80px', height: '80px', borderRadius: '20px', background: '#fffbeb',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
-          fontSize: '32px', color: '#d97706',
-        }}>
-          <i className="fas fa-lock"></i>
-        </div>
-        <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>Premium Feature</h2>
-        <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '400px', margin: '0 auto 24px' }}>
-          Attack Logs are available for Premium plan subscribers. Upgrade to access detailed attack analytics and logs.
-        </p>
-        <Link to="/pricing" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
-          padding: '12px 28px', background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-          color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-          textDecoration: 'none', fontFamily: 'inherit',
-        }}>
-          <i className="fas fa-crown"></i> Upgrade to Premium
-        </Link>
-      </div>
-    )
   }
 
   return (
