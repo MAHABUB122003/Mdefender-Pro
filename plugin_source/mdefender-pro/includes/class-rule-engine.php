@@ -50,13 +50,16 @@ class WAF_FW_Rule_Engine {
             ['name' => 'XSS - Alert / Execution Functions', 'pattern' => '/(?:alert|prompt|confirm)\s*\([^\)]*\)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'XSS - Malicious Tags', 'pattern' => '/<(?:iframe|object|embed|svg|img|body|input|link)[^>]+(?:onload|onerror|src\s*=\s*[\'\"]?javascript|data:text\/html)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             
-            // Local & Remote File Inclusion
+            // Local & Remote File Inclusion & Sensitive Path Protection
             ['name' => 'LFI - Directory Traversal', 'pattern' => '/(?:\.\.[\/\\]){1,}/', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'LFI - Sensitive Files', 'pattern' => '/(?:\/etc\/(?:passwd|shadow|hosts|group|issue))|(?:c:[\/\\]windows)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'LFI - PHP Wrappers', 'pattern' => '/(?:php:\/\/(?:filter|input|memory|data)|data:\/\/text\/plain|file:\/\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             
             // Remote Command Execution
-            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\s*\|)|(?:\|\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell))|(?:`[^`]+`)|(?:\$\([\s\w\/]+\))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:[;&]\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             
             // Server-Side Request Forgery & Template Injection
@@ -99,8 +102,24 @@ class WAF_FW_Rule_Engine {
         if (!empty($data['query_params']) && is_array($data['query_params'])) {
             $combined .= ' ' . implode(' ', array_values($data['query_params']));
         }
+        // Inspect custom / suspicious headers safely without breaking on benign protocol headers
         if (!empty($data['headers']) && is_array($data['headers'])) {
-            $combined .= ' ' . implode(' ', array_values($data['headers']));
+            $safe_header_keys = [
+                'cookie', 'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
+                'accept', 'accept-language', 'accept-encoding', 'connection',
+                'host', 'upgrade-insecure-requests', 'sec-fetch-dest',
+                'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority'
+            ];
+            $inspect_headers = [];
+            foreach ($data['headers'] as $k => $v) {
+                if (in_array(strtolower((string)$k), $safe_header_keys, true)) {
+                    continue;
+                }
+                $inspect_headers[] = (string)$v;
+            }
+            if (!empty($inspect_headers)) {
+                $combined .= ' ' . implode(' ', $inspect_headers);
+            }
         }
 
         // Multi-Pass Recursive De-obfuscation (Only executed ONCE)

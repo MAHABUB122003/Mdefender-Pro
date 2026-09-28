@@ -265,7 +265,10 @@ class WAF_FW_DB {
             ['name' => 'LFI - Directory Traversal', 'pattern' => '/(?:\.\.\/(?:\.\.\/){2,}|\.\.\\\\(?:\.\.\\\\){2,})/', 'action' => 'block', 'severity' => 'high'],
             ['name' => 'LFI - etc/passwd', 'pattern' => '/(?:\/etc\/passwd)/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'LFI - PHP Filter', 'pattern' => '/(?:php:\/\/filter)/i', 'action' => 'block', 'severity' => 'high'],
-            ['name' => 'Command Injection - Pipe', 'pattern' => "/(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\s*\|)|(?:\|\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell))|(?:`[^`]+`)|(?:\$\([\s\w\/]+\))/i", 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b)/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Command Injection - Pipe', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'Command Injection - System Commands', 'pattern' => '/(?:;\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'CSRF - Form Spoofing', 'pattern' => '/(?:<form[^>]*>.*?<\/form>)/i', 'action' => 'alert', 'severity' => 'medium'],
             ['name' => 'Path Traversal', 'pattern' => '/(?:\/proc\/self\/)/i', 'action' => 'block', 'severity' => 'high'],
@@ -296,9 +299,13 @@ class WAF_FW_DB {
         $fixes = [
             // pipe rule: old bare pipe/backtick pattern -> context-aware
             [
-                'old' => ["/(\||`|\$\(|\$\{)/i", "/(\||`|\$\(|\$\{)/"],
+                'old' => [
+                    "/(\||`|\$\(|\$\{)/i",
+                    "/(\||`|\$\(|\$\{)/",
+                    "/(?:\\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\\s*\\|)|(?:\\|\\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell))|(?:`[^`]+`)|(?:\\$\\([\\s\\w\\/]+\\))/i",
+                ],
                 'name' => 'Command Injection - Pipe',
-                'new' => "/(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\s*\|)|(?:\|\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell))|(?:`[^`]+`)|(?:\$\([\s\w\/]+\))/i",
+                'new' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i",
             ],
             // sql single quote: bare quote -> requires SQL keyword after
             [
@@ -414,6 +421,14 @@ class WAF_FW_DB {
                 'name' => 'LDAP Injection',
                 'new' => '/(?:\bLDAP\b\s*\w+\s*(?:&|\||!)\s*\w+)/i',
             ],
+            // command injection pipes & chaining
+            [
+                'old' => [
+                    "/(?:\\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\\s*\\|)|(?:\\|\\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell))|(?:`[^`]+`)|(?:\\$\\([\\s\\w\\/]+\\))/i",
+                ],
+                'name' => 'Command Injection - Pipes and Chaining',
+                'new' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i",
+            ],
         ];
 
         foreach ($fixes as $fix) {
@@ -422,6 +437,21 @@ class WAF_FW_DB {
                     "UPDATE $table SET pattern = %s WHERE pattern = %s AND name = %s",
                     $fix['new'], $old_pattern, $fix['name']
                 ));
+            }
+        }
+
+        // Ensure sensitive path and hidden directory protection rules exist in DB
+        $new_rules = [
+            ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b)/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical'],
+        ];
+        foreach ($new_rules as $nr) {
+            $existing = $this->wpdb->get_var($this->wpdb->prepare("SELECT id FROM $table WHERE name = %s", $nr['name']));
+            if (!$existing) {
+                $this->wpdb->insert($table, array_merge($nr, ['enabled' => 1]));
+            } else {
+                $this->wpdb->update($table, ['pattern' => $nr['pattern']], ['name' => $nr['name']]);
             }
         }
 

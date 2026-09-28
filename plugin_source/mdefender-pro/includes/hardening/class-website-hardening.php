@@ -20,12 +20,18 @@ class WAF_FW_Website_Hardening {
             add_filter('xmlrpc_enabled', '__return_false');
         }
 
-        if (get_option('waf_fw_prevent_user_enumeration') === 'yes') {
+        if (get_option('waf_fw_prevent_user_enumeration') === 'yes' || get_option('waf_harden_user_enumeration') === 'enabled') {
             if (!is_admin()) {
                 // Author query parameter blocks
                 if (isset($_REQUEST['author']) || (isset($_GET['author']) && $_GET['author'] !== '')) {
                     wp_die('User enumeration blocked by MDefender-Pro WAF', 'Access Denied', ['response' => 403]);
                 }
+                // Author archive and author RSS feed block
+                add_action('template_redirect', function() {
+                    if (is_author() || (function_exists('is_feed') && is_feed() && is_author())) {
+                        wp_die('Author enumeration feed blocked by MDefender-Pro WAF', 'Access Denied', ['response' => 403]);
+                    }
+                });
                 // REST API users endpoints block
                 add_filter('rest_endpoints', function($endpoints) {
                     if (isset($endpoints['/wp/v2/users'])) {
