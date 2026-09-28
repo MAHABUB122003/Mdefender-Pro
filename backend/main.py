@@ -25,7 +25,6 @@ from src.api.waf_api import WAFAPI
 from src.api.malware_api import MalwareAPI
 from src.api.admin_api import AdminAPI
 from src.api.user_api import UserAPI
-from src.api.finance_api import FinanceAPI
 from src.api.notice_api import NoticeAPI
 from src.security.auth import Auth
 from src.security.ip_filter import IPFilter
@@ -82,7 +81,6 @@ waf_api = WAFAPI()
 malware_api = MalwareAPI()
 admin_api = AdminAPI()
 user_api = UserAPI()
-finance_api = FinanceAPI()
 notice_api = NoticeAPI()
 logger = Logger()
 cookie_svc = CookieService()
@@ -1119,90 +1117,6 @@ async def admin_delete_user(request: Request, user: str = Depends(verify_admin_t
 @app.get("/api/admin/user_stats")
 async def admin_user_stats(user: str = Depends(verify_admin_token)):
     return user_api.admin_get_user_stats()
-
-@app.get("/api/admin/roles")
-async def get_roles(user: str = Depends(verify_admin_token)):
-    return finance_api.get_all_roles()
-
-@app.put("/api/admin/users/role")
-async def admin_update_user_role(request: Request, user: str = Depends(verify_admin_token)):
-    user_id = request.query_params.get('id')
-    data = await request.json()
-    return finance_api.update_user_role(user_id, data.get('role', ''), {'email': user, 'role': 'super_admin'})
-
-
-@app.get("/api/finance/bank-accounts")
-async def get_bank_accounts(user: dict = Depends(verify_user_token_compat)):
-    return finance_api.get_bank_accounts(user)
-
-@app.post("/api/finance/bank-accounts")
-async def add_bank_account(request: Request, user: dict = Depends(verify_user_token_compat)):
-    data = await request.json()
-    return finance_api.add_bank_account(data, user)
-
-@app.put("/api/finance/bank-accounts")
-async def update_bank_account(request: Request, user: dict = Depends(verify_user_token_compat)):
-    account_id = request.query_params.get('id')
-    data = await request.json()
-    return finance_api.update_bank_account(account_id, data, user)
-
-@app.delete("/api/finance/bank-accounts")
-async def delete_bank_account(request: Request, user: dict = Depends(verify_user_token_compat)):
-    account_id = request.query_params.get('id')
-    return finance_api.delete_bank_account(account_id, user)
-
-@app.get("/api/finance/transactions")
-async def get_transactions(request: Request, user: dict = Depends(verify_user_token_compat)):
-    params = dict(request.query_params)
-    return finance_api.get_transactions(user, params)
-
-@app.post("/api/finance/transactions")
-async def add_transaction(request: Request, user: dict = Depends(verify_user_token_compat)):
-    data = await request.json()
-    return finance_api.add_transaction(data, user)
-
-@app.put("/api/finance/transactions")
-async def update_transaction(request: Request, user: dict = Depends(verify_user_token_compat)):
-    tx_id = request.query_params.get('id')
-    data = await request.json()
-    return finance_api.update_transaction(tx_id, data, user)
-
-@app.delete("/api/finance/transactions")
-async def delete_transaction(request: Request, user: dict = Depends(verify_user_token_compat)):
-    tx_id = request.query_params.get('id')
-    return finance_api.delete_transaction(tx_id, user)
-
-@app.post("/api/finance/import")
-async def import_transactions(request: Request, user: dict = Depends(verify_user_token_compat)):
-    form = await request.form()
-    file = form.get('file')
-    mapping_str = form.get('mapping', '{}')
-    bank_account_id = form.get('bank_account_id', '')
-    try:
-        mapping = json.loads(mapping_str)
-    except:
-        mapping = {}
-    if bank_account_id:
-        mapping['bank_account_id'] = bank_account_id
-    if not file:
-        return {'status': 'error', 'message': 'No file uploaded'}
-    filename = file.filename
-    content = await file.read()
-    if filename.endswith('.csv'):
-        file_content = content.decode('utf-8', errors='replace')
-    else:
-        file_content = content
-    return finance_api.import_transactions(file_content, filename, mapping, user)
-
-@app.get("/api/finance/categories")
-async def get_categories(user: dict = Depends(verify_user_token_compat)):
-    return finance_api.get_categories()
-
-@app.get("/api/finance/summary")
-async def get_finance_summary(request: Request, user: dict = Depends(verify_user_token_compat)):
-    params = dict(request.query_params)
-    return finance_api.get_finance_summary(user, params)
-
 
 @app.get("/api/notices")
 async def get_notices(user: dict = Depends(verify_user_token_compat)):

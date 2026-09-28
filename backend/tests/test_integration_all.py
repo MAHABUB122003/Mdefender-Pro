@@ -21,7 +21,7 @@ try:
 except Exception:
     pass
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.database.mongodb_connection import MongoDB
 from src.api.v1.waf_api import verify_api_key

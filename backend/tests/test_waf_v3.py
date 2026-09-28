@@ -22,7 +22,7 @@ except Exception:
     pass
 
 # Ensure backend root is on sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.engine.normalizer import DeepNormalizer
 from src.engine.semantic_analyzer import SemanticAnalyzer

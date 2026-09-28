@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, r"D:\Documents\ML_all_Payloads\Mdefender-Pro\backend")
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.engine.ml_detector import MLDetector
 from src.engine.malware_detector import MalwareDetector
