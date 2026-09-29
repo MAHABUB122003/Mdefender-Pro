@@ -99,6 +99,8 @@
             }
         });
     }
+    var wafNonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+
     jQuery('#wafFwRuleForm').on('submit', function(e) {
         e.preventDefault();
         var id = jQuery('#wafFwRuleId').val();
@@ -106,22 +108,45 @@
             name: jQuery('#wafFwRuleName').val(),
             pattern: jQuery('#wafFwRulePattern').val(),
             action: jQuery('#wafFwRuleAction').val(),
-            severity: jQuery('#wafFwRuleSeverity').val()
+            severity: jQuery('#wafFwRuleSeverity').val(),
+            nonce: wafNonce
         };
         var url = ajaxurl + '?action=' + (id ? 'waf_fw_update_rule&id=' + id : 'waf_fw_save_rule');
-        jQuery.post(url, JSON.stringify(data), function(r) {
-            if (r.success) location.reload();
+        jQuery.ajax({
+            url: url,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function(r) {
+                if (r.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Could not save rule'));
+                }
+            },
+            error: function() {
+                alert('Request failed.');
+            }
         });
     });
     function wafFwDeleteRule(id) {
         if (confirm('Delete this rule?')) {
-            jQuery.post(ajaxurl + '?action=waf_fw_delete_rule&id=' + id, function(r) {
-                if (r.success) location.reload();
+            jQuery.post(ajaxurl + '?action=waf_fw_delete_rule&id=' + id, {nonce: wafNonce}, function(r) {
+                if (r.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Could not delete rule'));
+                }
             });
         }
     }
     function wafFwToggleRule(id, enabled) {
-        jQuery.post(ajaxurl + '?action=waf_fw_toggle_rule&id=' + id, JSON.stringify({enabled: enabled}));
+        jQuery.ajax({
+            url: ajaxurl + '?action=waf_fw_toggle_rule&id=' + id,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({enabled: enabled, nonce: wafNonce})
+        });
     }
     jQuery('#wafFwRuleModal .waf-fw-modal-close').on('click', wafFwCloseRuleModal);
     jQuery(window).on('click', function(e) { if (e.target.id === 'wafFwRuleModal') wafFwCloseRuleModal(); });

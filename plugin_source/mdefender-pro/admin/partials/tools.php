@@ -517,20 +517,23 @@ jQuery(document).ready(function($) {
 
     $('#wafRefreshAttacksBtn').on('click', loadAdminAttacks);
 
+    var wafNonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+
     $('#wafAttackModalBlockBtn').on('click', function() {
         if (!currentInspectedAdminIp) return;
         if (!confirm('Blacklist IP ' + currentInspectedAdminIp + ' permanently?')) return;
         $.post(ajaxurl, {
             action: 'waf_fw_block_ip',
             ip: currentInspectedAdminIp,
-            reason: 'Manual block from Live Admin Attack Stream'
+            reason: 'Manual block from Live Admin Attack Stream',
+            nonce: wafNonce
         }, function(r) {
             if (r.success) {
                 alert('IP ' + currentInspectedAdminIp + ' blacklisted successfully.');
                 wafCloseAdminAttackModal();
                 loadAdminAttacks();
             } else {
-                alert('Error: ' + (r.data.message || 'Could not block IP'));
+                alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Could not block IP'));
             }
         });
     });
@@ -538,19 +541,18 @@ jQuery(document).ready(function($) {
     $('#wafAttackModalWhitelistBtn').on('click', function() {
         if (!currentInspectedAdminIp) return;
         if (!confirm('Add IP ' + currentInspectedAdminIp + ' to Whitelist?')) return;
-        $.ajax({
-            url: ajaxurl + '?action=waf_fw_add_blacklist',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ ip: currentInspectedAdminIp, type: 'whitelist', reason: 'Whitelisted from Live Admin Attack Stream' }),
-            success: function(r) {
-                if (r.success) {
-                    alert('IP ' + currentInspectedAdminIp + ' whitelisted.');
-                    wafCloseAdminAttackModal();
-                    loadAdminAttacks();
-                } else {
-                    alert('Error: ' + (r.data.message || 'Could not whitelist IP'));
-                }
+        $.post(ajaxurl, {
+            action: 'waf_fw_whitelist_ip',
+            ip: currentInspectedAdminIp,
+            reason: 'Whitelisted from Live Admin Attack Stream',
+            nonce: wafNonce
+        }, function(r) {
+            if (r.success) {
+                alert('IP ' + currentInspectedAdminIp + ' whitelisted.');
+                wafCloseAdminAttackModal();
+                loadAdminAttacks();
+            } else {
+                alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Could not whitelist IP'));
             }
         });
     });

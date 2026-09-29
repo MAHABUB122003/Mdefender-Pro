@@ -169,9 +169,13 @@ class WAF_FW_IP_Filter {
         $ips = !empty($custom) ? array_filter(array_map('trim', explode(',', $custom))) : [];
         if (!in_array($ip, $ips, true)) {
             $ips[] = $ip;
-            update_option('waf_fw_ip_whitelist', implode(',', $ips));
+            update_option('waf_fw_ip_whitelist', implode(',', array_values(array_unique($ips))));
         }
         $this->remove_from_blacklist($ip);
+        $this->runtime_blacklist_cache = [];
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
     }
 
     public function remove_from_whitelist($ip) {
@@ -180,31 +184,52 @@ class WAF_FW_IP_Filter {
         if (!empty($custom)) {
             $ips = array_filter(array_map('trim', explode(',', $custom)));
             $ips = array_diff($ips, [$ip]);
-            update_option('waf_fw_ip_whitelist', implode(',', $ips));
+            update_option('waf_fw_ip_whitelist', implode(',', array_values($ips)));
+        }
+        $this->runtime_blacklist_cache = [];
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
         }
     }
 
-    public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'temporary', $auto = true, $expires_at = null) {
+    public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'permanent', $auto = true, $expires_at = null) {
+        $ip = trim((string) $ip);
+        if (empty($ip)) return;
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table WHERE ip = %s", $ip));
         if ($exists) {
-            $update = [];
+            $update = [
+                'reason' => $reason,
+                'type' => $type,
+                'auto_blocked' => $auto ? 1 : 0,
+                'blocked_at' => current_time('mysql'),
+            ];
             if ($expires_at) $update['block_expires_at'] = $expires_at;
-            if (!empty($update)) {
-                $wpdb->update($table, $update, ['ip' => $ip]);
-            }
-            return;
+            $wpdb->update($table, $update, ['ip' => $ip]);
+        } else {
+            $data = [
+                'ip' => $ip,
+                'reason' => $reason,
+                'type' => $type,
+                'auto_blocked' => $auto ? 1 : 0,
+                'blocked_at' => current_time('mysql'),
+            ];
+            if ($expires_at) $data['block_expires_at'] = $expires_at;
+            $wpdb->insert($table, $data);
         }
-        $data = [
-            'ip' => $ip,
-            'reason' => $reason,
-            'type' => $type,
-            'auto_blocked' => $auto ? 1 : 0,
-            'blocked_at' => current_time('mysql'),
-        ];
-        if ($expires_at) $data['block_expires_at'] = $expires_at;
-        $wpdb->insert($table, $data);
+
+        // Also add to local blacklist option cache
+        $cached_bl = get_option('waf_fw_local_blacklist_cache', []);
+        if (is_array($cached_bl)) {
+            $cached_bl[] = $ip;
+            update_option('waf_fw_local_blacklist_cache', array_values(array_unique($cached_bl)));
+        }
+
+        $this->runtime_blacklist_cache = [];
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
     }
 
     public function add_temporary_block($ip, $reason, $duration_seconds) {
@@ -213,9 +238,23 @@ class WAF_FW_IP_Filter {
     }
 
     public function remove_from_blacklist($ip) {
+        $ip = trim((string) $ip);
+        if (empty($ip)) return;
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         $wpdb->delete($table, ['ip' => $ip]);
+
+        // Remove from local cloud blacklist cache as well
+        $cached_bl = get_option('waf_fw_local_blacklist_cache', []);
+        if (is_array($cached_bl)) {
+            $cached_bl = array_values(array_diff($cached_bl, [$ip]));
+            update_option('waf_fw_local_blacklist_cache', $cached_bl);
+        }
+
+        $this->runtime_blacklist_cache = [];
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
     }
 
     public function get_blacklist() {
@@ -230,5 +269,9 @@ class WAF_FW_IP_Filter {
         $wpdb->query(
             "DELETE FROM $table WHERE block_expires_at IS NOT NULL AND block_expires_at <= NOW()"
         );
+        $this->runtime_blacklist_cache = [];
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
     }
 }

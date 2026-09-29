@@ -56,22 +56,47 @@
     </div>
 
     <script>
+    var wafNonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+
     function wafFwShowBlacklistModal() {
         jQuery('#wafFwBlacklistForm')[0].reset();
         jQuery('#wafFwBlacklistModal').show();
     }
     jQuery('#wafFwBlacklistForm').on('submit', function(e) {
         e.preventDefault();
-        jQuery.post(ajaxurl + '?action=waf_fw_add_blacklist', JSON.stringify({
-            ip: jQuery('#wafFwBlockIP').val(),
-            reason: jQuery('#wafFwBlockReason').val(),
-            type: jQuery('#wafFwBlockType').val()
-        }), function(r) { if (r.success) location.reload(); });
+        jQuery.ajax({
+            url: ajaxurl + '?action=waf_fw_add_blacklist',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                ip: jQuery('#wafFwBlockIP').val(),
+                reason: jQuery('#wafFwBlockReason').val(),
+                type: jQuery('#wafFwBlockType').val(),
+                nonce: wafNonce
+            }),
+            success: function(r) {
+                if (r.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Failed to add IP to blacklist'));
+                }
+            },
+            error: function() {
+                alert('Request failed. Please check network connection.');
+            }
+        });
     });
     function wafFwUnblock(ip) {
         if (confirm('Unblock IP ' + ip + '?')) {
-            jQuery.post(ajaxurl + '?action=waf_fw_remove_blacklist&ip=' + encodeURIComponent(ip), function(r) {
-                if (r.success) location.reload();
+            jQuery.post(ajaxurl + '?action=waf_fw_remove_blacklist', {
+                ip: ip,
+                nonce: wafNonce
+            }, function(r) {
+                if (r.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Failed to unblock IP'));
+                }
             });
         }
     }
