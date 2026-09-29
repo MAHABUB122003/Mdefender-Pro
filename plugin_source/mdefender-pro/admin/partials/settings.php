@@ -1191,6 +1191,25 @@ $dashboard = $logger->get_dashboard_data();
             });
         });
 
+        $('#wafFwModeForm').on('submit', function(e) {
+            e.preventDefault();
+            var $btn = $(this).find('button[type="submit"]');
+            var origText = $btn.text();
+            $btn.prop('disabled', true).text('Saving...');
+            var countries = $('#wafFwBlockedCountries').val().trim();
+            $.post(ajaxurl + '?action=waf_fw_save_settings&nonce=' + waf_fw_ajax.nonce, JSON.stringify({
+                blocked_countries: countries
+            }), function(r) {
+                if (r.success) {
+                    alert('Country settings saved successfully!');
+                } else {
+                    alert(r.data && r.data.message ? r.data.message : 'Failed to save country settings.');
+                }
+            }).always(function() {
+                $btn.prop('disabled', false).text(origText);
+            });
+        });
+
         if ($('#wafSetupModal').length) {
             var wafDashUrl = '<?php echo esc_js($waf_dash_url); ?>';
             $('#wafSetupModal').show();
