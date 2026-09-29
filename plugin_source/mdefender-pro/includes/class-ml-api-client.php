@@ -210,7 +210,7 @@ class WAF_FW_ML_Api_Client {
      * Periodic heartbeat so the dashboard shows this site online.
      * $stats is an associative array of counters (requests_blocked etc).
      */
-    public function heartbeat($stats = []) {
+    public function heartbeat($stats = [], $timeout = 1.0) {
         $this->refresh_config();
         if (!$this->is_available()) {
             return null;
@@ -219,10 +219,10 @@ class WAF_FW_ML_Api_Client {
             'api_key'        => $this->api_key,
             'domain'         => $this->get_domain(),
             'site_token'     => $this->site_token,
-            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.1.0',
+            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.2.2',
             'status'         => 'online',
             'stats'          => (array) $stats,
-        ]);
+        ], $timeout);
         if (is_array($data)) {
             return $data;
         }
