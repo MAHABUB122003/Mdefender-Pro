@@ -129,9 +129,10 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
         $last_sync = get_transient('waf_fw_last_bl_sync');
         $has_cached_bl = get_option('waf_fw_local_blacklist_cache', null);
         $has_cached_c = get_option('waf_fw_blocked_countries', null);
-        if ($last_sync && $has_cached_bl !== null && $has_cached_c !== null) return;
+        if ($last_sync && $has_cached_bl !== null && $has_cached_c !== null) {
+            return;
+        }
     }
-    set_transient('waf_fw_last_bl_sync', 1, 30);
 
     if (class_exists('WAF_FW_ML_Api_Client')) {
         $client = WAF_FW_ML_Api_Client::instance();
@@ -140,8 +141,9 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                 'requests_blocked' => (int) get_option('waf_fw_stats_blocked', 0),
                 'requests_allowed' => (int) get_option('waf_fw_stats_allowed', 0),
             ];
-            $res = $client->heartbeat($stats);
+            $res = $client->heartbeat($stats, 4.0);
             if ($res && is_array($res)) {
+                set_transient('waf_fw_last_bl_sync', 1, 30);
                 if (isset($res['blacklist']) && is_array($res['blacklist'])) {
                     $ips = array_values(array_filter(array_map('sanitize_text_field', $res['blacklist'])));
                     update_option('waf_fw_local_blacklist_cache', $ips);
@@ -168,6 +170,9 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                 if (class_exists('WAF_FW_Engine')) {
                     WAF_FW_Engine::instance()->export_fast_cache();
                 }
+            } else {
+                // Throttle failed retry slightly (5s) without blocking for full 30s
+                set_transient('waf_fw_last_bl_sync', 1, 5);
             }
         }
     }
@@ -181,11 +186,13 @@ add_action('init', 'waf_fw_sync_cloud_blacklist_fast', 1);
  * Can be triggered directly by MDefender backend upon dashboard blacklist/country updates.
  */
 function waf_fw_handle_cloud_sync_webhook() {
-    if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
-        $token = sanitize_text_field($_GET['site_token'] ?? $_GET['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? '');
+    if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
+        $token = sanitize_text_field($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? '');
         $stored_token = (string) get_option('waf_fw_site_token', '');
-        $api_key = sanitize_text_field($_GET['api_key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '');
-        $stored_key = (string) get_option('waf_fw_ml_api_key', '');
+        
+        $raw_auth = $_REQUEST['api_key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? '';
+        $api_key = trim(str_ireplace('Bearer ', '', sanitize_text_field($raw_auth)));
+        $stored_key = trim((string) get_option('waf_fw_ml_api_key', ''));
 
         $is_authorized = (!empty($token) && !empty($stored_token) && hash_equals($stored_token, $token))
             || (!empty($api_key) && !empty($stored_key) && (strpos($api_key, $stored_key) !== false || hash_equals($stored_key, $api_key)))
@@ -210,10 +217,12 @@ function waf_fw_handle_cloud_sync_webhook() {
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=UTF-8');
             }
+            $bl_list = (array) get_option('waf_fw_local_blacklist_cache', []);
             echo json_encode([
                 'status' => 'success',
                 'message' => 'MDefender cloud blacklist & country rules synced successfully',
-                'blacklist_count' => count(get_option('waf_fw_local_blacklist_cache', [])),
+                'blacklist_count' => count($bl_list),
+                'blacklist' => $bl_list,
                 'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
                 'synced_at' => current_time('mysql')
             ]);

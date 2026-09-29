@@ -412,7 +412,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             query = {}
             if user_id:
                 u_str = str(user_id)
-                conds = [{"user_id": u_str}, {"added_by_user_id": u_str}]
+                conds = [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]
                 if ObjectId.is_valid(u_str):
                     conds.append({"user_id": ObjectId(u_str)})
                 query["$or"] = conds
@@ -420,6 +420,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 query["website_id"] = str(website_id)
 
             w_sites = list(db.websites.find(query if query else {}))
+            wp_sites = list(db.wordpress_sites.find(query if query else {}))
             keys = [ws.get("api_key") for ws in w_sites if ws.get("api_key")]
             
             # Target URLs list
@@ -431,6 +432,14 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 if url:
                     targets.append((url, api_key))
 
+            for wp in wp_sites:
+                domain = wp.get("domain", "")
+                if domain:
+                    url = f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}"
+                    ws_match = db.websites.find_one({"_id": wp.get("website_id")}) or db.websites.find_one({"domain": domain})
+                    api_key = (ws_match.get("api_key") if ws_match else "") or ""
+                    targets.append((url, api_key))
+
             # Also ensure local development WordPress installations receive instant push
             for default_key in keys:
                 if default_key:
@@ -439,12 +448,22 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     targets.append(("http://localhost", default_key))
                     break
 
-            for url, api_key in targets:
+            # Deduplicate targets
+            seen = set()
+            unique_targets = []
+            for u, k in targets:
+                pair = (u.rstrip("/"), k)
+                if pair not in seen:
+                    seen.add(pair)
+                    unique_targets.append(pair)
+
+            for url, api_key in unique_targets:
                 if not url:
                     continue
                 try:
                     clean_url = url.rstrip("/")
-                    requests.get(f"{clean_url}/?waf_cloud_sync=1&api_key={api_key}", timeout=2, verify=False)
+                    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+                    requests.get(f"{clean_url}/?waf_cloud_sync=1&api_key={api_key}", headers=headers, timeout=5, verify=False)
                 except Exception:
                     pass
         except Exception:

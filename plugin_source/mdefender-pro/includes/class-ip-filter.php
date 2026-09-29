@@ -33,6 +33,21 @@ class WAF_FW_IP_Filter {
             $cand_test = trim(sanitize_text_field($_GET['ip_test']));
             if (filter_var($cand_test, FILTER_VALIDATE_IP)) $candidates[] = $cand_test;
         }
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            $cf_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+            if (filter_var($cf_ip, FILTER_VALIDATE_IP)) $candidates[] = $cf_ip;
+        }
+        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+            $r_ip = trim($_SERVER['HTTP_X_REAL_IP']);
+            if (filter_var($r_ip, FILTER_VALIDATE_IP)) $candidates[] = $r_ip;
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $fwds = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            foreach ($fwds as $f_ip) {
+                $f_ip = trim($f_ip);
+                if (filter_var($f_ip, FILTER_VALIDATE_IP)) $candidates[] = $f_ip;
+            }
+        }
 
         if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
             $candidates[] = '127.0.0.1';

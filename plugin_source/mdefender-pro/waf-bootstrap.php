@@ -18,6 +18,14 @@ define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
 
 // Fast-path client IP extraction
 function mdefender_get_fast_client_ip() {
+    if (!empty($_GET['test_ip'])) {
+        $cand = trim($_GET['test_ip']);
+        if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
+    }
+    if (!empty($_GET['ip_test'])) {
+        $cand = trim($_GET['ip_test']);
+        if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
+    }
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
         $ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
     } elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
@@ -66,14 +74,41 @@ $is_blocked = false;
 $block_reason = '';
 
 $candidates = [$mdefender_ip];
-if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0') {
-    $candidates = ['127.0.0.1', '::1', '0.0.0.0', 'localhost'];
+if (!empty($_GET['test_ip'])) {
+    $t_ip = trim($_GET['test_ip']);
+    if (filter_var($t_ip, FILTER_VALIDATE_IP)) $candidates[] = $t_ip;
 }
+if (!empty($_GET['ip_test'])) {
+    $t_ip = trim($_GET['ip_test']);
+    if (filter_var($t_ip, FILTER_VALIDATE_IP)) $candidates[] = $t_ip;
+}
+if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+    $cf_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+    if (filter_var($cf_ip, FILTER_VALIDATE_IP)) $candidates[] = $cf_ip;
+}
+if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+    $r_ip = trim($_SERVER['HTTP_X_REAL_IP']);
+    if (filter_var($r_ip, FILTER_VALIDATE_IP)) $candidates[] = $r_ip;
+}
+if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $fwds = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+    foreach ($fwds as $f_ip) {
+        $f_ip = trim($f_ip);
+        if (filter_var($f_ip, FILTER_VALIDATE_IP)) $candidates[] = $f_ip;
+    }
+}
+if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0') {
+    $candidates[] = '127.0.0.1';
+    $candidates[] = '::1';
+    $candidates[] = '0.0.0.0';
+    $candidates[] = 'localhost';
+}
+$candidates = array_values(array_unique(array_filter($candidates)));
 
 foreach ($candidates as $cand) {
     if (isset($ip_blacklist[$cand])) {
         $is_blocked = true;
-        $block_reason = 'Your IP address has been flagged for malicious activity.';
+        $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP).';
         break;
     }
 }

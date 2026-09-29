@@ -210,7 +210,7 @@ class WAF_FW_ML_Api_Client {
      * Periodic heartbeat so the dashboard shows this site online.
      * $stats is an associative array of counters (requests_blocked etc).
      */
-    public function heartbeat($stats = [], $timeout = 1.0) {
+    public function heartbeat($stats = [], $timeout = 4.0) {
         $this->refresh_config();
         if (!$this->is_available()) {
             return null;
