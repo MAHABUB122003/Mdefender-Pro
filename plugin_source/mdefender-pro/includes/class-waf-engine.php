@@ -507,6 +507,7 @@ class WAF_FW_Engine {
         }
 
         // 3. Public IP GeoIP resolution with fast transient cache
+        // 3. Public IP GeoIP resolution with multi-source fallback
         $transient_key = 'waf_fw_geoip_' . md5($ip);
         if (function_exists('get_transient')) {
             $cached = get_transient($transient_key);
@@ -516,15 +517,22 @@ class WAF_FW_Engine {
         }
 
         if (function_exists('wp_remote_get')) {
-            $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", ['timeout' => 0.8]);
-            if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                $geo = json_decode(wp_remote_retrieve_body($resp), true);
-                if (!empty($geo['countryCode'])) {
-                    $code = strtoupper(trim($geo['countryCode']));
-                    if (function_exists('set_transient')) {
-                        set_transient($transient_key, $code, 86400 * 7);
+            $providers = [
+                "http://ip-api.com/json/{$ip}?fields=status,countryCode",
+                "https://api.country.is/{$ip}",
+                "https://freeipapi.com/api/json/{$ip}",
+            ];
+            foreach ($providers as $p_url) {
+                $resp = wp_remote_get($p_url, ['timeout' => 1.2]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                    $geo = json_decode(wp_remote_retrieve_body($resp), true);
+                    $c = strtoupper(trim($geo['countryCode'] ?? $geo['country'] ?? ''));
+                    if (strlen($c) === 2 && ctype_alpha($c)) {
+                        if (function_exists('set_transient')) {
+                            set_transient($transient_key, $c, 86400 * 7);
+                        }
+                        return $c;
                     }
-                    return $code;
                 }
             }
         }

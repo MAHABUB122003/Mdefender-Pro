@@ -85,6 +85,12 @@ def build(src_dir: str | None = None) -> str:
     zf_marker.writestr(f"{PLUGIN_ROOT}/.build-info.txt", footer)
     zf_marker.close()
 
+    # Sync to frontend public and dist directories
+    import shutil
+    for f_dir in [os.path.join(PROJECT_DIR, "frontend", "public"), os.path.join(PROJECT_DIR, "frontend", "dist")]:
+        if os.path.isdir(f_dir):
+            shutil.copy2(OUT_FILE, os.path.join(f_dir, "mdefender-pro.zip"))
+
     print(f"Built {OUT_FILE} ({count} files, {size:,} bytes)")
     return OUT_FILE
 
