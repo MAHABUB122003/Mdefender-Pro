@@ -379,10 +379,8 @@ class WAF_FW_Ajax_Handler {
                     // Never delete/erase the user's entered API key!
                 }
             }
-        } else {
-            if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
-                waf_fw_sync_cloud_blacklist_fast(true);
-            }
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
         }
 
         $response = ['message' => 'Settings saved'];
