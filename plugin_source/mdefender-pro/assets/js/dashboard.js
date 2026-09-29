@@ -330,40 +330,57 @@ var warDashboard = {
             '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
             '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#06b6d4'
         ];
-        var data = d.attack_types_counts && d.attack_types_counts.length > 0
+        var rawData = d.attack_types_counts && d.attack_types_counts.length > 0
             ? d.attack_types_counts : [24, 18, 12, 9, 7, 6, 5, 4, 3, 2];
-        var labels = d.attack_types_labels && d.attack_types_labels.length > 0
+        var rawLabels = d.attack_types_labels && d.attack_types_labels.length > 0
             ? d.attack_types_labels : attackTypes;
 
-        var total = data.reduce(function(a, b) { return a + b; }, 0);
+        var items = [];
+        for (var k = 0; k < rawLabels.length; k++) {
+            var cnt = Number(rawData[k]) || 0;
+            if (cnt > 0 || rawData.length <= 5) {
+                items.push({ label: rawLabels[k], count: cnt, color: colors[k % colors.length] });
+            }
+        }
+        items.sort(function(a, b) { return b.count - a.count; });
+        if (items.length === 0) {
+            items = [{ label: 'Clean Traffic', count: 1, color: '#10b981' }];
+        }
+
+        var total = items.reduce(function(a, b) { return a + b.count; }, 0);
+        var centerTotalEl = document.getElementById('distCenterTotal');
+        if (centerTotalEl) {
+            centerTotalEl.textContent = total > 0 ? total.toLocaleString() : '0';
+        }
 
         this.charts.dist = new Chart(ctx.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: labels,
+                labels: items.map(function(it) { return it.label; }),
                 datasets: [{
-                    data: data,
-                    backgroundColor: colors.slice(0, labels.length),
+                    data: items.map(function(it) { return it.count; }),
+                    backgroundColor: items.map(function(it) { return it.color; }),
                     borderWidth: 2,
-                    borderColor: '#fff',
-                    hoverOffset: 6,
+                    borderColor: '#ffffff',
+                    hoverOffset: 4,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '68%',
+                cutout: '72%',
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleFont: {size: 11},
-                        bodyFont: {size: 11},
+                        backgroundColor: '#0f172a',
+                        titleFont: { size: 11, weight: 'bold' },
+                        bodyFont: { size: 11 },
+                        padding: 10,
                         cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
                                 var pct = total > 0 ? ((context.raw / total) * 100).toFixed(1) : 0;
-                                return context.label + ': ' + context.raw + ' (' + pct + '%)';
+                                return ' ' + context.label + ': ' + context.raw + ' (' + pct + '%)';
                             }
                         }
                     }
@@ -374,13 +391,25 @@ var warDashboard = {
         var legendEl = document.getElementById('attackDistLegend');
         if (legendEl) {
             var html = '';
-            for (var i = 0; i < labels.length; i++) {
-                var pct = total > 0 ? ((data[i] / total) * 100).toFixed(1) : 0;
-                html += '<span class="war-chart-legend-item">' +
-                    '<span class="war-chart-legend-dot" style="background:' + colors[i % colors.length] + '"></span>' +
-                    '<span>' + labels[i] + '</span>' +
-                    '<span class="war-chart-legend-pct">' + pct + '%</span>' +
-                '</span>';
+            var maxItems = Math.min(items.length, 5);
+            for (var i = 0; i < maxItems; i++) {
+                var it = items[i];
+                var pct = total > 0 ? ((it.count / total) * 100).toFixed(1) : 0;
+                html += '<div style="display:flex;flex-direction:column;gap:3px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;">' +
+                        '<div style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#334155;">' +
+                            '<span style="width:7px;height:7px;border-radius:50%;background:' + it.color + ';display:inline-block;"></span>' +
+                            '<span>' + it.label + '</span>' +
+                        '</div>' +
+                        '<div style="display:inline-flex;align-items:center;gap:6px;">' +
+                            '<span style="font-weight:700;color:#0f172a;font-size:11.5px;">' + it.count.toLocaleString() + '</span>' +
+                            '<span style="color:#94a3b8;font-size:10.5px;">(' + pct + '%)</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="width:100%;height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden;">' +
+                        '<div style="width:' + Math.max(pct, 4) + '%;height:100%;background:' + it.color + ';border-radius:2px;"></div>' +
+                    '</div>' +
+                '</div>';
             }
             legendEl.innerHTML = html;
         }

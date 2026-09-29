@@ -113,40 +113,56 @@
     </div>
 
     <div class="war-grid-2col">
-        <div class="war-card">
-            <div class="war-card-header">
-                <h3><span class="dashicons dashicons-chart-pie"></span> Attack Distribution</h3>
-                <span class="war-card-badge">OWASP Top 10</span>
-            </div>
-            <div class="war-card-body">
-                <div class="war-chart-container">
-                    <canvas id="attackDistChart"></canvas>
+        <div class="war-card" style="display:flex;flex-direction:column;">
+            <div class="war-card-header" style="padding:14px 18px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="dashicons dashicons-chart-pie" style="color:#3b82f6;"></span>
+                    <h3 style="margin:0;font-size:15px;font-weight:700;">Attack Distribution</h3>
                 </div>
-                <div class="war-chart-legend" id="attackDistLegend"></div>
+                <span class="war-card-badge" style="background:#eff6ff;color:#2563eb;font-weight:600;">OWASP Top 10</span>
+            </div>
+            <div class="war-card-body" style="padding:16px;flex:1;display:flex;flex-direction:column;justify-content:center;">
+                <div class="war-dist-compact-wrap" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                    <!-- Left: Compact Donut Chart -->
+                    <div style="flex:0 0 160px;height:160px;position:relative;margin:0 auto;">
+                        <canvas id="attackDistChart" style="max-height:160px;max-width:160px;"></canvas>
+                        <div id="attackDistCenterCount" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+                            <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Attacks</div>
+                            <div id="distCenterTotal" style="font-size:18px;font-weight:800;color:#0f172a;line-height:1.1;">0</div>
+                        </div>
+                    </div>
+                    <!-- Right: Compact Top Categories with Progress Bars -->
+                    <div class="war-dist-list" id="attackDistLegend" style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px;">
+                        <!-- Injected dynamically via JS -->
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="war-card">
-            <div class="war-card-header">
-                <h3><span class="dashicons dashicons-chart-area"></span> Live Attack Timeline</h3>
+        <div class="war-card" style="display:flex;flex-direction:column;">
+            <div class="war-card-header" style="padding:14px 18px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="dashicons dashicons-chart-area" style="color:#10b981;"></span>
+                    <h3 style="margin:0;font-size:15px;font-weight:700;">Live Attack Timeline</h3>
+                </div>
                 <span class="war-card-badge war-card-badge-green">Last 24 Hours</span>
             </div>
-            <div class="war-card-body">
-                <div class="war-chart-container">
-                    <canvas id="timelineChart"></canvas>
+            <div class="war-card-body" style="padding:16px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">
+                <div class="war-chart-container" style="height:160px;max-height:160px;">
+                    <canvas id="timelineChart" style="max-height:160px;"></canvas>
                 </div>
-                <div class="war-timeline-legend">
-                    <span class="war-legend-item">
-                        <span class="war-legend-dot" style="background:#3b82f6"></span> Incoming Requests
+                <div class="war-timeline-legend" style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:11.5px;">
+                    <span class="war-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
+                        <span class="war-legend-dot" style="background:#3b82f6;width:8px;height:8px;border-radius:50%;"></span> Incoming
                     </span>
-                    <span class="war-legend-item">
-                        <span class="war-legend-dot" style="background:#ef4444"></span> Blocked Attacks
+                    <span class="war-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
+                        <span class="war-legend-dot" style="background:#ef4444;width:8px;height:8px;border-radius:50%;"></span> Blocked Attacks
                     </span>
-                    <span class="war-legend-item">
-                        <span class="war-legend-dot" style="background:#10b981"></span> Allowed Requests
+                    <span class="war-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
+                        <span class="war-legend-dot" style="background:#10b981;width:8px;height:8px;border-radius:50%;"></span> Clean Requests
                     </span>
-                    <span class="war-legend-item">
-                        <span class="war-legend-dot" style="background:#8b5cf6"></span> ML Predictions
+                    <span class="war-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
+                        <span class="war-legend-dot" style="background:#8b5cf6;width:8px;height:8px;border-radius:50%;"></span> AI Predictions
                     </span>
                 </div>
             </div>
@@ -190,71 +206,80 @@
         </div>
     </div>
 
-    <div class="war-card war-card-full" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.03);margin-bottom:24px;">
-        <div class="war-card-header" style="background:#f8fafc;padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span class="dashicons dashicons-cloud" style="color:#2563eb;font-size:22px;width:22px;height:22px;"></span>
-                <h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a;">MDefender-Pro Cloud Neural Defense</h3>
+    <!-- MDefender-Pro Cloud Neural Defense Section -->
+    <div class="war-card war-card-full" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.03);margin-bottom:24px;">
+        <div class="war-card-header" style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);padding:16px 22px;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;color:#fff;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(37,99,235,0.2);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;color:#60a5fa;">
+                    <span class="dashicons dashicons-cloud" style="font-size:22px;width:22px;height:22px;"></span>
+                </div>
+                <div>
+                    <h3 style="margin:0;font-size:16px;font-weight:700;color:#f8fafc;letter-spacing:0.2px;">MDefender-Pro Cloud Neural Defense</h3>
+                    <span style="font-size:12px;color:#94a3b8;">Deep-Learning WAAP & Global Threat Arbitration Engine</span>
+                </div>
             </div>
-            <span class="war-card-badge war-card-badge-green" id="warCloudBadge">Connected &bull; Active Protection</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="war-live-pulse-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,0.3);animation:pulse 2s infinite;"></span>
+                <span style="font-size:12px;font-weight:600;color:#34d399;letter-spacing:0.3px;" id="warCloudBadge">Active & Connected</span>
+            </div>
         </div>
-        <div class="war-card-body" style="padding:20px;">
+        <div class="war-card-body" style="padding:20px 22px;">
             <div id="warCloudBody">
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px;">
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:18px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;transition:transform 0.2s,box-shadow 0.2s;">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">ML Threat Defense</span>
-                            <span class="dashicons dashicons-shield-alt" style="color:#2563eb;"></span>
+                            <span style="font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">ML Threat Decision</span>
+                            <span class="dashicons dashicons-shield-alt" style="color:#2563eb;font-size:18px;width:18px;height:18px;"></span>
                         </div>
-                        <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:6px;">Active Protection</div>
-                        <div style="font-size:12px;color:#10b981;margin-top:2px;font-weight:600;">&bull; Real-Time WAF Engine</div>
+                        <div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:6px;">Automated Block</div>
+                        <div style="font-size:12px;color:#10b981;margin-top:2px;font-weight:600;">&bull; High Confidence Arbitrated</div>
                     </div>
 
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;transition:transform 0.2s,box-shadow 0.2s;">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">Threat Signatures</span>
-                            <span class="dashicons dashicons-database" style="color:#8b5cf6;"></span>
+                            <span style="font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Cloud Intelligence</span>
+                            <span class="dashicons dashicons-database" style="color:#8b5cf6;font-size:18px;width:18px;height:18px;"></span>
                         </div>
-                        <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:6px;">27,272+ Signatures</div>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px;">Malware Hashes & Rules Synced</div>
+                        <div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:6px;">27,272+ Signatures</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">Dynamic WAAP Signatures</div>
                     </div>
 
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;transition:transform 0.2s,box-shadow 0.2s;">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">Global Threat Intel</span>
-                            <span class="dashicons dashicons-admin-site" style="color:#059669;"></span>
+                            <span style="font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">IP Blacklist & GeoIP</span>
+                            <span class="dashicons dashicons-admin-site" style="color:#059669;font-size:18px;width:18px;height:18px;"></span>
                         </div>
-                        <div style="font-size:18px;font-weight:800;color:#059669;margin-top:6px;">Synced Live</div>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px;">High-Risk IP Blocklist Active</div>
+                        <div style="font-size:17px;font-weight:800;color:#059669;margin-top:6px;">Live Sync Active</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">Multi-Source Edge Defense</div>
                     </div>
 
-                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;transition:transform 0.2s,box-shadow 0.2s;">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;">Inference Latency</span>
-                            <span class="dashicons dashicons-dashboard" style="color:#f59e0b;"></span>
+                            <span style="font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Local Fast-Path</span>
+                            <span class="dashicons dashicons-dashboard" style="color:#f59e0b;font-size:18px;width:18px;height:18px;"></span>
                         </div>
-                        <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:6px;">&lt; 15 ms</div>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px;">Fast Local + Cloud Fallback</div>
+                        <div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:6px;">&lt; 0.05 ms</div>
+                        <div style="font-size:12px;color:#10b981;margin-top:2px;font-weight:600;">Zero-Delay Clean Traffic</div>
                     </div>
                 </div>
 
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:14px 18px;">
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <span class="dashicons dashicons-yes-alt" style="color:#2563eb;font-size:22px;width:22px;height:22px;"></span>
+                        <span class="dashicons dashicons-shield" style="color:#2563eb;font-size:20px;width:20px;height:20px;"></span>
                         <div>
-                            <strong style="color:#1e3a8a;font-size:13.5px;display:block;">Connected to MDefender-Pro Cloud Service</strong>
-                            <span style="color:#3b82f6;font-size:12.5px;">All live security events, attacker IPs, and normal visitor traffic are unified under Security Logs.</span>
+                            <strong style="color:#0f172a;font-size:13.5px;display:block;">Unified Cloud Management</strong>
+                            <span style="color:#64748b;font-size:12px;">All security telemetry, blacklist modifications, and country restrictions synchronize in real-time.</span>
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <a href="<?php echo esc_url(get_option('waf_fw_dashboard_url', 'http://localhost:5173/user/dashboard')); ?>" target="_blank" rel="noopener" class="button button-primary" style="background:#2563eb;border-color:#1d4ed8;font-weight:600;display:flex;align-items:center;gap:4px;">
-                            <span class="dashicons dashicons-external" style="font-size:16px;width:16px;height:16px;margin-top:2px;"></span> Open MDefender Dashboard
+                        <a href="<?php echo esc_url(get_option('waf_fw_dashboard_url', 'http://217.15.170.82/user/dashboard')); ?>" target="_blank" rel="noopener" class="button button-primary" style="background:#2563eb;border-color:#1d4ed8;font-weight:600;display:inline-flex;align-items:center;gap:6px;height:32px;line-height:30px;font-size:12px;border-radius:6px;">
+                            <span class="dashicons dashicons-external" style="font-size:14px;width:14px;height:14px;"></span> Open Cloud Portal
                         </a>
-                        <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="button" style="font-weight:600;display:flex;align-items:center;gap:4px;">
-                            <span class="dashicons dashicons-list-view" style="font-size:16px;width:16px;height:16px;margin-top:2px;"></span> Security Logs
+                        <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="button" style="font-weight:600;display:inline-flex;align-items:center;gap:6px;height:32px;line-height:30px;font-size:12px;border-radius:6px;background:#fff;border-color:#cbd5e1;color:#334155;">
+                            <span class="dashicons dashicons-list-view" style="font-size:14px;width:14px;height:14px;"></span> View Security Logs
                         </a>
-                        <a href="<?php echo admin_url('admin.php?page=waf-firewall-settings'); ?>" class="button" style="font-weight:600;display:flex;align-items:center;gap:4px;">
-                            <span class="dashicons dashicons-admin-generic" style="font-size:16px;width:16px;height:16px;margin-top:2px;"></span> Cloud Settings
+                        <a href="<?php echo admin_url('admin.php?page=waf-firewall-settings'); ?>" class="button" style="font-weight:600;display:inline-flex;align-items:center;gap:6px;height:32px;line-height:30px;font-size:12px;border-radius:6px;background:#fff;border-color:#cbd5e1;color:#334155;">
+                            <span class="dashicons dashicons-admin-generic" style="font-size:14px;width:14px;height:14px;"></span> Cloud Settings
                         </a>
                     </div>
                 </div>

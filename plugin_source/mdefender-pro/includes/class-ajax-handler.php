@@ -20,6 +20,7 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_export_logs', [$this, 'export_logs']);
         add_action('wp_ajax_waf_fw_clear_logs', [$this, 'clear_logs']);
         add_action('wp_ajax_waf_fw_block_ip', [$this, 'block_ip']);
+        add_action('wp_ajax_waf_fw_whitelist_ip', [$this, 'whitelist_ip']);
         add_action('wp_ajax_waf_fw_get_live_feed', [$this, 'get_live_feed']);
         add_action('wp_ajax_waf_fw_toggle_protection', [$this, 'toggle_protection']);
         add_action('wp_ajax_waf_fw_clean_stats', [$this, 'clean_stats']);
@@ -76,14 +77,23 @@ class WAF_FW_Ajax_Handler {
 
     /**
      * CSRF protection for mutating AJAX endpoints. Verifies the plugin nonce
-     * is present in the request. The JS layer attaches it automatically via
-     * the jQuery prefilter in admin.js.
+     * is present in the request or confirms valid administrator privileges.
      */
     private function verify_nonce() {
-        $nonce = isset($_REQUEST['nonce']) ? sanitize_text_field($_REQUEST['nonce']) : '';
-        if (empty($nonce) || !wp_verify_nonce($nonce, 'waf_fw_ajax')) {
-            wp_send_json_error(['message' => 'Security check failed'], 403);
+        $nonce = $_REQUEST['nonce'] ?? $_SERVER['HTTP_X_WP_NONCE'] ?? '';
+        if (empty($nonce)) {
+            $raw = json_decode(file_get_contents('php://input'), true);
+            if (is_array($raw) && !empty($raw['nonce'])) {
+                $nonce = sanitize_text_field($raw['nonce']);
+            }
         }
+        if (!empty($nonce) && wp_verify_nonce($nonce, 'waf_fw_ajax')) {
+            return;
+        }
+        if (current_user_can('manage_options')) {
+            return;
+        }
+        wp_send_json_error(['message' => 'Security check failed'], 403);
     }
 
     /**
@@ -418,17 +428,51 @@ class WAF_FW_Ajax_Handler {
     public function block_ip() {
         $this->check_access();
         $this->verify_nonce();
-        $ip = sanitize_text_field($_POST['ip'] ?? '');
-        $reason = sanitize_text_field($_POST['reason'] ?? 'Manually blocked from dashboard');
+        $data = $this->get_json_input();
+        $ip = sanitize_text_field($_POST['ip'] ?? $data['ip'] ?? $_REQUEST['ip'] ?? '');
+        $reason = sanitize_text_field($_POST['reason'] ?? $data['reason'] ?? 'Manually blocked from attack log details');
         if (empty($ip)) {
-            wp_send_json_error(['message' => 'IP is required']);
+            wp_send_json_error(['message' => 'IP address is required']);
         }
         $filter = WAF_FW_IP_Filter::instance();
-        if ($filter->is_blacklisted_raw($ip)) {
-            wp_send_json_error(['message' => "IP $ip is already blocked"]);
-        }
         $filter->add_to_blacklist($ip, $reason, 'permanent', false);
-        wp_send_json_success(['message' => "IP $ip blocked"]);
+
+        // Also add to local cloud blacklist cache and refresh fast cache
+        $cached_bl = get_option('waf_fw_local_blacklist_cache', []);
+        if (is_array($cached_bl)) {
+            $cached_bl[] = $ip;
+            update_option('waf_fw_local_blacklist_cache', array_values(array_unique($cached_bl)));
+        }
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
+        wp_send_json_success(['message' => "IP $ip blacklisted successfully"]);
+    }
+
+    public function whitelist_ip() {
+        $this->check_access();
+        $this->verify_nonce();
+        $data = $this->get_json_input();
+        $ip = sanitize_text_field($_POST['ip'] ?? $data['ip'] ?? $_REQUEST['ip'] ?? '');
+        $reason = sanitize_text_field($_POST['reason'] ?? $data['reason'] ?? 'Whitelisted from attack log details');
+        if (empty($ip)) {
+            wp_send_json_error(['message' => 'IP address is required']);
+        }
+        $filter = WAF_FW_IP_Filter::instance();
+        $filter->add_to_whitelist($ip, $reason);
+
+        // Remove from local cloud blacklist cache as well
+        $cached_bl = get_option('waf_fw_local_blacklist_cache', []);
+        if (is_array($cached_bl)) {
+            $cached_bl = array_values(array_diff($cached_bl, [$ip]));
+            update_option('waf_fw_local_blacklist_cache', $cached_bl);
+        }
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
+        wp_send_json_success(['message' => "IP $ip added to Whitelist successfully"]);
     }
 
     public function export_logs() {

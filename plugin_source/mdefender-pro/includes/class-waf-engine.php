@@ -81,18 +81,34 @@ class WAF_FW_Engine {
             $test_ip = trim(sanitize_text_field($_GET['ip_test']));
             if (filter_var($test_ip, FILTER_VALIDATE_IP)) return $test_ip;
         }
-        $ip = '';
-        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            $ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
-        } elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-            $ip = trim($_SERVER['HTTP_X_REAL_IP']);
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $ip = trim($ips[0]);
-        } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
-            $ip = trim($_SERVER['REMOTE_ADDR']);
+
+        $headers = [
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_TRUE_CLIENT_IP',
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'HTTP_X_CLIENT_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'REMOTE_ADDR'
+        ];
+
+        foreach ($headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $raw = trim((string) $_SERVER[$header]);
+                $ips = explode(',', $raw);
+                foreach ($ips as $cand) {
+                    $cand = trim($cand);
+                    if (strpos($cand, ':') !== false && strpos($cand, '.') !== false) {
+                        $cand = preg_replace('/:\d+$/', '', $cand);
+                    }
+                    if (filter_var($cand, FILTER_VALIDATE_IP)) {
+                        return $cand;
+                    }
+                }
+            }
         }
-        return filter_var($ip, FILTER_VALIDATE_IP) ?: '0.0.0.0';
+
+        return '0.0.0.0';
     }
 
     public function analyze_current_request() {
@@ -512,7 +528,12 @@ class WAF_FW_Engine {
         if (function_exists('get_transient')) {
             $cached = get_transient($transient_key);
             if ($cached !== false && !empty($cached)) {
-                return strtoupper((string) $cached);
+                if (is_array($cached)) {
+                    $cached = $cached['countryCode'] ?? $cached['country_code'] ?? $cached['country'] ?? '';
+                }
+                if (is_string($cached) && strlen(trim($cached)) === 2) {
+                    return strtoupper(trim($cached));
+                }
             }
         }
 

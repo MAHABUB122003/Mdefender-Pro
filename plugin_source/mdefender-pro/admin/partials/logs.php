@@ -468,49 +468,61 @@ jQuery(document).ready(function($) {
 
 function wafFwActionBlockIp(ip) {
     if (!ip) return;
-    if (!confirm('Block IP ' + ip + ' permanently?')) return;
+    if (!confirm('Are you sure you want to block IP ' + ip + ' permanently?')) return;
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
     jQuery.post(ajaxurl, {
         action: 'waf_fw_block_ip',
         ip: ip,
-        reason: 'Manual block from attack log inspector'
+        reason: 'Manual block from attack log inspector',
+        nonce: nonce
     }, function(r) {
-        if (r.success) {
-            alert('IP ' + ip + ' blocked successfully.');
+        if (r && r.success) {
+            alert('IP ' + ip + ' blocked and added to Blacklist successfully.');
             location.reload();
         } else {
-            alert('Error: ' + (r.data.message || 'Could not block IP'));
+            alert('Error: ' + ((r && r.data && r.data.message) || 'Could not block IP'));
         }
+    }).fail(function(xhr) {
+        alert('Request failed: ' + (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ? xhr.responseJSON.data.message : 'Server error'));
     });
 }
 
 function wafFwActionWhitelistIp(ip) {
     if (!ip) return;
     if (!confirm('Add IP ' + ip + ' to Whitelist?')) return;
-    jQuery.ajax({
-        url: ajaxurl + '?action=waf_fw_add_blacklist',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ ip: ip, type: 'whitelist', reason: 'Whitelisted from attack log inspector' }),
-        success: function(r) {
-            if (r.success) {
-                alert('IP ' + ip + ' whitelisted.');
-                location.reload();
-            } else {
-                alert('Error: ' + (r.data.message || 'Could not whitelist IP'));
-            }
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+    jQuery.post(ajaxurl, {
+        action: 'waf_fw_whitelist_ip',
+        ip: ip,
+        reason: 'Whitelisted from attack log inspector',
+        nonce: nonce
+    }, function(r) {
+        if (r && r.success) {
+            alert('IP ' + ip + ' added to Whitelist successfully.');
+            location.reload();
+        } else {
+            alert('Error: ' + ((r && r.data && r.data.message) || 'Could not whitelist IP'));
         }
+    }).fail(function(xhr) {
+        alert('Request failed: ' + (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ? xhr.responseJSON.data.message : 'Server error'));
     });
 }
 
 function wafFwClearLogs() {
     if (!confirm('Are you sure you want to delete ALL logs? This cannot be undone.')) return;
-    jQuery.post(ajaxurl + '?action=waf_fw_clear_logs', function(r) {
-        if (r.success) {
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+    jQuery.post(ajaxurl, {
+        action: 'waf_fw_clear_logs',
+        nonce: nonce
+    }, function(r) {
+        if (r && r.success) {
             alert('All logs cleared successfully.');
             location.reload();
         } else {
-            alert('Failed to clear logs: ' + (r.data.message || 'Unknown error'));
+            alert('Failed to clear logs: ' + ((r && r.data && r.data.message) || 'Unknown error'));
         }
+    }).fail(function(xhr) {
+        alert('Request failed');
     });
 }
 </script>

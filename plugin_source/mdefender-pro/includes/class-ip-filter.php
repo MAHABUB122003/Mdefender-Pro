@@ -62,6 +62,8 @@ class WAF_FW_IP_Filter {
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         
         foreach ($candidates as $cand) {
+            if (!is_string($cand) || empty(trim($cand))) continue;
+            $cand = trim($cand);
             $result = $wpdb->get_row($wpdb->prepare(
                 "SELECT * FROM $table WHERE ip = %s",
                 $cand
@@ -158,6 +160,28 @@ class WAF_FW_IP_Filter {
             }
         }
         return in_array($ip, $this->whitelist, true);
+    }
+
+    public function add_to_whitelist($ip, $reason = '') {
+        $ip = trim((string) $ip);
+        if (empty($ip)) return;
+        $custom = get_option('waf_fw_ip_whitelist', '');
+        $ips = !empty($custom) ? array_filter(array_map('trim', explode(',', $custom))) : [];
+        if (!in_array($ip, $ips, true)) {
+            $ips[] = $ip;
+            update_option('waf_fw_ip_whitelist', implode(',', $ips));
+        }
+        $this->remove_from_blacklist($ip);
+    }
+
+    public function remove_from_whitelist($ip) {
+        $ip = trim((string) $ip);
+        $custom = get_option('waf_fw_ip_whitelist', '');
+        if (!empty($custom)) {
+            $ips = array_filter(array_map('trim', explode(',', $custom)));
+            $ips = array_diff($ips, [$ip]);
+            update_option('waf_fw_ip_whitelist', implode(',', $ips));
+        }
     }
 
     public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'temporary', $auto = true, $expires_at = null) {
