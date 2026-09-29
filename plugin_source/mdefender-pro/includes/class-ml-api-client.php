@@ -215,16 +215,27 @@ class WAF_FW_ML_Api_Client {
         if (!$this->is_available()) {
             return null;
         }
-        $data = $this->request('POST', '/api/v1/wordpress/heartbeat', [
+        $payload = [
             'api_key'        => $this->api_key,
             'domain'         => $this->get_domain(),
             'site_token'     => $this->site_token,
             'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.2.2',
             'status'         => 'online',
-            'stats'          => (array) $stats,
-        ], $timeout);
+        ];
+        if (!empty($stats) && is_array($stats)) {
+            $payload['stats'] = $stats;
+        }
+        $data = $this->request('POST', '/api/v1/wordpress/heartbeat', $payload, $timeout);
         if (is_array($data)) {
             return $data;
+        }
+        // Fallback retry without stats if backend version threw an error on stats parsing
+        if (!empty($stats)) {
+            unset($payload['stats']);
+            $fallback_data = $this->request('POST', '/api/v1/wordpress/heartbeat', $payload, $timeout);
+            if (is_array($fallback_data)) {
+                return $fallback_data;
+            }
         }
         return null;
     }

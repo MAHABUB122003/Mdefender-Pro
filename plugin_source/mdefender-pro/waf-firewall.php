@@ -193,7 +193,20 @@ function waf_fw_handle_cloud_sync_webhook() {
 
         if ($is_authorized) {
             delete_transient('waf_fw_last_bl_sync');
-            waf_fw_sync_cloud_blacklist_fast(true);
+            if (isset($_GET['set_blocked_countries']) || isset($_POST['set_blocked_countries'])) {
+                $custom_c = sanitize_text_field($_POST['set_blocked_countries'] ?? $_GET['set_blocked_countries'] ?? '');
+                update_option('waf_fw_blocked_countries', $custom_c);
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+            } elseif (isset($_GET['clear_country_blocks']) || isset($_POST['clear_country_blocks'])) {
+                update_option('waf_fw_blocked_countries', '');
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+            } else {
+                waf_fw_sync_cloud_blacklist_fast(true);
+            }
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=UTF-8');
             }
