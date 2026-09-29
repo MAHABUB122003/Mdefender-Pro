@@ -218,6 +218,10 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         today_str = datetime.now().strftime("%Y-%m-%d")
         now_dt = datetime.now()
         
+        req_blocked = int(body.stats.get("requests_blocked", 0) or 0)
+        req_allowed = int(body.stats.get("requests_allowed", 0) or 0)
+        total_site_reqs = req_blocked + req_allowed
+
         # Check if date changed for today's counter reset
         last_date = website.get("requests_today_date", "")
         site_prev_today = 0 if last_date != today_str else website.get("requests_today", 0)
