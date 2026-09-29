@@ -379,6 +379,8 @@ class WAF_FW_Ajax_Handler {
                     // Never delete/erase the user's entered API key!
                 }
             }
+        }
+
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
