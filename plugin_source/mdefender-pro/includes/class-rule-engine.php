@@ -66,9 +66,9 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Path Traversal', 'pattern' => '/(?:\/proc\/(?:self|version|cpuinfo|meminfo)\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'SSTI - Jinja2 Template', 'pattern' => '/(?:\{\{\s*[\'\"]?.*[\'\"]?\s*\}\})/', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSTI - Python Internals', 'pattern' => '/(?:__class__|__mro__|__subclasses__|__builtins__)/', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSRF - Internal IP', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSRF - Internal IP', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF - Cloud Metadata', 'pattern' => '/(?:\/latest\/meta-data|\/computeMetadata|metadata\.google)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSRF - Internal Hostnames', 'pattern' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:localhost|\.local|\.internal))/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'SSRF - Internal Hostnames', 'pattern' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:\.internal|\.corp|\.localdomain))/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             
             // Next-Gen AI & Modern Zero-Day Attack Signatures
             ['name' => 'AI Security - Prompt Injection', 'pattern' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now|you\s+are\s+DAN\b)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
@@ -108,7 +108,9 @@ class WAF_FW_Rule_Engine {
                 'cookie', 'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
                 'accept', 'accept-language', 'accept-encoding', 'connection',
                 'host', 'upgrade-insecure-requests', 'sec-fetch-dest',
-                'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority'
+                'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority',
+                'referer', 'origin', 'user-agent', 'authorization', 'content-type',
+                'content-length', 'if-none-match', 'if-modified-since', 'cache-control', 'pragma', 'dnt'
             ];
             $inspect_headers = [];
             foreach ($data['headers'] as $k => $v) {

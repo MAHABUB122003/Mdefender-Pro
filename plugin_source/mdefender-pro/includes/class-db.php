@@ -274,9 +274,9 @@ class WAF_FW_DB {
             ['name' => 'Path Traversal', 'pattern' => '/(?:\/proc\/self\/)/i', 'action' => 'block', 'severity' => 'high'],
             ['name' => 'SSTI - Jinja2 Template', 'pattern' => '/(?:\{\{\s*\d+.*?\}\})/', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'SSTI - Python Internals', 'pattern' => '/(?:__class__|__mro__|__subclasses__|__builtins__)/', 'action' => 'block', 'severity' => 'critical'],
-            ['name' => 'SSRF - Internal IP', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'SSRF - Internal IP', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'SSRF - Cloud Metadata', 'pattern' => '/(?:\/latest\/meta-data|\/computeMetadata|metadata\.google)/i', 'action' => 'block', 'severity' => 'critical'],
-            ['name' => 'SSRF - Internal Hostnames', 'pattern' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:localhost|\.local|\.internal))/i', 'action' => 'block', 'severity' => 'high'],
+            ['name' => 'SSRF - Internal Hostnames', 'pattern' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:\.internal|\.corp|\.localdomain))/i', 'action' => 'block', 'severity' => 'high'],
             ['name' => 'XSS - Event Handlers', 'pattern' => '/(?:\bon\w+\s*=\s*(?:[`\\"\'].*?[`\\"\']|\w+))/i', 'action' => 'block', 'severity' => 'high'],
             ['name' => 'SQL Injection - Benchmark', 'pattern' => '/(?:\bBENCHMARK\s*\()/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'SQL Injection - SLEEP', 'pattern' => '/(?:\bSLEEP\s*\()/i', 'action' => 'block', 'severity' => 'critical'],
@@ -337,17 +337,23 @@ class WAF_FW_DB {
                 'name' => 'LFI - Directory Traversal',
                 'new' => '/(?:\.\.\/(?:\.\.\/){2,}|\.\.\\\\(?:\.\.\\\\){2,})/',
             ],
-            // ssrf internal ip: any ip -> requires http prefix
+            // ssrf internal ip: target real internal subnets
             [
-                'old' => ["/(169\.254\.|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/i"],
+                'old' => [
+                    "/(169\.254\.|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/i",
+                    "/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i"
+                ],
                 'name' => 'SSRF - Internal IP',
-                'new' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i',
+                'new' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i',
             ],
-            // ssrf internal hostnames: bare localhost/.local -> requires http prefix or internal hostname
+            // ssrf internal hostnames: target internal enterprise hostnames
             [
-                'old' => ["/(localhost|\.internal|\.local)/i"],
+                'old' => [
+                    "/(localhost|\.internal|\.local)/i",
+                    "/(?:(?:https?|ftp):\/\/[^\/]*(?:localhost|\.local|\.internal))/i"
+                ],
                 'name' => 'SSRF - Internal Hostnames',
-                'new' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:localhost|\.local|\.internal))/i',
+                'new' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:\.internal|\.corp|\.localdomain))/i',
             ],
             // rfi: any url ending in .php -> only php wrappers
             [

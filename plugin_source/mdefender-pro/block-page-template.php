@@ -61,10 +61,7 @@ if (empty($rule_name)) {
 $rule_id = (abs(crc32($rule_name)) % 10000) + 90000;
 
 // Server Host
-$server_host = function_exists('gethostname') ? gethostname() : ($_SERVER['SERVER_NAME'] ?? 'app-srv-01-prod-us-east.net');
-if (strpos($server_host, '.') === false || $server_host === 'localhost') {
-    $server_host = '(e.g.) app-srv-01-prod-us-east.net';
-}
+$server_host = !empty($_SERVER['HTTP_HOST']) ? sanitize_text_field($_SERVER['HTTP_HOST']) : (!empty($_SERVER['SERVER_NAME']) ? sanitize_text_field($_SERVER['SERVER_NAME']) : (function_exists('gethostname') ? gethostname() : 'localhost'));
 
 $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
 ?><!DOCTYPE html>
