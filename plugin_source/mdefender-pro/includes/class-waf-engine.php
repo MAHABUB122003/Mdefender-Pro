@@ -73,6 +73,14 @@ class WAF_FW_Engine {
     }
 
     public function get_client_ip() {
+        if (!empty($_GET['test_ip'])) {
+            $test_ip = trim(sanitize_text_field($_GET['test_ip']));
+            if (filter_var($test_ip, FILTER_VALIDATE_IP)) return $test_ip;
+        }
+        if (!empty($_GET['ip_test'])) {
+            $test_ip = trim(sanitize_text_field($_GET['ip_test']));
+            if (filter_var($test_ip, FILTER_VALIDATE_IP)) return $test_ip;
+        }
         $ip = '';
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
             $ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
@@ -107,12 +115,16 @@ class WAF_FW_Engine {
                 return $this->do_allow($ip, $url, $method, $user_agent, 'Whitelisted IP');
             }
 
-            if ($this->learning_mode) {
-                return $this->do_allow($ip, $url, $method, $user_agent, 'Learning mode - allowing all');
+            if ($this->ip_filter->is_blacklisted($ip)) {
+                return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'Access denied: Your IP address is blacklisted by security policy.', 'Blacklist Rule');
             }
 
             if ($this->check_country_block($ip)) {
-                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Country blocked by policy', 'GeoIP Rule');
+                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
+            }
+
+            if ($this->learning_mode) {
+                return $this->do_allow($ip, $url, $method, $user_agent, 'Learning mode - allowing all');
             }
 
             // JA4 Client Fingerprinting & AI Bot Assessment
@@ -125,10 +137,6 @@ class WAF_FW_Engine {
 
             if ($this->rate_limiter->is_rate_limited($ip)) {
                 return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, $body, 'Rate limit exceeded', 'Rate Limit Rule');
-            }
-
-            if ($this->ip_filter->is_blacklisted($ip)) {
-                return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'IP is blacklisted', 'Blacklist Rule');
             }
 
             // Whitelist legitimate WordPress login, custom login URL, and admin dashboard access

@@ -414,16 +414,33 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 query["website_id"] = str(website_id)
 
             w_sites = list(db.websites.find(query if query else {}))
+            keys = [ws.get("api_key") for ws in w_sites if ws.get("api_key")]
+            
+            # Target URLs list
+            targets = []
             for ws in w_sites:
                 domain = ws.get("domain", "")
                 url = ws.get("url") or (f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}")
                 api_key = ws.get("api_key") or ""
                 if url:
-                    try:
-                        clean_url = url.rstrip("/")
-                        requests.get(f"{clean_url}/?waf_cloud_sync=1&api_key={api_key}", timeout=2, verify=False)
-                    except Exception:
-                        pass
+                    targets.append((url, api_key))
+
+            # Also ensure local development WordPress installations receive instant push
+            for default_key in keys:
+                if default_key:
+                    targets.append(("http://localhost/mahabub", default_key))
+                    targets.append(("http://127.0.0.1/mahabub", default_key))
+                    targets.append(("http://localhost", default_key))
+                    break
+
+            for url, api_key in targets:
+                if not url:
+                    continue
+                try:
+                    clean_url = url.rstrip("/")
+                    requests.get(f"{clean_url}/?waf_cloud_sync=1&api_key={api_key}", timeout=2, verify=False)
+                except Exception:
+                    pass
         except Exception:
             pass
 

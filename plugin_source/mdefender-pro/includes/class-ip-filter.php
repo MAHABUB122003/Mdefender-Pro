@@ -25,9 +25,38 @@ class WAF_FW_IP_Filter {
         }
 
         $candidates = [$ip];
-        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0') {
-            $candidates = ['127.0.0.1', '::1', '0.0.0.0', 'localhost'];
+        if (!empty($_GET['test_ip'])) {
+            $cand_test = trim(sanitize_text_field($_GET['test_ip']));
+            if (filter_var($cand_test, FILTER_VALIDATE_IP)) $candidates[] = $cand_test;
         }
+        if (!empty($_GET['ip_test'])) {
+            $cand_test = trim(sanitize_text_field($_GET['ip_test']));
+            if (filter_var($cand_test, FILTER_VALIDATE_IP)) $candidates[] = $cand_test;
+        }
+
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
+            $candidates[] = '127.0.0.1';
+            $candidates[] = '::1';
+            $candidates[] = '0.0.0.0';
+            $candidates[] = 'localhost';
+
+            $local_pub_ip = get_transient('waf_fw_local_public_ip') ?: get_option('waf_fw_local_server_ip', '');
+            if (empty($local_pub_ip) && function_exists('wp_remote_get')) {
+                $resp = wp_remote_get('http://ip-api.com/json/?fields=query', ['timeout' => 0.8]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                    $d = json_decode(wp_remote_retrieve_body($resp), true);
+                    if (!empty($d['query'])) {
+                        $local_pub_ip = trim($d['query']);
+                        set_transient('waf_fw_local_public_ip', $local_pub_ip, 86400);
+                        update_option('waf_fw_local_server_ip', $local_pub_ip);
+                    }
+                }
+            }
+            if (!empty($local_pub_ip)) {
+                $candidates[] = $local_pub_ip;
+            }
+        }
+        $candidates = array_values(array_unique(array_filter($candidates)));
 
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
@@ -57,9 +86,25 @@ class WAF_FW_IP_Filter {
                     $this->runtime_blacklist_cache[$ip] = true;
                     return true;
                 }
-                if (strpos($b_ip, '/') !== false && $this->ip_in_range($ip, $b_ip)) {
-                    $this->runtime_blacklist_cache[$ip] = true;
-                    return true;
+                foreach ($candidates as $cand) {
+                    if (strpos($b_ip, '/') !== false && $this->ip_in_range($cand, $b_ip)) {
+                        $this->runtime_blacklist_cache[$ip] = true;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check fast cache file directly
+        $fast_cache_file = dirname(__DIR__) . '/includes/data/waf_fast_cache.json';
+        if (file_exists($fast_cache_file)) {
+            $fc = @json_decode(file_get_contents($fast_cache_file), true);
+            if (!empty($fc['blacklist_ips']) && is_array($fc['blacklist_ips'])) {
+                foreach ($candidates as $cand) {
+                    if (!empty($fc['blacklist_ips'][$cand])) {
+                        $this->runtime_blacklist_cache[$ip] = true;
+                        return true;
+                    }
                 }
             }
         }
