@@ -334,6 +334,13 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
         status = ev.get("status") or "allowed"
         action = ev.get("action") or status
         attack_type = ev.get("attack_type")
+        ref_id = ev.get("reference_id")
+        rule_matched = ev.get("rule_matched", "")
+        
+        # Deduplication: If this event was already processed by /waf/analyze or exists in DB, skip double counting
+        if rule_matched == "cloud_ml_waf" or (ref_id and db.security_events.find_one({"reference_id": ref_id, "website_id": website_id_str})):
+            continue
+
         is_blocked = (status in ("block", "blocked") or action in ("block", "blocked"))
         total_reqs += 1
         if is_blocked:
@@ -373,9 +380,9 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
             "confidence": ev.get("confidence", 1.0 if is_blocked else 0.0),
             "action": "blocked" if is_blocked else "allowed",
             "status": "blocked" if is_blocked else "allowed",
-            "reference_id": ev.get("reference_id"),
+            "reference_id": ref_id,
             "user_agent": ev.get("user_agent", ""),
-            "rule_matched": ev.get("rule_matched", ""),
+            "rule_matched": rule_matched,
             "country_code": cc,
             "country": cname,
         }
@@ -394,8 +401,8 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
                 "timestamp": ev_time,
                 "method": method,
                 "user_agent": ev.get("user_agent", ""),
-                "rule_matched": ev.get("rule_matched", "WAF Block"),
-                "reference_id": ev.get("reference_id"),
+                "rule_matched": rule_matched or "WAF Block",
+                "reference_id": ref_id,
                 "country_code": cc,
                 "country": cname,
             })
@@ -412,7 +419,7 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
         except Exception:
             pass
 
-    # Real-time counter increments
+    # Real-time counter increments (strictly 1:1 with real requests)
     if total_reqs > 0:
         inc_web = {"total_requests": total_reqs, "requests_today": total_reqs}
         if total_blocks > 0:

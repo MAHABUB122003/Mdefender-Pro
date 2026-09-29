@@ -850,18 +850,24 @@ Report Generated: ${new Date().toISOString()}`
                   </thead>
                   <tbody>
                     {countryBlocks.map((block) => {
-                      const cObj = ALL_COUNTRIES.find(c => c.code === block.country_code)
-                      const name = (block.country_name || (cObj ? cObj.name : block.country_code)).trim()
+                      const code = (block.country_code || '').toUpperCase().trim()
+                      const cObj = ALL_COUNTRIES.find(c => c.code === code)
+                      const displayName = cObj ? cObj.name : (block.country_name || code)
+                      const flagEmoji = code.length === 2
+                        ? String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)))
+                        : '🌐'
 
                       return (
-                        <tr key={block._id || block.country_code} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
+                        <tr key={block._id || code} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
                           <td style={{ padding: '14px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                            <i className="fas fa-globe" style={{ marginRight: '8px', color: '#64748b' }}></i>
-                            <span>{name}</span>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                              <span style={{ fontSize: '18px', lineHeight: 1 }}>{flagEmoji}</span>
+                              <span style={{ fontSize: '14px', letterSpacing: 'normal' }}>{displayName}</span>
+                            </div>
                           </td>
                           <td style={{ padding: '14px' }}>
-                            <code style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-                              {block.country_code}
+                            <code style={{ background: '#fee2e2', color: '#b91c1c', padding: '3px 8px', borderRadius: '5px', fontWeight: 800, fontSize: '12px' }}>
+                              {code}
                             </code>
                           </td>
                           <td style={{ padding: '14px' }}>

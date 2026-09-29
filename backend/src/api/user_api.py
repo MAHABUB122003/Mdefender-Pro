@@ -682,19 +682,30 @@ class UserAPI:
             reverse=True
         )[:10]
 
-        # Fetch daily requests count (all actions) from security_events & attacks
+        # Fetch daily requests count (7 days) via single-pass time range
+        now_time = datetime.now()
+        start_7days = datetime(now_time.year, now_time.month, now_time.day) - timedelta(days=6)
+        today_start = datetime(now_time.year, now_time.month, now_time.day)
+        
+        # Aggregate 7-day request trends efficiently
+        match_stage = {'$match': {'$and': [base_query, {'timestamp': {'$gte': start_7days}}]}}
+        group_stage = {
+            '$group': {
+                '_id': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
+                'count': {'$sum': 1}
+            }
+        }
+        try:
+            agg_results = list(self.db.security_events.aggregate([match_stage, group_stage]))
+            day_map = {item['_id']: item['count'] for item in agg_results if '_id' in item}
+        except Exception:
+            day_map = {}
+
         daily_requests = []
         for i in range(7):
-            day = datetime.now() - timedelta(days=6 - i)
-            day_str = day.strftime('%Y-%m-%d')
-            day_start = datetime.strptime(day_str, '%Y-%m-%d')
-            day_end = day_start + timedelta(days=1)
-            
-            day_q = {'$and': [base_query, {'timestamp': {'$gte': day_start, '$lt': day_end}}]}
-            count = self.db.security_events.count_documents(day_q)
-            if count == 0:
-                count = self.db.attacks.count_documents(day_q)
-            daily_requests.append(count)
+            day_dt = start_7days + timedelta(days=i)
+            d_str = day_dt.strftime('%Y-%m-%d')
+            daily_requests.append(day_map.get(d_str, 0))
 
         # Get latest user doc
         user_doc = self.db.users.find_one({'_id': user['_id']}) or user
@@ -706,25 +717,28 @@ class UserAPI:
         blocked_events_count = self.db.security_events.count_documents(attack_query)
         blocked_attacks_count = self.db.attacks.count_documents(base_query)
 
-        today_start = datetime.strptime(today, '%Y-%m-%d')
-        today_end = today_start + timedelta(days=1)
-        today_events_count = self.db.security_events.count_documents({
-            '$and': [base_query, {'timestamp': {'$gte': today_start, '$lt': today_end}}]
-        })
+        today_events_count = day_map.get(today_start.strftime('%Y-%m-%d'), 0)
         if today_events_count == 0:
-            today_events_count = self.db.attacks.count_documents({
-                '$and': [base_query, {'timestamp': {'$gte': today_start, '$lt': today_end}}]
-            })
+            try:
+                today_events_count = self.db.security_events.count_documents({
+                    '$and': [base_query, {'timestamp': {'$gte': today_start}}]
+                })
+            except Exception:
+                today_events_count = 0
 
         if website_id and website_id != 'all':
             matching_sites = [w for w in websites if w['id'] in target_ids or w.get('domain') in target_domains]
             tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in matching_sites))
             tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in matching_sites))
-            req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in matching_sites))
+            req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in matching_sites if w.get('requests_today_date') == today))
         else:
             tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in websites), user_doc.get('total_requests', 0))
             tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in websites), user_doc.get('total_blocked', 0))
-            req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in websites), user_doc.get('requests_today', 0))
+            
+            # Today's requests is strictly today's events or today's delta (never lifetime total)
+            user_today_delta = user_doc.get('requests_today', 0) if user_doc.get('requests_today_date') == today else 0
+            site_today_sum = sum(w.get('requests_today', 0) for w in websites if w.get('requests_today_date') == today)
+            req_today = max(today_events_count, user_today_delta, site_today_sum)
 
         active_sites_count = len(websites)
 

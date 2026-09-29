@@ -170,10 +170,9 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
         }
     }
 }
-// Run early on plugins_loaded priority 0 (before WAF analysis at priority 1), init, and admin_init
-add_action('plugins_loaded', 'waf_fw_sync_cloud_blacklist_fast', 0);
+// Fast sync for cloud blacklist, country blocks, user rules and status
+// Only triggered in wp-admin or via instant push webhook to prevent any visitor latency
 add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
-add_action('init', 'waf_fw_sync_cloud_blacklist_fast');
 
 /**
  * Real-time cloud sync webhook listener.

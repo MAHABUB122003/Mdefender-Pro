@@ -215,42 +215,64 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         updates["plugin_version"] = body.plugin_version
     if body.stats:
         updates["last_stats"] = body.stats
-        req_blocked = int(body.stats.get("requests_blocked", 0))
-        req_allowed = int(body.stats.get("requests_allowed", 0))
-        total_site_reqs = req_blocked + req_allowed
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        now_dt = datetime.now()
         
-        if total_site_reqs > 0:
-            db.websites.update_one(
-                {"_id": website_id},
+        # Check if date changed for today's counter reset
+        last_date = website.get("requests_today_date", "")
+        site_prev_today = 0 if last_date != today_str else website.get("requests_today", 0)
+        site_prev_blocked_today = 0 if last_date != today_str else website.get("blocked_today", 0)
+
+        # Delta computation
+        old_lifetime_reqs = website.get("total_requests", 0)
+        old_lifetime_blocked = website.get("total_blocked", 0)
+        new_lifetime_reqs = max(total_site_reqs, old_lifetime_reqs)
+        new_lifetime_blocked = max(req_blocked, old_lifetime_blocked)
+        
+        delta_reqs = max(0, new_lifetime_reqs - old_lifetime_reqs)
+        delta_blocked = max(0, new_lifetime_blocked - old_lifetime_blocked)
+
+        new_today_reqs = site_prev_today + delta_reqs
+        new_today_blocked = site_prev_blocked_today + delta_blocked
+
+        db.websites.update_one(
+            {"_id": website_id},
+            {
+                "$set": {
+                    "total_requests": new_lifetime_reqs,
+                    "total_blocked": new_lifetime_blocked,
+                    "requests_today": new_today_reqs,
+                    "blocked_today": new_today_blocked,
+                    "requests_today_date": today_str,
+                    "last_activity": now_dt,
+                }
+            }
+        )
+        try:
+            from bson import ObjectId
+            u_id = auth_data.get("user_id")
+            u_matches = [{"_id": u_id}, {"id": u_id}]
+            if ObjectId.is_valid(str(u_id)):
+                u_matches.append({"_id": ObjectId(str(u_id))})
+            
+            db.users.update_one(
+                {"$or": u_matches},
                 {
                     "$set": {
-                        "total_requests": max(total_site_reqs, website.get("total_requests", 0)),
-                        "total_blocked": max(req_blocked, website.get("total_blocked", 0)),
-                        "requests_today": max(total_site_reqs, website.get("requests_today", 0)),
-                        "blocked_today": max(req_blocked, website.get("blocked_today", 0)),
-                        "last_activity": datetime.now(),
+                        "total_requests": new_lifetime_reqs,
+                        "total_blocked": new_lifetime_blocked,
+                        "requests_today_date": today_str,
+                        "updated_at": now_dt,
+                    },
+                    "$inc": {
+                        "requests_today": delta_reqs
+                    } if last_date == today_str else {
+                        "requests_today": new_today_reqs
                     }
                 }
             )
-            try:
-                from bson import ObjectId
-                u_id = auth_data.get("user_id")
-                u_matches = [{"_id": u_id}, {"id": u_id}]
-                if ObjectId.is_valid(str(u_id)):
-                    u_matches.append({"_id": ObjectId(str(u_id))})
-                db.users.update_one(
-                    {"$or": u_matches},
-                    {
-                        "$set": {
-                            "total_requests": max(total_site_reqs, 0),
-                            "total_blocked": max(req_blocked, 0),
-                            "requests_today": max(total_site_reqs, 0),
-                            "updated_at": datetime.now(),
-                        }
-                    }
-                )
-            except Exception:
-                pass
+        except Exception:
+            pass
         
     db.websites.update_one(
         {"_id": website_id},

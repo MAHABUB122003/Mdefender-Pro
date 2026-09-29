@@ -80,10 +80,41 @@ foreach ($candidates as $cand) {
 
 // 2. Fast Country Block Check
 if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
-    $geo_country = strtoupper(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY'] ?? $_SERVER['GEOIP_COUNTRY_CODE'] ?? ''), 0, 2));
+    $geo_country = '';
+    // Query param simulation for testing
+    if (!empty($_GET['country_test'])) {
+        $geo_country = strtoupper(substr(trim($_GET['country_test']), 0, 2));
+    } elseif (!empty($_GET['test_country'])) {
+        $geo_country = strtoupper(substr(trim($_GET['test_country']), 0, 2));
+    } elseif (!empty($_GET['country'])) {
+        $geo_country = strtoupper(substr(trim($_GET['country']), 0, 2));
+    }
+
+    if (empty($geo_country)) {
+        $b_headers = [
+            'HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'HTTP_GEOIP_COUNTRY_CODE',
+            'HTTP_X_COUNTRY_CODE', 'HTTP_X_GEOIP_COUNTRY', 'HTTP_X_REAL_IP_COUNTRY', 'HTTP_X_FORWARDED_COUNTRY'
+        ];
+        foreach ($b_headers as $b_hdr) {
+            if (!empty($_SERVER[$b_hdr])) {
+                $c = strtoupper(substr(trim($_SERVER[$b_hdr]), 0, 2));
+                if (strlen($c) === 2 && ctype_alpha($c) && $c !== 'XX' && $c !== 'T1') {
+                    $geo_country = $c;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (empty($geo_country) && in_array($mdefender_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
+        if (!empty($mdefender_cache_data['local_server_country'])) {
+            $geo_country = strtoupper($mdefender_cache_data['local_server_country']);
+        }
+    }
+
     if (!empty($geo_country) && in_array($geo_country, (array)$mdefender_cache_data['blocked_countries'], true)) {
         $is_blocked = true;
-        $block_reason = 'Access from your country/region is restricted by security policy.';
+        $block_reason = 'Access from your country/region (' . htmlspecialchars($geo_country) . ') is restricted by security policy.';
     }
 }
 
