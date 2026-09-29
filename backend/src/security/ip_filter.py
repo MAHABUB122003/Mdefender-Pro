@@ -135,13 +135,13 @@ class IPFilter:
                 {'user_id': u_str},
                 {'added_by_user_id': u_str},
                 {'is_global': True},
-                {'added_by_user_id': {'$exists': False}},
-                {'added_by_user_id': None}
             ]
             if ObjectId.is_valid(u_str):
                 or_conditions.append({'user_id': ObjectId(u_str)})
                 or_conditions.append({'added_by_user_id': ObjectId(u_str)})
             query['$or'] = or_conditions
+        else:
+            query['is_global'] = True
             
         entry = self.db.country_blocks.find_one(query)
         if entry:

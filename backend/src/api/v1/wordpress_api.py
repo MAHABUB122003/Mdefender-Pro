@@ -352,20 +352,22 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         bl_set.add("0.0.0.0")
     blacklist = list(bl_set)
 
-    # Fetch active country blocks (scoped to user)
-    country_query = [
-        {"user_id": user_id},
-        {"added_by_user_id": user_id},
-        {"is_global": True},
-        {"added_by_user_id": {"$exists": False}},
-        {"added_by_user_id": None},
-    ]
+    # Fetch active country blocks (strictly scoped to user or is_global)
+    country_query = []
+    if user_id:
+        u_str = str(user_id)
+        country_query.extend([
+            {"user_id": u_str},
+            {"added_by_user_id": u_str},
+        ])
+        if ObjectId.is_valid(u_str):
+            country_query.append({"user_id": ObjectId(u_str)})
+            country_query.append({"added_by_user_id": ObjectId(u_str)})
     if user_email:
         country_query.append({"added_by": user_email})
-    if ObjectId.is_valid(user_id):
-        country_query.append({"user_id": ObjectId(user_id)})
-        country_query.append({"added_by_user_id": ObjectId(user_id)})
-    country_cursor = db.country_blocks.find({"$or": country_query})
+    country_query.append({"is_global": True})
+
+    country_cursor = db.country_blocks.find({"$or": country_query}) if country_query else []
     blocked_countries = list(set([item["country_code"].strip().upper() for item in country_cursor if item.get("country_code")]))
 
     # Fetch custom firewall rules (scoped to user)
