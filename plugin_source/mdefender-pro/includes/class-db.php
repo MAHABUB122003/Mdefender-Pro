@@ -566,6 +566,10 @@ class WAF_FW_DB {
         return $this->wpdb->prefix . WAF_FW_TABLE_FIREWALL_RULES;
     }
 
+    public function get_rules_table() {
+        return $this->get_firewall_rules_table();
+    }
+
     public function get_hardening_table() {
         return $this->wpdb->prefix . WAF_FW_TABLE_HARDENING;
     }
