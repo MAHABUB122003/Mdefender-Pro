@@ -361,10 +361,17 @@ class WAF_FW_Ajax_Handler {
                 $connection = $client->connect();
                 if (!empty($connection['success'])) {
                     update_option('waf_fw_connected', 'yes');
+                    if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+                        waf_fw_sync_cloud_blacklist_fast(true);
+                    }
                 } else {
                     update_option('waf_fw_connected', 'no');
                     // Never delete/erase the user's entered API key!
                 }
+            }
+        } else {
+            if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+                waf_fw_sync_cloud_blacklist_fast(true);
             }
         }
 
@@ -764,6 +771,9 @@ class WAF_FW_Ajax_Handler {
         $ml_client = WAF_FW_ML_Api_Client::instance();
         $result = $ml_client->test_connection();
         if ($result['success']) {
+            if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+                waf_fw_sync_cloud_blacklist_fast(true);
+            }
             wp_send_json_success($result);
         } else {
             wp_send_json_error($result);

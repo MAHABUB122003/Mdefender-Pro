@@ -76,6 +76,10 @@ function waf_fw_activate() {
         if (!wp_next_scheduled('waf_fw_cloud_heartbeat')) {
             wp_schedule_event(time(), 'hourly', 'waf_fw_cloud_heartbeat');
         }
+        // Immediately sync cloud rules, blacklist, and country blocks on activation
+        if (function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+            waf_fw_sync_cloud_blacklist_fast(true);
+        }
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
@@ -99,9 +103,6 @@ function waf_fw_check_db_update() {
             $db->install_tables();
             $db->set_default_options();
             $db->fix_overaggressive_rules();
-            // Security hardening: if a legacy install still holds the known
-            // weak default dashboard password (admin123), clear it so the
-            // password gate cannot be bypassed with the published default.
             $legacy = get_option('waf_fw_admin_password', '');
             if (!empty($legacy) && wp_check_password('admin123', $legacy)) {
                 delete_option('waf_fw_admin_password');
@@ -127,9 +128,10 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
     if (!$force) {
         $last_sync = get_transient('waf_fw_last_bl_sync');
         $has_cached_bl = get_option('waf_fw_local_blacklist_cache', null);
-        if ($last_sync && $has_cached_bl !== null) return;
+        $has_cached_c = get_option('waf_fw_blocked_countries', null);
+        if ($last_sync && $has_cached_bl !== null && $has_cached_c !== null) return;
     }
-    set_transient('waf_fw_last_bl_sync', 1, 15);
+    set_transient('waf_fw_last_bl_sync', 1, 30);
 
     if (class_exists('WAF_FW_ML_Api_Client')) {
         $client = WAF_FW_ML_Api_Client::instance();
@@ -170,9 +172,9 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
         }
     }
 }
-// Fast sync for cloud blacklist, country blocks, user rules and status
-// Only triggered in wp-admin or via instant push webhook to prevent any visitor latency
+// Automatically sync in background on both admin and visitor lifecycle throttled by transient
 add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
+add_action('init', 'waf_fw_sync_cloud_blacklist_fast', 1);
 
 /**
  * Real-time cloud sync webhook listener.
