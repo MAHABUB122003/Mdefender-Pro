@@ -34,9 +34,17 @@ export default function UserSettings() {
     try {
       const data = await api.getProfile()
       const usr = data.user || data
-      setProfile(usr)
-      userStore.set('profile', usr)
-      if (usr?.plan) localStorage.setItem('mdefender_user_plan', usr.plan)
+      const storedName = localStorage.getItem('mdefender_user_name') || ''
+      const mergedUser = {
+        ...usr,
+        full_name: usr?.full_name || usr?.name || storedName || (usr?.email ? usr.email.split('@')[0] : '') || 'User',
+        name: usr?.name || usr?.full_name || storedName || 'User',
+        username: usr?.username || (usr?.email ? usr.email.split('@')[0] : '—'),
+      }
+      setProfile(mergedUser)
+      userStore.set('profile', mergedUser)
+      if (mergedUser?.plan) localStorage.setItem('mdefender_user_plan', mergedUser.plan)
+      if (mergedUser?.full_name) localStorage.setItem('mdefender_user_name', mergedUser.full_name)
       const mfaData = await api.getMFAStatus()
       setMfaEnabled(mfaData.mfa_enabled || false)
       try {

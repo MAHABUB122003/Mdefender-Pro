@@ -241,13 +241,17 @@ def verify_user_token_compat(request: Request):
         raise HTTPException(status_code=401, detail='User not found')
     if not user.get('is_active', True):
         raise HTTPException(status_code=403, detail='Account is deactivated')
+        
+    resolved_full_name = user.get('full_name') or user.get('name') or user.get('username') or ''
+    resolved_username = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
+    
     return {
         '_id': user['_id'],
         'id': str(user['_id']),
-        'email': user['email'],
-        'name': user.get('full_name', ''),
-        'full_name': user.get('full_name', ''),
-        'username': user.get('username'),
+        'email': user.get('email', ''),
+        'name': resolved_full_name,
+        'full_name': resolved_full_name,
+        'username': resolved_username,
         'role': user.get('role', 'user'),
         'email_verified': user.get('email_verified', False),
         'plan': user.get('plan', 'free'),
