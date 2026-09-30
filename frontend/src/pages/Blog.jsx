@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import PublicNavbar from '../components/PublicNavbar'
 import theme from '../utils/theme'
+import copyToClipboard from '../utils/clipboard'
 
 const blogPosts = [
   {
@@ -71,8 +72,12 @@ Instead of solely evaluating isolated substrings, MDefender Pro implements a **t
 ### The New Wave of Application-Layer DDoS
 Application-layer (Layer 7) DDoS attacks have surged in volume and sophistication. Unlike Layer 3/4 volumetric floods that saturate raw network bandwidth, Layer 7 attacks target resource-intensive backend endpoints (e.g., \`/api/search\`, \`/auth/login\`, checkout workflows) to exhaust server CPU and database connection pools.
 
+---
+
 ### The Challenge of Distributed Proxy Networks
 Adversaries leverage bulletproof residential proxy networks (spanning 100,000+ unique IPs) to distribute HTTP/2 multiplexed streams. Each individual IP may only send 2 to 3 requests per minute, rendering traditional single-IP rate limiters ineffective.
+
+---
 
 ### MDefender Pro's Multi-Tier Mitigation Architecture
 MDefender Pro applies an adaptive token-bucket rate limiter combined with client behavioral heuristics:
@@ -100,6 +105,8 @@ Over 90% of WordPress security breaches originate not from the WordPress core, b
 1. **Unauthenticated Arbitrary File Upload (RCE):** Attackers upload PHP web shells disguised as image attachments.
 2. **Broken Object Level Authorization (BOLA):** Flawed AJAX handlers in plugins allowing unauthorized settings updates.
 3. **XML-RPC & REST API Brute Force:** Automated credential stuffing bypassing login rate limits.
+
+---
 
 ### 1-Click Defense with MDefender Pro Native Plugin
 The MDefender Pro WordPress plugin acts as an inline cloud-synchronized shield. Before WordPress parses incoming PHP superglobals (\`$_GET\`, \`$_POST\`, \`$_FILES\`, \`$_COOKIE\`), the request is passed through MDefender Pro WAF.
@@ -129,6 +136,8 @@ In modern cloud environments, attackers use SSRF to force the server to query in
 - \`http://metadata.google.internal/computeMetadata/v1/\` (GCP service account tokens)
 - \`http://127.0.0.1:6379\` (Redis internal command injection)
 
+---
+
 ### MDefender Pro Autonomous Cloud Guard
 MDefender Pro automatically inspects and sanitizes all URL parameters, JSON body fields, and GraphQL arguments for RFC 1918 private IP subnets, loopback addresses, and cloud provider metadata hostnames, dropping the exploit attempt before any internal request can be initiated.
 `
@@ -151,6 +160,8 @@ MDefender Pro automatically inspects and sanitizes all URL parameters, JSON body
 Security measures must never degrade end-user experience. Studies show that every 100ms of additional latency reduces e-commerce conversion rates by up to 7%.
 
 When developing MDefender Pro, our primary engineering objective was: **Zero Compromise on Speed**.
+
+---
 
 ### Key Architectural Optimizations
 1. **Single-Pass Memory Parsing:** HTTP payloads are parsed into immutable byte slices, avoiding redundant string allocations.
@@ -184,6 +195,277 @@ MDefender Pro introduces an **Autonomous Feedback Loop**:
 ]
 
 const categories = ['All', 'Threat Intelligence', 'DDoS Mitigation', 'WordPress Security', 'Cloud Security', 'Engineering']
+
+const categoryColors = {
+  'Threat Intelligence': { bg: 'rgba(99,102,241,0.12)', text: '#6366f1', border: 'rgba(99,102,241,0.3)' },
+  'DDoS Mitigation': { bg: 'rgba(239,68,68,0.12)', text: '#ef4444', border: 'rgba(239,68,68,0.3)' },
+  'WordPress Security': { bg: 'rgba(16,185,129,0.12)', text: '#10b981', border: 'rgba(16,185,129,0.3)' },
+  'Cloud Security': { bg: 'rgba(6,182,212,0.12)', text: '#06b6d4', border: 'rgba(6,182,212,0.3)' },
+  'Engineering': { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b', border: 'rgba(245,158,11,0.3)' }
+}
+
+// Inline Markdown Formatter Helper
+function renderFormattedText(text, dark) {
+  if (!text) return null
+  // Regex to split by bold (**text**) and code (`code`)
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g)
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const inner = part.slice(2, -2)
+      return (
+        <strong key={index} style={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 700 }}>
+          {inner}
+        </strong>
+      )
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      const inner = part.slice(1, -1)
+      return (
+        <code
+          key={index}
+          style={{
+            background: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
+            color: dark ? '#38bdf8' : '#0284c7',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '0.9em',
+            fontFamily: "'SF Mono', Monaco, monospace"
+          }}
+        >
+          {inner}
+        </code>
+      )
+    }
+    return part
+  })
+}
+
+function CodeSnippetBox({ code, dark }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(code)
+    if (ok) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  return (
+    <div style={{
+      borderRadius: '12px',
+      overflow: 'hidden',
+      margin: '20px 0',
+      background: dark ? '#070b14' : '#0f172a',
+      border: `1px solid ${dark ? '#1e293b' : '#334155'}`,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '9px 18px',
+        background: dark ? '#04070e' : '#020617',
+        borderBottom: '1px solid #1e293b',
+        fontSize: '11px',
+        color: '#94a3b8',
+        fontFamily: 'monospace'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#ef4444' }}></span>
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#f59e0b' }}></span>
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#10b981' }}></span>
+          <span style={{ marginLeft: '8px', color: '#64748b' }}>SECURITY PAYLOAD INSPECTION</span>
+        </div>
+        <button
+          onClick={handleCopy}
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: copied ? '#10b981' : '#e2e8f0',
+            cursor: 'pointer',
+            padding: '3px 10px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`}></i>
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre style={{
+        margin: 0,
+        padding: '18px 22px',
+        color: '#38bdf8',
+        fontSize: '13px',
+        lineHeight: '1.65',
+        fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace",
+        overflowX: 'auto'
+      }}>
+        <code>{code.trim()}</code>
+      </pre>
+    </div>
+  )
+}
+
+function ArticleRenderer({ content, dark }) {
+  const blocks = content.trim().split('\n\n')
+
+  return (
+    <div style={{ fontSize: '15px', lineHeight: '1.8' }}>
+      {blocks.map((block, idx) => {
+        const text = block.trim()
+
+        // Headers
+        if (text.startsWith('### ')) {
+          return (
+            <div key={idx} style={{ margin: '32px 0 14px' }}>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: 800,
+                color: dark ? '#ffffff' : '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                letterSpacing: '-0.3px',
+                margin: 0
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '20px',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(180deg, #6366f1, #3b82f6)'
+                }}></span>
+                {text.replace('### ', '')}
+              </h3>
+            </div>
+          )
+        }
+
+        // Code Blocks
+        if (text.startsWith('```')) {
+          const rawCode = text.replace(/```[a-z]*\n?/g, '')
+          return <CodeSnippetBox key={idx} code={rawCode} dark={dark} />
+        }
+
+        // Dividers
+        if (text === '---') {
+          return (
+            <div key={idx} style={{
+              margin: '32px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px'
+            }}>
+              <div style={{ flex: 1, height: '1px', background: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0' }}></div>
+              <i className="fas fa-shield-halved" style={{ color: '#6366f1', fontSize: '12px' }}></i>
+              <div style={{ flex: 1, height: '1px', background: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0' }}></div>
+            </div>
+          )
+        }
+
+        // Numbered List
+        if (/^\d+\.\s/.test(text)) {
+          const items = text.split('\n').filter(Boolean)
+          return (
+            <div key={idx} style={{
+              margin: '18px 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              {items.map((item, itemIdx) => {
+                const match = item.match(/^(\d+)\.\s*(.*)/)
+                const num = match ? match[1] : itemIdx + 1
+                const bodyText = match ? match[2] : item
+                return (
+                  <div key={itemIdx} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '14px',
+                    background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                    border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`,
+                    padding: '12px 16px',
+                    borderRadius: '10px'
+                  }}>
+                    <span style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: 'rgba(99,102,241,0.15)',
+                      color: '#6366f1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      flexShrink: 0,
+                      marginTop: '2px'
+                    }}>
+                      {num}
+                    </span>
+                    <div style={{ color: dark ? '#cbd5e1' : '#334155', fontSize: '14px', lineHeight: '1.7' }}>
+                      {renderFormattedText(bodyText, dark)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+
+        // Bullet List
+        if (text.startsWith('- ') || text.startsWith('* ')) {
+          const items = text.split('\n').filter(Boolean)
+          return (
+            <div key={idx} style={{
+              margin: '18px 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              {items.map((item, itemIdx) => {
+                const cleanItem = item.replace(/^[-*]\s*/, '')
+                return (
+                  <div key={itemIdx} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px'
+                  }}>
+                    <i className="fas fa-check-circle" style={{
+                      color: '#10b981',
+                      fontSize: '13px',
+                      marginTop: '5px',
+                      flexShrink: 0
+                    }}></i>
+                    <div style={{ color: dark ? '#cbd5e1' : '#334155', fontSize: '14px', lineHeight: '1.7' }}>
+                      {renderFormattedText(cleanItem, dark)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+
+        // Standard Paragraph
+        return (
+          <p key={idx} style={{
+            color: dark ? '#cbd5e1' : '#334155',
+            margin: '0 0 18px',
+            fontSize: '15px',
+            lineHeight: '1.8'
+          }}>
+            {renderFormattedText(text, dark)}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function Blog() {
   const { dark } = useTheme()
@@ -224,19 +506,23 @@ export default function Blog() {
     setTimeout(() => setCopiedLink(false), 2500)
   }
 
+  // Related articles recommendation
+  const relatedArticles = useMemo(() => {
+    if (!activeArticle) return []
+    return blogPosts.filter(p => p.id !== activeArticle.id).slice(0, 2)
+  }, [activeArticle])
+
   return (
     <div style={{
       minHeight: '100vh',
       background: dark ? '#070b14' : '#f8fafc',
-      color: s.text,
+      color: dark ? '#f1f5f9' : '#0f172a',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      overflowX: 'hidden',
-      transition: 'background 0.3s, color 0.3s'
+      overflowX: 'hidden'
     }}>
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.97) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        @keyframes tickerMove { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
         .blog-card {
           transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -244,13 +530,13 @@ export default function Blog() {
         }
         .blog-card:hover {
           transform: translateY(-6px);
-          box-shadow: ${dark ? '0 20px 40px rgba(0,0,0,0.65)' : '0 14px 34px rgba(0,0,0,0.08)'};
+          box-shadow: ${dark ? '0 20px 40px rgba(0,0,0,0.65)' : '0 14px 34px rgba(0,0,0,0.08)'} !important;
           border-color: rgba(99,102,241,0.5) !important;
         }
         .blog-card:hover .blog-card-img {
           transform: scale(1.05);
         }
-        .blog-card:hover h3 {
+        .blog-card:hover h3, .blog-card:hover h2 {
           color: #6366f1 !important;
         }
 
@@ -275,68 +561,33 @@ export default function Blog() {
           box-shadow: 0 4px 14px rgba(99,102,241,0.35);
         }
 
-        .search-input {
-          width: 100%;
-          max-width: 480px;
-          padding: 13px 18px 13px 44px;
-          border-radius: 12px;
-          font-size: 14px;
-          border: 1.5px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'};
-          background: ${dark ? 'rgba(15,23,42,0.85)' : '#ffffff'};
-          color: ${s.text};
-          outline: none;
+        .blog-tag-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11.5px;
+          font-weight: 600;
+          padding: 3px 10px;
+          border-radius: 6px;
+          background: ${dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'};
+          color: ${dark ? '#94a3b8' : '#64748b'};
+          border: 1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'};
           transition: all 0.2s;
         }
-        .search-input:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
-        }
-
-        .article-content h3 {
-          font-size: 21px;
-          font-weight: 800;
-          margin: 32px 0 14px 0;
-          color: ${s.text};
-          letter-spacing: -0.3px;
-        }
-        .article-content p {
-          font-size: 15.5px;
-          line-height: 1.8;
-          color: ${dark ? '#cbd5e1' : '#334155'};
-          margin-bottom: 20px;
-        }
-        .article-content pre {
-          background: ${dark ? '#030712' : '#0f172a'};
-          color: #38bdf8;
-          padding: 18px 22px;
-          border-radius: 12px;
-          overflow-x: auto;
-          font-size: 13.5px;
-          font-family: "'SF Mono', Monaco, 'Cascadia Code', monospace";
-          margin: 22px 0;
-          border: 1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#1e293b'};
-          box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        .article-content ul {
-          padding-left: 24px;
-          margin-bottom: 20px;
-        }
-        .article-content li {
-          font-size: 15px;
-          line-height: 1.75;
-          color: ${dark ? '#cbd5e1' : '#334155'};
-          margin-bottom: 8px;
+        .blog-tag-badge:hover {
+          color: #6366f1;
+          border-color: rgba(99,102,241,0.3);
         }
       `}</style>
 
       <PublicNavbar />
 
-      {/* Real-time Threat Intelligence Ticker */}
+      {/* Live Threat Intelligence Ticker */}
       <div style={{
         marginTop: 64,
-        background: dark ? 'rgba(15,23,42,0.9)' : '#e0e7ff',
+        background: dark ? 'rgba(15,23,42,0.9)' : '#eef2ff',
         borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#c7d2fe'}`,
-        padding: '8px 20px',
+        padding: '9px 20px',
         fontSize: 12,
         fontWeight: 600,
         color: dark ? '#94a3b8' : '#4338ca',
@@ -348,14 +599,14 @@ export default function Blog() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', flexShrink: 0 }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-          <span style={{ textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800 }}>LIVE THREAT TELEMETRY:</span>
+          <span style={{ textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800 }}>LIVE THREAT RADAR:</span>
         </div>
-        <span>5.48M+ Dataset ML Model active &bull; 0 zero-day bypasses in past 24h &bull; 1.48M hostile payloads neutralized across global edge clusters</span>
+        <span>5,489,242+ Dataset ML Core active &bull; Sub-millisecond AST Vectorizer online &bull; Zero false positives recorded across edge fleet</span>
       </div>
 
       {/* Header Section */}
       <section style={{
-        padding: '60px 24px 40px',
+        padding: '50px 24px 36px',
         maxWidth: 1240,
         margin: '0 auto',
         textAlign: 'center',
@@ -380,41 +631,51 @@ export default function Blog() {
         </div>
 
         <h1 style={{
-          fontSize: 'clamp(32px, 4.8vw, 54px)',
+          fontSize: 'clamp(32px, 4.8vw, 52px)',
           fontWeight: 900,
           lineHeight: 1.15,
           letterSpacing: '-1px',
-          maxWidth: 900,
+          maxWidth: 920,
           margin: '0 auto 16px',
-          color: s.text
+          color: dark ? '#ffffff' : '#0f172a'
         }}>
           Cybersecurity Threat Intelligence, Zero-Day Research &amp; AI WAF Architecture
         </h1>
 
         <p style={{
-          fontSize: 'clamp(15px, 1.8vw, 18px)',
-          lineHeight: 1.6,
-          color: s.textSecondary,
-          maxWidth: 700,
-          margin: '0 auto 36px'
+          fontSize: 'clamp(15px, 1.8vw, 17.5px)',
+          lineHeight: 1.65,
+          color: dark ? '#94a3b8' : '#475569',
+          maxWidth: 720,
+          margin: '0 auto 34px'
         }}>
           Technical briefings, exploit vector analyses, and defensive architecture deep-dives authored by our security engineers and threat researchers.
         </p>
 
         {/* Search & Category Filter */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <i className="fas fa-search" style={{ position: 'absolute', left: 'calc(50% - 215px)', top: 16, color: dark ? '#64748b' : '#94a3b8', fontSize: 14 }}></i>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 480 }}>
+            <i className="fas fa-search" style={{ position: 'absolute', left: 16, top: 16, color: '#64748b', fontSize: 13 }}></i>
             <input
               type="text"
-              className="search-input"
               placeholder="Search threat reports, zero-days, CVEs, or tags..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 18px 12px 42px',
+                borderRadius: 12,
+                fontSize: 14,
+                border: `1.5px solid ${dark ? '#1e293b' : '#cbd5e1'}`,
+                background: dark ? '#0a0e1a' : '#ffffff',
+                color: dark ? '#e2e8f0' : '#0f172a',
+                outline: 'none',
+                boxShadow: dark ? 'none' : '0 2px 10px rgba(0,0,0,0.04)'
+              }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
             {categories.map(cat => (
               <button
                 key={cat}
@@ -435,18 +696,18 @@ export default function Blog() {
             className="blog-card"
             onClick={() => setActiveArticle(featuredPost)}
             style={{
-              background: dark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
+              background: dark ? '#0c1222' : '#ffffff',
               borderRadius: 20,
-              border: `1px solid ${dark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)'}`,
+              border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
               overflow: 'hidden',
               display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr',
-              boxShadow: dark ? '0 20px 50px rgba(0,0,0,0.5)' : '0 10px 40px rgba(99,102,241,0.08)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              boxShadow: dark ? '0 15px 40px rgba(0,0,0,0.45)' : '0 10px 30px rgba(0,0,0,0.06)',
               position: 'relative'
             }}
           >
             {/* Visual Image Banner */}
-            <div style={{ position: 'relative', overflow: 'hidden', minHeight: 320 }}>
+            <div style={{ position: 'relative', overflow: 'hidden', minHeight: 300 }}>
               <img
                 src={featuredPost.image}
                 alt={featuredPost.title}
@@ -460,12 +721,6 @@ export default function Blog() {
               />
               <div style={{
                 position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(to right, transparent 60%, rgba(15,23,42,0.9) 100%)',
-                pointerEvents: 'none'
-              }}></div>
-              <div style={{
-                position: 'absolute',
                 top: 18,
                 left: 18,
                 display: 'inline-flex',
@@ -473,7 +728,7 @@ export default function Blog() {
                 gap: 6,
                 padding: '6px 14px',
                 borderRadius: 20,
-                background: 'rgba(99,102,241,0.9)',
+                background: 'rgba(99,102,241,0.95)',
                 backdropFilter: 'blur(10px)',
                 color: '#ffffff',
                 fontSize: 11.5,
@@ -487,52 +742,48 @@ export default function Blog() {
             </div>
 
             {/* Content Details */}
-            <div style={{ padding: '36px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ padding: '34px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <span style={{
                     padding: '4px 12px',
                     borderRadius: 20,
-                    background: dark ? 'rgba(99,102,241,0.15)' : '#eef2ff',
-                    color: '#6366f1',
+                    background: categoryColors[featuredPost.category]?.bg || 'rgba(99,102,241,0.12)',
+                    color: categoryColors[featuredPost.category]?.text || '#6366f1',
+                    border: `1px solid ${categoryColors[featuredPost.category]?.border || 'rgba(99,102,241,0.3)'}`,
                     fontSize: 11,
                     fontWeight: 700,
                     textTransform: 'uppercase'
                   }}>
                     {featuredPost.category}
                   </span>
-                  <span style={{ fontSize: 12.5, color: s.textSecondary }}>
+                  <span style={{ fontSize: 12.5, color: dark ? '#94a3b8' : '#64748b' }}>
                     <i className="fas fa-clock" style={{ marginRight: 5 }}></i> {featuredPost.readTime}
                   </span>
                 </div>
 
                 <h2 style={{
-                  fontSize: 'clamp(22px, 2.2vw, 28px)',
+                  fontSize: 'clamp(21px, 2.2vw, 26px)',
                   fontWeight: 900,
-                  color: s.text,
-                  lineHeight: 1.25,
-                  letterSpacing: '-0.6px',
-                  marginBottom: 14,
+                  color: dark ? '#ffffff' : '#0f172a',
+                  lineHeight: 1.3,
+                  letterSpacing: '-0.5px',
+                  marginBottom: 12,
                   transition: 'color 0.2s'
                 }}>
                   {featuredPost.title}
                 </h2>
 
-                <p style={{ fontSize: 14.5, color: s.textSecondary, lineHeight: 1.65, marginBottom: 20 }}>
+                <p style={{ fontSize: 14.5, color: dark ? '#94a3b8' : '#475569', lineHeight: 1.65, marginBottom: 18 }}>
                   {featuredPost.excerpt}
                 </p>
 
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
-                  {featuredPost.tags.map((t, i) => (
-                    <span key={i} style={{
-                      fontSize: 11.5,
-                      padding: '3px 10px',
-                      borderRadius: 6,
-                      background: dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                      color: s.textSecondary,
-                      fontWeight: 600
-                    }}>
-                      #{t}
+                {/* Clean tag pills without raw hash symbol */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
+                  {featuredPost.tags.map((tag, i) => (
+                    <span key={i} className="blog-tag-badge">
+                      <i className="fas fa-tag" style={{ fontSize: 9, opacity: 0.7 }}></i>
+                      {tag}
                     </span>
                   ))}
                 </div>
@@ -542,8 +793,8 @@ export default function Blog() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingTop: 18,
-                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`
+                paddingTop: 16,
+                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
@@ -560,13 +811,13 @@ export default function Blog() {
                     <i className="fas fa-brain"></i>
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: s.text }}>{featuredPost.author}</div>
-                    <div style={{ fontSize: 11.5, color: s.textSecondary }}>{featuredPost.date}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{featuredPost.author}</div>
+                    <div style={{ fontSize: 11.5, color: dark ? '#94a3b8' : '#64748b' }}>{featuredPost.date}</div>
                   </div>
                 </div>
 
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Read Full Technical Report <i className="fas fa-arrow-right"></i>
+                  Read Technical Report <i className="fas fa-arrow-right"></i>
                 </span>
               </div>
             </div>
@@ -578,8 +829,8 @@ export default function Blog() {
       <section style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 80px' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-          gap: 28
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: 26
         }}>
           {filteredPosts.map(post => (
             <div
@@ -587,9 +838,9 @@ export default function Blog() {
               className="blog-card"
               onClick={() => setActiveArticle(post)}
               style={{
-                background: dark ? 'rgba(15, 23, 42, 0.75)' : '#ffffff',
+                background: dark ? '#0c1222' : '#ffffff',
                 borderRadius: 18,
-                border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
@@ -618,14 +869,14 @@ export default function Blog() {
                     left: 14,
                     padding: '4px 12px',
                     borderRadius: 20,
-                    background: 'rgba(15,23,42,0.85)',
+                    background: categoryColors[post.category]?.bg || 'rgba(15,23,42,0.85)',
+                    color: categoryColors[post.category]?.text || '#6366f1',
+                    border: `1px solid ${categoryColors[post.category]?.border || 'rgba(99,102,241,0.3)'}`,
                     backdropFilter: 'blur(8px)',
-                    color: '#6366f1',
                     fontSize: 11,
                     fontWeight: 800,
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    border: '1px solid rgba(99,102,241,0.3)'
+                    letterSpacing: '0.5px'
                   }}>
                     {post.category}
                   </div>
@@ -647,14 +898,14 @@ export default function Blog() {
                 </div>
 
                 {/* Body Content */}
-                <div style={{ padding: '24px 24px 16px' }}>
+                <div style={{ padding: '22px 22px 14px' }}>
                   <h3 style={{
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight: 800,
-                    color: s.text,
+                    color: dark ? '#ffffff' : '#0f172a',
                     lineHeight: 1.35,
                     marginBottom: 10,
-                    letterSpacing: '-0.4px',
+                    letterSpacing: '-0.3px',
                     transition: 'color 0.2s'
                   }}>
                     {post.title}
@@ -663,23 +914,18 @@ export default function Blog() {
                   <p style={{
                     fontSize: 13.5,
                     lineHeight: 1.65,
-                    color: s.textSecondary,
-                    marginBottom: 18
+                    color: dark ? '#94a3b8' : '#475569',
+                    marginBottom: 16
                   }}>
                     {post.excerpt}
                   </p>
 
+                  {/* Clean tag pills without raw hash symbol */}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {post.tags.slice(0, 3).map((t, idx) => (
-                      <span key={idx} style={{
-                        fontSize: 11,
-                        padding: '2px 8px',
-                        borderRadius: 6,
-                        background: dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9',
-                        color: s.textSecondary,
-                        fontWeight: 500
-                      }}>
-                        #{t}
+                    {post.tags.slice(0, 3).map((tag, idx) => (
+                      <span key={idx} className="blog-tag-badge">
+                        <i className="fas fa-tag" style={{ fontSize: 9, opacity: 0.7 }}></i>
+                        {tag}
                       </span>
                     ))}
                   </div>
@@ -688,11 +934,11 @@ export default function Blog() {
 
               {/* Author Strip */}
               <div style={{
-                padding: '16px 24px 22px',
+                padding: '14px 22px 20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`
+                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
@@ -709,8 +955,8 @@ export default function Blog() {
                     <i className={`fas ${post.icon}`}></i>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: s.text }}>{post.author}</div>
-                    <div style={{ fontSize: 11, color: s.textSecondary }}>{post.date}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{post.author}</div>
+                    <div style={{ fontSize: 11, color: dark ? '#94a3b8' : '#64748b' }}>{post.date}</div>
                   </div>
                 </div>
 
@@ -749,10 +995,10 @@ export default function Blog() {
           }}>
             <i className="fas fa-paper-plane"></i>
           </div>
-          <h2 style={{ fontSize: 28, fontWeight: 900, color: s.text, letterSpacing: '-0.6px', marginBottom: 8 }}>
+          <h2 style={{ fontSize: 28, fontWeight: 900, color: dark ? '#ffffff' : '#0f172a', letterSpacing: '-0.6px', marginBottom: 8 }}>
             Subscribe to MDefender Threat Intelligence
           </h2>
-          <p style={{ fontSize: 15, color: s.textSecondary, maxWidth: 580, margin: '0 auto 26px', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 15, color: dark ? '#94a3b8' : '#475569', maxWidth: 580, margin: '0 auto 26px', lineHeight: 1.6 }}>
             Receive zero-day exploit advisories, AI payload detection rules, and cybersecurity architecture briefings directly in your inbox.
           </p>
 
@@ -784,9 +1030,9 @@ export default function Blog() {
                   padding: '13px 18px',
                   borderRadius: 10,
                   fontSize: 14,
-                  border: `1.5px solid ${dark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`,
-                  background: dark ? 'rgba(15,23,42,0.8)' : '#ffffff',
-                  color: s.text,
+                  border: `1.5px solid ${dark ? '#1e293b' : '#cbd5e1'}`,
+                  background: dark ? '#0a0e1a' : '#ffffff',
+                  color: dark ? '#f1f5f9' : '#0f172a',
                   outline: 'none'
                 }}
               />
@@ -826,13 +1072,13 @@ export default function Blog() {
         }} onClick={() => setActiveArticle(null)}>
           <div
             style={{
-              background: dark ? '#0f172a' : '#ffffff',
+              background: dark ? '#0c1222' : '#ffffff',
               borderRadius: 22,
               width: '100%',
               maxWidth: 860,
               maxHeight: '92vh',
               overflowY: 'auto',
-              border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+              border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
               boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
               position: 'relative',
               animation: 'modalFadeIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards'
@@ -849,7 +1095,9 @@ export default function Blog() {
               <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(to top, rgba(15,23,42,1) 0%, rgba(15,23,42,0.4) 60%, transparent 100%)'
+                background: dark
+                  ? 'linear-gradient(to top, #0c1222 0%, rgba(12,18,34,0.4) 60%, transparent 100%)'
+                  : 'linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.2) 60%, transparent 100%)'
               }}></div>
 
               {/* Close Button */}
@@ -862,7 +1110,7 @@ export default function Blog() {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  background: 'rgba(0,0,0,0.6)',
+                  background: 'rgba(0,0,0,0.65)',
                   backdropFilter: 'blur(8px)',
                   border: '1px solid rgba(255,255,255,0.2)',
                   color: '#ffffff',
@@ -884,26 +1132,27 @@ export default function Blog() {
                   <span style={{
                     padding: '4px 12px',
                     borderRadius: 20,
-                    background: dark ? 'rgba(99,102,241,0.18)' : '#eef2ff',
-                    color: '#6366f1',
+                    background: categoryColors[activeArticle.category]?.bg || 'rgba(99,102,241,0.15)',
+                    color: categoryColors[activeArticle.category]?.text || '#6366f1',
+                    border: `1px solid ${categoryColors[activeArticle.category]?.border || 'rgba(99,102,241,0.3)'}`,
                     fontSize: 11,
                     fontWeight: 700,
                     textTransform: 'uppercase'
                   }}>
                     {activeArticle.category}
                   </span>
-                  <span style={{ fontSize: 13, color: s.textSecondary }}>{activeArticle.date} • {activeArticle.readTime}</span>
+                  <span style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b' }}>{activeArticle.date} • {activeArticle.readTime}</span>
                 </div>
 
                 <button
                   onClick={handleCopyLink}
                   style={{
                     background: 'none',
-                    border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                    border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
                     padding: '5px 12px',
                     borderRadius: 8,
                     fontSize: 12,
-                    color: copiedLink ? '#10b981' : s.textSecondary,
+                    color: copiedLink ? '#10b981' : (dark ? '#94a3b8' : '#64748b'),
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -915,10 +1164,11 @@ export default function Blog() {
                 </button>
               </div>
 
-              <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, color: s.text, lineHeight: 1.25, letterSpacing: '-0.7px', marginBottom: 18 }}>
+              <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, color: dark ? '#ffffff' : '#0f172a', lineHeight: 1.25, letterSpacing: '-0.7px', marginBottom: 18 }}>
                 {activeArticle.title}
               </h1>
 
+              {/* Author Strip */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 22, borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}` }}>
                 <div style={{
                   width: 40,
@@ -934,26 +1184,60 @@ export default function Blog() {
                   <i className={`fas ${activeArticle.icon}`}></i>
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: s.text }}>{activeArticle.author}</div>
-                  <div style={{ fontSize: 12, color: s.textSecondary }}>{activeArticle.role} &middot; MDefender Pro Threat Intelligence Lab</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{activeArticle.author}</div>
+                  <div style={{ fontSize: 12, color: dark ? '#94a3b8' : '#64748b' }}>{activeArticle.role} &middot; MDefender Pro Threat Intelligence Lab</div>
                 </div>
               </div>
 
-              {/* Article Content */}
-              <div className="article-content" style={{ marginTop: 24, color: s.text }}>
-                {activeArticle.content.split('\n\n').map((paragraph, idx) => {
-                  if (paragraph.startsWith('### ')) {
-                    return <h3 key={idx}>{paragraph.replace('### ', '')}</h3>
-                  } else if (paragraph.startsWith('```')) {
-                    const cleanedCode = paragraph.replace(/```[a-z]*\n?/g, '')
-                    return <pre key={idx}><code>{cleanedCode}</code></pre>
-                  } else if (paragraph.startsWith('---')) {
-                    return <hr key={idx} style={{ border: 'none', borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`, margin: '26px 0' }} />
-                  } else {
-                    return <p key={idx}>{paragraph}</p>
-                  }
-                })}
+              {/* Rich Parsed Article Content Without Raw Markdown Artifacts */}
+              <div style={{ marginTop: 24 }}>
+                <ArticleRenderer content={activeArticle.content} dark={dark} />
               </div>
+
+              {/* Tags inside Modal */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 24, paddingTop: 18, borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}` }}>
+                {activeArticle.tags.map((tag, i) => (
+                  <span key={i} className="blog-tag-badge">
+                    <i className="fas fa-tag" style={{ fontSize: 9, opacity: 0.7 }}></i>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              {/* Related Technical Reports */}
+              {relatedArticles.length > 0 && (
+                <div style={{ marginTop: 32 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: dark ? '#f1f5f9' : '#0f172a', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Recommended Threat Reports
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+                    {relatedArticles.map(rel => (
+                      <div
+                        key={rel.id}
+                        onClick={() => setActiveArticle(rel)}
+                        style={{
+                          background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                          border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                          borderRadius: 12,
+                          padding: '14px 16px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4 }}>
+                          {rel.category}
+                        </div>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a', lineHeight: 1.4, marginBottom: 6 }}>
+                          {rel.title}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: dark ? '#94a3b8' : '#64748b' }}>
+                          {rel.readTime} &bull; {rel.date}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Bottom CTA Inside Modal */}
               <div style={{
@@ -969,8 +1253,8 @@ export default function Blog() {
                 gap: 14
               }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: s.text }}>Deploy AI Web Defense in Under 2 Minutes</div>
-                  <div style={{ fontSize: 13, color: s.textSecondary }}>Protect your web applications with 2,000 WAF rules and 5,489,242+ attack dataset ML inference.</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: dark ? '#ffffff' : '#0f172a' }}>Deploy AI Web Defense in Under 2 Minutes</div>
+                  <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#475569' }}>Protect your web applications with 2,000 WAF rules and 5,489,242+ attack dataset ML inference.</div>
                 </div>
                 <Link to="/register" style={{
                   padding: '11px 24px',
@@ -993,25 +1277,23 @@ export default function Blog() {
       {/* Global Footer */}
       <footer style={{
         padding: '36px 40px',
-        borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+        borderTop: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
+        background: dark ? '#04070e' : '#ffffff',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: 16,
-        color: s.textSecondary,
+        gap: 20,
         fontSize: 13,
-        maxWidth: 1240,
-        margin: '0 auto'
+        color: '#64748b'
       }}>
-        <span>&copy; 2026 MDefender Pro Threat Intelligence. All rights reserved.</span>
-        <div style={{ display: 'flex', gap: 20 }}>
-          <Link to="/" style={{ color: s.textSecondary, textDecoration: 'none' }}>Home</Link>
-          <Link to="/about" style={{ color: s.textSecondary, textDecoration: 'none' }}>About</Link>
-          <Link to="/blog" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 600 }}>Blog</Link>
-          <Link to="/pricing" style={{ color: s.textSecondary, textDecoration: 'none' }}>Pricing</Link>
-          <Link to="/docs" style={{ color: s.textSecondary, textDecoration: 'none' }}>Docs</Link>
-          <Link to="/user/login" style={{ color: s.textSecondary, textDecoration: 'none' }}>Sign In</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <i className="fas fa-shield-halved" style={{ color: '#6366f1', fontSize: 16 }}></i>
+          <span style={{ fontWeight: 800, color: dark ? '#ffffff' : '#0f172a' }}>MDefender Pro Threat Intelligence</span>
+          <span>&middot; Autonomous Edge Security Publications</span>
+        </div>
+        <div>
+          &copy; {new Date().getFullYear()} MDefender Pro Security Inc.
         </div>
       </footer>
     </div>

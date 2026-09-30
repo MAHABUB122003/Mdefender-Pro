@@ -68,7 +68,7 @@ class WAF_FW_Scanner {
             'root'    => ABSPATH,
         ];
         
-        $excluded_dirs = ['wp-waf-firewall1/', 'wordfence/'];
+        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/'];
         $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql'];
         
         $bulk_inserts = [];
@@ -96,7 +96,7 @@ class WAF_FW_Scanner {
                 
                 $skip = false;
                 foreach ($excluded_dirs as $ex) {
-                    if (strpos($fp, 'wp-content/plugins/' . $ex) !== false) {
+                    if (strpos($fp, 'wp-content/plugins/' . $ex) !== false || strpos($rel_path, 'wp-content/plugins/' . $ex) === 0) {
                         $skip = true;
                         break;
                     }
@@ -1377,12 +1377,22 @@ class WAF_FW_Scanner {
         $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql'];
         if (!in_array($ext, $scanable)) return null;
 
-        $content = @file_get_contents($path);
-        if (!$content) return null;
-
         $name = basename($path);
         $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
         $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
+
+        // Self-exclusion: Never scan or flag MDefender-Pro / WAF plugin files (they contain malware signatures/heuristics by design)
+        if (
+            strpos($rel_path, 'wp-content/plugins/mdefender-pro/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/mdefender/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/wp-waf-firewall') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/wordfence/') === 0
+        ) {
+            return null;
+        }
+
+        $content = @file_get_contents($path);
+        if (!$content) return null;
 
         // 1. File Classification
         $file_class = 'UNKNOWN';
@@ -1392,7 +1402,7 @@ class WAF_FW_Scanner {
             $file_class = 'THEME';
         } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $category === 'uploads') {
             $file_class = 'UPLOAD';
-        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($name, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php'])) {
+        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($name, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'])) {
             $file_class = 'WORDPRESS_CORE';
         }
 
@@ -1418,7 +1428,27 @@ class WAF_FW_Scanner {
             ];
         }
 
-        // 3. Dangerous Executable in Uploads directory (Strict rule)
+        // 3. WordPress Core Verification & Integrity Check (FIRST-PASS FOR CLEAN CORE FILES)
+        $is_core_modified = false;
+        if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
+            $core_hashes = $this->get_core_checksums();
+            if (!empty($core_hashes) && isset($core_hashes[$rel_path])) {
+                $expected_md5 = $core_hashes[$rel_path];
+                $actual_md5 = hash_file('md5', $path);
+                if ($expected_md5 === $actual_md5) {
+                    // Pristine, unmodified official WordPress core file from wordpress.org -> 100% CLEAN
+                    return null;
+                } else {
+                    $is_core_modified = true;
+                    $findings[] = "Core Checksum Mismatch: modified official WordPress core file";
+                    $total_score = max($total_score, 45);
+                    $classification = 'MODIFIED';
+                    $confidence = 'HIGH';
+                }
+            }
+        }
+
+        // 4. Dangerous Executable in Uploads directory (Strict rule)
         if ($is_php && ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false)) {
             $total_score = max($total_score, 90);
             $confidence = 'HIGH';
@@ -1426,43 +1456,27 @@ class WAF_FW_Scanner {
             $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
         }
 
-        // 4. PHP AST Dataflow Taint Analysis
+        // 5. PHP AST Dataflow Taint Analysis
         if ($is_php) {
             $ast_result = $this->analyze_php_ast_dataflow($path, $content);
             if ($ast_result['score'] > 0) {
-                $total_score = max($total_score, $ast_result['score']);
-                if ($ast_result['confidence'] === 'HIGH') {
-                    $confidence = 'HIGH';
-                }
-                if ($ast_result['classification'] === 'CONFIRMED_MALWARE') {
-                    $classification = 'CONFIRMED_MALWARE';
-                }
-                foreach ($ast_result['findings'] as $f) {
-                    $findings[] = $f;
-                }
-            }
-        }
-
-        // 5. WordPress Core Verification & Integrity Check
-        $is_core_modified = false;
-        if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
-            $core_hashes = $this->get_core_checksums();
-            if (!empty($core_hashes) && isset($core_hashes[$rel_path])) {
-                $expected_md5 = $core_hashes[$rel_path];
-                $actual_md5 = hash_file('md5', $path);
-                if ($expected_md5 !== $actual_md5) {
-                    $is_core_modified = true;
-                    $findings[] = "Core Checksum Mismatch: modified official WordPress core file";
-                    if ($total_score >= 70) {
-                        $classification = 'CONFIRMED_MALWARE';
-                        $findings[] = "Infected Core File: Backdoor or taint flow detected inside modified core file";
-                    } else {
-                        $classification = 'MODIFIED';
-                        $total_score = max($total_score, 45);
+                // If it's a modified core file or non-core file with high AST score
+                if ($name === 'wp-config.php' && $ast_result['score'] < 95) {
+                    // wp-config.php can have server headers and DB definitions without being malware
+                } else {
+                    $total_score = max($total_score, $ast_result['score']);
+                    if ($ast_result['confidence'] === 'HIGH') {
+                        $confidence = 'HIGH';
                     }
-                    $confidence = 'HIGH';
-                } elseif ($total_score === 0) {
-                    return null; // clean pristine core file
+                    if ($ast_result['classification'] === 'CONFIRMED_MALWARE') {
+                        $classification = 'CONFIRMED_MALWARE';
+                        if ($is_core_modified) {
+                            $findings[] = "Infected Core File: Backdoor or taint flow detected inside modified core file";
+                        }
+                    }
+                    foreach ($ast_result['findings'] as $f) {
+                        $findings[] = $f;
+                    }
                 }
             }
         }
@@ -1483,25 +1497,27 @@ class WAF_FW_Scanner {
             }
         }
 
-        // 7. Secrets/Credentials Detection
-        $secrets = $this->get_secret_patterns();
-        $secret_matches = $this->check_malware_patterns($content, $secrets);
-        if (!empty($secret_matches)) {
-            foreach ($secret_matches as $m) {
-                if (preg_match('/password\s*[=:]\s*[\'\"]([^\'\"]{6,})[\'\"]/i', $m, $sub_match)) {
-                    $val = $sub_match[1];
-                    if (in_array(strtolower($val), ['password', '123456', 'root', 'admin', 'pass', 'db_pass', 'db_password', 'secret', 'undefined', 'null'])) {
-                        continue;
+        // 7. Secrets/Credentials Detection (Skip standard wp-config.php constants)
+        if ($name !== 'wp-config.php' && $name !== 'wp-config-sample.php') {
+            $secrets = $this->get_secret_patterns();
+            $secret_matches = $this->check_malware_patterns($content, $secrets);
+            if (!empty($secret_matches)) {
+                foreach ($secret_matches as $m) {
+                    if (preg_match('/password\s*[=:]\s*[\'\"]([^\'\"]{6,})[\'\"]/i', $m, $sub_match)) {
+                        $val = $sub_match[1];
+                        if (in_array(strtolower($val), ['password', '123456', 'root', 'admin', 'pass', 'db_pass', 'db_password', 'secret', 'undefined', 'null'])) {
+                            continue;
+                        }
+                        $total_score = max($total_score, 35);
+                        $findings[] = 'Exposed Credentials: password pattern with value';
+                    } else {
+                        $total_score = max($total_score, 40);
+                        $findings[] = 'Exposed Secret: ' . substr(trim($m), 0, 60) . '...';
+                        $confidence = 'HIGH';
                     }
-                    $total_score = max($total_score, 35);
-                    $findings[] = 'Exposed Credentials: password pattern with value';
-                } else {
-                    $total_score = max($total_score, 40);
-                    $findings[] = 'Exposed Secret: ' . substr(trim($m), 0, 60) . '...';
-                    $confidence = 'HIGH';
-                }
-                if ($classification === 'SAFE') {
-                    $classification = 'SUSPICIOUS';
+                    if ($classification === 'SAFE') {
+                        $classification = 'SUSPICIOUS';
+                    }
                 }
             }
         }
@@ -4289,46 +4305,35 @@ class WAF_FW_Scanner {
         ];
 
         $sensitive_files = [
-            ['path' => '/.env', 'severity' => 'critical', 'desc' => 'Environment configuration file'],
-            ['path' => '/.env.bak', 'severity' => 'critical', 'desc' => 'Environment backup file'],
-            ['path' => '/.env.local', 'severity' => 'critical', 'desc' => 'Local environment file'],
-            ['path' => '/.env.production', 'severity' => 'critical', 'desc' => 'Production environment file'],
-            ['path' => '/wp-config.php.bak', 'severity' => 'critical', 'desc' => 'WordPress config backup'],
-            ['path' => '/wp-config.php.save', 'severity' => 'critical', 'desc' => 'WordPress config save file'],
-            ['path' => '/wp-config.php.old', 'severity' => 'critical', 'desc' => 'WordPress config old file'],
-            ['path' => '/wp-config.php.orig', 'severity' => 'critical', 'desc' => 'WordPress config original file'],
-            ['path' => '/wp-config.php~', 'severity' => 'critical', 'desc' => 'WordPress config backup (tilde)'],
-            ['path' => '/wp-config.bak', 'severity' => 'critical', 'desc' => 'WordPress config backup'],
-            ['path' => '/wp-config.txt', 'severity' => 'critical', 'desc' => 'WordPress config text file'],
-            ['path' => '/wp-config.php.swp', 'severity' => 'critical', 'desc' => 'WordPress config vim swap'],
-            ['path' => '/wp-config.php.dist', 'severity' => 'info', 'desc' => 'WordPress config distribution'],
-            ['path' => '/wp-config-sample.php', 'severity' => 'info', 'desc' => 'WordPress sample config'],
-            ['path' => '/readme.html', 'severity' => 'warning', 'desc' => 'WordPress readme with version info'],
-            ['path' => '/license.txt', 'severity' => 'info', 'desc' => 'WordPress license file'],
-            ['path' => '/debug.log', 'severity' => 'critical', 'desc' => 'WordPress debug log'],
-            ['path' => '/wp-content/debug.log', 'severity' => 'critical', 'desc' => 'WordPress debug log in content'],
-            ['path' => '/composer.json', 'severity' => 'warning', 'desc' => 'Composer configuration file'],
-            ['path' => '/composer.lock', 'severity' => 'warning', 'desc' => 'Composer lock file'],
-            ['path' => '/package.json', 'severity' => 'info', 'desc' => 'NPM package file'],
-            ['path' => '/package-lock.json', 'severity' => 'info', 'desc' => 'NPM lock file'],
-            ['path' => '/.git/HEAD', 'severity' => 'critical', 'desc' => 'Git repository exposed'],
-            ['path' => '/.git/config', 'severity' => 'critical', 'desc' => 'Git config exposed'],
-            ['path' => '/.svn/entries', 'severity' => 'critical', 'desc' => 'SVN repository exposed'],
-            ['path' => '/.DS_Store', 'severity' => 'warning', 'desc' => 'macOS directory metadata'],
-            ['path' => '/web.config', 'severity' => 'info', 'desc' => 'IIS web config file'],
-            ['path' => '/.htpasswd', 'severity' => 'critical', 'desc' => 'Apache password file'],
-            ['path' => '/phpinfo.php', 'severity' => 'critical', 'desc' => 'PHP info file'],
-            ['path' => '/info.php', 'severity' => 'critical', 'desc' => 'PHP info file'],
-            ['path' => '/test.php', 'severity' => 'warning', 'desc' => 'Test PHP file'],
-            ['path' => '/phpmyadmin/', 'severity' => 'critical', 'desc' => 'phpMyAdmin interface'],
-            ['path' => '/adminer.php', 'severity' => 'critical', 'desc' => 'Adminer database tool'],
-            ['path' => '/backup/', 'severity' => 'critical', 'desc' => 'Backup directory'],
-            ['path' => '/backups/', 'severity' => 'critical', 'desc' => 'Backups directory'],
-            ['path' => '/db/', 'severity' => 'warning', 'desc' => 'Database directory'],
-            ['path' => '/sql/', 'severity' => 'warning', 'desc' => 'SQL directory'],
-            ['path' => '/dump.sql', 'severity' => 'critical', 'desc' => 'Database dump file'],
-            ['path' => '/database.sql', 'severity' => 'critical', 'desc' => 'Database dump file'],
-            ['path' => '/wp-content/uploads/', 'severity' => 'info', 'desc' => 'Uploads directory index'],
+            ['path' => '/.env', 'severity' => 'critical', 'desc' => 'Environment configuration file with server credentials'],
+            ['path' => '/.env.bak', 'severity' => 'critical', 'desc' => 'Environment backup file with credentials'],
+            ['path' => '/.env.local', 'severity' => 'critical', 'desc' => 'Local environment credentials file'],
+            ['path' => '/.env.production', 'severity' => 'critical', 'desc' => 'Production environment credentials file'],
+            ['path' => '/wp-config.php.bak', 'severity' => 'critical', 'desc' => 'WordPress database config backup'],
+            ['path' => '/wp-config.php.save', 'severity' => 'critical', 'desc' => 'WordPress database config save file'],
+            ['path' => '/wp-config.php.old', 'severity' => 'critical', 'desc' => 'WordPress database config old file'],
+            ['path' => '/wp-config.php.orig', 'severity' => 'critical', 'desc' => 'WordPress database config original file'],
+            ['path' => '/wp-config.php~', 'severity' => 'critical', 'desc' => 'WordPress database config backup (tilde)'],
+            ['path' => '/wp-config.bak', 'severity' => 'critical', 'desc' => 'WordPress database config backup'],
+            ['path' => '/wp-config.txt', 'severity' => 'critical', 'desc' => 'WordPress database config text file'],
+            ['path' => '/wp-config.php.swp', 'severity' => 'critical', 'desc' => 'WordPress database config vim swap file'],
+            ['path' => '/debug.log', 'severity' => 'critical', 'desc' => 'WordPress debug error log with trace data'],
+            ['path' => '/wp-content/debug.log', 'severity' => 'critical', 'desc' => 'WordPress debug log in content folder'],
+            ['path' => '/composer.json', 'severity' => 'warning', 'desc' => 'Composer package dependency configuration'],
+            ['path' => '/composer.lock', 'severity' => 'warning', 'desc' => 'Composer dependency lock file'],
+            ['path' => '/.git/HEAD', 'severity' => 'critical', 'desc' => 'Git repository repository metadata exposed'],
+            ['path' => '/.git/config', 'severity' => 'critical', 'desc' => 'Git configuration exposed with remote URLs'],
+            ['path' => '/.svn/entries', 'severity' => 'critical', 'desc' => 'SVN version control repository exposed'],
+            ['path' => '/.htpasswd', 'severity' => 'critical', 'desc' => 'Apache authentication password file'],
+            ['path' => '/phpinfo.php', 'severity' => 'critical', 'desc' => 'PHP runtime environment info file'],
+            ['path' => '/info.php', 'severity' => 'critical', 'desc' => 'PHP runtime environment info file'],
+            ['path' => '/phpmyadmin/', 'severity' => 'critical', 'desc' => 'Publicly accessible phpMyAdmin database interface'],
+            ['path' => '/adminer.php', 'severity' => 'critical', 'desc' => 'Publicly accessible Adminer database utility'],
+            ['path' => '/backup/', 'severity' => 'critical', 'desc' => 'Publicly accessible site backup directory'],
+            ['path' => '/backups/', 'severity' => 'critical', 'desc' => 'Publicly accessible site backup directory'],
+            ['path' => '/dump.sql', 'severity' => 'critical', 'desc' => 'Database SQL export dump file'],
+            ['path' => '/database.sql', 'severity' => 'critical', 'desc' => 'Database SQL export dump file'],
+            ['path' => '/readme.html', 'severity' => 'info', 'desc' => 'WordPress readme file (version metadata disclosure)'],
         ];
 
         foreach ($sensitive_files as $file_check) {
@@ -4344,12 +4349,12 @@ class WAF_FW_Scanner {
             if (is_wp_error($response)) continue;
 
             $code = wp_remote_retrieve_response_code($response);
-            if (in_array($code, [200, 301, 302, 303, 307, 308, 403])) {
-                if ($code === 403 && !in_array($file_check['severity'], ['critical'])) {
-                    $file_check['severity'] = 'info';
-                    $file_check['desc'] .= ' (403 Forbidden - protected)';
-                }
+            // 403 Forbidden means directory or file is protected/blocked -> NOT an exposure
+            if ($code === 403) {
+                continue;
+            }
 
+            if (in_array($code, [200, 301, 302, 303, 307, 308])) {
                 $results['exposed_files'][] = [
                     'path' => $file_check['path'],
                     'url' => $test_url,

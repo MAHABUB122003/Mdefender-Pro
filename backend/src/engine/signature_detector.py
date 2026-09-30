@@ -53,39 +53,45 @@ class SignatureDetector:
             "load_error": self.load_error,
         }
 
+    BUILTIN_PATTERNS = [
+        {"id": "builtin_eval_b64", "name": "Dynamic Base64 Eval Execution", "pattern": r"\beval\s*\(\s*(?:base64_decode|gzinflate|str_rot13|hex2bin)\s*\("},
+        {"id": "builtin_assert_b64", "name": "Assert Dynamic Code Execution", "pattern": r"\bassert\s*\(\s*(?:base64_decode|gzinflate|str_rot13|\$_POST|\$_GET|\$_REQUEST)\b"},
+        {"id": "builtin_preg_replace_e", "name": "Preg_replace /e Code Injection", "pattern": r"\bpreg_replace\s*\(\s*['\"][^'\"]*\/e['\"]"},
+        {"id": "builtin_webshell_markers", "name": "Known Webshell Signature (c99/r57/wso/b374k)", "pattern": r"\b(?:c99sh|r57shell|WSO_VERSION|FilesMan|b374k|weevely)\b"},
+        {"id": "builtin_tainted_exec", "name": "Direct User-Input Command Execution", "pattern": r"\b(?:system|shell_exec|exec|passthru)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\["},
+        {"id": "builtin_dropper", "name": "Remote Script Dropper to Uploads/Core", "pattern": r"(?:file_get_contents|curl_exec)\s*\([^)]*https?://[\s\S]*?file_put_contents\s*\([^)]*\.php|file_put_contents\s*\([^)]*\.php[\s\S]*?(?:file_get_contents|curl_exec)\s*\([^)]*https?://"},
+    ]
+
     def _load_patterns(self):
         if self._patterns is not None:
             return self._patterns
         with self._lock:
             if self._patterns is not None:
                 return self._patterns
-            loaded = []
+            loaded = list(self.BUILTIN_PATTERNS)
             path = self._rules_path()
-            if not os.path.exists(path):
-                self._patterns = []
-                return self._patterns
-            try:
-                with open(path, "r", encoding="utf-8", errors="replace") as f:
-                    data = json.load(f)
-                for rule in data.get("patterns", []):
-                    pattern = rule.get("pattern")
-                    if not pattern:
-                        continue
-                    try:
-                        re.compile(pattern)
-                    except re.error:
-                        continue
-                    loaded.append({
-                        "id": rule.get("id"),
-                        "name": rule.get("name", rule.get("id")),
-                        "pattern": pattern,
-                        "confidence": rule.get("confidence", "medium"),
-                        "coverage_samples": rule.get("coverage_samples", 0),
-                    })
-                self._patterns = loaded
-            except Exception as e:
-                self.load_error = f"patterns: {e}"
-                self._patterns = []
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8", errors="replace") as f:
+                        data = json.load(f)
+                    for rule in data.get("patterns", []):
+                        pattern = rule.get("pattern")
+                        if not pattern:
+                            continue
+                        try:
+                            re.compile(pattern)
+                        except re.error:
+                            continue
+                        loaded.append({
+                            "id": rule.get("id"),
+                            "name": rule.get("name", rule.get("id")),
+                            "pattern": pattern,
+                            "confidence": rule.get("confidence", "medium"),
+                            "coverage_samples": rule.get("coverage_samples", 0),
+                        })
+                except Exception as e:
+                    self.load_error = f"patterns: {e}"
+            self._patterns = loaded
             return self._patterns
 
     def _load_hashes(self):
@@ -139,8 +145,6 @@ class SignatureDetector:
 
     def check_patterns(self, content: bytes):
         """Return list of matched pattern rule names (case-insensitive scan of raw text)."""
-        if not self.configured:
-            return []
         patterns = self._load_patterns()
         if not patterns:
             return []

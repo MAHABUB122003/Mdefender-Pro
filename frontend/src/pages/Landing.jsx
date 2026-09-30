@@ -196,8 +196,8 @@ export default function Landing() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#070b14',
-      color: '#f1f5f9',
+      background: dark ? '#070b14' : '#f8fafc',
+      color: dark ? '#f1f5f9' : '#0f172a',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       overflowX: 'hidden'
     }}>
@@ -212,11 +212,13 @@ export default function Landing() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundImage: `radial-gradient(ellipse at 50% 30%, rgba(7, 11, 20, 0.72) 0%, rgba(7, 11, 20, 0.88) 60%, #070b14 100%), url('/assets/hero_cyber_matrix_defense.jpg')`,
+        backgroundImage: dark
+          ? `radial-gradient(ellipse at 50% 30%, rgba(7, 11, 20, 0.72) 0%, rgba(7, 11, 20, 0.88) 60%, #070b14 100%), url('/assets/hero_cyber_matrix_defense.jpg')`
+          : `radial-gradient(ellipse at 50% 30%, rgba(248, 250, 252, 0.75) 0%, rgba(248, 250, 252, 0.94) 65%, #f8fafc 100%), url('/assets/hero_cyber_matrix_defense.jpg')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center top',
         backgroundRepeat: 'no-repeat',
-        borderBottom: '1px solid rgba(59, 130, 246, 0.25)',
+        borderBottom: dark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #e2e8f0',
         overflow: 'hidden'
       }}>
         {/* Floating Ambient Glow Orbs */}
@@ -227,7 +229,7 @@ export default function Landing() {
           width: '500px',
           height: '500px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%)',
+          background: dark ? 'radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%)',
           filter: 'blur(50px)',
           pointerEvents: 'none',
           zIndex: 0
@@ -240,7 +242,7 @@ export default function Landing() {
           width: '520px',
           height: '520px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
+          background: dark ? 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(139, 92, 246, 0.10) 0%, transparent 70%)',
           filter: 'blur(60px)',
           pointerEvents: 'none',
           zIndex: 0
@@ -253,7 +255,9 @@ export default function Landing() {
             margin: '0 auto',
             padding: '24px 20px 20px',
             borderRadius: '24px',
-            background: 'radial-gradient(circle at 50% 50%, rgba(7, 11, 20, 0.88) 0%, rgba(7, 11, 20, 0.55) 75%, transparent 100%)',
+            background: dark
+              ? 'radial-gradient(circle at 50% 50%, rgba(7, 11, 20, 0.88) 0%, rgba(7, 11, 20, 0.55) 75%, transparent 100%)'
+              : 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.72) 75%, transparent 100%)',
             backdropFilter: 'blur(3px)'
           }}>
             {/* Hybrid Engine Status Badge */}
@@ -263,15 +267,15 @@ export default function Landing() {
               gap: '10px',
               padding: '8px 22px',
               borderRadius: '30px',
-              background: 'rgba(10, 15, 29, 0.9)',
-              border: '1px solid rgba(56, 189, 248, 0.5)',
+              background: dark ? 'rgba(10, 15, 29, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+              border: dark ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid #7dd3fc',
               backdropFilter: 'blur(12px)',
-              color: '#38bdf8',
+              color: dark ? '#38bdf8' : '#0284c7',
               fontSize: '13px',
               fontWeight: '700',
               letterSpacing: '0.4px',
               marginBottom: '26px',
-              boxShadow: '0 0 25px rgba(56, 189, 248, 0.3)'
+              boxShadow: dark ? '0 0 25px rgba(56, 189, 248, 0.3)' : '0 4px 15px rgba(14, 165, 233, 0.15)'
             }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px #10b981' }}></span>
               <span>GLOBAL EDGE DEFENSE &middot; 2,000 WAF RULES + 5,489,242+ NEURAL CORE</span>
@@ -285,15 +289,15 @@ export default function Landing() {
               letterSpacing: '-0.04em',
               maxWidth: '1060px',
               margin: '0 auto 22px',
-              color: '#ffffff',
-              textShadow: '0 4px 25px rgba(0, 0, 0, 0.95), 0 0 40px rgba(7, 11, 20, 0.9)'
+              color: dark ? '#ffffff' : '#0f172a',
+              textShadow: dark ? '0 4px 25px rgba(0, 0, 0, 0.95), 0 0 40px rgba(7, 11, 20, 0.9)' : 'none'
             }}>
               Autonomous Web Application Firewall Powered by{' '}
               <span style={{
                 background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                filter: 'drop-shadow(0 0 30px rgba(56, 189, 248, 0.45))'
+                filter: dark ? 'drop-shadow(0 0 30px rgba(56, 189, 248, 0.45))' : 'none'
               }}>
                 5,489,242+ Attack Signatures
               </span>
@@ -303,13 +307,13 @@ export default function Landing() {
             <p style={{
               fontSize: 'clamp(16.5px, 2vw, 20px)',
               lineHeight: '1.7',
-              color: '#f1f5f9',
+              color: dark ? '#f1f5f9' : '#334155',
               maxWidth: '840px',
               margin: '0 auto 38px',
-              textShadow: '0 2px 14px rgba(0, 0, 0, 0.95)',
+              textShadow: dark ? '0 2px 14px rgba(0, 0, 0, 0.95)' : 'none',
               fontWeight: 500
             }}>
-              MDefender Pro combines a deterministic <strong style={{ color: '#ffffff', textDecoration: 'underline', textDecorationColor: '#38bdf8' }}>2,000-rule regex engine</strong> with a state-of-the-art <strong style={{ color: '#38bdf8' }}>Machine Learning model trained on 5,489,242+ real-world attack vectors</strong> to neutralize zero-days, automated bots, and volumetric DDoS in sub-millisecond real time.
+              MDefender Pro combines a deterministic <strong style={{ color: dark ? '#ffffff' : '#0f172a', textDecoration: 'underline', textDecorationColor: '#38bdf8' }}>2,000-rule regex engine</strong> with a state-of-the-art <strong style={{ color: dark ? '#38bdf8' : '#0284c7' }}>Machine Learning model trained on 5,489,242+ real-world attack vectors</strong> to neutralize zero-days, automated bots, and volumetric DDoS in sub-millisecond real time.
             </p>
 
             {/* Action CTAs */}
@@ -343,10 +347,11 @@ export default function Landing() {
                   gap: '8px',
                   padding: '16px 28px',
                   borderRadius: '12px',
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  background: dark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
+                  border: dark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #cbd5e1',
                   backdropFilter: 'blur(10px)',
-                  color: '#ffffff',
+                  color: dark ? '#ffffff' : '#0f172a',
+                  boxShadow: dark ? 'none' : '0 4px 12px rgba(0,0,0,0.06)',
                   fontSize: '15px',
                   fontWeight: '600',
                   textDecoration: 'none',
@@ -365,10 +370,11 @@ export default function Landing() {
                   gap: '8px',
                   padding: '16px 28px',
                   borderRadius: '12px',
-                  background: 'rgba(7, 11, 20, 0.8)',
-                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  background: dark ? 'rgba(7, 11, 20, 0.8)' : '#ffffff',
+                  border: dark ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid #cbd5e1',
                   backdropFilter: 'blur(10px)',
-                  color: '#94a3b8',
+                  color: dark ? '#94a3b8' : '#475569',
+                  boxShadow: dark ? 'none' : '0 4px 12px rgba(0,0,0,0.06)',
                   fontSize: '15px',
                   fontWeight: '600',
                   textDecoration: 'none'
@@ -393,11 +399,11 @@ export default function Landing() {
                 gap: '6px',
                 padding: '6px 14px',
                 borderRadius: '20px',
-                background: 'rgba(7, 11, 20, 0.85)',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
+                background: dark ? 'rgba(7, 11, 20, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                border: dark ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #a7f3d0',
                 backdropFilter: 'blur(10px)',
                 fontSize: '12px',
-                color: '#10b981',
+                color: '#059669',
                 fontFamily: 'monospace',
                 fontWeight: '700'
               }}>
@@ -411,11 +417,11 @@ export default function Landing() {
                 gap: '6px',
                 padding: '6px 14px',
                 borderRadius: '20px',
-                background: 'rgba(7, 11, 20, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
+                background: dark ? 'rgba(7, 11, 20, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                border: dark ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid #bae6fd',
                 backdropFilter: 'blur(10px)',
                 fontSize: '12px',
-                color: '#38bdf8',
+                color: dark ? '#38bdf8' : '#0284c7',
                 fontFamily: 'monospace',
                 fontWeight: '700'
               }}>
@@ -428,11 +434,11 @@ export default function Landing() {
                 gap: '6px',
                 padding: '6px 14px',
                 borderRadius: '20px',
-                background: 'rgba(7, 11, 20, 0.85)',
-                border: '1px solid rgba(192, 132, 252, 0.4)',
+                background: dark ? 'rgba(7, 11, 20, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                border: dark ? '1px solid rgba(192, 132, 252, 0.4)' : '1px solid #e9d5ff',
                 backdropFilter: 'blur(10px)',
                 fontSize: '12px',
-                color: '#c084fc',
+                color: dark ? '#c084fc' : '#7c3aed',
                 fontFamily: 'monospace',
                 fontWeight: '700'
               }}>
@@ -445,11 +451,11 @@ export default function Landing() {
           <div style={{
             maxWidth: '1020px',
             margin: '28px auto 0',
-            background: 'rgba(10, 15, 29, 0.92)',
+            background: dark ? 'rgba(10, 15, 29, 0.92)' : '#ffffff',
             backdropFilter: 'blur(20px)',
             borderRadius: '18px',
-            border: '1px solid rgba(59, 130, 246, 0.35)',
-            boxShadow: '0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(37, 99, 235, 0.25)',
+            border: dark ? '1px solid rgba(59, 130, 246, 0.35)' : '1px solid #e2e8f0',
+            boxShadow: dark ? '0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(37, 99, 235, 0.25)' : '0 15px 45px rgba(0, 0, 0, 0.08)',
             textAlign: 'left',
             overflow: 'hidden'
           }}>
@@ -459,14 +465,14 @@ export default function Landing() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '12px 20px',
-              background: 'rgba(4, 7, 14, 0.98)',
-              borderBottom: '1px solid rgba(59, 130, 246, 0.25)'
+              background: dark ? 'rgba(4, 7, 14, 0.98)' : '#f8fafc',
+              borderBottom: dark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #e2e8f0'
             }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ef4444' }}></span>
                 <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#f59e0b' }}></span>
                 <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#10b981' }}></span>
-                <span style={{ marginLeft: '10px', fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>mdefender-core-engine &middot; live telemetry stream</span>
+                <span style={{ marginLeft: '10px', fontSize: '12px', color: dark ? '#94a3b8' : '#64748b', fontFamily: 'monospace' }}>mdefender-core-engine &middot; live telemetry stream</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#10b981', fontFamily: 'monospace', fontWeight: '700' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> DUAL-PIPELINE: ACTIVE
@@ -474,28 +480,28 @@ export default function Landing() {
             </div>
 
             {/* Terminal Body */}
-            <div style={{ padding: '22px 26px', fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace", fontSize: '13px', lineHeight: '1.7', color: '#cbd5e1' }}>
+            <div style={{ padding: '22px 26px', fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace", fontSize: '13px', lineHeight: '1.7', color: dark ? '#cbd5e1' : '#334155' }}>
               <div style={{ color: '#64748b' }}>// INCOMING EDGE REQUEST INTERCEPTION &amp; ANALYSIS</div>
               <div style={{ marginTop: '6px' }}>
-                <span style={{ color: '#38bdf8' }}>POST</span> <span style={{ color: '#f1f5f9' }}>/api/v1/auth/login HTTP/1.1</span>
+                <span style={{ color: dark ? '#38bdf8' : '#0284c7' }}>POST</span> <span style={{ color: dark ? '#f1f5f9' : '#0f172a' }}>/api/v1/auth/login HTTP/1.1</span>
               </div>
-              <div style={{ color: '#94a3b8' }}>
-                Host: <span style={{ color: '#e2e8f0' }}>api.production-cluster.net</span> | Source: <span style={{ color: '#f43f5e' }}>185.220.101.44 (High Risk Origin)</span>
+              <div style={{ color: dark ? '#94a3b8' : '#64748b' }}>
+                Host: <span style={{ color: dark ? '#e2e8f0' : '#1e293b' }}>api.production-cluster.net</span> | Source: <span style={{ color: '#f43f5e' }}>185.220.101.44 (High Risk Origin)</span>
               </div>
-              <div style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', margin: '10px 0', border: '1px solid rgba(255,255,255,0.08)' }}>
-                Extracted Body: <span style={{ color: '#fbbf24' }}>{"{"}"username": "admin' OR 1=1 --", "auth_token": "eyJhbGciOiJub25lIn0..."{"}"}</span>
+              <div style={{ color: dark ? '#e2e8f0' : '#1e293b', background: dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9', padding: '8px 12px', borderRadius: '6px', margin: '10px 0', border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0' }}>
+                Extracted Body: <span style={{ color: dark ? '#fbbf24' : '#d97706' }}>{"{"}"username": "admin' OR 1=1 --", "auth_token": "eyJhbGciOiJub25lIn0..."{"}"}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', margin: '12px 0' }}>
-                <div style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.35)', padding: '8px 12px', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '11px', color: '#60a5fa', fontWeight: '700' }}>[STAGE 1: 2,000 WAF RULES]</div>
-                  <div style={{ color: '#fca5a5', fontSize: '12px', marginTop: '2px' }}>Matched: SQLi - Boolean Blind Tautology #2</div>
+                <div style={{ background: dark ? 'rgba(37,99,235,0.12)' : '#eff6ff', border: dark ? '1px solid rgba(37,99,235,0.35)' : '1px solid #bfdbfe', padding: '8px 12px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: '700' }}>[STAGE 1: 2,000 WAF RULES]</div>
+                  <div style={{ color: dark ? '#fca5a5' : '#dc2626', fontSize: '12px', marginTop: '2px' }}>Matched: SQLi - Boolean Blind Tautology #2</div>
                 </div>
-                <div style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)', padding: '8px 12px', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: '700' }}>[STAGE 2: 5.48M+ DATASET ML]</div>
-                  <div style={{ color: '#a78bfa', fontSize: '12px', marginTop: '2px' }}>Vector Risk: 99.8% (SQL Injection Vector)</div>
+                <div style={{ background: dark ? 'rgba(139,92,246,0.12)' : '#faf5ff', border: dark ? '1px solid rgba(139,92,246,0.35)' : '1px solid #e9d5ff', padding: '8px 12px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '700' }}>[STAGE 2: 5.48M+ DATASET ML]</div>
+                  <div style={{ color: dark ? '#a78bfa' : '#6d28d9', fontSize: '12px', marginTop: '2px' }}>Vector Risk: 99.8% (SQL Injection Vector)</div>
                 </div>
               </div>
-              <div style={{ color: '#10b981', fontWeight: '700', marginTop: '6px' }}>
+              <div style={{ color: '#059669', fontWeight: '700', marginTop: '6px' }}>
                 [+] MITIGATION: HTTP 403 Forbidden &middot; Payload Terminated in 0.38ms &middot; Threat IP Banned
               </div>
             </div>
@@ -503,13 +509,11 @@ export default function Landing() {
         </div>
       </section>
 
-
-
       {/* Metrics Strip */}
       <section style={{
-        borderTop: '1px solid #1e293b',
-        borderBottom: '1px solid #1e293b',
-        background: '#0a0e1a',
+        borderTop: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
+        borderBottom: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
+        background: dark ? '#0a0e1a' : '#ffffff',
         padding: '38px 24px'
       }}>
         <div style={{
@@ -521,20 +525,20 @@ export default function Landing() {
           textAlign: 'center'
         }}>
           <div>
-            <div style={{ fontSize: '36px', fontWeight: '900', color: '#38bdf8', letterSpacing: '-0.02em' }}>5,489,242+</div>
-            <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginTop: '4px' }}>Attack Payloads in ML Dataset</div>
+            <div style={{ fontSize: '36px', fontWeight: '900', color: dark ? '#38bdf8' : '#0284c7', letterSpacing: '-0.02em' }}>5,489,242+</div>
+            <div style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#64748b', fontWeight: '600', marginTop: '4px' }}>Attack Payloads in ML Dataset</div>
           </div>
           <div>
-            <div style={{ fontSize: '36px', fontWeight: '900', color: '#60a5fa', letterSpacing: '-0.02em' }}>2,000</div>
-            <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginTop: '4px' }}>Active WAF Defense Rules</div>
+            <div style={{ fontSize: '36px', fontWeight: '900', color: dark ? '#60a5fa' : '#2563eb', letterSpacing: '-0.02em' }}>2,000</div>
+            <div style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#64748b', fontWeight: '600', marginTop: '4px' }}>Active WAF Defense Rules</div>
           </div>
           <div>
             <div style={{ fontSize: '36px', fontWeight: '900', color: '#10b981', letterSpacing: '-0.02em' }}>&lt; 0.85ms</div>
-            <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginTop: '4px' }}>Hybrid Inspection Latency</div>
+            <div style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#64748b', fontWeight: '600', marginTop: '4px' }}>Hybrid Inspection Latency</div>
           </div>
           <div>
-            <div style={{ fontSize: '36px', fontWeight: '900', color: '#a78bfa', letterSpacing: '-0.02em' }}>99.98%</div>
-            <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginTop: '4px' }}>Zero-Day Detection Accuracy</div>
+            <div style={{ fontSize: '36px', fontWeight: '900', color: dark ? '#a78bfa' : '#7c3aed', letterSpacing: '-0.02em' }}>99.98%</div>
+            <div style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#64748b', fontWeight: '600', marginTop: '4px' }}>Zero-Day Detection Accuracy</div>
           </div>
         </div>
       </section>
@@ -548,9 +552,9 @@ export default function Landing() {
             gap: '8px',
             padding: '6px 16px',
             borderRadius: '20px',
-            background: 'rgba(139,92,246,0.12)',
-            border: '1px solid rgba(139,92,246,0.35)',
-            color: '#c084fc',
+            background: dark ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.08)',
+            border: dark ? '1px solid rgba(139,92,246,0.35)' : '1px solid rgba(139,92,246,0.25)',
+            color: dark ? '#c084fc' : '#7c3aed',
             fontSize: '12px',
             fontWeight: '700',
             textTransform: 'uppercase',
@@ -559,36 +563,36 @@ export default function Landing() {
           }}>
             <i className="fas fa-microchip"></i> Deep Learning &amp; Heuristic Vectorization
           </div>
-          <h2 style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.025em', marginBottom: '16px', color: '#ffffff' }}>
+          <h2 style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.025em', marginBottom: '16px', color: dark ? '#ffffff' : '#0f172a' }}>
             Trained on Over 5.48 Million Real-World Attack Payloads
           </h2>
-          <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6' }}>
+          <p style={{ fontSize: '16px', color: dark ? '#94a3b8' : '#475569', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6' }}>
             Static regex rules alone cannot stop polymorphic evasion. Our ML model decomposes AST syntax trees and calculates character n-gram entropy in real time.
           </p>
         </div>
 
-        {/* Interactive Neural Vectorizer Architecture Inspector (No Clunky Banners) */}
+        {/* Interactive Neural Vectorizer Architecture Inspector */}
         <div style={{
           maxWidth: '1060px',
           margin: '0 auto 40px',
-          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(7, 11, 20, 0.95) 100%)',
+          background: dark ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(7, 11, 20, 0.95) 100%)' : '#ffffff',
           borderRadius: '18px',
-          border: '1px solid rgba(139,92,246,0.25)',
+          border: dark ? '1px solid rgba(139,92,246,0.25)' : '1px solid #e2e8f0',
           padding: '24px 28px',
-          boxShadow: '0 15px 40px rgba(0,0,0,0.6)'
+          boxShadow: dark ? '0 15px 40px rgba(0,0,0,0.6)' : '0 6px 24px rgba(0,0,0,0.06)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20, borderBottom: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0', paddingBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#c084fc', boxShadow: '0 0 10px #c084fc' }}></div>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.4px', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: dark ? '#f1f5f9' : '#0f172a', letterSpacing: '0.4px', fontFamily: 'monospace' }}>
                 NEURAL VECTORIZATION INFERENCE PIPELINE
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981', fontSize: 11, fontWeight: 700 }}>
+              <span style={{ padding: '4px 10px', borderRadius: 6, background: dark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#059669', fontSize: 11, fontWeight: 700 }}>
                 Inference: 0.34ms
               </span>
-              <span style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#c084fc', fontSize: 11, fontWeight: 700 }}>
+              <span style={{ padding: '4px 10px', borderRadius: 6, background: dark ? 'rgba(139,92,246,0.12)' : 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: dark ? '#c084fc' : '#7c3aed', fontSize: 11, fontWeight: 700 }}>
                 Dataset: 5,489,242+ Weights
               </span>
             </div>
@@ -596,17 +600,17 @@ export default function Landing() {
 
           {/* 3-Step Live Token Pipeline Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, fontFamily: 'monospace' }}>
-            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc', padding: '14px 16px', borderRadius: 10, border: dark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0' }}>
               <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>[1] RAW INCOMING PAYLOAD</div>
-              <div style={{ fontSize: 12, color: '#fbbf24', wordBreak: 'break-all' }}>admin'/*%!50000UnIoN*//*!50000SeLeCt*/...</div>
+              <div style={{ fontSize: 12, color: dark ? '#fbbf24' : '#b45309', wordBreak: 'break-all' }}>admin'/*%!50000UnIoN*//*!50000SeLeCt*/...</div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc', padding: '14px 16px', borderRadius: 10, border: dark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0' }}>
               <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>[2] CHARACTER N-GRAM EMBEDDING</div>
-              <div style={{ fontSize: 12, color: '#38bdf8' }}>[0.941, 0.887, 0.998, 0.124, 0.992]</div>
+              <div style={{ fontSize: 12, color: dark ? '#38bdf8' : '#0284c7' }}>[0.941, 0.887, 0.998, 0.124, 0.992]</div>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc', padding: '14px 16px', borderRadius: 10, border: dark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0' }}>
               <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>[3] AUTONOMOUS EDGE VERDICT</div>
-              <div style={{ fontSize: 12, color: '#10b981', fontWeight: 800 }}>QUARANTINED &middot; RISK CONFIDENCE 99.8%</div>
+              <div style={{ fontSize: 12, color: '#059669', fontWeight: 800 }}>QUARANTINED &middot; RISK CONFIDENCE 99.8%</div>
             </div>
           </div>
         </div>
@@ -618,55 +622,55 @@ export default function Landing() {
           gap: '24px'
         }}>
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '14px',
             padding: '30px 26px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+            boxShadow: dark ? '0 10px 30px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)'
           }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59,130,246,0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
               <i className="fas fa-layer-group"></i>
             </div>
-            <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: '#ffffff' }}>
+            <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: dark ? '#ffffff' : '#0f172a' }}>
               5,489,242+ Real-World Dataset Corpus
             </h3>
-            <p style={{ fontSize: '14px', lineHeight: '1.65', color: '#94a3b8' }}>
+            <p style={{ fontSize: '14px', lineHeight: '1.65', color: dark ? '#94a3b8' : '#475569' }}>
               Trained on labeled datasets spanning CSIC HTTP, CICIDS, OWASP ModSecurity Core Rule vectors, and live honeypot captures, providing deep exposure to malicious structures.
             </p>
           </div>
 
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '14px',
             padding: '30px 26px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+            boxShadow: dark ? '0 10px 30px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)'
           }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139,92,246,0.12)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139,92,246,0.12)', color: dark ? '#a78bfa' : '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
               <i className="fas fa-cubes-stacked"></i>
             </div>
-            <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: '#ffffff' }}>
+            <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: dark ? '#ffffff' : '#0f172a' }}>
               Character N-Gram Vectorizer
             </h3>
-            <p style={{ fontSize: '14px', lineHeight: '1.65', color: '#94a3b8' }}>
+            <p style={{ fontSize: '14px', lineHeight: '1.65', color: dark ? '#94a3b8' : '#475569' }}>
               Decomposes payloads into 3-gram and 5-gram token distributions, identifying obfuscated attack syntax, nested base64 escapes, and entropy anomalies in real-time.
             </p>
           </div>
 
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '14px',
             padding: '30px 26px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+            boxShadow: dark ? '0 10px 30px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)'
           }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16,185,129,0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
               <i className="fas fa-gauge-high"></i>
             </div>
-            <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: '#ffffff' }}>
+            <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: dark ? '#ffffff' : '#0f172a' }}>
               Zero False Positive Precision
             </h3>
-            <p style={{ fontSize: '14px', lineHeight: '1.65', color: '#94a3b8' }}>
+            <p style={{ fontSize: '14px', lineHeight: '1.65', color: dark ? '#94a3b8' : '#475569' }}>
               Rigorous cross-validation against millions of legitimate JSON, XML, and GraphQL payloads guarantees developer APIs remain uninterrupted while blocking hostile requests.
             </p>
           </div>
@@ -674,7 +678,7 @@ export default function Landing() {
       </section>
 
       {/* Global Cloud Edge Mesh & Autonomous DDoS Shield */}
-      <section style={{ padding: '80px 24px', maxWidth: '1280px', margin: '0 auto', borderTop: '1px solid #1e293b' }}>
+      <section style={{ padding: '80px 24px', maxWidth: '1280px', margin: '0 auto', borderTop: dark ? '1px solid #1e293b' : '1px solid #e2e8f0' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
             display: 'inline-flex',
@@ -682,9 +686,9 @@ export default function Landing() {
             gap: '8px',
             padding: '6px 16px',
             borderRadius: '20px',
-            background: 'rgba(59,130,246,0.1)',
-            border: '1px solid rgba(59,130,246,0.3)',
-            color: '#60a5fa',
+            background: dark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.08)',
+            border: dark ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(59,130,246,0.2)',
+            color: dark ? '#60a5fa' : '#2563eb',
             fontSize: '12px',
             fontWeight: '700',
             textTransform: 'uppercase',
@@ -693,39 +697,39 @@ export default function Landing() {
           }}>
             <i className="fas fa-globe"></i> Global Distributed PoP Architecture
           </div>
-          <h2 style={{ fontSize: '36px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '14px', color: '#ffffff' }}>
+          <h2 style={{ fontSize: '36px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '14px', color: dark ? '#ffffff' : '#0f172a' }}>
             Autonomous Global Edge Defense Mesh
           </h2>
-          <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '720px', margin: '0 auto' }}>
+          <p style={{ fontSize: '16px', color: dark ? '#94a3b8' : '#475569', maxWidth: '720px', margin: '0 auto' }}>
             Hostile traffic and multi-gigabit Layer 7 HTTP floods are intercepted and neutralized at 240+ global cloud edge locations before ever touching your origin server.
           </p>
         </div>
 
-        {/* Global Edge PoP Status Console (Clean & Non-cluttered) */}
+        {/* Global Edge PoP Status Console */}
         <div style={{
           maxWidth: '1080px',
           margin: '0 auto 20px',
-          background: '#0a0f1d',
+          background: dark ? '#0a0f1d' : '#ffffff',
           borderRadius: '16px',
-          border: '1px solid #1e293b',
+          border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
           padding: '24px 28px',
-          boxShadow: '0 15px 40px rgba(0,0,0,0.4)'
+          boxShadow: dark ? '0 15px 40px rgba(0,0,0,0.4)' : '0 6px 24px rgba(0,0,0,0.06)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: dark ? '#ffffff' : '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <i className="fas fa-satellite-dish" style={{ color: '#38bdf8' }}></i>
                 Real-Time Anycast Edge Node Scrubbing
               </div>
-              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
                 Active mitigation across international high-capacity fiber transit links
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ padding: '5px 12px', borderRadius: 6, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontSize: 12, fontWeight: 700 }}>
+              <span style={{ padding: '5px 12px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#059669', fontSize: 12, fontWeight: 700 }}>
                 <i className="fas fa-circle" style={{ fontSize: 8, marginRight: 5 }}></i> 100% Up-time
               </span>
-              <span style={{ padding: '5px 12px', borderRadius: 6, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa', fontSize: 12, fontWeight: 700 }}>
+              <span style={{ padding: '5px 12px', borderRadius: 6, background: dark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', color: dark ? '#60a5fa' : '#2563eb', fontSize: 12, fontWeight: 700 }}>
                 240+ Edge PoPs
               </span>
             </div>
@@ -739,13 +743,13 @@ export default function Landing() {
               { region: 'Asia-Pacific (Singapore / Tokyo)', ip: '172.64.0.0/13', latency: '0.18ms', status: 'Armed & Scrubbing' },
               { region: 'Australia (Sydney / Melbourne)', ip: '198.41.128.0/17', latency: '0.22ms', status: 'Armed & Scrubbing' }
             ].map((node, idx) => (
-              <div key={idx} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '14px 16px' }}>
+              <div key={idx} style={{ background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{node.region}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{node.region}</span>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }}></span>
                 </div>
                 <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>Anycast: {node.ip}</div>
-                <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600, marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: dark ? '#38bdf8' : '#0284c7', fontWeight: 600, marginTop: 4 }}>
                   <i className="fas fa-bolt" style={{ marginRight: 4 }}></i> {node.latency} edge response
                 </div>
               </div>
@@ -755,12 +759,12 @@ export default function Landing() {
       </section>
 
       {/* 8 Threat Vector Defense Pillars */}
-      <section style={{ padding: '80px 24px', maxWidth: '1280px', margin: '0 auto', borderTop: '1px solid #1e293b' }}>
+      <section style={{ padding: '80px 24px', maxWidth: '1280px', margin: '0 auto', borderTop: dark ? '1px solid #1e293b' : '1px solid #e2e8f0' }}>
         <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <h2 style={{ fontSize: '36px', fontWeight: '800', letterSpacing: '-0.02em', marginBottom: '14px', color: '#ffffff' }}>
+          <h2 style={{ fontSize: '36px', fontWeight: '800', letterSpacing: '-0.02em', marginBottom: '14px', color: dark ? '#ffffff' : '#0f172a' }}>
             Comprehensive Threat Vector Protection
           </h2>
-          <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '640px', margin: '0 auto' }}>
+          <p style={{ fontSize: '16px', color: dark ? '#94a3b8' : '#475569', maxWidth: '640px', margin: '0 auto' }}>
             MDefender Pro analyzes every component of the HTTP lifecycle &mdash; URLs, parameters, cookies, JSON bodies, and headers.
           </p>
         </div>
@@ -774,15 +778,15 @@ export default function Landing() {
             <div
               key={i}
               style={{
-                background: '#0c1222',
-                border: `1px solid ${v.bg ? v.color + '40' : '#1e293b'}`,
+                background: dark ? '#0c1222' : '#ffffff',
+                border: dark ? `1px solid ${v.bg ? v.color + '40' : '#1e293b'}` : `1px solid #e2e8f0`,
                 borderRadius: '16px',
                 padding: '24px 22px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 transition: 'all 0.2s',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+                boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.3)' : '0 4px 18px rgba(0,0,0,0.05)'
               }}
             >
               <div>
@@ -803,8 +807,8 @@ export default function Landing() {
                   <span style={{
                     fontSize: '11px',
                     fontWeight: '700',
-                    color: '#10b981',
-                    background: 'rgba(16,185,129,0.12)',
+                    color: '#059669',
+                    background: dark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.1)',
                     border: '1px solid rgba(16,185,129,0.25)',
                     padding: '3px 8px',
                     borderRadius: '6px',
@@ -814,22 +818,22 @@ export default function Landing() {
                   </span>
                 </div>
 
-                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '8px', color: '#f1f5f9' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '8px', color: dark ? '#f1f5f9' : '#0f172a' }}>
                   {v.title}
                 </h3>
 
-                <p style={{ fontSize: '13px', lineHeight: '1.6', color: '#94a3b8', marginBottom: '14px' }}>
+                <p style={{ fontSize: '13px', lineHeight: '1.6', color: dark ? '#94a3b8' : '#475569', marginBottom: '14px' }}>
                   {v.desc}
                 </p>
 
                 {/* Attack Sample Payload Tag */}
                 <div style={{
-                  background: 'rgba(0,0,0,0.45)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: dark ? 'rgba(0,0,0,0.45)' : '#f1f5f9',
+                  border: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
                   borderRadius: '6px',
                   padding: '6px 10px',
                   fontSize: '11px',
-                  color: '#fbbf24',
+                  color: dark ? '#fbbf24' : '#b45309',
                   fontFamily: 'monospace',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -839,7 +843,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '11px', fontWeight: '700', color: v.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {v.rules}
                 </span>
@@ -854,7 +858,7 @@ export default function Landing() {
         padding: '90px 24px',
         maxWidth: '1240px',
         margin: '0 auto',
-        borderTop: '1px solid #1e293b'
+        borderTop: dark ? '1px solid #1e293b' : '1px solid #e2e8f0'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '50px' }}>
           <div style={{
@@ -863,9 +867,9 @@ export default function Landing() {
             gap: '8px',
             padding: '6px 16px',
             borderRadius: '20px',
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            color: '#34d399',
+            background: dark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)',
+            border: dark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(16, 185, 129, 0.25)',
+            color: dark ? '#34d399' : '#059669',
             fontSize: '12px',
             fontWeight: '700',
             textTransform: 'uppercase',
@@ -874,10 +878,10 @@ export default function Landing() {
           }}>
             <i className="fa-solid fa-plug-circle-bolt"></i> Effortless Integration
           </div>
-          <h2 style={{ fontSize: '36px', fontWeight: '800', letterSpacing: '-0.02em', marginBottom: '14px', color: '#ffffff' }}>
+          <h2 style={{ fontSize: '36px', fontWeight: '800', letterSpacing: '-0.02em', marginBottom: '14px', color: dark ? '#ffffff' : '#0f172a' }}>
             Connect Any Website in 3 Minutes
           </h2>
-          <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '680px', margin: '0 auto' }}>
+          <p style={{ fontSize: '16px', color: dark ? '#94a3b8' : '#475569', maxWidth: '680px', margin: '0 auto' }}>
             Zero complex configuration. When you install our package, the enterprise <strong>403 Cyber Block Page</strong> is bundled inside &mdash; just add your API key and your site is protected.
           </p>
         </div>
@@ -891,10 +895,11 @@ export default function Landing() {
         }}>
           {/* Step 1 */}
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '16px',
             padding: '32px 26px',
+            boxShadow: dark ? 'none' : '0 4px 20px rgba(0,0,0,0.05)',
             position: 'relative'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
@@ -902,39 +907,39 @@ export default function Landing() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'rgba(59, 130, 246, 0.15)',
-                color: '#60a5fa',
+                background: dark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(37, 99, 235, 0.1)',
+                color: dark ? '#60a5fa' : '#2563eb',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '900',
                 fontSize: '16px',
-                border: '1px solid rgba(59, 130, 246, 0.3)'
+                border: dark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(37, 99, 235, 0.25)'
               }}>1</span>
               <span style={{
                 fontSize: '11px',
                 fontWeight: '700',
-                color: '#34d399',
-                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#059669',
+                background: dark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
                 padding: '3px 10px',
                 borderRadius: '20px',
                 border: '1px solid rgba(16, 185, 129, 0.25)'
               }}>Bundled Block Page</span>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#f8fafc' : '#0f172a', marginBottom: '10px' }}>
               Install NPM Package
             </h3>
-            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
               Install the official package into your backend application. The 403 block page is automatically bundled inside:
             </p>
             <div style={{
-              background: '#04070e',
-              border: '1px solid #1e293b',
+              background: dark ? '#04070e' : '#f1f5f9',
+              border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
               borderRadius: '8px',
               padding: '10px 14px',
               fontFamily: "'SF Mono', Monaco, monospace",
               fontSize: '12.5px',
-              color: '#38bdf8',
+              color: dark ? '#38bdf8' : '#0284c7',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -946,10 +951,11 @@ export default function Landing() {
 
           {/* Step 2 */}
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '16px',
             padding: '32px 26px',
+            boxShadow: dark ? 'none' : '0 4px 20px rgba(0,0,0,0.05)',
             position: 'relative'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
@@ -957,39 +963,39 @@ export default function Landing() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'rgba(139, 92, 246, 0.15)',
-                color: '#c084fc',
+                background: dark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(124, 58, 237, 0.1)',
+                color: dark ? '#c084fc' : '#7c3aed',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '900',
                 fontSize: '16px',
-                border: '1px solid rgba(139, 92, 246, 0.3)'
+                border: dark ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(124, 58, 237, 0.25)'
               }}>2</span>
               <span style={{
                 fontSize: '11px',
                 fontWeight: '700',
-                color: '#c084fc',
-                background: 'rgba(139, 92, 246, 0.12)',
+                color: dark ? '#c084fc' : '#7c3aed',
+                background: dark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(139, 92, 246, 0.08)',
                 padding: '3px 10px',
                 borderRadius: '20px',
-                border: '1px solid rgba(139, 92, 246, 0.25)'
+                border: dark ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(139, 92, 246, 0.2)'
               }}>API Key Auth</span>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#f8fafc' : '#0f172a', marginBottom: '10px' }}>
               Get Your API Key
             </h3>
-            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
-              Copy your unique tenant API Key from the MDefender dashboard under <Link to="/user/settings" style={{ color: '#38bdf8', textDecoration: 'none' }}>Settings</Link> or <Link to="/user/websites" style={{ color: '#38bdf8', textDecoration: 'none' }}>Websites</Link>:
+            <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
+              Copy your unique tenant API Key from the MDefender dashboard under <Link to="/user/settings" style={{ color: dark ? '#38bdf8' : '#0284c7', textDecoration: 'none', fontWeight: '600' }}>Settings</Link> or <Link to="/user/websites" style={{ color: dark ? '#38bdf8' : '#0284c7', textDecoration: 'none', fontWeight: '600' }}>Websites</Link>:
             </p>
             <div style={{
-              background: '#04070e',
-              border: '1px solid #1e293b',
+              background: dark ? '#04070e' : '#f1f5f9',
+              border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
               borderRadius: '8px',
               padding: '10px 14px',
               fontFamily: "'SF Mono', Monaco, monospace",
               fontSize: '12px',
-              color: '#fbbf24',
+              color: dark ? '#fbbf24' : '#b45309',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
@@ -1000,10 +1006,11 @@ export default function Landing() {
 
           {/* Step 3 */}
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '16px',
             padding: '32px 26px',
+            boxShadow: dark ? 'none' : '0 4px 20px rgba(0,0,0,0.05)',
             position: 'relative'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
@@ -1011,39 +1018,39 @@ export default function Landing() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#34d399',
+                background: dark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                color: '#059669',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '900',
                 fontSize: '16px',
-                border: '1px solid rgba(16, 185, 129, 0.3)'
+                border: '1px solid rgba(16, 185, 129, 0.25)'
               }}>3</span>
               <span style={{
                 fontSize: '11px',
                 fontWeight: '700',
-                color: '#60a5fa',
-                background: 'rgba(59, 130, 246, 0.12)',
+                color: dark ? '#60a5fa' : '#2563eb',
+                background: dark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)',
                 padding: '3px 10px',
                 borderRadius: '20px',
                 border: '1px solid rgba(59, 130, 246, 0.25)'
               }}>Instant Active WAF</span>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#f8fafc' : '#0f172a', marginBottom: '10px' }}>
               Attach Middleware
             </h3>
-            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
               Add <code>app.use(mdefender())</code> to your Express app. Every request is inspected in &lt;1ms and threats are blocked with the 403 page!
             </p>
             <div style={{
-              background: '#04070e',
-              border: '1px solid #1e293b',
+              background: dark ? '#04070e' : '#f1f5f9',
+              border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
               borderRadius: '8px',
               padding: '10px 14px',
               fontFamily: "'SF Mono', Monaco, monospace",
               fontSize: '12px',
-              color: '#34d399',
+              color: '#059669',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -1078,17 +1085,17 @@ export default function Landing() {
 
       {/* Developer Integration Code Tabs */}
       <section style={{
-        background: '#050811',
-        borderTop: '1px solid #1e293b',
-        borderBottom: '1px solid #1e293b',
+        background: dark ? '#050811' : '#f8fafc',
+        borderTop: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
+        borderBottom: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
         padding: '90px 24px'
       }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h2 style={{ fontSize: '34px', fontWeight: '800', marginBottom: '12px', color: '#ffffff' }}>
+            <h2 style={{ fontSize: '34px', fontWeight: '800', marginBottom: '12px', color: dark ? '#ffffff' : '#0f172a' }}>
               Integrate in Minutes With Any Tech Stack
             </h2>
-            <p style={{ fontSize: '15px', color: '#94a3b8' }}>
+            <p style={{ fontSize: '15px', color: dark ? '#94a3b8' : '#475569' }}>
               Drop in our lightweight SDK middleware without changing your core application architecture.
             </p>
           </div>
@@ -1108,15 +1115,22 @@ export default function Landing() {
                 style={{
                   padding: '9px 20px',
                   borderRadius: '8px',
-                  border: selectedLang === tab.id ? '1px solid #2563eb' : '1px solid #1e293b',
-                  background: selectedLang === tab.id ? '#2563eb' : '#0c1222',
-                  color: selectedLang === tab.id ? '#ffffff' : '#94a3b8',
+                  border: selectedLang === tab.id
+                    ? '1px solid #2563eb'
+                    : (dark ? '1px solid #1e293b' : '1px solid #cbd5e1'),
+                  background: selectedLang === tab.id
+                    ? '#2563eb'
+                    : (dark ? '#0c1222' : '#ffffff'),
+                  color: selectedLang === tab.id
+                    ? '#ffffff'
+                    : (dark ? '#94a3b8' : '#475569'),
                   fontSize: '13px',
                   fontWeight: '600',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
+                  boxShadow: selectedLang === tab.id ? '0 2px 10px rgba(37,99,235,0.3)' : (dark ? 'none' : '0 1px 4px rgba(0,0,0,0.04)'),
                   transition: 'all 0.15s'
                 }}
               >
@@ -1127,18 +1141,18 @@ export default function Landing() {
 
           {/* Code Container */}
           <div style={{
-            background: '#070b14',
+            background: dark ? '#070b14' : '#0f172a',
             borderRadius: '12px',
-            border: '1px solid #1e293b',
+            border: dark ? '1px solid #1e293b' : '1px solid #334155',
             overflow: 'hidden',
-            boxShadow: '0 15px 40px rgba(0,0,0,0.5)'
+            boxShadow: dark ? '0 15px 40px rgba(0,0,0,0.5)' : '0 10px 30px rgba(0,0,0,0.1)'
           }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '10px 18px',
-              background: '#04070e',
+              background: dark ? '#04070e' : '#020617',
               borderBottom: '1px solid #1e293b',
               fontSize: '12px',
               color: '#64748b'
@@ -1152,8 +1166,8 @@ export default function Landing() {
                   }
                 }}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.12)',
                   color: '#e2e8f0',
                   padding: '4px 10px',
                   borderRadius: '6px',
@@ -1187,9 +1201,9 @@ export default function Landing() {
           gap: '8px',
           padding: '6px 16px',
           borderRadius: '20px',
-          background: 'rgba(59,130,246,0.1)',
-          border: '1px solid rgba(59,130,246,0.3)',
-          color: '#60a5fa',
+          background: dark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.08)',
+          border: dark ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(59,130,246,0.25)',
+          color: dark ? '#60a5fa' : '#2563eb',
           fontSize: '12px',
           fontWeight: '700',
           textTransform: 'uppercase',
@@ -1198,10 +1212,10 @@ export default function Landing() {
         }}>
           <i className="fas fa-tags"></i> Transparent Enterprise Subscriptions
         </div>
-        <h2 style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '14px', color: '#ffffff' }}>
+        <h2 style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '14px', color: dark ? '#ffffff' : '#0f172a' }}>
           Predictable Cloud Defense Pricing
         </h2>
-        <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '640px', margin: '0 auto 34px' }}>
+        <p style={{ fontSize: '16px', color: dark ? '#94a3b8' : '#475569', maxWidth: '640px', margin: '0 auto 34px' }}>
           Deploy full-scale WAF defenses with no bandwidth penalties or hidden overage fees.
         </p>
 
@@ -1212,8 +1226,8 @@ export default function Landing() {
           gap: 12,
           padding: '5px 8px',
           borderRadius: 30,
-          background: 'rgba(15, 23, 42, 0.8)',
-          border: '1px solid #1e293b',
+          background: dark ? 'rgba(15, 23, 42, 0.8)' : '#e2e8f0',
+          border: dark ? '1px solid #1e293b' : '1px solid #cbd5e1',
           marginBottom: 50
         }}>
           <button
@@ -1223,7 +1237,7 @@ export default function Landing() {
               borderRadius: 24,
               border: 'none',
               background: billingCycle === 'monthly' ? 'linear-gradient(135deg, #2563eb, #4f46e5)' : 'transparent',
-              color: billingCycle === 'monthly' ? '#ffffff' : '#94a3b8',
+              color: billingCycle === 'monthly' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
@@ -1240,7 +1254,7 @@ export default function Landing() {
               borderRadius: 24,
               border: 'none',
               background: billingCycle === 'yearly' ? 'linear-gradient(135deg, #2563eb, #4f46e5)' : 'transparent',
-              color: billingCycle === 'yearly' ? '#ffffff' : '#94a3b8',
+              color: billingCycle === 'yearly' ? '#ffffff' : (dark ? '#94a3b8' : '#64748b'),
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
@@ -1272,21 +1286,22 @@ export default function Landing() {
         }}>
           {/* Community Free */}
           <div style={{
-            background: '#0c1222',
-            border: '1px solid #1e293b',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             borderRadius: '18px',
             padding: '36px 30px',
+            boxShadow: dark ? 'none' : '0 4px 20px rgba(0,0,0,0.06)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between'
           }}>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginBottom: '6px' }}>Community Edition</div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>Essential defense for staging and personal APIs.</p>
-              <div style={{ fontSize: '38px', fontWeight: '900', color: '#ffffff', marginBottom: '24px' }}>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#ffffff' : '#0f172a', marginBottom: '6px' }}>Community Edition</div>
+              <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', marginBottom: '20px' }}>Essential defense for staging and personal APIs.</p>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: dark ? '#ffffff' : '#0f172a', marginBottom: '24px' }}>
                 $0 <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/ forever</span>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '11px' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: dark ? '#cbd5e1' : '#334155', display: 'flex', flexDirection: 'column', gap: '11px' }}>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 1 Protected Origin Website</li>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 50,000 requests / month</li>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> Core Deterministic WAF Engine</li>
@@ -1301,9 +1316,9 @@ export default function Landing() {
                 textAlign: 'center',
                 padding: '12px',
                 borderRadius: '10px',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid #334155',
-                color: '#ffffff',
+                background: dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9',
+                border: dark ? '1px solid #334155' : '1px solid #cbd5e1',
+                color: dark ? '#ffffff' : '#0f172a',
                 textDecoration: 'none',
                 fontWeight: '700',
                 fontSize: '13.5px',
@@ -1316,21 +1331,22 @@ export default function Landing() {
 
           {/* Developer Go */}
           <div style={{
-            background: '#0c1222',
-            border: '1px solid rgba(59,130,246,0.3)',
+            background: dark ? '#0c1222' : '#ffffff',
+            border: dark ? '1px solid rgba(59,130,246,0.3)' : '1px solid #bae6fd',
             borderRadius: '18px',
             padding: '36px 30px',
+            boxShadow: dark ? 'none' : '0 4px 20px rgba(0,0,0,0.06)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between'
           }}>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: '800', color: '#38bdf8', marginBottom: '6px' }}>Developer Go</div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>For growing SaaS and multi-app architectures.</p>
-              <div style={{ fontSize: '38px', fontWeight: '900', color: '#38bdf8', marginBottom: '24px' }}>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#38bdf8' : '#0284c7', marginBottom: '6px' }}>Developer Go</div>
+              <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', marginBottom: '20px' }}>For growing SaaS and multi-app architectures.</p>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: dark ? '#38bdf8' : '#0284c7', marginBottom: '24px' }}>
                 ${billingCycle === 'yearly' ? '90' : '9'} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '11px' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: dark ? '#cbd5e1' : '#334155', display: 'flex', flexDirection: 'column', gap: '11px' }}>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>5 Protected Websites</strong></li>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 1,000,000 requests / month</li>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>5,489,242+ Dataset ML Core</strong></li>
@@ -1345,9 +1361,9 @@ export default function Landing() {
                 textAlign: 'center',
                 padding: '12px',
                 borderRadius: '10px',
-                background: 'rgba(56,189,248,0.12)',
-                border: '1px solid rgba(56,189,248,0.3)',
-                color: '#38bdf8',
+                background: dark ? 'rgba(56,189,248,0.12)' : 'rgba(2, 132, 199, 0.1)',
+                border: dark ? '1px solid rgba(56,189,248,0.3)' : '1px solid rgba(2, 132, 199, 0.25)',
+                color: dark ? '#38bdf8' : '#0284c7',
                 textDecoration: 'none',
                 fontWeight: '700',
                 fontSize: '13.5px',
@@ -1360,12 +1376,12 @@ export default function Landing() {
 
           {/* Enterprise Pro (Featured Spotlight) */}
           <div style={{
-            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 14, 26, 1) 100%)',
+            background: dark ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 14, 26, 1) 100%)' : '#ffffff',
             border: '2px solid #6366f1',
             borderRadius: '18px',
             padding: '36px 30px',
             position: 'relative',
-            boxShadow: '0 15px 45px rgba(99,102,241,0.25)',
+            boxShadow: dark ? '0 15px 45px rgba(99,102,241,0.25)' : '0 10px 30px rgba(99,102,241,0.15)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between'
@@ -1387,12 +1403,12 @@ export default function Landing() {
               Most Popular
             </div>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginBottom: '6px' }}>Enterprise Pro</div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>Full security suite for production enterprise clusters.</p>
-              <div style={{ fontSize: '38px', fontWeight: '900', color: '#60a5fa', marginBottom: '24px' }}>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#ffffff' : '#0f172a', marginBottom: '6px' }}>Enterprise Pro</div>
+              <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', marginBottom: '20px' }}>Full security suite for production enterprise clusters.</p>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: dark ? '#60a5fa' : '#4f46e5', marginBottom: '24px' }}>
                 ${billingCycle === 'yearly' ? '290' : '29'} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '11px' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: dark ? '#cbd5e1' : '#334155', display: 'flex', flexDirection: 'column', gap: '11px' }}>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>Unlimited</strong> Protected Websites</li>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>2,000 Global WAF Rules</strong></li>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>5,489,242+ Dataset Machine Learning Core</strong></li>
@@ -1430,7 +1446,7 @@ export default function Landing() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              color: '#38bdf8',
+              color: dark ? '#38bdf8' : '#0284c7',
               fontSize: '14.5px',
               fontWeight: '700',
               textDecoration: 'none'
@@ -1458,9 +1474,9 @@ export default function Landing() {
 
       {/* Enterprise Footer */}
       <footer style={{
-        borderTop: '1px solid #1e293b',
+        borderTop: dark ? '1px solid #1e293b' : '1px solid #e2e8f0',
         padding: '50px 24px 30px',
-        background: '#04070e',
+        background: dark ? '#04070e' : '#ffffff',
         fontSize: '13px',
         color: '#64748b'
       }}>
@@ -1474,19 +1490,19 @@ export default function Landing() {
           gap: '20px'
         }}>
           <div>
-            <div style={{ fontWeight: '800', fontSize: '16px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontWeight: '800', fontSize: '16px', color: dark ? '#ffffff' : '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fas fa-shield-halved" style={{ color: '#2563eb' }}></i> MDefender Pro
             </div>
             <div style={{ marginTop: '4px' }}>Autonomous Web Application Firewall &middot; 5,489,242+ Dataset ML Security</div>
           </div>
 
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-            <Link to="/about" style={{ color: '#94a3b8', textDecoration: 'none' }}>About</Link>
-            <Link to="/blog" style={{ color: '#94a3b8', textDecoration: 'none' }}>Threat Blog</Link>
-            <Link to="/pricing" style={{ color: '#94a3b8', textDecoration: 'none' }}>Pricing</Link>
-            <Link to="/docs" style={{ color: '#94a3b8', textDecoration: 'none' }}>Documentation</Link>
-            <Link to="/user/login" style={{ color: '#94a3b8', textDecoration: 'none' }}>User Portal</Link>
-            <Link to="/login" style={{ color: '#94a3b8', textDecoration: 'none' }}>Admin Console</Link>
+            <Link to="/about" style={{ color: dark ? '#94a3b8' : '#475569', textDecoration: 'none' }}>About</Link>
+            <Link to="/blog" style={{ color: dark ? '#94a3b8' : '#475569', textDecoration: 'none' }}>Threat Blog</Link>
+            <Link to="/pricing" style={{ color: dark ? '#94a3b8' : '#475569', textDecoration: 'none' }}>Pricing</Link>
+            <Link to="/docs" style={{ color: dark ? '#94a3b8' : '#475569', textDecoration: 'none' }}>Documentation</Link>
+            <Link to="/user/login" style={{ color: dark ? '#94a3b8' : '#475569', textDecoration: 'none' }}>User Portal</Link>
+            <Link to="/login" style={{ color: dark ? '#94a3b8' : '#475569', textDecoration: 'none' }}>Admin Console</Link>
           </div>
 
           <div>
