@@ -1475,16 +1475,21 @@ class WAF_FW_Ajax_Handler {
 
     public function view_scan_file() {
         $this->check_access();
-        $file = sanitize_text_field($_GET['file'] ?? '');
+        $file = sanitize_text_field($_GET['file'] ?? ($_POST['file'] ?? ''));
         if (empty($file)) wp_send_json_error(['message' => 'File path is required']);
 
-        $path = wp_normalize_path(ABSPATH . $file);
-        if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($path, '..') !== false) {
-            wp_send_json_error(['message' => 'Invalid file path']);
+        $rel = ltrim(str_replace('\\', '/', $file), '/');
+        $path = wp_normalize_path(ABSPATH . $rel);
+        if (strpos($path, wp_normalize_path(ABSPATH)) === false || strpos($rel, '..') !== false) {
+            wp_send_json_error(['message' => 'Security: Invalid file path']);
         }
 
-        if (!file_exists($path)) {
+        if (!file_exists($path) || !is_file($path)) {
             wp_send_json_error(['message' => 'File not found']);
+        }
+
+        if (filesize($path) > 10000000) {
+            wp_send_json_error(['message' => 'File is too large to preview (>10MB)']);
         }
 
         $content = @file_get_contents($path);
@@ -1492,11 +1497,15 @@ class WAF_FW_Ajax_Handler {
             wp_send_json_error(['message' => 'Could not read file contents']);
         }
 
-        $preview = mb_strimwidth($content, 0, 30000, '... [truncated]');
+        $lines = substr_count($content, "\n") + 1;
+        $size_fmt = size_format(filesize($path), 2);
+
         wp_send_json_success([
-            'file' => $file,
-            'content' => esc_html($preview),
-            'size' => filesize($path)
+            'file' => $rel,
+            'code' => $content,
+            'content' => $content,
+            'lines' => $lines,
+            'size' => $size_fmt
         ]);
     }
 

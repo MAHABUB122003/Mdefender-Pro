@@ -95,7 +95,7 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
                     <!-- Metric 1: Security Health Score -->
                     <div class="mdf-stat-card">
                         <div class="mdf-stat-icon-wrap mdf-icon-emerald">
-                            <span class="dashicons dashicons-heart"></span>
+                            <span class="dashicons dashicons-shield-alt"></span>
                         </div>
                         <div class="mdf-stat-body">
                             <div class="mdf-stat-label">SECURITY HEALTH</div>
@@ -953,16 +953,16 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     }
 }
 
-/* RADAR CANVAS DISPLAY */
+/* RADAR CANVAS DISPLAY - HIGH-END WHITE ENTERPRISE HUD */
 .mdf-radar-display-column {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: #0f172a;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 14px;
-    padding: 16px;
-    border: 1px solid #1e293b;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+    padding: 18px 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
 }
 
 .mdf-radar-viewport {
@@ -977,6 +977,8 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 #mdfRadarCanvas {
     width: 330px;
     height: 330px;
+    border-radius: 50%;
+    box-shadow: 0 0 25px rgba(14, 165, 233, 0.08);
 }
 
 .mdf-radar-center-target {
@@ -984,17 +986,17 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 80px;
-    height: 80px;
+    width: 82px;
+    height: 82px;
     border-radius: 50%;
-    background: radial-gradient(circle, #0f172a 0%, #070b14 100%);
-    border: 2px solid #38bdf8;
-    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    background: radial-gradient(circle, #ffffff 0%, #f0f9ff 100%);
+    border: 2px solid #0ea5e9;
+    box-shadow: 0 4px 18px rgba(14, 165, 233, 0.28);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #38bdf8;
+    color: #0284c7;
     pointer-events: none;
 }
 
@@ -1007,15 +1009,15 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 .mdf-radar-score-display {
     font-size: 13px;
     font-weight: 800;
-    color: #ffffff;
+    color: #0f172a;
     margin-top: -3px;
 }
 
 .mdf-radar-target-label {
     font-size: 9px;
-    font-weight: 700;
-    color: #94a3b8;
-    letter-spacing: 0.05em;
+    font-weight: 800;
+    color: #0284c7;
+    letter-spacing: 0.06em;
 }
 
 .mdf-radar-footer-meta {
@@ -1024,7 +1026,7 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     width: 100%;
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid #e2e8f0;
 }
 
 .mdf-meta-block {
@@ -1042,12 +1044,194 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 
 .mdf-meta-val {
     font-size: 11.5px;
-    color: #cbd5e1;
+    font-weight: 600;
+    color: #1e293b;
 }
 
-.mdf-text-blue { color: #38bdf8 !important; }
+.mdf-text-blue { color: #0284c7 !important; }
 .mdf-text-emerald { color: #059669 !important; }
 .mdf-text-red { color: #dc2626 !important; }
+
+/* MODALS: Source Code Viewer, Visual Diff & Scheduler */
+.mdf-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.mdf-modal-box {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 920px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: mdfModalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mdf-modal-diff {
+    max-width: 1150px;
+}
+
+.mdf-modal-code {
+    max-width: 960px;
+}
+
+.mdf-modal-form {
+    max-width: 520px;
+}
+
+@keyframes mdfModalPop {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.mdf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.mdf-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.mdf-modal-close:hover {
+    color: #0f172a;
+    background: #e2e8f0;
+}
+
+.mdf-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.mdf-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.mdf-diff-meta-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 12px;
+}
+
+.mdf-code-viewer {
+    margin: 0;
+    padding: 20px;
+    background: #0f172a;
+    color: #f1f5f9;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow: auto;
+    max-height: 65vh;
+    white-space: pre;
+    tab-size: 4;
+}
+
+.mdf-diff-split-view {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-height: 65vh;
+    overflow: auto;
+}
+
+.mdf-diff-pane {
+    display: flex;
+    flex-direction: column;
+}
+
+.mdf-pane-left {
+    border-right: 1px solid #e2e8f0;
+}
+
+.mdf-diff-pane-title {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pane-pristine {
+    background: #ecfdf5;
+    color: #059669;
+    border-bottom: 1px solid #a7f3d0;
+}
+
+.pane-modified {
+    background: #fef2f2;
+    color: #dc2626;
+    border-bottom: 1px solid #fecaca;
+}
+
+.waf-diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+}
+
+.waf-diff-table td {
+    padding: 2px 8px;
+    line-height: 1.5;
+}
+
+.waf-diff-line-num {
+    width: 40px;
+    color: #94a3b8;
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid #e2e8f0;
+    padding-right: 8px;
+}
+
+.waf-diff-add {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.waf-diff-del {
+    background: #fee2e2;
+    color: #991b1b;
+}
 .mdf-text-indigo { color: #4f46e5 !important; }
 
 /* METRICS GRID */

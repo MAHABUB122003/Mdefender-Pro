@@ -56,10 +56,11 @@
         function drawRadar() {
             ctx.clearRect(0, 0, width, height);
 
-            // 1. Outer Dark Grid Background
+            // 1. Outer Luminous Crisp Background
             var bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxRadius);
-            bgGrad.addColorStop(0, 'rgba(15, 23, 42, 0.4)');
-            bgGrad.addColorStop(1, 'rgba(5, 8, 17, 0.95)');
+            bgGrad.addColorStop(0, '#ffffff');
+            bgGrad.addColorStop(0.65, '#f8fafc');
+            bgGrad.addColorStop(1, '#e8f0fe');
             ctx.fillStyle = bgGrad;
             ctx.beginPath();
             ctx.arc(cx, cy, maxRadius, 0, Math.PI * 2);
@@ -67,16 +68,17 @@
 
             // 2. Concentric Target Rings
             var rings = [0.25, 0.5, 0.75, 1.0];
-            ctx.lineWidth = 1;
             rings.forEach(function(r) {
-                ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+                ctx.strokeStyle = r === 1.0 ? 'rgba(14, 165, 233, 0.45)' : 'rgba(14, 165, 233, 0.22)';
+                ctx.lineWidth = r === 1.0 ? 1.5 : 1;
                 ctx.beginPath();
                 ctx.arc(cx, cy, maxRadius * r, 0, Math.PI * 2);
                 ctx.stroke();
             });
 
             // 3. Crosshairs & Coordinate Lines
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.25)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(cx - maxRadius, cy);
             ctx.lineTo(cx + maxRadius, cy);
@@ -85,7 +87,7 @@
             ctx.stroke();
 
             // Diagonal guides
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.12)';
             ctx.beginPath();
             ctx.moveTo(cx - maxRadius * 0.707, cy - maxRadius * 0.707);
             ctx.lineTo(cx + maxRadius * 0.707, cy + maxRadius * 0.707);
@@ -102,8 +104,8 @@
                 sweepGrad.addColorStop(0, 'rgba(239, 68, 68, 0.35)');
                 sweepGrad.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
             } else if (scanRunning) {
-                sweepGrad.addColorStop(0, 'rgba(0, 242, 254, 0.45)');
-                sweepGrad.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
+                sweepGrad.addColorStop(0, 'rgba(14, 165, 233, 0.4)');
+                sweepGrad.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
             } else {
                 sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
                 sweepGrad.addColorStop(1, 'rgba(16, 185, 129, 0.02)');
@@ -112,14 +114,14 @@
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(cx, cy);
-            ctx.arc(cx, cy, maxRadius, radarSweepAngle - 0.4, radarSweepAngle);
+            ctx.arc(cx, cy, maxRadius, radarSweepAngle - 0.45, radarSweepAngle);
             ctx.closePath();
             ctx.fillStyle = sweepGrad;
             ctx.fill();
 
             // Sweep leading edge line
-            ctx.strokeStyle = (radarState === 'critical' || radarState === 'threat') ? '#ef4444' : (scanRunning ? '#00f2fe' : '#10b981');
-            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = (radarState === 'critical' || radarState === 'threat') ? '#ef4444' : (scanRunning ? '#0284c7' : '#059669');
+            ctx.lineWidth = 1.75;
             ctx.beginPath();
             ctx.moveTo(cx, cy);
             ctx.lineTo(cx + Math.cos(radarSweepAngle) * maxRadius, cy + Math.sin(radarSweepAngle) * maxRadius);
@@ -132,7 +134,7 @@
                 if (diff < 0.15 || Math.abs(diff - Math.PI * 2) < 0.15) {
                     blip.alpha = 1.0;
                 } else {
-                    blip.alpha = Math.max(0.15, blip.alpha - 0.015);
+                    blip.alpha = Math.max(0.2, blip.alpha - 0.015);
                 }
 
                 ctx.beginPath();
@@ -140,15 +142,15 @@
                 if (blip.state === 'threat' || radarState === 'threat' || radarState === 'critical') {
                     ctx.fillStyle = 'rgba(239, 68, 68, ' + blip.alpha + ')';
                     ctx.shadowColor = '#ef4444';
-                    ctx.shadowBlur = 8;
+                    ctx.shadowBlur = 6;
                 } else if (blip.state === 'warning') {
                     ctx.fillStyle = 'rgba(245, 158, 11, ' + blip.alpha + ')';
                     ctx.shadowColor = '#f59e0b';
-                    ctx.shadowBlur = 6;
+                    ctx.shadowBlur = 5;
                 } else if (scanRunning) {
-                    ctx.fillStyle = 'rgba(0, 242, 254, ' + blip.alpha + ')';
-                    ctx.shadowColor = '#00f2fe';
-                    ctx.shadowBlur = 6;
+                    ctx.fillStyle = 'rgba(2, 132, 199, ' + blip.alpha + ')';
+                    ctx.shadowColor = '#0284c7';
+                    ctx.shadowBlur = 5;
                 } else {
                     ctx.fillStyle = 'rgba(16, 185, 129, ' + blip.alpha + ')';
                     ctx.shadowColor = '#10b981';
@@ -1163,19 +1165,24 @@
 
         // View Code Modal
         $(document).on('click', '.waf-btn-view-file', function() {
-            var file = $(this).data('file');
+            var file = $(this).data('file') || $(this).attr('data-file');
             $('#wafCodeModalTitle').text(file);
             $('#wafCodeModalMeta').text('Loading source code...');
-            $('#wafModalCode').text('Loading...');
+            $('#wafModalCode').text('Loading source code from server...');
             $('#wafCodeModal').css('display', 'flex');
 
-            $.get(ajaxurl + '?action=waf_fw_view_scan_file&file=' + encodeURIComponent(file), function(r) {
+            $.get(ajaxurl, { action: 'waf_fw_view_scan_file', file: file }, function(r) {
                 if (r.success && r.data) {
-                    $('#wafCodeModalMeta').text(r.data.lines + ' lines &bull; ' + r.data.size);
-                    $('#wafModalCode').text(r.data.code);
+                    var codeText = r.data.code !== undefined ? r.data.code : (r.data.content !== undefined ? r.data.content : '');
+                    var linesCount = r.data.lines || (codeText ? codeText.split('\n').length : 0);
+                    var sizeStr = r.data.size || '';
+                    $('#wafCodeModalMeta').text(linesCount + ' lines' + (sizeStr ? ' • ' + sizeStr : ''));
+                    $('#wafModalCode').text(codeText);
                 } else {
-                    $('#wafModalCode').text('Unable to read file contents.');
+                    $('#wafModalCode').text('Unable to read file contents: ' + (r.data && r.data.message ? r.data.message : 'Permission denied or file not found.'));
                 }
+            }).fail(function(xhr) {
+                $('#wafModalCode').text('HTTP ' + xhr.status + ': Failed to retrieve file source from server.');
             });
         });
 
