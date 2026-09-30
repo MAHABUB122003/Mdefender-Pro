@@ -99,12 +99,14 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
 
     website_id = str(uuid.uuid4())
     now = datetime.now()
+    raw_key = _generate_raw_key()
     website = {
         "_id": website_id,
         "user_id": str(user["id"]),
         "name": body.name.strip(),
         "url": url,
         "domain": url,
+        "api_key": raw_key,
         "platform": body.platform,
         "status": "active",
         "protection_enabled": True,
@@ -122,7 +124,6 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
     except Exception:
         raise HTTPException(status_code=409, detail="This website is already registered")
 
-    raw_key = _generate_raw_key()
     db.api_keys.insert_one({
         "website_id": website_id,
         "user_id": str(user["id"]),

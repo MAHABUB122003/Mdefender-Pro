@@ -118,10 +118,14 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     update_fields = {
         "platform": "wordpress",
         "verified": True,
+        "api_key": api_key,
+        "site_token": site_token,
         "wordpress_connection": {
             "connected": True,
             "connected_at": now,
             "site_token": _hash_token(site_token),
+            "raw_site_token": site_token,
+            "api_key": api_key,
             "plugin_version": body.plugin_version,
             "php_version": body.php_version,
             "wp_version": body.wp_version,
@@ -158,6 +162,8 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
             "website_id": auth_data["website_id"],
             "user_id": auth_data["user_id"],
             "domain": body.domain,
+            "api_key": api_key,
+            "site_token": site_token,
             "connected": True,
             "connected_at": now,
             "last_heartbeat": now,
@@ -401,7 +407,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
 
 def push_instant_sync_to_wordpress(user_id=None, website_id=None):
-    """Background fire-and-forget sync notification to all connected WordPress sites for this user."""
+    """Background fire-and-forget sync notification with full payload to all connected WordPress sites."""
     import threading
     import requests
 
@@ -409,9 +415,86 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
         try:
             db = MongoDB()
             from bson import ObjectId
+            u_str = str(user_id) if user_id else ""
+            
+            # Fetch active user doc for fallback keys & email
+            user_doc = None
+            if u_str:
+                u_find = [{"_id": u_str}, {"id": u_str}]
+                if ObjectId.is_valid(u_str):
+                    u_find.append({"_id": ObjectId(u_str)})
+                user_doc = db.users.find_one({"$or": u_find})
+            user_email = user_doc.get("email", "") if user_doc else ""
+            user_master_key = user_doc.get("api_key", "") if user_doc else ""
+
+            # Build fresh active Blacklist
+            now = datetime.now()
+            user_or_conds = [
+                {"added_by_user_id": u_str},
+                {"user_id": u_str},
+                {"added_by_user_id": {"$exists": False}},
+                {"added_by_user_id": None},
+                {"is_global": True},
+            ]
+            if user_email:
+                user_or_conds.append({"added_by": user_email})
+            if ObjectId.is_valid(u_str):
+                user_or_conds.append({"added_by_user_id": ObjectId(u_str)})
+                user_or_conds.append({"user_id": ObjectId(u_str)})
+
+            bl_cur = db.blacklist.find({
+                "$and": [
+                    {"$or": user_or_conds},
+                    {
+                        "$or": [
+                            {"expires_at": None},
+                            {"expires_at": {"$exists": False}},
+                            {"expires_at": {"$gt": now}},
+                        ]
+                    }
+                ]
+            })
+            raw_bl = [item["ip"].strip() for item in bl_cur if item.get("ip")]
+            bl_set = set(raw_bl)
+            if "127.0.0.1" in bl_set or "::1" in bl_set:
+                bl_set.add("127.0.0.1")
+                bl_set.add("::1")
+                bl_set.add("0.0.0.0")
+            blacklist = list(bl_set)
+
+            # Build fresh Country Blocks
+            c_query = [{"is_global": True}]
+            if u_str:
+                c_query.extend([
+                    {"user_id": u_str},
+                    {"added_by_user_id": u_str},
+                ])
+                if ObjectId.is_valid(u_str):
+                    c_query.append({"user_id": ObjectId(u_str)})
+                    c_query.append({"added_by_user_id": ObjectId(u_str)})
+            if user_email:
+                c_query.append({"added_by": user_email})
+            c_cur = db.country_blocks.find({"$or": c_query})
+            blocked_countries = list(set([item["country_code"].strip().upper() for item in c_cur if item.get("country_code")]))
+
+            # Build custom rules
+            r_query = [{"user_id": u_str}] if u_str else []
+            if ObjectId.is_valid(u_str):
+                r_query.append({"user_id": ObjectId(u_str)})
+            user_rules = []
+            if r_query:
+                for r in db.user_rules.find({"$or": r_query}):
+                    user_rules.append({
+                        "id": str(r.get("_id", "")),
+                        "name": r.get("name", ""),
+                        "pattern": r.get("pattern", ""),
+                        "action": r.get("action", "block"),
+                        "severity": r.get("severity", "high"),
+                        "enabled": bool(r.get("enabled", True)),
+                    })
+
             query = {}
-            if user_id:
-                u_str = str(user_id)
+            if u_str:
                 conds = [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]
                 if ObjectId.is_valid(u_str):
                     conds.append({"user_id": ObjectId(u_str)})
@@ -421,49 +504,90 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
             w_sites = list(db.websites.find(query if query else {}))
             wp_sites = list(db.wordpress_sites.find(query if query else {}))
-            keys = [ws.get("api_key") for ws in w_sites if ws.get("api_key")]
-            
-            # Target URLs list
+
+            # Target URLs list: (url, api_key, site_token)
             targets = []
             for ws in w_sites:
                 domain = ws.get("domain", "")
                 url = ws.get("url") or (f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}")
-                api_key = ws.get("api_key") or ""
+                k = ws.get("api_key") or user_master_key or ""
+                tok = ws.get("site_token") or (ws.get("wordpress_connection") or {}).get("raw_site_token") or ""
                 if url:
-                    targets.append((url, api_key))
+                    targets.append((url, k, tok))
 
             for wp in wp_sites:
                 domain = wp.get("domain", "")
                 if domain:
                     url = f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}"
                     ws_match = db.websites.find_one({"_id": wp.get("website_id")}) or db.websites.find_one({"domain": domain})
-                    api_key = (ws_match.get("api_key") if ws_match else "") or ""
-                    targets.append((url, api_key))
+                    k = wp.get("api_key") or (ws_match.get("api_key") if ws_match else "") or user_master_key or ""
+                    tok = wp.get("site_token") or ""
+                    targets.append((url, k, tok))
 
             # Also ensure local development WordPress installations receive instant push
-            for default_key in keys:
-                if default_key:
-                    targets.append(("http://localhost/mahabub", default_key))
-                    targets.append(("http://127.0.0.1/mahabub", default_key))
-                    targets.append(("http://localhost", default_key))
-                    break
+            local_keys = [k for (_, k, _) in targets if k] or ([user_master_key] if user_master_key else [""])
+            for lk in local_keys:
+                targets.append(("http://localhost/mahabub", lk, ""))
+                targets.append(("http://127.0.0.1/mahabub", lk, ""))
+                targets.append(("http://localhost", lk, ""))
+                targets.append(("http://127.0.0.1", lk, ""))
 
-            # Deduplicate targets
+            # Deduplicate targets by normalized URL
             seen = set()
             unique_targets = []
-            for u, k in targets:
-                pair = (u.rstrip("/"), k)
-                if pair not in seen:
-                    seen.add(pair)
-                    unique_targets.append(pair)
+            for u, k, tok in targets:
+                clean_u = u.rstrip("/")
+                key_tuple = (clean_u, k, tok)
+                if clean_u not in seen:
+                    seen.add(clean_u)
+                    unique_targets.append((clean_u, k, tok))
 
-            for url, api_key in unique_targets:
-                if not url:
+            sync_payload = {
+                "status": "ok",
+                "blacklist": blacklist,
+                "blocked_countries": blocked_countries,
+                "user_rules": user_rules,
+                "synced_at": datetime.now().isoformat(),
+            }
+
+            for clean_url, api_key, site_token in unique_targets:
+                if not clean_url:
                     continue
                 try:
-                    clean_url = url.rstrip("/")
-                    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-                    requests.get(f"{clean_url}/?waf_cloud_sync=1&api_key={api_key}", headers=headers, timeout=5, verify=False)
+                    headers = {"Content-Type": "application/json"}
+                    if api_key:
+                        headers["Authorization"] = f"Bearer {api_key}"
+                    if site_token:
+                        headers["X-Site-Token"] = site_token
+
+                    url_params = f"?waf_cloud_sync=1"
+                    if api_key:
+                        url_params += f"&api_key={api_key}"
+                    if site_token:
+                        url_params += f"&site_token={site_token}"
+
+                    # 1. First attempt POST with rich JSON payload for 0-latency instant cache update
+                    try:
+                        requests.post(
+                            f"{clean_url}/{url_params}",
+                            json=sync_payload,
+                            headers=headers,
+                            timeout=4,
+                            verify=False
+                        )
+                    except Exception:
+                        pass
+
+                    # 2. Fallback GET notification
+                    try:
+                        requests.get(
+                            f"{clean_url}/{url_params}",
+                            headers=headers,
+                            timeout=3,
+                            verify=False
+                        )
+                    except Exception:
+                        pass
                 except Exception:
                     pass
         except Exception:

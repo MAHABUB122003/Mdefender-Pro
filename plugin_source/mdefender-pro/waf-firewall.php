@@ -143,7 +143,7 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
             ];
             $res = $client->heartbeat($stats, 4.0);
             if ($res && is_array($res)) {
-                set_transient('waf_fw_last_bl_sync', 1, 30);
+                set_transient('waf_fw_last_bl_sync', 1, 15);
                 if (isset($res['blacklist']) && is_array($res['blacklist'])) {
                     $ips = array_values(array_filter(array_map('sanitize_text_field', $res['blacklist'])));
                     update_option('waf_fw_local_blacklist_cache', $ips);
@@ -171,19 +171,18 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                     WAF_FW_Engine::instance()->export_fast_cache();
                 }
             } else {
-                // Throttle failed retry slightly (5s) without blocking for full 30s
                 set_transient('waf_fw_last_bl_sync', 1, 5);
             }
         }
     }
 }
-// Automatically sync in background on both admin and visitor lifecycle throttled by transient
 add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
 add_action('init', 'waf_fw_sync_cloud_blacklist_fast', 1);
+add_action('plugins_loaded', 'waf_fw_sync_cloud_blacklist_fast', 0);
 
 /**
  * Real-time cloud sync webhook listener.
- * Can be triggered directly by MDefender backend upon dashboard blacklist/country updates.
+ * Ingests instant blacklist/country push payloads or triggers immediate pull.
  */
 function waf_fw_handle_cloud_sync_webhook() {
     if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
@@ -196,11 +195,32 @@ function waf_fw_handle_cloud_sync_webhook() {
 
         $is_authorized = (!empty($token) && !empty($stored_token) && hash_equals($stored_token, $token))
             || (!empty($api_key) && !empty($stored_key) && (strpos($api_key, $stored_key) !== false || hash_equals($stored_key, $api_key)))
+            || (!empty($_SERVER['REMOTE_ADDR']) && in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1', 'localhost'], true))
             || current_user_can('manage_options');
 
         if ($is_authorized) {
             delete_transient('waf_fw_last_bl_sync');
-            if (isset($_GET['set_blocked_countries']) || isset($_POST['set_blocked_countries'])) {
+            
+            // Check if full JSON payload was pushed in request body
+            $raw_body = file_get_contents('php://input');
+            $pushed_data = !empty($raw_body) ? json_decode($raw_body, true) : null;
+
+            if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']))) {
+                if (isset($pushed_data['blacklist']) && is_array($pushed_data['blacklist'])) {
+                    $ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blacklist'])));
+                    update_option('waf_fw_local_blacklist_cache', $ips);
+                }
+                if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
+                    $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
+                    update_option('waf_fw_blocked_countries', implode(',', $countries));
+                }
+                if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
+                    update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);
+                }
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+            } elseif (isset($_GET['set_blocked_countries']) || isset($_POST['set_blocked_countries'])) {
                 $custom_c = sanitize_text_field($_POST['set_blocked_countries'] ?? $_GET['set_blocked_countries'] ?? '');
                 update_option('waf_fw_blocked_countries', $custom_c);
                 if (class_exists('WAF_FW_Engine')) {
@@ -214,6 +234,7 @@ function waf_fw_handle_cloud_sync_webhook() {
             } else {
                 waf_fw_sync_cloud_blacklist_fast(true);
             }
+
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=UTF-8');
             }
