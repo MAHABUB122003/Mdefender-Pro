@@ -1,10 +1,10 @@
 <div class="war-dashboard">
     <div class="war-about">
-        <div class="war-about-logo">
-            <span class="dashicons dashicons-shield"></span>
+        <div class="war-about-logo" style="text-align: center; margin-bottom: 20px;">
+            <img src="<?php echo defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.jpg') : ''; ?>" alt="MDefender Pro Logo" style="width: 110px; height: 110px; border-radius: 16px; box-shadow: 0 8px 30px rgba(59,130,246,0.35); border: 2px solid rgba(59,130,246,0.5); object-fit: contain;">
         </div>
         <h2>MDefender-Pro</h2>
-        <div class="war-about-version">Version <?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.1.0'; ?></div>
+        <div class="war-about-version">Version <?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.2.2'; ?></div>
         <p>AI/ML-Powered Web Application Firewall and Malware Scanner for WordPress, powered by the MDefender-Pro cloud service. Advanced threat detection using machine learning algorithms to protect against OWASP Top 10 vulnerabilities.</p>
 
         <div class="war-about-features">

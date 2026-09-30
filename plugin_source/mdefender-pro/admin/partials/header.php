@@ -46,11 +46,11 @@ if (empty($notif_items)) {
     <!-- Clean, Sleek Enterprise Top Bar -->
     <div class="war-top-bar">
         <div class="war-top-left">
-            <div class="war-logo">
-                <span class="war-logo-icon dashicons dashicons-shield"></span>
+            <div class="war-logo" style="display: flex; align-items: center; gap: 8px;">
+                <img src="<?php echo defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.jpg') : ''; ?>" alt="MDefender Pro Logo" style="width: 28px; height: 28px; border-radius: 6px; box-shadow: 0 0 10px rgba(59,130,246,0.4); object-fit: contain; border: 1px solid rgba(59,130,246,0.5);">
                 <span class="war-logo-text">MDefender<span class="war-logo-highlight">-Pro</span></span>
             </div>
-            <div class="war-version">v<?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.1.0'; ?></div>
+            <div class="war-version">v<?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.2.2'; ?></div>
             <div class="war-cloud-status-badge <?php echo $is_cloud_connected ? 'cloud-active' : 'local-active'; ?>" id="warHeaderCloudStatus">
                 <span class="war-status-dot"></span>
                 <span class="war-status-text"><?php echo $is_cloud_connected ? 'Cloud AI Active (' . esc_html(ucfirst($cloud_mode)) . ')' : 'Local Guard Active'; ?></span>

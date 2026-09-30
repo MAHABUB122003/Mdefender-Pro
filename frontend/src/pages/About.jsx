@@ -449,31 +449,42 @@ export default function About() {
         </div>
 
         <div className="table-responsive" style={{
-          background: dark ? 'rgba(15, 23, 42, 0.7)' : '#ffffff',
-          borderRadius: 16,
-          border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
-          boxShadow: dark ? '0 10px 40px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.04)',
+          background: dark ? 'rgba(15, 23, 42, 0.75)' : '#ffffff',
+          borderRadius: 20,
+          border: `1px solid ${dark ? 'rgba(99,102,241,0.25)' : '#e2e8f0'}`,
+          boxShadow: dark ? '0 15px 45px rgba(0,0,0,0.5), 0 0 30px rgba(99,102,241,0.1)' : '0 10px 30px rgba(0,0,0,0.06)',
           overflow: 'hidden'
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 700 }}>
             <thead>
               <tr style={{
-                background: dark ? 'rgba(30, 41, 59, 0.6)' : '#f1f5f9',
+                background: dark ? 'rgba(30, 41, 59, 0.7)' : '#f1f5f9',
                 borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`
               }}>
-                <th style={{ padding: '18px 24px', fontSize: 14, fontWeight: 700, color: s.text }}>Feature / Capability</th>
-                <th style={{ padding: '18px 24px', fontSize: 14, fontWeight: 800, color: '#6366f1', background: dark ? 'rgba(99,102,241,0.1)' : '#eef2ff' }}>
-                  <i className="fas fa-shield-halved" style={{ marginRight: 6 }}></i> MDefender Pro
+                <th style={{ padding: '20px 24px', fontSize: 14, fontWeight: 700, color: s.text }}>Feature / Capability</th>
+                <th style={{
+                  padding: '20px 24px',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  color: '#6366f1',
+                  background: dark ? 'rgba(99,102,241,0.14)' : '#eef2ff',
+                  borderLeft: '1px solid rgba(99,102,241,0.3)',
+                  borderRight: '1px solid rgba(99,102,241,0.3)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                    <span><i className="fas fa-shield-halved" style={{ marginRight: 6 }}></i> MDefender Pro</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 10, background: '#10b981', color: '#fff' }}>WINNER</span>
+                  </div>
                 </th>
-                <th style={{ padding: '18px 24px', fontSize: 14, fontWeight: 600, color: s.textSecondary }}>Traditional WAFs</th>
-                <th style={{ padding: '18px 24px', fontSize: 14, fontWeight: 600, color: s.textSecondary }}>Basic Plugins</th>
+                <th style={{ padding: '20px 24px', fontSize: 14, fontWeight: 600, color: s.textSecondary }}>Traditional WAFs</th>
+                <th style={{ padding: '20px 24px', fontSize: 14, fontWeight: 600, color: s.textSecondary }}>Basic Plugins</th>
               </tr>
             </thead>
             <tbody>
               {comparisonData.map((row, idx) => (
                 <tr key={idx} style={{
                   borderBottom: idx < comparisonData.length - 1 ? `1px solid ${dark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}` : 'none',
-                  background: row.highlight ? (dark ? 'rgba(99,102,241,0.02)' : 'rgba(99,102,241,0.01)') : 'transparent'
+                  background: row.highlight ? (dark ? 'rgba(99,102,241,0.03)' : 'rgba(99,102,241,0.015)') : 'transparent'
                 }}>
                   <td style={{ padding: '18px 24px', fontSize: 14, fontWeight: 700, color: s.text }}>
                     {row.feature}
@@ -483,11 +494,13 @@ export default function About() {
                     fontSize: 14,
                     fontWeight: 600,
                     color: '#10b981',
-                    background: dark ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.03)'
+                    background: dark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.04)',
+                    borderLeft: '1px solid rgba(99,102,241,0.25)',
+                    borderRight: '1px solid rgba(99,102,241,0.25)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <i className="fas fa-circle-check" style={{ color: '#10b981', flexShrink: 0 }}></i>
-                      <span>{row.mdefender}</span>
+                      <span style={{ fontWeight: 700 }}>{row.mdefender}</span>
                     </div>
                   </td>
                   <td style={{ padding: '18px 24px', fontSize: 13, color: s.textSecondary }}>
@@ -506,6 +519,55 @@ export default function About() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Promotional Conversion Row under comparison */}
+        <div style={{
+          marginTop: 28,
+          background: dark ? 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(16,185,129,0.08))' : '#f8fafc',
+          borderRadius: 14,
+          padding: '20px 26px',
+          border: `1px solid ${dark ? 'rgba(99,102,241,0.25)' : '#e2e8f0'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 16
+        }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: s.text }}>
+              Experience the Sub-Millisecond AI WAF Difference
+            </div>
+            <div style={{ fontSize: 13, color: s.textSecondary }}>
+              Deploy 2,000 WAF rules + 5,489,242+ dataset neural protection in under 2 minutes.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Link to="/register" style={{
+              padding: '10px 22px',
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+              color: '#ffffff',
+              fontSize: 13.5,
+              fontWeight: 700,
+              textDecoration: 'none',
+              boxShadow: '0 3px 12px rgba(99,102,241,0.35)'
+            }}>
+              Start Free Trial
+            </Link>
+            <Link to="/pricing" style={{
+              padding: '10px 20px',
+              borderRadius: 8,
+              background: dark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+              border: `1px solid ${dark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+              color: s.text,
+              fontSize: 13.5,
+              fontWeight: 600,
+              textDecoration: 'none'
+            }}>
+              View Plans
+            </Link>
+          </div>
         </div>
       </section>
 

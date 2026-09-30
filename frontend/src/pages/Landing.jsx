@@ -11,64 +11,80 @@ const threatVectors = [
     title: 'SQL Injection Defense',
     desc: 'Deep syntactic inspection against union-based, boolean-blind, error-based, and stacked SQL queries across MySQL, PostgreSQL, MSSQL, Oracle, and SQLite.',
     rules: '350+ WAF Rules · ML Verified',
+    samplePayload: "admin' UNION SELECT null,password--",
+    status: 'BLOCKED (0.18ms)',
     color: '#3b82f6',
-    bg: 'rgba(59,130,246,0.08)'
+    bg: 'rgba(59,130,246,0.12)'
   },
   {
     icon: 'fa-code',
     title: 'Cross-Site Scripting (XSS)',
     desc: 'Multi-pass sanitization and payload extraction for stored, reflected, and DOM-based XSS, blocking HTML5 handlers, SVG payloads, and JS pseudo-protocols.',
     rules: '350+ WAF Rules · ML Verified',
+    samplePayload: '<script>eval(atob(...))</script>',
+    status: 'SANITIZED (0.22ms)',
     color: '#10b981',
-    bg: 'rgba(16,185,129,0.08)'
+    bg: 'rgba(16,185,129,0.12)'
   },
   {
     icon: 'fa-terminal',
     title: 'RCE & Web Shell Neutralization',
     desc: 'Instant blocking of command injection chains, bash environment subshells, Log4j, Shellshock, serialized PHP objects, and 20+ known web shell variants.',
     rules: '350+ WAF Rules · 5,489,242+ Dataset Trained',
+    samplePayload: '; cat /etc/passwd | curl...',
+    status: 'QUARANTINED (0.15ms)',
     color: '#8b5cf6',
-    bg: 'rgba(139,92,246,0.08)'
+    bg: 'rgba(139,92,246,0.12)'
   },
   {
     icon: 'fa-network-wired',
     title: 'DDoS & Rate Limiting Layer',
     desc: 'Adaptive token-bucket rate limiting and L7 volumetric flood mitigation designed to shield backend API origins from distributed denial-of-service spikes.',
     rules: 'Active Volumetric Shield',
+    samplePayload: '250,000 req/sec Volumetric Flood',
+    status: 'THROTTLED (0.05ms)',
     color: '#ef4444',
-    bg: 'rgba(239,68,68,0.08)'
+    bg: 'rgba(239,68,68,0.12)'
   },
   {
     icon: 'fa-shield-halved',
     title: 'Bot & Vulnerability Scanner Ban',
     desc: 'Automated fingerprinting and real-time banning of automated offensive security tools including sqlmap, Nikto, Acunetix, DirBuster, Gobuster, and scrapers.',
     rules: '200+ Scanner Signatures',
+    samplePayload: 'User-Agent: sqlmap/1.7.2#dev',
+    status: 'IP BANNED (0.10ms)',
     color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.08)'
+    bg: 'rgba(245,158,11,0.12)'
   },
   {
     icon: 'fa-cloud',
     title: 'SSRF & Cloud Metadata Guard',
     desc: 'Blocks unauthorized requests attempting to probe internal RFC1918 subnets, AWS/GCP instance metadata endpoints, and XML External Entities (XXE).',
     rules: '200+ Rules · Cloud Hardened',
+    samplePayload: 'http://169.254.169.254/latest/meta',
+    status: 'INTERCEPTED (0.14ms)',
     color: '#06b6d4',
-    bg: 'rgba(6,182,212,0.08)'
+    bg: 'rgba(6,182,212,0.12)'
   },
   {
     icon: 'fa-file-shield',
     title: 'CMS & Framework Hardening',
     desc: 'Targeted vulnerability filters for WordPress (wp-config, XML-RPC), Laravel/Symfony (.env leaks), Spring4Shell, and Node.js prototype pollution.',
     rules: '300+ Rules · Framework Specific',
+    samplePayload: '/wp-content/plugins/.../eval-stdin.php',
+    status: 'NEUTRALIZED (0.19ms)',
     color: '#ec4899',
-    bg: 'rgba(236,72,153,0.08)'
+    bg: 'rgba(236,72,153,0.12)'
   },
   {
     icon: 'fa-sliders',
     title: 'Custom Regex Policy Builder',
     desc: 'Enterprise users can author, test, toggle, and deploy custom regular expressions with isolated per-tenant policy enforcement.',
     rules: 'Tenant Isolated Custom Rules',
+    samplePayload: 'User Custom Policy #8112 Matched',
+    status: 'POLICY ENFORCED',
     color: '#6366f1',
-    bg: 'rgba(99,102,241,0.08)'
+    bg: 'rgba(99,102,241,0.12)'
   }
 ]
 
@@ -175,6 +191,7 @@ export default function Landing() {
   const { dark } = useTheme()
   const s = theme(dark)
   const [selectedLang, setSelectedLang] = useState('nodejs')
+  const [billingCycle, setBillingCycle] = useState('monthly')
 
   return (
     <div style={{
@@ -186,202 +203,253 @@ export default function Landing() {
     }}>
       <PublicNavbar />
 
-      {/* Hero Section */}
+      {/* Full-Cover Cinematic Cyber World Hero Section */}
       <section style={{
-        padding: '130px 24px 80px',
-        maxWidth: '1280px',
-        margin: '0 auto',
-        textAlign: 'center',
-        position: 'relative'
+        position: 'relative',
+        minHeight: '94vh',
+        padding: '135px 24px 90px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundImage: `radial-gradient(ellipse at 50% 30%, rgba(7, 11, 20, 0.72) 0%, rgba(7, 11, 20, 0.88) 60%, #070b14 100%), url('/assets/hero_cyber_matrix_defense.jpg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
+        backgroundRepeat: 'no-repeat',
+        borderBottom: '1px solid rgba(59, 130, 246, 0.25)',
+        overflow: 'hidden'
       }}>
-        {/* Background Radial Glow */}
+        {/* Floating Ambient Glow Orbs */}
         <div style={{
           position: 'absolute',
-          top: '0',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '800px',
+          top: '15%',
+          right: '8%',
+          width: '500px',
           height: '500px',
-          background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, rgba(99,102,241,0.04) 70%, transparent 100%)',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%)',
+          filter: 'blur(50px)',
           pointerEvents: 'none',
           zIndex: 0
         }}></div>
 
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          {/* Hybrid Engine Status Badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '7px 20px',
-            borderRadius: '30px',
-            background: 'rgba(37,99,235,0.12)',
-            border: '1px solid rgba(59,130,246,0.3)',
-            color: '#60a5fa',
-            fontSize: '13px',
-            fontWeight: '600',
-            marginBottom: '28px',
-            boxShadow: '0 0 20px rgba(37,99,235,0.2)'
-          }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-            <span>HYBRID THREAT DEFENSE ENGINE &middot; 2,000 WAF RULES + 5,489,242+ DATASET ML CORE</span>
-          </div>
+        <div style={{
+          position: 'absolute',
+          bottom: '10%',
+          left: '5%',
+          width: '520px',
+          height: '520px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
+          filter: 'blur(60px)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}></div>
 
-          {/* Main Title */}
-          <h1 style={{
-            fontSize: 'clamp(34px, 5.8vw, 62px)',
-            fontWeight: '900',
-            lineHeight: '1.12',
-            letterSpacing: '-0.035em',
-            maxWidth: '1020px',
-            margin: '0 auto 22px',
-            color: '#ffffff'
-          }}>
-            Autonomous Web Application Firewall Powered by{' '}
-            <span style={{
-              background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #c084fc 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>
-              5,489,242+ Attack Signatures
-            </span>
-          </h1>
-
-          {/* Subtitle */}
-          <p style={{
-            fontSize: 'clamp(16px, 2.1vw, 20px)',
-            lineHeight: '1.6',
-            color: '#94a3b8',
-            maxWidth: '780px',
-            margin: '0 auto 38px'
-          }}>
-            MDefender Pro unites a deterministic <strong>2,000-rule regex engine</strong> with an advanced <strong>Machine Learning model trained on 5,489,242+ real-world attack payloads</strong> to stop zero-day exploits, volumetric DDoS, and automated bots in sub-millisecond time.
-          </p>
-
-          {/* Action CTAs */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '60px' }}>
-            <Link
-              to="/register"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '15px 34px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                color: 'white',
-                fontSize: '15px',
-                fontWeight: '700',
-                textDecoration: 'none',
-                boxShadow: '0 4px 20px rgba(37,99,235,0.4)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                transition: 'all 0.2s'
-              }}
-            >
-              <i className="fas fa-shield-halved"></i> Start Free Protection
-            </Link>
-
-            <Link
-              to="/docs"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '15px 28px',
-                borderRadius: '10px',
-                background: '#0f172a',
-                border: '1px solid #334155',
-                color: '#e2e8f0',
-                fontSize: '15px',
-                fontWeight: '600',
-                textDecoration: 'none',
-                transition: 'all 0.2s'
-              }}
-            >
-              <i className="fas fa-book"></i> Read Documentation
-            </Link>
-
-            <a
-              href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
-              download
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '15px 28px',
-                borderRadius: '10px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid #1e293b',
-                color: '#94a3b8',
-                fontSize: '15px',
-                fontWeight: '600',
-                textDecoration: 'none'
-              }}
-            >
-              <i className="fas fa-download"></i> WordPress Plugin
-            </a>
-          </div>
-
-          {/* Hero Master Cybersecurity Command Deck Visual */}
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '1240px', margin: '0 auto', textAlign: 'center' }}>
+          {/* Central High-Contrast Text & CTA Focus Box */}
           <div style={{
             maxWidth: '1080px',
-            margin: '0 auto 40px',
-            borderRadius: '20px',
-            overflow: 'hidden',
-            border: '1px solid rgba(59, 130, 246, 0.35)',
-            boxShadow: '0 25px 70px rgba(0, 0, 0, 0.8), 0 0 40px rgba(37, 99, 235, 0.2)',
-            background: '#070b14',
-            position: 'relative'
+            margin: '0 auto',
+            padding: '24px 20px 20px',
+            borderRadius: '24px',
+            background: 'radial-gradient(circle at 50% 50%, rgba(7, 11, 20, 0.88) 0%, rgba(7, 11, 20, 0.55) 75%, transparent 100%)',
+            backdropFilter: 'blur(3px)'
           }}>
-            {/* Holographic Top Status Bar */}
+            {/* Hybrid Engine Status Badge */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
+              display: 'inline-flex',
               alignItems: 'center',
-              padding: '12px 20px',
-              background: 'linear-gradient(90deg, #070b18 0%, #0f172a 100%)',
-              borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
-              fontSize: '12px',
-              fontFamily: 'monospace'
+              gap: '10px',
+              padding: '8px 22px',
+              borderRadius: '30px',
+              background: 'rgba(10, 15, 29, 0.9)',
+              border: '1px solid rgba(56, 189, 248, 0.5)',
+              backdropFilter: 'blur(12px)',
+              color: '#38bdf8',
+              fontSize: '13px',
+              fontWeight: '700',
+              letterSpacing: '0.4px',
+              marginBottom: '26px',
+              boxShadow: '0 0 25px rgba(56, 189, 248, 0.3)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-                <span style={{ color: '#38bdf8', fontWeight: '700', letterSpacing: '0.5px' }}>MDEFENDER PRO HOLOGRAPHIC DEFENSE GRID</span>
-              </div>
-              <div style={{ display: 'flex', gap: '14px', color: '#94a3b8' }}>
-                <span><i className="fas fa-microchip" style={{ color: '#818cf8', marginRight: '5px' }}></i> 5.48M+ ML MODEL</span>
-                <span><i className="fas fa-bolt" style={{ color: '#10b981', marginRight: '5px' }}></i> 0.12ms TELEMETRY</span>
-              </div>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 12px #10b981' }}></span>
+              <span>GLOBAL EDGE DEFENSE &middot; 2,000 WAF RULES + 5,489,242+ NEURAL CORE</span>
             </div>
 
-            {/* Master Visual */}
-            <div style={{ position: 'relative', width: '100%', maxHeight: '500px', overflow: 'hidden' }}>
-              <img
-                src="/assets/hero_waf_command.jpg"
-                alt="MDefender Pro Holographic WAF Command Center"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-              {/* Bottom Gradient Overlay */}
+            {/* Main Title */}
+            <h1 style={{
+              fontSize: 'clamp(38px, 5.8vw, 68px)',
+              fontWeight: '900',
+              lineHeight: '1.12',
+              letterSpacing: '-0.04em',
+              maxWidth: '1060px',
+              margin: '0 auto 22px',
+              color: '#ffffff',
+              textShadow: '0 4px 25px rgba(0, 0, 0, 0.95), 0 0 40px rgba(7, 11, 20, 0.9)'
+            }}>
+              Autonomous Web Application Firewall Powered by{' '}
+              <span style={{
+                background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 0 30px rgba(56, 189, 248, 0.45))'
+              }}>
+                5,489,242+ Attack Signatures
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p style={{
+              fontSize: 'clamp(16.5px, 2vw, 20px)',
+              lineHeight: '1.7',
+              color: '#f1f5f9',
+              maxWidth: '840px',
+              margin: '0 auto 38px',
+              textShadow: '0 2px 14px rgba(0, 0, 0, 0.95)',
+              fontWeight: 500
+            }}>
+              MDefender Pro combines a deterministic <strong style={{ color: '#ffffff', textDecoration: 'underline', textDecorationColor: '#38bdf8' }}>2,000-rule regex engine</strong> with a state-of-the-art <strong style={{ color: '#38bdf8' }}>Machine Learning model trained on 5,489,242+ real-world attack vectors</strong> to neutralize zero-days, automated bots, and volumetric DDoS in sub-millisecond real time.
+            </p>
+
+            {/* Action CTAs */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', marginBottom: '36px' }}>
+              <Link
+                to="/register"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '16px 36px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+                  color: 'white',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 25px rgba(37, 99, 235, 0.6), inset 0 1px 0 rgba(255,255,255,0.25)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  transition: 'all 0.25s'
+                }}
+              >
+                <i className="fas fa-shield-halved"></i> Start Free Protection
+              </Link>
+
+              <Link
+                to="/docs"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '16px 28px',
+                  borderRadius: '12px',
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  color: '#ffffff',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  transition: 'all 0.25s'
+                }}
+              >
+                <i className="fas fa-book"></i> Read Documentation
+              </Link>
+
+              <a
+                href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
+                download
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '16px 28px',
+                  borderRadius: '12px',
+                  background: 'rgba(7, 11, 20, 0.8)',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
+                  backdropFilter: 'blur(10px)',
+                  color: '#94a3b8',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  textDecoration: 'none'
+                }}
+              >
+                <i className="fas fa-download"></i> WordPress Plugin
+              </a>
+            </div>
+
+            {/* Planetary Edge Telemetry Floating Badges */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap',
+              marginBottom: '10px'
+            }}>
               <div style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: '40%',
-                background: 'linear-gradient(to top, rgba(7, 11, 20, 0.95) 0%, transparent 100%)',
-                pointerEvents: 'none'
-              }}></div>
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                background: 'rgba(7, 11, 20, 0.85)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                backdropFilter: 'blur(10px)',
+                fontSize: '12px',
+                color: '#10b981',
+                fontFamily: 'monospace',
+                fontWeight: '700'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
+                LONDON NODE #419: MITIGATION ACTIVE
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                background: 'rgba(7, 11, 20, 0.85)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                backdropFilter: 'blur(10px)',
+                fontSize: '12px',
+                color: '#38bdf8',
+                fontFamily: 'monospace',
+                fontWeight: '700'
+              }}>
+                <i className="fas fa-bolt" style={{ fontSize: '11px' }}></i> 0.12ms EDGE TELEMETRY
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                background: 'rgba(7, 11, 20, 0.85)',
+                border: '1px solid rgba(192, 132, 252, 0.4)',
+                backdropFilter: 'blur(10px)',
+                fontSize: '12px',
+                color: '#c084fc',
+                fontFamily: 'monospace',
+                fontWeight: '700'
+              }}>
+                <i className="fas fa-brain" style={{ fontSize: '11px' }}></i> 5,489,242+ NEURAL SIGNATURES
+              </div>
             </div>
           </div>
 
           {/* Dual-Engine Live Architecture Simulator */}
           <div style={{
             maxWidth: '1020px',
-            margin: '0 auto',
-            background: '#0a0f1d',
-            borderRadius: '16px',
-            border: '1px solid #1e293b',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            margin: '28px auto 0',
+            background: 'rgba(10, 15, 29, 0.92)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '18px',
+            border: '1px solid rgba(59, 130, 246, 0.35)',
+            boxShadow: '0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(37, 99, 235, 0.25)',
             textAlign: 'left',
             overflow: 'hidden'
           }}>
@@ -390,17 +458,17 @@ export default function Landing() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '12px 18px',
-              background: '#04070e',
-              borderBottom: '1px solid #1e293b'
+              padding: '12px 20px',
+              background: 'rgba(4, 7, 14, 0.98)',
+              borderBottom: '1px solid rgba(59, 130, 246, 0.25)'
             }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ef4444' }}></span>
                 <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#f59e0b' }}></span>
                 <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#10b981' }}></span>
-                <span style={{ marginLeft: '10px', fontSize: '12px', color: '#64748b', fontFamily: 'monospace' }}>mdefender-core-engine &middot; live telemetry stream</span>
+                <span style={{ marginLeft: '10px', fontSize: '12px', color: '#94a3b8', fontFamily: 'monospace' }}>mdefender-core-engine &middot; live telemetry stream</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#10b981', fontFamily: 'monospace' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#10b981', fontFamily: 'monospace', fontWeight: '700' }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> DUAL-PIPELINE: ACTIVE
               </div>
             </div>
@@ -414,15 +482,15 @@ export default function Landing() {
               <div style={{ color: '#94a3b8' }}>
                 Host: <span style={{ color: '#e2e8f0' }}>api.production-cluster.net</span> | Source: <span style={{ color: '#f43f5e' }}>185.220.101.44 (High Risk Origin)</span>
               </div>
-              <div style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', margin: '10px 0', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', margin: '10px 0', border: '1px solid rgba(255,255,255,0.08)' }}>
                 Extracted Body: <span style={{ color: '#fbbf24' }}>{"{"}"username": "admin' OR 1=1 --", "auth_token": "eyJhbGciOiJub25lIn0..."{"}"}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', margin: '12px 0' }}>
-                <div style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
+                <div style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.35)', padding: '8px 12px', borderRadius: '6px' }}>
                   <div style={{ fontSize: '11px', color: '#60a5fa', fontWeight: '700' }}>[STAGE 1: 2,000 WAF RULES]</div>
                   <div style={{ color: '#fca5a5', fontSize: '12px', marginTop: '2px' }}>Matched: SQLi - Boolean Blind Tautology #2</div>
                 </div>
-                <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
+                <div style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)', padding: '8px 12px', borderRadius: '6px' }}>
                   <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: '700' }}>[STAGE 2: 5.48M+ DATASET ML]</div>
                   <div style={{ color: '#a78bfa', fontSize: '12px', marginTop: '2px' }}>Vector Risk: 99.8% (SQL Injection Vector)</div>
                 </div>
@@ -434,6 +502,8 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+
 
       {/* Metrics Strip */}
       <section style={{
@@ -470,16 +540,16 @@ export default function Landing() {
       </section>
 
       {/* 5,489,242+ Dataset Machine Learning Architecture Section */}
-      <section style={{ padding: '100px 24px', maxWidth: '1240px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+      <section style={{ padding: '90px 24px', maxWidth: '1240px', margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: '45px' }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
             padding: '6px 16px',
             borderRadius: '20px',
-            background: 'rgba(139,92,246,0.1)',
-            border: '1px solid rgba(139,92,246,0.3)',
+            background: 'rgba(139,92,246,0.12)',
+            border: '1px solid rgba(139,92,246,0.35)',
             color: '#c084fc',
             fontSize: '12px',
             fontWeight: '700',
@@ -493,59 +563,51 @@ export default function Landing() {
             Trained on Over 5.48 Million Real-World Attack Payloads
           </h2>
           <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6' }}>
-            Static regex rules alone cannot stop polymorphic evasion. Our ML model is trained on massive threat corpora across international honeypots and CVE disclosures.
+            Static regex rules alone cannot stop polymorphic evasion. Our ML model decomposes AST syntax trees and calculates character n-gram entropy in real time.
           </p>
         </div>
 
-        {/* Neural AI Core Visual Showcase */}
+        {/* Interactive Neural Vectorizer Architecture Inspector (No Clunky Banners) */}
         <div style={{
-          maxWidth: '1100px',
-          margin: '0 auto 48px',
-          borderRadius: '20px',
-          overflow: 'hidden',
-          border: '1px solid rgba(139,92,246,0.3)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 0 35px rgba(139,92,246,0.18)',
-          position: 'relative',
-          maxHeight: '440px'
+          maxWidth: '1060px',
+          margin: '0 auto 40px',
+          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(7, 11, 20, 0.95) 100%)',
+          borderRadius: '18px',
+          border: '1px solid rgba(139,92,246,0.25)',
+          padding: '24px 28px',
+          boxShadow: '0 15px 40px rgba(0,0,0,0.6)'
         }}>
-          <img
-            src="/assets/neural_ai_brain.jpg"
-            alt="MDefender Pro Neural AI Inspection Core"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '24px 30px',
-            background: 'linear-gradient(to top, rgba(7,11,20,0.96) 0%, rgba(7,11,20,0.5) 60%, transparent 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12
-          }}>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <i className="fas fa-brain" style={{ color: '#c084fc' }}></i>
-                Real-Time Syntactic Token Embeddings &amp; Anomaly Detection
-              </div>
-              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>
-                Evaluating AST trees, Character N-Grams, and polymorphic bypasses in &lt;0.85ms
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#c084fc', boxShadow: '0 0 10px #c084fc' }}></div>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.4px', fontFamily: 'monospace' }}>
+                NEURAL VECTORIZATION INFERENCE PIPELINE
+              </span>
             </div>
-            <span style={{
-              padding: '6px 14px',
-              borderRadius: 8,
-              background: 'rgba(139,92,246,0.18)',
-              border: '1px solid rgba(139,92,246,0.4)',
-              color: '#d8b4fe',
-              fontSize: 12,
-              fontWeight: 700
-            }}>
-              5,489,242+ Vector Weights
-            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981', fontSize: 11, fontWeight: 700 }}>
+                Inference: 0.34ms
+              </span>
+              <span style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#c084fc', fontSize: 11, fontWeight: 700 }}>
+                Dataset: 5,489,242+ Weights
+              </span>
+            </div>
+          </div>
+
+          {/* 3-Step Live Token Pipeline Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, fontFamily: 'monospace' }}>
+            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>[1] RAW INCOMING PAYLOAD</div>
+              <div style={{ fontSize: 12, color: '#fbbf24', wordBreak: 'break-all' }}>admin'/*%!50000UnIoN*//*!50000SeLeCt*/...</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>[2] CHARACTER N-GRAM EMBEDDING</div>
+              <div style={{ fontSize: 12, color: '#38bdf8' }}>[0.941, 0.887, 0.998, 0.124, 0.992]</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>[3] AUTONOMOUS EDGE VERDICT</div>
+              <div style={{ fontSize: 12, color: '#10b981', fontWeight: 800 }}>QUARANTINED &middot; RISK CONFIDENCE 99.8%</div>
+            </div>
           </div>
         </div>
 
@@ -559,7 +621,7 @@ export default function Landing() {
             background: '#0c1222',
             border: '1px solid #1e293b',
             borderRadius: '14px',
-            padding: '32px 28px',
+            padding: '30px 26px',
             boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
           }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59,130,246,0.12)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
@@ -577,7 +639,7 @@ export default function Landing() {
             background: '#0c1222',
             border: '1px solid #1e293b',
             borderRadius: '14px',
-            padding: '32px 28px',
+            padding: '30px 26px',
             boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
           }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(139,92,246,0.12)', color: '#a78bfa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
@@ -595,7 +657,7 @@ export default function Landing() {
             background: '#0c1222',
             border: '1px solid #1e293b',
             borderRadius: '14px',
-            padding: '32px 28px',
+            padding: '30px 26px',
             boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
           }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16,185,129,0.12)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '20px' }}>
@@ -613,7 +675,7 @@ export default function Landing() {
 
       {/* Global Cloud Edge Mesh & Autonomous DDoS Shield */}
       <section style={{ padding: '80px 24px', maxWidth: '1280px', margin: '0 auto', borderTop: '1px solid #1e293b' }}>
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -639,67 +701,55 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Global Grid Visual Banner */}
+        {/* Global Edge PoP Status Console (Clean & Non-cluttered) */}
         <div style={{
-          maxWidth: '1100px',
-          margin: '0 auto 40px',
-          borderRadius: '20px',
-          overflow: 'hidden',
-          border: '1px solid rgba(59,130,246,0.3)',
-          boxShadow: '0 25px 65px rgba(0,0,0,0.8), 0 0 35px rgba(59,130,246,0.2)',
-          position: 'relative'
+          maxWidth: '1080px',
+          margin: '0 auto 20px',
+          background: '#0a0f1d',
+          borderRadius: '16px',
+          border: '1px solid #1e293b',
+          padding: '24px 28px',
+          boxShadow: '0 15px 40px rgba(0,0,0,0.4)'
         }}>
-          <img
-            src="/assets/global_cyber_grid.jpg"
-            alt="MDefender Pro Worldwide Edge Defense Grid"
-            style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', display: 'block' }}
-          />
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '24px 30px',
-            background: 'linear-gradient(to top, rgba(7,11,20,0.96) 0%, rgba(7,11,20,0.5) 60%, transparent 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <i className="fas fa-shield-halved" style={{ color: '#38bdf8' }}></i>
-                Real-Time Planetary Threat Neutralization &amp; Anycast Routing
+                <i className="fas fa-satellite-dish" style={{ color: '#38bdf8' }}></i>
+                Real-Time Anycast Edge Node Scrubbing
               </div>
-              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>
-                Intelligent bot scrubbers &amp; automated rate-limiting active across all regions
+              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
+                Active mitigation across international high-capacity fiber transit links
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{
-                padding: '6px 12px',
-                borderRadius: 6,
-                background: 'rgba(16,185,129,0.15)',
-                border: '1px solid rgba(16,185,129,0.3)',
-                color: '#10b981',
-                fontSize: 12,
-                fontWeight: 700
-              }}>
+              <span style={{ padding: '5px 12px', borderRadius: 6, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontSize: 12, fontWeight: 700 }}>
                 <i className="fas fa-circle" style={{ fontSize: 8, marginRight: 5 }}></i> 100% Up-time
               </span>
-              <span style={{
-                padding: '6px 12px',
-                borderRadius: 6,
-                background: 'rgba(59,130,246,0.15)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                color: '#60a5fa',
-                fontSize: 12,
-                fontWeight: 700
-              }}>
-                240+ Global PoPs
+              <span style={{ padding: '5px 12px', borderRadius: 6, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa', fontSize: 12, fontWeight: 700 }}>
+                240+ Edge PoPs
               </span>
             </div>
+          </div>
+
+          {/* 4 Key Edge PoP Regions */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {[
+              { region: 'North America (US-East / West)', ip: '108.162.192.0/18', latency: '0.12ms', status: 'Armed & Scrubbing' },
+              { region: 'Europe (London / Frankfurt)', ip: '141.101.64.0/18', latency: '0.15ms', status: 'Armed & Scrubbing' },
+              { region: 'Asia-Pacific (Singapore / Tokyo)', ip: '172.64.0.0/13', latency: '0.18ms', status: 'Armed & Scrubbing' },
+              { region: 'Australia (Sydney / Melbourne)', ip: '198.41.128.0/17', latency: '0.22ms', status: 'Armed & Scrubbing' }
+            ].map((node, idx) => (
+              <div key={idx} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{node.region}</span>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }}></span>
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>Anycast: {node.ip}</div>
+                <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600, marginTop: 4 }}>
+                  <i className="fas fa-bolt" style={{ marginRight: 4 }}></i> {node.latency} edge response
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -725,40 +775,71 @@ export default function Landing() {
               key={i}
               style={{
                 background: '#0c1222',
-                border: '1px solid #1e293b',
-                borderRadius: '14px',
-                padding: '28px 24px',
+                border: `1px solid ${v.bg ? v.color + '40' : '#1e293b'}`,
+                borderRadius: '16px',
+                padding: '24px 22px',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                transition: 'all 0.2s',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
               }}
             >
               <div>
-                <div style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '10px',
-                  background: v.bg,
-                  color: v.color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '20px',
-                  marginBottom: '18px'
-                }}>
-                  <i className={`fas ${v.icon}`}></i>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    background: v.bg,
+                    color: v.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px'
+                  }}>
+                    <i className={`fas ${v.icon}`}></i>
+                  </div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: '#10b981',
+                    background: 'rgba(16,185,129,0.12)',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    fontFamily: 'monospace'
+                  }}>
+                    {v.status}
+                  </span>
                 </div>
 
-                <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '10px', color: '#f1f5f9' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '8px', color: '#f1f5f9' }}>
                   {v.title}
                 </h3>
 
-                <p style={{ fontSize: '13px', lineHeight: '1.6', color: '#94a3b8' }}>
+                <p style={{ fontSize: '13px', lineHeight: '1.6', color: '#94a3b8', marginBottom: '14px' }}>
                   {v.desc}
                 </p>
+
+                {/* Attack Sample Payload Tag */}
+                <div style={{
+                  background: 'rgba(0,0,0,0.45)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '11px',
+                  color: '#fbbf24',
+                  fontFamily: 'monospace',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  <span style={{ color: '#64748b' }}>Test: </span>{v.samplePayload}
+                </div>
               </div>
 
-              <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid #1e293b' }}>
+              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <span style={{ fontSize: '11px', fontWeight: '700', color: v.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {v.rules}
                 </span>
@@ -1098,79 +1179,279 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing Overview Section */}
-      <section style={{ padding: '90px 24px', maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '36px', fontWeight: '800', marginBottom: '14px', color: '#ffffff' }}>
-          Transparent, Predictable Security Pricing
+      {/* Promotional Pricing Overview Section */}
+      <section style={{ padding: '95px 24px', maxWidth: '1240px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 16px',
+          borderRadius: '20px',
+          background: 'rgba(59,130,246,0.1)',
+          border: '1px solid rgba(59,130,246,0.3)',
+          color: '#60a5fa',
+          fontSize: '12px',
+          fontWeight: '700',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          marginBottom: '16px'
+        }}>
+          <i className="fas fa-tags"></i> Transparent Enterprise Subscriptions
+        </div>
+        <h2 style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '14px', color: '#ffffff' }}>
+          Predictable Cloud Defense Pricing
         </h2>
-        <p style={{ fontSize: '15px', color: '#94a3b8', marginBottom: '50px' }}>
-          Deploy full-scale WAF defenses with no hidden throughput overage fees.
+        <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '640px', margin: '0 auto 34px' }}>
+          Deploy full-scale WAF defenses with no bandwidth penalties or hidden overage fees.
         </p>
 
+        {/* Monthly / Annual Billing Switch */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '5px 8px',
+          borderRadius: 30,
+          background: 'rgba(15, 23, 42, 0.8)',
+          border: '1px solid #1e293b',
+          marginBottom: 50
+        }}>
+          <button
+            onClick={() => setBillingCycle('monthly')}
+            style={{
+              padding: '8px 20px',
+              borderRadius: 24,
+              border: 'none',
+              background: billingCycle === 'monthly' ? 'linear-gradient(135deg, #2563eb, #4f46e5)' : 'transparent',
+              color: billingCycle === 'monthly' ? '#ffffff' : '#94a3b8',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: billingCycle === 'monthly' ? '0 2px 10px rgba(37,99,235,0.4)' : 'none'
+            }}
+          >
+            Monthly Billing
+          </button>
+          <button
+            onClick={() => setBillingCycle('yearly')}
+            style={{
+              padding: '8px 20px',
+              borderRadius: 24,
+              border: 'none',
+              background: billingCycle === 'yearly' ? 'linear-gradient(135deg, #2563eb, #4f46e5)' : 'transparent',
+              color: billingCycle === 'yearly' ? '#ffffff' : '#94a3b8',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: billingCycle === 'yearly' ? '0 2px 10px rgba(37,99,235,0.4)' : 'none'
+            }}
+          >
+            <span>Annual Billing</span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 800,
+              padding: '2px 7px',
+              borderRadius: 12,
+              background: '#10b981',
+              color: '#ffffff'
+            }}>SAVE 18%</span>
+          </button>
+        </div>
+
+        {/* 3 Promotional Pricing Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
           gap: '24px',
           textAlign: 'left'
         }}>
-          {/* Free Tier */}
+          {/* Community Free */}
           <div style={{
             background: '#0c1222',
             border: '1px solid #1e293b',
-            borderRadius: '14px',
-            padding: '32px'
+            borderRadius: '18px',
+            padding: '36px 30px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
           }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#ffffff' }}>Starter</h3>
-            <div style={{ fontSize: '32px', fontWeight: '800', margin: '14px 0 6px', color: '#ffffff' }}>$0 <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/ month</span></div>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>Essential protection for personal sites &amp; testing.</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> 1 Protected Website</li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> 10,000 requests / month</li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> Core WAF Signatures</li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> Community Support</li>
-            </ul>
-            <Link to="/register" style={{ display: 'block', textAlign: 'center', padding: '10px', borderRadius: '8px', border: '1px solid #334155', color: '#ffffff', textDecoration: 'none', fontWeight: '700', fontSize: '13px' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginBottom: '6px' }}>Community Edition</div>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>Essential defense for staging and personal APIs.</p>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: '#ffffff', marginBottom: '24px' }}>
+                $0 <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/ forever</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '11px' }}>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 1 Protected Origin Website</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 50,000 requests / month</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> Core Deterministic WAF Engine</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> Bundled Cyber 403 Block Page</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> Community Support Forum</li>
+              </ul>
+            </div>
+            <Link
+              to="/register"
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid #334155',
+                color: '#ffffff',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '13.5px',
+                transition: 'all 0.2s'
+              }}
+            >
               Get Started Free
             </Link>
           </div>
 
-          {/* Pro Tier (Featured) */}
+          {/* Developer Go */}
           <div style={{
             background: '#0c1222',
-            border: '2px solid #2563eb',
-            borderRadius: '14px',
-            padding: '32px',
+            border: '1px solid rgba(59,130,246,0.3)',
+            borderRadius: '18px',
+            padding: '36px 30px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: '#38bdf8', marginBottom: '6px' }}>Developer Go</div>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>For growing SaaS and multi-app architectures.</p>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: '#38bdf8', marginBottom: '24px' }}>
+                ${billingCycle === 'yearly' ? '90' : '9'} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '11px' }}>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>5 Protected Websites</strong></li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 1,000,000 requests / month</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>5,489,242+ Dataset ML Core</strong></li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> Real-Time Attack Logs &amp; IP Blacklist</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 24h Email Support Response</li>
+              </ul>
+            </div>
+            <Link
+              to={`/register?plan=go&cycle=${billingCycle}`}
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(56,189,248,0.12)',
+                border: '1px solid rgba(56,189,248,0.3)',
+                color: '#38bdf8',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '13.5px',
+                transition: 'all 0.2s'
+              }}
+            >
+              Start Developer Go
+            </Link>
+          </div>
+
+          {/* Enterprise Pro (Featured Spotlight) */}
+          <div style={{
+            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 14, 26, 1) 100%)',
+            border: '2px solid #6366f1',
+            borderRadius: '18px',
+            padding: '36px 30px',
             position: 'relative',
-            boxShadow: '0 10px 35px rgba(37,99,235,0.2)'
+            boxShadow: '0 15px 45px rgba(99,102,241,0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
           }}>
             <div style={{
               position: 'absolute',
-              top: '-12px',
+              top: '-13px',
               right: '24px',
-              background: '#2563eb',
+              background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
               color: 'white',
               fontSize: '11px',
               fontWeight: '800',
-              padding: '2px 10px',
+              padding: '3px 12px',
               borderRadius: '20px',
-              textTransform: 'uppercase'
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              boxShadow: '0 2px 10px rgba(99,102,241,0.4)'
             }}>
               Most Popular
             </div>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#ffffff' }}>Enterprise Pro</h3>
-            <div style={{ fontSize: '32px', fontWeight: '800', margin: '14px 0 6px', color: '#38bdf8' }}>$29 <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/ month</span></div>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>Full security suite for production web apps.</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>Unlimited</strong> Protected Websites</li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>2,000 Global WAF Rules</strong></li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>5,489,242+ Attack Dataset Machine Learning Core</strong></li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>Custom Regex Rule Builder</strong></li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> Real-Time Attack Logs &amp; IP Ban</li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> 24/7 Priority SLA Response</li>
-            </ul>
-            <Link to="/register?plan=pro" style={{ display: 'block', textAlign: 'center', padding: '11px', borderRadius: '8px', background: '#2563eb', color: 'white', textDecoration: 'none', fontWeight: '700', fontSize: '13px', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginBottom: '6px' }}>Enterprise Pro</div>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '20px' }}>Full security suite for production enterprise clusters.</p>
+              <div style={{ fontSize: '38px', fontWeight: '900', color: '#60a5fa', marginBottom: '24px' }}>
+                ${billingCycle === 'yearly' ? '290' : '29'} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '11px' }}>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>Unlimited</strong> Protected Websites</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>2,000 Global WAF Rules</strong></li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>5,489,242+ Dataset Machine Learning Core</strong></li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> <strong>Custom Regex Rule Authoring</strong></li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> Live Attack Learning Retraining Loop</li>
+                <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '10px' }}></i> 24/7 Priority SLA Response</li>
+              </ul>
+            </div>
+            <Link
+              to={`/register?plan=pro&cycle=${billingCycle}`}
+              style={{
+                display: 'block',
+                textAlign: 'center',
+                padding: '13px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                color: 'white',
+                textDecoration: 'none',
+                fontWeight: '700',
+                fontSize: '14px',
+                boxShadow: '0 4px 15px rgba(99,102,241,0.4)',
+                transition: 'all 0.2s'
+              }}
+            >
               Upgrade to Enterprise Pro
             </Link>
+          </div>
+        </div>
+
+        {/* Deep Comparison Link & Trust Badges */}
+        <div style={{ marginTop: '45px', textAlign: 'center' }}>
+          <Link
+            to="/pricing"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#38bdf8',
+              fontSize: '14.5px',
+              fontWeight: '700',
+              textDecoration: 'none'
+            }}
+          >
+            <span>Compare all 30+ enterprise security features &amp; SLA tiers</span>
+            <i className="fas fa-arrow-right" style={{ fontSize: '12px' }}></i>
+          </Link>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '28px',
+            flexWrap: 'wrap',
+            marginTop: '24px',
+            color: '#64748b',
+            fontSize: '13px'
+          }}>
+            <span><i className="fas fa-shield-check" style={{ color: '#10b981', marginRight: '6px' }}></i> 30-Day Money-Back Guarantee</span>
+            <span><i className="fas fa-lock" style={{ color: '#60a5fa', marginRight: '6px' }}></i> 256-Bit SSL Encrypted Checkout</span>
+            <span><i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i> Instant Cloud Provisioning</span>
           </div>
         </div>
       </section>
