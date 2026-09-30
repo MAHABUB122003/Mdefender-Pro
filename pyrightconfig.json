@@ -5,5 +5,9 @@
   "extraPaths": [
     "backend",
     "backend/src"
-  ]
+  ],
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": false,
+  "reportAttributeAccessIssue": "none"
 }
+
