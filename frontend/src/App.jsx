@@ -14,6 +14,7 @@ import BlockPage from './pages/BlockPage'
 import Layout from './components/Layout'
 import UserLayout from './components/UserLayout'
 import Landing from './pages/Landing'
+import About from './pages/About'
 import Pricing from './pages/Pricing'
 import Blog from './pages/Blog'
 import Register from './pages/Register'
@@ -89,6 +90,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/about" element={<About />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/blog" element={<Blog />} />

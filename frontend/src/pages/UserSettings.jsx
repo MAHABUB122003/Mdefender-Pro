@@ -657,7 +657,7 @@ export default function UserSettings() {
                     <div>
                       <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Enterprise Pro Plan</div>
                       <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> Active Protection &middot; 2,000 WAF Rules &amp; 5.2M ML Model
+                        <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> Active Protection &middot; 2,000 WAF Rules &amp; 5,489,242+ Dataset ML Model
                       </div>
                     </div>
                   </div>

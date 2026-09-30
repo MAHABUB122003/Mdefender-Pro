@@ -112,7 +112,7 @@ class PaymentService:
                             "currency": "usd",
                             "product_data": {
                                 "name": f"MDefender Pro - {pricing['name']} Plan",
-                                "description": f"Subscription ({cycle.capitalize()} Billing) - 2,000 WAF Rules & 5.2M ML Model",
+                                "description": f"Subscription ({cycle.capitalize()} Billing) - 2,000 WAF Rules & 5,489,242+ Attack Dataset ML Model",
                             },
                             "unit_amount": amount_cents,
                         },

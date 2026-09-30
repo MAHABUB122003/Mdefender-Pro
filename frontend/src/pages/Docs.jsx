@@ -15,7 +15,7 @@ const docSections = [
     ]
   },
   {
-    group: '5.2M+ Dataset ML Core',
+    group: '5,489,242+ Dataset ML Core',
     items: [
       { id: 'ml-overview', label: 'Machine Learning Model', icon: 'fa-microchip' },
       { id: 'ml-vectorizer', label: 'Character N-Gram Vectorizer', icon: 'fa-cubes-stacked' },
@@ -297,7 +297,7 @@ export default function Docs() {
             <div>
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>What is MDefender Pro?</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                <strong>MDefender Pro</strong> is an enterprise-grade, hybrid Web Application Firewall (WAF) and real-time API protection suite. It combines a deterministic catalog of <strong>2,000 verified WAF signature rules</strong> with a state-of-the-art <strong>Machine Learning model trained on 5.2M+ real-world attack vectors</strong> to safeguard applications against OWASP Top 10 vulnerabilities, zero-day payloads, and bot scrapers with sub-millisecond execution.
+                <strong>MDefender Pro</strong> is an enterprise-grade, hybrid Web Application Firewall (WAF) and real-time API protection suite. It combines a deterministic catalog of <strong>2,000 verified WAF signature rules</strong> with a state-of-the-art <strong>Machine Learning model trained on 5.48M++ real-world attack vectors</strong> to safeguard applications against OWASP Top 10 vulnerabilities, zero-day payloads, and bot scrapers with sub-millisecond execution.
               </p>
 
               <div style={{
@@ -308,7 +308,7 @@ export default function Docs() {
               }}>
                 <div style={{ padding: '22px', borderRadius: '10px', background: '#0c1222', border: '1px solid #1e293b' }}>
                   <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
-                    <i className="fas fa-microchip" style={{ marginRight: '6px' }}></i> 5.2M+ Dataset ML Model
+                    <i className="fas fa-microchip" style={{ marginRight: '6px' }}></i> 5,489,242+ Dataset ML Model
                   </div>
                   <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, lineHeight: '1.6' }}>
                     Trained across CSIC HTTP, CICIDS, and honeypot corpora using character n-gram TF-IDF vectorization.
@@ -375,7 +375,7 @@ export default function Docs() {
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                     <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(139,92,246,0.2)', color: '#c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>3</span>
                     <div>
-                      <strong style={{ fontSize: '15px', color: '#ffffff' }}>Tier 2: 5.2M Dataset ML Inference Classifier (0.34ms)</strong>
+                      <strong style={{ fontSize: '15px', color: '#ffffff' }}>Tier 2: 5,489,242+ Dataset ML Inference Classifier (0.34ms)</strong>
                       <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px', lineHeight: '1.6' }}>
                         Vectorizes text into character n-grams and evaluates against the trained linear SGD / logistic model, outputting probability confidence and attack category.
                       </p>
@@ -635,9 +635,9 @@ curl -i "http://localhost:5000/api/books"`}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '12px', fontWeight: '700' }}>AI Core</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>5,200,000+ Training Samples</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '12px', fontWeight: '700' }}>5,489,242+ Training Samples</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>The 5.2M+ Dataset Machine Learning Core</h1>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>The 5,489,242+ Dataset Machine Learning Core</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
                 MDefender Pro's Machine Learning core is engineered to stop polymorphic payloads, zero-day CVE exploits, and obfuscations that evade traditional static signatures.
               </p>
@@ -651,7 +651,7 @@ curl -i "http://localhost:5000/api/books"`}
               }}>
                 <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '12px', color: '#38bdf8' }}>Training Corpus &amp; Dataset Highlights:</h3>
                 <ul style={{ paddingLeft: '20px', fontSize: '13px', lineHeight: '1.8', color: '#94a3b8' }}>
-                  <li><strong>5,200,000+ Sample Corpus:</strong> Combines HTTP traffic corpora from CSIC 2010, CICIDS2017, OWASP ModSecurity Core Rule Set vectors, and real-world honeypot captures.</li>
+                  <li><strong>5,489,242+ Sample Corpus:</strong> Combines HTTP traffic corpora from CSIC 2010, CICIDS2017, OWASP ModSecurity Core Rule Set vectors, and real-world honeypot captures.</li>
                   <li><strong>Character N-Gram Vectorizer:</strong> Analyzes 3-gram to 5-gram token distributions to capture structural syntactic patterns rather than relying on exact keyword substrings.</li>
                   <li><strong>Dual Classifier Output:</strong> Generates a binary attack probability (0.0 to 1.0) and a multi-class threat classifier (SQLi, XSS, RCE, LFI, SSRF, Deserialization).</li>
                   <li><strong>Inference Speed:</strong> Optimized via scikit-learn SGDClassifier / joblib serialization to execute inference in less than 0.35ms.</li>
@@ -1439,7 +1439,7 @@ class MDefenderWaf
 
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>WordPress Plugin &amp; ML Cloud Security</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Protect any WordPress site with the official <strong>MDefender Pro Security Plugin</strong>. It integrates your WordPress site directly with our <strong>5.2M+ Dataset Machine Learning Core</strong> for real-time WAF request blocking and deep malware scanning.
+                Protect any WordPress site with the official <strong>MDefender Pro Security Plugin</strong>. It integrates your WordPress site directly with our <strong>5,489,242+ Dataset Machine Learning Core</strong> for real-time WAF request blocking and deep malware scanning.
               </p>
 
               {/* Download Plugin Action Card */}
@@ -1720,7 +1720,7 @@ class MDefenderWaf
 
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: '#ffffff' }}>Attack Learning Lab &amp; Feedback Hub</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#cbd5e1', marginBottom: '24px' }}>
-                Located at <code>/admin/learning</code>, the <strong>Attack Learning Lab</strong> empowers security teams to handle false positive reports, test new attack vectors in a live sandbox, and fine-tune the 5.2M dataset ML classifier with <strong>zero server downtime</strong>.
+                Located at <code>/admin/learning</code>, the <strong>Attack Learning Lab</strong> empowers security teams to handle false positive reports, test new attack vectors in a live sandbox, and fine-tune the 5,489,242+ dataset ML classifier with <strong>zero server downtime</strong>.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -1787,7 +1787,7 @@ class MDefenderWaf
                       <td style={{ padding: '12px 16px', color: '#34d399' }}>65,000 req/sec</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', color: '#f1f5f9' }}>5.2M Dataset ML Inference</td>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', color: '#f1f5f9' }}>5,489,242+ Dataset ML Inference</td>
                       <td style={{ padding: '12px 16px', color: '#38bdf8', fontWeight: '700' }}>0.34 ms</td>
                       <td style={{ padding: '12px 16px', color: '#60a5fa' }}>0.55 ms</td>
                       <td style={{ padding: '12px 16px', color: '#34d399' }}>48,000 req/sec</td>
@@ -1842,8 +1842,8 @@ class MDefenderWaf
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
                 {[
                   {
-                    q: 'How does the 5.2M dataset ML model differ from static regex rules?',
-                    a: 'Static rules match exact known signatures. The 5.2M dataset ML model vectorizes structural character n-grams and calculates statistical anomaly probability, enabling it to stop never-before-seen zero-day exploits and polymorphic bypasses.'
+                    q: 'How does the 5,489,242+ dataset ML model differ from static regex rules?',
+                    a: 'Static rules match exact known signatures. The 5,489,242+ dataset ML model vectorizes structural character n-grams and calculates statistical anomaly probability, enabling it to stop never-before-seen zero-day exploits and polymorphic bypasses.'
                   },
                   {
                     q: 'Does MDefender Pro add noticeable latency to HTTP requests?',

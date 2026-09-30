@@ -93,11 +93,14 @@ async def register(data: RegisterRequest, request: Request):
 
     response_data = {
         'status': 'success',
-        'message': result['message'],
+        'message': result.get('message', 'Account created successfully! Please check your email to activate your account.'),
+        'email': data.email,
+        'verification_required': True,
     }
     if not smtp_configured:
         response_data['verification_token'] = verification_token
         response_data['verification_url'] = f'{frontend_url}/auth/verify-email?token={verification_token}&email={data.email}'
+        response_data['dev_mode'] = True
 
     return response_data
 

@@ -7,8 +7,20 @@ export default function UserSidebar({ isOpen }) {
     <>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} id="sidebar">
         <div className="sidebar-brand">
-          <div className="logo">
-            <div className="logo-icon"><i className="fas fa-shield-halved"></i></div>
+          <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="logo-icon" style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '1px solid rgba(99,102,241,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#070b14'
+            }}>
+              <img src="/assets/mdefender_logo.jpg" alt="MDefender" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
             <div className="logo-text">
               <h2>MDefender</h2>
               <span>Pro WAF</span>

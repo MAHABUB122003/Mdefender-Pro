@@ -426,7 +426,7 @@ export default function AdminPricing() {
                           checked={p.ml_waf ?? false}
                           onChange={(e) => handleChange(pid, 'ml_waf', e.target.checked)}
                         />
-                        <span><strong>5.2M Dataset ML WAF Classifier</strong></span>
+                        <span><strong>5,489,242+ Dataset ML WAF Classifier</strong></span>
                       </label>
 
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#334155', fontSize: '12px' }}>

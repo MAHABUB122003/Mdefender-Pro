@@ -26,7 +26,7 @@ const threatVectors = [
     icon: 'fa-terminal',
     title: 'RCE & Web Shell Neutralization',
     desc: 'Instant blocking of command injection chains, bash environment subshells, Log4j, Shellshock, serialized PHP objects, and 20+ known web shell variants.',
-    rules: '350+ WAF Rules · 5.2M Dataset Trained',
+    rules: '350+ WAF Rules · 5,489,242+ Dataset Trained',
     color: '#8b5cf6',
     bg: 'rgba(139,92,246,0.08)'
   },
@@ -136,13 +136,13 @@ app.add_middleware(
     api_key="YOUR_MDEFENDER_API_KEY",
     api_endpoint="http://217.15.170.82",
     mode="block",
-    enable_ml=True, # Active 5.2M ML Model
+    enable_ml=True, # Active 5,489,242+ Payload ML Model
     rate_limit_rpm=120
 )
 
 @app.get("/api/v1/data")
 def read_root():
-    return {"status": "protected", "waf": "armed", "ml_core": "5.2M_dataset_active"}`,
+    return {"status": "protected", "waf": "armed", "ml_core": "5.48M_dataset_active"}`,
 
   php: `<?php
 // Require Composer Autoloader
@@ -159,7 +159,7 @@ $waf = new WafShield([
     'block_page'   => true // Serves bundled Cyber 403 block page
 ]);
 
-$waf->inspectRequest(); // Evaluates 2,000 rules + 5.2M ML model in 0.4ms`,
+$waf->inspectRequest(); // Evaluates 2,000 rules + 5,489,242+ ML model in 0.4ms`,
 
   curl: `# 1. Test XSS Attack (Expect 403 Forbidden & Cyber Block Page):
 curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"
@@ -224,7 +224,7 @@ export default function Landing() {
             boxShadow: '0 0 20px rgba(37,99,235,0.2)'
           }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-            <span>HYBRID THREAT DEFENSE ENGINE &middot; 2,000 WAF RULES + 5.2M+ DATASET ML CORE</span>
+            <span>HYBRID THREAT DEFENSE ENGINE &middot; 2,000 WAF RULES + 5,489,242+ DATASET ML CORE</span>
           </div>
 
           {/* Main Title */}
@@ -243,7 +243,7 @@ export default function Landing() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
-              5.2 Million Attack Signatures
+              5,489,242+ Attack Signatures
             </span>
           </h1>
 
@@ -255,7 +255,7 @@ export default function Landing() {
             maxWidth: '780px',
             margin: '0 auto 38px'
           }}>
-            MDefender Pro unites a deterministic <strong>2,000-rule regex engine</strong> with an advanced <strong>Machine Learning model trained on 5.2M+ real-world attack payloads</strong> to stop zero-day exploits, volumetric DDoS, and automated bots in sub-millisecond time.
+            MDefender Pro unites a deterministic <strong>2,000-rule regex engine</strong> with an advanced <strong>Machine Learning model trained on 5,489,242+ real-world attack payloads</strong> to stop zero-day exploits, volumetric DDoS, and automated bots in sub-millisecond time.
           </p>
 
           {/* Action CTAs */}
@@ -322,14 +322,66 @@ export default function Landing() {
             </a>
           </div>
 
+          {/* Hero Master Cybersecurity Command Deck Visual */}
+          <div style={{
+            maxWidth: '1080px',
+            margin: '0 auto 40px',
+            borderRadius: '20px',
+            overflow: 'hidden',
+            border: '1px solid rgba(59, 130, 246, 0.35)',
+            boxShadow: '0 25px 70px rgba(0, 0, 0, 0.8), 0 0 40px rgba(37, 99, 235, 0.2)',
+            background: '#070b14',
+            position: 'relative'
+          }}>
+            {/* Holographic Top Status Bar */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 20px',
+              background: 'linear-gradient(90deg, #070b18 0%, #0f172a 100%)',
+              borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+              fontSize: '12px',
+              fontFamily: 'monospace'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
+                <span style={{ color: '#38bdf8', fontWeight: '700', letterSpacing: '0.5px' }}>MDEFENDER PRO HOLOGRAPHIC DEFENSE GRID</span>
+              </div>
+              <div style={{ display: 'flex', gap: '14px', color: '#94a3b8' }}>
+                <span><i className="fas fa-microchip" style={{ color: '#818cf8', marginRight: '5px' }}></i> 5.48M+ ML MODEL</span>
+                <span><i className="fas fa-bolt" style={{ color: '#10b981', marginRight: '5px' }}></i> 0.12ms TELEMETRY</span>
+              </div>
+            </div>
+
+            {/* Master Visual */}
+            <div style={{ position: 'relative', width: '100%', maxHeight: '500px', overflow: 'hidden' }}>
+              <img
+                src="/assets/hero_waf_command.jpg"
+                alt="MDefender Pro Holographic WAF Command Center"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+              {/* Bottom Gradient Overlay */}
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '40%',
+                background: 'linear-gradient(to top, rgba(7, 11, 20, 0.95) 0%, transparent 100%)',
+                pointerEvents: 'none'
+              }}></div>
+            </div>
+          </div>
+
           {/* Dual-Engine Live Architecture Simulator */}
           <div style={{
-            maxWidth: '920px',
+            maxWidth: '1020px',
             margin: '0 auto',
             background: '#0a0f1d',
-            borderRadius: '14px',
+            borderRadius: '16px',
             border: '1px solid #1e293b',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
             textAlign: 'left',
             overflow: 'hidden'
           }}>
@@ -365,13 +417,13 @@ export default function Landing() {
               <div style={{ color: '#e2e8f0', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', margin: '10px 0', border: '1px solid rgba(255,255,255,0.06)' }}>
                 Extracted Body: <span style={{ color: '#fbbf24' }}>{"{"}"username": "admin' OR 1=1 --", "auth_token": "eyJhbGciOiJub25lIn0..."{"}"}</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', margin: '12px 0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', margin: '12px 0' }}>
                 <div style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
                   <div style={{ fontSize: '11px', color: '#60a5fa', fontWeight: '700' }}>[STAGE 1: 2,000 WAF RULES]</div>
                   <div style={{ color: '#fca5a5', fontSize: '12px', marginTop: '2px' }}>Matched: SQLi - Boolean Blind Tautology #2</div>
                 </div>
                 <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: '700' }}>[STAGE 2: 5.2M DATASET ML]</div>
+                  <div style={{ fontSize: '11px', color: '#c084fc', fontWeight: '700' }}>[STAGE 2: 5.48M+ DATASET ML]</div>
                   <div style={{ color: '#a78bfa', fontSize: '12px', marginTop: '2px' }}>Vector Risk: 99.8% (SQL Injection Vector)</div>
                 </div>
               </div>
@@ -399,7 +451,7 @@ export default function Landing() {
           textAlign: 'center'
         }}>
           <div>
-            <div style={{ fontSize: '36px', fontWeight: '900', color: '#38bdf8', letterSpacing: '-0.02em' }}>5,200,000+</div>
+            <div style={{ fontSize: '36px', fontWeight: '900', color: '#38bdf8', letterSpacing: '-0.02em' }}>5,489,242+</div>
             <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', marginTop: '4px' }}>Attack Payloads in ML Dataset</div>
           </div>
           <div>
@@ -417,7 +469,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 5.2M Dataset Machine Learning Architecture Section */}
+      {/* 5,489,242+ Dataset Machine Learning Architecture Section */}
       <section style={{ padding: '100px 24px', maxWidth: '1240px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <div style={{
@@ -438,11 +490,63 @@ export default function Landing() {
             <i className="fas fa-microchip"></i> Deep Learning &amp; Heuristic Vectorization
           </div>
           <h2 style={{ fontSize: '38px', fontWeight: '900', letterSpacing: '-0.025em', marginBottom: '16px', color: '#ffffff' }}>
-            Trained on Over 5.2 Million Real-World Attack Payloads
+            Trained on Over 5.48 Million Real-World Attack Payloads
           </h2>
           <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6' }}>
             Static regex rules alone cannot stop polymorphic evasion. Our ML model is trained on massive threat corpora across international honeypots and CVE disclosures.
           </p>
+        </div>
+
+        {/* Neural AI Core Visual Showcase */}
+        <div style={{
+          maxWidth: '1100px',
+          margin: '0 auto 48px',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          border: '1px solid rgba(139,92,246,0.3)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 0 35px rgba(139,92,246,0.18)',
+          position: 'relative',
+          maxHeight: '440px'
+        }}>
+          <img
+            src="/assets/neural_ai_brain.jpg"
+            alt="MDefender Pro Neural AI Inspection Core"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '24px 30px',
+            background: 'linear-gradient(to top, rgba(7,11,20,0.96) 0%, rgba(7,11,20,0.5) 60%, transparent 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12
+          }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fas fa-brain" style={{ color: '#c084fc' }}></i>
+                Real-Time Syntactic Token Embeddings &amp; Anomaly Detection
+              </div>
+              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>
+                Evaluating AST trees, Character N-Grams, and polymorphic bypasses in &lt;0.85ms
+              </div>
+            </div>
+            <span style={{
+              padding: '6px 14px',
+              borderRadius: 8,
+              background: 'rgba(139,92,246,0.18)',
+              border: '1px solid rgba(139,92,246,0.4)',
+              color: '#d8b4fe',
+              fontSize: 12,
+              fontWeight: 700
+            }}>
+              5,489,242+ Vector Weights
+            </span>
+          </div>
         </div>
 
         {/* 3 Pillars of ML Defense */}
@@ -462,7 +566,7 @@ export default function Landing() {
               <i className="fas fa-layer-group"></i>
             </div>
             <h3 style={{ fontSize: '19px', fontWeight: '800', marginBottom: '10px', color: '#ffffff' }}>
-              5.2M+ Real-World Dataset Corpus
+              5,489,242+ Real-World Dataset Corpus
             </h3>
             <p style={{ fontSize: '14px', lineHeight: '1.65', color: '#94a3b8' }}>
               Trained on labeled datasets spanning CSIC HTTP, CICIDS, OWASP ModSecurity Core Rule vectors, and live honeypot captures, providing deep exposure to malicious structures.
@@ -503,6 +607,99 @@ export default function Landing() {
             <p style={{ fontSize: '14px', lineHeight: '1.65', color: '#94a3b8' }}>
               Rigorous cross-validation against millions of legitimate JSON, XML, and GraphQL payloads guarantees developer APIs remain uninterrupted while blocking hostile requests.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Global Cloud Edge Mesh & Autonomous DDoS Shield */}
+      <section style={{ padding: '80px 24px', maxWidth: '1280px', margin: '0 auto', borderTop: '1px solid #1e293b' }}>
+        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 16px',
+            borderRadius: '20px',
+            background: 'rgba(59,130,246,0.1)',
+            border: '1px solid rgba(59,130,246,0.3)',
+            color: '#60a5fa',
+            fontSize: '12px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            marginBottom: '16px'
+          }}>
+            <i className="fas fa-globe"></i> Global Distributed PoP Architecture
+          </div>
+          <h2 style={{ fontSize: '36px', fontWeight: '900', letterSpacing: '-0.02em', marginBottom: '14px', color: '#ffffff' }}>
+            Autonomous Global Edge Defense Mesh
+          </h2>
+          <p style={{ fontSize: '16px', color: '#94a3b8', maxWidth: '720px', margin: '0 auto' }}>
+            Hostile traffic and multi-gigabit Layer 7 HTTP floods are intercepted and neutralized at 240+ global cloud edge locations before ever touching your origin server.
+          </p>
+        </div>
+
+        {/* Global Grid Visual Banner */}
+        <div style={{
+          maxWidth: '1100px',
+          margin: '0 auto 40px',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          border: '1px solid rgba(59,130,246,0.3)',
+          boxShadow: '0 25px 65px rgba(0,0,0,0.8), 0 0 35px rgba(59,130,246,0.2)',
+          position: 'relative'
+        }}>
+          <img
+            src="/assets/global_cyber_grid.jpg"
+            alt="MDefender Pro Worldwide Edge Defense Grid"
+            style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', display: 'block' }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '24px 30px',
+            background: 'linear-gradient(to top, rgba(7,11,20,0.96) 0%, rgba(7,11,20,0.5) 60%, transparent 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12
+          }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <i className="fas fa-shield-halved" style={{ color: '#38bdf8' }}></i>
+                Real-Time Planetary Threat Neutralization &amp; Anycast Routing
+              </div>
+              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>
+                Intelligent bot scrubbers &amp; automated rate-limiting active across all regions
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: 6,
+                background: 'rgba(16,185,129,0.15)',
+                border: '1px solid rgba(16,185,129,0.3)',
+                color: '#10b981',
+                fontSize: 12,
+                fontWeight: 700
+              }}>
+                <i className="fas fa-circle" style={{ fontSize: 8, marginRight: 5 }}></i> 100% Up-time
+              </span>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: 6,
+                background: 'rgba(59,130,246,0.15)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                color: '#60a5fa',
+                fontSize: 12,
+                fontWeight: 700
+              }}>
+                240+ Global PoPs
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -966,7 +1163,7 @@ export default function Landing() {
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', fontSize: '13px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>Unlimited</strong> Protected Websites</li>
               <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>2,000 Global WAF Rules</strong></li>
-              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>5.2M+ Dataset Machine Learning Core</strong></li>
+              <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>5,489,242+ Attack Dataset Machine Learning Core</strong></li>
               <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>Custom Regex Rule Builder</strong></li>
               <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> Real-Time Attack Logs &amp; IP Ban</li>
               <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> 24/7 Priority SLA Response</li>
@@ -999,12 +1196,14 @@ export default function Landing() {
             <div style={{ fontWeight: '800', fontSize: '16px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fas fa-shield-halved" style={{ color: '#2563eb' }}></i> MDefender Pro
             </div>
-            <div style={{ marginTop: '4px' }}>Autonomous Web Application Firewall &middot; 5.2M Dataset ML Security</div>
+            <div style={{ marginTop: '4px' }}>Autonomous Web Application Firewall &middot; 5,489,242+ Dataset ML Security</div>
           </div>
 
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-            <Link to="/docs" style={{ color: '#94a3b8', textDecoration: 'none' }}>Documentation</Link>
+            <Link to="/about" style={{ color: '#94a3b8', textDecoration: 'none' }}>About</Link>
+            <Link to="/blog" style={{ color: '#94a3b8', textDecoration: 'none' }}>Threat Blog</Link>
             <Link to="/pricing" style={{ color: '#94a3b8', textDecoration: 'none' }}>Pricing</Link>
+            <Link to="/docs" style={{ color: '#94a3b8', textDecoration: 'none' }}>Documentation</Link>
             <Link to="/user/login" style={{ color: '#94a3b8', textDecoration: 'none' }}>User Portal</Link>
             <Link to="/login" style={{ color: '#94a3b8', textDecoration: 'none' }}>Admin Console</Link>
           </div>

@@ -6,6 +6,8 @@ const downloadUrl = `${(import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 const navLinks = [
   { to: '/', label: 'Home' },
+  { to: '/about', label: 'About' },
+  { to: '/blog', label: 'Blog' },
   { to: '/pricing', label: 'Pricing' },
   { to: '/docs', label: 'Docs' },
 ];
@@ -91,17 +93,29 @@ export default function PublicNavbar() {
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none', flexShrink: 0 }}>
           <div style={{
-            width: 34, height: 34, borderRadius: 9,
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            width: 38, height: 38, borderRadius: 10,
+            overflow: 'hidden',
+            border: '1.5px solid rgba(99,102,241,0.4)',
+            boxShadow: '0 0 14px rgba(99,102,241,0.35)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+            background: '#070b14'
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
+            <img
+              src="/assets/mdefender_logo.jpg"
+              alt="MDefender Pro Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
-          <span style={{ fontSize: 17, fontWeight: 700, color: c.text, letterSpacing: '-0.4px' }}>
-            MDefender <span style={{ fontWeight: 500, color: c.muted, fontSize: 14 }}>Pro</span>
+          <span style={{ fontSize: 18, fontWeight: 800, color: c.text, letterSpacing: '-0.4px', display: 'flex', alignItems: 'center', gap: 4 }}>
+            MDefender <span style={{
+              fontSize: 12,
+              fontWeight: 800,
+              padding: '2px 7px',
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+              color: '#ffffff',
+              letterSpacing: '0.5px'
+            }}>PRO</span>
           </span>
         </Link>
 

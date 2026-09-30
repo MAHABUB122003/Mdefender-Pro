@@ -135,7 +135,7 @@ export default function PaymentSuccess() {
                 Subscription Successfully Activated!
               </h1>
               <p style={{ fontSize: '13px', color: '#94a3b8', maxWidth: '420px', margin: '0 auto 24px', lineHeight: '1.6' }}>
-                Your account has been upgraded to <strong>{paymentData?.plan_name || 'Enterprise Pro'}</strong>. Your 2,000 WAF rules and 5.2M dataset ML engine are now fully active.
+                Your account has been upgraded to <strong>{paymentData?.plan_name || 'Enterprise Pro'}</strong>. Your 2,000 WAF rules and 5,489,242+ dataset ML engine are now fully active.
               </p>
 
               {/* Receipt Details Table */}
