@@ -19,7 +19,6 @@ from src.api.v1.deps import get_owned_website
 from src.auth.dependencies import get_current_user
 from src.database.mongodb_connection import MongoDB
 from src.engine.decision_engine import DecisionEngine
-from src.engine.ml_detector import MLDetector
 from src.security.ip_filter import IPFilter
 from src.security.rate_limiter import RateLimiter
 from src.services.notification_service import NotificationService

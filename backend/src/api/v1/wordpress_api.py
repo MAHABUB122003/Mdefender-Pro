@@ -19,10 +19,11 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from src.api.v1.deps import get_owned_website
+from src.api.v1.waf_api import verify_api_key
 from src.auth.dependencies import get_current_user
 from src.database.mongodb_connection import MongoDB
 from src.services.notification_service import NotificationService
@@ -79,8 +80,6 @@ async def download_plugin():
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{info["filename"]}"'},
     )
-
-from src.api.v1.waf_api import verify_api_key
 
 
 class ConnectRequest(BaseModel):

@@ -20,11 +20,9 @@ from pydantic import BaseModel, Field
 from src.api.v1.deps import get_owned_website
 from src.auth.dependencies import get_current_user
 from src.database.mongodb_connection import MongoDB
-from src.services.plan_service import PlanService
 from src.services.subscription_service import SubscriptionService
-from src.utils.api_response import parse_object_id, serialize, success
+from src.utils.api_response import serialize, success
 from src.utils.api_key import generate_api_key
-from src.utils.logger import Logger
 
 router = APIRouter(prefix="/websites", tags=["Websites"])
 
