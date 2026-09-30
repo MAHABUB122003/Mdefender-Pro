@@ -172,7 +172,8 @@ export default function UserSettings() {
   )
 
   const isPremium = profile?.plan === 'premium'
-  const userInitial = (profile?.full_name || profile?.email || '?')[0].toUpperCase()
+  const displayName = profile?.full_name || profile?.name || profile?.username || (profile?.email ? profile.email.split('@')[0] : '') || 'User'
+  const userInitial = (displayName || 'U')[0].toUpperCase()
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -217,7 +218,7 @@ export default function UserSettings() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '22px', fontWeight: '700', margin: 0 }}>{profile?.full_name || 'User'}</h1>
+              <h1 style={{ fontSize: '22px', fontWeight: '700', margin: 0 }}>{displayName}</h1>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: '5px',
                 padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
@@ -291,8 +292,8 @@ export default function UserSettings() {
               </div>
               <div style={{ padding: '20px 24px' }}>
                 {[
-                  { label: 'Full Name', value: profile?.full_name || '—', icon: 'fa-id-card' },
-                  { label: 'Username', value: profile?.username || '—', icon: 'fa-at' },
+                  { label: 'Full Name', value: profile?.full_name || profile?.name || '—', icon: 'fa-id-card' },
+                  { label: 'Username', value: profile?.username || (profile?.email ? profile.email.split('@')[0] : '—'), icon: 'fa-at' },
                   { label: 'Email', value: profile?.email || '—', icon: 'fa-envelope' },
                   { label: 'Member Since', value: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—', icon: 'fa-calendar' },
                 ].map((item, i) => (

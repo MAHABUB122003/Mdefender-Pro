@@ -360,17 +360,22 @@ async def logout_all(request: Request, response: Response, user: dict = Depends(
 
 @auth_router.get('/me')
 async def get_me(user: dict = Depends(get_current_user)):
+    user_full_name = user.get('full_name') or user.get('name', '')
+    user_uname = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
     return {
         'status': 'success',
         'user': {
             'id': user['id'],
             'email': user['email'],
-            'full_name': user['full_name'],
-            'username': user['username'],
+            'full_name': user_full_name,
+            'name': user_full_name,
+            'username': user_uname,
             'role': user['role'],
-            'email_verified': user['email_verified'],
-            'mfa_enabled': user['mfa_enabled'],
+            'email_verified': user.get('email_verified', False),
+            'mfa_enabled': user.get('mfa_enabled', False),
             'plan': user.get('plan', 'free'),
+            'api_key': user.get('api_key', ''),
+            'created_at': user.get('created_at'),
         }
     }
 

@@ -29,6 +29,19 @@ function storeTokens(data) {
   if (typeof localStorage !== 'undefined') {
     if (data.access_token) localStorage.setItem('mdefender_access', data.access_token);
     if (data.refresh_token) localStorage.setItem('mdefender_refresh', data.refresh_token);
+    if (data.user?.full_name || data.user?.name) {
+      localStorage.setItem('mdefender_user_name', data.user.full_name || data.user.name);
+    }
+    if (data.user?.plan) {
+      localStorage.setItem('mdefender_user_plan', data.user.plan);
+    }
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      Object.keys(sessionStorage).forEach(k => {
+        if (k.startsWith('mdf_cache_')) sessionStorage.removeItem(k);
+      });
+    } catch {}
   }
 }
 
@@ -36,6 +49,15 @@ export function clearTokens() {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('mdefender_access');
     localStorage.removeItem('mdefender_refresh');
+    localStorage.removeItem('mdefender_user_name');
+    localStorage.removeItem('mdefender_user_plan');
+  }
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      Object.keys(sessionStorage).forEach(k => {
+        if (k.startsWith('mdf_cache_')) sessionStorage.removeItem(k);
+      });
+    } catch {}
   }
 }
 

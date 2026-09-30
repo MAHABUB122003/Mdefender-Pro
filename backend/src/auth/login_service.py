@@ -205,6 +205,9 @@ class LoginService:
 
         self.logger.log_info(f"User logged in: {user['email']} from {ip_address}")
 
+        user_full_name = user.get('full_name') or user.get('name', '')
+        user_uname = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
+
         return {
             'success': True,
             'access_token': access_token,
@@ -212,9 +215,12 @@ class LoginService:
             'user': {
                 'id': user_id,
                 'email': user['email'],
-                'full_name': user.get('full_name', ''),
-                'username': user.get('username'),
+                'full_name': user_full_name,
+                'name': user_full_name,
+                'username': user_uname,
                 'role': user.get('role', 'user'),
+                'plan': user.get('plan', 'free'),
+                'email_verified': user.get('email_verified', False),
                 'api_key': api_key,
             },
         }

@@ -196,18 +196,39 @@ class UserAPI:
         return user
 
     def get_profile(self, user):
+        full_name = user.get('full_name') or user.get('name') or ''
+        username = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
+        email_verified = user.get('email_verified', False)
+        created_at_str = self._format_dt(user.get('created_at'))
+        last_login_str = self._format_dt(user.get('last_login'))
+        plan_expires_str = self._format_dt(user.get('plan_expires'), default=None)
+        
+        user_id_str = str(user.get('id') or user.get('_id'))
+        user_oid = self._resolve_id(user_id_str)
+        
+        websites = list(self.db.websites.find({
+            '$or': [{'user_id': user_id_str}, {'user_id': user_oid}]
+        }))
+        for w in websites:
+            w['id'] = str(w['_id'])
+            w['_id'] = str(w['_id'])
+
         return {
-            'id': str(user['_id']),
-            'email': user['email'],
-            'name': user.get('name', user.get('full_name', '')),
+            'id': user_id_str,
+            '_id': user_id_str,
+            'email': user.get('email', ''),
+            'name': full_name,
+            'full_name': full_name,
+            'username': username,
+            'email_verified': email_verified,
             'plan': user.get('plan', 'free'),
-            'role': user.get('role', 'readonly'),
+            'role': user.get('role', 'user'),
             'api_key': user.get('api_key', ''),
             'status': user.get('status', 'active'),
-            'created_at': user['created_at'].strftime('%Y-%m-%d %H:%M:%S') if user.get('created_at') else '',
-            'last_login': user['last_login'].strftime('%Y-%m-%d %H:%M:%S') if user.get('last_login') else '',
-            'plan_expires': user['plan_expires'].strftime('%Y-%m-%d %H:%M:%S') if user.get('plan_expires') else None,
-            'websites': list(self.db.websites.find({'user_id': str(user['_id'])})),
+            'created_at': created_at_str,
+            'last_login': last_login_str,
+            'plan_expires': plan_expires_str,
+            'websites': websites,
             'total_requests': user.get('total_requests', 0),
             'total_blocked': user.get('total_blocked', 0),
         }
@@ -217,25 +238,27 @@ class UserAPI:
             website_id = data.get('website_id')
             user_id_str = str(user['_id'])
             user_id_obj = self._resolve_id(user_id_str)
+            target_ids = [website_id]
+            if ObjectId.is_valid(website_id):
+                target_ids.append(ObjectId(website_id))
+
             website = self.db.websites.find_one({
                 '$and': [
-                    {'_id': website_id},
+                    {'_id': {'$in': target_ids}},
                     {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
                 ]
             })
             if not website:
-                website = self.db.websites.find_one({'_id': website_id})
-            if not website:
-                return {'status': 'error', 'message': 'Website not found'}
+                return {'status': 'error', 'message': 'Website not found or unauthorized'}
             
             raw_key = generate_api_key()
             key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
             
             # Delete old keys for this website
-            self.db.api_keys.delete_many({'website_id': website_id})
+            self.db.api_keys.delete_many({'website_id': str(website['_id'])})
             
             self.db.api_keys.insert_one({
-                'website_id': website_id,
+                'website_id': str(website['_id']),
                 'user_id': user_id_str,
                 'key_hash': key_hash,
                 'label': website.get('platform', 'WordPress'),
@@ -250,7 +273,7 @@ class UserAPI:
 
             return {'status': 'success', 'api_key': raw_key, 'message': 'Website API key regenerated'}
         else:
-            # Legacy account-level key for compatibility
+            # Account-level key for compatibility
             new_key = generate_api_key()
             user_id_str = str(user['_id'])
             self.db.users.update_one(
@@ -396,14 +419,13 @@ class UserAPI:
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
         
-        # Build flexible ID queries
         target_ids = [website_id]
         if ObjectId.is_valid(website_id):
             target_ids.append(ObjectId(website_id))
 
         user_cond = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
         
-        # Find website doc
+        # Find website doc strictly belonging to this user
         site_doc = self.db.websites.find_one({
             '$and': [
                 user_cond,
@@ -412,47 +434,34 @@ class UserAPI:
         })
 
         if not site_doc:
-            site_doc = self.db.websites.find_one({
-                '$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}]
-            })
+            return {'status': 'error', 'message': 'Website not found or unauthorized'}
 
-        domain = site_doc.get('domain') if site_doc else website_id
-        actual_id = site_doc['_id'] if site_doc else website_id
+        domain = site_doc.get('domain')
+        actual_id = site_doc['_id']
 
-        # 1. Delete from websites
-        del_query = {
-            '$or': [
-                {'_id': actual_id},
-                {'_id': website_id},
-            ]
-        }
-        if ObjectId.is_valid(str(website_id)):
-            del_query['$or'].append({'_id': ObjectId(str(website_id))})
+        # 1. Delete strictly scoped to this user
+        self.db.websites.delete_one({'_id': actual_id, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+
+        # 2. Delete from wordpress_sites for this user
         if domain:
-            del_query['$or'].append({'domain': domain})
+            self.db.wordpress_sites.delete_many({'domain': domain, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+        self.db.wordpress_sites.delete_many({'website_id': str(actual_id), '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
 
-        self.db.websites.delete_many(del_query)
-
-        # 2. Delete from wordpress_sites
-        if domain:
-            self.db.wordpress_sites.delete_many({'domain': domain})
-        self.db.wordpress_sites.delete_many({'website_id': str(actual_id)})
-
-        # 3. Delete associated API keys
+        # 3. Delete associated API keys for this user
         self.db.api_keys.delete_many({
-            '$or': [
-                {'website_id': str(actual_id)},
-                {'website_id': str(website_id)},
-                {'website_id': domain} if domain else {'website_id': None}
-            ]
+            'website_id': str(actual_id),
+            '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         })
 
         # 4. Remove from user's websites array if present
         if domain:
-            self.db.users.update_one(
-                {'_id': user['_id']},
-                {'$pull': {'websites': domain}}
-            )
+            try:
+                self.db.users.update_one(
+                    {'_id': user_id_obj},
+                    {'$pull': {'websites': domain}}
+                )
+            except Exception:
+                pass
 
         return {'status': 'success', 'message': f'Website {domain or website_id} removed successfully'}
 
@@ -599,39 +608,25 @@ class UserAPI:
         website_domains_list = [w['domain'] for w in websites if w.get('domain')]
         website_ids_list = [w['id'] for w in websites if w.get('id')]
 
-        # Build user scope query across user_id, all website_ids, and all domain aliases
+        # Build strict tenant-isolated user scope query across user_id and all owned website_ids
         user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if website_ids_list:
             user_scope.append({'website_id': {'$in': website_ids_list}})
             user_scope.append({'website_id': {'$in': [self._resolve_id(wid) for wid in website_ids_list if wid]}})
-        if website_domains_list:
-            user_scope.append({'domain': {'$in': website_domains_list}})
         user_filter = {'$or': user_scope}
 
         # Base query for stats and logs
         if website_id and website_id != 'all':
             target_ids = [website_id]
-            target_domains = [website_id]
-            clean_filter = website_id.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
-            if clean_filter:
-                target_domains.append(clean_filter)
-
             for s in websites:
                 sid = str(s.get('id') or s.get('_id', ''))
                 sdom = s.get('domain', '')
-                surl = s.get('url', '')
-                sname = s.get('name', '')
-                clean_sdom = sdom.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0] if sdom else ''
-                if website_id in (sid, sdom, surl, sname, clean_sdom) or clean_filter in (sdom, surl, sname, clean_sdom):
-                    if sid: target_ids.append(sid)
-                    if sdom: target_domains.append(sdom)
-                    if clean_sdom: target_domains.append(clean_sdom)
-                    if surl: target_domains.append(surl)
+                if website_id in (sid, sdom) and sid:
+                    target_ids.append(sid)
 
             site_filter = {'$or': [
                 {'website_id': {'$in': target_ids}},
                 {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
-                {'domain': {'$in': target_domains}}
             ]}
             base_query = {'$and': [user_filter, site_filter]}
         else:
@@ -741,12 +736,17 @@ class UserAPI:
             req_today = max(today_events_count, user_today_delta, site_today_sum)
 
         active_sites_count = len(websites)
+        user_full_name = user_doc.get('full_name') or user_doc.get('name', '')
+        user_uname = user_doc.get('username') or (user_doc.get('email', '').split('@')[0] if user_doc.get('email') else '')
 
         return {
             'user': {
                 'id': str(user_doc['_id']),
                 'email': user_doc.get('email', ''),
-                'name': user_doc.get('name', user_doc.get('full_name', '')),
+                'name': user_full_name,
+                'full_name': user_full_name,
+                'username': user_uname,
+                'email_verified': user_doc.get('email_verified', False),
                 'plan': user_doc.get('plan', 'free'),
                 'created_at': self._format_dt(user_doc.get('created_at'), '%Y-%m-%d'),
                 'last_login': self._format_dt(user_doc.get('last_login')),
@@ -904,39 +904,25 @@ class UserAPI:
             if w_id and w_id not in user_site_ids:
                 user_site_ids.append(w_id)
 
-        # Base user scope across user_id, website_ids, and domains
+        # Base strict user scope across user_id and owned website_ids
         user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if user_site_ids:
             user_scope.append({'website_id': {'$in': user_site_ids}})
             user_scope.append({'website_id': {'$in': [self._resolve_id(sid) for sid in user_site_ids if sid]}})
-        if user_domains:
-            user_scope.append({'domain': {'$in': user_domains}})
         
         conditions = [{'$or': user_scope}]
 
         if website_id and website_id != 'all':
             target_ids = [website_id]
-            target_domains = [website_id]
-            clean_filter = website_id.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
-            if clean_filter:
-                target_domains.append(clean_filter)
-
             for s in user_sites:
                 sid = str(s.get('_id', ''))
                 sdom = s.get('domain', '')
-                surl = s.get('url', '')
-                sname = s.get('name', '')
-                clean_sdom = sdom.replace('http://', '').replace('https://', '').strip().strip('/').split('/')[0]
-                if website_id in (sid, sdom, surl, sname, clean_sdom) or clean_filter in (sdom, surl, sname, clean_sdom):
-                    if sid: target_ids.append(sid)
-                    if sdom: target_domains.append(sdom)
-                    if clean_sdom: target_domains.append(clean_sdom)
-                    if surl: target_domains.append(surl)
+                if website_id in (sid, sdom) and sid:
+                    target_ids.append(sid)
 
             conditions.append({'$or': [
                 {'website_id': {'$in': target_ids}},
                 {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
-                {'domain': {'$in': target_domains}}
             ]})
 
         if status_filter:
