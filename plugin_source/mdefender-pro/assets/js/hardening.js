@@ -37,12 +37,12 @@
                 var feature = card.data('feature');
                 var btn = $(this);
                 
-                btn.prop('disabled', true).html('<span class="dashicons dashicons-update war-spin-icon"></span> Applying...');
+                btn.prop('disabled', true).html('<span class="dashicons dashicons-update war-spin-icon"></span> Saving...');
                 hardening.applyFeature(feature, card, function() {
-                    btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> Saved &amp; Applied');
+                    btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> Saved');
                     setTimeout(function() {
-                        btn.html('<span class="dashicons dashicons-saved"></span> Save &amp; Apply Rule');
-                    }, 2500);
+                        btn.html('<span class="dashicons dashicons-saved"></span> Save Configuration');
+                    }, 2200);
                 });
             });
         },

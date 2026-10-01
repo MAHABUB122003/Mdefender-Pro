@@ -1,0 +1,819 @@
+/* ==========================================================================
+   MDefender-Pro Enterprise Backup & Disaster Recovery Stylesheet
+   ========================================================================== */
+
+:root {
+    --mdf-bk-bg: #f8fafc;
+    --mdf-bk-card: #ffffff;
+    --mdf-bk-border: #e2e8f0;
+    --mdf-bk-border-hover: #cbd5e1;
+    --mdf-bk-text-heading: #0f172a;
+    --mdf-bk-text-body: #334155;
+    --mdf-bk-text-muted: #64748b;
+    --mdf-bk-primary: #4f46e5;
+    --mdf-bk-primary-light: #eef2ff;
+    --mdf-bk-emerald: #10b981;
+    --mdf-bk-emerald-hover: #059669;
+    --mdf-bk-emerald-light: #ecfdf5;
+    --mdf-bk-emerald-text: #047857;
+    --mdf-bk-blue: #3b82f6;
+    --mdf-bk-blue-light: #eff6ff;
+    --mdf-bk-purple: #8b5cf6;
+    --mdf-bk-purple-light: #f5f3ff;
+    --mdf-bk-danger: #ef4444;
+    --mdf-bk-danger-hover: #dc2626;
+    --mdf-bk-danger-light: #fef2f2;
+    --mdf-bk-radius: 10px;
+    --mdf-bk-radius-sm: 6px;
+    --mdf-bk-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --mdf-bk-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+}
+
+.mdf-backup-container {
+    max-width: 1400px;
+    margin: 16px 0 40px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: var(--mdf-bk-text-body);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ── 1. Hero Header ── */
+.mdf-backup-hero {
+    background: var(--mdf-bk-card);
+    border: 1px solid var(--mdf-bk-border);
+    border-left: 4px solid var(--mdf-bk-primary);
+    border-radius: var(--mdf-bk-radius);
+    padding: 22px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    box-shadow: var(--mdf-bk-shadow-sm);
+    margin-bottom: 20px;
+}
+
+.mdf-backup-hero-left {
+    flex: 1;
+    min-width: 320px;
+}
+
+.mdf-backup-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--mdf-bk-primary-light);
+    color: var(--mdf-bk-primary);
+    border: 1px solid #c7d2fe;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.mdf-backup-badge .dashicons {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+}
+
+.mdf-backup-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--mdf-bk-text-heading);
+    margin: 0 0 6px 0;
+    letter-spacing: -0.3px;
+}
+
+.mdf-backup-subtitle {
+    font-size: 13px;
+    color: var(--mdf-bk-text-muted);
+    margin: 0;
+    max-width: 760px;
+    line-height: 1.5;
+}
+
+.mdf-backup-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ── Buttons ── */
+.mdf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--mdf-bk-radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    text-decoration: none;
+    border: 1px solid transparent;
+}
+
+.mdf-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.mdf-btn-emerald {
+    background: var(--mdf-bk-emerald);
+    color: #ffffff;
+    border-color: #059669;
+    box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
+}
+
+.mdf-btn-emerald:hover {
+    background: var(--mdf-bk-emerald-hover);
+    color: #ffffff;
+}
+
+.mdf-btn-outline {
+    background: #ffffff;
+    color: var(--mdf-bk-text-body);
+    border-color: var(--mdf-bk-border-hover);
+    box-shadow: var(--mdf-bk-shadow-sm);
+}
+
+.mdf-btn-outline:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: var(--mdf-bk-text-heading);
+}
+
+.mdf-btn-ghost {
+    background: transparent;
+    color: var(--mdf-bk-text-muted);
+    border-color: transparent;
+}
+
+.mdf-btn-ghost:hover {
+    background: #f1f5f9;
+    color: var(--mdf-bk-text-heading);
+}
+
+.mdf-btn-danger {
+    background: var(--mdf-bk-danger);
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+.mdf-btn-danger:hover {
+    background: var(--mdf-bk-danger-hover);
+    color: #ffffff;
+}
+
+/* ── 2. KPI Telemetry Grid ── */
+.mdf-backup-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 1100px) {
+    .mdf-backup-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .mdf-backup-kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mdf-bkpi-card {
+    background: var(--mdf-bk-card);
+    border: 1px solid var(--mdf-bk-border);
+    border-radius: var(--mdf-bk-radius);
+    padding: 16px;
+    box-shadow: var(--mdf-bk-shadow-sm);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.mdf-bkpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mdf-bkpi-icon .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.icon-emerald { background: var(--mdf-bk-emerald-light); color: var(--mdf-bk-emerald); }
+.icon-indigo  { background: var(--mdf-bk-primary-light); color: var(--mdf-bk-primary); }
+.icon-purple  { background: var(--mdf-bk-purple-light); color: var(--mdf-bk-purple); }
+.icon-blue    { background: var(--mdf-bk-blue-light); color: var(--mdf-bk-blue); }
+
+.mdf-bkpi-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.mdf-bkpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--mdf-bk-text-muted);
+    letter-spacing: 0.5px;
+}
+
+.mdf-bkpi-val {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mdf-bk-text-heading);
+    margin: 2px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mdf-bkpi-sub {
+    font-size: 12px;
+    color: var(--mdf-bk-text-muted);
+}
+
+/* ── 3. Navigation Tabs ── */
+.mdf-backup-tabs-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    border: 1px solid var(--mdf-bk-border);
+    border-radius: var(--mdf-bk-radius);
+    padding: 6px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.mdf-backup-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    padding: 7px 14px;
+    border-radius: var(--mdf-bk-radius-sm);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--mdf-bk-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.mdf-backup-tab .dashicons {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+}
+
+.mdf-backup-tab:hover {
+    color: var(--mdf-bk-text-heading);
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.mdf-backup-tab.active {
+    background: #ffffff;
+    color: var(--mdf-bk-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    font-weight: 700;
+}
+
+/* ── 4. Table Card & Elements ── */
+.mdf-backup-table-card,
+.mdf-create-card {
+    background: var(--mdf-bk-card);
+    border: 1px solid var(--mdf-bk-border);
+    border-radius: var(--mdf-bk-radius);
+    padding: 22px;
+    box-shadow: var(--mdf-bk-shadow-sm);
+}
+
+.mdf-table-header {
+    margin-bottom: 16px;
+}
+
+.mdf-table-header h3,
+.mdf-create-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--mdf-bk-text-heading);
+    margin: 0 0 4px 0;
+}
+
+.mdf-table-sub,
+.mdf-card-desc {
+    font-size: 13px;
+    color: var(--mdf-bk-text-muted);
+}
+
+.mdf-table-wrap {
+    overflow-x: auto;
+}
+
+.mdf-backup-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.mdf-backup-table th {
+    background: #f8fafc;
+    color: var(--mdf-bk-text-muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--mdf-bk-border);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mdf-backup-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.mdf-backup-table tr:hover td {
+    background: #fcfdfe;
+}
+
+.mdf-file-col {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mdf-file-col .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: var(--mdf-bk-primary);
+}
+
+.mdf-filename {
+    color: var(--mdf-bk-text-heading);
+    font-size: 13px;
+}
+
+.mdf-note-tag {
+    display: block;
+    font-size: 11px;
+    color: var(--mdf-bk-text-muted);
+    margin-top: 2px;
+}
+
+.mdf-type-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.4px;
+}
+
+.mdf-badge-full     { background: var(--mdf-bk-emerald-light); color: var(--mdf-bk-emerald-text); border: 1px solid #a7f3d0; }
+.mdf-badge-database { background: var(--mdf-bk-blue-light); color: #1d4ed8; border: 1px solid #bfdbfe; }
+.mdf-badge-files    { background: var(--mdf-bk-purple-light); color: #6d28d9; border: 1px solid #ddd6fe; }
+
+.mdf-comp-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.mdf-comp-pill {
+    background: #f1f5f9;
+    color: var(--mdf-bk-text-body);
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--mdf-bk-border);
+}
+
+.mdf-actions-col {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.mdf-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: var(--mdf-bk-radius-sm);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid var(--mdf-bk-border-hover);
+    background: #ffffff;
+    color: var(--mdf-bk-text-body);
+    transition: all 0.15s ease;
+}
+
+.mdf-action-btn .dashicons {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+}
+
+.mdf-btn-restore:hover {
+    background: var(--mdf-bk-emerald);
+    color: #ffffff;
+    border-color: var(--mdf-bk-emerald);
+}
+
+.mdf-btn-download:hover {
+    background: var(--mdf-bk-primary);
+    color: #ffffff;
+    border-color: var(--mdf-bk-primary);
+}
+
+.mdf-btn-delete:hover {
+    background: var(--mdf-bk-danger);
+    color: #ffffff;
+    border-color: var(--mdf-bk-danger);
+}
+
+/* Empty State */
+.mdf-empty-state {
+    text-align: center;
+    padding: 48px 20px;
+}
+
+.mdf-empty-state .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #cbd5e1;
+}
+
+.mdf-empty-state h4 {
+    margin: 12px 0 6px 0;
+    font-size: 16px;
+    color: var(--mdf-bk-text-heading);
+}
+
+.mdf-empty-state p {
+    color: var(--mdf-bk-text-muted);
+    max-width: 450px;
+    margin: 0 auto 18px auto;
+}
+
+/* ── 5. Scope Selection Boxes ── */
+.mdf-scope-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+}
+
+@media (max-width: 1024px) {
+    .mdf-scope-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .mdf-scope-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mdf-scope-box {
+    position: relative;
+    cursor: pointer;
+    background: #ffffff;
+    border: 1px solid var(--mdf-bk-border);
+    border-radius: var(--mdf-bk-radius-sm);
+    padding: 14px;
+    transition: all 0.15s ease;
+    display: flex;
+}
+
+.mdf-scope-box input {
+    position: absolute;
+    opacity: 0;
+}
+
+.mdf-scope-inner {
+    display: flex;
+    flex-direction: column;
+}
+
+.mdf-scope-inner .dashicons {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    color: var(--mdf-bk-primary);
+    margin-bottom: 8px;
+}
+
+.mdf-scope-inner strong {
+    font-size: 13.5px;
+    color: var(--mdf-bk-text-heading);
+    margin-bottom: 4px;
+}
+
+.mdf-scope-inner small {
+    font-size: 11.5px;
+    color: var(--mdf-bk-text-muted);
+    line-height: 1.4;
+}
+
+.mdf-scope-box.active {
+    border-color: var(--mdf-bk-primary);
+    background: #faf5ff;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.mdf-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--mdf-bk-text-body);
+    cursor: pointer;
+}
+
+.mdf-checkbox-label input {
+    accent-color: var(--mdf-bk-primary);
+}
+
+.mdf-input,
+.mdf-select {
+    width: 100%;
+    box-sizing: border-box;
+    background: #ffffff;
+    border: 1px solid var(--mdf-bk-border-hover);
+    border-radius: var(--mdf-bk-radius-sm);
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--mdf-bk-text-heading);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mdf-input:focus,
+.mdf-select:focus {
+    border-color: var(--mdf-bk-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.mdf-form-label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--mdf-bk-text-heading);
+    margin-bottom: 6px;
+}
+
+/* ── 6. Toggle Item (Schedule) ── */
+.mdf-toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #f8fafc;
+    border: 1px solid var(--mdf-bk-border);
+    border-radius: var(--mdf-bk-radius-sm);
+    padding: 14px 18px;
+}
+
+.mdf-switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.mdf-switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.mdf-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: 0.25s;
+    border-radius: 22px;
+}
+
+.mdf-switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.25s;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.mdf-switch-toggle input:checked + .mdf-switch-slider {
+    background-color: var(--mdf-bk-emerald);
+}
+
+.mdf-switch-toggle input:checked + .mdf-switch-slider:before {
+    transform: translateX(18px);
+}
+
+/* ── 7. Upload Dropzone ── */
+.mdf-upload-zone {
+    border: 2px dashed var(--mdf-bk-border-hover);
+    border-radius: var(--mdf-bk-radius);
+    padding: 40px 20px;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mdf-upload-zone:hover {
+    border-color: var(--mdf-bk-primary);
+    background: #faf5ff;
+}
+
+.mdf-upload-zone .dashicons {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: var(--mdf-bk-primary);
+}
+
+.mdf-upload-zone h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--mdf-bk-text-heading);
+    margin: 10px 0 4px 0;
+}
+
+.mdf-upload-zone p {
+    font-size: 12.5px;
+    color: var(--mdf-bk-text-muted);
+    margin: 0 0 14px 0;
+}
+
+/* ── 8. Modals & Progress ── */
+.mdf-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mdf-modal-window {
+    background: #ffffff;
+    border-radius: var(--mdf-bk-radius);
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.mdf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--mdf-bk-border);
+    background: #f8fafc;
+}
+
+.mdf-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mdf-modal-title h3 {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--mdf-bk-text-heading);
+}
+
+.mdf-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    color: var(--mdf-bk-text-muted);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.mdf-modal-body {
+    padding: 22px;
+    font-size: 13px;
+}
+
+.mdf-modal-alert {
+    background: var(--mdf-bk-danger-light);
+    border: 1px solid #fecaca;
+    border-radius: var(--mdf-bk-radius-sm);
+    padding: 12px 16px;
+    color: #991b1b;
+    font-size: 12.5px;
+}
+
+.mdf-modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--mdf-bk-border);
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Progress bar */
+.mdf-progress-bar-bg {
+    height: 8px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    overflow: hidden;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.mdf-progress-bar-fill {
+    height: 100%;
+    background: var(--mdf-bk-primary);
+    border-radius: 10px;
+    animation: mdf-stripes 1.5s linear infinite;
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+    background-size: 20px 20px;
+}
+
+@keyframes mdf-stripes {
+    0% { background-position: 0 0; }
+    100% { background-position: 20px 0; }
+}
+
+/* Toast */
+.mdf-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 12px 18px;
+    border-radius: var(--mdf-bk-radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-left: 4px solid var(--mdf-bk-emerald);
+}
+
+.mdf-toast.toast-error {
+    border-left-color: #ef4444;
+}

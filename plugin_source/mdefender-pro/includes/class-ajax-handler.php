@@ -67,6 +67,12 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_get_security_events', [$this, 'get_security_events']);
         add_action('wp_ajax_waf_fw_get_real_metrics', [$this, 'get_real_metrics']);
         add_action('wp_ajax_waf_fw_get_diagnostics', [$this, 'get_diagnostics']);
+        add_action('wp_ajax_waf_fw_create_backup', [$this, 'create_backup_ajax']);
+        add_action('wp_ajax_waf_fw_restore_backup', [$this, 'restore_backup_ajax']);
+        add_action('wp_ajax_waf_fw_delete_site_backup', [$this, 'delete_site_backup_ajax']);
+        add_action('wp_ajax_waf_fw_get_backups', [$this, 'get_backups_ajax']);
+        add_action('wp_ajax_waf_fw_save_backup_schedule', [$this, 'save_backup_schedule_ajax']);
+        add_action('wp_ajax_waf_fw_upload_backup', [$this, 'upload_backup_ajax']);
     }
 
     private function check_access() {
@@ -1796,6 +1802,104 @@ class WAF_FW_Ajax_Handler {
             return true;
         }
         return false;
+    }
+
+    public function create_backup_ajax() {
+        $this->check_access();
+        $this->verify_nonce();
+        
+        $type = sanitize_text_field($_POST['type'] ?? 'full');
+        $note = sanitize_text_field($_POST['note'] ?? '');
+        $components = [];
+
+        if (isset($_POST['components']) && is_array($_POST['components'])) {
+            $components = array_map('sanitize_text_field', $_POST['components']);
+        }
+
+        $engine = WAF_FW_Backup_Engine::instance();
+        $result = $engine->create_backup($type, $components, $note);
+
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+
+    public function restore_backup_ajax() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $filename = sanitize_file_name($_POST['filename'] ?? '');
+        if (empty($filename)) {
+            wp_send_json_error(['message' => 'Invalid backup archive filename.']);
+        }
+
+        $engine = WAF_FW_Backup_Engine::instance();
+        $result = $engine->restore_backup($filename);
+
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+
+    public function delete_site_backup_ajax() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $filename = sanitize_file_name($_POST['filename'] ?? '');
+        if (empty($filename)) {
+            wp_send_json_error(['message' => 'Filename is required.']);
+        }
+
+        $engine = WAF_FW_Backup_Engine::instance();
+        $result = $engine->delete_backup($filename);
+        wp_send_json_success($result);
+    }
+
+    public function get_backups_ajax() {
+        $this->check_access();
+        $engine = WAF_FW_Backup_Engine::instance();
+        $backups = $engine->get_backups();
+        wp_send_json_success(['backups' => $backups]);
+    }
+
+    public function save_backup_schedule_ajax() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $engine = WAF_FW_Backup_Engine::instance();
+        $result = $engine->save_schedule_settings($_POST);
+        wp_send_json_success($result);
+    }
+
+    public function upload_backup_ajax() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        if (empty($_FILES['backup_file']) || empty($_FILES['backup_file']['name'])) {
+            wp_send_json_error(['message' => 'No backup file was uploaded.']);
+        }
+
+        $file = $_FILES['backup_file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($ext, ['zip', 'sql', 'gz'])) {
+            wp_send_json_error(['message' => 'Only .zip or .sql backup files are supported.']);
+        }
+
+        $engine = WAF_FW_Backup_Engine::instance();
+        $dest_name = sanitize_file_name($file['name']);
+        $dest_path = $engine->get_backup_dir() . $dest_name;
+
+        if (move_uploaded_file($file['tmp_name'], $dest_path)) {
+            $engine->get_backups(); // Refresh catalog
+            wp_send_json_success(['message' => 'Backup archive uploaded successfully: ' . $dest_name]);
+        } else {
+            wp_send_json_error(['message' => 'Failed to save uploaded backup file. Check permissions.']);
+        }
     }
 }
 

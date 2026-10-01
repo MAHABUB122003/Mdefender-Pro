@@ -38,6 +38,7 @@ require_once WAF_FW_PLUGIN_DIR . 'includes/class-ja4-fingerprint.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-rasp-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/hardening/class-website-hardening.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/hardening/class-admin-panel-ip.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/backup/class-backup-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-rule-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-feature-extractor.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-ml-api-client.php';
@@ -448,4 +449,27 @@ add_filter('rest_pre_dispatch', function ($result, $server, $request) {
     }
     return $result;
 }, 1, 3);
+
+// Secure Backup Archive Direct Download Handler
+add_action('admin_init', function() {
+    if (isset($_GET['action']) && $_GET['action'] === 'waf_fw_download_backup' && current_user_can('manage_options')) {
+        check_admin_referer('waf_fw_download_backup');
+        $file = sanitize_file_name($_GET['file'] ?? '');
+        $path = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/' . $file);
+        if (file_exists($path) && is_readable($path)) {
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $file . '"');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($path));
+            readfile($path);
+            exit;
+        }
+    }
+});
 

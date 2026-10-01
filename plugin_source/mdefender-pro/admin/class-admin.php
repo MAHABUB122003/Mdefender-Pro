@@ -2,7 +2,17 @@
 defined('ABSPATH') || exit;
 
 class WAF_FW_Admin {
+    private static $_instance = null;
+
+    public static function instance() {
+        if (null === self::$_instance) {
+            self::$_instance = new self();
+        }
+        return self::$_instance;
+    }
+
     public function __construct() {
+        self::$_instance = $this;
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_head', [$this, 'admin_head_styles']);
@@ -102,6 +112,11 @@ class WAF_FW_Admin {
                 'menu' => 'Hardening',
                 'render' => 'render_hardening',
             ],
+            'waf-firewall-backup' => [
+                'title' => 'Backup & Restore',
+                'menu' => 'Backup & Restore',
+                'render' => 'render_backup',
+            ],
             'waf-firewall-tools' => [
                 'title' => 'Tools & Security',
                 'menu' => 'Tools',
@@ -146,6 +161,15 @@ class WAF_FW_Admin {
         if (strpos($hook, 'waf-firewall-hardening') !== false) {
             wp_enqueue_style('waf-fw-harden', WAF_FW_PLUGIN_URL . 'assets/css/hardening.css', [], WAF_FW_VERSION);
             wp_enqueue_script('waf-fw-harden', WAF_FW_PLUGIN_URL . 'assets/js/hardening.js', ['jquery'], WAF_FW_VERSION, true);
+        }
+
+        if (strpos($hook, 'waf-firewall-backup') !== false) {
+            wp_enqueue_style('waf-fw-backup', WAF_FW_PLUGIN_URL . 'assets/css/backup.css', [], WAF_FW_VERSION);
+            wp_enqueue_script('waf-fw-backup', WAF_FW_PLUGIN_URL . 'assets/js/backup.js', ['jquery'], WAF_FW_VERSION, true);
+        }
+
+        if (strpos($hook, 'waf-firewall-about') !== false) {
+            wp_enqueue_style('waf-fw-about', WAF_FW_PLUGIN_URL . 'assets/css/about.css', [], WAF_FW_VERSION);
         }
 
         wp_localize_script('waf-fw-admin', 'waf_fw_ajax', [
@@ -226,6 +250,14 @@ class WAF_FW_Admin {
         $this->render_footer();
     }
 
+    public function render_backup() {
+        $this->render_header();
+        echo '<div class="war-dashboard">';
+        include WAF_FW_PLUGIN_DIR . 'admin/partials/backup.php';
+        echo '</div>';
+        $this->render_footer();
+    }
+
     public function render_settings() {
         $this->render_header();
         echo '<div class="war-dashboard">';
@@ -236,7 +268,9 @@ class WAF_FW_Admin {
 
     public function render_about() {
         $this->render_header();
+        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/about.php';
+        echo '</div>';
         $this->render_footer();
     }
 
@@ -256,7 +290,7 @@ class WAF_FW_Admin {
         $this->render_footer();
     }
 
-    private function render_feature_settings($key, $label, $settings = []) {
+    public function render_feature_settings($key, $label, $settings = []) {
         $descriptions = [
             'admin_protect' => 'Disable file editor, restrict admin by IP, set session timeout, and disable user enumeration.',
             'login_protect' => 'Add CAPTCHA protection, rename login slug, enforce brute force lockout thresholds.',
@@ -290,8 +324,8 @@ class WAF_FW_Admin {
                 $this->checkbox_setting('login_captcha', 'Enable CAPTCHA on login page', $settings, true);
                 echo '<div class="war-harden-subbox">';
                 echo '<div class="war-harden-subbox-title"><span class="dashicons dashicons-lock"></span> Google reCAPTCHA v2/v3 (Optional - uses Math CAPTCHA if empty)</div>';
-                echo '<div class="war-field-row"><label>Site Key</label><input type="text" name="recaptcha_site_key" value="' . esc_attr($settings['recaptcha_site_key'] ?? '') . '" placeholder="Enter reCAPTCHA site key" class="war-input"></div>';
-                echo '<div class="war-field-row"><label>Secret Key</label><input type="text" name="recaptcha_secret_key" value="' . esc_attr($settings['recaptcha_secret_key'] ?? '') . '" placeholder="Enter reCAPTCHA secret key" class="war-input"></div>';
+                echo '<div class="war-field-row"><label class="war-field-label">Site Key</label><input type="text" name="recaptcha_site_key" value="' . esc_attr($settings['recaptcha_site_key'] ?? '') . '" placeholder="Enter reCAPTCHA site key" class="war-input"></div>';
+                echo '<div class="war-field-row"><label class="war-field-label">Secret Key</label><input type="text" name="recaptcha_secret_key" value="' . esc_attr($settings['recaptcha_secret_key'] ?? '') . '" placeholder="Enter reCAPTCHA secret key" class="war-input"></div>';
                 echo '</div>';
                 $this->text_setting('login_rename', 'Rename Login URL slug (e.g., "secure-login")', $settings, '');
                 $this->text_setting('brute_force_threshold', 'Brute Force Attempts Threshold', $settings, 5);
@@ -362,7 +396,7 @@ class WAF_FW_Admin {
                 }
                 echo '</select></div>';
 
-                $this->checkbox_setting('x_content_type_options', 'X-Content-Type-Options: nosniff (MIME-type sniffing defense)', $settings, true);
+                $this->checkbox_setting('x_content_type_options', 'X-Content-Type-Options: nosniff (MIME sniffing defense)', $settings, true);
                 $this->text_setting('csp', 'Content-Security-Policy (CSP)', $settings, "default-src 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:;");
 
                 echo '<div class="war-field-row"><label class="war-field-label">Referrer-Policy</label><select name="referrer_policy" class="war-select">';
@@ -404,11 +438,11 @@ class WAF_FW_Admin {
         }
         echo '</div>'; // .war-harden-fields
         echo '<div class="war-harden-card-footer">';
-        echo '<button type="button" class="war-btn-apply war-harden-apply-btn"><span class="dashicons dashicons-saved"></span> Save &amp; Apply Rule</button>';
+        echo '<button type="button" class="war-btn-apply war-harden-apply-btn"><span class="dashicons dashicons-saved"></span> Save Configuration</button>';
         echo '</div>';
     }
 
-    private function checkbox_setting($name, $label, $settings, $default = false) {
+    public function checkbox_setting($name, $label, $settings, $default = false) {
         $checked = isset($settings[$name]) ? $settings[$name] : $default;
         echo '<label class="war-checkbox-row">';
         echo '<input type="checkbox" name="' . esc_attr($name) . '" ' . checked($checked, true, false) . ' class="war-custom-checkbox">';
@@ -416,7 +450,7 @@ class WAF_FW_Admin {
         echo '</label>';
     }
 
-    private function text_setting($name, $label, $settings, $default = '') {
+    public function text_setting($name, $label, $settings, $default = '') {
         $value = $settings[$name] ?? $default;
         echo '<div class="war-field-row">';
         echo '<label class="war-field-label">' . esc_html($label) . '</label>';

@@ -194,7 +194,13 @@ $feature_icons = [
                 </div>
 
                 <div class="war-harden-card-body <?php echo $enabled ? 'active' : ''; ?>">
-                    <?php $this->render_feature_settings($key, $label, $settings); ?>
+                    <?php 
+                    if (isset($this) && method_exists($this, 'render_feature_settings')) {
+                        $this->render_feature_settings($key, $label, $settings);
+                    } elseif (class_exists('WAF_FW_Admin')) {
+                        WAF_FW_Admin::instance()->render_feature_settings($key, $label, $settings);
+                    }
+                    ?>
                 </div>
             </div>
             <?php endforeach; ?>

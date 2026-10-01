@@ -1,0 +1,533 @@
+/* ==========================================================================
+   MDefender-Pro Enterprise About & System Architecture Stylesheet
+   ========================================================================== */
+
+:root {
+    --mdf-about-bg: #f8fafc;
+    --mdf-about-card: #ffffff;
+    --mdf-about-border: #e2e8f0;
+    --mdf-about-border-hover: #cbd5e1;
+    --mdf-about-text-heading: #0f172a;
+    --mdf-about-text-body: #334155;
+    --mdf-about-text-muted: #64748b;
+    --mdf-about-primary: #4f46e5;
+    --mdf-about-primary-light: #eef2ff;
+    --mdf-about-emerald: #10b981;
+    --mdf-about-emerald-light: #ecfdf5;
+    --mdf-about-emerald-text: #047857;
+    --mdf-about-blue: #3b82f6;
+    --mdf-about-blue-light: #eff6ff;
+    --mdf-about-purple: #8b5cf6;
+    --mdf-about-purple-light: #f5f3ff;
+    --mdf-about-amber: #f59e0b;
+    --mdf-about-amber-light: #fffbeb;
+    --mdf-about-radius: 10px;
+    --mdf-about-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --mdf-about-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+}
+
+.mdf-about-container {
+    max-width: 1400px;
+    margin: 16px 0 40px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: var(--mdf-about-text-body);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ── 1. Enterprise Hero Header ── */
+.mdf-about-hero {
+    background: var(--mdf-about-card);
+    border: 1px solid var(--mdf-about-border);
+    border-left: 4px solid var(--mdf-about-primary);
+    border-radius: var(--mdf-about-radius);
+    padding: 28px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    box-shadow: var(--mdf-about-shadow-sm);
+    margin-bottom: 24px;
+}
+
+.mdf-about-hero-left {
+    flex: 1;
+    min-width: 320px;
+}
+
+.mdf-about-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--mdf-about-primary-light);
+    color: var(--mdf-about-primary);
+    border: 1px solid #c7d2fe;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.mdf-about-badge .dashicons {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+}
+
+.mdf-about-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--mdf-about-text-heading);
+    margin: 0 0 8px 0;
+    letter-spacing: -0.4px;
+}
+
+.mdf-about-subtitle {
+    font-size: 14px;
+    color: var(--mdf-about-text-muted);
+    margin: 0 0 16px 0;
+    max-width: 780px;
+    line-height: 1.55;
+}
+
+.mdf-about-pills {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mdf-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    color: var(--mdf-about-text-body);
+    border: 1px solid var(--mdf-about-border);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mdf-pill-emerald {
+    background: var(--mdf-about-emerald-light);
+    color: var(--mdf-about-emerald-text);
+    border-color: #a7f3d0;
+}
+
+.mdf-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mdf-about-emerald);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: mdf-pulse 2s infinite;
+}
+
+@keyframes mdf-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.mdf-about-hero-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mdf-emblem-box {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(49, 46, 129, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.mdf-emblem-box .dashicons {
+    font-size: 42px;
+    width: 42px;
+    height: 42px;
+}
+
+/* ── 2. Live Telemetry & Health Grid ── */
+.mdf-about-section-heading {
+    margin: 28px 0 14px 0;
+}
+
+.mdf-about-section-heading h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--mdf-about-text-heading);
+    margin: 0 0 4px 0;
+}
+
+.mdf-about-section-heading p {
+    font-size: 13px;
+    color: var(--mdf-about-text-muted);
+    margin: 0;
+}
+
+.mdf-health-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+    .mdf-health-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .mdf-health-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mdf-health-card {
+    background: var(--mdf-about-card);
+    border: 1px solid var(--mdf-about-border);
+    border-radius: var(--mdf-about-radius);
+    padding: 16px;
+    box-shadow: var(--mdf-about-shadow-sm);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: all 0.2s ease;
+}
+
+.mdf-health-card:hover {
+    border-color: var(--mdf-about-border-hover);
+    box-shadow: var(--mdf-about-shadow-md);
+}
+
+.mdf-health-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mdf-health-icon .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.icon-emerald { background: var(--mdf-about-emerald-light); color: var(--mdf-about-emerald); }
+.icon-indigo  { background: var(--mdf-about-primary-light); color: var(--mdf-about-primary); }
+.icon-blue    { background: var(--mdf-about-blue-light); color: var(--mdf-about-blue); }
+.icon-purple  { background: var(--mdf-about-purple-light); color: var(--mdf-about-purple); }
+.icon-amber   { background: var(--mdf-about-amber-light); color: var(--mdf-about-amber); }
+
+.mdf-health-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.mdf-health-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--mdf-about-text-muted);
+    letter-spacing: 0.5px;
+}
+
+.mdf-health-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mdf-about-text-heading);
+    margin: 2px 0 2px 0;
+}
+
+.mdf-health-sub {
+    font-size: 12px;
+    color: var(--mdf-about-text-muted);
+}
+
+/* ── 3. Core Architecture Features Grid ── */
+.mdf-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+    .mdf-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .mdf-features-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mdf-feat-card {
+    background: var(--mdf-about-card);
+    border: 1px solid var(--mdf-about-border);
+    border-radius: var(--mdf-about-radius);
+    padding: 20px;
+    box-shadow: var(--mdf-about-shadow-sm);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease;
+}
+
+.mdf-feat-card:hover {
+    border-color: var(--mdf-about-border-hover);
+    box-shadow: var(--mdf-about-shadow-md);
+}
+
+.mdf-feat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mdf-feat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mdf-feat-icon .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.mdf-feat-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mdf-about-text-heading);
+    margin: 0;
+}
+
+.mdf-feat-desc {
+    font-size: 12.5px;
+    color: var(--mdf-about-text-muted);
+    line-height: 1.5;
+    margin: 0 0 14px 0;
+    flex: 1;
+}
+
+.mdf-feat-tag {
+    display: inline-block;
+    align-self: flex-start;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--mdf-about-primary);
+    background: var(--mdf-about-primary-light);
+    border: 1px solid #c7d2fe;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* ── 4. OWASP Top 10 Compliance Matrix ── */
+.mdf-owasp-card {
+    background: var(--mdf-about-card);
+    border: 1px solid var(--mdf-about-border);
+    border-radius: var(--mdf-about-radius);
+    padding: 20px;
+    box-shadow: var(--mdf-about-shadow-sm);
+    margin-bottom: 24px;
+}
+
+.mdf-owasp-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .mdf-owasp-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mdf-owasp-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1px solid var(--mdf-about-border);
+    border-radius: 6px;
+    padding: 10px 14px;
+}
+
+.mdf-owasp-code {
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.mdf-owasp-detail strong {
+    display: block;
+    font-size: 12.5px;
+    color: var(--mdf-about-text-heading);
+    margin-bottom: 2px;
+}
+
+.mdf-owasp-detail span {
+    font-size: 11.5px;
+    color: var(--mdf-about-text-muted);
+}
+
+/* ── 5. System Environment Diagnostics & Tech Stack ── */
+.mdf-env-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+    .mdf-env-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mdf-env-card {
+    background: var(--mdf-about-card);
+    border: 1px solid var(--mdf-about-border);
+    border-radius: var(--mdf-about-radius);
+    padding: 20px;
+    box-shadow: var(--mdf-about-shadow-sm);
+}
+
+.mdf-env-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mdf-about-text-heading);
+    margin: 0 0 14px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--mdf-about-border);
+}
+
+.mdf-env-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.mdf-env-table tr {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.mdf-env-table tr:last-child {
+    border-bottom: none;
+}
+
+.mdf-env-table td {
+    padding: 7px 0;
+}
+
+.mdf-env-key {
+    color: var(--mdf-about-text-muted);
+    font-weight: 500;
+    width: 45%;
+}
+
+.mdf-env-val {
+    color: var(--mdf-about-text-heading);
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.mdf-tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.mdf-tech-tag {
+    background: #f1f5f9;
+    border: 1px solid var(--mdf-about-border);
+    color: var(--mdf-about-text-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+/* ── 6. Developer & Support Footer ── */
+.mdf-about-footer {
+    background: var(--mdf-about-card);
+    border: 1px solid var(--mdf-about-border);
+    border-radius: var(--mdf-about-radius);
+    padding: 20px 24px;
+    box-shadow: var(--mdf-about-shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.mdf-footer-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.mdf-footer-author {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--mdf-about-text-heading);
+}
+
+.mdf-footer-copy {
+    font-size: 12px;
+    color: var(--mdf-about-text-muted);
+}
+
+.mdf-footer-links {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mdf-footer-link {
+    color: var(--mdf-about-primary);
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mdf-footer-link:hover {
+    color: #4338ca;
+    text-decoration: underline;
+}
