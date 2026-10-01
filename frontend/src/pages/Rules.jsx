@@ -498,11 +498,11 @@ export default function Rules({ token }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <span style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '6px', background: 'white', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '700' }}>
-                    ⚡ {testResult.latency}
+                  <span style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '6px', background: 'white', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    <i className="fas fa-bolt" style={{ color: '#d97706' }}></i> {testResult.latency}
                   </span>
-                  <span style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '6px', background: 'white', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>
-                    🛡️ {testResult.engine}
+                  <span style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '6px', background: 'white', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                    <i className="fas fa-shield-halved" style={{ color: '#2563eb' }}></i> {testResult.engine}
                   </span>
                 </div>
               </div>

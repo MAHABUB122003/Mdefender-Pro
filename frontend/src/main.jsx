@@ -52,9 +52,9 @@ class ErrorBoundary extends React.Component {
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px',
-              fontSize: '24px'
+              fontSize: '22px'
             }}>
-              ⚠️
+              <i className="fas fa-triangle-exclamation"></i>
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', marginBottom: '8px' }}>
               Something went wrong

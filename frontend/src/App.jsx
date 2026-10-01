@@ -40,6 +40,7 @@ import PaymentSuccess from './pages/PaymentSuccess'
 import api from './api/api'
 
 import userStore from './utils/userStore'
+import adminStore from './utils/adminStore'
 
 function App() {
   const [adminUser, setAdminUser] = useState(null)
@@ -52,6 +53,7 @@ function App() {
       const user = data.user
       if (user.role === 'super_admin') {
         setAdminUser(user)
+        adminStore.prefetchAdminData(api)
       }
       setUserState(user)
       userStore.set('profile', user)
@@ -70,12 +72,14 @@ function App() {
   const adminLogout = useCallback(async () => {
     try { await api.logout() } catch {}
     setAdminUser(null)
+    adminStore.clear()
     window.location.href = '/admin/login'
   }, [])
 
   const userLogout = useCallback(async () => {
     try { await api.logout() } catch {}
     setUserState(null)
+    userStore.clear()
     window.location.href = '/user/login'
   }, [])
 
@@ -125,28 +129,31 @@ function App() {
         <Route path="sessions" element={<SessionsPage />} />
       </Route>
 
-      {!adminUser ? (
-        <>
-          <Route path="/admin/login" element={<Login />} />
-          <Route path="/admin/*" element={<Navigate to="/admin/login" replace />} />
-        </>
-      ) : (
-        <>
-          <Route path="/admin/login" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={<Layout onLogout={adminLogout}><Dashboard /></Layout>} />
-          <Route path="/admin/users" element={<Layout onLogout={adminLogout}><AdminUsers /></Layout>} />
-          <Route path="/admin/pricing" element={<Layout onLogout={adminLogout}><AdminPricing /></Layout>} />
-          <Route path="/admin/clients" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
-          <Route path="/admin/websites" element={<Layout onLogout={adminLogout}><Clients /></Layout>} />
-          <Route path="/admin/logs" element={<Layout onLogout={adminLogout}><Logs /></Layout>} />
-          <Route path="/admin/rules" element={<Layout onLogout={adminLogout}><Rules /></Layout>} />
-          <Route path="/admin/blacklist" element={<Layout onLogout={adminLogout}><Blacklist /></Layout>} />
-          <Route path="/admin/settings" element={<Layout onLogout={adminLogout}><Settings /></Layout>} />
-          <Route path="/admin/learning" element={<Layout onLogout={adminLogout}><AttackLearning /></Layout>} />
-          <Route path="/connect" element={<Layout onLogout={adminLogout}><Connect /></Layout>} />
-          <Route path="/admin/ddos" element={<Layout onLogout={adminLogout}><DDoSDashboard /></Layout>} />
-        </>
-      )}
+      {/* Persistent Super Admin Layout with 0ms Instant Page Switching */}
+      <Route path="/admin/login" element={
+        adminUser ? <Navigate to="/admin/dashboard" replace /> : <Login />
+      } />
+
+      <Route path="/admin" element={
+        adminUser ? <Layout onLogout={adminLogout} /> : <Navigate to="/admin/login" replace />
+      }>
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="pricing" element={<AdminPricing />} />
+        <Route path="clients" element={<Clients />} />
+        <Route path="websites" element={<Clients />} />
+        <Route path="logs" element={<Logs />} />
+        <Route path="rules" element={<Rules />} />
+        <Route path="blacklist" element={<Blacklist />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="learning" element={<AttackLearning />} />
+        <Route path="ddos" element={<DDoSDashboard />} />
+      </Route>
+
+      <Route path="/connect" element={
+        adminUser ? <Layout onLogout={adminLogout}><Connect /></Layout> : <Navigate to="/admin/login" replace />
+      } />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

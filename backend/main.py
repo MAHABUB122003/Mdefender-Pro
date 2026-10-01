@@ -1134,6 +1134,20 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
 async def admin_get_users(user: str = Depends(verify_admin_token)):
     return user_api.get_all_users()
 
+@app.post("/api/admin/users")
+async def admin_create_user(request: Request, user: str = Depends(verify_admin_token)):
+    data = await request.json()
+    from src.api.v1.admin_api import CreateUserBody, create_user_account
+    body = CreateUserBody(**data)
+    return await create_user_account(body, admin_email=user)
+
+@app.post("/api/admin/users/gift-plan")
+async def admin_gift_plan_legacy(request: Request, user: str = Depends(verify_admin_token)):
+    data = await request.json()
+    from src.api.v1.admin_api import GiftPlanBody, gift_user_plan
+    body = GiftPlanBody(**data)
+    return await gift_user_plan(body, admin_email=user)
+
 @app.put("/api/admin/users")
 async def admin_update_user(request: Request, user: str = Depends(verify_admin_token)):
     user_id = request.query_params.get('id')

@@ -312,6 +312,9 @@ export const api = {
     const qs = new URLSearchParams(params).toString()
     return apiCall(`/api/v1/admin/users${qs ? '?' + qs : ''}`)
   },
+  adminCreateUser: (data) => apiCall('/api/v1/admin/users/create', { method: 'POST', body: JSON.stringify(data) }),
+  adminGiftPlan: (data) => apiCall('/api/v1/admin/users/gift-plan', { method: 'POST', body: JSON.stringify(data) }),
+  adminChangeUserPassword: (userId, newPassword) => apiCall('/api/v1/admin/users/change-password', { method: 'POST', body: JSON.stringify({ user_id: userId, new_password: newPassword }) }),
   adminUnlockUser: (userId) => apiCall('/api/v1/admin/users/unlock', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
   adminVerifyUserEmail: (userId) => apiCall('/api/v1/admin/users/verify-email', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),
   adminResetUserApiKey: (userId) => apiCall('/api/v1/admin/users/reset-key', { method: 'POST', body: JSON.stringify({ user_id: userId }) }),

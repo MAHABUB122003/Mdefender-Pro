@@ -47,11 +47,17 @@ function StatCard({ icon, iconClass, value, label, trend, trendDir, onReset }) {
   )
 }
 
+import adminStore from '../utils/adminStore'
+
 export default function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [overview, setOverview] = useState(null)
-  const [health, setHealth] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const cachedStats = adminStore.get('stats')
+  const cachedOverview = adminStore.get('overview')
+  const cachedHealth = adminStore.get('system_health')
+
+  const [stats, setStats] = useState(cachedStats)
+  const [overview, setOverview] = useState(cachedOverview)
+  const [health, setHealth] = useState(cachedHealth)
+  const [loading, setLoading] = useState(!cachedStats && !cachedOverview)
   const attackChartRef = useRef(null)
 
   const fetchStats = useCallback(async () => {
@@ -61,9 +67,20 @@ export default function Dashboard() {
         api.adminGetOverview(),
         api.adminGetSystemHealth(),
       ])
-      if (statsData.status === 'fulfilled') setStats(statsData.value)
-      if (overviewData.status === 'fulfilled') setOverview(overviewData.value?.data || overviewData.value)
-      if (healthData.status === 'fulfilled') setHealth(healthData.value?.data || healthData.value)
+      if (statsData.status === 'fulfilled' && statsData.value) {
+        setStats(statsData.value)
+        adminStore.set('stats', statsData.value)
+      }
+      if (overviewData.status === 'fulfilled') {
+        const oVal = overviewData.value?.data || overviewData.value
+        setOverview(oVal)
+        adminStore.set('overview', oVal)
+      }
+      if (healthData.status === 'fulfilled') {
+        const hVal = healthData.value?.data || healthData.value
+        setHealth(hVal)
+        adminStore.set('system_health', hVal)
+      }
     } catch (err) {
       console.error(err)
     } finally {

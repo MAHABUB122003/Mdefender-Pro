@@ -45,6 +45,31 @@ class UserActionBody(BaseModel):
     user_id: str
 
 
+class CreateUserBody(BaseModel):
+    name: str
+    email: str
+    password: str
+    username: Optional[str] = None
+    plan: Optional[str] = "free"
+    role: Optional[str] = "user"
+    duration_days: Optional[int] = 30
+    is_gift: Optional[bool] = False
+    gift_note: Optional[str] = None
+
+
+class ChangePasswordBody(BaseModel):
+    user_id: str
+    new_password: str
+
+
+class GiftPlanBody(BaseModel):
+    user_id: str
+    plan: str
+    duration_days: Optional[int] = 30
+    is_lifetime: Optional[bool] = False
+    gift_note: Optional[str] = None
+
+
 class GrantPlanBody(BaseModel):
     user_id: str
     plan: str
@@ -315,6 +340,159 @@ async def update_user_plan_tier(body: GrantPlanBody, admin_email: str = Depends(
     AuditService().log(user_id=admin_email, action="user_plan_updated", ip_address="admin_panel",
                        details={"target_user": user.get("email"), "plan": plan_key, "expires_at": str(expires_at)})
     return success(message=f"User plan updated to {plan_key.upper()} (Expires: {expires_at.strftime('%Y-%m-%d') if expires_at else 'Never'}).")
+
+
+@router.post("/users/create")
+async def create_user_account(body: CreateUserBody, admin_email: str = Depends(get_current_admin)):
+    """Admin endpoint to directly create and provision a user account with credentials & plan."""
+    db = get_db()
+    from src.services.password_service import PasswordService
+    from src.utils.api_key import generate_api_key
+
+    email = body.email.strip().lower()
+    name = body.name.strip()
+    username = (body.username or email.split("@")[0]).strip().lower()
+    password = body.password
+
+    if not email or not name or not password:
+        raise HTTPException(status_code=400, detail="Name, email, and password are required")
+
+    existing = db.users.find_one({"$or": [{"email": email}, {"username": username}]})
+    if existing:
+        raise HTTPException(status_code=400, detail="A user with this email or username already exists")
+
+    pw_service = PasswordService()
+    password_hash = pw_service.hash_password(password)
+    api_key = generate_api_key()
+
+    plan_key = (body.plan or "free").lower()
+    now = datetime.now()
+    expires_at = None
+    if plan_key != "free":
+        if body.duration_days and body.duration_days > 0:
+            expires_at = now + timedelta(days=body.duration_days)
+        else:
+            expires_at = now + timedelta(days=365)
+
+    user_doc = {
+        "name": name,
+        "full_name": name,
+        "username": username,
+        "email": email,
+        "password_hash": password_hash,
+        "api_key": api_key,
+        "plan": plan_key,
+        "plan_tier": plan_key,
+        "plan_expires": expires_at,
+        "role": body.role or "user",
+        "status": "active",
+        "is_active": True,
+        "email_verified": True,
+        "is_gift": bool(body.is_gift or body.gift_note),
+        "gift_note": body.gift_note or "",
+        "created_by_admin": admin_email,
+        "created_at": now,
+        "updated_at": now,
+        "last_login": None,
+        "websites": [],
+        "requests_today": 0,
+        "total_requests": 0,
+        "total_blocked": 0,
+    }
+
+    res = db.users.insert_one(user_doc)
+    user_id = str(res.inserted_id)
+
+    AuditService().log(user_id=admin_email, action="admin_created_user", ip_address="admin_panel",
+                       details={"created_user": email, "plan": plan_key, "user_id": user_id})
+
+    return success({
+        "user_id": user_id,
+        "email": email,
+        "name": name,
+        "username": username,
+        "plan": plan_key,
+        "api_key": api_key,
+        "expires_at": expires_at.strftime("%Y-%m-%d") if expires_at else "Never"
+    }, message=f"User account for {name} ({email}) created successfully!")
+
+
+@router.post("/users/gift-plan")
+async def gift_user_plan(body: GiftPlanBody, admin_email: str = Depends(get_current_admin)):
+    """Admin endpoint to gift a subscription to any user with custom duration / lifetime note."""
+    db = get_db()
+    user = _resolve_user_doc(db, body.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    plan_key = body.plan.lower()
+    now = datetime.now()
+
+    if body.is_lifetime or (body.duration_days and body.duration_days >= 36500):
+        expires_at = None
+        duration_desc = "Lifetime Gift (Permanent)"
+    elif body.duration_days and body.duration_days > 0:
+        expires_at = now + timedelta(days=body.duration_days)
+        duration_desc = f"{body.duration_days} Days"
+    else:
+        expires_at = now + timedelta(days=30)
+        duration_desc = "30 Days"
+
+    note = body.gift_note or f"Gifted by Super Admin ({admin_email})"
+
+    db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "plan": plan_key,
+                "plan_tier": plan_key,
+                "plan_expires": expires_at,
+                "payment_status": "gifted",
+                "is_gift": True,
+                "gift_note": note,
+                "gifted_at": now,
+                "gifted_by": admin_email,
+                "updated_at": now,
+            }
+        }
+    )
+
+    AuditService().log(user_id=admin_email, action="user_plan_gifted", ip_address="admin_panel",
+                       details={"target_user": user.get("email"), "plan": plan_key, "duration": duration_desc, "note": note})
+
+    return success({
+        "email": user.get("email"),
+        "plan": plan_key,
+        "duration": duration_desc,
+        "expires_at": expires_at.strftime("%Y-%m-%d") if expires_at else "Never (Lifetime)"
+    }, message=f"Successfully gifted {plan_key.upper()} plan ({duration_desc}) to {user.get('email')}!")
+
+
+@router.post("/users/change-password")
+async def change_user_password(body: ChangePasswordBody, admin_email: str = Depends(get_current_admin)):
+    """Admin endpoint to set or reset a custom password for a user."""
+    db = get_db()
+    from src.services.password_service import PasswordService
+
+    user = _resolve_user_doc(db, body.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not body.new_password or len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+
+    pw_service = PasswordService()
+    new_hash = pw_service.hash_password(body.new_password)
+
+    db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"password_hash": new_hash, "updated_at": datetime.now()}}
+    )
+
+    AuditService().log(user_id=admin_email, action="admin_changed_password", ip_address="admin_panel",
+                       details={"target_user": user.get("email"), "user_id": str(user["_id"])})
+
+    return success(message=f"Password for {user.get('email')} updated successfully.")
 
 
 @router.post("/users/suspend")

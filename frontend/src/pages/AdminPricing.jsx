@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api/api'
+import adminStore from '../utils/adminStore'
 
 const DEFAULT_PLANS = {
   free: {
@@ -76,9 +77,23 @@ const DEFAULT_PLANS = {
   },
 }
 
+function getInitialPlans() {
+  const cached = adminStore.get('pricing_plans')
+  if (!cached) return DEFAULT_PLANS
+  if (Array.isArray(cached)) {
+    const map = {}
+    cached.forEach(p => { if (p && p.id) map[p.id] = p })
+    return { ...DEFAULT_PLANS, ...map }
+  }
+  if (typeof cached === 'object') {
+    return { ...DEFAULT_PLANS, ...cached }
+  }
+  return DEFAULT_PLANS
+}
+
 export default function AdminPricing() {
-  const [plans, setPlans] = useState(DEFAULT_PLANS)
-  const [loading, setLoading] = useState(true)
+  const [plans, setPlans] = useState(getInitialPlans)
+  const [loading, setLoading] = useState(!adminStore.get('pricing_plans'))
   const [saving, setSaving] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
@@ -87,27 +102,34 @@ export default function AdminPricing() {
     setTimeout(() => setToastMessage(null), 4000)
   }
 
-  const fetchPricing = async () => {
+  const fetchPricing = async (showLoading = false) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       const res = await api.adminGetPricing()
       if (res?.data?.plans) {
         const map = {}
-        res.data.plans.forEach(p => {
-          map[p.id] = p
-        })
-        setPlans({ ...DEFAULT_PLANS, ...map })
+        const rawPlans = res.data.plans
+        if (Array.isArray(rawPlans)) {
+          rawPlans.forEach(p => { map[p.id] = p })
+        } else if (typeof rawPlans === 'object') {
+          Object.assign(map, rawPlans)
+        }
+        const updated = { ...DEFAULT_PLANS, ...map }
+        setPlans(updated)
+        adminStore.set('pricing_plans', updated)
       }
     } catch (err) {
       console.error(err)
-      showToast('Failed to load plan pricing', true)
+      if (!adminStore.get('pricing_plans')) {
+        showToast('Failed to load plan pricing', true)
+      }
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchPricing()
+    fetchPricing(!adminStore.get('pricing_plans'))
   }, [])
 
   const handleChange = (planId, field, value) => {
@@ -125,6 +147,7 @@ export default function AdminPricing() {
     try {
       setSaving(true)
       await api.adminUpdatePricing(plans)
+      adminStore.set('pricing_plans', plans)
       showToast('Pricing and plan tiers updated successfully! Changes are live across checkout and quota validations.')
     } catch (err) {
       console.error(err)

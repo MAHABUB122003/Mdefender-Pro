@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
 import copyToClipboard from '../utils/clipboard'
+import adminStore from '../utils/adminStore'
 
 export default function Clients() {
-  const [websites, setWebsites] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cachedWebsites = adminStore.get('tenant_websites')
+  const [websites, setWebsites] = useState(cachedWebsites || [])
+  const [loading, setLoading] = useState(!cachedWebsites)
   const [search, setSearch] = useState('')
   const [toastMessage, setToastMessage] = useState(null)
 
@@ -13,22 +15,25 @@ export default function Clients() {
     setTimeout(() => setToastMessage(null), 4000)
   }
 
-  const fetchWebsites = useCallback(async () => {
+  const fetchWebsites = useCallback(async (showLoading = false) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       const res = await api.adminGetTenantWebsites()
       const list = res?.data?.websites || (Array.isArray(res) ? res : res.websites || res.clients || [])
       setWebsites(list)
+      adminStore.set('tenant_websites', list)
     } catch (err) {
       console.error(err)
-      showToast('Failed to load websites list', true)
+      if (!adminStore.get('tenant_websites')) {
+        showToast('Failed to load websites list', true)
+      }
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchWebsites()
+    fetchWebsites(!adminStore.get('tenant_websites'))
   }, [fetchWebsites])
 
   const copyKey = async (key) => {
