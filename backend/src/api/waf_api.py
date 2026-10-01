@@ -187,14 +187,15 @@ class WAFAPI:
         ip = request_data.get('ip', '')
         url = request_data.get('url', '/')
         method = request_data.get('method', 'GET')
-        user_agent = (request_data.get("headers") or {}).get("User-Agent", "")
+        headers = request_data.get("headers") or {}
+        user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
 
         is_whitelisted = self.ip_filter.is_whitelisted(ip)
         is_blacklisted = self.attack_blocker.is_blacklisted(ip)
         is_rate_limited = self.rate_limiter.is_rate_limited(ip)
 
         # Check Geo / Country Blocking
-        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id)
+        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id, headers=headers)
         if is_geo_blocked and not is_whitelisted:
             c_name = geo_info.get('country_name', 'Unknown Country')
             c_code = geo_info.get('country_code', '')
@@ -479,14 +480,15 @@ class WAFAPI:
         ip = request_data.get('ip', '')
         url = request_data.get('url', '/')
         method = request_data.get('method', 'GET')
-        user_agent = (request_data.get("headers") or {}).get("User-Agent", "")
+        headers = request_data.get("headers") or {}
+        user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
 
         is_whitelisted = self.ip_filter.is_whitelisted(ip)
         is_blacklisted = self.attack_blocker.is_blacklisted(ip)
         is_rate_limited = self.rate_limiter.is_rate_limited(ip)
 
         # Check Geo / Country Blocking
-        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id)
+        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id, headers=headers)
         if is_geo_blocked and not is_whitelisted:
             c_name = geo_info.get('country_name', 'Unknown Country')
             c_code = geo_info.get('country_code', '')

@@ -127,8 +127,9 @@ if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
 
     if (empty($geo_country)) {
         $b_headers = [
-            'HTTP_CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'HTTP_GEOIP_COUNTRY_CODE',
-            'HTTP_X_COUNTRY_CODE', 'HTTP_X_GEOIP_COUNTRY', 'HTTP_X_REAL_IP_COUNTRY', 'HTTP_X_FORWARDED_COUNTRY'
+            'HTTP_CF_IPCOUNTRY', 'CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'HTTP_GEOIP_COUNTRY_CODE',
+            'HTTP_X_COUNTRY_CODE', 'HTTP_X_COUNTRY', 'HTTP_X_GEOIP_COUNTRY', 'HTTP_X_REAL_IP_COUNTRY',
+            'HTTP_X_FORWARDED_COUNTRY', 'HTTP_CLOUDFRONT_VIEWER_COUNTRY'
         ];
         foreach ($b_headers as $b_hdr) {
             if (!empty($_SERVER[$b_hdr])) {
@@ -141,13 +142,46 @@ if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
         }
     }
 
-    if (empty($geo_country) && in_array($mdefender_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
-        if (!empty($mdefender_cache_data['local_server_country'])) {
-            $geo_country = strtoupper($mdefender_cache_data['local_server_country']);
+    $is_local_ip = in_array($mdefender_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true) ||
+                   strpos($mdefender_ip, '192.168.') === 0 || strpos($mdefender_ip, '10.') === 0 || 
+                   strpos($mdefender_ip, '172.16.') === 0 || strpos($mdefender_ip, '172.17.') === 0 ||
+                   strpos($mdefender_ip, '172.18.') === 0 || strpos($mdefender_ip, '172.19.') === 0 ||
+                   strpos($mdefender_ip, '172.20.') === 0 || strpos($mdefender_ip, '172.21.') === 0 ||
+                   strpos($mdefender_ip, '172.22.') === 0 || strpos($mdefender_ip, '172.23.') === 0 ||
+                   strpos($mdefender_ip, '172.24.') === 0 || strpos($mdefender_ip, '172.25.') === 0 ||
+                   strpos($mdefender_ip, '172.26.') === 0 || strpos($mdefender_ip, '172.27.') === 0 ||
+                   strpos($mdefender_ip, '172.28.') === 0 || strpos($mdefender_ip, '172.29.') === 0 ||
+                   strpos($mdefender_ip, '172.30.') === 0 || strpos($mdefender_ip, '172.31.') === 0;
+
+    if (empty($geo_country) && $is_local_ip) {
+        $geo_country = !empty($mdefender_cache_data['local_server_country']) ? strtoupper($mdefender_cache_data['local_server_country']) : 'BD';
+    }
+
+    // If public IP, check persistent GeoIP disk cache if available (< 0.01ms)
+    if (empty($geo_country) && !$is_local_ip) {
+        $geoip_cache_file = __DIR__ . '/includes/data/waf_geoip_cache.json';
+        if (file_exists($geoip_cache_file)) {
+            $geoip_data = @json_decode(@file_get_contents($geoip_cache_file), true);
+            if (is_array($geoip_data) && !empty($geoip_data[$mdefender_ip])) {
+                $geo_country = strtoupper(substr(trim($geoip_data[$mdefender_ip]), 0, 2));
+            }
         }
     }
 
-    if (!empty($geo_country) && in_array($geo_country, (array)$mdefender_cache_data['blocked_countries'], true)) {
+    $raw_blocked = (array) ($mdefender_cache_data['blocked_countries'] ?? []);
+    $blocked_list = [];
+    foreach ($raw_blocked as $rb) {
+        if (is_string($rb)) {
+            foreach (explode(',', $rb) as $code_item) {
+                $code_trim = strtoupper(trim($code_item));
+                if (!empty($code_trim)) {
+                    $blocked_list[] = $code_trim;
+                }
+            }
+        }
+    }
+
+    if (!empty($geo_country) && in_array($geo_country, $blocked_list, true)) {
         $is_blocked = true;
         $block_reason = 'Access from your country/region (' . htmlspecialchars($geo_country) . ') is restricted by security policy.';
     }

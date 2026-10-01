@@ -211,8 +211,8 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
     is_rate_limited = bool(ip) and rate_limiter.is_rate_limited(ip)
 
     # Check Geo / Country Blocking
-    if ip:
-        is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=auth_data.get("user_id"))
+    if ip or req_data.get("headers"):
+        is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=auth_data.get("user_id"), headers=req_data.get("headers"))
         if is_geo_blocked and not ip_filter.is_whitelisted(ip):
             c_name = geo_info.get('country_name', 'Unknown Country')
             c_code = geo_info.get('country_code', '')
