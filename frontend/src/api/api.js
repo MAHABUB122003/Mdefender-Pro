@@ -396,9 +396,18 @@ export const api = {
     return apiCall(`/api/v1/admin/learning/samples${qs ? '?' + qs : ''}`)
   },
   adminAddLearnedSample: (data) => apiCall('/api/v1/admin/learning/samples', { method: 'POST', body: JSON.stringify(data) }),
-  adminDeleteLearnedSample: (id) => apiCall(`/api/v1/admin/learning/samples/${id}`, { method: 'DELETE' }),
   adminGetWhitelists: () => apiCall('/api/v1/admin/learning/whitelists'),
   adminDeleteWhitelist: (id) => apiCall(`/api/v1/admin/learning/whitelists/${id}`, { method: 'DELETE' }),
+
+  // DDoS Shield APIs
+  adminGetDDoSStats: () => apiCall('/api/admin/ddos/dashboard'),
+  adminGetDDoSConfig: () => apiCall('/api/admin/ddos/config'),
+  adminUpdateDDoSConfig: (data) => apiCall('/api/admin/ddos/config', { method: 'POST', body: JSON.stringify(data) }),
+  adminBlockDDoSIp: (ip, level = 4, duration = 3600) => apiCall('/api/admin/ddos/reputation/block', { method: 'POST', body: JSON.stringify({ ip, level, duration }) }),
+  adminUnblockDDoSIp: (ip) => apiCall('/api/admin/ddos/reputation/unblock', { method: 'POST', body: JSON.stringify({ ip }) }),
+
+  // Public Pricing APIs
+  getPublicPricing: () => apiCall('/api/v1/pricing/plans').catch(() => apiCall('/api/v1/admin/pricing')),
 }
 
 export default api

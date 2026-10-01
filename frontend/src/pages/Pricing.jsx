@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import PublicNavbar from '../components/PublicNavbar'
 import PaymentModal from '../components/PaymentModal'
 import theme from '../utils/theme'
+import api from '../api/api'
 
-const plans = [
+const DEFAULT_PLANS = [
   {
     id: 'free',
     name: 'Starter Free',
@@ -58,13 +59,13 @@ const plans = [
     badge: 'Most Popular',
     monthly: 29,
     yearly: 290,
-    desc: 'Maximum cyber defense for mission-critical production clusters, SaaS platforms, and enterprise stores.',
+    desc: 'Maximum cyber defense for mission-critical production clusters, SaaS platforms, and high-traffic stores.',
     features: [
-      { text: '10 Protected Domains & APIs', included: true },
-      { text: 'Unlimited Request Volume & Bandwidth', included: true },
+      { text: '25 Protected Domains & APIs', included: true },
+      { text: '1,000,000 Requests / Month', included: true },
       { text: 'Full 2,000,000+ Hyper-Scale Signatures', included: true },
       { text: '5,489,242+ Dataset Deep ML Core', included: true },
-      { text: '53,800+ Live Threat IPs & Zero False-Positive Whitelist', included: true },
+      { text: '53,800+ Live Threat IPs & Zero-FP Whitelist', included: true },
       { text: 'Unlimited Custom Regex Policies', included: true },
       { text: 'Layer 7 Volumetric DDoS Mitigation Shield', included: true },
       { text: 'Single-Pass (<0.50ms) Edge Inspection', included: true },
@@ -74,6 +75,29 @@ const plans = [
     btnText: 'Deploy Enterprise Pro',
     highlight: true,
     color: '#6366f1',
+  },
+  {
+    id: 'enterprise',
+    name: 'Dedicated Enterprise',
+    badge: 'Maximum Scale',
+    monthly: 99,
+    yearly: 990,
+    desc: 'Dedicated security infrastructure, multi-cluster proxy nodes, and unlimited custom policy automation.',
+    features: [
+      { text: '500 Protected Domains & APIs', included: true },
+      { text: '10,000,000+ Requests / Month', included: true },
+      { text: 'Dedicated ML Neural Vectorizer Node', included: true },
+      { text: 'Full 2,000,000+ Hyper-Scale Signatures', included: true },
+      { text: 'Automated Layer 7 DDoS Mitigation', included: true },
+      { text: 'Unlimited Custom Zero-Day Rules', included: true },
+      { text: 'High-Velocity Anti-Bot Defense', included: true },
+      { text: 'Dedicated Account Security Architect', included: true },
+      { text: 'Custom Webhook & SOC SIEM Integrations', included: true },
+      { text: '15-Minute Guaranteed SLA Response', included: true },
+    ],
+    btnText: 'Deploy Dedicated Enterprise',
+    highlight: false,
+    color: '#7c3aed',
   }
 ]
 
@@ -120,10 +144,31 @@ export default function Pricing() {
   const { dark } = useTheme()
   const s = theme(dark)
 
+  const [plansList, setPlansList] = useState(DEFAULT_PLANS)
   const [isYearly, setIsYearly] = useState(false)
   const [openFaq, setOpenFaq] = useState(null)
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState('pro')
+
+  useEffect(() => {
+    api.getPublicPricing().then(res => {
+      if (res?.data?.plans) {
+        const raw = res.data.plans
+        setPlansList(prev => prev.map(p => {
+          const match = Array.isArray(raw) ? raw.find(r => r.id === p.id) : raw[p.id]
+          if (match) {
+            return {
+              ...p,
+              name: match.name || match.display_name || p.name,
+              monthly: match.monthly_price !== undefined ? match.monthly_price : p.monthly,
+              yearly: match.yearly_price !== undefined ? match.yearly_price : p.yearly,
+            }
+          }
+          return p
+        }))
+      }
+    }).catch(() => {})
+  }, [])
 
   const handlePlanSelect = (planId) => {
     if (planId === 'free') {
@@ -282,7 +327,7 @@ export default function Pricing() {
           gap: 28,
           alignItems: 'stretch'
         }}>
-          {plans.map(p => {
+          {plansList.map(p => {
             const priceVal = isYearly ? p.yearly : p.monthly
             return (
               <div

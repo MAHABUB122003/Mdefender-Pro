@@ -396,6 +396,108 @@ export default function AttackLearning() {
         </div>
       </div>
 
+      {/* Interactive 4-Section Architecture & Workflow Guide */}
+      <div style={{
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+        border: '1px solid #e2e8f0',
+        borderRadius: '12px',
+        padding: '16px 20px',
+        marginBottom: '20px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <i className="fas fa-lightbulb" style={{ color: '#d97706', fontSize: '16px' }}></i>
+            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+              How the 4 Attack Learning Modules Work Together
+            </h4>
+          </div>
+          <span style={{ fontSize: '12px', color: '#64748b' }}>Continuous Adaptive Security Loop</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+          <div
+            onClick={() => setActiveTab('reports')}
+            style={{
+              background: activeTab === 'reports' ? '#eff6ff' : 'white',
+              border: '1px solid ' + (activeTab === 'reports' ? '#93c5fd' : '#e2e8f0'),
+              borderRadius: '8px',
+              padding: '12px 14px',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>1</span>
+              <strong style={{ fontSize: '13px', color: '#1e40af' }}>False-Positive Inbox</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
+              When a user reports a blocked legitimate request (403), review and click <strong>1-Click Whitelist</strong> to instantly fix it.
+            </p>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('sandbox')}
+            style={{
+              background: activeTab === 'sandbox' ? '#faf5ff' : 'white',
+              border: '1px solid ' + (activeTab === 'sandbox' ? '#d8b4fe' : '#e2e8f0'),
+              borderRadius: '8px',
+              padding: '12px 14px',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>2</span>
+              <strong style={{ fontSize: '13px', color: '#6b21a8' }}>Interactive Sandbox</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
+              Test any suspicious URL, query, or SQLi/XSS payload live to inspect AST, Regex, and Neural ML scores.
+            </p>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('dataset')}
+            style={{
+              background: activeTab === 'dataset' ? '#f0fdf4' : 'white',
+              border: '1px solid ' + (activeTab === 'dataset' ? '#86efac' : '#e2e8f0'),
+              borderRadius: '8px',
+              padding: '12px 14px',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>3</span>
+              <strong style={{ fontSize: '13px', color: '#15803d' }}>ML Active Dataset</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
+              Stores labeled Safe (0) vs Attack (1) samples. Click <strong>Retrain Model Now</strong> to continuously fine-tune the AI.
+            </p>
+          </div>
+
+          <div
+            onClick={() => setActiveTab('whitelists')}
+            style={{
+              background: activeTab === 'whitelists' ? '#fff7ed' : 'white',
+              border: '1px solid ' + (activeTab === 'whitelists' ? '#fed7aa' : '#e2e8f0'),
+              borderRadius: '8px',
+              padding: '12px 14px',
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#ffedd5', color: '#c2410c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>4</span>
+              <strong style={{ fontSize: '13px', color: '#9a3412' }}>Active Whitelist Rules</strong>
+            </div>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#475569', lineHeight: '1.4' }}>
+              Permanent exception rules (paths, APIs, webhooks) that are guaranteed never to trigger a 403 block.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs Navigation */}
       <div style={{
         background: 'white',
