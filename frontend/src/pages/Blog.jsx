@@ -191,6 +191,77 @@ MDefender Pro introduces an **Autonomous Feedback Loop**:
 2. **Heuristic Vector Clustering:** Our learning engine clusters incoming attack campaigns to identify coordinated scans across multiple tenants.
 3. **Automated Signature Refinement:** Heuristic thresholds adjust in real-time, proactively safeguarding peer tenants against identical campaign vectors.
 `
+  },
+  {
+    id: 'hyperscale-threat-indexing',
+    title: 'Hyper-Scale Threat Indexing: Matching 2,000,000+ Attack Vectors in Single-Pass O(N) Time',
+    excerpt: 'Inspecting millions of cyber threat signatures usually cripples origin latency. Explore how MDefender Pro uses compiled Radix Tries, inverted token indexing, and zero-copy byte buffers to scan 2,000,000+ signatures in under 0.50ms.',
+    category: 'Engineering',
+    date: 'Oct 01, 2026',
+    readTime: '7 min read',
+    author: 'Systems Engineering Team',
+    role: 'Lead Compiler & WAF Architect',
+    icon: 'fa-microchip',
+    image: '/blog/hyperscale_signature_engine.jpg',
+    featured: false,
+    tags: ['Radix Trie', 'Hyper-Scale', 'Performance', '2M+ Signatures', 'Zero Latency'],
+    content: `
+### The Challenge: Evaluating 2,000,000 Signatures Without Latency
+In traditional security architectures, matching a request against millions of attack patterns sequentially would introduce hundreds of milliseconds of delay per HTTP request.
+
+MDefender Pro solves this with an enterprise-grade **Radix-Tree & Inverted Token Indexing** architecture:
+
+1. **Inverted Token Indexing:** Before regex traversal, the engine extracts deterministic attack trigrams (e.g., \`UNION SELECT\`, \`script\`, \`base64_decode\`, \`system(\`) in O(1) time. If no threat token exists, the request passes immediately.
+2. **Single-Pass Radix Trie Traversal:** Multiple signatures are compiled into unified state machines, evaluating 2,000,000+ attack patterns in a single linear pass over the payload.
+3. **Zero Client-Side Overhead:** All 2M+ threat vectors execute centrally at the Root SaaS Backend; WordPress plugins communicate via sub-millisecond API telemetry without storing or downloading massive signature databases locally.
+`
+  },
+  {
+    id: 'runtime-application-self-protection-rasp',
+    title: 'Runtime Application Self-Protection (RASP): Blocking In-Memory Web Shells & Injections',
+    excerpt: 'Prevent unauthenticated PHP file write and upload exploits before they touch the physical file system. How MDefender Pro’s native RASP engine protects WordPress core and uploads directory.',
+    category: 'WordPress Security',
+    date: 'Sep 28, 2026',
+    readTime: '6 min read',
+    author: 'Threat Research Lab',
+    role: 'Senior Exploit Analyst',
+    icon: 'fa-shield-virus',
+    image: '/blog/rasp_memory_shield.jpg',
+    featured: false,
+    tags: ['RASP', 'Web Shell', 'WordPress Security', 'Memory Protection', 'PHP Sandbox'],
+    content: `
+### Moving Beyond Perimeter Firewalls to In-Memory RASP
+Standard firewalls inspect HTTP headers and query strings at the network edge. However, complex multi-part file uploads and serialized payloads often slip through edge gates.
+
+MDefender Pro implements **Runtime Application Self-Protection (RASP)** directly within the runtime environment:
+
+- **Pre-Write Interception:** Hooks into PHP stream wrappers and \`wp_handle_upload\` hooks to inspect payload contents *before* file creation.
+- **Polyglot & Obfuscation Analysis:** Detects hidden PHP shells nested inside valid PNG/JPEG headers and GIF comment blocks (e.g., \`<?php eval(gzuncompress(...)); ?>\`).
+- **Zero False-Positive Core Whitelisting:** Cross-references 19,480+ official WordPress core checksums to ensure legitimate updates and core files are never blocked.
+`
+  },
+  {
+    id: 'global-threat-intelligence-ingestion',
+    title: 'Global Threat Intelligence: Ingesting 53,800+ Malicious IPs & Live Feeds in Real-Time',
+    excerpt: 'How MDefender Pro continuously aggregates threat intelligence from FireHOL Level 1-3, EmergingThreats, Blocklist.de, and Abuse.ch into an edge-synchronized SQLite reputation database.',
+    category: 'Threat Intelligence',
+    date: 'Sep 20, 2026',
+    readTime: '5 min read',
+    author: 'SecOps Telemetry Team',
+    role: 'Threat Intelligence Analyst',
+    icon: 'fa-globe',
+    image: '/blog/global_threat_intel.jpg',
+    featured: false,
+    tags: ['Threat Intel', 'FireHOL', 'IP Reputation', 'Botnet Defense', 'SOC Feeds'],
+    content: `
+### Aggregating High-Fidelity Global Threat Feeds
+Threat actors constantly rotate bulletproof hosting IP ranges, Tor exit nodes, and automated botnet proxies.
+
+MDefender Pro maintains an automated, real-time ingestion pipeline:
+- **53,817+ Active Malicious IPs & CIDR Subnets:** Aggregated from tier-1 threat feeds including FireHOL, Emerging Threats, and Blocklist.de.
+- **Subnet Trie Indexing:** Incoming client IPs are matched against IPv4/IPv6 CIDR ranges in 0.05ms using binary prefix tries.
+- **Automated Reputation Degradation:** Scanners executing sqlmap, Nikto, or brute-force scripts are immediately appended to global tenant blacklists.
+`
   }
 ]
 
