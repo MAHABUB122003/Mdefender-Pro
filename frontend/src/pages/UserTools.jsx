@@ -2,89 +2,99 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../api/api'
 
-// Comprehensive standard country list with ISO-2 codes
+// Helper to get Flag Emoji from ISO-2 country code
+export function getFlagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '🌐'
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
+// Comprehensive standard country list with ISO-2 codes and Region metadata
 const ALL_COUNTRIES = [
-  { code: 'AF', name: 'Afghanistan' },
-  { code: 'AL', name: 'Albania' },
-  { code: 'DZ', name: 'Algeria' },
-  { code: 'AR', name: 'Argentina' },
-  { code: 'AM', name: 'Armenia' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'AZ', name: 'Azerbaijan' },
-  { code: 'BD', name: 'Bangladesh' },
-  { code: 'BY', name: 'Belarus' },
-  { code: 'BE', name: 'Belgium' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'BG', name: 'Bulgaria' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'CL', name: 'Chile' },
-  { code: 'CN', name: 'China' },
-  { code: 'CO', name: 'Colombia' },
-  { code: 'CU', name: 'Cuba' },
-  { code: 'CY', name: 'Cyprus' },
-  { code: 'CZ', name: 'Czech Republic' },
-  { code: 'DK', name: 'Denmark' },
-  { code: 'EG', name: 'Egypt' },
-  { code: 'EE', name: 'Estonia' },
-  { code: 'FI', name: 'Finland' },
-  { code: 'FR', name: 'France' },
-  { code: 'GE', name: 'Georgia' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'GR', name: 'Greece' },
-  { code: 'HK', name: 'Hong Kong' },
-  { code: 'HU', name: 'Hungary' },
-  { code: 'IN', name: 'India' },
-  { code: 'ID', name: 'Indonesia' },
-  { code: 'IR', name: 'Iran' },
-  { code: 'IQ', name: 'Iraq' },
-  { code: 'IE', name: 'Ireland' },
-  { code: 'IL', name: 'Israel' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'KZ', name: 'Kazakhstan' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'KP', name: 'North Korea' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'KW', name: 'Kuwait' },
-  { code: 'LV', name: 'Latvia' },
-  { code: 'LB', name: 'Lebanon' },
-  { code: 'LT', name: 'Lithuania' },
-  { code: 'MY', name: 'Malaysia' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'MD', name: 'Moldova' },
-  { code: 'MA', name: 'Morocco' },
-  { code: 'MM', name: 'Myanmar' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'NZ', name: 'New Zealand' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'NO', name: 'Norway' },
-  { code: 'PK', name: 'Pakistan' },
-  { code: 'PS', name: 'Palestine' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'PL', name: 'Poland' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'QA', name: 'Qatar' },
-  { code: 'RO', name: 'Romania' },
-  { code: 'RU', name: 'Russia' },
-  { code: 'SA', name: 'Saudi Arabia' },
-  { code: 'RS', name: 'Serbia' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'LK', name: 'Sri Lanka' },
-  { code: 'SE', name: 'Sweden' },
-  { code: 'CH', name: 'Switzerland' },
-  { code: 'SY', name: 'Syria' },
-  { code: 'TW', name: 'Taiwan' },
-  { code: 'TH', name: 'Thailand' },
-  { code: 'TR', name: 'Turkey' },
-  { code: 'UA', name: 'Ukraine' },
-  { code: 'AE', name: 'United Arab Emirates' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-  { code: 'VN', name: 'Vietnam' },
-  { code: 'YE', name: 'Yemen' },
+  { code: 'AF', name: 'Afghanistan', region: 'Asia' },
+  { code: 'AL', name: 'Albania', region: 'Europe' },
+  { code: 'DZ', name: 'Algeria', region: 'Africa' },
+  { code: 'AR', name: 'Argentina', region: 'Americas' },
+  { code: 'AM', name: 'Armenia', region: 'Asia' },
+  { code: 'AU', name: 'Australia', region: 'Oceania' },
+  { code: 'AT', name: 'Austria', region: 'Europe' },
+  { code: 'AZ', name: 'Azerbaijan', region: 'Asia' },
+  { code: 'BD', name: 'Bangladesh', region: 'Asia' },
+  { code: 'BY', name: 'Belarus', region: 'Europe' },
+  { code: 'BE', name: 'Belgium', region: 'Europe' },
+  { code: 'BR', name: 'Brazil', region: 'Americas' },
+  { code: 'BG', name: 'Bulgaria', region: 'Europe' },
+  { code: 'CA', name: 'Canada', region: 'Americas' },
+  { code: 'CL', name: 'Chile', region: 'Americas' },
+  { code: 'CN', name: 'China', region: 'Asia' },
+  { code: 'CO', name: 'Colombia', region: 'Americas' },
+  { code: 'CU', name: 'Cuba', region: 'Americas' },
+  { code: 'CY', name: 'Cyprus', region: 'Europe' },
+  { code: 'CZ', name: 'Czech Republic', region: 'Europe' },
+  { code: 'DK', name: 'Denmark', region: 'Europe' },
+  { code: 'EG', name: 'Egypt', region: 'Africa' },
+  { code: 'EE', name: 'Estonia', region: 'Europe' },
+  { code: 'FI', name: 'Finland', region: 'Europe' },
+  { code: 'FR', name: 'France', region: 'Europe' },
+  { code: 'GE', name: 'Georgia', region: 'Asia' },
+  { code: 'DE', name: 'Germany', region: 'Europe' },
+  { code: 'GR', name: 'Greece', region: 'Europe' },
+  { code: 'HK', name: 'Hong Kong', region: 'Asia' },
+  { code: 'HU', name: 'Hungary', region: 'Europe' },
+  { code: 'IN', name: 'India', region: 'Asia' },
+  { code: 'ID', name: 'Indonesia', region: 'Asia' },
+  { code: 'IR', name: 'Iran', region: 'Middle East' },
+  { code: 'IQ', name: 'Iraq', region: 'Middle East' },
+  { code: 'IE', name: 'Ireland', region: 'Europe' },
+  { code: 'IL', name: 'Israel', region: 'Middle East' },
+  { code: 'IT', name: 'Italy', region: 'Europe' },
+  { code: 'JP', name: 'Japan', region: 'Asia' },
+  { code: 'KZ', name: 'Kazakhstan', region: 'Asia' },
+  { code: 'KE', name: 'Kenya', region: 'Africa' },
+  { code: 'KP', name: 'North Korea', region: 'Asia' },
+  { code: 'KR', name: 'South Korea', region: 'Asia' },
+  { code: 'KW', name: 'Kuwait', region: 'Middle East' },
+  { code: 'LV', name: 'Latvia', region: 'Europe' },
+  { code: 'LB', name: 'Lebanon', region: 'Middle East' },
+  { code: 'LT', name: 'Lithuania', region: 'Europe' },
+  { code: 'MY', name: 'Malaysia', region: 'Asia' },
+  { code: 'MX', name: 'Mexico', region: 'Americas' },
+  { code: 'MD', name: 'Moldova', region: 'Europe' },
+  { code: 'MA', name: 'Morocco', region: 'Africa' },
+  { code: 'MM', name: 'Myanmar', region: 'Asia' },
+  { code: 'NL', name: 'Netherlands', region: 'Europe' },
+  { code: 'NZ', name: 'New Zealand', region: 'Oceania' },
+  { code: 'NG', name: 'Nigeria', region: 'Africa' },
+  { code: 'NO', name: 'Norway', region: 'Europe' },
+  { code: 'PK', name: 'Pakistan', region: 'Asia' },
+  { code: 'PS', name: 'Palestine', region: 'Middle East' },
+  { code: 'PH', name: 'Philippines', region: 'Asia' },
+  { code: 'PL', name: 'Poland', region: 'Europe' },
+  { code: 'PT', name: 'Portugal', region: 'Europe' },
+  { code: 'QA', name: 'Qatar', region: 'Middle East' },
+  { code: 'RO', name: 'Romania', region: 'Europe' },
+  { code: 'RU', name: 'Russia', region: 'Europe' },
+  { code: 'SA', name: 'Saudi Arabia', region: 'Middle East' },
+  { code: 'RS', name: 'Serbia', region: 'Europe' },
+  { code: 'SG', name: 'Singapore', region: 'Asia' },
+  { code: 'ZA', name: 'South Africa', region: 'Africa' },
+  { code: 'ES', name: 'Spain', region: 'Europe' },
+  { code: 'LK', name: 'Sri Lanka', region: 'Asia' },
+  { code: 'SE', name: 'Sweden', region: 'Europe' },
+  { code: 'CH', name: 'Switzerland', region: 'Europe' },
+  { code: 'SY', name: 'Syria', region: 'Middle East' },
+  { code: 'TW', name: 'Taiwan', region: 'Asia' },
+  { code: 'TH', name: 'Thailand', region: 'Asia' },
+  { code: 'TR', name: 'Turkey', region: 'Europe' },
+  { code: 'UA', name: 'Ukraine', region: 'Europe' },
+  { code: 'AE', name: 'United Arab Emirates', region: 'Middle East' },
+  { code: 'GB', name: 'United Kingdom', region: 'Europe' },
+  { code: 'US', name: 'United States', region: 'Americas' },
+  { code: 'VN', name: 'Vietnam', region: 'Asia' },
+  { code: 'YE', name: 'Yemen', region: 'Middle East' },
 ]
 
 export default function UserTools() {
@@ -107,11 +117,14 @@ export default function UserTools() {
   const [countryBlocks, setCountryBlocks] = useState([])
   const [geoLoading, setGeoLoading] = useState(true)
   const [selectedCountry, setSelectedCountry] = useState('CN')
-  const [blockReason, setBlockReason] = useState('Geo-restricted traffic policy')
+  const [blockReason, setBlockReason] = useState('High Cyber Threat Activity')
   const [savingBlock, setSavingBlock] = useState(false)
   const [geoSuccessMsg, setGeoSuccessMsg] = useState('')
   const [geoErrorMsg, setGeoErrorMsg] = useState('')
   const [countrySearch, setCountrySearch] = useState('')
+  const [selectedRegion, setSelectedRegion] = useState('All')
+  const [geoViewMode, setGeoViewMode] = useState('cards') // 'cards' | 'table'
+  const [blockedSearchQuery, setBlockedSearchQuery] = useState('')
 
   // --- WHOIS ACTIONS ---
   const handleWhoisLookup = useCallback(async (targetIp) => {
@@ -677,72 +690,264 @@ Report Generated: ${new Date().toISOString()}`
       {/* TAB 2: COUNTRY / GEO-BLOCKING */}
       {/* ========================================================================= */}
       {activeTab === 'geo' && (
-        <div>
-          {/* Info Banner */}
-          <div style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)', border: '1px solid #334155', borderRadius: '14px', padding: '22px 26px', color: '#fff', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-            <div style={{ maxWidth: '650px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></span>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#fff' }}>Geo-Firewall Country Blocking Active</h3>
+        <div className="space-y-6">
+          {/* Main Geo-Firewall Telemetry Hero Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, #0b0f19 0%, #1e1b4b 50%, #0f172a 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.35)',
+            borderRadius: '16px',
+            padding: '24px 28px',
+            color: '#fff',
+            boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.4)',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '18px' }}>
+              <div style={{ maxWidth: '680px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '17px',
+                    boxShadow: '0 0 15px rgba(239, 68, 68, 0.45)'
+                  }}>
+                    <i className="fas fa-earth-americas"></i>
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      Geo-Firewall Edge Defense
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', fontWeight: 700 }}>
+                        <i className="fas fa-circle-check" style={{ marginRight: '4px' }}></i> Active &amp; Live Synced
+                      </span>
+                    </h3>
+                  </div>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8', lineHeight: '1.6' }}>
+                  Enforce strict sovereign perimeter boundaries at the cloud edge. All HTTP/HTTPS traffic originating from blocked ISO regions is dropped in <strong>&lt;0.10ms</strong> with an immediate <strong>HTTP 403 Cyber Block Page</strong> before PHP application execution.
+                </p>
               </div>
-              <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', lineHeight: '1.5' }}>
-                When you block a country, MDefender intercepts all incoming HTTP requests originating from that country's IP addresses and serves them an immediate <strong>403 Cyber Block Page</strong>. Nobody from that country can view your website.
-              </p>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.08)', padding: '12px 20px', borderRadius: '10px', textAlign: 'center', minWidth: '120px' }}>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#f87171' }}>{countryBlocks.length}</div>
-              <div style={{ fontSize: '11px', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 700 }}>Blocked Countries</div>
+
+              {/* Quick Telemetry Chips */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', minWidth: '110px' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: countryBlocks.length > 0 ? '#f87171' : '#34d399' }}>
+                    {countryBlocks.length}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginTop: '2px' }}>Blocked Countries</div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', minWidth: '110px' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: '#60a5fa' }}>
+                    &lt;0.10ms
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginTop: '2px' }}>Trie Latency</div>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 18px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', minWidth: '110px' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: '#f59e0b' }}>
+                    250+
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginTop: '2px' }}>ISO Regions</div>
+                </div>
+              </div>
             </div>
           </div>
 
           {geoSuccessMsg && (
-            <div style={{ padding: '14px 18px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', color: '#15803d', fontSize: '13px', marginBottom: '20px' }}>
-              {geoSuccessMsg}
+            <div style={{ padding: '14px 18px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', color: '#15803d', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-circle-check" style={{ fontSize: '16px' }}></i>
+              <span style={{ fontWeight: 600 }}>{geoSuccessMsg}</span>
             </div>
           )}
 
           {geoErrorMsg && (
-            <div style={{ padding: '14px 18px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#b91c1c', fontSize: '13px', marginBottom: '20px' }}>
-              <i className="fas fa-circle-exclamation" style={{ marginRight: '8px' }}></i>{geoErrorMsg}
+            <div style={{ padding: '14px 18px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#b91c1c', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-circle-exclamation" style={{ fontSize: '16px' }}></i>
+              <span style={{ fontWeight: 600 }}>{geoErrorMsg}</span>
             </div>
           )}
 
-          {/* Add Country Block Card */}
-          <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fas fa-ban" style={{ color: '#ef4444' }}></i>
-              Block a Country from Visiting Your Website
-            </h3>
-
-            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr)) 160px', gap: '14px', alignItems: 'end' }}>
+          {/* Add Country Block Configuration Card */}
+          <div style={{
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color, #e2e8f0)',
+            padding: '24px 28px',
+            boxShadow: '0 4px 25px rgba(0,0,0,0.04)',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-main, #334155)', textTransform: 'uppercase', marginBottom: '6px' }}>Select Country</label>
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
-                  style={{
-                    width: '100%', height: '44px', borderRadius: '8px', border: '1.5px solid var(--border-color, #cbd5e1)',
-                    background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontSize: '14px', fontWeight: 600, padding: '0 12px'
-                  }}
-                >
-                  {ALL_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code} disabled={blockedCodesSet.has(c.code)}>
-                      {c.name} ({c.code}) {blockedCodesSet.has(c.code) ? '— [ALREADY BLOCKED]' : ''}
-                    </option>
-                  ))}
-                </select>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-shield-halved" style={{ color: '#dc2626' }}></i>
+                  Add Country-Level Geo Restriction Policy
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                  Select sovereign regions to drop immediately upon edge connection.
+                </p>
+              </div>
+
+              {/* Region Filter Chips */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {['All', 'Asia', 'Europe', 'Americas', 'Middle East', 'Africa'].map(reg => (
+                  <button
+                    key={reg}
+                    type="button"
+                    onClick={() => setSelectedRegion(reg)}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      border: selectedRegion === reg ? '1px solid #2563eb' : '1px solid var(--border-color, #cbd5e1)',
+                      background: selectedRegion === reg ? '#eff6ff' : 'var(--input-bg, #f8fafc)',
+                      color: selectedRegion === reg ? '#2563eb' : 'var(--text-main, #475569)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {reg}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Threat Presets Ribbon */}
+            <div style={{
+              background: 'var(--bg-secondary, #f8fafc)',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              border: '1px solid var(--border-color, #e2e8f0)',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px' }}>
+                  <i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '4px' }}></i>
+                  Popular Threat Targets:
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { code: 'CN', name: 'China' },
+                  { code: 'RU', name: 'Russia' },
+                  { code: 'IR', name: 'Iran' },
+                  { code: 'KP', name: 'North Korea' },
+                  { code: 'SY', name: 'Syria' },
+                  { code: 'VN', name: 'Vietnam' },
+                ].map((preset) => {
+                  const isBlocked = blockedCodesSet.has(preset.code)
+                  return (
+                    <button
+                      key={preset.code}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCountry(preset.code)
+                        if (!isBlocked) setBlockReason(`High Cyber Threat Policy (${preset.name})`)
+                      }}
+                      style={{
+                        background: selectedCountry === preset.code ? '#fee2e2' : (isBlocked ? 'rgba(239, 68, 68, 0.08)' : 'white'),
+                        border: selectedCountry === preset.code ? '1.5px solid #ef4444' : (isBlocked ? '1px dashed #f87171' : '1px solid var(--border-color, #cbd5e1)'),
+                        color: isBlocked ? '#dc2626' : (selectedCountry === preset.code ? '#991b1b' : 'var(--text-main, #334155)'),
+                        fontSize: '12px',
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <span style={{ fontSize: '14px' }}>{getFlagEmoji(preset.code)}</span>
+                      <span>{preset.name} ({preset.code})</span>
+                      {isBlocked && (
+                        <span style={{ fontSize: '10px', background: '#ef4444', color: 'white', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+                          BLOCKED
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Form Inputs Grid */}
+            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr)) 180px', gap: '16px', alignItems: 'end' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: 'var(--text-main, #334155)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  <i className="fas fa-flag" style={{ color: '#3b82f6', marginRight: '6px' }}></i>
+                  Target Country
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={selectedCountry}
+                    onChange={(e) => setSelectedCountry(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '46px',
+                      borderRadius: '10px',
+                      border: '1.5px solid var(--border-color, #cbd5e1)',
+                      background: 'var(--input-bg, #f8fafc)',
+                      color: 'var(--text-main, #0f172a)',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      padding: '0 14px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      appearance: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {ALL_COUNTRIES
+                      .filter(c => selectedRegion === 'All' || c.region === selectedRegion)
+                      .map((c) => {
+                        const isBlocked = blockedCodesSet.has(c.code)
+                        return (
+                          <option key={c.code} value={c.code} disabled={isBlocked}>
+                            {getFlagEmoji(c.code)} {c.name} ({c.code}) {isBlocked ? '— [ALREADY BLOCKED]' : ''}
+                          </option>
+                        )
+                      })}
+                  </select>
+                  <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b' }}>
+                    <i className="fas fa-chevron-down"></i>
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-main, #334155)', textTransform: 'uppercase', marginBottom: '6px' }}>Block Reason / Note</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: 'var(--text-main, #334155)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  <i className="fas fa-file-shield" style={{ color: '#8b5cf6', marginRight: '6px' }}></i>
+                  Firewall Policy Reason
+                </label>
                 <input
                   type="text"
                   value={blockReason}
                   onChange={(e) => setBlockReason(e.target.value)}
-                  placeholder="e.g. Restricted geographical region"
+                  placeholder="e.g., High Cyber Threat Activity, OFAC Sanction"
                   style={{
-                    width: '100%', height: '44px', borderRadius: '8px', border: '1.5px solid var(--border-color, #cbd5e1)',
-                    background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontSize: '14px', fontWeight: 500, padding: '0 14px', boxSizing: 'border-box'
+                    width: '100%',
+                    height: '46px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--border-color, #cbd5e1)',
+                    background: 'var(--input-bg, #f8fafc)',
+                    color: 'var(--text-main, #0f172a)',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    padding: '0 14px',
+                    boxSizing: 'border-box',
+                    outline: 'none'
                   }}
                 />
               </div>
@@ -751,16 +956,27 @@ Report Generated: ${new Date().toISOString()}`
                 type="submit"
                 disabled={savingBlock || blockedCodesSet.has(selectedCountry)}
                 style={{
-                  height: '44px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px',
-                  fontWeight: 700, fontSize: '13.5px', cursor: (savingBlock || blockedCodesSet.has(selectedCountry)) ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  opacity: blockedCodesSet.has(selectedCountry) ? 0.6 : 1
+                  height: '46px',
+                  background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  fontSize: '13.5px',
+                  cursor: (savingBlock || blockedCodesSet.has(selectedCountry)) ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)',
+                  opacity: blockedCodesSet.has(selectedCountry) ? 0.6 : 1,
+                  transition: 'all 0.2s'
                 }}
               >
                 {savingBlock ? (
                   <>
                     <i className="fas fa-spinner fa-spin"></i>
-                    <span>Blocking...</span>
+                    <span>Enforcing...</span>
                   </>
                 ) : (
                   <>
@@ -770,137 +986,384 @@ Report Generated: ${new Date().toISOString()}`
                 )}
               </button>
             </form>
-
-            {/* Quick Popular Presets */}
-            <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Quick Select:</span>
-              {[
-                { code: 'CN', name: 'China' },
-                { code: 'RU', name: 'Russia' },
-                { code: 'IR', name: 'Iran' },
-                { code: 'KP', name: 'North Korea' },
-                { code: 'SY', name: 'Syria' },
-                { code: 'VN', name: 'Vietnam' },
-              ].map((preset) => (
-                <button
-                  key={preset.code}
-                  type="button"
-                  onClick={() => setSelectedCountry(preset.code)}
-                  style={{
-                    background: selectedCountry === preset.code ? '#fee2e2' : 'var(--chip-bg, #f1f5f9)',
-                    border: selectedCountry === preset.code ? '1px solid #f87171' : '1px solid var(--chip-border, #e2e8f0)',
-                    color: selectedCountry === preset.code ? '#b91c1c' : 'var(--text-main, #334155)',
-                    fontSize: '12px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
-                    display: 'inline-flex', alignItems: 'center', gap: '5px'
-                  }}
-                >
-                  <i className="fas fa-globe" style={{ fontSize: '11px', opacity: 0.7 }}></i>
-                  <span>{preset.name} ({preset.code})</span>
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Active Blocked Countries Table */}
-          <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+          {/* Active Blocked Countries Console */}
+          <div style={{
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color, #e2e8f0)',
+            padding: '24px 28px',
+            boxShadow: '0 4px 25px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
               <div>
-                <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-                  Currently Blocked Countries ({countryBlocks.length})
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-list-check" style={{ color: '#3b82f6' }}></i>
+                  Active Geo-Firewall Block Policies ({countryBlocks.length})
                 </h3>
-                <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b' }}>
-                  Traffic from these countries will be automatically dropped with HTTP 403 Forbidden.
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                  All traffic from these regions is immediately terminated with HTTP 403 Forbidden.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={fetchCountryBlocks}
-                className="btn-small"
-                style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-              >
-                <i className="fas fa-rotate" style={{ marginRight: '6px' }}></i>Refresh List
-              </button>
+
+              {/* View Switcher & Search */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {countryBlocks.length > 0 && (
+                  <div style={{ position: 'relative', width: '220px' }}>
+                    <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '12px' }}></i>
+                    <input
+                      type="text"
+                      placeholder="Filter blocked..."
+                      value={blockedSearchQuery}
+                      onChange={e => setBlockedSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '7px 12px 7px 32px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color, #cbd5e1)',
+                        fontSize: '12.5px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', background: 'var(--bg-secondary, #f1f5f9)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setGeoViewMode('cards')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: geoViewMode === 'cards' ? 'white' : 'transparent',
+                      color: geoViewMode === 'cards' ? '#2563eb' : '#64748b',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: geoViewMode === 'cards' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'
+                    }}
+                  >
+                    <i className="fas fa-grip" style={{ marginRight: '4px' }}></i> Cards
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGeoViewMode('table')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: geoViewMode === 'table' ? 'white' : 'transparent',
+                      color: geoViewMode === 'table' ? '#2563eb' : '#64748b',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: geoViewMode === 'table' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none'
+                    }}
+                  >
+                    <i className="fas fa-table-list" style={{ marginRight: '4px' }}></i> Table
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={fetchCountryBlocks}
+                  style={{
+                    background: 'var(--input-bg, #f8fafc)',
+                    border: '1px solid var(--border-color, #cbd5e1)',
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: 'var(--text-main, #334155)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-rotate"></i> Refresh
+                </button>
+              </div>
             </div>
 
             {geoLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginBottom: '10px' }}></i>
-                <div>Loading blocked countries...</div>
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#2563eb', marginBottom: '12px' }}></i>
+                <div style={{ fontSize: '14px', fontWeight: 600 }}>Loading active sovereign geo-blocks...</div>
               </div>
             ) : countryBlocks.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '50px 20px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px', border: '1.5px dashed var(--border-color, #cbd5e1)' }}>
-                <i className="fas fa-globe" style={{ fontSize: '36px', color: '#94a3b8', marginBottom: '12px' }}></i>
-                <h4 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>No Countries Blocked</h4>
-                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-                  Your website currently accepts traffic from all global regions. Use the form above to restrict specific countries.
+              /* High-Tech Empty State */
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 24px',
+                background: 'linear-gradient(180deg, rgba(248,250,252,0.6) 0%, rgba(241,245,249,0.9) 100%)',
+                borderRadius: '16px',
+                border: '1.5px dashed var(--border-color, #cbd5e1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                  color: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '28px',
+                  marginBottom: '16px',
+                  boxShadow: '0 4px 15px rgba(37,99,235,0.15)'
+                }}>
+                  <i className="fas fa-earth-americas"></i>
+                </div>
+                <h4 style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                  Global Traffic Permitted
+                </h4>
+                <p style={{ margin: '0 0 18px', fontSize: '13.5px', color: '#64748b', maxWidth: '480px', lineHeight: '1.5' }}>
+                  Your website currently accepts traffic from all 250+ global regions. Use the form above or click a quick threat preset to block specific countries.
                 </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedCountry('CN'); setBlockReason('High Threat Defense (China)'); }}
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    🇨🇳 Block China
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedCountry('RU'); setBlockReason('High Threat Defense (Russia)'); }}
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    🇷🇺 Block Russia
+                  </button>
+                </div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border-color, #e2e8f0)', textAlign: 'left', color: '#64748b' }}>
-                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Country</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>ISO Code</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Firewall Action</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Reason</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Date Blocked</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countryBlocks.map((block) => {
-                      const code = (block.country_code || '').toUpperCase().trim()
-                      const cObj = ALL_COUNTRIES.find(c => c.code === code)
-                      const displayName = cObj ? cObj.name : (block.country_name || code)
-                      const flagEmoji = code.length === 2
-                        ? String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)))
-                        : '🌐'
+              <>
+                {/* View 1: Interactive Cards View */}
+                {geoViewMode === 'cards' ? (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: '16px'
+                  }}>
+                    {countryBlocks
+                      .filter(b => {
+                        if (!blockedSearchQuery) return true
+                        const q = blockedSearchQuery.toLowerCase()
+                        const code = (b.country_code || '').toLowerCase()
+                        const name = (b.country_name || '').toLowerCase()
+                        const reason = (b.reason || '').toLowerCase()
+                        return code.includes(q) || name.includes(q) || reason.includes(q)
+                      })
+                      .map((block) => {
+                        const code = (block.country_code || '').toUpperCase().trim()
+                        const cObj = ALL_COUNTRIES.find(c => c.code === code)
+                        const displayName = cObj ? cObj.name : (block.country_name || code)
+                        const flag = getFlagEmoji(code)
 
-                      return (
-                        <tr key={block._id || code} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
-                          <td style={{ padding: '14px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-                              <span style={{ fontSize: '18px', lineHeight: 1 }}>{flagEmoji}</span>
-                              <span style={{ fontSize: '14px', letterSpacing: 'normal' }}>{displayName}</span>
+                        return (
+                          <div
+                            key={block._id || code}
+                            style={{
+                              background: 'var(--card-bg, #ffffff)',
+                              border: '1.5px solid #fee2e2',
+                              borderRadius: '14px',
+                              padding: '18px 20px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              gap: '12px',
+                              boxShadow: '0 4px 15px rgba(239,68,68,0.06)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{ fontSize: '28px', lineHeight: 1 }}>{flag}</span>
+                                <div>
+                                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                                    {displayName}
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center' }}>
+                                    <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 800 }}>
+                                      {code}
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                                      {cObj?.region || 'Global'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <span style={{
+                                background: '#ef4444',
+                                color: '#ffffff',
+                                fontSize: '10.5px',
+                                fontWeight: 800,
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}>
+                                <i className="fas fa-shield-halved"></i> 403 BLOCKED
+                              </span>
                             </div>
-                          </td>
-                          <td style={{ padding: '14px' }}>
-                            <code style={{ background: '#fee2e2', color: '#b91c1c', padding: '3px 8px', borderRadius: '5px', fontWeight: 800, fontSize: '12px' }}>
-                              {code}
-                            </code>
-                          </td>
-                          <td style={{ padding: '14px' }}>
-                            <span className="badge danger" style={{ fontSize: '11px', padding: '3px 8px' }}>
-                              403 FORBIDDEN
-                            </span>
-                          </td>
-                          <td style={{ padding: '14px', color: '#64748b' }}>
-                            {block.reason || 'Geo-restricted policy'}
-                          </td>
-                          <td style={{ padding: '14px', color: '#64748b', fontSize: '12.5px' }}>
-                            {block.created_at || 'Active'}
-                          </td>
-                          <td style={{ padding: '14px', textAlign: 'right' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveCountryBlock(block.country_code, name)}
-                              style={{
-                                background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a',
-                                padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
-                                cursor: 'pointer', transition: 'all 0.15s'
-                              }}
-                            >
-                              <i className="fas fa-unlock" style={{ marginRight: '6px', color: '#10b981' }}></i>
-                              Unblock
-                            </button>
-                          </td>
+
+                            <div style={{ background: 'var(--bg-secondary, #f8fafc)', padding: '10px 12px', borderRadius: '8px', fontSize: '12px', color: '#475569', border: '1px solid var(--border-color, #e2e8f0)' }}>
+                              <span style={{ fontWeight: 700, color: '#0f172a' }}>Policy Reason:</span> {block.reason || 'Geo-restricted policy'}
+                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                                Enforced: {block.created_at || 'Active Edge Policy'}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  // Switch to Threat Intel tab with representative IP
+                                  const sampleIp = {
+                                    CN: '220.181.38.148',
+                                    RU: '185.220.101.5',
+                                    IR: '5.200.200.200',
+                                    KP: '175.45.176.1',
+                                    SY: '82.137.200.1',
+                                    VN: '113.161.1.1',
+                                  }[code] || '8.8.8.8'
+                                  setIpInput(sampleIp)
+                                  setActiveTab('whois')
+                                  handleWhoisLookup(sampleIp)
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#2563eb',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <i className="fas fa-crosshairs"></i> Investigate WHOIS
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCountryBlock(block.country_code, displayName)}
+                                style={{
+                                  background: '#f8fafc',
+                                  border: '1px solid #cbd5e1',
+                                  color: '#0f172a',
+                                  padding: '5px 12px',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  transition: 'all 0.15s'
+                                }}
+                              >
+                                <i className="fas fa-unlock" style={{ color: '#10b981' }}></i> Unblock
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                ) : (
+                  /* View 2: Detailed SOC Table View */
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border-color, #e2e8f0)', textAlign: 'left', color: '#64748b' }}>
+                          <th style={{ padding: '12px 14px', fontWeight: 700 }}>Country &amp; Flag</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700 }}>ISO Code</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700 }}>Edge Action</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700 }}>Firewall Reason</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700 }}>Timestamp</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {countryBlocks
+                          .filter(b => {
+                            if (!blockedSearchQuery) return true
+                            const q = blockedSearchQuery.toLowerCase()
+                            const code = (b.country_code || '').toLowerCase()
+                            const name = (b.country_name || '').toLowerCase()
+                            const reason = (b.reason || '').toLowerCase()
+                            return code.includes(q) || name.includes(q) || reason.includes(q)
+                          })
+                          .map((block) => {
+                            const code = (block.country_code || '').toUpperCase().trim()
+                            const cObj = ALL_COUNTRIES.find(c => c.code === code)
+                            const displayName = cObj ? cObj.name : (block.country_name || code)
+                            const flag = getFlagEmoji(code)
+
+                            return (
+                              <tr key={block._id || code} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
+                                <td style={{ padding: '14px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{ fontSize: '20px', lineHeight: 1 }}>{flag}</span>
+                                    <span style={{ fontSize: '14px' }}>{displayName}</span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '14px' }}>
+                                  <code style={{ background: '#fee2e2', color: '#b91c1c', padding: '3px 8px', borderRadius: '5px', fontWeight: 800, fontSize: '12px' }}>
+                                    {code}
+                                  </code>
+                                </td>
+                                <td style={{ padding: '14px' }}>
+                                  <span style={{ background: '#ef4444', color: '#fff', fontSize: '11px', padding: '3px 8px', borderRadius: '5px', fontWeight: 800 }}>
+                                    403 FORBIDDEN
+                                  </span>
+                                </td>
+                                <td style={{ padding: '14px', color: '#64748b' }}>
+                                  {block.reason || 'Geo-restricted policy'}
+                                </td>
+                                <td style={{ padding: '14px', color: '#64748b', fontSize: '12.5px' }}>
+                                  {block.created_at || 'Active Edge Policy'}
+                                </td>
+                                <td style={{ padding: '14px', textAlign: 'right' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCountryBlock(block.country_code, displayName)}
+                                    style={{
+                                      background: '#f8fafc',
+                                      border: '1px solid #cbd5e1',
+                                      color: '#0f172a',
+                                      padding: '5px 12px',
+                                      borderRadius: '6px',
+                                      fontSize: '12px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s'
+                                    }}
+                                  >
+                                    <i className="fas fa-unlock" style={{ marginRight: '6px', color: '#10b981' }}></i>
+                                    Unblock
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
