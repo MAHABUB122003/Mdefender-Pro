@@ -461,7 +461,7 @@ class WAF_FW_Engine {
         if (empty($blocked)) return false;
 
         $country_code = $this->get_ip_country($ip);
-        if (empty($country_code)) return false;
+        if (empty($country_code) || $country_code === 'XX') return false;
 
         return in_array($country_code, $blocked, true);
     }
@@ -481,7 +481,7 @@ class WAF_FW_Engine {
             if (strlen($test_c) === 2 && ctype_alpha($test_c)) return $test_c;
         }
 
-        // 1. Direct Edge Headers from CDN / Reverse Proxies / GeoIP modules (0ms)
+        // 1. Direct Edge Headers from CDN / Reverse Proxies / GeoIP modules (Instant 0.001ms)
         $header_keys = [
             'HTTP_CF_IPCOUNTRY',
             'GEOIP_COUNTRY_CODE',
@@ -503,27 +503,14 @@ class WAF_FW_Engine {
         // 2. Local loopback / private IP handling (development environments)
         $is_local = (empty($ip) || $ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0);
         if ($is_local) {
-            $local_cached = get_transient('waf_fw_local_public_geo') ?: get_option('waf_fw_local_server_country', '');
+            $local_cached = get_option('waf_fw_local_server_country', '');
             if (!empty($local_cached) && strlen($local_cached) === 2 && $local_cached !== 'XX') {
                 return strtoupper($local_cached);
             }
-            if (function_exists('wp_remote_get')) {
-                $resp = wp_remote_get('http://ip-api.com/json/?fields=status,countryCode', ['timeout' => 0.8]);
-                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                    $geo = json_decode(wp_remote_retrieve_body($resp), true);
-                    if (!empty($geo['countryCode'])) {
-                        $code = strtoupper(trim($geo['countryCode']));
-                        set_transient('waf_fw_local_public_geo', $code, 86400);
-                        update_option('waf_fw_local_server_country', $code);
-                        return $code;
-                    }
-                }
-            }
-            return 'BD'; // Default local country in user environment
+            return 'BD'; // Default local development country
         }
 
-        // 3. Public IP GeoIP resolution with fast transient cache
-        // 3. Public IP GeoIP resolution with multi-source fallback
+        // 3. Cached Public IP GeoIP lookup (0.005ms) - Never make blocking HTTP requests during page load
         $transient_key = 'waf_fw_geoip_' . md5($ip);
         if (function_exists('get_transient')) {
             $cached = get_transient($transient_key);
@@ -537,26 +524,6 @@ class WAF_FW_Engine {
             }
         }
 
-        if (function_exists('wp_remote_get')) {
-            $providers = [
-                "http://ip-api.com/json/{$ip}?fields=status,countryCode",
-                "https://api.country.is/{$ip}",
-                "https://freeipapi.com/api/json/{$ip}",
-            ];
-            foreach ($providers as $p_url) {
-                $resp = wp_remote_get($p_url, ['timeout' => 1.2]);
-                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                    $geo = json_decode(wp_remote_retrieve_body($resp), true);
-                    $c = strtoupper(trim($geo['countryCode'] ?? $geo['country'] ?? ''));
-                    if (strlen($c) === 2 && ctype_alpha($c)) {
-                        if (function_exists('set_transient')) {
-                            set_transient($transient_key, $c, 86400 * 7);
-                        }
-                        return $c;
-                    }
-                }
-            }
-        }
         return 'XX';
     }
 

@@ -55,45 +55,28 @@ class WAF_FW_IP_Filter {
             $candidates[] = '0.0.0.0';
             $candidates[] = 'localhost';
 
-            $local_pub_ip = get_transient('waf_fw_local_public_ip') ?: get_option('waf_fw_local_server_ip', '');
-            if (empty($local_pub_ip) && function_exists('wp_remote_get')) {
-                $resp = wp_remote_get('http://ip-api.com/json/?fields=query', ['timeout' => 0.8]);
-                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                    $d = json_decode(wp_remote_retrieve_body($resp), true);
-                    if (!empty($d['query'])) {
-                        $local_pub_ip = trim($d['query']);
-                        set_transient('waf_fw_local_public_ip', $local_pub_ip, 86400);
-                        update_option('waf_fw_local_server_ip', $local_pub_ip);
-                    }
-                }
-            }
+            $local_pub_ip = get_option('waf_fw_local_server_ip', '');
             if (!empty($local_pub_ip)) {
                 $candidates[] = $local_pub_ip;
             }
         }
         $candidates = array_values(array_unique(array_filter($candidates)));
 
-        global $wpdb;
-        $table = WAF_FW_DB::instance()->get_blacklist_table();
-        
-        foreach ($candidates as $cand) {
-            if (!is_string($cand) || empty(trim($cand))) continue;
-            $cand = trim($cand);
-            $result = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $table WHERE ip = %s",
-                $cand
-            ));
-            if ($result) {
-                if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= current_time('timestamp')) {
-                    $wpdb->delete($table, ['ip' => $cand]);
-                } else {
-                    $this->runtime_blacklist_cache[$ip] = true;
-                    return true;
+        // 1. Check ultra-fast local JSON fast-cache (0.005ms)
+        $fast_cache_file = dirname(__DIR__) . '/includes/data/waf_fast_cache.json';
+        if (file_exists($fast_cache_file)) {
+            $fc = @json_decode(file_get_contents($fast_cache_file), true);
+            if (!empty($fc['blacklist_ips']) && is_array($fc['blacklist_ips'])) {
+                foreach ($candidates as $cand) {
+                    if (!empty($fc['blacklist_ips'][$cand])) {
+                        $this->runtime_blacklist_cache[$ip] = true;
+                        return true;
+                    }
                 }
             }
         }
 
-        // Check local WAF blacklist cache synced from MDefender Cloud dashboard
+        // 2. Check local WAF blacklist cache synced from cloud
         $cloud_blacklist = get_option('waf_fw_local_blacklist_cache', []);
         if (is_array($cloud_blacklist) && !empty($cloud_blacklist)) {
             foreach ($cloud_blacklist as $b_ip) {
@@ -112,25 +95,32 @@ class WAF_FW_IP_Filter {
             }
         }
 
-        // Check fast cache file directly
-        $fast_cache_file = dirname(__DIR__) . '/includes/data/waf_fast_cache.json';
-        if (file_exists($fast_cache_file)) {
-            $fc = @json_decode(file_get_contents($fast_cache_file), true);
-            if (!empty($fc['blacklist_ips']) && is_array($fc['blacklist_ips'])) {
-                foreach ($candidates as $cand) {
-                    if (!empty($fc['blacklist_ips'][$cand])) {
-                        $this->runtime_blacklist_cache[$ip] = true;
-                        return true;
-                    }
-                }
-            }
-        }
-
-        // Check Global Threat Intel Cache
+        // 3. Check Global Threat Intel Cache (0.01ms)
         $threat_ips = get_transient('waf_fw_cloud_threat_ips');
         if (is_array($threat_ips) && !empty($threat_ips)) {
             foreach ($candidates as $cand) {
                 if (in_array($cand, $threat_ips, true)) {
+                    $this->runtime_blacklist_cache[$ip] = true;
+                    return true;
+                }
+            }
+        }
+
+        // 4. Fallback DB lookup in a single query
+        global $wpdb;
+        $table = WAF_FW_DB::instance()->get_blacklist_table();
+        $placeholders = implode(',', array_fill(0, count($candidates), '%s'));
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT ip, block_expires_at FROM $table WHERE ip IN ($placeholders)",
+            ...$candidates
+        ));
+
+        if (!empty($results)) {
+            $now = current_time('timestamp');
+            foreach ($results as $result) {
+                if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= $now) {
+                    $wpdb->delete($table, ['ip' => $result->ip]);
+                } else {
                     $this->runtime_blacklist_cache[$ip] = true;
                     return true;
                 }

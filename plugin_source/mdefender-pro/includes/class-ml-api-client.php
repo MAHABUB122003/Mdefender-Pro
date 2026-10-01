@@ -255,7 +255,7 @@ class WAF_FW_ML_Api_Client {
             'domain'  => $domain,
             'mode'    => get_option('waf_fw_cloud_mode', 'protect'),
             'request' => is_array($request_data) ? $request_data : ['url' => '/', 'method' => 'GET', 'body' => '', 'headers' => [], 'ip' => ''],
-        ], 0.5);
+        ], 0.25);
     }
 
     /**
@@ -281,7 +281,7 @@ class WAF_FW_ML_Api_Client {
             || (defined('WAF_FW_DEV_MODE') && WAF_FW_DEV_MODE);
         $scheme = wp_parse_url($this->base_url, PHP_URL_SCHEME) ?: '';
         wp_remote_post($this->base_url . '/api/v1/waf/analyze', [
-            'timeout'     => 2,
+            'timeout'     => 1,
             'blocking'    => false,
             'sslverify'   => ($is_loopback || $scheme !== 'https') ? false : true,
             'redirection' => 0,
@@ -325,8 +325,9 @@ class WAF_FW_ML_Api_Client {
                 'User-Agent: WordPress/' . get_bloginfo('version') . '; ' . home_url()
             ]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 400);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 200);
+            curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
             if ($is_loopback || $scheme !== 'https') {
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
@@ -337,7 +338,7 @@ class WAF_FW_ML_Api_Client {
         }
 
         wp_remote_post($url, [
-            'timeout'     => 2,
+            'timeout'     => 1,
             'blocking'    => false,
             'sslverify'   => ($is_loopback || $scheme !== 'https') ? false : true,
             'redirection' => 0,

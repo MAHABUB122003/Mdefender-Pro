@@ -123,13 +123,12 @@ add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 1
 /**
  * Fast sync for cloud blacklist, country blocks, user rules, and status.
  * Syncs from cloud backend and refreshes waf_fast_cache.json.
+ * Executed via WP-Cron, background events, webhook push, or manual admin action.
  */
 function waf_fw_sync_cloud_blacklist_fast($force = false) {
     if (!$force) {
         $last_sync = get_transient('waf_fw_last_bl_sync');
-        $has_cached_bl = get_option('waf_fw_local_blacklist_cache', null);
-        $has_cached_c = get_option('waf_fw_blocked_countries', null);
-        if ($last_sync && $has_cached_bl !== null && $has_cached_c !== null) {
+        if ($last_sync) {
             return;
         }
     }
@@ -141,9 +140,10 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                 'requests_blocked' => (int) get_option('waf_fw_stats_blocked', 0),
                 'requests_allowed' => (int) get_option('waf_fw_stats_allowed', 0),
             ];
-            $res = $client->heartbeat($stats, 4.0);
+            // Safe timeout: 2.5 seconds max, transient cache for 1 hour to prevent repeat calls
+            set_transient('waf_fw_last_bl_sync', 1, 3600);
+            $res = $client->heartbeat($stats, 2.5);
             if ($res && is_array($res)) {
-                set_transient('waf_fw_last_bl_sync', 1, 15);
                 if (isset($res['blacklist']) && is_array($res['blacklist'])) {
                     $ips = array_values(array_filter(array_map('sanitize_text_field', $res['blacklist'])));
                     update_option('waf_fw_local_blacklist_cache', $ips);
@@ -171,14 +171,14 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                     WAF_FW_Engine::instance()->export_fast_cache();
                 }
             } else {
-                set_transient('waf_fw_last_bl_sync', 1, 5);
+                // On failure, wait at least 5 minutes before retrying to prevent hammering
+                set_transient('waf_fw_last_bl_sync', 1, 300);
             }
         }
     }
 }
-add_action('admin_init', 'waf_fw_sync_cloud_blacklist_fast');
-add_action('init', 'waf_fw_sync_cloud_blacklist_fast', 1);
-add_action('plugins_loaded', 'waf_fw_sync_cloud_blacklist_fast', 0);
+// Sync is handled via WP-Cron, dashboard webhooks, and admin settings - NOT blocking visitor requests
+add_action('waf_fw_cloud_sync_event', 'waf_fw_sync_cloud_blacklist_fast');
 
 /**
  * Real-time cloud sync webhook listener.
