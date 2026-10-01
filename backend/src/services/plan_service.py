@@ -53,7 +53,7 @@ DEFAULT_PLANS = {
         "price_id": "",
         "monthly_price": 29,
         "yearly_price": 290,
-        "website_limit": 25,
+        "website_limit": 10,
         "requests_per_day": 1000000,
         "scans_per_day": 200,
         "max_scan_size_mb": 25,
@@ -65,6 +65,7 @@ DEFAULT_PLANS = {
         "priority_support": True,
         "team_seats": 10,
     },
+
     "enterprise": {
         "name": "Dedicated Enterprise",
         "display_name": "Enterprise Ultimate",

@@ -305,7 +305,7 @@ MDEFENDER_MODE=block`
             <i className="fas fa-crown" style={{ fontSize: '20px', color: '#d97706' }}></i>
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400e' }}>Free Tier Active</div>
-              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Premium for unlimited protected domains, real-time ML rules &amp; priority telemetry.</div>
+              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Enterprise Pro for up to 10 protected domains, real-time ML rules &amp; priority telemetry.</div>
             </div>
           </div>
           <a href="/user/settings" style={{
@@ -985,7 +985,7 @@ MDEFENDER_MODE=block`
               Upgrade to Premium Plan
             </h3>
             <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.6', margin: '0 0 24px' }}>
-              Your current plan website limit has been reached. Upgrade to Premium to connect unlimited websites, unlock real-time ML threat detection, and priority support.
+              Your current plan website limit has been reached. Upgrade to Enterprise Pro to connect up to 10 protected domains, unlock real-time ML threat detection, and priority support.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button

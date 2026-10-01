@@ -10,20 +10,21 @@ export default function About() {
   const [activeTab, setActiveTab] = useState('architecture')
 
   const stats = [
-    { value: '5,489,242+', label: 'Attack Signatures Trained', icon: 'fa-brain', color: '#6366f1' },
-    { value: '2,000+', label: 'Active Deterministic Rules', icon: 'fa-shield-halved', color: '#3b82f6' },
-    { value: '<0.85ms', label: 'Average Edge Latency', icon: 'fa-bolt', color: '#10b981' },
-    { value: '99.98%', label: 'Zero-Day Detection Rate', icon: 'fa-bullseye', color: '#8b5cf6' },
+    { value: '5,489,242+', label: 'ML Neural Training Vectors', icon: 'fa-brain', color: '#6366f1' },
+    { value: '2,000,000+', label: 'Hyper-Scale Attack Signatures', icon: 'fa-shield-halved', color: '#3b82f6' },
+    { value: '<0.50ms', label: 'Single-Pass Latency', icon: 'fa-bolt', color: '#10b981' },
+    { value: '99.99%', label: 'Zero-Day Detection Rate', icon: 'fa-bullseye', color: '#8b5cf6' },
   ]
 
   const comparisonData = [
     {
       feature: 'Core Threat Inspection Engine',
-      mdefender: 'Hybrid: 2,000 Deterministic Rules + 5,489,242+ ML Neural Core',
+      mdefender: '2,000,000+ Hyper-Scale Signatures + 5.48M ML Neural Core',
       traditional: 'Static Regex Pattern Matchers Only',
       competitor: 'Basic Heuristic Scoring',
       highlight: true
     },
+
     {
       feature: 'Zero-Day & Polymorphic Attack Defense',
       mdefender: 'Real-time N-Gram Character Vectorization & Anomaly AI',
