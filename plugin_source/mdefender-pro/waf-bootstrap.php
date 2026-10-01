@@ -17,13 +17,14 @@ if (defined('MDEFENDER_BOOTSTRAP_EXECUTED')) {
 define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
 
 // Fast-path client IP extraction
+// Fast-path client IP extraction
 function mdefender_get_fast_client_ip() {
     if (!empty($_GET['test_ip'])) {
-        $cand = trim($_GET['test_ip']);
+        $cand = preg_replace('/:\d+$/', '', trim($_GET['test_ip']));
         if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
     }
     if (!empty($_GET['ip_test'])) {
-        $cand = trim($_GET['ip_test']);
+        $cand = preg_replace('/:\d+$/', '', trim($_GET['ip_test']));
         if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
     }
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
@@ -36,7 +37,8 @@ function mdefender_get_fast_client_ip() {
     } else {
         $ip = trim($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
     }
-    return filter_var($ip, FILTER_VALIDATE_IP) ?: '0.0.0.0';
+    $clean_ip = preg_replace('/:\d+$/', '', $ip);
+    return filter_var($clean_ip, FILTER_VALIDATE_IP) ?: '0.0.0.0';
 }
 
 // Locate fast cache file
@@ -75,25 +77,25 @@ $block_reason = '';
 
 $candidates = [$mdefender_ip];
 if (!empty($_GET['test_ip'])) {
-    $t_ip = trim($_GET['test_ip']);
+    $t_ip = preg_replace('/:\d+$/', '', trim($_GET['test_ip']));
     if (filter_var($t_ip, FILTER_VALIDATE_IP)) $candidates[] = $t_ip;
 }
 if (!empty($_GET['ip_test'])) {
-    $t_ip = trim($_GET['ip_test']);
+    $t_ip = preg_replace('/:\d+$/', '', trim($_GET['ip_test']));
     if (filter_var($t_ip, FILTER_VALIDATE_IP)) $candidates[] = $t_ip;
 }
 if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-    $cf_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
+    $cf_ip = preg_replace('/:\d+$/', '', trim($_SERVER['HTTP_CF_CONNECTING_IP']));
     if (filter_var($cf_ip, FILTER_VALIDATE_IP)) $candidates[] = $cf_ip;
 }
 if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-    $r_ip = trim($_SERVER['HTTP_X_REAL_IP']);
+    $r_ip = preg_replace('/:\d+$/', '', trim($_SERVER['HTTP_X_REAL_IP']));
     if (filter_var($r_ip, FILTER_VALIDATE_IP)) $candidates[] = $r_ip;
 }
 if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
     $fwds = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
     foreach ($fwds as $f_ip) {
-        $f_ip = trim($f_ip);
+        $f_ip = preg_replace('/:\d+$/', '', trim($f_ip));
         if (filter_var($f_ip, FILTER_VALIDATE_IP)) $candidates[] = $f_ip;
     }
 }
@@ -116,20 +118,23 @@ foreach ($candidates as $cand) {
 // 2. Fast Country Block Check
 if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
     $geo_country = '';
-    // Query param simulation for testing
-    if (!empty($_GET['country_test'])) {
-        $geo_country = strtoupper(substr(trim($_GET['country_test']), 0, 2));
-    } elseif (!empty($_GET['test_country'])) {
-        $geo_country = strtoupper(substr(trim($_GET['test_country']), 0, 2));
-    } elseif (!empty($_GET['country'])) {
-        $geo_country = strtoupper(substr(trim($_GET['country']), 0, 2));
+    // Query param simulation for testing & development
+    foreach (['country_test', 'test_country', 'country', 'geo_country'] as $p_key) {
+        if (!empty($_GET[$p_key])) {
+            $c_cand = strtoupper(substr(trim($_GET[$p_key]), 0, 2));
+            if (strlen($c_cand) === 2 && ctype_alpha($c_cand)) {
+                $geo_country = $c_cand;
+                break;
+            }
+        }
     }
 
     if (empty($geo_country)) {
         $b_headers = [
             'HTTP_CF_IPCOUNTRY', 'CF_IPCOUNTRY', 'GEOIP_COUNTRY_CODE', 'HTTP_GEOIP_COUNTRY_CODE',
             'HTTP_X_COUNTRY_CODE', 'HTTP_X_COUNTRY', 'HTTP_X_GEOIP_COUNTRY', 'HTTP_X_REAL_IP_COUNTRY',
-            'HTTP_X_FORWARDED_COUNTRY', 'HTTP_CLOUDFRONT_VIEWER_COUNTRY'
+            'HTTP_X_FORWARDED_COUNTRY', 'HTTP_CLOUDFRONT_VIEWER_COUNTRY', 'HTTP_FASTLY_CLIENT_COUNTRY',
+            'HTTP_GEOIP_COUNTRY'
         ];
         foreach ($b_headers as $b_hdr) {
             if (!empty($_SERVER[$b_hdr])) {
@@ -158,12 +163,17 @@ if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
     }
 
     // If public IP, check persistent GeoIP disk cache if available (< 0.01ms)
-    if (empty($geo_country) && !$is_local_ip) {
+    if (empty($geo_country)) {
         $geoip_cache_file = __DIR__ . '/includes/data/waf_geoip_cache.json';
         if (file_exists($geoip_cache_file)) {
             $geoip_data = @json_decode(@file_get_contents($geoip_cache_file), true);
-            if (is_array($geoip_data) && !empty($geoip_data[$mdefender_ip])) {
-                $geo_country = strtoupper(substr(trim($geoip_data[$mdefender_ip]), 0, 2));
+            if (is_array($geoip_data)) {
+                foreach ($candidates as $cand_ip) {
+                    if (!empty($geoip_data[$cand_ip])) {
+                        $geo_country = strtoupper(substr(trim($geoip_data[$cand_ip]), 0, 2));
+                        break;
+                    }
+                }
             }
         }
     }

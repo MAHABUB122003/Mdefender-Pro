@@ -1798,3 +1798,4 @@ class WAF_FW_Ajax_Handler {
         return false;
     }
 }
+

@@ -136,6 +136,9 @@ class WAF_FW_Admin_Panel_IP {
     }
 
     private function get_ip_country($ip) {
+        if (class_exists('WAF_FW_Engine')) {
+            return WAF_FW_Engine::instance()->get_ip_country($ip);
+        }
         if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
             return strtoupper(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY']), 0, 2));
         }
@@ -144,7 +147,7 @@ class WAF_FW_Admin_Panel_IP {
         }
         $cached = get_transient('waf_ip_country_' . md5($ip));
         if ($cached) return $cached;
-        $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 1]);
+        $response = wp_remote_get("http://ip-api.com/json/{$ip}?fields=countryCode", ['timeout' => 2, 'sslverify' => false]);
         if (is_wp_error($response)) return '';
         $body = json_decode(wp_remote_retrieve_body($response), true);
         $code = $body['countryCode'] ?? '';

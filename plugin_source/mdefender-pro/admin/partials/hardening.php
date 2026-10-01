@@ -56,11 +56,11 @@ $feature_icons = [
         <div class="war-harden-hero-left">
             <div class="war-harden-badge-pill">
                 <span class="dashicons dashicons-shield"></span>
-                <span>ENTERPRISE DEFENSE MATRIX</span>
+                <span>MDEFENDER PRO &bull; ENTERPRISE HARDENING</span>
             </div>
-            <h2 class="war-harden-title">Website Security Hardening</h2>
+            <h2 class="war-harden-title">Website Security Hardening &amp; Deep System Lock</h2>
             <p class="war-harden-subtitle">
-                Enforce 16 rigorous security controls to lock down WordPress core architecture, file permissions, HTTP headers, and authentication endpoints against automated exploits.
+                Fortify WordPress core files, server configurations, access boundaries, and HTTP response headers against brute force attacks, unauthorized tampering, and zero-day vulnerabilities.
             </p>
         </div>
         <div class="war-harden-hero-actions">
@@ -68,13 +68,13 @@ $feature_icons = [
                 <span class="dashicons dashicons-shield"></span>
                 <span>1-Click Harden Site</span>
             </button>
-            <button type="button" class="war-btn-harden war-btn-slate" id="wafHardenReport">
+            <button type="button" class="war-btn-harden war-btn-indigo" id="wafHardenReport">
                 <span class="dashicons dashicons-clipboard"></span>
-                <span>Audit Report</span>
+                <span>Audit &amp; Diagnostics</span>
             </button>
-            <button type="button" class="war-btn-harden war-btn-light" id="wafHardenRefreshStatus" title="Refresh Live State">
+            <button type="button" class="war-btn-harden war-btn-glass" id="wafHardenRefreshStatus" title="Refresh Live State">
                 <span class="dashicons dashicons-update"></span>
-                <span>Refresh</span>
+                <span>Refresh Status</span>
             </button>
         </div>
     </div>
@@ -87,8 +87,8 @@ $feature_icons = [
                     <?php echo esc_html($grade); ?>
                 </div>
                 <div class="war-kpi-text">
-                    <span class="war-kpi-label">Security Grade</span>
-                    <strong class="war-kpi-status-text" id="wafGradeLabel"><?php echo $grade === 'A' ? 'Maximum Protection' : ($grade === 'B' ? 'High Security' : 'Action Recommended'); ?></strong>
+                    <span class="war-kpi-label">Hardening Grade</span>
+                    <strong class="war-kpi-status-text" id="wafGradeLabel"><?php echo $grade === 'A' ? 'Maximum Security Active' : ($grade === 'B' ? 'High Level Defense' : ($grade === 'C' ? 'Moderate Protection' : 'Action Recommended')); ?></strong>
                 </div>
             </div>
             <div class="war-kpi-bar-bg"><div class="war-kpi-bar-fill" id="wafGradeBar" style="width: <?php echo esc_attr($score); ?>%;"></div></div>
@@ -101,8 +101,8 @@ $feature_icons = [
                     <span class="war-kpi-total">/ 100</span>
                 </div>
                 <div class="war-kpi-text">
-                    <span class="war-kpi-label">Hardening Score</span>
-                    <strong class="war-kpi-subtext">Automated Defense Index</strong>
+                    <span class="war-kpi-label">Security Defense Index</span>
+                    <strong class="war-kpi-subtext">Real-Time Core Hardening</strong>
                 </div>
             </div>
             <div class="war-kpi-bar-bg"><div class="war-kpi-bar-fill war-fill-blue" id="wafScoreBar" style="width: <?php echo esc_attr($score); ?>%;"></div></div>
@@ -114,8 +114,8 @@ $feature_icons = [
                     <span class="war-kpi-number war-emerald-text" id="wafHardenEnabledCount"><?php echo esc_html($enabled_count . '/' . $total_features); ?></span>
                 </div>
                 <div class="war-kpi-text">
-                    <span class="war-kpi-label">Active Rules</span>
-                    <strong class="war-kpi-subtext">16 Standard Policies</strong>
+                    <span class="war-kpi-label">Active Modules</span>
+                    <strong class="war-kpi-subtext">16 Automated Security Controls</strong>
                 </div>
             </div>
             <div class="war-kpi-bar-bg"><div class="war-kpi-bar-fill war-fill-emerald" id="wafRulesBar" style="width: <?php echo esc_attr(($enabled_count / max(1, $total_features)) * 100); ?>%;"></div></div>
@@ -146,7 +146,7 @@ $feature_icons = [
         </button>
         <button type="button" class="war-harden-tab" data-section="waf-harden-admin-ip" data-filter="custom">
             <span class="dashicons dashicons-lock"></span>
-            <span>Admin IP &amp; Whitelist</span>
+            <span>Admin IP &amp; Geo-Fence</span>
         </button>
         <button type="button" class="war-harden-tab" data-section="waf-harden-settings" data-filter="custom">
             <span class="dashicons dashicons-admin-generic"></span>
@@ -178,7 +178,7 @@ $feature_icons = [
                             <h3 class="war-card-title"><?php echo esc_html($label); ?></h3>
                             <div class="war-card-badges">
                                 <span class="war-status-badge <?php echo $enabled ? 'badge-enabled' : 'badge-disabled'; ?>">
-                                    <?php echo $enabled ? '● ENABLED' : 'RECOMMENDED'; ?>
+                                    <?php echo $enabled ? '● ACTIVE &amp; PROTECTED' : 'RECOMMENDED'; ?>
                                 </span>
                                 <span class="war-cat-tag"><?php echo esc_html(strtoupper($category)); ?></span>
                             </div>
@@ -210,7 +210,7 @@ $feature_icons = [
                 </div>
                 <div>
                     <h3 class="war-whitelist-title">Admin Panel IP &amp; Geo-Fencing</h3>
-                    <p class="war-whitelist-desc">Restrict sensitive administration endpoints (<code>/wp-admin/</code> &amp; <code>wp-login.php</code>) exclusively to verified IP ranges or countries.</p>
+                    <p class="war-whitelist-desc">Restrict sensitive administration endpoints (<code>/wp-admin/</code> &amp; <code>wp-login.php</code>) exclusively to verified IP ranges or trusted geographic zones.</p>
                 </div>
             </div>
 
@@ -263,7 +263,7 @@ $feature_icons = [
                 <div class="war-pref-item">
                     <label class="war-checkbox-row">
                         <input type="checkbox" id="wafHardenAutoBackup" value="1" checked class="war-custom-checkbox">
-                        <span class="war-checkbox-text"><strong>Automated Pre-Execution Safety Backups</strong><br><small style="color:#64748b;">Automatically snapshot <code>wp-config.php</code> and <code>.htaccess</code> before applying rules.</small></span>
+                        <span class="war-checkbox-text"><strong>Automated Pre-Execution Safety Backups</strong><br><small style="color:#64748b;">Automatically snapshot <code>wp-config.php</code> and <code>.htaccess</code> before applying security rules.</small></span>
                     </label>
                 </div>
 
@@ -303,8 +303,8 @@ $feature_icons = [
         <div class="war-modal-body" id="wafAuditModalContent">
             <!-- Populated via AJAX -->
             <div style="text-align:center;padding:40px;">
-                <span class="dashicons dashicons-update war-spin-icon" style="font-size:32px;width:32px;height:32px;color:#2563eb;"></span>
-                <p style="margin-top:12px;color:#64748b;font-weight:600;">Generating comprehensive security audit...</p>
+                <span class="dashicons dashicons-update war-spin-icon" style="font-size:32px;width:32px;height:32px;color:#4f46e5;"></span>
+                <p style="margin-top:12px;color:#64748b;font-weight:600;">Generating comprehensive security audit report...</p>
             </div>
         </div>
         <div class="war-modal-footer">
@@ -312,7 +312,7 @@ $feature_icons = [
                 <span class="dashicons dashicons-shield"></span>
                 <span>Apply All Recommended Fixes</span>
             </button>
-            <button type="button" class="war-btn-harden war-btn-light" id="wafCloseAuditModalBtn">Close</button>
+            <button type="button" class="war-btn-harden war-btn-glass" id="wafCloseAuditModalBtn" style="color:#475569;border-color:#cbd5e1;">Close</button>
         </div>
     </div>
 </div>

@@ -677,6 +677,40 @@ class WAF_FW_Website_Hardening {
         update_option('waf_harden_version_hiding_settings', []);
     }
 
+    /* ===== ALIAS METHODS FOR CONSISTENT DISPATCH ===== */
+    public function apply_wp_config($settings = []) { return $this->apply_wp_config_protect($settings); }
+    public function remove_wp_config() { return $this->remove_wp_config_protect(); }
+
+    public function apply_htaccess($settings = []) { return $this->apply_htaccess_protect($settings); }
+    public function remove_htaccess() { return $this->remove_htaccess_protect(); }
+
+    public function apply_uploads($settings = []) { return $this->apply_uploads_protect($settings); }
+    public function remove_uploads() { return $this->remove_uploads_protect(); }
+
+    public function apply_sensitive_files($settings = []) { return $this->apply_sensitive_files_protect($settings); }
+    public function remove_sensitive_files() { return $this->remove_sensitive_files_protect(); }
+
+    public function apply_rest_api($settings = []) { return $this->apply_rest_api_protect($settings); }
+    public function remove_rest_api() { return $this->remove_rest_api_protect(); }
+
+    public function apply_xmlrpc($settings = []) { return $this->apply_xmlrpc_protect($settings); }
+    public function remove_xmlrpc() { return $this->remove_xmlrpc_protect(); }
+
+    public function apply_php_files($settings = []) { return $this->apply_php_files_protect($settings); }
+    public function remove_php_files() { return $this->remove_php_files_protect(); }
+
+    public function apply_file_perms($settings = []) { return $this->apply_file_permissions($settings); }
+    public function remove_file_perms() { return $this->remove_file_permissions(); }
+
+    public function apply_user_accounts($settings = []) { return $this->apply_user_account_protect($settings); }
+    public function remove_user_accounts() { return $this->remove_user_account_protect(); }
+
+    public function apply_backup($settings = []) { return $this->apply_backup_protect($settings); }
+    public function remove_backup() { return $this->remove_backup_protect(); }
+
+    public function apply_plugin_theme($settings = []) { return $this->apply_plugin_theme_protect($settings); }
+    public function remove_plugin_theme() { return $this->remove_plugin_theme_protect(); }
+
     /* ===== ONE-CLICK HARDEN ===== */
     public function one_click_harden() {
         $results = [
