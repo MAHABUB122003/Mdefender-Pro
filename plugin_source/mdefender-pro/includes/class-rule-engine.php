@@ -102,19 +102,28 @@ class WAF_FW_Rule_Engine {
         if (!empty($data['query_params']) && is_array($data['query_params'])) {
             $combined .= ' ' . implode(' ', array_values($data['query_params']));
         }
-        // Inspect custom / suspicious headers safely without breaking on benign protocol headers
+        // Inspect custom headers and cookies for Burp Suite & API tampering
         if (!empty($data['headers']) && is_array($data['headers'])) {
             $safe_header_keys = [
-                'cookie', 'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
+                'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
                 'accept', 'accept-language', 'accept-encoding', 'connection',
                 'host', 'upgrade-insecure-requests', 'sec-fetch-dest',
                 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority',
-                'referer', 'origin', 'user-agent', 'authorization', 'content-type',
-                'content-length', 'if-none-match', 'if-modified-since', 'cache-control', 'pragma', 'dnt'
+                'referer', 'origin', 'content-length', 'if-none-match', 'if-modified-since',
+                'cache-control', 'pragma', 'dnt'
             ];
             $inspect_headers = [];
             foreach ($data['headers'] as $k => $v) {
-                if (in_array(strtolower((string)$k), $safe_header_keys, true)) {
+                $lower_k = strtolower((string)$k);
+                if (in_array($lower_k, $safe_header_keys, true)) {
+                    continue;
+                }
+                // For cookies, inspect if they contain suspicious symbols (SQLi / XSS / RCE)
+                if ($lower_k === 'cookie') {
+                    $c_val = (string)$v;
+                    if (preg_match('/[\'\"<>|;()=\/\*]|union|select|script|alert|eval|base64/i', $c_val)) {
+                        $inspect_headers[] = $c_val;
+                    }
                     continue;
                 }
                 $inspect_headers[] = (string)$v;
@@ -188,6 +197,23 @@ class WAF_FW_Rule_Engine {
         foreach ($this->default_rules as $i => $rule) {
             $rules['default_' . $i] = $rule;
         }
+
+        // Merge Cloud Central Virtual Patches
+        $cloud_rules = get_option('waf_fw_cloud_rules_cache', []);
+        if (is_array($cloud_rules) && !empty($cloud_rules)) {
+            foreach ($cloud_rules as $idx => $c_rule) {
+                if (is_array($c_rule) && !empty($c_rule['pattern'])) {
+                    $rules['cloud_' . ($c_rule['id'] ?? $idx)] = [
+                        'name' => $c_rule['name'] ?? ('Cloud Virtual Patch #' . $idx),
+                        'pattern' => $c_rule['pattern'],
+                        'action' => $c_rule['action'] ?? 'block',
+                        'severity' => $c_rule['severity'] ?? 'critical',
+                        'enabled' => !isset($c_rule['enabled']) || $c_rule['enabled'],
+                    ];
+                }
+            }
+        }
+
         if (!empty($this->rules_from_db)) {
             foreach ($this->rules_from_db as $db_rule) {
                 $rules['db_' . $db_rule->id] = [

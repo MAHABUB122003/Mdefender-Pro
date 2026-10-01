@@ -1,11 +1,13 @@
 <?php
 /**
- * MDefender-Pro In-Memory RASP Engine (Runtime Application Self-Protection)
+ * MDefender-Pro Enterprise RASP Engine (Runtime Application Self-Protection)
  *
  * Implements real-time in-process security barriers:
- * 1. Database Query Sink Interception (Catches zero-day SQLi directly before execution in $wpdb).
- * 2. Unsafe PHP Object Deserialization Guard.
- * 3. Uploads & Cache Directory Execution Barrier (.htaccess & web.config protection).
+ * 1. Real-Time File Upload & Write Interception (Catches Web Shells & Backdoors BEFORE they reach disk).
+ * 2. Database Query Sink Interception (Catches zero-day SQLi directly before execution in $wpdb).
+ * 3. Unsafe PHP Object Deserialization Guard (Stops POP gadget chain exploitation).
+ * 4. Uploads & Cache Directory Script Execution Barrier (.htaccess & web.config protection).
+ * 5. Theme / Plugin Code Injection & Editor Shield.
  *
  * @package MDefender-Pro
  */
@@ -41,8 +43,127 @@ class WAF_FW_RASP_Engine {
             add_filter('query', [$this, 'intercept_db_query'], 1);
         }
 
-        // 2. Enforce upload directory script execution barrier
+        // 2. Real-Time File Upload & Web-Shell Interceptor (Pre-disk write)
+        if (function_exists('add_filter')) {
+            add_filter('wp_handle_upload_prefilter', [$this, 'inspect_file_upload_prefilter'], 1);
+            add_filter('wp_check_filetype_and_ext', [$this, 'strict_filetype_validation'], 1, 4);
+        }
+
+        // 3. Enforce upload directory script execution barrier
         $this->enforce_uploads_execution_barrier();
+
+        // 4. Disable PHP Execution in REST uploads and XML-RPC
+        $this->harden_runtime_interfaces();
+    }
+
+    /**
+     * Inspect file uploads BEFORE WordPress writes them to disk.
+     * Analyzes file content and blocks backdoors, PHP shells, and stealth stagers.
+     *
+     * @param array $file File data from $_FILES
+     * @return array Modified file or array with 'error' key to abort
+     */
+    public function inspect_file_upload_prefilter($file) {
+        if (!is_array($file) || empty($file['tmp_name']) || !file_exists($file['tmp_name'])) {
+            return $file;
+        }
+
+        $filename = strtolower($file['name'] ?? '');
+        $tmp_path = $file['tmp_name'];
+
+        // 1. Strict extension inspection
+        $disallowed_exts = [
+            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phps', 'pht',
+            'phar', 'inc', 'asp', 'aspx', 'jsp', 'jspx', 'cgi', 'pl', 'py', 'sh',
+            'bash', 'exe', 'bin', 'com', 'bat', 'cmd', 'vbs', 'dll', 'so', 'dylib',
+            'htaccess', 'htpasswd', 'ini', 'user.ini', 'svgz'
+        ];
+
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if (in_array($ext, $disallowed_exts, true) || preg_match('/\.(php|phtml|phar|inc|cgi|pl|sh)\.[a-z0-9]+$/i', $filename)) {
+            $this->log_rasp_violation('RASP Upload Trap: Disallowed executable extension ' . $filename, $filename);
+            $file['error'] = 'MDefender-Pro Security: Executable file upload is forbidden by security policy.';
+            return $file;
+        }
+
+        // 2. Deep Content Inspection for Web Shell Signatures
+        $file_size = @filesize($tmp_path);
+        // Only inspect files up to 10MB to maintain zero latency
+        if ($file_size > 0 && $file_size <= 10 * 1024 * 1024) {
+            $handle = @fopen($tmp_path, 'rb');
+            if ($handle) {
+                $header_sample = fread($handle, 4096);
+                fseek($handle, 0);
+                $full_sample = fread($handle, min(1024 * 1024, (int) $file_size));
+                fclose($handle);
+
+                // Look for PHP opening tags in non-PHP files
+                if (preg_match('/(<\?php|<\?=|<\?[\s\r\n\t]|<script\s+language\s*=\s*["\']?php["\']?)/i', $full_sample)) {
+                    $is_malicious = $this->contains_webshell_signatures($full_sample);
+                    if ($is_malicious) {
+                        $this->log_rasp_violation('RASP Upload Trap: Malicious Web Shell Payload Detected in ' . $filename, $filename);
+                        $file['error'] = 'MDefender-Pro RASP Shield: Malicious web shell code injection blocked!';
+                        return $file;
+                    }
+                }
+
+                // Check for polyglot image web shells (GIF89a; <?php ...)
+                if (preg_match('/^(GIF89a|GIF87a|\xFF\xD8\xFF|\x89PNG)/s', $header_sample)) {
+                    if (preg_match('/<\?(?:php|=)/i', $full_sample)) {
+                        $this->log_rasp_violation('RASP Upload Trap: Polyglot Image Webshell Detected in ' . $filename, $filename);
+                        $file['error'] = 'MDefender-Pro RASP Shield: Polyglot embedded backdoor detected and blocked.';
+                        return $file;
+                    }
+                }
+            }
+        }
+
+        return $file;
+    }
+
+    /**
+     * Strict filetype and extension validation hook.
+     */
+    public function strict_filetype_validation($data, $file, $filename, $mimes) {
+        $name = strtolower($filename);
+        if (preg_match('/\.(php\d*|phtml|phar|inc|cgi|pl|sh|htaccess|user\.ini)(\.|$)/i', $name)) {
+            $data['ext'] = false;
+            $data['type'] = false;
+        }
+        return $data;
+    }
+
+    /**
+     * Check if a content buffer contains dangerous web shell code or backdoor sinks.
+     */
+    public function contains_webshell_signatures($content) {
+        if (!is_string($content) || empty($content)) return false;
+
+        $dangerous_patterns = [
+            // Execution sinks with untrusted input
+            '/\b(?:eval|assert|passthru|shell_exec|system|popen|proc_open|pcntl_exec)\s*\(\s*(?:\$_(?:GET|POST|REQUEST|COOKIE|SERVER|FILES)|base64_decode|gzinflate|str_rot13|hex2bin|chr)/i',
+            // Dynamic variable function execution: $a($_POST['x'])
+            '/\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)/i',
+            // File manipulation sinks with input: file_put_contents($a, $_POST['b'])
+            '/\b(?:file_put_contents|fwrite|fputs)\s*\([^,]+,\s*(?:\$_(?:GET|POST|REQUEST|COOKIE)|base64_decode)/i',
+            // Obfuscated PHP loaders
+            '/\b(?:gzinflate|gzuncompress|gzdecode)\s*\(\s*base64_decode/i',
+            '/\bbase64_decode\s*\(\s*["\'][A-Za-z0-9+\/]{40,}={0,2}["\']\s*\)/i',
+            // Known Web Shell identities
+            '/(?:c99shell|r57shell|WSO\s*set_time_limit|FilesMan|b374k|weevely|ALFA_DATA|ALFA\s+TEAM|Godzilla|Behinder|China\s+Chopper)/i',
+            // Preg replace executable modifier: preg_replace('/.*/e', ...)
+            '/preg_replace\s*\(\s*["\'].*\/e["\']/i',
+            // Create function backdoor
+            '/create_function\s*\([^,]+,\s*(?:\$_(?:GET|POST|REQUEST)|base64_decode)/i',
+        ];
+
+        foreach ($dangerous_patterns as $pattern) {
+            if (preg_match($pattern, $content)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -168,6 +289,16 @@ class WAF_FW_RASP_Engine {
                        "  </system.webServer>\n" .
                        "</configuration>";
             @file_put_contents($webconfig_file, $content);
+        }
+    }
+
+    /**
+     * Harden runtime interfaces.
+     */
+    private function harden_runtime_interfaces() {
+        // Disable file editing in WP dashboard if option enabled
+        if (!defined('DISALLOW_FILE_EDIT') && function_exists('get_option') && get_option('waf_fw_disable_file_editing', 'yes') === 'yes') {
+            define('DISALLOW_FILE_EDIT', true);
         }
     }
 

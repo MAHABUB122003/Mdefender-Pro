@@ -37,47 +37,81 @@
         var cy = height / 2;
         var maxRadius = (width / 2) - 15;
 
-        // Initialize 18 coordinate blips around the radar perimeter/rings
+        // Initialize 24 coordinate blips around the radar perimeter/rings
         radarBlips = [];
-        for (var b = 0; b < 18; b++) {
-            var angle = (b / 18) * Math.PI * 2;
-            var dist = maxRadius * (0.35 + 0.55 * Math.sin(b * 1.7 + 1));
+        for (var b = 0; b < 24; b++) {
+            var angle = (b / 24) * Math.PI * 2 + (b % 3) * 0.1;
+            var dist = maxRadius * (0.28 + 0.62 * ((b * 7) % 11) / 10);
             radarBlips.push({
                 x: cx + Math.cos(angle) * dist,
                 y: cy + Math.sin(angle) * dist,
                 angle: angle,
                 dist: dist,
-                alpha: 0.15,
-                state: 'secure', // 'secure' | 'scanning' | 'warning' | 'threat'
-                size: 3.5
+                alpha: 0.2,
+                pingRadius: 0,
+                pingAlpha: 0,
+                state: (b === 5 && radarState === 'threat') ? 'threat' : 'secure',
+                size: 3.2
             });
         }
+
+        var sonarPulse1 = 0;
+        var sonarPulse2 = maxRadius * 0.5;
 
         function drawRadar() {
             ctx.clearRect(0, 0, width, height);
 
-            // 1. Outer Luminous Crisp Background
+            // 1. High-Tech Holographic Background
             var bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxRadius);
             bgGrad.addColorStop(0, '#ffffff');
-            bgGrad.addColorStop(0.65, '#f8fafc');
-            bgGrad.addColorStop(1, '#e8f0fe');
+            bgGrad.addColorStop(0.55, '#f8fafc');
+            bgGrad.addColorStop(0.85, '#f0f7ff');
+            bgGrad.addColorStop(1, '#e0f2fe');
             ctx.fillStyle = bgGrad;
             ctx.beginPath();
             ctx.arc(cx, cy, maxRadius, 0, Math.PI * 2);
             ctx.fill();
 
-            // 2. Concentric Target Rings
+            // 2. Animated Sonar Shockwave Ripples
+            sonarPulse1 = (sonarPulse1 + (scanRunning ? 1.5 : 0.6)) % maxRadius;
+            sonarPulse2 = (sonarPulse2 + (scanRunning ? 1.5 : 0.6)) % maxRadius;
+            
+            [sonarPulse1, sonarPulse2].forEach(function(pulseRadius) {
+                var pAlpha = (1 - (pulseRadius / maxRadius)) * (scanRunning ? 0.35 : 0.18);
+                ctx.strokeStyle = (radarState === 'critical' || radarState === 'threat')
+                    ? 'rgba(239, 68, 68, ' + pAlpha + ')'
+                    : (scanRunning ? 'rgba(6, 182, 212, ' + pAlpha + ')' : 'rgba(16, 185, 129, ' + pAlpha + ')');
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(cx, cy, pulseRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+
+            // 3. Concentric Target Rings with Distance Markers
             var rings = [0.25, 0.5, 0.75, 1.0];
             rings.forEach(function(r) {
-                ctx.strokeStyle = r === 1.0 ? 'rgba(14, 165, 233, 0.45)' : 'rgba(14, 165, 233, 0.22)';
-                ctx.lineWidth = r === 1.0 ? 1.5 : 1;
+                ctx.strokeStyle = r === 1.0 ? 'rgba(2, 132, 199, 0.45)' : 'rgba(2, 132, 199, 0.18)';
+                ctx.lineWidth = r === 1.0 ? 1.8 : 1;
                 ctx.beginPath();
                 ctx.arc(cx, cy, maxRadius * r, 0, Math.PI * 2);
                 ctx.stroke();
             });
 
-            // 3. Crosshairs & Coordinate Lines
-            ctx.strokeStyle = 'rgba(14, 165, 233, 0.25)';
+            // 4. Outer Degree Ticks & Compass Markers (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
+            for (var deg = 0; deg < 360; deg += 15) {
+                var rad = (deg * Math.PI) / 180;
+                var isMajor = deg % 45 === 0;
+                var innerR = maxRadius - (isMajor ? 8 : 4);
+                ctx.strokeStyle = isMajor ? 'rgba(2, 132, 199, 0.5)' : 'rgba(2, 132, 199, 0.2)';
+                ctx.lineWidth = isMajor ? 1.5 : 1;
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR);
+                ctx.lineTo(cx + Math.cos(rad) * maxRadius, cy + Math.sin(rad) * maxRadius);
+                ctx.stroke();
+            }
+
+            // 5. Crosshairs & Cardinal Coordinate Lines
+            ctx.strokeStyle = 'rgba(2, 132, 199, 0.22)';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(cx - maxRadius, cy);
@@ -86,8 +120,8 @@
             ctx.lineTo(cx, cy + maxRadius);
             ctx.stroke();
 
-            // Diagonal guides
-            ctx.strokeStyle = 'rgba(14, 165, 233, 0.12)';
+            // Diagonal Guides
+            ctx.strokeStyle = 'rgba(2, 132, 199, 0.1)';
             ctx.beginPath();
             ctx.moveTo(cx - maxRadius * 0.707, cy - maxRadius * 0.707);
             ctx.lineTo(cx + maxRadius * 0.707, cy + maxRadius * 0.707);
@@ -95,66 +129,91 @@
             ctx.lineTo(cx - maxRadius * 0.707, cy + maxRadius * 0.707);
             ctx.stroke();
 
-            // 4. Rotating Radar Sweep Beam
-            var sweepSpeed = scanRunning ? 0.045 : 0.015;
+            // 6. Rotating Radar Sweep Beam with Phosphor Fade
+            var sweepSpeed = scanRunning ? 0.055 : 0.018;
             radarSweepAngle = (radarSweepAngle + sweepSpeed) % (Math.PI * 2);
 
             var sweepGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxRadius);
             if (radarState === 'critical' || radarState === 'threat') {
-                sweepGrad.addColorStop(0, 'rgba(239, 68, 68, 0.35)');
+                sweepGrad.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
+                sweepGrad.addColorStop(0.7, 'rgba(239, 68, 68, 0.15)');
                 sweepGrad.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
             } else if (scanRunning) {
-                sweepGrad.addColorStop(0, 'rgba(14, 165, 233, 0.4)');
-                sweepGrad.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
+                sweepGrad.addColorStop(0, 'rgba(6, 182, 212, 0.45)');
+                sweepGrad.addColorStop(0.6, 'rgba(2, 132, 199, 0.2)');
+                sweepGrad.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
             } else {
-                sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
-                sweepGrad.addColorStop(1, 'rgba(16, 185, 129, 0.02)');
+                sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.38)');
+                sweepGrad.addColorStop(0.7, 'rgba(16, 185, 129, 0.12)');
+                sweepGrad.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
             }
 
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(cx, cy);
-            ctx.arc(cx, cy, maxRadius, radarSweepAngle - 0.45, radarSweepAngle);
+            ctx.arc(cx, cy, maxRadius, radarSweepAngle - 0.55, radarSweepAngle);
             ctx.closePath();
             ctx.fillStyle = sweepGrad;
             ctx.fill();
 
-            // Sweep leading edge line
-            ctx.strokeStyle = (radarState === 'critical' || radarState === 'threat') ? '#ef4444' : (scanRunning ? '#0284c7' : '#059669');
-            ctx.lineWidth = 1.75;
+            // Sweep leading edge line with intense glow
+            var strokeColor = (radarState === 'critical' || radarState === 'threat')
+                ? '#ef4444'
+                : (scanRunning ? '#06b6d4' : '#10b981');
+            ctx.strokeStyle = strokeColor;
+            ctx.shadowColor = strokeColor;
+            ctx.shadowBlur = 8;
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(cx, cy);
             ctx.lineTo(cx + Math.cos(radarSweepAngle) * maxRadius, cy + Math.sin(radarSweepAngle) * maxRadius);
             ctx.stroke();
+            ctx.shadowBlur = 0;
             ctx.restore();
 
-            // 5. Draw Dynamic Target Blips
+            // 7. Draw Dynamic Target Blips with Expanding Echo Rings
             radarBlips.forEach(function(blip) {
                 var diff = Math.abs(radarSweepAngle - blip.angle);
-                if (diff < 0.15 || Math.abs(diff - Math.PI * 2) < 0.15) {
+                if (diff < 0.14 || Math.abs(diff - Math.PI * 2) < 0.14) {
                     blip.alpha = 1.0;
+                    blip.pingRadius = blip.size;
+                    blip.pingAlpha = 0.8;
                 } else {
-                    blip.alpha = Math.max(0.2, blip.alpha - 0.015);
+                    blip.alpha = Math.max(0.18, blip.alpha - 0.012);
                 }
 
+                // Echo ping expanding ring
+                if (blip.pingAlpha > 0.05) {
+                    blip.pingRadius += 0.5;
+                    blip.pingAlpha -= 0.03;
+                    ctx.strokeStyle = (blip.state === 'threat' || radarState === 'threat' || radarState === 'critical')
+                        ? 'rgba(239, 68, 68, ' + blip.pingAlpha + ')'
+                        : (scanRunning ? 'rgba(6, 182, 212, ' + blip.pingAlpha + ')' : 'rgba(16, 185, 129, ' + blip.pingAlpha + ')');
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(blip.x, blip.y, blip.pingRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Core blip
                 ctx.beginPath();
                 ctx.arc(blip.x, blip.y, blip.size, 0, Math.PI * 2);
                 if (blip.state === 'threat' || radarState === 'threat' || radarState === 'critical') {
                     ctx.fillStyle = 'rgba(239, 68, 68, ' + blip.alpha + ')';
                     ctx.shadowColor = '#ef4444';
-                    ctx.shadowBlur = 6;
+                    ctx.shadowBlur = 8;
                 } else if (blip.state === 'warning') {
                     ctx.fillStyle = 'rgba(245, 158, 11, ' + blip.alpha + ')';
                     ctx.shadowColor = '#f59e0b';
-                    ctx.shadowBlur = 5;
+                    ctx.shadowBlur = 6;
                 } else if (scanRunning) {
-                    ctx.fillStyle = 'rgba(2, 132, 199, ' + blip.alpha + ')';
-                    ctx.shadowColor = '#0284c7';
-                    ctx.shadowBlur = 5;
+                    ctx.fillStyle = 'rgba(6, 182, 212, ' + blip.alpha + ')';
+                    ctx.shadowColor = '#06b6d4';
+                    ctx.shadowBlur = 7;
                 } else {
                     ctx.fillStyle = 'rgba(16, 185, 129, ' + blip.alpha + ')';
                     ctx.shadowColor = '#10b981';
-                    ctx.shadowBlur = 4;
+                    ctx.shadowBlur = 5;
                 }
                 ctx.fill();
                 ctx.shadowBlur = 0;

@@ -54,12 +54,18 @@ class SignatureDetector:
         }
 
     BUILTIN_PATTERNS = [
-        {"id": "builtin_eval_b64", "name": "Dynamic Base64 Eval Execution", "pattern": r"\beval\s*\(\s*(?:base64_decode|gzinflate|str_rot13|hex2bin)\s*\("},
-        {"id": "builtin_assert_b64", "name": "Assert Dynamic Code Execution", "pattern": r"\bassert\s*\(\s*(?:base64_decode|gzinflate|str_rot13|\$_POST|\$_GET|\$_REQUEST)\b"},
+        {"id": "builtin_eval_b64", "name": "Dynamic Base64 Eval Execution", "pattern": r"\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|gzdecode|str_rot13|hex2bin|pack)\s*\("},
+        {"id": "builtin_assert_b64", "name": "Assert Dynamic Code Execution", "pattern": r"\bassert\s*\(\s*(?:base64_decode|gzinflate|str_rot13|hex2bin|\$_POST|\$_GET|\$_REQUEST|\$_COOKIE)\b"},
         {"id": "builtin_preg_replace_e", "name": "Preg_replace /e Code Injection", "pattern": r"\bpreg_replace\s*\(\s*['\"][^'\"]*\/e['\"]"},
-        {"id": "builtin_webshell_markers", "name": "Known Webshell Signature (c99/r57/wso/b374k)", "pattern": r"\b(?:c99sh|r57shell|WSO_VERSION|FilesMan|b374k|weevely)\b"},
-        {"id": "builtin_tainted_exec", "name": "Direct User-Input Command Execution", "pattern": r"\b(?:system|shell_exec|exec|passthru)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\["},
-        {"id": "builtin_dropper", "name": "Remote Script Dropper to Uploads/Core", "pattern": r"(?:file_get_contents|curl_exec)\s*\([^)]*https?://[\s\S]*?file_put_contents\s*\([^)]*\.php|file_put_contents\s*\([^)]*\.php[\s\S]*?(?:file_get_contents|curl_exec)\s*\([^)]*https?://"},
+        {"id": "builtin_create_function", "name": "Anonymous create_function Code Injection", "pattern": r"\bcreate_function\s*\([^,]+,\s*(?:base64_decode|\$_POST|\$_GET|\$_REQUEST)"},
+        {"id": "builtin_webshell_markers", "name": "Known Web Shell Signature (c99/r57/wso/b374k/Godzilla/Behinder/Weevely)", "pattern": r"\b(?:c99sh|r57shell|WSO_VERSION|FilesMan|b374k|weevely|Godzilla|Behinder|China\s+Chopper|AntSword|IndoXploit|ALFA_DATA|ALFA\s+TEAM)\b"},
+        {"id": "builtin_tainted_exec", "name": "Direct User-Input Command Execution", "pattern": r"\b(?:system|shell_exec|exec|passthru|popen|proc_open|pcntl_exec)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\["},
+        {"id": "builtin_dropper", "name": "Remote Script Dropper to Uploads/Core", "pattern": r"(?:file_get_contents|curl_exec|wp_remote_get)\s*\([^)]*https?://[\s\S]*?file_put_contents\s*\([^)]*\.php|file_put_contents\s*\([^)]*\.php[\s\S]*?(?:file_get_contents|curl_exec)\s*\([^)]*https?://"},
+        {"id": "builtin_backdoor_user", "name": "Unauthorized Admin User Creation Backdoor", "pattern": r"(?:wp_create_user|wp_insert_user)\s*\([^)]*administrator[\s\S]*?add_role\s*\([^)]*administrator|wp_set_current_user\s*\(\s*1\s*\)[\s\S]*?wp_set_auth_cookie"},
+        {"id": "builtin_crypto_miner", "name": "JavaScript Crypto Miner (CoinHive/XMRig/WebAssembly)", "pattern": r"(?:coinhive\.min\.js|cryptoloot|CoinImp|mineralt|webminepool|cryptonight|Wasm\.instantiate.*miner)"},
+        {"id": "builtin_spam_injection", "name": "SEO Blackhat Spam & Malicious Redirect Injector", "pattern": r"(?:preg_replace\s*\(\s*['\"].*['\"]\s*,\s*['\"].*['\"]\s*,\s*\$_(?:POST|GET)\)|add_action\s*\(\s*['\"]wp_head['\"]\s*,\s*['\"].*eval.*['\"]\))"},
+        {"id": "builtin_polyglot_shell", "name": "Polyglot Image Header with PHP Injection", "pattern": r"^(?:GIF89a|GIF87a|\xFF\xD8\xFF|\x89PNG)[\s\S]{0,100}<\?(?:php|=)"},
+        {"id": "builtin_variable_func", "name": "Dynamic Variable Function Execution Trap", "pattern": r"\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$_(?:POST|GET|REQUEST|COOKIE)\s*\["},
     ]
 
     def _load_patterns(self):
@@ -137,11 +143,55 @@ class SignatureDetector:
                         if row[2] and len(row[2]) == 32:
                             md5_set.add(row[2].lower())
                     conn.close()
-                except Exception as e:
+                except Exception:
+                    pass
+
+            # Load hashes from central threat_intelligence.db
+            threat_intel_db = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "../../data/threat_intel/threat_intelligence.db")
+            )
+            if os.path.exists(threat_intel_db):
+                try:
+                    import sqlite3
+                    conn = sqlite3.connect(threat_intel_db)
+                    cur = conn.cursor()
+                    cur.execute("SELECT hash_value, hash_type FROM malware_hashes")
+                    for h_val, h_type in cur.fetchall():
+                        if not h_val:
+                            continue
+                        h_lower = h_val.lower().strip()
+                        if h_type == "sha256" or len(h_lower) == 64:
+                            sha_set.add(h_lower)
+                        elif h_type == "sha1" or len(h_lower) == 40:
+                            sha1_set.add(h_lower)
+                        elif h_type == "md5" or len(h_lower) == 32:
+                            md5_set.add(h_lower)
+                    conn.close()
+                except Exception:
                     pass
 
             self._hashes = (sha_set, sha1_set, md5_set)
             return self._hashes
+
+    def is_whitelisted(self, content: bytes) -> bool:
+        """Check if file hash is an official clean WordPress core/plugin checksum."""
+        md5_val = hashlib.md5(content).hexdigest().lower()
+        threat_intel_db = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../../data/threat_intel/threat_intelligence.db")
+        )
+        if os.path.exists(threat_intel_db):
+            try:
+                import sqlite3
+                conn = sqlite3.connect(threat_intel_db)
+                cur = conn.cursor()
+                cur.execute("SELECT 1 FROM clean_whitelist_hashes WHERE hash_value = ? LIMIT 1", (md5_val,))
+                res = cur.fetchone()
+                conn.close()
+                return res is not None
+            except Exception:
+                pass
+        return False
+
 
     def check_patterns(self, content: bytes):
         """Return list of matched pattern rule names (case-insensitive scan of raw text)."""

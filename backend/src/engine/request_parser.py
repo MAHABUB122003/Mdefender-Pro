@@ -16,7 +16,7 @@ class RequestParser:
         else:
             query_param_str = str(query_param_val) if query_param_val else ''
 
-        query_str = request_data.get('query_string', '') or query_param_str or parsed_url.query
+        query_str = request_data.get('query_string', '') or request_data.get('query', '') or query_param_str or parsed_url.query
         
         parsed = {
             'url': raw_url if '?' in raw_url or not query_str else f"{path}?{query_str}",

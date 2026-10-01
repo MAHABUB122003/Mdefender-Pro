@@ -15,9 +15,11 @@ The engine is deterministic, auditable, and sub-millisecond optimized: every dec
 carries contributing components and a safe, non-sensitive `reason` string with full telemetry.
 """
 
+import os
 import re
 from src.engine.ml_detector import MLDetector
 from src.engine.rule_engine import RuleEngine
+from src.engine.hyper_rule_engine import HyperRuleEngine
 from src.engine.feature_extractor import FeatureExtractor
 from src.engine.request_parser import RequestParser
 from src.engine.semantic_analyzer import SemanticAnalyzer
@@ -44,10 +46,12 @@ class DecisionEngine:
     def __init__(self, ml_detector=None):
         self.ml_detector = ml_detector or MLDetector()
         self.rule_engine = RuleEngine()
+        self.hyper_engine = HyperRuleEngine()
         self.feature_extractor = FeatureExtractor()
         self.request_parser = RequestParser()
         self.semantic_analyzer = SemanticAnalyzer()
         self._db = None
+
 
     def _get_db(self):
         if self._db is None:
@@ -99,6 +103,27 @@ class DecisionEngine:
     def _component_score(self, score: float) -> int:
         return min(100, max(0, int(round(score * 100))))
 
+    def _check_ip_threat_intel(self, ip: str) -> tuple:
+        """Check IP against 53k+ real-world malicious IPs and Tor exit nodes."""
+        if not ip or ip in ("127.0.0.1", "::1", "localhost"):
+            return False, None
+        threat_intel_db = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../../data/threat_intel/threat_intelligence.db")
+        )
+        if os.path.exists(threat_intel_db):
+            try:
+                import sqlite3
+                conn = sqlite3.connect(threat_intel_db)
+                cur = conn.cursor()
+                cur.execute("SELECT threat_type, source FROM malicious_ips WHERE ip_or_cidr = ? LIMIT 1", (ip.strip(),))
+                row = cur.fetchone()
+                conn.close()
+                if row:
+                    return True, f"{row[1]} ({row[0]})"
+            except Exception:
+                pass
+        return False, None
+
     def evaluate(self, request_data, ip=None, is_blacklisted=False, is_rate_limited=False,
                  rate_limited_by=None, allowlist=False, user_id=None, website_id=None,
                  domain=None, threshold_override=None):
@@ -117,12 +142,19 @@ class DecisionEngine:
         elif rate_limited_by == "blocked":
             reputation_score = 1.0
             reputation_source = "auto_block"
+        else:
+            # Check 53k+ live global threat intelligence IPs
+            is_threat_ip, intel_src = self._check_ip_threat_intel(ip)
+            if is_threat_ip:
+                reputation_score = 1.0
+                reputation_source = f"global_threat_intel: {intel_src}"
 
         # --- 2. Rate limit signal ---
         rate_limit_score = 1.0 if is_rate_limited else 0.0
 
         # --- 3. Request parsing & Deep normalization ---
         parsed = self.request_parser.parse(request_data)
+
 
         # --- 3.1 Dynamic Whitelist Rule Check ---
         matched_whitelist = self._check_whitelists(parsed)
@@ -151,9 +183,13 @@ class DecisionEngine:
                 "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
             }
         
-        # --- 4. Semantic AST & Context Analysis (WAF 3.0) ---
-        # Analyze raw combined and normalized strings
+        # --- 3.2 Hyper-Scale 2,000,000+ Signature Engine Inspection ---
         text_to_analyze = parsed.get("combined_normalized") or parsed.get("combined_raw", "")
+        user_agent_val = parsed.get("headers", {}).get("user-agent", "") or request_data.get("headers", {}).get("User-Agent", "")
+        hyper_match = self.hyper_engine.inspect_payload(text_to_analyze, user_agent=user_agent_val)
+        hyper_score = 1.0 if hyper_match else 0.0
+
+        # --- 4. Semantic AST & Context Analysis (WAF 3.0) ---
         semantic_res = self.semantic_analyzer.analyze_payload(text_to_analyze)
         semantic_score = float(semantic_res.get("highest_score", 0.0))
 
@@ -173,14 +209,14 @@ class DecisionEngine:
         # --- 8. Weighted composite risk score ---
         composite_risk = (
             semantic_score * WEIGHTS["semantic"]
-            + rule_score * WEIGHTS["rule"]
+            + max(rule_score, hyper_score) * WEIGHTS["rule"]
             + ml_score * WEIGHTS["ml"]
             + reputation_score * WEIGHTS["reputation"]
             + behavior_score * WEIGHTS["behavior"]
         )
 
-        # Immediate escalation if critical semantic threat, rule match, or reputation match
-        if semantic_score >= 0.90 or rule_score >= 1.0 or reputation_score >= 1.0:
+        # Immediate escalation if critical hyper-signature match, semantic threat, rule match, or reputation match
+        if hyper_match or semantic_score >= 0.90 or rule_score >= 1.0 or reputation_score >= 1.0:
             composite_risk = max(composite_risk, semantic_score, 0.95)
 
         risk_score = min(100, max(0, int(round(composite_risk * 100))))
@@ -190,12 +226,14 @@ class DecisionEngine:
                 return m.get("rule_name") or m.get("name") or "Security Rule"
             return str(m) if m else "Security Rule"
 
-        first_rule_name = _rule_name(rule_matches[0]) if rule_matches else None
+        first_rule_name = hyper_match.get("rule_name") if hyper_match else (_rule_name(rule_matches[0]) if rule_matches else None)
         first_semantic_reason = semantic_res["reasons"][0] if semantic_res["reasons"] else None
         primary_threat = (
-            semantic_res["threat_categories"][0] if semantic_res["threat_categories"]
-            else (first_rule_name or ml_result.get("category"))
+            hyper_match.get("category") if hyper_match
+            else (semantic_res["threat_categories"][0] if semantic_res["threat_categories"]
+            else (first_rule_name or ml_result.get("category")))
         )
+
 
         # --- 9. Decision Evaluation ---
         url_path = parsed.get("path", "").lower()
