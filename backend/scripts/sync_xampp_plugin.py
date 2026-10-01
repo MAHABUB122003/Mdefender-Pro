@@ -39,12 +39,17 @@ with open(ajax_file, "w", encoding="utf-8") as f:
 print("Updated class-ajax-handler.php")
 
 # 3. Rebuild backend/downloads/mdefender-pro.zip
-out_file = os.path.abspath("backend/downloads/mdefender-pro.zip")
+out_dir = os.path.abspath("downloads")
+if not os.path.exists(out_dir):
+    out_dir = os.path.abspath("backend/downloads")
+os.makedirs(out_dir, exist_ok=True)
+out_file = os.path.join(out_dir, "mdefender-pro.zip")
 if os.path.exists(out_file):
     os.remove(out_file)
 
 count = 0
 with zipfile.ZipFile(out_file, "w", zipfile.ZIP_DEFLATED) as zf:
+
     for root, dirs, files in os.walk(xampp_dir):
         for fname in files:
             if fname.startswith(".") or "__pycache__" in root:
