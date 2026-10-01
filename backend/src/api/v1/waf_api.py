@@ -59,9 +59,11 @@ def _clean_host(host_or_url):
 def verify_api_key(db, api_key, domain=None):
     """Resolve an API key to (user_id, website_id, website). None if invalid."""
     if not api_key:
+        print("[DEBUG verify_api_key] api_key is empty")
         return None
     api_key = api_key.strip()
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    print(f"[DEBUG verify_api_key] api_key={api_key[:10]}... domain={domain} key_hash={key_hash}")
     
     # 1. Scoped API key (from db.api_keys)
     record = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})

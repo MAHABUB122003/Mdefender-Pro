@@ -54,6 +54,8 @@ async def startup_event():
 auth_config = AuthConfig()
 
 app.include_router(get_v1_router())
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 
 app.add_middleware(
     CORSMiddleware,

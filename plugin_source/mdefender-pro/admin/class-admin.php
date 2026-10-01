@@ -147,36 +147,48 @@ class WAF_FW_Admin {
     }
 
     public function enqueue_assets($hook) {
-        if (strpos($hook, 'waf-firewall') === false) return;
+        $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+        $is_waf = (strpos($hook, 'waf') !== false || strpos($hook, 'mdefender') !== false || strpos($page, 'waf-firewall') !== false);
+        if (!$is_waf) return;
 
         wp_enqueue_style('waf-fw-admin', WAF_FW_PLUGIN_URL . 'assets/css/admin.css', [], WAF_FW_VERSION);
         wp_enqueue_script('waf-fw-admin', WAF_FW_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], WAF_FW_VERSION, true);
         wp_enqueue_script('waf-fw-charts', 'https://cdn.jsdelivr.net/npm/chart.js', [], '4.4.0', true);
         wp_enqueue_script('waf-fw-dashboard', WAF_FW_PLUGIN_URL . 'assets/js/dashboard.js', ['jquery', 'waf-fw-charts'], WAF_FW_VERSION, true);
 
-        if (strpos($hook, 'waf-firewall-scan') !== false) {
+        if ($page === 'waf-firewall-scan' || strpos($hook, 'scan') !== false) {
             wp_enqueue_script('waf-fw-scan', WAF_FW_PLUGIN_URL . 'assets/js/scan.js', ['jquery'], WAF_FW_VERSION, true);
         }
 
-        if (strpos($hook, 'waf-firewall-hardening') !== false) {
-            wp_enqueue_style('waf-fw-harden', WAF_FW_PLUGIN_URL . 'assets/css/hardening.css', [], WAF_FW_VERSION);
-            wp_enqueue_script('waf-fw-harden', WAF_FW_PLUGIN_URL . 'assets/js/hardening.js', ['jquery'], WAF_FW_VERSION, true);
+        if ($page === 'waf-firewall-hardening' || strpos($hook, 'hardening') !== false) {
+            wp_enqueue_style('waf-fw-harden', WAF_FW_PLUGIN_URL . 'assets/css/hardening.css', ['waf-fw-admin'], WAF_FW_VERSION);
+            wp_enqueue_script('waf-fw-harden', WAF_FW_PLUGIN_URL . 'assets/js/hardening.js', ['jquery', 'waf-fw-admin'], WAF_FW_VERSION, true);
         }
 
-        if (strpos($hook, 'waf-firewall-backup') !== false) {
-            wp_enqueue_style('waf-fw-backup', WAF_FW_PLUGIN_URL . 'assets/css/backup.css', [], WAF_FW_VERSION);
-            wp_enqueue_script('waf-fw-backup', WAF_FW_PLUGIN_URL . 'assets/js/backup.js', ['jquery'], WAF_FW_VERSION, true);
+        if ($page === 'waf-firewall-backup' || strpos($hook, 'backup') !== false) {
+            wp_enqueue_style('waf-fw-backup', WAF_FW_PLUGIN_URL . 'assets/css/backup.css', ['waf-fw-admin'], WAF_FW_VERSION);
+            wp_enqueue_script('waf-fw-backup', WAF_FW_PLUGIN_URL . 'assets/js/backup.js', ['jquery', 'waf-fw-admin'], WAF_FW_VERSION, true);
         }
 
-        if (strpos($hook, 'waf-firewall-about') !== false) {
-            wp_enqueue_style('waf-fw-about', WAF_FW_PLUGIN_URL . 'assets/css/about.css', [], WAF_FW_VERSION);
+        if ($page === 'waf-firewall-about' || strpos($hook, 'about') !== false) {
+            wp_enqueue_style('waf-fw-about', WAF_FW_PLUGIN_URL . 'assets/css/about.css', ['waf-fw-admin'], WAF_FW_VERSION);
         }
 
-        wp_localize_script('waf-fw-admin', 'waf_fw_ajax', [
+        $ajax_data = [
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('waf_fw_ajax'),
+            'download_nonce' => wp_create_nonce('waf_fw_download_backup'),
             'plugin_url' => WAF_FW_PLUGIN_URL,
-        ]);
+        ];
+        wp_localize_script('waf-fw-admin', 'waf_fw_ajax', $ajax_data);
+        wp_localize_script('waf-fw-dashboard', 'waf_fw_ajax', $ajax_data);
+        wp_localize_script('waf-fw-harden', 'waf_fw_ajax', $ajax_data);
+        if (wp_script_is('waf-fw-scan', 'enqueued') || wp_script_is('waf-fw-scan', 'registered')) {
+            wp_localize_script('waf-fw-scan', 'waf_fw_ajax', $ajax_data);
+        }
+        if (wp_script_is('waf-fw-backup', 'enqueued') || wp_script_is('waf-fw-backup', 'registered')) {
+            wp_localize_script('waf-fw-backup', 'waf_fw_ajax', $ajax_data);
+        }
     }
 
     private function render_header() {

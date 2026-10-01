@@ -55,6 +55,20 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_harden_report', [$this, 'harden_report']);
         add_action('wp_ajax_waf_harden_get_status', [$this, 'harden_get_status']);
         add_action('wp_ajax_waf_harden_admin_ip_save', [$this, 'harden_admin_ip_save']);
+        add_action('wp_ajax_waf_harden_apply_profile', [$this, 'harden_apply_profile']);
+        add_action('wp_ajax_waf_harden_create_baseline', [$this, 'harden_create_baseline']);
+        add_action('wp_ajax_waf_harden_check_drift', [$this, 'harden_check_drift']);
+        add_action('wp_ajax_waf_harden_remediate_drift', [$this, 'harden_remediate_drift']);
+        add_action('wp_ajax_waf_harden_rollback', [$this, 'harden_rollback']);
+        add_action('wp_ajax_waf_harden_scan_integrity', [$this, 'harden_scan_integrity']);
+        add_action('wp_ajax_waf_harden_scan_uploads', [$this, 'harden_scan_uploads']);
+        add_action('wp_ajax_waf_harden_db_audit', [$this, 'harden_db_audit']);
+        add_action('wp_ajax_waf_harden_scan_permissions', [$this, 'harden_scan_permissions']);
+        add_action('wp_ajax_waf_harden_fix_permissions', [$this, 'harden_fix_permissions']);
+        add_action('wp_ajax_waf_harden_fix_single_permission', [$this, 'harden_fix_single_permission']);
+        add_action('wp_ajax_waf_harden_apply_recommended_headers', [$this, 'harden_apply_recommended_headers']);
+        add_action('wp_ajax_waf_harden_get_activity_log', [$this, 'harden_get_activity_log']);
+        add_action('wp_ajax_waf_harden_clear_activity_log', [$this, 'harden_clear_activity_log']);
         add_action('wp_ajax_waf_fw_whois_lookup', [$this, 'whois_lookup']);
         add_action('wp_ajax_waf_fw_delete_scan_file', [$this, 'delete_scan_file']);
         add_action('wp_ajax_waf_fw_restore_core_file', [$this, 'restore_core_file']);
@@ -73,6 +87,21 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_get_backups', [$this, 'get_backups_ajax']);
         add_action('wp_ajax_waf_fw_save_backup_schedule', [$this, 'save_backup_schedule_ajax']);
         add_action('wp_ajax_waf_fw_upload_backup', [$this, 'upload_backup_ajax']);
+
+        // Core Integrity & Post-Hack Recovery Actions (Wordfence/Sucuri inspired)
+        add_action('wp_ajax_waf_tools_core_integrity_scan', [$this, 'tools_core_integrity_scan']);
+        add_action('wp_ajax_waf_tools_core_integrity_restore', [$this, 'tools_core_integrity_restore']);
+        add_action('wp_ajax_waf_tools_core_integrity_delete_unknown', [$this, 'tools_core_integrity_delete_unknown']);
+        add_action('wp_ajax_waf_tools_posthack_terminate_sessions', [$this, 'tools_posthack_terminate_sessions']);
+        add_action('wp_ajax_waf_tools_posthack_regenerate_salts', [$this, 'tools_posthack_regenerate_salts']);
+        add_action('wp_ajax_waf_tools_posthack_force_password_reset', [$this, 'tools_posthack_force_password_reset']);
+        add_action('wp_ajax_waf_tools_posthack_audit_admins', [$this, 'tools_posthack_audit_admins']);
+        add_action('wp_ajax_waf_tools_posthack_check_pwned', [$this, 'tools_posthack_check_pwned']);
+        add_action('wp_ajax_waf_tools_posthack_toggle_lockdown', [$this, 'tools_posthack_toggle_lockdown']);
+
+        // Diagnostics 1-Click Component Updater & Outdated Vulnerability Checker
+        add_action('wp_ajax_waf_diagnostics_update_component', [$this, 'diagnostics_update_component']);
+        add_action('wp_ajax_waf_diagnostics_check_updates', [$this, 'diagnostics_check_updates']);
     }
 
     private function check_access() {
@@ -703,6 +732,116 @@ class WAF_FW_Ajax_Handler {
             'blocked_countries' => sanitize_text_field($_POST['blocked_countries'] ?? ''),
         ];
         $result = WAF_FW_Admin_Panel_IP::instance()->save_settings($settings);
+        wp_send_json_success($result);
+    }
+
+    public function harden_apply_profile() {
+        $this->check_harden_access();
+        $profile = sanitize_key($_POST['profile'] ?? 'balanced');
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->apply_profile($profile);
+        wp_send_json_success($result);
+    }
+
+    public function harden_create_baseline() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->create_security_baseline();
+        wp_send_json_success($result);
+    }
+
+    public function harden_check_drift() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->check_configuration_drift();
+        wp_send_json_success($result);
+    }
+
+    public function harden_remediate_drift() {
+        $this->check_harden_access();
+        $control = sanitize_key($_POST['control'] ?? '');
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->remediate_drift($control);
+        wp_send_json_success($result);
+    }
+
+    public function harden_rollback() {
+        $this->check_harden_access();
+        $snapshot_id = sanitize_key($_POST['snapshot_id'] ?? '');
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->rollback_safety_backup($snapshot_id);
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+
+    public function harden_scan_integrity() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->scan_file_integrity();
+        wp_send_json_success($result);
+    }
+
+    public function harden_scan_uploads() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->scan_uploads_security();
+        wp_send_json_success($result);
+    }
+
+    public function harden_db_audit() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->audit_database_security();
+        wp_send_json_success($result);
+    }
+
+    public function harden_get_activity_log() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $logs = $hardening->get_activity_log();
+        wp_send_json_success(['logs' => $logs]);
+    }
+
+    public function harden_clear_activity_log() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->clear_activity_log();
+        wp_send_json_success($result);
+    }
+
+    public function harden_scan_permissions() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->scan_live_file_permissions();
+        wp_send_json_success($result);
+    }
+
+    public function harden_fix_permissions() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->fix_all_file_permissions();
+        wp_send_json_success($result);
+    }
+
+    public function harden_fix_single_permission() {
+        $this->check_harden_access();
+        $key = sanitize_key($_POST['key'] ?? '');
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->fix_single_file_permission($key);
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+
+    public function harden_apply_recommended_headers() {
+        $this->check_harden_access();
+        $hardening = WAF_FW_Website_Hardening::instance();
+        $result = $hardening->apply_recommended_security_headers();
         wp_send_json_success($result);
     }
 
@@ -1577,27 +1716,82 @@ class WAF_FW_Ajax_Handler {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
+        // Fetch update transients
+        $update_plugins = get_site_transient('update_plugins');
+        $update_themes = get_site_transient('update_themes');
+        $update_core = get_site_transient('update_core');
+
         $all_plugins = get_plugins();
         $active_plugins_option = get_option('active_plugins', []);
         $plugin_list = [];
+        $outdated_plugins_count = 0;
 
         foreach ($all_plugins as $plugin_file => $data) {
             $is_active = in_array($plugin_file, $active_plugins_option);
+            $has_update = false;
+            $new_version = '';
+            $package_url = '';
+
+            if ($update_plugins && isset($update_plugins->response[$plugin_file])) {
+                $has_update = true;
+                $new_version = $update_plugins->response[$plugin_file]->new_version ?? '';
+                $package_url = $update_plugins->response[$plugin_file]->package ?? '';
+                $outdated_plugins_count++;
+            }
+
             $plugin_list[] = [
                 'name' => $data['Name'],
                 'version' => $data['Version'],
                 'author' => strip_tags($data['Author']),
                 'status' => $is_active ? 'Active' : 'Inactive',
-                'file' => $plugin_file
+                'file' => $plugin_file,
+                'update_available' => $has_update,
+                'new_version' => $new_version,
+                'package' => !empty($package_url),
+                'risk_level' => $has_update ? 'Outdated (Vulnerability Risk)' : 'Up to date',
             ];
         }
 
-        $theme = wp_get_theme();
-        $theme_info = [
-            'name' => $theme->get('Name'),
-            'version' => $theme->get('Version'),
-            'author' => strip_tags($theme->get('Author')),
-        ];
+        // Themes Audit
+        $all_themes = wp_get_themes();
+        $active_theme = wp_get_theme();
+        $theme_list = [];
+        $outdated_themes_count = 0;
+
+        foreach ($all_themes as $theme_slug => $tObj) {
+            $is_active = ($active_theme->get_stylesheet() === $theme_slug);
+            $has_update = false;
+            $new_ver = '';
+
+            if ($update_themes && isset($update_themes->response[$theme_slug])) {
+                $has_update = true;
+                $new_ver = $update_themes->response[$theme_slug]['new_version'] ?? '';
+                $outdated_themes_count++;
+            }
+
+            $theme_list[] = [
+                'slug' => $theme_slug,
+                'name' => $tObj->get('Name'),
+                'version' => $tObj->get('Version'),
+                'author' => strip_tags($tObj->get('Author')),
+                'is_active' => $is_active,
+                'update_available' => $has_update,
+                'new_version' => $new_ver,
+            ];
+        }
+
+        // Core Update Status
+        $core_has_update = false;
+        $core_new_version = '';
+        if ($update_core && !empty($update_core->updates)) {
+            foreach ($update_core->updates as $cu) {
+                if (isset($cu->response) && $cu->response === 'upgrade') {
+                    $core_has_update = true;
+                    $core_new_version = $cu->version ?? '';
+                    break;
+                }
+            }
+        }
 
         $paths_to_check = [
             'ABSPATH' => ABSPATH,
@@ -1625,6 +1819,8 @@ class WAF_FW_Ajax_Handler {
             'php_version' => PHP_VERSION,
             'sapi' => php_sapi_name(),
             'wp_version' => get_bloginfo('version'),
+            'core_update_available' => $core_has_update,
+            'core_new_version' => $core_new_version,
             'mysql_version' => $wpdb->db_version(),
             'memory_limit' => ini_get('memory_limit'),
             'max_execution_time' => ini_get('max_execution_time'),
@@ -1634,7 +1830,15 @@ class WAF_FW_Ajax_Handler {
             'file_editor_disabled' => defined('DISALLOW_FILE_EDIT') && DISALLOW_FILE_EDIT,
             'waf_protection_enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
             'plugins' => $plugin_list,
-            'theme' => $theme_info,
+            'outdated_plugins_count' => $outdated_plugins_count,
+            'themes' => $theme_list,
+            'outdated_themes_count' => $outdated_themes_count,
+            'total_outdated_count' => $outdated_plugins_count + $outdated_themes_count + ($core_has_update ? 1 : 0),
+            'theme' => [
+                'name' => $active_theme->get('Name'),
+                'version' => $active_theme->get('Version'),
+                'author' => strip_tags($active_theme->get('Author')),
+            ],
             'permissions' => $perms,
             'tables_status' => [
                 'requests' => $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}" . WAF_FW_TABLE_REQUESTS . "'") ? 'ok' : 'missing',
@@ -1645,6 +1849,72 @@ class WAF_FW_Ajax_Handler {
         ];
 
         wp_send_json_success($diagnostics);
+    }
+
+    public function diagnostics_check_updates() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        if (!function_exists('wp_update_plugins')) {
+            require_once ABSPATH . 'wp-includes/update.php';
+        }
+        wp_version_check();
+        wp_update_plugins();
+        wp_update_themes();
+
+        $this->get_diagnostics();
+    }
+
+    public function diagnostics_update_component() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $type = sanitize_text_field($_POST['type'] ?? 'plugin');
+        $slug = sanitize_text_field($_POST['slug'] ?? '');
+
+        if (empty($slug)) {
+            wp_send_json_error(['message' => 'No component file/slug provided.']);
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+        if ($type === 'plugin') {
+            require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+            $skin = new WP_Ajax_Upgrader_Skin();
+            $upgrader = new Plugin_Upgrader($skin);
+            $result = $upgrader->upgrade($slug);
+
+            if (is_wp_error($result)) {
+                wp_send_json_error(['message' => $result->get_error_message()]);
+            } elseif ($result === false) {
+                wp_send_json_error(['message' => 'Plugin upgrade failed. Check file permissions or connection.']);
+            } else {
+                if (class_exists('WAF_FW_Website_Hardening')) {
+                    WAF_FW_Website_Hardening::instance()->log_activity('Component Updated', $slug, 'Success', 'Updated outdated plugin to latest version from Diagnostics.');
+                }
+                wp_send_json_success(['message' => 'Plugin updated successfully!', 'slug' => $slug]);
+            }
+        } elseif ($type === 'theme') {
+            require_once ABSPATH . 'wp-admin/includes/theme-install.php';
+            $skin = new WP_Ajax_Upgrader_Skin();
+            $upgrader = new Theme_Upgrader($skin);
+            $result = $upgrader->upgrade($slug);
+
+            if (is_wp_error($result)) {
+                wp_send_json_error(['message' => $result->get_error_message()]);
+            } elseif ($result === false) {
+                wp_send_json_error(['message' => 'Theme upgrade failed. Check file permissions or connection.']);
+            } else {
+                if (class_exists('WAF_FW_Website_Hardening')) {
+                    WAF_FW_Website_Hardening::instance()->log_activity('Component Updated', $slug, 'Success', 'Updated outdated theme to latest version from Diagnostics.');
+                }
+                wp_send_json_success(['message' => 'Theme updated successfully!', 'slug' => $slug]);
+            }
+        } else {
+            wp_send_json_error(['message' => 'Invalid component type.']);
+        }
     }
 
     public function get_backups() {
@@ -1900,6 +2170,122 @@ class WAF_FW_Ajax_Handler {
         } else {
             wp_send_json_error(['message' => 'Failed to save uploaded backup file. Check permissions.']);
         }
+    }
+
+    /* ===== CORE INTEGRITY AJAX HANDLERS ===== */
+    public function tools_core_integrity_scan() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $engine = WAF_FW_Core_Integrity::instance();
+        $result = $engine->scan_core_integrity();
+
+        if (empty($result['success'])) {
+            wp_send_json_error($result);
+        }
+        wp_send_json_success($result);
+    }
+
+    public function tools_core_integrity_restore() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $file_path = sanitize_text_field($_POST['file_path'] ?? '');
+        if (empty($file_path)) {
+            wp_send_json_error(['message' => 'No file path provided.']);
+        }
+
+        $engine = WAF_FW_Core_Integrity::instance();
+        $result = $engine->restore_core_file($file_path);
+
+        if (empty($result['success'])) {
+            wp_send_json_error($result);
+        }
+        wp_send_json_success($result);
+    }
+
+    public function tools_core_integrity_delete_unknown() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $file_path = sanitize_text_field($_POST['file_path'] ?? '');
+        if (empty($file_path)) {
+            wp_send_json_error(['message' => 'No file path provided.']);
+        }
+
+        $engine = WAF_FW_Core_Integrity::instance();
+        $result = $engine->delete_rogue_file($file_path);
+
+        if (empty($result['success'])) {
+            wp_send_json_error($result);
+        }
+        wp_send_json_success($result);
+    }
+
+    /* ===== POST-HACK EMERGENCY RECOVERY AJAX HANDLERS ===== */
+    public function tools_posthack_terminate_sessions() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $keep_current = isset($_POST['keep_current']) ? (bool)$_POST['keep_current'] : true;
+        $recovery = WAF_FW_PostHack_Recovery::instance();
+        $result = $recovery->terminate_all_sessions($keep_current);
+        wp_send_json_success($result);
+    }
+
+    public function tools_posthack_regenerate_salts() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $recovery = WAF_FW_PostHack_Recovery::instance();
+        $result = $recovery->regenerate_security_salts();
+
+        if (empty($result['success'])) {
+            wp_send_json_error($result);
+        }
+        wp_send_json_success($result);
+    }
+
+    public function tools_posthack_force_password_reset() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $scope = sanitize_text_field($_POST['scope'] ?? 'admins');
+        $recovery = WAF_FW_PostHack_Recovery::instance();
+        $result = $recovery->force_global_password_reset($scope);
+        wp_send_json_success($result);
+    }
+
+    public function tools_posthack_audit_admins() {
+        $this->check_access();
+
+        $recovery = WAF_FW_PostHack_Recovery::instance();
+        $result = $recovery->audit_administrator_security();
+        wp_send_json_success($result);
+    }
+
+    public function tools_posthack_check_pwned() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $pwd = sanitize_text_field($_POST['password'] ?? '');
+        if (empty($pwd)) {
+            wp_send_json_error(['message' => 'Please provide a test password string.']);
+        }
+
+        $recovery = WAF_FW_PostHack_Recovery::instance();
+        $result = $recovery->check_pwned_password($pwd);
+        wp_send_json_success($result);
+    }
+
+    public function tools_posthack_toggle_lockdown() {
+        $this->check_access();
+        $this->verify_nonce();
+
+        $enable = !empty($_POST['enable']) && $_POST['enable'] === 'yes';
+        $recovery = WAF_FW_PostHack_Recovery::instance();
+        $result = $recovery->toggle_emergency_lockdown($enable);
+        wp_send_json_success($result);
     }
 }
 

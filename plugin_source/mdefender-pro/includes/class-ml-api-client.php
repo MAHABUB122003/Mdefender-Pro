@@ -351,6 +351,29 @@ class WAF_FW_ML_Api_Client {
         return true;
     }
 
+    /**
+     * Report an alert or threat discovery immediately to the cloud dashboard.
+     */
+    public function report_alert($title, $message, $alert_type = 'malware', $severity = 'critical', $details = [], $file_path = '', $threat_name = '') {
+        $this->refresh_config();
+        if (!$this->is_available()) {
+            return false;
+        }
+        $domain = $this->get_domain();
+        return $this->request('POST', '/api/v1/malware/report-alert', [
+            'domain'      => $domain,
+            'api_key'     => $this->api_key,
+            'site_token'  => $this->site_token,
+            'alert_type'  => $alert_type,
+            'title'       => $title,
+            'message'     => $message,
+            'severity'    => $severity,
+            'details'     => $details,
+            'file_path'   => $file_path,
+            'threat_name' => $threat_name,
+        ], 3.0);
+    }
+
 
     /**
      * Scan a single file content on the cloud malware detector.

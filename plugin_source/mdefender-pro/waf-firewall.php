@@ -46,6 +46,8 @@ require_once WAF_FW_PLUGIN_DIR . 'includes/class-rate-limiter.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-ip-filter.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-login-protector.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-2fa.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-core-integrity.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-posthack-recovery.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-attack-blocker.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-waf-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-ajax-handler.php';
@@ -352,6 +354,8 @@ function waf_fw_init() {
     new WAF_FW_Ajax_Handler();
     WAF_FW_Login_Protector::instance()->register_hooks();
     WAF_FW_2FA::instance();
+    WAF_FW_Core_Integrity::instance();
+    WAF_FW_PostHack_Recovery::instance();
     WAF_FW_Website_Hardening::instance();
     if (class_exists('WAF_FW_RASP_Engine')) {
         WAF_FW_RASP_Engine::instance();
@@ -453,7 +457,10 @@ add_filter('rest_pre_dispatch', function ($result, $server, $request) {
 // Secure Backup Archive Direct Download Handler
 add_action('admin_init', function() {
     if (isset($_GET['action']) && $_GET['action'] === 'waf_fw_download_backup' && current_user_can('manage_options')) {
-        check_admin_referer('waf_fw_download_backup');
+        $nonce = $_GET['_wpnonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'waf_fw_download_backup') && !wp_verify_nonce($nonce, 'waf_fw_ajax')) {
+            wp_die(__('Security check failed for backup download.', 'mdefender-pro'), __('Access Denied', 'mdefender-pro'), ['response' => 403]);
+        }
         $file = sanitize_file_name($_GET['file'] ?? '');
         $path = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/' . $file);
         if (file_exists($path) && is_readable($path)) {

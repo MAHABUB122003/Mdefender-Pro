@@ -7,6 +7,7 @@
     var backupApp = {
         _toastTimer: null,
         _selectedRestoreFile: null,
+        _progressInterval: null,
 
         init: function() {
             this.bindTabs();
@@ -53,6 +54,44 @@
             });
         },
 
+        startProgressSimulation: function(title, baseMessage, steps) {
+            var stepIndex = 0;
+            var progress = 10;
+            $('#mdfProgressTitle').text(title);
+            $('#mdfProgressMessage').text(steps[0] || baseMessage);
+            $('#mdfProgressBarFill').css('width', progress + '%');
+            $('#mdfProgressModal').fadeIn(150);
+
+            if (this._progressInterval) clearInterval(this._progressInterval);
+            this._progressInterval = setInterval(function() {
+                if (progress < 92) {
+                    progress += Math.floor(Math.random() * 8) + 2;
+                    if (progress > 92) progress = 92;
+                    $('#mdfProgressBarFill').css('width', progress + '%');
+
+                    var targetStep = Math.min(steps.length - 1, Math.floor((progress / 92) * steps.length));
+                    if (targetStep !== stepIndex && steps[targetStep]) {
+                        stepIndex = targetStep;
+                        $('#mdfProgressMessage').text(steps[stepIndex]);
+                    }
+                }
+            }, 800);
+        },
+
+        stopProgressSimulation: function(callback) {
+            if (this._progressInterval) {
+                clearInterval(this._progressInterval);
+                this._progressInterval = null;
+            }
+            $('#mdfProgressBarFill').css('width', '100%');
+            setTimeout(function() {
+                $('#mdfProgressModal').fadeOut(150, function() {
+                    $('#mdfProgressBarFill').css('width', '0%');
+                    if (typeof callback === 'function') callback();
+                });
+            }, 300);
+        },
+
         bindCreateBackup: function() {
             $('#mdfCreateBackupForm').on('submit', function(e) {
                 e.preventDefault();
@@ -71,10 +110,15 @@
                     }
                 }
 
-                // Show progress modal
-                $('#mdfProgressTitle').text('Packaging Site Backup...');
-                $('#mdfProgressMessage').text('Streaming database tables and compressing files into secure archive. Please do not close this window.');
-                $('#mdfProgressModal').fadeIn(150);
+                var steps = [
+                    'Analyzing WordPress file system and active database tables...',
+                    'Streaming MySQL database tables into binary-safe SQL dump...',
+                    'Compressing plugins, themes, and media uploads into secure package...',
+                    'Generating backup manifest and verifying archive integrity...',
+                    'Finalizing backup archive storage...'
+                ];
+
+                backupApp.startProgressSimulation('Creating Site Backup...', 'Processing...', steps);
 
                 var data = {
                     action: 'waf_fw_create_backup',
@@ -87,20 +131,27 @@
                     data.components = components;
                 }
 
+                var submitBtn = $('#mdfSubmitCreateBackup');
+                submitBtn.prop('disabled', true);
+
                 $.post(waf_fw_ajax.ajax_url, data, function(r) {
-                    $('#mdfProgressModal').fadeOut(100);
-                    if (r && r.success) {
-                        backupApp.showToast(r.data.message || 'Backup created successfully!', 'success');
-                        $('#mdfBackupNote').val('');
-                        backupApp.reloadBackupsTable();
-                        $('.mdf-backup-tab[data-tab="mdf-tab-backups"]').trigger('click');
-                    } else {
-                        var msg = (r && r.data && r.data.message) ? r.data.message : 'Failed to create backup.';
-                        backupApp.showToast('Backup Error: ' + msg, 'error');
-                    }
+                    submitBtn.prop('disabled', false);
+                    backupApp.stopProgressSimulation(function() {
+                        if (r && r.success) {
+                            backupApp.showToast(r.data.message || 'Backup created successfully!', 'success');
+                            $('#mdfBackupNote').val('');
+                            backupApp.reloadBackupsTable();
+                            $('.mdf-backup-tab[data-tab="mdf-tab-backups"]').trigger('click');
+                        } else {
+                            var msg = (r && r.data && r.data.message) ? r.data.message : 'Failed to create backup.';
+                            backupApp.showToast('Backup Error: ' + msg, 'error');
+                        }
+                    });
                 }).fail(function() {
-                    $('#mdfProgressModal').fadeOut(100);
-                    backupApp.showToast('Server/network error while generating backup.', 'error');
+                    submitBtn.prop('disabled', false);
+                    backupApp.stopProgressSimulation(function() {
+                        backupApp.showToast('Server/network error while generating backup archive.', 'error');
+                    });
                 });
             });
         },
@@ -127,29 +178,36 @@
 
                 $('#mdfRestoreModal').fadeOut(100);
 
-                // Show progress modal
-                $('#mdfProgressTitle').text('Restoring Website...');
-                $('#mdfProgressMessage').text('Reconstructing database and restoring file system. This may take a minute...');
-                $('#mdfProgressModal').fadeIn(150);
+                var restoreSteps = [
+                    'Validating archive integrity and extracting packages to staging...',
+                    'Parsing and streaming MySQL database statements into tables...',
+                    'Restoring WordPress plugins, themes, and uploaded files...',
+                    'Resetting bytecode opcache and flushing object cache...',
+                    'Finalizing site disaster recovery restoration...'
+                ];
+
+                backupApp.startProgressSimulation('Restoring Website from Snapshot...', 'Restoring site...', restoreSteps);
 
                 $.post(waf_fw_ajax.ajax_url, {
                     action: 'waf_fw_restore_backup',
                     filename: filename,
                     nonce: (typeof waf_fw_ajax !== 'undefined') ? waf_fw_ajax.nonce : ''
                 }, function(r) {
-                    $('#mdfProgressModal').fadeOut(100);
-                    if (r && r.success) {
-                        backupApp.showToast('<strong>Restoration Successful!</strong> ' + (r.data.message || 'Site restored to snapshot.'), 'success');
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 2500);
-                    } else {
-                        var msg = (r && r.data && r.data.message) ? r.data.message : 'Failed to restore backup.';
-                        backupApp.showToast('Restore Error: ' + msg, 'error');
-                    }
+                    backupApp.stopProgressSimulation(function() {
+                        if (r && r.success) {
+                            backupApp.showToast('<strong>Restoration Successful!</strong> ' + (r.data.message || 'Site restored to snapshot.'), 'success');
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            var msg = (r && r.data && r.data.message) ? r.data.message : 'Failed to restore backup.';
+                            backupApp.showToast('Restore Error: ' + msg, 'error');
+                        }
+                    });
                 }).fail(function() {
-                    $('#mdfProgressModal').fadeOut(100);
-                    backupApp.showToast('Server error while executing restoration.', 'error');
+                    backupApp.stopProgressSimulation(function() {
+                        backupApp.showToast('Server error during site restoration.', 'error');
+                    });
                 });
             });
         },
@@ -176,7 +234,7 @@
                         });
                         backupApp.showToast('Archive deleted: ' + filename, 'info');
                     } else {
-                        backupApp.showToast('Failed to delete backup.', 'error');
+                        backupApp.showToast('Failed to delete backup archive.', 'error');
                     }
                 });
             });
@@ -200,7 +258,7 @@
                     nonce: (typeof waf_fw_ajax !== 'undefined') ? waf_fw_ajax.nonce : ''
                 }, function(r) {
                     if (r && r.success) {
-                        backupApp.showToast('Automated backup schedule updated.', 'success');
+                        backupApp.showToast('Automated backup schedule saved successfully.', 'success');
                     } else {
                         backupApp.showToast('Failed to save schedule settings.', 'error');
                     }
@@ -262,9 +320,11 @@
                 formData.append('backup_file', file);
                 formData.append('nonce', (typeof waf_fw_ajax !== 'undefined') ? waf_fw_ajax.nonce : '');
 
-                $('#mdfProgressTitle').text('Uploading Archive...');
-                $('#mdfProgressMessage').text('Transferring and verifying backup file on server.');
-                $('#mdfProgressModal').fadeIn(150);
+                backupApp.startProgressSimulation('Uploading Archive...', 'Transferring backup package to server...', [
+                    'Uploading archive package to server...',
+                    'Verifying checksums and unpacking structure...',
+                    'Registering archive in disaster recovery catalog...'
+                ]);
 
                 $.ajax({
                     url: waf_fw_ajax.ajax_url,
@@ -273,22 +333,24 @@
                     processData: false,
                     contentType: false,
                     success: function(r) {
-                        $('#mdfProgressModal').fadeOut(100);
-                        if (r && r.success) {
-                            backupApp.showToast(r.data.message || 'Backup archive uploaded!', 'success');
-                            fileInput.val('');
-                            fileLabel.hide();
-                            submitBtn.prop('disabled', true);
-                            backupApp.reloadBackupsTable();
-                            $('.mdf-backup-tab[data-tab="mdf-tab-backups"]').trigger('click');
-                        } else {
-                            var msg = (r && r.data && r.data.message) ? r.data.message : 'Upload failed.';
-                            backupApp.showToast('Upload Error: ' + msg, 'error');
-                        }
+                        backupApp.stopProgressSimulation(function() {
+                            if (r && r.success) {
+                                backupApp.showToast(r.data.message || 'Backup archive uploaded successfully!', 'success');
+                                fileInput.val('');
+                                fileLabel.hide();
+                                submitBtn.prop('disabled', true);
+                                backupApp.reloadBackupsTable();
+                                $('.mdf-backup-tab[data-tab="mdf-tab-backups"]').trigger('click');
+                            } else {
+                                var msg = (r && r.data && r.data.message) ? r.data.message : 'Upload failed.';
+                                backupApp.showToast('Upload Error: ' + msg, 'error');
+                            }
+                        });
                     },
                     error: function() {
-                        $('#mdfProgressModal').fadeOut(100);
-                        backupApp.showToast('Network error during file upload.', 'error');
+                        backupApp.stopProgressSimulation(function() {
+                            backupApp.showToast('Network error during file upload.', 'error');
+                        });
                     }
                 });
             });
@@ -327,6 +389,8 @@
                             '</div></td></tr>';
                         tbody.html(emptyHtml);
                     } else {
+                        var downloadNonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.download_nonce) ? waf_fw_ajax.download_nonce : ((typeof waf_fw_ajax !== 'undefined') ? waf_fw_ajax.nonce : '');
+
                         $.each(backups, function(idx, b) {
                             totalSizeBytes += (b.size || 0);
                             var bType = b.type || 'full';
@@ -338,7 +402,7 @@
                                 compPills += '<span class="mdf-comp-pill">' + c + '</span> ';
                             });
 
-                            var downloadUrl = 'admin.php?action=waf_fw_download_backup&file=' + encodeURIComponent(bName) + '&_wpnonce=' + (typeof waf_fw_ajax !== 'undefined' ? waf_fw_ajax.nonce : '');
+                            var downloadUrl = 'admin.php?action=waf_fw_download_backup&file=' + encodeURIComponent(bName) + '&_wpnonce=' + encodeURIComponent(downloadNonce);
 
                             var rowHtml = '<tr data-filename="' + bName + '">' +
                                 '<td><div class="mdf-file-col">' +

@@ -1,0 +1,108 @@
+{
+  "system_services": {
+    "cloud_backend": "ONLINE (HTTP 200)",
+    "cloud_frontend": "ONLINE (HTTP 200)",
+    "wordpress_site": "ONLINE (HTTP 200)"
+  },
+  "waf_firewall_tests": {
+    "Clean GET Request": {
+      "expected": 200,
+      "actual": 200,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "SQL Injection (UNION SELECT)": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "SQL Injection (Time-based Blind)": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "XSS Injection (<script> tag)": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "XSS Injection (SVG onload)": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "LFI / Path Traversal (etc/passwd)": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "RCE / Command Injection (whoami)": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    },
+    "Malicious Security Scanner UA": {
+      "expected": 403,
+      "actual": 403,
+      "passed": true,
+      "mdefender_waap_response": true
+    }
+  },
+  "scanner_tests": {},
+  "cloud_sync_tests": {
+    "Heartbeat Sync": {
+      "status": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "request_id": "0OAB96yqesY",
+        "data": {
+          "status": "ok",
+          "config": {
+            "waf_mode": "protect",
+            "learning_mode": false,
+            "confidence_threshold": 0.7,
+            "disable_xmlrpc": false,
+            "disable_directory_listing": false,
+            "prevent_user_enumeration": false,
+            "disable_file_editing": false
+          },
+          "command": null,
+          "blacklist": [],
+          "blocked_countries": [],
+          "user_rules": []
+        }
+      }
+    },
+    "WAF Telemetry": {
+      "status": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "request_id": "LdP4h8AYd5k",
+        "data": {
+          "received": 0
+        }
+      }
+    },
+    "Radar Telemetry": {
+      "status": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "request_id": "_QVzxjM4ooY",
+        "data": {
+          "status": "synced",
+          "website_id": "ef4a680c-199f-4d74-a88c-798597a99a12"
+        }
+      }
+    }
+  },
+  "fixes_applied": []
+}

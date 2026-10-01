@@ -938,8 +938,8 @@ class WAF_FW_Scanner {
         }
 
         $untrusted_sources = [
-            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_SERVER', '$_FILES', '$_ENV',
-            '$HTTP_RAW_POST_DATA', '$GLOBALS'
+            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_FILES', '$_ENV',
+            '$HTTP_RAW_POST_DATA', '$_SERVER'
         ];
 
         $dangerous_sinks = [
@@ -949,7 +949,8 @@ class WAF_FW_Scanner {
 
         $transform_functions = [
             'base64_decode', 'gzinflate', 'gzuncompress', 'str_rot13', 'hex2bin',
-            'pack', 'strrev', 'rawurldecode', 'urldecode', 'chr'
+            'pack', 'strrev', 'rawurldecode', 'urldecode', 'chr', 'openssl_decrypt',
+            'mcrypt_decrypt', 'str_replace', 'substr'
         ];
 
         $tainted_vars = [];
@@ -1004,6 +1005,11 @@ class WAF_FW_Scanner {
                             } elseif (isset($tainted_vars[$et_text])) {
                                 $references_tainted_var = true;
                                 $tainted_parent = $tainted_vars[$et_text];
+                            }
+                        } elseif ($et_id === T_CONSTANT_ENCAPSED_STRING) {
+                            if (strpos($et_text, 'php://input') !== false) {
+                                $has_source = true;
+                                $source_found = 'php://input';
                             }
                         } elseif ($et_id === T_STRING) {
                             if (in_array(strtolower($et_text), $transform_functions)) {
@@ -1096,18 +1102,33 @@ class WAF_FW_Scanner {
                 }
             }
 
-            // 3. Dynamic Variable Function Invocations: $func($arg)
+            // 3. Dynamic Variable Function Invocations: $func($arg) (with OOP & Factory safe checks)
             if ($t_id === T_VARIABLE && isset($tainted_vars[$t_text])) {
-                $next_idx = $i + 1;
-                while ($next_idx < $token_count && (is_array($tokens[$next_idx]) && in_array($tokens[$next_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
-                    $next_idx++;
+                $prev_idx = $i - 1;
+                while ($prev_idx >= 0 && (is_array($tokens[$prev_idx]) && in_array($tokens[$prev_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
+                    $prev_idx--;
                 }
-                if ($next_idx < $token_count && $tokens[$next_idx] === '(') {
-                    $taint_info = $tainted_vars[$t_text];
-                    $findings[] = "AST Dynamic Execution [Line {$t_line}]: Tainted variable {$t_text} (from {$taint_info['source']}) invoked as variable function";
-                    $score = max($score, 90);
-                    $confidence = 'HIGH';
-                    $classification = 'CONFIRMED_MALWARE';
+                $is_oop_construct = false;
+                if ($prev_idx >= 0) {
+                    $prev_t = $tokens[$prev_idx];
+                    $prev_id = is_array($prev_t) ? $prev_t[0] : null;
+                    if ($prev_id === T_NEW || $prev_id === T_OBJECT_OPERATOR || $prev_id === T_DOUBLE_COLON) {
+                        $is_oop_construct = true;
+                    }
+                }
+
+                if (!$is_oop_construct) {
+                    $next_idx = $i + 1;
+                    while ($next_idx < $token_count && (is_array($tokens[$next_idx]) && in_array($tokens[$next_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
+                        $next_idx++;
+                    }
+                    if ($next_idx < $token_count && $tokens[$next_idx] === '(') {
+                        $taint_info = $tainted_vars[$t_text];
+                        $findings[] = "AST Dynamic Execution [Line {$t_line}]: Tainted variable {$t_text} (from {$taint_info['source']}) invoked as variable function";
+                        $score = max($score, 80);
+                        $confidence = 'HIGH';
+                        $classification = 'SUSPICIOUS';
+                    }
                 }
             }
         }
@@ -1115,7 +1136,7 @@ class WAF_FW_Scanner {
         // Structural webshell signatures check
         if (preg_match('/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i', $content) ||
             preg_match('/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i', $content) ||
-            preg_match('/(?:c99shell|r57shell|b374k|FilesMan|Weevely|alfa-team|madspot|wso\s*\d)/i', $content)) {
+            preg_match('/(?:c99shell|r57shell|b374k|FilesMan|Weevely|alfa-team|madspot|wso\s*\d|Godzilla|Behinder|China\s*Chopper|AntSword|IndoXploit)/i', $content)) {
             $score = max($score, 95);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
@@ -1124,11 +1145,26 @@ class WAF_FW_Scanner {
 
         // Stealth single-line webshell / backdoor dispatcher check
         if (preg_match('/\$_(?:GET|POST|REQUEST|COOKIE)\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\[/i', $content) ||
-            preg_match('/@\s*(?:eval|assert|system|exec|shell_exec|passthru)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i', $content)) {
+            preg_match('/@?\s*(?:eval|assert|system|exec|shell_exec|passthru)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i', $content)) {
             $score = max($score, 95);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
             $findings[] = "Stealth Webshell Signature: Direct superglobal parameter invocation";
+        }
+
+        // SEO Spam & Japanese Keyword Hack / Search Engine Cloaking check
+        if (preg_match('/(?:\$_SERVER\[[\'"]HTTP_USER_AGENT[\'"]\]|\$_SERVER\[[\'"]HTTP_REFERER[\'"]\]|\$ua)[\s\S]{0,100}(?:googlebot|bingbot|yahoo|baiduspider|yandex|crawler)[\s\S]{0,150}(?:header\s*\(\s*[\'"]Location:|wp_redirect|echo\s+base64_decode|exit)/i', $content)) {
+            $score = max($score, 90);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "SEO Cloaking Backdoor: Conditional search engine crawler redirect discovered";
+        }
+
+        if (preg_match('/(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*0px)[\s\S]{0,500}(?:viagra|cialis|levitra|online-casino|casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol)/i', $content)) {
+            $score = max($score, 85);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "SEO Blackhat Spam: Concealed pharma/gambling keywords injected";
         }
 
         return [
@@ -1810,12 +1846,13 @@ class WAF_FW_Scanner {
         ];
     }
 
-    private function scan_database_for_malware() {
+    public function scan_database_for_malware() {
         global $wpdb;
         $results = [
             'tables_scanned' => 0,
             'rows_checked' => 0,
             'suspicious_content' => [],
+            'seo_spam_injections' => [],
             'suspicious_users' => [],
             'malware_in_options' => [],
         ];
@@ -1845,6 +1882,14 @@ class WAF_FW_Scanner {
             '/ob_start\s*\(/i',
         ];
 
+        $seo_spam_patterns = [
+            '/(?:viagra|cialis|levitra|online-casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol|phentermine)/i',
+            '/(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*0px|visibility\s*:\s*hidden)/i',
+            '/(?:[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]{8,}.*?(?:激安|通販|送料無料|人気|正規品))/u',
+            '/<iframe\s+[^>]*style=[\'"][^\'"]*display\s*:\s*none/i',
+            '/window\.location\.(?:replace|href)\s*=\s*[\'"]https?:\/\/(?!' . preg_quote(parse_url(home_url(), PHP_URL_HOST), '/') . ')/i'
+        ];
+
         $tables_to_scan = [
             $wpdb->posts,
             $wpdb->postmeta,
@@ -1853,13 +1898,11 @@ class WAF_FW_Scanner {
             $wpdb->commentmeta,
             $wpdb->usermeta,
             $wpdb->termmeta,
-            $wpdb->postmeta . ' pm2',
         ];
 
         $text_columns = ['post_content', 'post_excerpt', 'post_title', 'option_value', 'meta_value', 'comment_content', 'user_url', 'display_name', 'description'];
 
-        foreach ($tables_to_scan as $table) {
-            $clean_table = explode(' ', $table)[0];
+        foreach ($tables_to_scan as $clean_table) {
             if (!$wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $clean_table))) continue;
             $results['tables_scanned']++;
 
@@ -1870,7 +1913,7 @@ class WAF_FW_Scanner {
                 if (!in_array($col->Field, $text_columns)) continue;
 
                 $rows = $wpdb->get_results($wpdb->prepare(
-                    "SELECT `{$col->Field}` FROM $clean_table WHERE LENGTH(`{$col->Field}`) > 100 AND (`{$col->Field}` REGEXP '<[^>]*script|<\\?php|eval|base64_decode') LIMIT %d",
+                    "SELECT `{$col->Field}` FROM $clean_table WHERE LENGTH(`{$col->Field}`) > 60 AND (`{$col->Field}` REGEXP '<[^>]*script|<\\?php|eval|base64_decode|viagra|cialis|casino|payday|-9999px') LIMIT %d",
                     50
                 ));
 
@@ -1887,16 +1930,27 @@ class WAF_FW_Scanner {
                             ];
                             $results['rows_checked']++;
                         }
+
+                        // Check SEO Spam
+                        $seo_matches = $this->check_malware_patterns($content, $seo_spam_patterns);
+                        if (!empty($seo_matches)) {
+                            $results['seo_spam_injections'][] = [
+                                'table' => $clean_table,
+                                'column' => $col->Field,
+                                'patterns' => array_slice($seo_matches, 0, 3),
+                                'content_preview' => substr(strip_tags($content), 0, 200),
+                            ];
+                        }
                     }
                 }
             }
         }
 
-        $suspicious_roles = ['administrator', 'editor', 'author', 'subscriber'];
+        // Auditing Rogue Users and Privilege Escalations
+        $suspicious_roles = ['administrator', 'editor'];
         foreach ($suspicious_roles as $role) {
             $users = get_users(['role' => $role, 'fields' => ['ID', 'user_login', 'user_email', 'user_registered']]);
             foreach ($users as $user) {
-                $user_data = get_userdata($user->ID);
                 $email_domain = substr(strrchr($user->user_email, '@'), 1);
                 $suspicious_domains = ['mail.ru', 'yandex.com', 'protonmail.com', 'tempmail', 'guerrillamail', '10minute', 'throwaway', 'mailinator', 'yopmail'];
                 foreach ($suspicious_domains as $sd) {
@@ -1905,32 +1959,25 @@ class WAF_FW_Scanner {
                             'user_login' => $user->user_login,
                             'user_email' => $user->user_email,
                             'role' => $role,
-                            'reason' => "Administrator with $sd email domain",
+                            'reason' => "Administrator with untrusted email domain: $sd",
                         ];
                         break;
                     }
                 }
-                if ($user->user_email && !email_exists($user->user_email) && $role === 'administrator') {
+                if ($user->user_email && !is_email($user->user_email) && $role === 'administrator') {
                     $results['suspicious_users'][] = [
                         'user_login' => $user->user_login,
                         'user_email' => $user->user_email,
                         'role' => $role,
-                        'reason' => 'Administrator with potentially invalid email',
+                        'reason' => 'Administrator with malformed email structure',
                     ];
                 }
             }
         }
 
-        $suspicious_option_keys = [
-            'registration' => '/registration|user_roles|admin_email|siteurl|home|blogname|admin_/i',
-            'widget' => '/^widget_|^recently_|^wp_.*block|elementor|wpb_/i',
-            'theme_mod' => '/^theme_mod|^nav_menu|^category_|^cron/i',
-            'plugin_option' => '/^waf_|^wordfence|^aiowps|^bulletproof|^sucuri|^itsec|_settings$|_options$|_config$/i',
-        ];
-
         $option_rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT option_name, option_value FROM {$wpdb->options} WHERE LENGTH(option_value) > 500 AND option_value REGEXP '<[^>]*script|<\\?php|eval|base64_decode' LIMIT %d",
+                "SELECT option_name, option_value FROM {$wpdb->options} WHERE LENGTH(option_value) > 300 AND option_value REGEXP '<[^>]*script|<\\?php|eval|base64_decode' LIMIT %d",
                 30
             )
         );
@@ -1946,7 +1993,7 @@ class WAF_FW_Scanner {
             }
         }
 
-        $results['total_suspicious'] = count($results['suspicious_content']) + count($results['malware_in_options']) + count($results['suspicious_users']);
+        $results['total_suspicious'] = count($results['suspicious_content']) + count($results['seo_spam_injections']) + count($results['malware_in_options']) + count($results['suspicious_users']);
         return $results;
     }
 
@@ -3339,6 +3386,23 @@ class WAF_FW_Scanner {
 
         $this->record_scan_metric($scan_type, $score, $issues, $duration, $results);
         $this->send_scan_email_report($scan_type, $score, $issues, $results, $summary);
+
+        // Instant Alert Push to MDefender Pro Cloud User Dashboard
+        if (class_exists('WAF_FW_ML_Api_Client')) {
+            $client = WAF_FW_ML_Api_Client::instance();
+            if ($client->is_available()) {
+                $sev = $issues > 0 ? ($score < 60 ? 'critical' : 'warning') : 'info';
+                $site_n = function_exists('get_bloginfo') ? get_bloginfo('name') : 'WordPress Site';
+                $alert_title = sprintf('Security Scan Complete: %s (%d Issues Found, Score: %d/100)', $site_n, $issues, $score);
+                $alert_msg = sprintf('MDefender-Pro scanner executed %s scan on %s. Found %d issues with duration of %ds.', strtoupper($scan_type), $target_url, $issues, $duration);
+                $client->report_alert($alert_title, $alert_msg, 'malware', $sev, [
+                    'score' => $score,
+                    'issues_found' => $issues,
+                    'duration' => $duration,
+                    'scan_type' => $scan_type,
+                ]);
+            }
+        }
     }
 
     private function record_scan_metric($scan_type, $score, $issues, $duration, $results) {
