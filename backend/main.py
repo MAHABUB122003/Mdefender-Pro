@@ -867,7 +867,7 @@ async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
 @app.post("/api/v1/user/blacklist")
 async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
-    ip = data.get('ip', '').strip()
+    ip = (data.get('ip') or '').strip()
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
     
@@ -892,19 +892,19 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
         'is_global': False,
     }
     
-    match_conds = [{'ip': ip, 'user_id': user_id_str}, {'ip': ip, 'added_by_user_id': user_id_str}]
+    db.blacklist.delete_many({'ip': ip, 'user_id': user_id_str})
+    db.blacklist.delete_many({'ip': ip, 'added_by_user_id': user_id_str})
     if ObjectId.is_valid(user_id_str):
-        match_conds.append({'ip': ip, 'user_id': ObjectId(user_id_str)})
-    existing = db.blacklist.find_one({'$or': match_conds}) or db.blacklist.find_one({'ip': ip})
-    if existing:
-        db.blacklist.update_one({'_id': existing['_id']}, {'$set': payload})
+        db.blacklist.delete_many({'ip': ip, 'user_id': ObjectId(user_id_str)})
+        db.blacklist.delete_many({'ip': ip, 'added_by_user_id': ObjectId(user_id_str)})
+    db.blacklist.insert_one(payload)
+    
+    try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
         push_instant_sync_to_wordpress(user_id=user['_id'])
-        return {'status': 'success', 'message': f'IP {ip} updated in blacklist ({duration_label})'}
+    except Exception:
+        pass
         
-    db.blacklist.insert_one(payload)
-    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-    push_instant_sync_to_wordpress(user_id=user['_id'])
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully ({duration_label})'}
 
 @app.delete("/api/user/blacklist")
@@ -912,6 +912,12 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
 async def user_delete_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
     ip = request.query_params.get('ip', '').strip()
+    if not ip:
+        try:
+            body = await request.json()
+            ip = (body.get('ip') or body.get('id') or '').strip()
+        except Exception:
+            pass
     if not ip:
         return {'status': 'error', 'message': 'IP is required'}
     
@@ -937,6 +943,11 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         '$or': del_conds
     })
     db.blacklist.delete_many({'ip': ip, 'user_id': user_id_str})
+    db.blacklist.delete_many({'ip': ip, 'added_by_user_id': user_id_str})
+    if ObjectId.is_valid(user_id_str):
+        db.blacklist.delete_many({'ip': ip, 'user_id': ObjectId(user_id_str)})
+        db.blacklist.delete_many({'ip': ip, 'added_by_user_id': ObjectId(user_id_str)})
+    db.blacklist.delete_many({'ip': ip, 'is_global': {'$ne': True}})
     
     # 2. Delete from auto_blocks
     db.auto_blocks.delete_many({'ip': ip})
@@ -945,8 +956,12 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
     db.attack_attempts.delete_many({'ip': ip})
     
     # 4. Immediate push sync to WordPress sites and local disk fast caches
-    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-    push_instant_sync_to_wordpress(user_id=user['_id'])
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user['_id'])
+    except Exception:
+        pass
+        
     return {'status': 'success', 'message': f'IP {ip} unblocked and removed from blacklist'}
 
 @app.get("/api/user/whitelist")
