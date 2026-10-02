@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import secrets
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -1135,6 +1136,7 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
 # ==================== USER SECURITY CONFIG & AUTO-BLOCK POLICIES ====================
 
 @app.get("/api/user/security-config")
+@app.get("/api/v1/user/security-config")
 async def user_get_security_config(user: dict = Depends(verify_user_token_compat)):
     from src.security.attack_blocker import AttackBlocker
     ab = AttackBlocker(db)
@@ -1143,6 +1145,7 @@ async def user_get_security_config(user: dict = Depends(verify_user_token_compat
 
 
 @app.post("/api/user/security-config")
+@app.post("/api/v1/user/security-config")
 async def user_save_security_config(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     from src.security.attack_blocker import AttackBlocker
@@ -1154,6 +1157,7 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
 
 
 @app.get("/api/user/auto-blocks")
+@app.get("/api/v1/user/auto-blocks")
 async def user_get_auto_blocks(user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
     u_str = str(user['_id'])
@@ -1189,6 +1193,7 @@ async def user_get_auto_blocks(user: dict = Depends(verify_user_token_compat)):
 
 
 @app.delete("/api/user/auto-blocks")
+@app.delete("/api/v1/user/auto-blocks")
 async def user_delete_auto_block(request: Request, user: dict = Depends(verify_user_token_compat)):
     ip = (request.query_params.get('ip') or '').strip()
     if not ip:
@@ -1209,6 +1214,7 @@ async def user_delete_auto_block(request: Request, user: dict = Depends(verify_u
 
 
 @app.post("/api/user/auto-blocks/promote")
+@app.post("/api/v1/user/auto-blocks/promote")
 async def user_promote_auto_block(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     ip = (data.get('ip') or '').strip()
@@ -1238,6 +1244,7 @@ async def user_promote_auto_block(request: Request, user: dict = Depends(verify_
 # ==================== WEBSITE SECURITY AUDIT & PORT SCANNER ====================
 
 @app.post("/api/user/security-audit")
+@app.post("/api/v1/user/security-audit")
 async def user_security_audit(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     url = (data.get('url') or '').strip()
@@ -1247,7 +1254,7 @@ async def user_security_audit(request: Request, user: dict = Depends(verify_user
     try:
         from src.services.security_scanner_service import SecurityScannerService
         scanner = SecurityScannerService()
-        audit_report = scanner.run_full_audit(url)
+        audit_report = await asyncio.to_thread(scanner.run_full_audit, url)
         return {'status': 'success', 'audit': audit_report}
     except Exception as e:
         return {'status': 'error', 'message': f'Failed to perform security audit: {str(e)}'}

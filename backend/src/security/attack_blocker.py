@@ -174,6 +174,7 @@ class AttackBlocker:
 
     def save_user_settings(self, user_id, data):
         u_str = str(user_id)
+        now_dt = datetime.now()
         update_data = {
             '_type': 'user_security_config',
             'user_id': u_str,
@@ -185,14 +186,24 @@ class AttackBlocker:
             'ddos_mitigation_enabled': bool(data.get('ddos_mitigation_enabled', True)),
             'admin_bruteforce_protection': bool(data.get('admin_bruteforce_protection', True)),
             'auto_block_permanent': bool(data.get('auto_block_permanent', False)),
-            'updated_at': datetime.now(),
+            'updated_at': now_dt,
         }
         self.db.settings.update_one(
             {'_type': 'user_security_config', 'user_id': u_str},
             {'$set': update_data},
             upsert=True
         )
-        return update_data
+        return {
+            'auto_block_enabled': update_data['auto_block_enabled'],
+            'auto_block_threshold': update_data['auto_block_threshold'],
+            'auto_block_window_hours': update_data['auto_block_window_hours'],
+            'auto_block_duration_hours': update_data['auto_block_duration_hours'],
+            'rate_limit_per_minute': update_data['rate_limit_per_minute'],
+            'ddos_mitigation_enabled': update_data['ddos_mitigation_enabled'],
+            'admin_bruteforce_protection': update_data['admin_bruteforce_protection'],
+            'auto_block_permanent': update_data['auto_block_permanent'],
+            'updated_at': now_dt.strftime("%Y-%m-%d %H:%M:%S"),
+        }
 
     def get_settings(self):
         return self.get_user_settings(None)

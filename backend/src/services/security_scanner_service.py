@@ -16,6 +16,7 @@ import time
 import re
 from datetime import datetime, timezone
 from urllib.parse import urlparse
+import concurrent.futures
 import requests
 import urllib3
 
@@ -101,7 +102,7 @@ SENSITIVE_PATHS = [
 
 
 class SecurityScannerService:
-    def __init__(self, timeout=3.0):
+    def __init__(self, timeout=2.5):
         self.timeout = timeout
 
     def normalize_url(self, raw_url: str):
@@ -111,43 +112,58 @@ class SecurityScannerService:
         if not url.startswith("http://") and not url.startswith("https://"):
             url = f"https://{url}"
         parsed = urlparse(url)
-        hostname = parsed.hostname or url.replace("https://", "").replace("http://", "").split("/")[0]
+        hostname = parsed.hostname or url.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
         scheme = parsed.scheme or "https"
-        return f"{scheme}://{hostname}", hostname, scheme
+        port_suffix = f":{parsed.port}" if parsed.port and parsed.port not in (80, 443) else ""
+        return f"{scheme}://{hostname}{port_suffix}", hostname, scheme
+
+    def _probe_single_port(self, hostname: str, item: dict):
+        port = item["port"]
+        is_open = False
+        latency_ms = None
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.6)
+            start = time.perf_counter()
+            res = s.connect_ex((hostname, port))
+            latency_ms = round((time.perf_counter() - start) * 1000, 1)
+            s.close()
+            if res == 0:
+                is_open = True
+        except Exception:
+            is_open = False
+
+        return {
+            "port": port,
+            "service": item["service"],
+            "category": item["category"],
+            "risk": item["risk"],
+            "desc": item["desc"],
+            "status": "open" if is_open else "closed",
+            "latency_ms": latency_ms if is_open else None,
+        }
 
     def scan_ports(self, hostname: str):
         results = []
         open_count = 0
         critical_count = 0
 
-        for item in COMMON_PORTS:
-            port = item["port"]
-            is_open = False
-            latency_ms = None
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(0.75)
-                start = time.perf_counter()
-                res = s.connect_ex((hostname, port))
-                latency_ms = round((time.perf_counter() - start) * 1000, 1)
-                s.close()
-                if res == 0:
-                    is_open = True
-                    open_count += 1
-                    if item["risk"] in ("critical", "high"):
-                        critical_count += 1
-            except Exception:
-                is_open = False
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, len(COMMON_PORTS))) as executor:
+            future_to_port = {executor.submit(self._probe_single_port, hostname, item): item for item in COMMON_PORTS}
+            for future in concurrent.futures.as_completed(future_to_port):
+                try:
+                    res = future.result()
+                    results.append(res)
+                    if res["status"] == "open":
+                        open_count += 1
+                        if res["risk"] in ("critical", "high"):
+                            critical_count += 1
+                except Exception:
+                    pass
 
-            results.append({
-                "port": port,
-                "service": item["service"],
-                "category": item["category"],
-                "risk": item["risk"],
-                "desc": item["desc"],
-                "status": "open" if is_open else "closed",
-                "latency_ms": latency_ms if is_open else None,
-            })
+        # Sort back in defined port order
+        port_order = {item["port"]: idx for idx, item in enumerate(COMMON_PORTS)}
+        results.sort(key=lambda r: port_order.get(r["port"], 999))
 
         return {
             "ports": results,
@@ -221,7 +237,7 @@ class SecurityScannerService:
         try:
             resp = requests.get(
                 base_url,
-                timeout=4.0,
+                timeout=3.0,
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDefender-Pro/4.0 Security Scanner"},
                 allow_redirects=True,
                 verify=False,
@@ -257,7 +273,7 @@ class SecurityScannerService:
                     "samesite": getattr(c, "samesite", "None") or "Unset",
                 })
 
-        except Exception as e:
+        except Exception:
             status_code = 0
 
         # Evaluate Defined Security Headers
@@ -293,28 +309,40 @@ class SecurityScannerService:
             "cookies": cookies_found,
         }
 
+    def _probe_single_path(self, base_url: str, item: dict):
+        target = f"{base_url.rstrip('/')}{item['path']}"
+        status = 0
+        is_exposed = False
+        try:
+            r = requests.head(target, timeout=1.5, allow_redirects=False, verify=False)
+            status = r.status_code
+            if status in (200, 301, 302, 401, 403):
+                is_exposed = status in (200, 301, 302)
+        except Exception:
+            status = 0
+
+        return {
+            "path": item["path"],
+            "name": item["name"],
+            "risk": item["risk"],
+            "desc": item["desc"],
+            "http_status": status,
+            "exposed": is_exposed,
+        }
+
     def check_sensitive_paths(self, base_url: str):
         findings = []
-        for item in SENSITIVE_PATHS:
-            target = f"{base_url.rstrip('/')}{item['path']}"
-            status = 0
-            is_exposed = False
-            try:
-                r = requests.head(target, timeout=2.0, allow_redirects=False, verify=False)
-                status = r.status_code
-                if status in (200, 301, 302, 401, 403):
-                    is_exposed = status in (200, 301, 302)
-            except Exception:
-                status = 0
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(12, len(SENSITIVE_PATHS))) as executor:
+            future_to_path = {executor.submit(self._probe_single_path, base_url, item): item for item in SENSITIVE_PATHS}
+            for future in concurrent.futures.as_completed(future_to_path):
+                try:
+                    findings.append(future.result())
+                except Exception:
+                    pass
 
-            findings.append({
-                "path": item["path"],
-                "name": item["name"],
-                "risk": item["risk"],
-                "desc": item["desc"],
-                "http_status": status,
-                "exposed": is_exposed,
-            })
+        # Sort back in original list order
+        path_order = {item["path"]: idx for idx, item in enumerate(SENSITIVE_PATHS)}
+        findings.sort(key=lambda r: path_order.get(r["path"], 999))
         return findings
 
     def run_full_audit(self, target_url: str):
@@ -327,11 +355,37 @@ class SecurityScannerService:
         except Exception:
             ip_address = "Unresolved"
 
-        # 2. Run diagnostics
-        ssl_data = self.check_ssl(hostname)
-        http_data = self.check_http_and_headers(clean_url)
-        port_data = self.scan_ports(hostname)
-        path_data = self.check_sensitive_paths(clean_url)
+        # 2. Run diagnostics concurrently in threads
+        ssl_data = {"supported": False, "grade": "F", "message": "SSL not tested"}
+        http_data = {"header_score": 0, "headers_evaluation": [], "server_exposure": [], "waf_detected": "Unknown"}
+        port_data = {"ports": [], "total_scanned": 0, "open_count": 0, "critical_exposed": 0}
+        path_data = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            future_ssl = executor.submit(self.check_ssl, hostname)
+            future_http = executor.submit(self.check_http_and_headers, clean_url)
+            future_ports = executor.submit(self.scan_ports, hostname)
+            future_paths = executor.submit(self.check_sensitive_paths, clean_url)
+
+            try:
+                ssl_data = future_ssl.result(timeout=4.0)
+            except Exception:
+                ssl_data = {"supported": False, "grade": "F", "message": "SSL check timed out"}
+
+            try:
+                http_data = future_http.result(timeout=4.0)
+            except Exception:
+                http_data = {"header_score": 0, "headers_evaluation": [], "server_exposure": [], "waf_detected": "None / Direct Origin"}
+
+            try:
+                port_data = future_ports.result(timeout=4.0)
+            except Exception:
+                port_data = {"ports": [], "total_scanned": 12, "open_count": 0, "critical_exposed": 0}
+
+            try:
+                path_data = future_paths.result(timeout=4.0)
+            except Exception:
+                path_data = []
 
         # 3. Calculate Overall Security Score
         score = 100

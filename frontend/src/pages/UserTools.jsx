@@ -192,7 +192,7 @@ export default function UserTools() {
     handleWhoisLookup(target)
   }, [queryParamIp])
 
-  // Fetch connected websites for 1-click audit picker
+  // Fetch connected websites and initial counts on mount
   useEffect(() => {
     api.getUserWebsites().then(res => {
       const list = res?.websites || res?.data?.websites || []
@@ -209,6 +209,10 @@ export default function UserTools() {
         }
       }).catch(() => {})
     })
+
+    fetchCountryBlocks()
+    fetchAutoBlocks()
+    fetchSecurityConfig()
   }, [])
 
   const handleCopyRaw = () => {
@@ -378,6 +382,7 @@ Report Generated: ${new Date().toISOString()}`
       if (res?.status === 'success') {
         setConfigSuccessMsg('Security policy saved! Real-time changes synchronized to all connected WordPress origins & API gateways.')
         if (res.config) setSecurityConfig(res.config)
+        setTimeout(() => setConfigSuccessMsg(''), 4500)
       } else {
         setConfigErrorMsg(res?.message || 'Failed to save configuration.')
       }
