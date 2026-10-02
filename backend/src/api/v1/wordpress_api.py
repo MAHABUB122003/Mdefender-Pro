@@ -660,9 +660,10 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             except Exception:
                 pass
 
-            for clean_url, api_key, site_token in unique_targets:
+            def _sync_single_target(target_info):
+                clean_url, api_key, site_token = target_info
                 if not clean_url:
-                    continue
+                    return
                 try:
                     headers = {"Content-Type": "application/json"}
                     if api_key:
@@ -672,7 +673,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                         headers["X-Site-Token"] = site_token
 
                     sep = "&" if "?" in clean_url else "?"
-                    url_params = f"waf_cloud_sync=1"
+                    url_params = "waf_cloud_sync=1"
                     if api_key:
                         url_params += f"&api_key={api_key}"
                     if site_token:
@@ -680,15 +681,17 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     target_endpoint = f"{clean_url}{sep}{url_params}"
 
-                    # 1. First attempt POST with rich JSON payload for 0-latency instant cache update
+                    # 1. Attempt POST with rich JSON payload
                     try:
-                        requests.post(
+                        resp = requests.post(
                             target_endpoint,
                             json=sync_payload,
                             headers=headers,
-                            timeout=4,
+                            timeout=2.5,
                             verify=False
                         )
+                        if resp.status_code == 200:
+                            return
                     except Exception:
                         pass
 
@@ -697,13 +700,18 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                         requests.get(
                             target_endpoint,
                             headers=headers,
-                            timeout=3,
+                            timeout=2.0,
                             verify=False
                         )
                     except Exception:
                         pass
                 except Exception:
                     pass
+
+            if unique_targets:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=min(12, len(unique_targets) * 2)) as executor:
+                    list(executor.map(_sync_single_target, unique_targets))
         except Exception:
             pass
 
