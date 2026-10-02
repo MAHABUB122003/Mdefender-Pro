@@ -306,6 +306,9 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             "scan_type": queued_scan.get("scan_type", "file")
         }
 
+    from src.security.attack_blocker import AttackBlocker
+    u_cfg = AttackBlocker(db).get_user_settings(auth_data.get("user_id"))
+
     # Fetch configuration settings
     config = {
         "waf_mode": website.get("waf_mode", "protect"),
@@ -315,6 +318,12 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "disable_directory_listing": website.get("disable_directory_listing", False),
         "prevent_user_enumeration": website.get("prevent_user_enumeration", False),
         "disable_file_editing": website.get("disable_file_editing", False),
+        "rate_limit": u_cfg.get("rate_limit_per_minute", 120),
+        "auto_block_enabled": u_cfg.get("auto_block_enabled", True),
+        "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
+        "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
+        "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
+        "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
     }
 
     # Fetch active blacklisted IPs for local firewall cache (scoped to user)
@@ -541,11 +550,22 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     seen.add(clean_u)
                     unique_targets.append((clean_u, k, tok))
 
+            from src.security.attack_blocker import AttackBlocker
+            u_cfg = AttackBlocker(db).get_user_settings(u_str)
+
             sync_payload = {
                 "status": "ok",
                 "blacklist": blacklist,
                 "blocked_countries": blocked_countries,
                 "user_rules": user_rules,
+                "config": {
+                    "rate_limit": u_cfg.get("rate_limit_per_minute", 120),
+                    "auto_block_enabled": u_cfg.get("auto_block_enabled", True),
+                    "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
+                    "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
+                    "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
+                    "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
+                },
                 "synced_at": datetime.now().isoformat(),
             }
 

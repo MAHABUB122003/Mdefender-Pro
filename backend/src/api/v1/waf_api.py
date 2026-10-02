@@ -269,6 +269,34 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
     except Exception:
         pass
 
+    # Track attack and auto-block repeating offenders
+    if decision["decision"] == "BLOCK" and ip:
+        try:
+            from src.security.attack_blocker import AttackBlocker
+            ab = AttackBlocker(db)
+            ab.record_attack(
+                ip=ip,
+                attack_type=decision.get("attack_type") or "WAF Rule Violation",
+                url=req_data.get("url", ""),
+                user_id=auth_data.get("user_id"),
+                website_id=auth_data.get("website_id")
+            )
+            u_cfg = ab.get_user_settings(auth_data.get("user_id"))
+            if u_cfg.get("auto_block_enabled", True):
+                threshold = u_cfg.get("auto_block_threshold", 10)
+                window_h = u_cfg.get("auto_block_window_hours", 24)
+                duration_h = None if u_cfg.get("auto_block_permanent") else u_cfg.get("auto_block_duration_hours", 24)
+                ab.check_and_auto_block(
+                    ip=ip,
+                    threshold=threshold,
+                    window_hours=window_h,
+                    duration_hours=duration_h,
+                    user_id=auth_data.get("user_id"),
+                    website_id=auth_data.get("website_id")
+                )
+        except Exception:
+            pass
+
     # Notify on critical blocks.
     if decision["decision"] == "BLOCK":
         try:

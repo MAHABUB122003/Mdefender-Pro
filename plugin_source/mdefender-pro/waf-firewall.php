@@ -169,6 +169,24 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                     if (isset($config['confidence_threshold'])) {
                         update_option('waf_fw_confidence_threshold', (float) $config['confidence_threshold']);
                     }
+                    if (isset($config['rate_limit'])) {
+                        update_option('waf_fw_rate_limit', max(10, (int) $config['rate_limit']));
+                    }
+                    if (isset($config['auto_block_enabled'])) {
+                        update_option('waf_fw_attack_blocker_enabled', $config['auto_block_enabled'] ? 'yes' : 'no');
+                    }
+                    if (isset($config['auto_block_threshold'])) {
+                        update_option('waf_fw_attack_threshold', max(1, (int) $config['auto_block_threshold']));
+                    }
+                    if (isset($config['auto_block_window'])) {
+                        update_option('waf_fw_attack_window', max(60, (int) $config['auto_block_window']));
+                    }
+                    if (isset($config['auto_block_duration'])) {
+                        update_option('waf_fw_attack_block_duration', max(60, (int) $config['auto_block_duration']));
+                    }
+                    if (isset($config['ddos_enabled'])) {
+                        update_option('waf_fw_ddos_protection', $config['ddos_enabled'] ? 'yes' : 'no');
+                    }
                 }
                 if (class_exists('WAF_FW_Engine')) {
                     WAF_FW_Engine::instance()->export_fast_cache();
@@ -298,6 +316,24 @@ function waf_fw_cloud_heartbeat() {
             }
             if (isset($config['disable_file_editing'])) {
                 update_option('waf_fw_disable_file_editing', $config['disable_file_editing'] ? 'yes' : 'no');
+            }
+            if (isset($config['rate_limit'])) {
+                update_option('waf_fw_rate_limit', max(10, (int) $config['rate_limit']));
+            }
+            if (isset($config['auto_block_enabled'])) {
+                update_option('waf_fw_attack_blocker_enabled', $config['auto_block_enabled'] ? 'yes' : 'no');
+            }
+            if (isset($config['auto_block_threshold'])) {
+                update_option('waf_fw_attack_threshold', max(1, (int) $config['auto_block_threshold']));
+            }
+            if (isset($config['auto_block_window'])) {
+                update_option('waf_fw_attack_window', max(60, (int) $config['auto_block_window']));
+            }
+            if (isset($config['auto_block_duration'])) {
+                update_option('waf_fw_attack_block_duration', max(60, (int) $config['auto_block_duration']));
+            }
+            if (isset($config['ddos_enabled'])) {
+                update_option('waf_fw_ddos_protection', $config['ddos_enabled'] ? 'yes' : 'no');
             }
         }
 

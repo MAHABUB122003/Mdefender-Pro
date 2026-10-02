@@ -1132,6 +1132,127 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
     return {'status': 'success', 'message': f'Country {code} unblocked successfully'}
 
 
+# ==================== USER SECURITY CONFIG & AUTO-BLOCK POLICIES ====================
+
+@app.get("/api/user/security-config")
+async def user_get_security_config(user: dict = Depends(verify_user_token_compat)):
+    from src.security.attack_blocker import AttackBlocker
+    ab = AttackBlocker(db)
+    config = ab.get_user_settings(user['_id'])
+    return {'status': 'success', 'config': config}
+
+
+@app.post("/api/user/security-config")
+async def user_save_security_config(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    from src.security.attack_blocker import AttackBlocker
+    ab = AttackBlocker(db)
+    saved = ab.save_user_settings(user['_id'], data)
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
+    return {'status': 'success', 'message': 'Security policy updated and synchronized across all protected websites.', 'config': saved}
+
+
+@app.get("/api/user/auto-blocks")
+async def user_get_auto_blocks(user: dict = Depends(verify_user_token_compat)):
+    from bson import ObjectId
+    u_str = str(user['_id'])
+    conds = [
+        {'user_id': u_str},
+        {'added_by_user_id': u_str},
+    ]
+    if ObjectId.is_valid(u_str):
+        conds.append({'user_id': ObjectId(u_str)})
+        conds.append({'added_by_user_id': ObjectId(u_str)})
+    
+    query = {
+        'auto_blocked': True,
+        '$or': conds
+    }
+    
+    now = datetime.now()
+    records = list(db.blacklist.find(query).sort('blocked_at', -1))
+    results = []
+    for r in records:
+        exp = r.get('expires_at')
+        is_active = exp is None or exp > now
+        if is_active:
+            results.append({
+                'id': str(r.get('_id', '')),
+                'ip': r.get('ip', ''),
+                'reason': r.get('reason', 'Auto-blocked: attack threshold exceeded'),
+                'type': r.get('type', 'temporary'),
+                'blocked_at': r.get('blocked_at').strftime("%Y-%m-%d %H:%M:%S") if isinstance(r.get('blocked_at'), datetime) else str(r.get('blocked_at', '')),
+                'expires_at': r.get('expires_at').strftime("%Y-%m-%d %H:%M:%S") if isinstance(r.get('expires_at'), datetime) else ('Never (Permanent)' if r.get('type') == 'permanent' else 'Expired'),
+            })
+    return {'status': 'success', 'auto_blocks': results, 'total': len(results)}
+
+
+@app.delete("/api/user/auto-blocks")
+async def user_delete_auto_block(request: Request, user: dict = Depends(verify_user_token_compat)):
+    ip = (request.query_params.get('ip') or '').strip()
+    if not ip:
+        return {'status': 'error', 'message': 'IP address is required'}
+    from bson import ObjectId
+    u_str = str(user['_id'])
+    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
+    if ObjectId.is_valid(u_str):
+        del_conds.append({'user_id': ObjectId(u_str)})
+        del_conds.append({'added_by_user_id': ObjectId(u_str)})
+    
+    db.blacklist.delete_many({'ip': ip, 'auto_blocked': True, '$or': del_conds})
+    db.auto_blocks.delete_many({'ip': ip, '$or': del_conds})
+    
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
+    return {'status': 'success', 'message': f'IP {ip} unblocked and removed from auto-block blacklist.'}
+
+
+@app.post("/api/user/auto-blocks/promote")
+async def user_promote_auto_block(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    ip = (data.get('ip') or '').strip()
+    if not ip:
+        return {'status': 'error', 'message': 'IP address is required'}
+    from bson import ObjectId
+    u_str = str(user['_id'])
+    u_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
+    if ObjectId.is_valid(u_str):
+        u_conds.append({'user_id': ObjectId(u_str)})
+        u_conds.append({'added_by_user_id': ObjectId(u_str)})
+    
+    db.blacklist.update_many(
+        {'ip': ip, '$or': u_conds},
+        {'$set': {
+            'type': 'permanent',
+            'expires_at': None,
+            'reason': 'Promoted to Permanent Blacklist by Administrator',
+            'updated_at': datetime.now()
+        }}
+    )
+    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+    push_instant_sync_to_wordpress(user_id=user['_id'])
+    return {'status': 'success', 'message': f'IP {ip} promoted to permanent blacklist.'}
+
+
+# ==================== WEBSITE SECURITY AUDIT & PORT SCANNER ====================
+
+@app.post("/api/user/security-audit")
+async def user_security_audit(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    url = (data.get('url') or '').strip()
+    if not url:
+        return {'status': 'error', 'message': 'Website URL is required'}
+    
+    try:
+        from src.services.security_scanner_service import SecurityScannerService
+        scanner = SecurityScannerService()
+        audit_report = scanner.run_full_audit(url)
+        return {'status': 'success', 'audit': audit_report}
+    except Exception as e:
+        return {'status': 'error', 'message': f'Failed to perform security audit: {str(e)}'}
+
+
 @app.get("/api/admin/users")
 async def admin_get_users(user: str = Depends(verify_admin_token)):
     return user_api.get_all_users()

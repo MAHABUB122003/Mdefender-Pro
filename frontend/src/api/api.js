@@ -346,6 +346,7 @@ export const api = {
   updateUserProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
   changeUserPassword: (data) => apiCall('/api/user/change_password', { method: 'POST', body: JSON.stringify(data) }),
   regenerateApiKey: (data) => apiCall('/api/user/regenerate_key', { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
+  getUserWebsites: () => apiCall('/api/v1/websites'),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
   removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
   getUserDashboard: (params = {}) => {
@@ -385,6 +386,16 @@ export const api = {
   removeUserCountryBlock: (code) => apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}`, { method: 'DELETE' }),
   userCleanLogs: (data = {}) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
   userResetStats: (data = {}) => apiCall('/api/user/reset-stats', { method: 'POST', body: JSON.stringify(data) }),
+
+  // User Security Configuration & Attack Auto-Block Policies
+  getUserSecurityConfig: () => apiCall('/api/user/security-config'),
+  updateUserSecurityConfig: (data) => apiCall('/api/user/security-config', { method: 'POST', body: JSON.stringify(data) }),
+  getUserAutoBlocks: () => apiCall('/api/user/auto-blocks'),
+  deleteUserAutoBlock: (ip) => apiCall(`/api/user/auto-blocks?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
+  promoteUserAutoBlock: (ip) => apiCall('/api/user/auto-blocks/promote', { method: 'POST', body: JSON.stringify({ ip }) }),
+
+  // Website Security Audit & Port Diagnostics
+  runSecurityAudit: (url) => apiCall('/api/user/security-audit', { method: 'POST', body: JSON.stringify({ url }) }),
 
   // Attack Learning Hub & Feedback Center
   reportFalsePositive: (data) => apiCall('/api/v1/waf/report-false-positive', { method: 'POST', body: JSON.stringify(data) }),

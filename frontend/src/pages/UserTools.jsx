@@ -126,6 +126,36 @@ export default function UserTools() {
   const [geoViewMode, setGeoViewMode] = useState('cards') // 'cards' | 'table'
   const [blockedSearchQuery, setBlockedSearchQuery] = useState('')
 
+  // --- AUTO-BLOCK & RATE LIMIT STATE ---
+  const [securityConfig, setSecurityConfig] = useState({
+    auto_block_enabled: true,
+    auto_block_threshold: 10,
+    auto_block_window_hours: 24,
+    auto_block_duration_hours: 24,
+    rate_limit_per_minute: 120,
+    ddos_mitigation_enabled: true,
+    admin_bruteforce_protection: true,
+    auto_block_permanent: false,
+  })
+  const [configLoading, setConfigLoading] = useState(false)
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [configSuccessMsg, setConfigSuccessMsg] = useState('')
+  const [configErrorMsg, setConfigErrorMsg] = useState('')
+  const [autoBlocksList, setAutoBlocksList] = useState([])
+  const [autoBlocksLoading, setAutoBlocksLoading] = useState(false)
+  const [autoBlockSearch, setAutoBlockSearch] = useState('')
+  const [autoBlockActionMsg, setAutoBlockActionMsg] = useState('')
+
+  // --- SECURITY AUDIT SCANNER STATE ---
+  const [auditUrl, setAuditUrl] = useState('')
+  const [connectedWebsites, setConnectedWebsites] = useState([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditProgressStep, setAuditProgressStep] = useState(0)
+  const [auditResult, setAuditResult] = useState(null)
+  const [auditError, setAuditError] = useState('')
+  const [auditActiveSubTab, setAuditActiveSubTab] = useState('headers')
+  const [auditCopied, setAuditCopied] = useState(false)
+
   // --- WHOIS ACTIONS ---
   const handleWhoisLookup = useCallback(async (targetIp) => {
     const queryIp = (targetIp || ipInput || '').trim()
@@ -161,6 +191,25 @@ export default function UserTools() {
     setActiveTab('whois')
     handleWhoisLookup(target)
   }, [queryParamIp])
+
+  // Fetch connected websites for 1-click audit picker
+  useEffect(() => {
+    api.getUserWebsites().then(res => {
+      const list = res?.websites || res?.data?.websites || []
+      setConnectedWebsites(list)
+      if (list.length > 0 && !auditUrl) {
+        setAuditUrl(list[0].url || list[0].domain || '')
+      }
+    }).catch(() => {
+      api.getUserDashboard().then(res => {
+        const list = res?.websites || []
+        setConnectedWebsites(list)
+        if (list.length > 0 && !auditUrl) {
+          setAuditUrl(list[0].url || list[0].domain || '')
+        }
+      }).catch(() => {})
+    })
+  }, [])
 
   const handleCopyRaw = () => {
     if (!whoisResult?.raw) return
@@ -283,6 +332,138 @@ Report Generated: ${new Date().toISOString()}`
     }
   }
 
+  // --- AUTO-BLOCK & RATE LIMIT ACTIONS ---
+  const fetchSecurityConfig = useCallback(async () => {
+    try {
+      setConfigLoading(true)
+      const res = await api.getUserSecurityConfig()
+      if (res?.config) {
+        setSecurityConfig(res.config)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setConfigLoading(false)
+    }
+  }, [])
+
+  const fetchAutoBlocks = useCallback(async () => {
+    try {
+      setAutoBlocksLoading(true)
+      const res = await api.getUserAutoBlocks()
+      if (res?.auto_blocks) {
+        setAutoBlocksList(res.auto_blocks)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setAutoBlocksLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'autoblock') {
+      fetchSecurityConfig()
+      fetchAutoBlocks()
+    }
+  }, [activeTab, fetchSecurityConfig, fetchAutoBlocks])
+
+  const handleSaveSecurityConfig = async (e) => {
+    if (e) e.preventDefault()
+    setSavingConfig(true)
+    setConfigSuccessMsg('')
+    setConfigErrorMsg('')
+    try {
+      const res = await api.updateUserSecurityConfig(securityConfig)
+      if (res?.status === 'success') {
+        setConfigSuccessMsg('Security policy saved! Real-time changes synchronized to all connected WordPress origins & API gateways.')
+        if (res.config) setSecurityConfig(res.config)
+      } else {
+        setConfigErrorMsg(res?.message || 'Failed to save configuration.')
+      }
+    } catch (err) {
+      setConfigErrorMsg(err.message || 'Error updating security policy.')
+    } finally {
+      setSavingConfig(false)
+    }
+  }
+
+  const handleUnblockAutoBlock = async (ip) => {
+    if (!confirm(`Unblock attacker IP ${ip}?`)) return
+    setAutoBlockActionMsg('')
+    try {
+      await api.deleteUserAutoBlock(ip)
+      setAutoBlockActionMsg(`IP ${ip} unblocked and synced to edge firewall.`)
+      fetchAutoBlocks()
+    } catch (err) {
+      alert(err.message || 'Failed to unblock IP')
+    }
+  }
+
+  const handlePromoteAutoBlock = async (ip) => {
+    if (!confirm(`Promote IP ${ip} to Permanent Blacklist?`)) return
+    setAutoBlockActionMsg('')
+    try {
+      await api.promoteUserAutoBlock(ip)
+      setAutoBlockActionMsg(`IP ${ip} promoted to permanent blacklist.`)
+      fetchAutoBlocks()
+    } catch (err) {
+      alert(err.message || 'Failed to promote IP')
+    }
+  }
+
+  // --- SECURITY AUDIT SCANNER ACTIONS ---
+  const handleRunAudit = async (targetUrl) => {
+    const queryUrl = (targetUrl || auditUrl || '').trim()
+    if (!queryUrl) {
+      setAuditError('Please enter a valid website URL.')
+      return
+    }
+    setAuditError('')
+    setAuditLoading(true)
+    setAuditResult(null)
+    setAuditProgressStep(1)
+
+    const timer1 = setTimeout(() => setAuditProgressStep(2), 500)
+    const timer2 = setTimeout(() => setAuditProgressStep(3), 1000)
+    const timer3 = setTimeout(() => setAuditProgressStep(4), 1600)
+
+    try {
+      const res = await api.runSecurityAudit(queryUrl)
+      if (res?.status === 'success' && res?.audit) {
+        setAuditResult(res.audit)
+      } else {
+        setAuditError(res?.message || 'Security audit could not be completed.')
+      }
+    } catch (err) {
+      setAuditError(err.message || 'Failed to scan target website.')
+    } finally {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      clearTimeout(timer3)
+      setAuditLoading(false)
+      setAuditProgressStep(0)
+    }
+  }
+
+  const handleCopyAuditSummary = () => {
+    if (!auditResult) return
+    const summary = `=== MDEFENDER PRO CYBER SECURITY AUDIT REPORT ===
+Target: ${auditResult.target_url} (${auditResult.ip_address})
+Overall Score: ${auditResult.score}/100 [Grade: ${auditResult.grade}]
+Verdict: ${auditResult.verdict}
+Scanned At: ${auditResult.scanned_at}
+WAF / CDN Detected: ${auditResult.http?.waf_detected}
+SSL Grade: ${auditResult.ssl?.grade} (Issuer: ${auditResult.ssl?.issuer}, ${auditResult.ssl?.days_remaining} days left)
+Security Headers Score: ${auditResult.http?.header_score}%
+Open Ports: ${auditResult.ports?.open_count}/${auditResult.ports?.total_scanned} (Critical Exposed: ${auditResult.ports?.critical_exposed})
+Generated by MDefender Pro Cloud Security Matrix`
+
+    navigator.clipboard.writeText(summary)
+    setAuditCopied(true)
+    setTimeout(() => setAuditCopied(false), 2000)
+  }
+
   const blockedCodesSet = useMemo(() => {
     return new Set(countryBlocks.map(b => b.country_code))
   }, [countryBlocks])
@@ -318,17 +499,17 @@ Report Generated: ${new Date().toISOString()}`
           Forensic Threat Intelligence &amp; Security Tools
         </h2>
         <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--text-muted, #64748b)' }}>
-          Deep socket RIR WHOIS, automated ASN threat scoring, proxy/bot detection, and country-level geo-firewall defense.
+          Attacker threat intelligence, country firewall geo-blocking, automatic attack rate limiting, and cyber security port diagnostics.
         </p>
       </div>
 
       {/* Tabs Switcher */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'var(--bg-secondary, #f1f5f9)', padding: '5px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', maxWidth: '540px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'var(--bg-secondary, #f1f5f9)', padding: '5px', borderRadius: '12px', border: '1px solid var(--border-color, #e2e8f0)', maxWidth: '920px', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={() => setActiveTab('whois')}
           style={{
-            flex: 1, height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
+            flex: '1 1 180px', height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
             cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             background: activeTab === 'whois' ? 'var(--card-bg, #ffffff)' : 'transparent',
             color: activeTab === 'whois' ? '#0284c7' : 'var(--text-muted, #64748b)',
@@ -336,14 +517,14 @@ Report Generated: ${new Date().toISOString()}`
           }}
         >
           <i className="fas fa-radar"></i>
-          <span>Attacker IP Threat Intel</span>
+          <span>Attacker Threat Intel</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('geo')}
           style={{
-            flex: 1, height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
+            flex: '1 1 180px', height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
             cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
             background: activeTab === 'geo' ? 'var(--card-bg, #ffffff)' : 'transparent',
             color: activeTab === 'geo' ? '#dc2626' : 'var(--text-muted, #64748b)',
@@ -352,6 +533,36 @@ Report Generated: ${new Date().toISOString()}`
         >
           <i className="fas fa-globe-americas"></i>
           <span>Country Blocking ({countryBlocks.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('autoblock')}
+          style={{
+            flex: '1 1 200px', height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            background: activeTab === 'autoblock' ? 'var(--card-bg, #ffffff)' : 'transparent',
+            color: activeTab === 'autoblock' ? '#7c3aed' : 'var(--text-muted, #64748b)',
+            boxShadow: activeTab === 'autoblock' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s'
+          }}
+        >
+          <i className="fas fa-shield-virus"></i>
+          <span>Auto-Block &amp; Rate Limiting ({autoBlocksList.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('audit')}
+          style={{
+            flex: '1 1 200px', height: '40px', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '13px',
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            background: activeTab === 'audit' ? 'var(--card-bg, #ffffff)' : 'transparent',
+            color: activeTab === 'audit' ? '#10b981' : 'var(--text-muted, #64748b)',
+            boxShadow: activeTab === 'audit' ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s'
+          }}
+        >
+          <i className="fas fa-microscope"></i>
+          <span>Security &amp; Port Audit</span>
         </button>
       </div>
 
@@ -1366,6 +1577,881 @@ Report Generated: ${new Date().toISOString()}`
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: AUTOMATED RATE LIMITING & ATTACK AUTO-BLOCK POLICIES */}
+      {/* ========================================================================= */}
+      {activeTab === 'autoblock' && (
+        <div>
+          {/* Status & Sync Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(99, 102, 241, 0.05))',
+            border: '1px solid rgba(124, 58, 237, 0.2)',
+            borderRadius: '14px',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px',
+                background: securityConfig.auto_block_enabled ? 'linear-gradient(135deg, #7c3aed, #6366f1)' : '#94a3b8',
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px',
+                boxShadow: securityConfig.auto_block_enabled ? '0 4px 14px rgba(124, 58, 237, 0.3)' : 'none'
+              }}>
+                <i className={securityConfig.auto_block_enabled ? "fas fa-shield-check" : "fas fa-shield-slash"}></i>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    Automated Offender Defense Engine
+                  </h4>
+                  <span style={{
+                    fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
+                    background: securityConfig.auto_block_enabled ? '#dcfce7' : '#fee2e2',
+                    color: securityConfig.auto_block_enabled ? '#15803d' : '#b91c1c'
+                  }}>
+                    {securityConfig.auto_block_enabled ? 'ACTIVE & PROTECTING' : 'PAUSED'}
+                  </span>
+                </div>
+                <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-muted, #64748b)' }}>
+                  Automatically detects repeating attackers, brute-force bots, and aggressive crawlers, dropping them at the edge across all your sites.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12.5px', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-satellite-dish" style={{ color: '#10b981' }}></i>
+                Real-Time Cloud &amp; Plugin Sync
+              </span>
+            </div>
+          </div>
+
+          {/* Config Alerts */}
+          {configSuccessMsg && (
+            <div style={{ padding: '12px 18px', borderRadius: '10px', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '13.5px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+              <span>{configSuccessMsg}</span>
+            </div>
+          )}
+          {configErrorMsg && (
+            <div style={{ padding: '12px 18px', borderRadius: '10px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '13.5px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-exclamation-triangle" style={{ color: '#ef4444' }}></i>
+              <span>{configErrorMsg}</span>
+            </div>
+          )}
+
+          {/* Policy Configuration Form */}
+          <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 18px', color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-sliders-h" style={{ color: '#7c3aed' }}></i>
+              Rate Limiting &amp; Threshold Automation Rules
+            </h3>
+
+            <form onSubmit={handleSaveSecurityConfig}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+                
+                {/* 1. Attack Threshold */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main, #0f172a)', marginBottom: '6px' }}>
+                    <i className="fas fa-skull-crossbones" style={{ color: '#dc2626', marginRight: '6px' }}></i>
+                    Attack Attempt Threshold
+                  </label>
+                  <select
+                    value={securityConfig.auto_block_threshold}
+                    onChange={(e) => setSecurityConfig({ ...securityConfig, auto_block_threshold: parseInt(e.target.value, 10) })}
+                    style={{
+                      width: '100%', height: '42px', padding: '0 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text-main, #0f172a)', fontSize: '13.5px', fontWeight: 600
+                    }}
+                  >
+                    <option value={3}>3 attack attempts (Extreme Strict)</option>
+                    <option value={5}>5 attack attempts (High Security)</option>
+                    <option value={10}>10 attack attempts (Recommended Balanced)</option>
+                    <option value={15}>15 attack attempts (Standard Protection)</option>
+                    <option value={20}>20 attack attempts (Moderate)</option>
+                    <option value={30}>30 attack attempts (Permissive)</option>
+                  </select>
+                  <small style={{ display: 'block', color: 'var(--text-muted, #64748b)', fontSize: '11.5px', marginTop: '4px' }}>
+                    Number of blocked attack payloads before the IP is banned.
+                  </small>
+                </div>
+
+                {/* 2. Detection Time Window */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main, #0f172a)', marginBottom: '6px' }}>
+                    <i className="fas fa-hourglass-half" style={{ color: '#d97706', marginRight: '6px' }}></i>
+                    Evaluation Time Window
+                  </label>
+                  <select
+                    value={securityConfig.auto_block_window_hours}
+                    onChange={(e) => setSecurityConfig({ ...securityConfig, auto_block_window_hours: parseInt(e.target.value, 10) })}
+                    style={{
+                      width: '100%', height: '42px', padding: '0 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text-main, #0f172a)', fontSize: '13.5px', fontWeight: 600
+                    }}
+                  >
+                    <option value={1}>Within 1 Hour</option>
+                    <option value={6}>Within 6 Hours</option>
+                    <option value={12}>Within 12 Hours</option>
+                    <option value={24}>Within 24 Hours (Recommended)</option>
+                    <option value={168}>Within 7 Days</option>
+                  </select>
+                  <small style={{ display: 'block', color: 'var(--text-muted, #64748b)', fontSize: '11.5px', marginTop: '4px' }}>
+                    Time frame across which attack attempts are aggregated.
+                  </small>
+                </div>
+
+                {/* 3. Auto-Block Ban Duration */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main, #0f172a)', marginBottom: '6px' }}>
+                    <i className="fas fa-ban" style={{ color: '#ef4444', marginRight: '6px' }}></i>
+                    Auto-Block Action &amp; Duration
+                  </label>
+                  <select
+                    value={securityConfig.auto_block_permanent ? 0 : securityConfig.auto_block_duration_hours}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10)
+                      if (val === 0) {
+                        setSecurityConfig({ ...securityConfig, auto_block_permanent: true, auto_block_duration_hours: 0 })
+                      } else {
+                        setSecurityConfig({ ...securityConfig, auto_block_permanent: false, auto_block_duration_hours: val })
+                      }
+                    }}
+                    style={{
+                      width: '100%', height: '42px', padding: '0 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text-main, #0f172a)', fontSize: '13.5px', fontWeight: 600
+                    }}
+                  >
+                    <option value={1}>Temporary: 1 Hour Ban</option>
+                    <option value={6}>Temporary: 6 Hours Ban</option>
+                    <option value={24}>Temporary: 24 Hours Ban (Recommended)</option>
+                    <option value={168}>Temporary: 7 Days Ban</option>
+                    <option value={720}>Temporary: 30 Days Ban</option>
+                    <option value={0}>Permanent Blacklist (Zero Tolerance)</option>
+                  </select>
+                  <small style={{ display: 'block', color: 'var(--text-muted, #64748b)', fontSize: '11.5px', marginTop: '4px' }}>
+                    How long the offending IP remains blocked from accessing all sites.
+                  </small>
+                </div>
+
+                {/* 4. Per-IP Rate Limiting */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-main, #0f172a)', marginBottom: '6px' }}>
+                    <i className="fas fa-tachometer-alt" style={{ color: '#0284c7', marginRight: '6px' }}></i>
+                    Per-IP Rate Limit (Edge Throttling)
+                  </label>
+                  <select
+                    value={securityConfig.rate_limit_per_minute}
+                    onChange={(e) => setSecurityConfig({ ...securityConfig, rate_limit_per_minute: parseInt(e.target.value, 10) })}
+                    style={{
+                      width: '100%', height: '42px', padding: '0 12px', borderRadius: '8px',
+                      border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text-main, #0f172a)', fontSize: '13.5px', fontWeight: 600
+                    }}
+                  >
+                    <option value={30}>30 requests / minute (Strict Scraper Shield)</option>
+                    <option value={60}>60 requests / minute (Conservative)</option>
+                    <option value={120}>120 requests / minute (Normal Recommended)</option>
+                    <option value={300}>300 requests / minute (High-Volume Traffic)</option>
+                    <option value={600}>600 requests / minute (API Intensive)</option>
+                  </select>
+                  <small style={{ display: 'block', color: 'var(--text-muted, #64748b)', fontSize: '11.5px', marginTop: '4px' }}>
+                    Limits single-IP request velocity before automatic rate limiting triggers.
+                  </small>
+                </div>
+              </div>
+
+              {/* Toggles Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px',
+                  borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)',
+                  background: 'var(--bg-secondary, #f8fafc)', cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={securityConfig.admin_bruteforce_protection}
+                    onChange={(e) => setSecurityConfig({ ...securityConfig, admin_bruteforce_protection: e.target.checked })}
+                    style={{ width: '18px', height: '18px', accentColor: '#7c3aed' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                      WordPress Admin &amp; API Brute-Force Shield
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)' }}>
+                      Instantly tracks failed attempts on wp-login.php &amp; xmlrpc.php to auto-ban botnets.
+                    </div>
+                  </div>
+                </label>
+
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px',
+                  borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)',
+                  background: 'var(--bg-secondary, #f8fafc)', cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={securityConfig.ddos_mitigation_enabled}
+                    onChange={(e) => setSecurityConfig({ ...securityConfig, ddos_mitigation_enabled: e.target.checked })}
+                    style={{ width: '18px', height: '18px', accentColor: '#7c3aed' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                      Layer 7 Volumetric DDoS Mitigation
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)' }}>
+                      Dynamically drops flood bursts at the edge to protect origin server RAM &amp; CPU.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Action Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={savingConfig}
+                  style={{
+                    height: '44px', padding: '0 24px', borderRadius: '9px',
+                    background: 'linear-gradient(135deg, #7c3aed, #6366f1)', color: '#fff',
+                    border: 'none', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 4px 14px rgba(124, 58, 237, 0.3)', opacity: savingConfig ? 0.7 : 1
+                  }}
+                >
+                  <i className={savingConfig ? "fas fa-spinner fa-spin" : "fas fa-sync-alt"}></i>
+                  <span>{savingConfig ? 'Synchronizing Policy...' : 'Save & Sync Policy Across All Sites'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Auto-Blocked Attackers Live Manager */}
+          <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-list-alt" style={{ color: '#ef4444' }}></i>
+                  Active Auto-Blocked Attacker IPs ({autoBlocksList.length})
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: 'var(--text-muted, #64748b)' }}>
+                  Offenders automatically isolated by your threshold policy. You can unblock or promote them to permanent blacklist.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Search blocked IP or reason..."
+                  value={autoBlockSearch}
+                  onChange={(e) => setAutoBlockSearch(e.target.value)}
+                  style={{
+                    height: '36px', padding: '0 12px', borderRadius: '8px',
+                    border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)',
+                    color: 'var(--text-main, #0f172a)', fontSize: '12.5px', minWidth: '220px'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={fetchAutoBlocks}
+                  style={{
+                    height: '36px', padding: '0 12px', borderRadius: '8px',
+                    border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--bg-secondary, #f8fafc)',
+                    color: 'var(--text-main, #0f172a)', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  <i className="fas fa-redo-alt" style={{ marginRight: '6px' }}></i>
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {autoBlockActionMsg && (
+              <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '13px', marginBottom: '14px' }}>
+                <i className="fas fa-check-circle" style={{ marginRight: '6px', color: '#10b981' }}></i>
+                {autoBlockActionMsg}
+              </div>
+            )}
+
+            {autoBlocksLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted, #64748b)' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginBottom: '10px' }}></i>
+                <div>Loading auto-blocked attackers...</div>
+              </div>
+            ) : autoBlocksList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '12px', border: '1px dashed var(--border-color, #cbd5e1)' }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', margin: '0 auto 12px' }}>
+                  <i className="fas fa-shield-check"></i>
+                </div>
+                <h4 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                  No Attacker Currently Auto-Blocked
+                </h4>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted, #64748b)', maxWidth: '420px', marginInline: 'auto' }}>
+                  Your auto-block policy is active. When an attacker exceeds your attempt threshold ({securityConfig.auto_block_threshold} attacks in {securityConfig.auto_block_window_hours}h), they will appear here and be banned automatically.
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color, #e2e8f0)', textAlign: 'left', color: '#64748b' }}>
+                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Attacker IP</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Trigger Reason</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Block Type</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Blocked At</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700 }}>Expires At</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {autoBlocksList
+                      .filter(b => {
+                        if (!autoBlockSearch) return true
+                        const q = autoBlockSearch.toLowerCase()
+                        return (b.ip || '').toLowerCase().includes(q) || (b.reason || '').toLowerCase().includes(q)
+                      })
+                      .map((item) => (
+                        <tr key={item.id || item.ip} style={{ borderBottom: '1px solid var(--border-color, #f1f5f9)' }}>
+                          <td style={{ padding: '14px', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <code style={{ background: '#fee2e2', color: '#b91c1c', padding: '3px 8px', borderRadius: '5px', fontWeight: 800 }}>
+                                {item.ip}
+                              </code>
+                              <button
+                                type="button"
+                                title="Lookup Threat Intel"
+                                onClick={() => { setIpInput(item.ip); setActiveTab('whois'); handleWhoisLookup(item.ip); }}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontSize: '12px', padding: '2px 4px' }}
+                              >
+                                <i className="fas fa-radar"></i>
+                              </button>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px', color: '#475569' }}>
+                            {item.reason}
+                          </td>
+                          <td style={{ padding: '14px' }}>
+                            <span style={{
+                              fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '5px',
+                              background: item.type === 'permanent' ? '#fef2f2' : '#fefce8',
+                              color: item.type === 'permanent' ? '#b91c1c' : '#854d0e',
+                              border: `1px solid ${item.type === 'permanent' ? '#fecaca' : '#fef08a'}`
+                            }}>
+                              {item.type === 'permanent' ? 'PERMANENT' : 'TEMPORARY BAN'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px', color: '#64748b', fontSize: '12.5px' }}>
+                            {item.blocked_at}
+                          </td>
+                          <td style={{ padding: '14px', color: '#64748b', fontSize: '12.5px' }}>
+                            {item.expires_at}
+                          </td>
+                          <td style={{ padding: '14px', textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '6px' }}>
+                              {item.type !== 'permanent' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePromoteAutoBlock(item.ip)}
+                                  title="Make this block permanent"
+                                  style={{
+                                    background: '#fee2e2', border: '1px solid #fca5a5', color: '#b91c1c',
+                                    padding: '5px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+                                  }}
+                                >
+                                  <i className="fas fa-lock" style={{ marginRight: '4px' }}></i>
+                                  Permanent
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleUnblockAutoBlock(item.ip)}
+                                style={{
+                                  background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a',
+                                  padding: '5px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700, cursor: 'pointer'
+                                }}
+                              >
+                                <i className="fas fa-unlock" style={{ marginRight: '4px', color: '#10b981' }}></i>
+                                Unblock
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: CYBER SECURITY AUDIT & PORT DIAGNOSTICS SCANNER */}
+      {/* ========================================================================= */}
+      {activeTab === 'audit' && (
+        <div>
+          {/* URL Input & Scanner Launcher Card */}
+          <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-microscope" style={{ color: '#10b981' }}></i>
+              Comprehensive Website Security Health &amp; Port Auditor
+            </h3>
+            <p style={{ margin: '0 0 18px', fontSize: '13px', color: 'var(--text-muted, #64748b)' }}>
+              Non-intrusive cyber diagnostic: test your SSL/TLS encryption, open port exposure (FTP, SSH, MySQL, Redis, Mongo), security headers, and WordPress admin protection with human-friendly guidance.
+            </p>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleRunAudit(); }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px' }}>
+                
+                {/* Connected Websites Dropdown (if any) */}
+                {connectedWebsites.length > 0 && (
+                  <div style={{ minWidth: '200px' }}>
+                    <select
+                      onChange={(e) => setAuditUrl(e.target.value)}
+                      value={auditUrl}
+                      style={{
+                        width: '100%', height: '46px', padding: '0 12px', borderRadius: '9px',
+                        border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--bg-secondary, #f8fafc)',
+                        color: 'var(--text-main, #0f172a)', fontSize: '13px', fontWeight: 600
+                      }}
+                    >
+                      <option value="">-- Choose My Website --</option>
+                      {connectedWebsites.map(w => (
+                        <option key={w._id || w.id || w.domain} value={w.url || w.domain}>
+                          {w.name || w.domain} ({w.domain})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* URL Input */}
+                <div style={{ flex: '1 1 300px', position: 'relative' }}>
+                  <i className="fas fa-globe" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '15px' }}></i>
+                  <input
+                    type="text"
+                    placeholder="e.g. https://yourwebsite.com or mydomain.com"
+                    value={auditUrl}
+                    onChange={(e) => setAuditUrl(e.target.value)}
+                    style={{
+                      width: '100%', height: '46px', padding: '0 16px 0 44px', borderRadius: '9px',
+                      border: '1.5px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #ffffff)',
+                      color: 'var(--text-main, #0f172a)', fontSize: '14px', fontWeight: 600, boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {/* Audit Button */}
+                <button
+                  type="submit"
+                  disabled={auditLoading}
+                  style={{
+                    height: '46px', padding: '0 24px', borderRadius: '9px',
+                    background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff',
+                    border: 'none', fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)', opacity: auditLoading ? 0.7 : 1
+                  }}
+                >
+                  <i className={auditLoading ? "fas fa-spinner fa-spin" : "fas fa-play"}></i>
+                  <span>{auditLoading ? 'Auditing Security...' : 'Audit Website Security'}</span>
+                </button>
+              </div>
+
+              {/* Suggestion Pills */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>Quick Test:</span>
+                {['https://wordpress.org', 'http://localhost', 'https://cloudflare.com'].map(pill => (
+                  <button
+                    key={pill}
+                    type="button"
+                    onClick={() => { setAuditUrl(pill); handleRunAudit(pill); }}
+                    style={{
+                      background: 'var(--bg-secondary, #f1f5f9)', border: '1px solid var(--border-color, #cbd5e1)',
+                      borderRadius: '6px', padding: '3px 10px', fontSize: '12px', color: 'var(--text-main, #0f172a)',
+                      cursor: 'pointer', fontWeight: 600
+                    }}
+                  >
+                    {pill}
+                  </button>
+                ))}
+              </div>
+            </form>
+          </div>
+
+          {/* Error Alert */}
+          {auditError && (
+            <div style={{ padding: '14px 18px', borderRadius: '10px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '13.5px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className="fas fa-exclamation-circle" style={{ color: '#ef4444', fontSize: '16px' }}></i>
+              <span>{auditError}</span>
+            </div>
+          )}
+
+          {/* Loading Telemetry Scanner Animation */}
+          {auditLoading && (
+            <div className="card" style={{ padding: '40px 24px', textAlign: 'center', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)', marginBottom: '24px' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', margin: '0 auto 16px', boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)' }}>
+                <i className="fas fa-satellite-dish fa-spin"></i>
+              </div>
+              <h3 style={{ margin: '0 0 6px', fontSize: '17px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                Running Multi-Vector Security Inspection...
+              </h3>
+              <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-muted, #64748b)' }}>
+                Target: <strong>{auditUrl}</strong>
+              </p>
+
+              <div style={{ maxWidth: '420px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: auditProgressStep >= 1 ? '#10b981' : '#94a3b8', fontWeight: 600 }}>
+                  <i className={auditProgressStep >= 1 ? "fas fa-check-circle" : "fas fa-circle"}></i>
+                  <span>1. DNS Resolution &amp; Host Identity</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: auditProgressStep >= 2 ? '#10b981' : '#94a3b8', fontWeight: 600 }}>
+                  <i className={auditProgressStep >= 2 ? "fas fa-check-circle" : "fas fa-circle"}></i>
+                  <span>2. SSL/TLS Certificate Cipher &amp; Expiry</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: auditProgressStep >= 3 ? '#10b981' : '#94a3b8', fontWeight: 600 }}>
+                  <i className={auditProgressStep >= 3 ? "fas fa-check-circle" : "fas fa-circle"}></i>
+                  <span>3. HTTP Security Headers (HSTS, CSP, X-Frame)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: auditProgressStep >= 4 ? '#10b981' : '#94a3b8', fontWeight: 600 }}>
+                  <i className={auditProgressStep >= 4 ? "fas fa-check-circle" : "fas fa-circle"}></i>
+                  <span>4. Open Service Ports Scan (FTP, SSH, MySQL, Redis)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Audit Results Dashboard */}
+          {auditResult && !auditLoading && (
+            <div>
+              {/* Score Header Card */}
+              <div className="card" style={{
+                padding: '28px', borderRadius: '16px', border: '1px solid var(--border-color, #e2e8f0)',
+                background: 'var(--card-bg, #ffffff)', marginBottom: '24px', boxShadow: '0 4px 24px rgba(0,0,0,0.04)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+                  
+                  {/* Left: Grade Gauge & Score */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
+                    <div style={{
+                      width: '84px', height: '84px', borderRadius: '22px',
+                      background: `linear-gradient(135deg, ${auditResult.grade_color}, #0f172a)`,
+                      color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: `0 8px 24px ${auditResult.grade_color}40`
+                    }}>
+                      <span style={{ fontSize: '32px', fontWeight: 900, lineHeight: 1 }}>{auditResult.grade}</span>
+                      <span style={{ fontSize: '11px', fontWeight: 700, opacity: 0.9 }}>GRADE</span>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                        <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
+                          {auditResult.score}
+                        </span>
+                        <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 700 }}>/ 100 Score</span>
+                        <span style={{
+                          fontSize: '12px', fontWeight: 800, padding: '2px 10px', borderRadius: '6px',
+                          background: `${auditResult.grade_color}18`, color: auditResult.grade_color
+                        }}>
+                          {auditResult.verdict}
+                        </span>
+                      </div>
+                      <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: 'var(--text-muted, #475569)', maxWidth: '520px' }}>
+                        {auditResult.summary_message}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Target Metadata & Export */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'right' }}>
+                      Target: <strong>{auditResult.hostname}</strong> ({auditResult.ip_address})
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'right' }}>
+                      Protection: <span style={{ color: '#10b981', fontWeight: 700 }}>{auditResult.http?.waf_detected}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={handleCopyAuditSummary}
+                        style={{
+                          height: '34px', padding: '0 14px', borderRadius: '7px',
+                          border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--bg-secondary, #f8fafc)',
+                          color: 'var(--text-main, #0f172a)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                          display: 'inline-flex', alignItems: 'center', gap: '6px'
+                        }}
+                      >
+                        <i className={auditCopied ? "fas fa-check" : "fas fa-copy"}></i>
+                        <span>{auditCopied ? 'Copied!' : 'Copy Summary'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Metrics Bar */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-color, #f1f5f9)' }}>
+                  
+                  <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)' }}>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, marginBottom: '2px' }}>
+                      <i className="fas fa-lock" style={{ color: '#10b981', marginRight: '5px' }}></i>
+                      SSL / TLS Health
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                      {auditResult.ssl?.supported ? `Grade ${auditResult.ssl?.grade} (${auditResult.ssl?.days_remaining}d left)` : 'No Valid SSL'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)' }}>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, marginBottom: '2px' }}>
+                      <i className="fas fa-shield-alt" style={{ color: '#3b82f6', marginRight: '5px' }}></i>
+                      Security Headers
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                      {auditResult.http?.header_score}% Hardened
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)' }}>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, marginBottom: '2px' }}>
+                      <i className="fas fa-network-wired" style={{ color: '#8b5cf6', marginRight: '5px' }}></i>
+                      Open Network Ports
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: auditResult.ports?.critical_exposed > 0 ? '#ef4444' : 'var(--text-main, #0f172a)' }}>
+                      {auditResult.ports?.open_count} Open ({auditResult.ports?.critical_exposed} Critical)
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)' }}>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, marginBottom: '2px' }}>
+                      <i className="fas fa-eye" style={{ color: '#d97706', marginRight: '5px' }}></i>
+                      Information Leakage
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                      {auditResult.http?.server_exposure?.length || 0} Headers Disclosed
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-Tabs Selector */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', background: 'var(--bg-secondary, #f1f5f9)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color, #e2e8f0)', maxWidth: '640px' }}>
+                <button
+                  type="button"
+                  onClick={() => setAuditActiveSubTab('headers')}
+                  style={{
+                    flex: 1, height: '36px', border: 'none', borderRadius: '7px', fontWeight: 700, fontSize: '12.5px',
+                    cursor: 'pointer', background: auditActiveSubTab === 'headers' ? 'var(--card-bg, #ffffff)' : 'transparent',
+                    color: auditActiveSubTab === 'headers' ? '#3b82f6' : '#64748b',
+                    boxShadow: auditActiveSubTab === 'headers' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  <i className="fas fa-shield-alt" style={{ marginRight: '6px' }}></i>
+                  Security Headers
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAuditActiveSubTab('ports')}
+                  style={{
+                    flex: 1, height: '36px', border: 'none', borderRadius: '7px', fontWeight: 700, fontSize: '12.5px',
+                    cursor: 'pointer', background: auditActiveSubTab === 'ports' ? 'var(--card-bg, #ffffff)' : 'transparent',
+                    color: auditActiveSubTab === 'ports' ? '#8b5cf6' : '#64748b',
+                    boxShadow: auditActiveSubTab === 'ports' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  <i className="fas fa-network-wired" style={{ marginRight: '6px' }}></i>
+                  Ports &amp; Services ({auditResult.ports?.open_count})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAuditActiveSubTab('exposure')}
+                  style={{
+                    flex: 1, height: '36px', border: 'none', borderRadius: '7px', fontWeight: 700, fontSize: '12.5px',
+                    cursor: 'pointer', background: auditActiveSubTab === 'exposure' ? 'var(--card-bg, #ffffff)' : 'transparent',
+                    color: auditActiveSubTab === 'exposure' ? '#d97706' : '#64748b',
+                    boxShadow: auditActiveSubTab === 'exposure' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  <i className="fas fa-door-open" style={{ marginRight: '6px' }}></i>
+                  Sensitive Paths
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAuditActiveSubTab('ssl')}
+                  style={{
+                    flex: 1, height: '36px', border: 'none', borderRadius: '7px', fontWeight: 700, fontSize: '12.5px',
+                    cursor: 'pointer', background: auditActiveSubTab === 'ssl' ? 'var(--card-bg, #ffffff)' : 'transparent',
+                    color: auditActiveSubTab === 'ssl' ? '#10b981' : '#64748b',
+                    boxShadow: auditActiveSubTab === 'ssl' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  <i className="fas fa-certificate" style={{ marginRight: '6px' }}></i>
+                  SSL / TLS
+                </button>
+              </div>
+
+              {/* Sub-Tab 1: Security Headers */}
+              {auditActiveSubTab === 'headers' && (
+                <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    HTTP Security Response Headers Diagnostic
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+                    {auditResult.http?.headers_evaluation?.map(h => (
+                      <div key={h.key} style={{
+                        padding: '16px', borderRadius: '10px',
+                        border: `1px solid ${h.present ? '#bbf7d0' : '#fed7aa'}`,
+                        background: h.present ? '#f0fdf4' : '#fffbeb'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--text-main, #0f172a)' }}>
+                            {h.name}
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '5px',
+                            background: h.present ? '#dcfce7' : '#ffedd5',
+                            color: h.present ? '#15803d' : '#c2410c'
+                          }}>
+                            {h.present ? 'ENFORCED' : 'MISSING'}
+                          </span>
+                        </div>
+                        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#475569' }}>
+                          {h.desc}
+                        </p>
+                        {h.present ? (
+                          <div style={{ fontSize: '11.5px', background: '#dcfce7', padding: '4px 8px', borderRadius: '4px', color: '#14532d', wordBreak: 'break-all' }}>
+                            Value: <code>{h.value}</code>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '11.5px', color: '#9a3412', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fas fa-magic" style={{ color: '#d97706' }}></i>
+                            <span>Fix: {h.fix}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 2: Open Ports & Services */}
+              {auditActiveSubTab === 'ports' && (
+                <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    Scanned Ports &amp; Direct Origin Exposure
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                    {auditResult.ports?.ports?.map(p => (
+                      <div key={p.port} style={{
+                        padding: '14px', borderRadius: '10px',
+                        border: `1px solid ${p.status === 'open' && p.risk === 'critical' ? '#fca5a5' : p.status === 'open' ? '#fed7aa' : '#e2e8f0'}`,
+                        background: p.status === 'open' && p.risk === 'critical' ? '#fef2f2' : p.status === 'open' ? '#fffbeb' : 'var(--bg-secondary, #f8fafc)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '13.5px', color: 'var(--text-main, #0f172a)' }}>
+                            Port {p.port} ({p.service})
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '5px',
+                            background: p.status === 'open' ? (p.risk === 'critical' ? '#fee2e2' : '#ffedd5') : '#f1f5f9',
+                            color: p.status === 'open' ? (p.risk === 'critical' ? '#b91c1c' : '#c2410c') : '#64748b'
+                          }}>
+                            {p.status === 'open' ? (p.risk === 'critical' ? 'CRITICAL OPEN' : 'OPEN') : 'CLOSED / FILTERED'}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                          {p.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 3: Sensitive Paths */}
+              {auditActiveSubTab === 'exposure' && (
+                <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    Sensitive Paths &amp; Admin Endpoint Hardening
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                    {auditResult.sensitive_paths?.map(item => (
+                      <div key={item.path} style={{
+                        padding: '14px', borderRadius: '10px',
+                        border: `1px solid ${item.exposed ? (item.risk === 'critical' ? '#fca5a5' : '#fed7aa') : '#e2e8f0'}`,
+                        background: item.exposed ? (item.risk === 'critical' ? '#fef2f2' : '#fffbeb') : 'var(--bg-secondary, #f8fafc)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-main, #0f172a)' }}>
+                            {item.name}
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px',
+                            background: item.exposed ? '#fee2e2' : '#dcfce7',
+                            color: item.exposed ? '#b91c1c' : '#15803d'
+                          }}>
+                            {item.exposed ? `EXPOSED (${item.http_status})` : 'PROTECTED'}
+                          </span>
+                        </div>
+                        <code style={{ fontSize: '11.5px', color: '#64748b' }}>{item.path}</code>
+                        <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#475569' }}>
+                          {item.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 4: SSL / TLS */}
+              {auditActiveSubTab === 'ssl' && (
+                <div className="card" style={{ padding: '24px', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #ffffff)' }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    SSL / TLS Certificate Encryption Diagnostics
+                  </h4>
+                  {auditResult.ssl?.supported ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                      <div style={{ padding: '14px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px' }}>
+                        <small style={{ color: '#64748b', fontWeight: 700 }}>Certificate Authority (Issuer)</small>
+                        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text-main, #0f172a)', marginTop: '2px' }}>
+                          {auditResult.ssl?.issuer}
+                        </div>
+                      </div>
+                      <div style={{ padding: '14px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px' }}>
+                        <small style={{ color: '#64748b', fontWeight: 700 }}>TLS Protocol &amp; Cipher</small>
+                        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text-main, #0f172a)', marginTop: '2px' }}>
+                          {auditResult.ssl?.tls_version} ({auditResult.ssl?.cipher})
+                        </div>
+                      </div>
+                      <div style={{ padding: '14px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px' }}>
+                        <small style={{ color: '#64748b', fontWeight: 700 }}>Validity Status</small>
+                        <div style={{ fontWeight: 800, fontSize: '14px', color: '#10b981', marginTop: '2px' }}>
+                          {auditResult.ssl?.days_remaining} Days Remaining
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '20px', background: '#fef2f2', borderRadius: '10px', color: '#991b1b', fontSize: '13.5px' }}>
+                      <i className="fas fa-exclamation-triangle" style={{ marginRight: '8px' }}></i>
+                      {auditResult.ssl?.message}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
