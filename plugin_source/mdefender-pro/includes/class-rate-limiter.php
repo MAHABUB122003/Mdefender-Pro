@@ -3,7 +3,6 @@ defined('ABSPATH') || exit;
 
 class WAF_FW_Rate_Limiter {
     private static $_instance = null;
-    private $max_requests;
     private $window_seconds = 60;
 
     public static function instance() {
@@ -13,11 +12,13 @@ class WAF_FW_Rate_Limiter {
         return self::$_instance;
     }
 
-    public function __construct() {
-        $this->max_requests = (int) get_option('waf_fw_rate_limit', 100);
+    public function get_max_requests() {
+        return max(5, (int) get_option('waf_fw_rate_limit', 120));
     }
 
     public function is_rate_limited($ip) {
+        if (empty($ip)) return false;
+        $max_requests = $this->get_max_requests();
         $key = 'waf_fw_rate_' . md5($ip);
 
         // 1. Fast-path in-memory APCu cache (< 0.001ms)
@@ -31,7 +32,7 @@ class WAF_FW_Rate_Limiter {
             $data = array_values(array_filter($data, function($t) use ($window_start) {
                 return $t > $window_start;
             }));
-            if (count($data) >= $this->max_requests) {
+            if (count($data) >= $max_requests) {
                 apcu_store($key, $data, $this->window_seconds);
                 return true;
             }
@@ -54,7 +55,7 @@ class WAF_FW_Rate_Limiter {
         $data = array_values(array_filter($data, function($t) use ($window_start) {
             return $t > $window_start;
         }));
-        if (count($data) >= $this->max_requests) {
+        if (count($data) >= $max_requests) {
             set_transient($key, json_encode($data), $this->window_seconds);
             return true;
         }
@@ -64,12 +65,14 @@ class WAF_FW_Rate_Limiter {
     }
 
     public function increment($ip) {
+        if (empty($ip)) return;
         $key = 'waf_fw_rate_' . md5($ip);
         $data = get_transient($key);
         if (!$data) {
             $data = [];
         } else {
             $data = json_decode($data, true);
+            if (!is_array($data)) $data = [];
         }
         $now = time();
         $window_start = $now - $this->window_seconds;
@@ -80,3 +83,4 @@ class WAF_FW_Rate_Limiter {
         set_transient($key, json_encode($data), $this->window_seconds);
     }
 }
+

@@ -226,7 +226,7 @@ function waf_fw_handle_cloud_sync_webhook() {
             $raw_body = file_get_contents('php://input');
             $pushed_data = !empty($raw_body) ? json_decode($raw_body, true) : null;
 
-            if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']))) {
+            if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']) || isset($pushed_data['config']))) {
                 if (isset($pushed_data['blacklist']) && is_array($pushed_data['blacklist'])) {
                     $ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blacklist'])));
                     update_option('waf_fw_local_blacklist_cache', $ips);
@@ -237,6 +237,27 @@ function waf_fw_handle_cloud_sync_webhook() {
                 }
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
                     update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);
+                }
+                if (!empty($pushed_data['config']) && is_array($pushed_data['config'])) {
+                    $config = $pushed_data['config'];
+                    if (isset($config['rate_limit'])) {
+                        update_option('waf_fw_rate_limit', max(10, (int) $config['rate_limit']));
+                    }
+                    if (isset($config['auto_block_enabled'])) {
+                        update_option('waf_fw_attack_blocker_enabled', $config['auto_block_enabled'] ? 'yes' : 'no');
+                    }
+                    if (isset($config['auto_block_threshold'])) {
+                        update_option('waf_fw_attack_threshold', max(1, (int) $config['auto_block_threshold']));
+                    }
+                    if (isset($config['auto_block_window'])) {
+                        update_option('waf_fw_attack_window', max(60, (int) $config['auto_block_window']));
+                    }
+                    if (isset($config['auto_block_duration'])) {
+                        update_option('waf_fw_attack_block_duration', max(60, (int) $config['auto_block_duration']));
+                    }
+                    if (isset($config['ddos_enabled'])) {
+                        update_option('waf_fw_ddos_protection', $config['ddos_enabled'] ? 'yes' : 'no');
+                    }
                 }
                 if (class_exists('WAF_FW_Engine')) {
                     WAF_FW_Engine::instance()->export_fast_cache();

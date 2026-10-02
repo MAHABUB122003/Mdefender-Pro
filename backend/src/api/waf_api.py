@@ -483,9 +483,12 @@ class WAFAPI:
         headers = request_data.get("headers") or {}
         user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
 
+        u_cfg = self.attack_blocker.get_user_settings(user_id) if user_id else {}
+        user_rate_limit = u_cfg.get('rate_limit_per_minute', 120)
+
         is_whitelisted = self.ip_filter.is_whitelisted(ip)
-        is_blacklisted = self.attack_blocker.is_blacklisted(ip)
-        is_rate_limited = self.rate_limiter.is_rate_limited(ip)
+        is_blacklisted = self.attack_blocker.is_blacklisted(ip, user_id=user_id)
+        is_rate_limited = self.rate_limiter.is_rate_limited(ip, max_requests=user_rate_limit)
 
         # Check Geo / Country Blocking
         is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id, headers=headers)
@@ -569,9 +572,32 @@ class WAFAPI:
             self.rate_limiter.increment(ip)
         except Exception: pass
 
-        if is_blocked and decision.get('is_rate_limited'):
+        if is_blocked and ip and ip not in ('127.0.0.1', '::1', 'localhost', '0.0.0.0'):
             try:
-                self.attack_blocker.auto_block(ip, 'Rate limit exceeded', 1)
+                u_cfg = self.attack_blocker.get_user_settings(user_id) if user_id else {}
+                url_path = log_entry.get('url', '/') if isinstance(log_entry, dict) else '/'
+                atk_type = decision.get('attack_type') or 'WAF Rule Violation'
+                
+                self.attack_blocker.record_attack(
+                    ip=ip,
+                    attack_type=atk_type,
+                    url=url_path,
+                    user_id=user_id,
+                    website_id=website_id
+                )
+                
+                if u_cfg.get('auto_block_enabled', True):
+                    thresh = u_cfg.get('auto_block_threshold', 10)
+                    win_h = u_cfg.get('auto_block_window_hours', 24)
+                    dur_h = None if u_cfg.get('auto_block_permanent') else u_cfg.get('auto_block_duration_hours', 24)
+                    self.attack_blocker.check_and_auto_block(
+                        ip=ip,
+                        threshold=thresh,
+                        window_hours=win_h,
+                        duration_hours=dur_h,
+                        user_id=user_id,
+                        website_id=website_id
+                    )
             except Exception: pass
 
         try:

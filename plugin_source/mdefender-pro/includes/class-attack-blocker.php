@@ -15,7 +15,7 @@ class WAF_FW_Attack_Blocker {
         if (empty($ip)) return;
         $this->increment_attempts($ip);
 
-        $enabled = get_option('waf_fw_attack_blocker_enabled', 'no');
+        $enabled = get_option('waf_fw_attack_blocker_enabled', 'yes');
         if ($enabled === 'yes') {
             $this->auto_block_if_needed($ip);
         }
@@ -26,6 +26,7 @@ class WAF_FW_Attack_Blocker {
         $data = get_transient($key);
         if (!$data) return 0;
         $data = json_decode($data, true);
+        if (!is_array($data)) return 0;
         $window = (int) get_option('waf_fw_attack_window', 86400);
         $cutoff = time() - $window;
         $data = array_values(array_filter($data, function($t) use ($cutoff) {
@@ -42,6 +43,7 @@ class WAF_FW_Attack_Blocker {
         $data = get_transient($key);
         if ($data) {
             $data = json_decode($data, true);
+            if (!is_array($data)) $data = [];
             $data = array_values(array_filter($data, function($t) use ($cutoff) {
                 return $t > $cutoff;
             }));
@@ -54,16 +56,19 @@ class WAF_FW_Attack_Blocker {
 
     public function auto_block_if_needed($ip) {
         $attempts = $this->get_attempts($ip);
-        $threshold = (int) get_option('waf_fw_attack_threshold', 20);
+        $threshold = max(1, (int) get_option('waf_fw_attack_threshold', 10));
 
         if ($attempts >= $threshold && !$this->is_already_blocked_for_attacks($ip)) {
             $duration = (int) get_option('waf_fw_attack_block_duration', 86400);
             $reason = sprintf(
-                'Auto-blocked after %d attack payload attempts in %s',
-                $threshold,
+                'Auto-blocked: %d attack attempts within %s',
+                $attempts,
                 $this->format_window((int) get_option('waf_fw_attack_window', 86400))
             );
             WAF_FW_IP_Filter::instance()->add_temporary_block($ip, $reason, $duration);
+            if (class_exists('WAF_FW_Engine')) {
+                WAF_FW_Engine::instance()->export_fast_cache();
+            }
         }
     }
 

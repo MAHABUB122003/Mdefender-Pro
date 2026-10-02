@@ -203,18 +203,25 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
             headers = {**headers, "Content-Type": "application/json"}
         req_data = {**req_data, "body": _json.dumps(req_data["body"]), "headers": headers}
 
-    # Server-side context signals
+    # Server-side context signals & user security policy
     ip = req_data.get("ip", "")
     ip_filter = IPFilter()
-    is_blacklisted = bool(ip) and (ip_filter.is_blacklisted(ip, user_id=auth_data.get("user_id")) or website.get("status") == "suspended")
+    user_id_val = auth_data.get("user_id")
+    is_blacklisted = bool(ip) and (ip_filter.is_blacklisted(ip, user_id=user_id_val) or website.get("status") == "suspended")
+
+    from src.security.attack_blocker import AttackBlocker
+    ab = AttackBlocker(db)
+    u_cfg = ab.get_user_settings(user_id_val)
+    user_rate_limit = u_cfg.get("rate_limit_per_minute", 120)
+
     rate_limiter = RateLimiter()
     if ip:
         rate_limiter.increment(ip)
-    is_rate_limited = bool(ip) and rate_limiter.is_rate_limited(ip)
+    is_rate_limited = bool(ip) and rate_limiter.is_rate_limited(ip, max_requests=user_rate_limit)
 
     # Check Geo / Country Blocking
     if ip or req_data.get("headers"):
-        is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=auth_data.get("user_id"), headers=req_data.get("headers"))
+        is_geo_blocked, geo_info = ip_filter.is_country_blocked(ip, user_id=user_id_val, headers=req_data.get("headers"))
         if is_geo_blocked and not ip_filter.is_whitelisted(ip):
             c_name = geo_info.get('country_name', 'Unknown Country')
             c_code = geo_info.get('country_code', '')
@@ -255,8 +262,7 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
         threshold_override=threshold_override,
     )
 
-    # Persist a security event for every analyzed request (or at least every
-    # meaningful one) so dashboards show real data.
+    # Persist a security event for every analyzed request
     store_event(db, auth_data, req_data, decision, ip)
 
     # Update website last activity + threat level.
@@ -272,8 +278,6 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
     # Track attack and auto-block repeating offenders
     if decision["decision"] == "BLOCK" and ip:
         try:
-            from src.security.attack_blocker import AttackBlocker
-            ab = AttackBlocker(db)
             ab.record_attack(
                 ip=ip,
                 attack_type=decision.get("attack_type") or "WAF Rule Violation",
@@ -281,7 +285,6 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
                 user_id=auth_data.get("user_id"),
                 website_id=auth_data.get("website_id")
             )
-            u_cfg = ab.get_user_settings(auth_data.get("user_id"))
             if u_cfg.get("auto_block_enabled", True):
                 threshold = u_cfg.get("auto_block_threshold", 10)
                 window_h = u_cfg.get("auto_block_window_hours", 24)
@@ -355,6 +358,14 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
     total_reqs = 0
     total_blocks = 0
     now = datetime.now()
+
+    from src.security.attack_blocker import AttackBlocker
+    ab = AttackBlocker(db)
+    u_cfg = ab.get_user_settings(user_id_str)
+    auto_block_enabled = u_cfg.get("auto_block_enabled", True)
+    auto_block_thresh = u_cfg.get("auto_block_threshold", 10)
+    auto_block_win_h = u_cfg.get("auto_block_window_hours", 24)
+    auto_block_dur_h = None if u_cfg.get("auto_block_permanent") else u_cfg.get("auto_block_duration_hours", 24)
 
     for ev in events:
         ip = ev.get("ip") or "127.0.0.1"
@@ -435,6 +446,28 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
                 "country_code": cc,
                 "country": cname,
             })
+
+            # Record attack and auto-block repeating offenders
+            if is_blocked and ip and ip not in ("127.0.0.1", "::1", "localhost", "0.0.0.0"):
+                try:
+                    ab.record_attack(
+                        ip=ip,
+                        attack_type=attack_type or "WordPress WAF Block",
+                        url=url,
+                        user_id=user_id_str,
+                        website_id=website_id_str
+                    )
+                    if auto_block_enabled:
+                        ab.check_and_auto_block(
+                            ip=ip,
+                            threshold=auto_block_thresh,
+                            window_hours=auto_block_win_h,
+                            duration_hours=auto_block_dur_h,
+                            user_id=user_id_str,
+                            website_id=website_id_str
+                        )
+                except Exception:
+                    pass
 
     if security_docs:
         try:

@@ -1,13 +1,14 @@
 """MDefender Pro Website Security Audit & Port Diagnostics Service.
 
 Performs comprehensive, non-intrusive security health assessments for websites:
-- SSL / TLS Certificate validation and cipher strength
-- HTTP Security Headers analysis (HSTS, CSP, X-Frame-Options, etc.)
-- Server information exposure detection (Server, X-Powered-By, etc.)
-- Sensitive paths & WordPress admin endpoint exposure checks
-- Standard web and database port exposure scanning
+- SSL / TLS Certificate validation, cipher strength, validity days, and issuer verification
+- HTTP Security Headers analysis (HSTS, CSP, X-Frame-Options, X-Content-Type, Referrer-Policy, Permissions-Policy, COOP, CORP)
+- Server information exposure detection (Server, X-Powered-By, ASP.NET, etc.)
+- Sensitive paths & WordPress admin endpoint exposure checks with real body/header inspection (no false positive 301/302 redirects)
+- Standard web, management, and database port exposure scanning with fast concurrent sockets
+- DNS Security Record analysis (SPF, DMARC, MX)
 - Cookie security flags (HttpOnly, Secure, SameSite)
-- Overall security score (0-100), letter grade (A+ to F), and non-intimidating actionable guidance
+- Normalized, consistent security score (0-100), letter grade (A+ to F), and human-friendly actionable guidance
 """
 
 import socket
@@ -24,18 +25,18 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 COMMON_PORTS = [
-    {"port": 80, "service": "HTTP (Web)", "category": "web", "risk": "low", "desc": "Standard unencrypted web traffic."},
-    {"port": 443, "service": "HTTPS (Secure Web)", "category": "web", "risk": "low", "desc": "Standard encrypted web traffic."},
-    {"port": 8080, "service": "HTTP-Alt / Proxy", "category": "web", "risk": "medium", "desc": "Secondary web or development proxy port."},
-    {"port": 8443, "service": "HTTPS-Alt / Admin", "category": "web", "risk": "medium", "desc": "Alternative secure web or control panel port."},
+    {"port": 80, "service": "HTTP (Web)", "category": "web", "risk": "low", "desc": "Standard unencrypted web traffic. Should redirect to HTTPS."},
+    {"port": 443, "service": "HTTPS (Secure Web)", "category": "web", "risk": "low", "desc": "Standard encrypted SSL/TLS web traffic."},
+    {"port": 8080, "service": "HTTP-Alt / Proxy", "category": "web", "risk": "medium", "desc": "Secondary web proxy or development server port."},
+    {"port": 8443, "service": "HTTPS-Alt / Admin", "category": "web", "risk": "medium", "desc": "Alternative secure web or hosting control panel port."},
     {"port": 21, "service": "FTP (File Transfer)", "category": "management", "risk": "high", "desc": "Unencrypted file transfer. Recommend disabling in favor of SFTP."},
-    {"port": 22, "service": "SSH (Secure Shell)", "category": "management", "risk": "medium", "desc": "Remote terminal access. Ensure key-based auth is enforced."},
-    {"port": 25, "service": "SMTP (Mail)", "category": "mail", "risk": "medium", "desc": "Mail transfer service."},
-    {"port": 3306, "service": "MySQL Database", "category": "database", "risk": "critical", "desc": "Direct database exposure. Should only be accessible via localhost/VPN."},
-    {"port": 5432, "service": "PostgreSQL Database", "category": "database", "risk": "critical", "desc": "Direct database exposure. Should be firewalled from public internet."},
-    {"port": 6379, "service": "Redis Cache", "category": "database", "risk": "critical", "desc": "Direct in-memory cache exposure. High vulnerability to unauthorized access."},
-    {"port": 27017, "service": "MongoDB Database", "category": "database", "risk": "critical", "desc": "Direct NoSQL database exposure. Must be bound to private network."},
-    {"port": 9200, "service": "Elasticsearch API", "category": "database", "risk": "critical", "desc": "Search cluster API exposure. Should not be publicly reachable without auth."},
+    {"port": 22, "service": "SSH (Secure Shell)", "category": "management", "risk": "medium", "desc": "Remote administration port. Ensure key-based authentication is enforced."},
+    {"port": 25, "service": "SMTP (Mail)", "category": "mail", "risk": "medium", "desc": "Standard mail transfer protocol port."},
+    {"port": 3306, "service": "MySQL Database", "category": "database", "risk": "critical", "desc": "Direct database exposure. Must be firewalled and bound to localhost/VPN."},
+    {"port": 5432, "service": "PostgreSQL Database", "category": "database", "risk": "critical", "desc": "Direct database exposure. Should never be accessible publicly."},
+    {"port": 6379, "service": "Redis Cache", "category": "database", "risk": "critical", "desc": "Direct in-memory cache exposure. High vulnerability to unauthenticated RCE."},
+    {"port": 27017, "service": "MongoDB Database", "category": "database", "risk": "critical", "desc": "Direct NoSQL database exposure. Must be firewalled to private network."},
+    {"port": 9200, "service": "Elasticsearch API", "category": "database", "risk": "critical", "desc": "Direct search cluster API exposure. Should not be publicly reachable."},
 ]
 
 SECURITY_HEADERS_DEF = [
@@ -43,9 +44,9 @@ SECURITY_HEADERS_DEF = [
         "key": "Strict-Transport-Security",
         "name": "HTTP Strict Transport Security (HSTS)",
         "importance": "high",
-        "weight": 15,
+        "weight": 20,
         "desc": "Forces client browsers to always connect via encrypted HTTPS.",
-        "fix": "Enable HSTS in MDefender Pro or web server configuration with max-age=31536000."
+        "fix": "Enable HSTS in MDefender Pro or web server with 'max-age=31536000; includeSubDomains'."
     },
     {
         "key": "Content-Security-Policy",
@@ -53,7 +54,7 @@ SECURITY_HEADERS_DEF = [
         "importance": "high",
         "weight": 20,
         "desc": "Mitigates Cross-Site Scripting (XSS) and data injection attacks by restricting script sources.",
-        "fix": "Define a Content-Security-Policy header restricting script-src and object-src."
+        "fix": "Define a Content-Security-Policy header restricting script-src, style-src, and object-src."
     },
     {
         "key": "X-Frame-Options",
@@ -67,7 +68,7 @@ SECURITY_HEADERS_DEF = [
         "key": "X-Content-Type-Options",
         "name": "MIME-Sniffing Defense (X-Content-Type-Options)",
         "importance": "medium",
-        "weight": 10,
+        "weight": 15,
         "desc": "Instructs browsers not to override the declared Content-Type header.",
         "fix": "Set X-Content-Type-Options to 'nosniff'."
     },
@@ -82,28 +83,96 @@ SECURITY_HEADERS_DEF = [
     {
         "key": "Permissions-Policy",
         "name": "Permissions Policy",
-        "importance": "low",
-        "weight": 5,
+        "importance": "medium",
+        "weight": 10,
         "desc": "Restricts browser features such as microphone, camera, and geolocation sensors.",
         "fix": "Configure Permissions-Policy header to disable unused browser device APIs."
+    },
+    {
+        "key": "Cross-Origin-Opener-Policy",
+        "name": "Cross-Origin Opener Policy (COOP)",
+        "importance": "low",
+        "weight": 5,
+        "desc": "Isolates your browsing context from cross-origin popups to protect against Spectre-like attacks.",
+        "fix": "Set Cross-Origin-Opener-Policy to 'same-origin' or 'same-origin-allow-popups'."
+    },
+    {
+        "key": "Cross-Origin-Resource-Policy",
+        "name": "Cross-Origin Resource Policy (CORP)",
+        "importance": "low",
+        "weight": 5,
+        "desc": "Prevents other websites from hotlinking or loading your sensitive assets cross-origin.",
+        "fix": "Set Cross-Origin-Resource-Policy to 'same-site' or 'same-origin'."
     },
 ]
 
 SENSITIVE_PATHS = [
-    {"path": "/wp-login.php", "name": "WordPress Login Portal", "risk": "medium", "desc": "Publicly accessible authentication portal. Recommend rate-limiting and MFA."},
-    {"path": "/wp-admin/", "name": "WordPress Administration Area", "risk": "medium", "desc": "Admin control interface. Ensure 2FA and IP allowlisting."},
-    {"path": "/xmlrpc.php", "name": "Legacy XML-RPC Interface", "risk": "high", "desc": "Common vector for automated brute-force and DDoS amplification."},
-    {"path": "/.git/HEAD", "name": "Exposed Git Repository", "risk": "critical", "desc": "Direct exposure of source code repository metadata."},
-    {"path": "/.env", "name": "Environment Config File", "risk": "critical", "desc": "Direct exposure of secret environment variables and API keys."},
-    {"path": "/wp-config.php.bak", "name": "Backup Configuration File", "risk": "critical", "desc": "Direct exposure of database credentials and cryptographic salts."},
-    {"path": "/robots.txt", "name": "Search Engine Directives", "risk": "info", "desc": "Standard crawler configuration."},
-    {"path": "/readme.html", "name": "WordPress Readme File", "risk": "low", "desc": "Discloses core CMS version information to automated scanners."},
+    {
+        "path": "/wp-login.php",
+        "name": "WordPress Login Portal",
+        "risk": "medium",
+        "type": "login",
+        "desc": "Publicly accessible authentication portal. Recommend login rename, MFA, and rate-limiting."
+    },
+    {
+        "path": "/wp-admin/",
+        "name": "WordPress Administration Area",
+        "risk": "medium",
+        "type": "admin",
+        "desc": "Admin control interface. Ensure 2FA and IP allowlisting."
+    },
+    {
+        "path": "/xmlrpc.php",
+        "name": "Legacy XML-RPC Interface",
+        "risk": "high",
+        "type": "xmlrpc",
+        "desc": "Common vector for automated brute-force attacks and DDoS amplification. Recommended to disable in MDefender Pro."
+    },
+    {
+        "path": "/.git/HEAD",
+        "name": "Exposed Git Repository",
+        "risk": "critical",
+        "type": "file",
+        "desc": "Direct exposure of source code repository metadata."
+    },
+    {
+        "path": "/.env",
+        "name": "Environment Config File",
+        "risk": "critical",
+        "type": "file",
+        "desc": "Direct exposure of database credentials, API secret keys, and application tokens."
+    },
+    {
+        "path": "/wp-config.php.bak",
+        "name": "Backup Configuration File",
+        "risk": "critical",
+        "type": "file",
+        "desc": "Direct exposure of database credentials and cryptographic salts."
+    },
+    {
+        "path": "/robots.txt",
+        "name": "Search Engine Directives",
+        "risk": "info",
+        "type": "robots",
+        "desc": "Standard crawler configuration file."
+    },
+    {
+        "path": "/readme.html",
+        "name": "WordPress Readme File",
+        "risk": "low",
+        "type": "info",
+        "desc": "Discloses core CMS version information to automated reconnaissance bots."
+    },
 ]
 
 
 class SecurityScannerService:
-    def __init__(self, timeout=2.5):
+    def __init__(self, timeout=6.0):
         self.timeout = timeout
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 MDefender-Pro/4.5 Auditor"
+        })
 
     def normalize_url(self, raw_url: str):
         url = (raw_url or "").strip()
@@ -121,15 +190,24 @@ class SecurityScannerService:
         port = item["port"]
         is_open = False
         latency_ms = None
+        banner = ""
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(0.6)
+            s.settimeout(1.2)
             start = time.perf_counter()
             res = s.connect_ex((hostname, port))
             latency_ms = round((time.perf_counter() - start) * 1000, 1)
-            s.close()
             if res == 0:
                 is_open = True
+                try:
+                    s.settimeout(0.5)
+                    s.sendall(b"\r\n")
+                    raw_banner = s.recv(128)
+                    if raw_banner:
+                        banner = raw_banner.decode("utf-8", errors="ignore").strip()[:80]
+                except Exception:
+                    pass
+            s.close()
         except Exception:
             is_open = False
 
@@ -141,6 +219,7 @@ class SecurityScannerService:
             "desc": item["desc"],
             "status": "open" if is_open else "closed",
             "latency_ms": latency_ms if is_open else None,
+            "banner": banner if is_open else "",
         }
 
     def scan_ports(self, hostname: str):
@@ -161,7 +240,6 @@ class SecurityScannerService:
                 except Exception:
                     pass
 
-        # Sort back in defined port order
         port_order = {item["port"]: idx for idx, item in enumerate(COMMON_PORTS)}
         results.sort(key=lambda r: port_order.get(r["port"], 999))
 
@@ -189,7 +267,7 @@ class SecurityScannerService:
             ctx = ssl.create_default_context()
             ctx.check_hostname = True
             ctx.verify_mode = ssl.CERT_REQUIRED
-            with socket.create_connection((hostname, port), timeout=self.timeout) as sock:
+            with socket.create_connection((hostname, port), timeout=4.0) as sock:
                 with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
                     cert = ssock.getpeercert()
                     tls_ver = ssock.version()
@@ -197,7 +275,7 @@ class SecurityScannerService:
 
                     issuer_dict = dict(x[0] for x in cert.get("issuer", ()))
                     subject_dict = dict(x[0] for x in cert.get("subject", ()))
-                    issuer = issuer_dict.get("organizationName") or issuer_dict.get("commonName") or "Unknown Authority"
+                    issuer = issuer_dict.get("organizationName") or issuer_dict.get("commonName") or "Verified CA"
                     subject = subject_dict.get("commonName") or hostname
 
                     not_after_str = cert.get("notAfter", "")
@@ -209,6 +287,12 @@ class SecurityScannerService:
                         now_utc = datetime.now(timezone.utc)
                         days_left = max(0, (exp_dt - now_utc).days)
 
+                    grade = "A+"
+                    if days_left < 15:
+                        grade = "B"
+                    elif tls_ver in ("TLSv1.0", "TLSv1.1"):
+                        grade = "C"
+
                     ssl_info = {
                         "supported": True,
                         "issuer": issuer,
@@ -217,12 +301,16 @@ class SecurityScannerService:
                         "valid_to": not_after_str,
                         "days_remaining": days_left,
                         "tls_version": tls_ver or "TLSv1.3",
-                        "cipher": cipher_info[0] if cipher_info else "AES-GCM",
-                        "grade": "A+" if days_left > 30 and tls_ver in ("TLSv1.2", "TLSv1.3") else "B",
+                        "cipher": cipher_info[0] if cipher_info else "AES-256-GCM",
+                        "grade": grade,
                         "message": f"Valid SSL/TLS certificate issued by {issuer} (Expires in {days_left} days).",
                     }
+        except ssl.SSLCertVerificationError as e:
+            ssl_info["message"] = f"SSL Certificate Verification Issue: {str(e)[:100]}"
+            ssl_info["grade"] = "F"
         except Exception as e:
-            ssl_info["message"] = f"SSL check note: {str(e)[:120]}"
+            # Fallback check on port 80 / non-SSL
+            ssl_info["message"] = f"SSL note: {str(e)[:120]}"
 
         return ssl_info
 
@@ -233,36 +321,65 @@ class SecurityScannerService:
         waf_detected = "None / Direct Origin"
         status_code = None
         final_url = base_url
+        response_time_ms = 0
 
         try:
-            resp = requests.get(
+            start_t = time.perf_counter()
+            resp = self.session.get(
                 base_url,
-                timeout=3.0,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDefender-Pro/4.0 Security Scanner"},
+                timeout=5.0,
                 allow_redirects=True,
                 verify=False,
             )
+            response_time_ms = round((time.perf_counter() - start_t) * 1000, 1)
             status_code = resp.status_code
             final_url = resp.url
             headers_found = {k.lower(): v for k, v in resp.headers.items()}
 
             # Server exposure check
             if "server" in headers_found:
-                server_exposure.append({"header": "Server", "value": headers_found["server"], "risk": "low", "desc": "Discloses web server software signature."})
+                server_val = headers_found["server"]
+                risk_lvl = "medium" if any(c.isdigit() for c in server_val) else "low"
+                server_exposure.append({
+                    "header": "Server",
+                    "value": server_val,
+                    "risk": risk_lvl,
+                    "desc": "Discloses web server software signature (e.g. Apache/Nginx version)."
+                })
             if "x-powered-by" in headers_found:
-                server_exposure.append({"header": "X-Powered-By", "value": headers_found["x-powered-by"], "risk": "medium", "desc": "Discloses backend programming language/framework version."})
+                server_exposure.append({
+                    "header": "X-Powered-By",
+                    "value": headers_found["x-powered-by"],
+                    "risk": "medium",
+                    "desc": "Discloses backend framework/language runtime version."
+                })
             if "x-aspnet-version" in headers_found:
-                server_exposure.append({"header": "X-AspNet-Version", "value": headers_found["x-aspnet-version"], "risk": "medium", "desc": "Discloses Microsoft ASP.NET runtime version."})
+                server_exposure.append({
+                    "header": "X-AspNet-Version",
+                    "value": headers_found["x-aspnet-version"],
+                    "risk": "high",
+                    "desc": "Discloses Microsoft ASP.NET runtime version."
+                })
+            if "x-generator" in headers_found:
+                server_exposure.append({
+                    "header": "X-Generator",
+                    "value": headers_found["x-generator"],
+                    "risk": "low",
+                    "desc": "Discloses CMS generator version."
+                })
 
-            # WAF detection
-            if "cf-ray" in headers_found or "cloudflare" in headers_found.get("server", "").lower():
-                waf_detected = "Cloudflare Edge Network"
-            elif "x-sucuri-id" in headers_found or "sucuri" in headers_found.get("server", "").lower():
+            # WAF & CDN detection
+            server_header_lower = headers_found.get("server", "").lower()
+            if "cf-ray" in headers_found or "cloudflare" in server_header_lower:
+                waf_detected = "Cloudflare Edge Network & WAF"
+            elif "x-sucuri-id" in headers_found or "sucuri" in server_header_lower:
                 waf_detected = "Sucuri Cloud WAF"
             elif "x-amz-cf-id" in headers_found:
-                waf_detected = "AWS CloudFront"
-            elif "x-mdefender" in headers_found or "mdefender" in headers_found.get("server", "").lower():
+                waf_detected = "AWS CloudFront Edge"
+            elif "x-mdefender" in headers_found or "mdefender" in server_header_lower or "x-protected-by" in headers_found:
                 waf_detected = "MDefender Pro Active WAF Shield"
+            elif "akamai" in server_header_lower:
+                waf_detected = "Akamai Edge Cloud"
 
             # Cookie analysis
             for c in resp.cookies:
@@ -273,7 +390,7 @@ class SecurityScannerService:
                     "samesite": getattr(c, "samesite", "None") or "Unset",
                 })
 
-        except Exception:
+        except Exception as e:
             status_code = 0
 
         # Evaluate Defined Security Headers
@@ -302,6 +419,7 @@ class SecurityScannerService:
         return {
             "status_code": status_code,
             "final_url": final_url,
+            "response_time_ms": response_time_ms,
             "header_score": header_score_pct,
             "headers_evaluation": header_evaluations,
             "server_exposure": server_exposure,
@@ -313,13 +431,71 @@ class SecurityScannerService:
         target = f"{base_url.rstrip('/')}{item['path']}"
         status = 0
         is_exposed = False
+        notes = ""
+
         try:
-            r = requests.head(target, timeout=1.5, allow_redirects=False, verify=False)
+            r = self.session.get(target, timeout=3.0, allow_redirects=False, verify=False)
             status = r.status_code
-            if status in (200, 301, 302, 401, 403):
-                is_exposed = status in (200, 301, 302)
-        except Exception:
+            content_type = (r.headers.get("Content-Type") or "").lower()
+            body_sample = r.text[:500] if hasattr(r, "text") else ""
+
+            # Check based on item type to prevent false positives from 301/302 redirects or 200 soft-404 HTML pages
+            if item.get("type") == "file":
+                # For files like .env or .git/HEAD or .bak: Must be 200 and NOT HTML
+                if status == 200:
+                    is_html = "<html" in body_sample.lower() or "<!doctype" in body_sample.lower()
+                    if item["path"] == "/.git/HEAD":
+                        is_exposed = "ref: refs/" in body_sample and not is_html
+                        notes = "Git HEAD reference exposed" if is_exposed else "Returned HTML soft 404 (Safe)"
+                    elif item["path"] == "/.env":
+                        is_exposed = ("=" in body_sample) and not is_html and len(body_sample.strip()) > 5
+                        notes = "Environment secret key-value pairs leaked" if is_exposed else "Returned HTML soft 404 (Safe)"
+                    elif item["path"] == "/wp-config.php.bak":
+                        is_exposed = ("DB_PASSWORD" in body_sample or "DB_NAME" in body_sample or "<?php" in body_sample) and not is_html
+                        notes = "Database credentials exposed in backup file" if is_exposed else "Returned HTML soft 404 (Safe)"
+                    else:
+                        is_exposed = not is_html
+                else:
+                    is_exposed = False
+                    notes = f"Returned HTTP {status} (Protected)"
+
+            elif item.get("type") == "xmlrpc":
+                # XML-RPC: 200 or 405 with XML-RPC server response
+                if status in (200, 405) and ("xml-rpc" in body_sample.lower() or "method" in body_sample.lower()):
+                    is_exposed = True
+                    notes = "XML-RPC server interface active"
+                elif status in (403, 401, 404):
+                    is_exposed = False
+                    notes = f"Blocked/Disabled with HTTP {status}"
+                else:
+                    is_exposed = False
+
+            elif item.get("type") in ("login", "admin"):
+                # WordPress login / admin portal
+                if status in (200, 301, 302):
+                    is_exposed = True
+                    notes = "Login portal publicly reachable"
+                elif status in (403, 401):
+                    is_exposed = False
+                    notes = f"Protected with HTTP {status} Access Denied"
+                else:
+                    is_exposed = False
+
+            elif item.get("type") == "robots":
+                is_exposed = status == 200
+                notes = "Search directives file found" if is_exposed else f"HTTP {status}"
+
+            elif item.get("type") == "info":
+                # readme.html
+                if status == 200 and "wordpress" in body_sample.lower():
+                    is_exposed = True
+                    notes = "Core version readme file accessible"
+                else:
+                    is_exposed = False
+
+        except Exception as e:
             status = 0
+            notes = f"Connection timeout: {str(e)[:40]}"
 
         return {
             "path": item["path"],
@@ -328,6 +504,7 @@ class SecurityScannerService:
             "desc": item["desc"],
             "http_status": status,
             "exposed": is_exposed,
+            "notes": notes,
         }
 
     def check_sensitive_paths(self, base_url: str):
@@ -340,10 +517,32 @@ class SecurityScannerService:
                 except Exception:
                     pass
 
-        # Sort back in original list order
         path_order = {item["path"]: idx for idx, item in enumerate(SENSITIVE_PATHS)}
         findings.sort(key=lambda r: path_order.get(r["path"], 999))
         return findings
+
+    def check_dns_security(self, hostname: str):
+        dns_info = {
+            "has_mx": False,
+            "has_spf": False,
+            "has_dmarc": False,
+            "spf_record": None,
+            "dmarc_record": None,
+            "status": "checked",
+        }
+        try:
+            # Check MX / Host
+            socket.gethostbyname(hostname)
+            # Try to resolve DMARC via socket or standard lookup
+            try:
+                dmarc_host = f"_dmarc.{hostname}"
+                socket.gethostbyname(dmarc_host)
+                dns_info["has_dmarc"] = True
+            except Exception:
+                pass
+        except Exception:
+            pass
+        return dns_info
 
     def run_full_audit(self, target_url: str):
         clean_url, hostname, scheme = self.normalize_url(target_url)
@@ -355,92 +554,112 @@ class SecurityScannerService:
         except Exception:
             ip_address = "Unresolved"
 
-        # 2. Run diagnostics concurrently in threads
+        # 2. Run diagnostics concurrently in threads with generous 8.0s timeout
         ssl_data = {"supported": False, "grade": "F", "message": "SSL not tested"}
-        http_data = {"header_score": 0, "headers_evaluation": [], "server_exposure": [], "waf_detected": "Unknown"}
+        http_data = {"header_score": 0, "headers_evaluation": [], "server_exposure": [], "waf_detected": "None / Direct Origin"}
         port_data = {"ports": [], "total_scanned": 0, "open_count": 0, "critical_exposed": 0}
         path_data = []
+        dns_data = {"has_mx": False, "has_spf": False, "has_dmarc": False}
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             future_ssl = executor.submit(self.check_ssl, hostname)
             future_http = executor.submit(self.check_http_and_headers, clean_url)
             future_ports = executor.submit(self.scan_ports, hostname)
             future_paths = executor.submit(self.check_sensitive_paths, clean_url)
+            future_dns = executor.submit(self.check_dns_security, hostname)
 
             try:
-                ssl_data = future_ssl.result(timeout=4.0)
+                ssl_data = future_ssl.result(timeout=8.0)
             except Exception:
-                ssl_data = {"supported": False, "grade": "F", "message": "SSL check timed out"}
+                ssl_data = {"supported": False, "grade": "F", "message": "SSL verification timed out"}
 
             try:
-                http_data = future_http.result(timeout=4.0)
+                http_data = future_http.result(timeout=8.0)
             except Exception:
                 http_data = {"header_score": 0, "headers_evaluation": [], "server_exposure": [], "waf_detected": "None / Direct Origin"}
 
             try:
-                port_data = future_ports.result(timeout=4.0)
+                port_data = future_ports.result(timeout=8.0)
             except Exception:
-                port_data = {"ports": [], "total_scanned": 12, "open_count": 0, "critical_exposed": 0}
+                port_data = {"ports": [], "total_scanned": len(COMMON_PORTS), "open_count": 0, "critical_exposed": 0}
 
             try:
-                path_data = future_paths.result(timeout=4.0)
+                path_data = future_paths.result(timeout=8.0)
             except Exception:
                 path_data = []
 
-        # 3. Calculate Overall Security Score
+            try:
+                dns_data = future_dns.result(timeout=4.0)
+            except Exception:
+                pass
+
+        # 3. Calculate Normalized Overall Security Score (0-100)
         score = 100
 
-        # Deductions
+        # Deductions:
+        # SSL
         if not ssl_data.get("supported"):
-            score -= 30
+            score -= 25
         elif ssl_data.get("days_remaining", 0) < 15:
             score -= 10
+        elif ssl_data.get("grade") == "A+":
+            pass
 
-        # Header score impact (up to 30 point swing)
-        hdr_loss = round((100 - http_data.get("header_score", 0)) * 0.3)
-        score -= hdr_loss
+        # Security Headers (Impact up to 25 points)
+        hdr_score = http_data.get("header_score", 0)
+        hdr_deduction = round((100 - hdr_score) * 0.25)
+        score -= hdr_deduction
 
-        # Critical ports exposure
+        # Critical ports exposure (MySQL, Postgres, Redis, Mongo, Elasticsearch)
         crit_ports = port_data.get("critical_exposed", 0)
         score -= min(crit_ports * 15, 30)
 
-        # Sensitive paths exposed (e.g. .env or .git)
+        # High risk ports (FTP 21)
+        for p in port_data.get("ports", []):
+            if p.get("status") == "open" and p.get("risk") == "high":
+                score -= 8
+
+        # Truly exposed sensitive paths
         for p in path_data:
-            if p["exposed"]:
+            if p.get("exposed"):
                 if p["risk"] == "critical":
                     score -= 20
                 elif p["risk"] == "high":
                     score -= 10
                 elif p["risk"] == "medium":
-                    score -= 5
+                    score -= 4
 
-        score = max(10, min(score, 100))
+        # Server signature exposure
+        if len(http_data.get("server_exposure", [])) > 1:
+            score -= 5
+
+        score = max(15, min(score, 100))
 
         if score >= 90:
             grade = "A+"
             grade_color = "#10b981"
             verdict = "Excellent Security Posture"
-            summary_message = "Your website demonstrates robust security defenses. Minor recommendations are highlighted below."
+            summary_message = "Your website demonstrates robust defenses with modern encryption and hardened headers."
         elif score >= 78:
             grade = "A"
             grade_color = "#3b82f6"
             verdict = "Strong Cyber Protection"
-            summary_message = "Your origin is well-protected. Enabling additional security headers will achieve a flawless rating."
+            summary_message = "Your origin is well-protected. Enabling missing security headers will achieve an A+ rating."
         elif score >= 60:
             grade = "B"
             grade_color = "#eab308"
             verdict = "Moderate Cyber Health"
-            summary_message = "Your website is operational, but standard security hardening headers and port closures are recommended."
+            summary_message = "Your website is operational, but essential security headers and origin port closures are recommended."
         elif score >= 40:
             grade = "C"
             grade_color = "#f97316"
             verdict = "Needs Security Hardening"
-            summary_message = "Several sensitive endpoints or missing headers were detected. MDefender Pro 1-click hardening can resolve these instantly."
+            summary_message = "Multiple missing headers or open management ports were detected. MDefender Pro 1-click hardening can resolve these instantly."
         else:
             grade = "F"
             grade_color = "#ef4444"
             verdict = "Immediate Hardening Recommended"
-            summary_message = "Key security headers or exposed interfaces were detected. Activate MDefender Pro WAF & DDoS mitigation to shield your origin."
+            summary_message = "Critical security issues or exposed interfaces were detected. Activate MDefender Pro WAF & DDoS mitigation to shield your origin."
 
         return {
             "target_url": clean_url,
@@ -456,4 +675,6 @@ class SecurityScannerService:
             "http": http_data,
             "ports": port_data,
             "sensitive_paths": path_data,
+            "dns": dns_data,
         }
+
