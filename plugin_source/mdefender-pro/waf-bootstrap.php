@@ -17,7 +17,7 @@ if (defined('MDEFENDER_BOOTSTRAP_EXECUTED')) {
 define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
 
 // Bypass bootstrap for cloud synchronization webhooks & internal API endpoints
-if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
+if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') || (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'waf-fw') !== false)) {
     return;
 }
 
@@ -31,18 +31,28 @@ function mdefender_get_fast_client_ip() {
         $cand = preg_replace('/:\d+$/', '', trim($_GET['ip_test']));
         if (filter_var($cand, FILTER_VALIDATE_IP)) return $cand;
     }
-    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-        $ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
-    } elseif (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-        $ip = trim($_SERVER['HTTP_X_REAL_IP']);
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $ip = trim($ips[0]);
-    } else {
-        $ip = trim($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    $headers = [
+        'HTTP_CF_CONNECTING_IP',
+        'HTTP_X_REAL_IP',
+        'HTTP_TRUE_CLIENT_IP',
+        'HTTP_CLIENT_IP',
+        'HTTP_X_CLIENT_IP',
+        'HTTP_X_FORWARDED_FOR',
+        'REMOTE_ADDR'
+    ];
+    foreach ($headers as $h) {
+        if (!empty($_SERVER[$h])) {
+            $raw = trim((string) $_SERVER[$h]);
+            $ips = explode(',', $raw);
+            foreach ($ips as $cand) {
+                $clean = preg_replace('/:\d+$/', '', trim($cand));
+                if (filter_var($clean, FILTER_VALIDATE_IP)) {
+                    return $clean;
+                }
+            }
+        }
     }
-    $clean_ip = preg_replace('/:\d+$/', '', $ip);
-    return filter_var($clean_ip, FILTER_VALIDATE_IP) ?: '0.0.0.0';
+    return '0.0.0.0';
 }
 
 // Locate fast cache file
@@ -214,8 +224,11 @@ if (!$is_blocked) {
 
 // If blocked, render lightweight standalone block response in < 0.05ms
 if ($is_blocked) {
+    if (function_exists('http_response_code')) {
+        http_response_code(403);
+    }
     if (!headers_sent()) {
-        header('HTTP/1.1 403 Forbidden');
+        header('HTTP/1.1 403 Forbidden', true, 403);
         header('Status: 403 Forbidden');
         header('Content-Type: text/html; charset=UTF-8');
         header('X-Protected-By: MDefender-Pro-Bootstrap');

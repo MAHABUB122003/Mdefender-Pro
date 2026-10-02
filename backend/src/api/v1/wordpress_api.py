@@ -672,6 +672,23 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     if site_token:
                         headers["X-Site-Token"] = site_token
 
+                    # 1. Attempt REST API Sync Endpoint first
+                    rest_endpoint = f"{clean_url}/wp-json/waf-fw/v1/sync"
+                    try:
+                        resp = requests.post(
+                            rest_endpoint,
+                            json=sync_payload,
+                            headers=headers,
+                            timeout=3.5,
+                            verify=False,
+                            allow_redirects=True
+                        )
+                        if resp.status_code == 200:
+                            return
+                    except Exception:
+                        pass
+
+                    # 2. Attempt POST with query parameter & JSON payload
                     sep = "&" if "?" in clean_url else "?"
                     url_params = "waf_cloud_sync=1"
                     if api_key:
@@ -680,28 +697,28 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                         url_params += f"&site_token={site_token}"
 
                     target_endpoint = f"{clean_url}{sep}{url_params}"
-
-                    # 1. Attempt POST with rich JSON payload
                     try:
                         resp = requests.post(
                             target_endpoint,
                             json=sync_payload,
                             headers=headers,
-                            timeout=2.5,
-                            verify=False
+                            timeout=3.5,
+                            verify=False,
+                            allow_redirects=True
                         )
                         if resp.status_code == 200:
                             return
                     except Exception:
                         pass
 
-                    # 2. Fallback GET notification
+                    # 3. Fallback GET notification
                     try:
                         requests.get(
                             target_endpoint,
                             headers=headers,
-                            timeout=2.0,
-                            verify=False
+                            timeout=2.5,
+                            verify=False,
+                            allow_redirects=True
                         )
                     except Exception:
                         pass

@@ -143,9 +143,9 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                 'requests_blocked' => (int) get_option('waf_fw_stats_blocked', 0),
                 'requests_allowed' => (int) get_option('waf_fw_stats_allowed', 0),
             ];
-            // Safe timeout: 2.5 seconds max, transient cache for 1 hour to prevent repeat calls
-            set_transient('waf_fw_last_bl_sync', 1, 3600);
-            $res = $client->heartbeat($stats, 2.5);
+            // Cache transient for 60s so if a push is missed, the site pulls within 1 minute
+            set_transient('waf_fw_last_bl_sync', 1, 60);
+            $res = $client->heartbeat($stats, 4.0);
             if ($res && is_array($res)) {
                 $p = (isset($res['data']) && is_array($res['data'])) ? $res['data'] : $res;
                 if (isset($p['blacklist']) && is_array($p['blacklist'])) {
@@ -196,8 +196,8 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                     WAF_FW_Engine::instance()->export_fast_cache();
                 }
             } else {
-                // On failure, wait at least 5 minutes before retrying to prevent hammering
-                set_transient('waf_fw_last_bl_sync', 1, 300);
+                // On failure, wait 30 seconds before retrying
+                set_transient('waf_fw_last_bl_sync', 1, 30);
             }
         }
     }
@@ -309,6 +309,49 @@ function waf_fw_handle_cloud_sync_webhook() {
 }
 add_action('init', 'waf_fw_handle_cloud_sync_webhook', 1);
 add_action('plugins_loaded', 'waf_fw_handle_cloud_sync_webhook', 0);
+
+add_action('rest_api_init', function() {
+    register_rest_route('waf-fw/v1', '/sync', [
+        'methods' => ['POST', 'GET'],
+        'callback' => function($request) {
+            delete_transient('waf_fw_last_bl_sync');
+            delete_transient('waf_fw_cloud_threat_ips');
+            $pushed_data = $request->get_json_params();
+            if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']) || isset($pushed_data['config']))) {
+                if (isset($pushed_data['blacklist']) && is_array($pushed_data['blacklist'])) {
+                    $ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blacklist'])));
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->sync_with_cloud_blacklist($ips);
+                    } else {
+                        update_option('waf_fw_local_blacklist_cache', $ips);
+                    }
+                }
+                if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
+                    $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
+                    update_option('waf_fw_blocked_countries', implode(',', $countries));
+                }
+                if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
+                    update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);
+                }
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+            } else {
+                waf_fw_sync_cloud_blacklist_fast(true);
+            }
+            $bl_list = (array) get_option('waf_fw_local_blacklist_cache', []);
+            return new WP_REST_Response([
+                'status' => 'success',
+                'message' => 'MDefender cloud blacklist & country rules synced successfully',
+                'blacklist_count' => count($bl_list),
+                'blacklist' => $bl_list,
+                'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
+                'synced_at' => current_time('mysql')
+            ], 200);
+        },
+        'permission_callback' => '__return_true'
+    ]);
+});
 
 /**
  * Hourly cloud heartbeat: pushes online status + local counters so the

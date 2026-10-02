@@ -23,7 +23,7 @@ wp_base = "http://localhost/mahabub/"
 db.blacklist.delete_many({"ip": test_ip})
 db.country_blocks.delete_many({"country_code": "KP", "user_id": user_id})
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 # 1. Normal Request
 try:
@@ -45,7 +45,7 @@ db.blacklist.insert_one({
     "is_global": False
 })
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 try:
     r_bl = requests.get(f"{wp_base}?test_ip={test_ip}", timeout=6)
@@ -66,7 +66,7 @@ db.country_blocks.insert_one({
     "reason": "Live Geo block test"
 })
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 try:
     r_geo = requests.get(f"{wp_base}?country_test=KP", timeout=6)
@@ -82,7 +82,7 @@ print("\n--- Cleaning up Blacklist and Country Block ---")
 db.blacklist.delete_many({"ip": test_ip})
 db.country_blocks.delete_many({"country_code": "KP", "user_id": user_id})
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 try:
     r_clean = requests.get(f"{wp_base}?test_ip={test_ip}&country_test=KP", timeout=6)

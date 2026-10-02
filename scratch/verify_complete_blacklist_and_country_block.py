@@ -51,7 +51,7 @@ print(f"[1a] Inserted IP {test_ip} into MongoDB db.blacklist.")
 
 # Trigger cloud push
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 # Check fast cache JSON
 cache_file = r"C:\xampp\htdocs\mahabub\wp-content\plugins\mdefender-pro\includes\data\waf_fast_cache.json"
@@ -98,7 +98,7 @@ print("[3a] Inserted Country KP into MongoDB db.country_blocks.")
 
 # Trigger cloud push
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 # Check fast cache JSON for country
 if os.path.exists(cache_file):
@@ -132,12 +132,18 @@ print("\n--- [TEST 5: Clean-up & Unblock Verification] ---")
 db.blacklist.delete_many({"ip": test_ip})
 db.country_blocks.delete_many({"country_code": "KP", "user_id": user_id})
 push_instant_sync_to_wordpress(user_id=user_id)
-time.sleep(1)
+time.sleep(2)
 
 if os.path.exists(cache_file):
     with open(cache_file, "r", encoding="utf-8") as f:
         c_data = json.load(f)
-        still_has_ip = bool(c_data.get("blacklist_ips", {}).get(test_ip))
+        b_ips = c_data.get("blacklist_ips", {})
+        if isinstance(b_ips, dict):
+            still_has_ip = bool(b_ips.get(test_ip))
+        elif isinstance(b_ips, list):
+            still_has_ip = test_ip in b_ips
+        else:
+            still_has_ip = False
         still_has_kp = "KP" in c_data.get("blocked_countries", [])
         print(f"[5a] After Unblock - Blacklist has {test_ip}: {still_has_ip} (Expected False) [PASS]")
         print(f"[5b] After Unblock - Blocked Countries has KP: {still_has_kp} (Expected False) [PASS]")
