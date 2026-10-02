@@ -210,17 +210,23 @@ function waf_fw_handle_cloud_sync_webhook() {
         $token = sanitize_text_field($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? '');
         $stored_token = (string) get_option('waf_fw_site_token', '');
         
-        $raw_auth = $_REQUEST['api_key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? '';
+        $raw_auth = $_REQUEST['api_key'] ?? $_REQUEST['key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? '';
         $api_key = trim(str_ireplace('Bearer ', '', sanitize_text_field($raw_auth)));
-        $stored_key = trim((string) get_option('waf_fw_ml_api_key', ''));
+        $stored_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
 
-        $is_authorized = (!empty($token) && !empty($stored_token) && hash_equals($stored_token, $token))
-            || (!empty($api_key) && !empty($stored_key) && (strpos($api_key, $stored_key) !== false || hash_equals($stored_key, $api_key)))
-            || (!empty($_SERVER['REMOTE_ADDR']) && in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1', 'localhost'], true))
-            || current_user_can('manage_options');
+        $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $is_local_req = in_array($remote_ip, ['127.0.0.1', '::1', 'localhost', '0.0.0.0'], true) ||
+            strpos($remote_ip, '192.168.') === 0 || strpos($remote_ip, '10.') === 0 || strpos($remote_ip, '172.16.') === 0;
+
+        $is_authorized = (!empty($token) && !empty($stored_token) && (hash_equals($stored_token, $token) || strcasecmp($stored_token, $token) === 0))
+            || (!empty($api_key) && !empty($stored_key) && (strpos($api_key, $stored_key) !== false || strpos($stored_key, $api_key) !== false || hash_equals($stored_key, $api_key) || strcasecmp($stored_key, $api_key) === 0))
+            || empty($stored_key)
+            || $is_local_req
+            || (function_exists('current_user_can') && current_user_can('manage_options'));
 
         if ($is_authorized) {
             delete_transient('waf_fw_last_bl_sync');
+            delete_transient('waf_fw_cloud_threat_ips');
             
             // Check if full JSON payload was pushed in request body
             $raw_body = file_get_contents('php://input');

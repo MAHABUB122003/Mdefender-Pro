@@ -32,6 +32,9 @@ export default function UserLogs() {
   const [page, setPage] = useState(1)
   const [expandedRow, setExpandedRow] = useState(null)
   const [ipLocations, setIpLocations] = useState({})
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d' })
+  const [submittingBlock, setSubmittingBlock] = useState(false)
   const perPage = 20
 
   const fetchWebsites = useCallback(async () => {
@@ -216,19 +219,26 @@ export default function UserLogs() {
     }
   }
 
-  const handleBlockIp = async (rawIp) => {
+  const handleOpenBlockModal = (rawIp, log = null) => {
     const ip = String(rawIp || '').trim()
     if (!ip) return
-    if (!confirm(`Block IP ${ip} permanently?`)) return
+    const reason = log?.attack_type ? `Threat detected: ${log.attack_type}` : 'Blocked from attack log inspection'
+    setBlockForm({ ip, reason, duration: '1d' })
+    setShowBlockModal(true)
+  }
+
+  const handleConfirmBlock = async (e) => {
+    if (e) e.preventDefault()
+    if (!blockForm.ip) return
+    setSubmittingBlock(true)
     try {
-      const res = await api.addUserBlacklist({ ip, type: 'blacklist', reason: 'Blocked from attack log details' })
-      if (res?.status === 'success' || res?.message) {
-        alert(`IP ${ip} blocked successfully.`)
-      } else {
-        alert('Could not block IP.')
-      }
+      const res = await api.addUserBlacklist(blockForm)
+      setShowBlockModal(false)
+      alert(res?.message || `IP ${blockForm.ip} blocked successfully.`)
     } catch (err) {
       alert('Error blocking IP: ' + (err?.message || String(err)))
+    } finally {
+      setSubmittingBlock(false)
     }
   }
 
@@ -481,7 +491,10 @@ export default function UserLogs() {
                             )}
 
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
-                              <button onClick={() => handleBlockIp(log?.ip)} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#b91c1c', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px' }}>BLOCK IP</button>
+                              <button onClick={() => handleOpenBlockModal(log?.ip, log)} className="btn-small" style={{ borderColor: '#fecaca', color: '#dc2626', fontWeight: '700', height: '32px', padding: '0 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <i className="fas fa-ban"></i>
+                                <span>BLOCK IP</span>
+                              </button>
                               <Link to={`/user/tools?ip=${encodeURIComponent(log?.ip || '')}`} className="btn-small" style={{ borderColor: '#cbd5e1', color: '#0284c7', fontWeight: '600', height: '32px', padding: '0 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px' }}>
                                 <i className="fas fa-search-location"></i>
                                 <span>RUN WHOIS</span>
@@ -725,6 +738,88 @@ export default function UserLogs() {
                 {cleaningLogs ? 'Clearing...' : 'Clear Selected Logs'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Ban IP Modal */}
+      {showBlockModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }} onClick={() => setShowBlockModal(false)}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '480px',
+            padding: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            border: '1px solid #cbd5e1'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                  <i className="fas fa-shield-slash"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#0f172a' }}>Blacklist Attack IP</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Instantly block visitor requests from this IP</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBlockModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', color: '#94a3b8', cursor: 'pointer' }}>&times;</button>
+            </div>
+
+            <form onSubmit={handleConfirmBlock}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '5px' }}>Target IP</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={blockForm.ip}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontWeight: '700', color: '#0f172a', fontSize: '13px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '5px' }}>Ban Duration</label>
+                <select
+                  value={blockForm.duration}
+                  onChange={e => setBlockForm({ ...blockForm, duration: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: '500', background: '#fff', boxSizing: 'border-box' }}
+                >
+                  <option value="1d">1 Day (24 Hours) — Recommended</option>
+                  <option value="2d">2 Days (48 Hours)</option>
+                  <option value="7d">7 Days (1 Week)</option>
+                  <option value="30d">30 Days (1 Month)</option>
+                  <option value="permanent">Permanent (Until manual unblock)</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '5px' }}>Reason</label>
+                <input
+                  type="text"
+                  value={blockForm.reason}
+                  onChange={e => setBlockForm({ ...blockForm, reason: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowBlockModal(false)} style={{ padding: '9px 15px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '12px', fontWeight: '600', color: '#475569', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={submittingBlock} style={{ padding: '9px 18px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: submittingBlock ? 'not-allowed' : 'pointer' }}>
+                  {submittingBlock ? 'Applying...' : 'Confirm Blacklist'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

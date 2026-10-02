@@ -108,7 +108,7 @@ if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip ==
 $candidates = array_values(array_unique(array_filter($candidates)));
 
 foreach ($candidates as $cand) {
-    if (isset($ip_blacklist[$cand])) {
+    if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true))) {
         $is_blocked = true;
         $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP).';
         break;

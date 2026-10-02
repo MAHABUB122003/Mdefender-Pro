@@ -516,21 +516,29 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             # Target URLs list: (url, api_key, site_token)
             targets = []
             for ws in w_sites:
-                domain = ws.get("domain", "")
-                url = ws.get("url") or (f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}")
+                domain = (ws.get("domain") or "").strip().rstrip("/")
+                raw_url = (ws.get("url") or "").strip().rstrip("/")
                 k = ws.get("api_key") or user_master_key or ""
                 tok = ws.get("site_token") or (ws.get("wordpress_connection") or {}).get("raw_site_token") or ""
-                if url:
-                    targets.append((url, k, tok))
+                
+                if raw_url:
+                    targets.append((raw_url, k, tok))
+                    if raw_url.startswith("https://"):
+                        targets.append((raw_url.replace("https://", "http://", 1), k, tok))
+                    elif raw_url.startswith("http://"):
+                        targets.append((raw_url.replace("http://", "https://", 1), k, tok))
+                elif domain:
+                    targets.append((f"https://{domain}", k, tok))
+                    targets.append((f"http://{domain}", k, tok))
 
             for wp in wp_sites:
-                domain = wp.get("domain", "")
+                domain = (wp.get("domain") or "").strip().rstrip("/")
                 if domain:
-                    url = f"http://{domain}" if domain in ("localhost", "127.0.0.1") else f"https://{domain}"
                     ws_match = db.websites.find_one({"_id": wp.get("website_id")}) or db.websites.find_one({"domain": domain})
                     k = wp.get("api_key") or (ws_match.get("api_key") if ws_match else "") or user_master_key or ""
                     tok = wp.get("site_token") or ""
-                    targets.append((url, k, tok))
+                    targets.append((f"https://{domain}", k, tok))
+                    targets.append((f"http://{domain}", k, tok))
 
             # Also ensure local development WordPress installations receive instant push
             local_keys = [k for (_, k, _) in targets if k] or ([user_master_key] if user_master_key else [""])
@@ -545,8 +553,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             unique_targets = []
             for u, k, tok in targets:
                 clean_u = u.rstrip("/")
-                key_tuple = (clean_u, k, tok)
-                if clean_u not in seen:
+                if clean_u and clean_u not in seen:
                     seen.add(clean_u)
                     unique_targets.append((clean_u, k, tok))
 
@@ -576,19 +583,23 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     headers = {"Content-Type": "application/json"}
                     if api_key:
                         headers["Authorization"] = f"Bearer {api_key}"
+                        headers["X-API-Key"] = api_key
                     if site_token:
                         headers["X-Site-Token"] = site_token
 
-                    url_params = f"?waf_cloud_sync=1"
+                    sep = "&" if "?" in clean_url else "?"
+                    url_params = f"waf_cloud_sync=1"
                     if api_key:
                         url_params += f"&api_key={api_key}"
                     if site_token:
                         url_params += f"&site_token={site_token}"
 
+                    target_endpoint = f"{clean_url}{sep}{url_params}"
+
                     # 1. First attempt POST with rich JSON payload for 0-latency instant cache update
                     try:
                         requests.post(
-                            f"{clean_url}/{url_params}",
+                            target_endpoint,
                             json=sync_payload,
                             headers=headers,
                             timeout=4,
@@ -600,7 +611,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     # 2. Fallback GET notification
                     try:
                         requests.get(
-                            f"{clean_url}/{url_params}",
+                            target_endpoint,
                             headers=headers,
                             timeout=3,
                             verify=False

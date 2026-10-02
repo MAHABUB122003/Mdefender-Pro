@@ -68,7 +68,7 @@ class WAF_FW_IP_Filter {
             $fc = @json_decode(file_get_contents($fast_cache_file), true);
             if (!empty($fc['blacklist_ips']) && is_array($fc['blacklist_ips'])) {
                 foreach ($candidates as $cand) {
-                    if (!empty($fc['blacklist_ips'][$cand])) {
+                    if (!empty($fc['blacklist_ips'][$cand]) || in_array($cand, $fc['blacklist_ips'], true)) {
                         $this->runtime_blacklist_cache[$ip] = true;
                         return true;
                     }
