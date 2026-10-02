@@ -51,11 +51,15 @@ export default function UserBlacklist() {
 
   const handleUnblock = async (ip) => {
     if (!confirm(`Unblock IP ${ip}?`)) return
+    // Optimistically remove from state and invalidate cache
+    setEntries(prev => prev.filter(item => item.ip !== ip))
+    userStore.invalidate('blacklist')
     try {
       await api.removeUserBlacklist(ip)
-      fetchBlacklist(true)
+      await fetchBlacklist(true)
     } catch (err) {
       alert(err.message || 'Failed to unblock IP')
+      fetchBlacklist(true)
     }
   }
 
@@ -64,20 +68,23 @@ export default function UserBlacklist() {
       const ipMatch = !search || item.ip?.toLowerCase().includes(search.toLowerCase()) || item.reason?.toLowerCase().includes(search.toLowerCase())
       if (!ipMatch) return false
       if (filterDuration === 'all') return true
-      if (filterDuration === 'permanent') return item.type?.toLowerCase() === 'permanent' || !item.expires_at
-      if (filterDuration === 'temporary') return item.type?.toLowerCase() !== 'permanent' && !!item.expires_at
-      if (filterDuration === '1d') return item.type?.includes('1')
-      if (filterDuration === '2d') return item.type?.includes('2')
-      if (filterDuration === '7d') return item.type?.includes('7')
-      if (filterDuration === '30d') return item.type?.includes('30')
+      const typeStr = (item.type || item.duration || '').toLowerCase()
+      const isPermanent = typeStr === 'permanent' || !item.expires_at
+      if (filterDuration === 'permanent') return isPermanent
+      if (filterDuration === 'temporary') return !isPermanent
+      if (filterDuration === '1d') return typeStr.includes('1')
+      if (filterDuration === '2d') return typeStr.includes('2')
+      if (filterDuration === '7d') return typeStr.includes('7')
+      if (filterDuration === '30d') return typeStr.includes('30')
       return true
     })
   }, [entries, search, filterDuration])
 
   const formatExpires = (entry) => {
-    if (!entry.expires_at) return <span style={{ color: '#64748b', fontSize: '12px' }}>Never (Permanent)</span>
+    const isPerm = !entry.expires_at || String(entry.type || '').toLowerCase() === 'permanent' || String(entry.duration || '').toLowerCase() === 'permanent'
+    if (isPerm) return <span style={{ color: '#64748b', fontSize: '12px' }}>Never (Permanent)</span>
     if (entry.is_expired) return <span style={{ color: '#ef4444', fontWeight: '600', fontSize: '12px' }}>Expired</span>
-    return <span style={{ color: '#059669', fontSize: '12px', fontWeight: '500' }}>{entry.expires_at}</span>
+    return <span style={{ color: '#059669', fontSize: '12px', fontWeight: '600' }}>{entry.expires_at}</span>
   }
 
   return (
@@ -234,11 +241,11 @@ export default function UserBlacklist() {
                     borderRadius: '20px',
                     fontSize: '12px',
                     fontWeight: '600',
-                    background: entry.type === 'Permanent' || entry.type === 'permanent' ? '#fee2e2' : '#e0f2fe',
-                    color: entry.type === 'Permanent' || entry.type === 'permanent' ? '#b91c1c' : '#0369a1'
+                    background: (!entry.expires_at || String(entry.type || '').toLowerCase() === 'permanent' || String(entry.duration || '').toLowerCase() === 'permanent') ? '#fee2e2' : '#e0f2fe',
+                    color: (!entry.expires_at || String(entry.type || '').toLowerCase() === 'permanent' || String(entry.duration || '').toLowerCase() === 'permanent') ? '#b91c1c' : '#0369a1'
                   }}>
-                    <i className={`fas ${entry.type === 'Permanent' || entry.type === 'permanent' ? 'fa-lock' : 'fa-clock'}`} style={{ fontSize: '10px' }}></i>
-                    {entry.type || entry.duration || 'Permanent'}
+                    <i className={`fas ${(!entry.expires_at || String(entry.type || '').toLowerCase() === 'permanent' || String(entry.duration || '').toLowerCase() === 'permanent') ? 'fa-lock' : 'fa-clock'}`} style={{ fontSize: '10px' }}></i>
+                    {entry.duration || entry.type || (entry.expires_at ? 'Temporary' : 'Permanent')}
                   </span>
                 </td>
                 <td style={{ padding: '14px 20px' }}>

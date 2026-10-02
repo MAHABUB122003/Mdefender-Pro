@@ -297,7 +297,14 @@ class AdminAPI:
         return {'status': 'success', 'message': f'IP {ip} blacklisted successfully'}
 
     def remove_from_blacklist(self, ip):
-        self.db.blacklist.delete_one({'ip': ip})
+        self.db.blacklist.delete_many({'ip': ip})
+        self.db.auto_blocks.delete_many({'ip': ip})
+        self.db.attack_attempts.delete_many({'ip': ip})
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress()
+        except Exception:
+            pass
         return {'status': 'success', 'message': f'IP {ip} removed from blacklist'}
 
     def get_settings(self):

@@ -739,7 +739,42 @@ async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_to
     enabled = data.get('enabled', True)
     return user_api.toggle_ddos_protection(user, enabled)
 
+def parse_ban_duration(duration_input):
+    s = str(duration_input or 'permanent').strip().lower()
+    now = datetime.now()
+    expires_at = None
+    duration_label = 'Permanent'
+    
+    if s in ('1d', '1 day', '24h', '24', '1_day', '1_days'):
+        expires_at = now + timedelta(days=1)
+        duration_label = '1 Day'
+    elif s in ('2d', '2 days', '48h', '48', '2_day', '2_days'):
+        expires_at = now + timedelta(days=2)
+        duration_label = '2 Days'
+    elif s in ('7d', '7 days', '168h', '168', '1w', '1 week', '7_day', '7_days'):
+        expires_at = now + timedelta(days=7)
+        duration_label = '7 Days'
+    elif s in ('30d', '30 days', '720h', '720', '1m', '1 month', '30_day', '30_days'):
+        expires_at = now + timedelta(days=30)
+        duration_label = '30 Days'
+    elif 'hour' in s or s.endswith('h'):
+        try:
+            hrs = int(''.join(filter(str.isdigit, s)) or '24')
+            expires_at = now + timedelta(hours=hrs)
+            duration_label = f'{hrs} Hours'
+        except Exception:
+            expires_at = now + timedelta(days=1)
+            duration_label = '1 Day'
+    elif s in ('temporary', 'temp'):
+        expires_at = now + timedelta(days=1)
+        duration_label = '1 Day'
+    else:
+        expires_at = None
+        duration_label = 'Permanent'
+    return expires_at, duration_label
+
 @app.post("/api/user/block-ip")
+@app.post("/api/v1/user/block-ip")
 async def user_block_ip(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     ip = data.get('ip', '').strip()
@@ -747,38 +782,44 @@ async def user_block_ip(request: Request, user: dict = Depends(verify_user_token
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
     
+    from bson import ObjectId
     user_id_str = str(user['_id'])
     user_email = user.get('email', 'unknown')
     
-    existing = db.blacklist.find_one({'ip': ip})
-    if existing:
-        db.blacklist.update_one({'_id': existing['_id']}, {'$set': {
-            'reason': reason,
-            'type': data.get('type', 'permanent'),
-            'added_by': user_email,
-            'added_by_user_id': user_id_str,
-            'user_id': user_id_str,
-            'blocked_at': datetime.now(),
-        }})
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user['_id'])
-        return {'status': 'success', 'message': f'{ip} has been updated in blacklist'}
+    duration_raw = data.get('duration') or data.get('type') or 'permanent'
+    expires_at, duration_label = parse_ban_duration(duration_raw)
+    now = datetime.now()
     
-    db.blacklist.insert_one({
+    payload = {
         'ip': ip,
         'reason': reason,
-        'type': data.get('type', 'permanent'),
+        'type': duration_label,
+        'duration': duration_label,
+        'expires_at': expires_at,
         'added_by': user_email,
         'added_by_user_id': user_id_str,
         'user_id': user_id_str,
-        'blocked_at': datetime.now(),
+        'blocked_at': now,
         'is_global': False,
-    })
+    }
+    
+    match_conds = [{'ip': ip, 'user_id': user_id_str}, {'ip': ip, 'added_by_user_id': user_id_str}]
+    if ObjectId.is_valid(user_id_str):
+        match_conds.append({'ip': ip, 'user_id': ObjectId(user_id_str)})
+    existing = db.blacklist.find_one({'$or': match_conds}) or db.blacklist.find_one({'ip': ip})
+    if existing:
+        db.blacklist.update_one({'_id': existing['_id']}, {'$set': payload})
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user['_id'])
+        return {'status': 'success', 'message': f'{ip} has been updated in blacklist ({duration_label})'}
+    
+    db.blacklist.insert_one(payload)
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
     push_instant_sync_to_wordpress(user_id=user['_id'])
-    return {'status': 'success', 'message': f'{ip} has been blocked'}
+    return {'status': 'success', 'message': f'{ip} has been blacklisted ({duration_label})'}
 
 @app.get("/api/user/blacklist")
+@app.get("/api/v1/user/blacklist")
 async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
     user_id_str = str(user['_id'])
@@ -804,7 +845,10 @@ async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
         if exp and isinstance(exp, datetime) and exp <= now:
             is_expired = True
             
-        dur_type = entry.get('duration') or entry.get('type') or ('permanent' if not exp else 'temporary')
+        dur_type = entry.get('duration') or entry.get('type')
+        if not dur_type or dur_type.lower() == 'blacklist':
+            dur_type = 'Permanent' if not exp else 'Temporary'
+            
         blacklist.append({
             'id': str(entry['_id']),
             'ip': entry.get('ip', ''),
@@ -820,6 +864,7 @@ async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
     return blacklist
 
 @app.post("/api/user/blacklist")
+@app.post("/api/v1/user/blacklist")
 async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     ip = data.get('ip', '').strip()
@@ -830,38 +875,9 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     user_id_str = str(user['_id'])
     user_email = user.get('email', 'unknown')
     
-    # Calculate duration & expiration
-    duration_input = str(data.get('duration') or data.get('type') or 'permanent').strip().lower()
+    duration_raw = data.get('duration') or data.get('type') or 'permanent'
+    expires_at, duration_label = parse_ban_duration(duration_raw)
     now = datetime.now()
-    expires_at = None
-    duration_label = 'permanent'
-    
-    if duration_input in ('1d', '1 day', '24h', '24', '1_day', '1_days'):
-        expires_at = now + timedelta(days=1)
-        duration_label = '1 Day'
-    elif duration_input in ('2d', '2 days', '48h', '48', '2_day', '2_days'):
-        expires_at = now + timedelta(days=2)
-        duration_label = '2 Days'
-    elif duration_input in ('7d', '7 days', '168h', '168', '1w', '1 week', '7_day', '7_days'):
-        expires_at = now + timedelta(days=7)
-        duration_label = '7 Days'
-    elif duration_input in ('30d', '30 days', '720h', '720', '1m', '1 month', '30_day', '30_days'):
-        expires_at = now + timedelta(days=30)
-        duration_label = '30 Days'
-    elif 'hour' in duration_input or duration_input.endswith('h'):
-        try:
-            hrs = int(''.join(filter(str.isdigit, duration_input)) or '24')
-            expires_at = now + timedelta(hours=hrs)
-            duration_label = f'{hrs} Hours'
-        except Exception:
-            expires_at = now + timedelta(days=1)
-            duration_label = '1 Day'
-    elif duration_input in ('temporary', 'temp'):
-        expires_at = now + timedelta(days=1)
-        duration_label = '1 Day'
-    else:
-        expires_at = None
-        duration_label = 'Permanent'
     
     payload = {
         'ip': ip,
@@ -892,6 +908,7 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully ({duration_label})'}
 
 @app.delete("/api/user/blacklist")
+@app.delete("/api/v1/user/blacklist")
 async def user_delete_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
     ip = request.query_params.get('ip', '').strip()
@@ -906,6 +923,7 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         {'user_id': user_id_str},
         {'added_by_user_id': {'$exists': False}},
         {'added_by_user_id': None},
+        {'is_global': {'$ne': True}},
     ]
     if user_email:
         del_conds.append({'added_by': user_email})
@@ -913,13 +931,23 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         del_conds.append({'added_by_user_id': ObjectId(user_id_str)})
         del_conds.append({'user_id': ObjectId(user_id_str)})
     
+    # 1. Delete from blacklist
     db.blacklist.delete_many({
         'ip': ip,
         '$or': del_conds
     })
+    db.blacklist.delete_many({'ip': ip, 'user_id': user_id_str})
+    
+    # 2. Delete from auto_blocks
+    db.auto_blocks.delete_many({'ip': ip})
+    
+    # 3. CRITICAL: Clear all attack attempts for this IP so auto_block won't immediately re-ban it!
+    db.attack_attempts.delete_many({'ip': ip})
+    
+    # 4. Immediate push sync to WordPress sites and local disk fast caches
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
     push_instant_sync_to_wordpress(user_id=user['_id'])
-    return {'status': 'success', 'message': f'IP {ip} removed from blacklist'}
+    return {'status': 'success', 'message': f'IP {ip} unblocked and removed from blacklist'}
 
 @app.get("/api/user/whitelist")
 async def user_get_whitelist(user: dict = Depends(verify_user_token_compat)):
@@ -1259,13 +1287,14 @@ async def user_delete_auto_block(request: Request, user: dict = Depends(verify_u
         return {'status': 'error', 'message': 'IP address is required'}
     from bson import ObjectId
     u_str = str(user['_id'])
-    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
+    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}, {'added_by_user_id': {'$exists': False}}, {'added_by_user_id': None}]
     if ObjectId.is_valid(u_str):
         del_conds.append({'user_id': ObjectId(u_str)})
         del_conds.append({'added_by_user_id': ObjectId(u_str)})
     
-    db.blacklist.delete_many({'ip': ip, 'auto_blocked': True, '$or': del_conds})
-    db.auto_blocks.delete_many({'ip': ip, '$or': del_conds})
+    db.blacklist.delete_many({'ip': ip, '$or': del_conds})
+    db.auto_blocks.delete_many({'ip': ip})
+    db.attack_attempts.delete_many({'ip': ip})
     
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
     push_instant_sync_to_wordpress(user_id=user['_id'])

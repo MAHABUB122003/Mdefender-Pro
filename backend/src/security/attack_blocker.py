@@ -131,6 +131,31 @@ class AttackBlocker:
             logger.error("Failed to check blacklist for %s: %s", ip, e)
             return False
 
+    def unblock_ip(self, ip, user_id=None):
+        try:
+            u_str = str(user_id) if user_id else ""
+            query = {'ip': ip}
+            if u_str:
+                from bson import ObjectId
+                u_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
+                if ObjectId.is_valid(u_str):
+                    u_conds.append({'user_id': ObjectId(u_str)})
+                    u_conds.append({'added_by_user_id': ObjectId(u_str)})
+                query['$or'] = u_conds
+            
+            self.db.blacklist.delete_many(query)
+            self.db.auto_blocks.delete_many({'ip': ip})
+            self.db.attack_attempts.delete_many({'ip': ip})
+            try:
+                from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+                push_instant_sync_to_wordpress(user_id=user_id)
+            except Exception:
+                pass
+            return True
+        except Exception as e:
+            logger.error("Failed to unblock %s: %s", ip, e)
+            return False
+
     def cleanup_expired_blocks(self):
         now = datetime.now()
         try:
