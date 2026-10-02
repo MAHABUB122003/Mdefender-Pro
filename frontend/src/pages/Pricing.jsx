@@ -175,7 +175,7 @@ export default function Pricing() {
       navigate('/register')
       return
     }
-    const token = localStorage.getItem('mdefender_user_token')
+    const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token')
     if (!token) {
       navigate(`/register?plan=${planId}`)
       return

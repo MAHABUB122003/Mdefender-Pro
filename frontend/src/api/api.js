@@ -77,8 +77,10 @@ async function apiCall(endpoint, options = {}) {
     headers['X-CSRF-Token'] = csrf;
   }
 
+  const { skipAuthRedirect, ...fetchOptions } = options;
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
+    ...fetchOptions,
     headers,
     credentials: 'include',
   });
@@ -104,16 +106,21 @@ async function apiCall(endpoint, options = {}) {
       return data;
     }
 
-    if (endpoint === '/api/auth/me' || endpoint === '/api/auth/refresh') {
-      clearTokens();
-      throw new Error('Unauthorized');
+    const publicPaths = ['/', '/pricing', '/about', '/blog', '/docs', '/blocked', '/register', '/user/login', '/admin/login', '/payment/success'];
+    const isPublicPage = typeof window !== 'undefined' && publicPaths.includes(window.location.pathname);
+
+    if (skipAuthRedirect || endpoint === '/api/auth/me' || endpoint === '/api/auth/refresh' || endpoint.includes('/pricing/') || isPublicPage) {
+      if (endpoint === '/api/auth/me' || endpoint === '/api/auth/refresh') {
+        clearTokens();
+      }
+      throw new Error(data.detail || data.message || 'Unauthorized');
     }
 
-    if (endpoint.startsWith('/api/admin/')) {
-      clearTokens();
+    const isAdminEndpoint = endpoint.startsWith('/api/admin/') || endpoint.startsWith('/api/v1/admin/');
+    clearTokens();
+    if (isAdminEndpoint) {
       window.location.href = '/admin/login';
     } else {
-      clearTokens();
       window.location.href = '/user/login';
     }
     throw new Error('Unauthorized');
@@ -407,7 +414,8 @@ export const api = {
   adminUnblockDDoSIp: (ip) => apiCall('/api/admin/ddos/reputation/unblock', { method: 'POST', body: JSON.stringify({ ip }) }),
 
   // Public Pricing APIs
-  getPublicPricing: () => apiCall('/api/v1/pricing/plans').catch(() => apiCall('/api/v1/admin/pricing')),
+  getPublicPricing: () => apiCall('/api/v1/pricing/plans', { skipAuthRedirect: true }).catch(() => ({ data: { plans: [] } })),
 }
 
 export default api
+

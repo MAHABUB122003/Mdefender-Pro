@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from src.api.v1.deps import get_owned_website
-from src.auth.dependencies import get_current_user
+from src.auth.dependencies import get_current_user, get_current_user_optional
 from src.database.mongodb_connection import MongoDB
 from src.features.feature_flags import FeatureFlagService
 from src.services.paddle_service import PaddleService
@@ -27,6 +27,14 @@ from src.services.subscription_service import SubscriptionService
 from src.utils.api_response import success
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
+public_router = APIRouter(prefix="/pricing", tags=["Pricing"])
+
+
+@public_router.get("/plans")
+async def get_public_pricing_plans():
+    db = MongoDB()
+    plans = PlanService(db).all_plans()
+    return success({"plans": plans})
 
 
 def _paddle(db):
@@ -48,12 +56,13 @@ class ChangePlanRequest(BaseModel):
 
 
 @router.get("/plans")
-async def list_plans(user=Depends(get_current_user)):
+async def list_plans(user=Depends(get_current_user_optional)):
     db = MongoDB()
     plans = PlanService(db).all_plans()
+    current_plan = SubscriptionService(db).effective_plan(user) if user else "free"
     return success({
         "plans": plans,
-        "current_plan": SubscriptionService(db).effective_plan(user),
+        "current_plan": current_plan,
         "billing_enabled": _feature_enabled(db),
     })
 
