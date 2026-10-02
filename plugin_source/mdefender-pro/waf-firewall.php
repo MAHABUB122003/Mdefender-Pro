@@ -147,19 +147,23 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
             set_transient('waf_fw_last_bl_sync', 1, 3600);
             $res = $client->heartbeat($stats, 2.5);
             if ($res && is_array($res)) {
-                if (isset($res['blacklist']) && is_array($res['blacklist'])) {
-                    $ips = array_values(array_filter(array_map('sanitize_text_field', $res['blacklist'])));
+                $p = (isset($res['data']) && is_array($res['data'])) ? $res['data'] : $res;
+                if (isset($p['blacklist']) && is_array($p['blacklist'])) {
+                    $ips = array_values(array_filter(array_map('sanitize_text_field', $p['blacklist'])));
                     update_option('waf_fw_local_blacklist_cache', $ips);
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->sync_with_cloud_blacklist($ips);
+                    }
                 }
-                if (isset($res['blocked_countries']) && is_array($res['blocked_countries'])) {
-                    $countries = array_values(array_filter(array_map('sanitize_text_field', $res['blocked_countries'])));
-                    update_option('waf_fw_blocked_countries', implode(',', $countries));
+                if (isset($p['blocked_countries'])) {
+                    $c_val = is_array($p['blocked_countries']) ? implode(',', array_filter(array_map('sanitize_text_field', $p['blocked_countries']))) : sanitize_text_field($p['blocked_countries']);
+                    update_option('waf_fw_blocked_countries', $c_val);
                 }
-                if (isset($res['user_rules']) && is_array($res['user_rules'])) {
-                    update_option('waf_fw_cloud_rules_cache', $res['user_rules']);
+                if (isset($p['user_rules']) && is_array($p['user_rules'])) {
+                    update_option('waf_fw_cloud_rules_cache', $p['user_rules']);
                 }
-                if (!empty($res['config']) && is_array($res['config'])) {
-                    $config = $res['config'];
+                if (!empty($p['config']) && is_array($p['config'])) {
+                    $config = $p['config'];
                     if (isset($config['waf_mode'])) {
                         update_option('waf_fw_cloud_mode', sanitize_text_field($config['waf_mode']));
                     }

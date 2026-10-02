@@ -404,14 +404,23 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             "enabled": bool(r.get("enabled", True)),
         })
 
-    return success({
+    resp = {
         "status": "ok",
         "config": config,
         "command": command,
         "blacklist": blacklist,
         "blocked_countries": blocked_countries,
         "user_rules": user_rules,
-    })
+    }
+    return {
+        "status": "success",
+        "data": resp,
+        "blacklist": blacklist,
+        "blocked_countries": blocked_countries,
+        "user_rules": user_rules,
+        "config": config,
+        "command": command,
+    }
 
 
 def push_instant_sync_to_wordpress(user_id=None, website_id=None):
