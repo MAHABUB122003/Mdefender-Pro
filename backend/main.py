@@ -1153,6 +1153,7 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
 
 
 @app.get("/api/user/country-blocks")
+@app.get("/api/v1/user/country-blocks")
 async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
     u_str = str(user['_id'])
@@ -1172,10 +1173,11 @@ async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)
 
 
 @app.post("/api/user/country-blocks")
+@app.post("/api/v1/user/country-blocks")
 async def user_add_country_block(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
-    code = (data.get('country_code') or '').strip().upper()
-    name = (data.get('country_name') or code).strip()
+    code = (data.get('country_code') or data.get('code') or '').strip().upper()
+    name = (data.get('country_name') or data.get('name') or code).strip()
     reason = data.get('reason', 'Geo-restricted by administrator')
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
@@ -1204,8 +1206,15 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
 
 
 @app.delete("/api/user/country-blocks")
+@app.delete("/api/v1/user/country-blocks")
 async def user_delete_country_block(request: Request, user: dict = Depends(verify_user_token_compat)):
-    code = (request.query_params.get('code') or '').strip().upper()
+    code = (request.query_params.get('code') or request.query_params.get('country_code') or '').strip().upper()
+    if not code:
+        try:
+            body = await request.json()
+            code = (body.get('code') or body.get('country_code') or '').strip().upper()
+        except Exception:
+            pass
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
     from bson import ObjectId

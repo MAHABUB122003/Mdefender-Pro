@@ -314,6 +314,15 @@ Report Generated: ${new Date().toISOString()}`
       })
       if (res?.status === 'success') {
         setGeoSuccessMsg(`${targetObj.name} (${targetObj.code}) is now blocked. All visitors from this country will receive a 403 Forbidden page.`)
+        setCountryBlocks(prev => {
+          if (prev.some(b => b.country_code === targetObj.code)) return prev
+          return [{
+            country_code: targetObj.code,
+            country_name: targetObj.name,
+            reason: blockReason || 'Geo-restricted by admin',
+            created_at: new Date().toISOString().replace('T', ' ').slice(0, 19)
+          }, ...prev]
+        })
         fetchCountryBlocks()
       } else {
         setGeoErrorMsg(res?.message || 'Failed to block country.')
@@ -328,11 +337,13 @@ Report Generated: ${new Date().toISOString()}`
   const handleRemoveCountryBlock = async (code, name) => {
     if (!confirm(`Unblock all traffic from ${name || code}?`)) return
     try {
+      setCountryBlocks(prev => prev.filter(b => b.country_code !== code))
       await api.removeUserCountryBlock(code)
       setGeoSuccessMsg(`Traffic from ${name || code} is now unblocked.`)
       fetchCountryBlocks()
     } catch (err) {
       alert(err.message || 'Failed to unblock country.')
+      fetchCountryBlocks()
     }
   }
 
