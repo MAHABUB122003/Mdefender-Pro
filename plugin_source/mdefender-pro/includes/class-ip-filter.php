@@ -262,6 +262,40 @@ class WAF_FW_IP_Filter {
         }
     }
 
+    public function reset_runtime_cache() {
+        $this->runtime_blacklist_cache = [];
+    }
+
+    public function sync_with_cloud_blacklist($cloud_ips = []) {
+        global $wpdb;
+        $table = WAF_FW_DB::instance()->get_blacklist_table();
+        $this->runtime_blacklist_cache = [];
+
+        $sanitized_ips = [];
+        if (is_array($cloud_ips)) {
+            $sanitized_ips = array_values(array_filter(array_map('trim', array_map('sanitize_text_field', $cloud_ips))));
+        }
+        update_option('waf_fw_local_blacklist_cache', $sanitized_ips);
+
+        if (empty($sanitized_ips)) {
+            // If cloud blacklist is empty, purge all manual/auto entries
+            $wpdb->query("DELETE FROM $table");
+        } else {
+            // Remove any IP in MySQL that is not in the cloud blacklist
+            $placeholders = implode(',', array_fill(0, count($sanitized_ips), '%s'));
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM $table WHERE ip NOT IN ($placeholders)",
+                ...$sanitized_ips
+            ));
+        }
+
+        delete_transient('waf_fw_cloud_threat_ips');
+
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+    }
+
     public function get_blacklist() {
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
@@ -280,3 +314,4 @@ class WAF_FW_IP_Filter {
         }
     }
 }
+

@@ -632,6 +632,16 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             $c_val = '{c_str}';
                             mysqli_query($c, "UPDATE wp_options SET option_value = '" . mysqli_real_escape_string($c, $bl_ser) . "' WHERE option_name = 'waf_fw_local_blacklist_cache'");
                             mysqli_query($c, "UPDATE wp_options SET option_value = '" . mysqli_real_escape_string($c, $c_val) . "' WHERE option_name = 'waf_fw_blocked_countries'");
+                            
+                            // Synchronize wp_waf_blacklist MySQL table
+                            if (empty($bl)) {{
+                                mysqli_query($c, "DELETE FROM wp_waf_blacklist");
+                            }} else {{
+                                $escaped = array_map(function($ip) use ($c) {{ return "'" . mysqli_real_escape_string($c, $ip) . "'"; }}, $bl);
+                                $in_clause = implode(',', $escaped);
+                                mysqli_query($c, "DELETE FROM wp_waf_blacklist WHERE ip NOT IN ($in_clause)");
+                            }}
+                            mysqli_query($c, "DELETE FROM wp_options WHERE option_name LIKE '_transient_waf_attack_cnt_%' OR option_name LIKE '_transient_timeout_waf_attack_cnt_%'");
                             mysqli_close($c);
                         }}
                         """

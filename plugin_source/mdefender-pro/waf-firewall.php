@@ -235,7 +235,11 @@ function waf_fw_handle_cloud_sync_webhook() {
             if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']) || isset($pushed_data['config']))) {
                 if (isset($pushed_data['blacklist']) && is_array($pushed_data['blacklist'])) {
                     $ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blacklist'])));
-                    update_option('waf_fw_local_blacklist_cache', $ips);
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->sync_with_cloud_blacklist($ips);
+                    } else {
+                        update_option('waf_fw_local_blacklist_cache', $ips);
+                    }
                 }
                 if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
                     $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
