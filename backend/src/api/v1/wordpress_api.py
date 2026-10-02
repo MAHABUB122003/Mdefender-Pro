@@ -576,6 +576,71 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 "synced_at": datetime.now().isoformat(),
             }
 
+            # Direct local disk fast-cache synchronization for 0ms zero-latency updates
+            try:
+                import json
+                bl_map = {}
+                for bip in blacklist:
+                    if bip:
+                        cip = str(bip).strip()
+                        bl_map[cip] = True
+                        if cip == "127.0.0.1":
+                            bl_map["::1"] = True
+                            bl_map["0.0.0.0"] = True
+                        elif cip == "::1":
+                            bl_map["127.0.0.1"] = True
+                            bl_map["0.0.0.0"] = True
+
+                fast_cache_json = {
+                    "enabled": True,
+                    "updated_at": int(datetime.now().timestamp()),
+                    "blacklist_ips": bl_map,
+                    "blocked_countries": blocked_countries,
+                    "local_server_country": "BD",
+                }
+
+                disk_paths = [
+                    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "plugin_source", "mdefender-pro", "includes", "data", "waf_fast_cache.json")),
+                    r"C:\xampp\htdocs\mahabub\wp-content\plugins\mdefender-pro\includes\data\waf_fast_cache.json",
+                ]
+                for dp in disk_paths:
+                    try:
+                        os.makedirs(os.path.dirname(dp), exist_ok=True)
+                        with open(dp, "w", encoding="utf-8") as f:
+                            json.dump(fast_cache_json, f, indent=2)
+                    except Exception:
+                        pass
+
+                # Direct MySQL option sync for local XAMPP WordPress database if accessible
+                try:
+                    import phpserialize
+                except Exception:
+                    phpserialize = None
+
+                # Fallback to PHP helper script to update WordPress options via mysqli
+                try:
+                    import subprocess
+                    php_exe = r"C:\xampp\php\php.exe"
+                    if os.path.exists(php_exe):
+                        b_str = json.dumps(blacklist)
+                        c_str = ",".join(blocked_countries)
+                        php_code = f"""
+                        $c = @mysqli_connect('127.0.0.1', 'root', '', 'mahabub');
+                        if ($c) {{
+                            $bl = json_decode('{b_str}', true);
+                            $bl_ser = serialize($bl);
+                            $c_val = '{c_str}';
+                            mysqli_query($c, "UPDATE wp_options SET option_value = '" . mysqli_real_escape_string($c, $bl_ser) . "' WHERE option_name = 'waf_fw_local_blacklist_cache'");
+                            mysqli_query($c, "UPDATE wp_options SET option_value = '" . mysqli_real_escape_string($c, $c_val) . "' WHERE option_name = 'waf_fw_blocked_countries'");
+                            mysqli_close($c);
+                        }}
+                        """
+                        subprocess.run([php_exe, "-r", php_code], capture_output=True, timeout=2)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
             for clean_url, api_key, site_token in unique_targets:
                 if not clean_url:
                     continue

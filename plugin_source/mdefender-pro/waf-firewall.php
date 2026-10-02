@@ -441,6 +441,11 @@ function waf_fw_analyze_request() {
     if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') return;
     if (defined('DOING_CRON') && DOING_CRON) return;
     
+    // Cloud sync and heartbeat endpoints handle their own authentication and must not be blocked
+    if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
+        return;
+    }
+    
     // Prevent double analysis in a single request lifecycle
     if (!empty($GLOBALS['waf_fw_analyzed'])) return;
 

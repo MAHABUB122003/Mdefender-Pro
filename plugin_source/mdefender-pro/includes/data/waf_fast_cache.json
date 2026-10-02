@@ -1,1 +1,7 @@
-{"enabled":true,"updated_at":1790158442,"blacklist_ips":{"198.51.100.42":true,"203.0.113.99":true}}
+{
+  "enabled": true,
+  "updated_at": 1790944658,
+  "blacklist_ips": {},
+  "blocked_countries": [],
+  "local_server_country": "BD"
+}

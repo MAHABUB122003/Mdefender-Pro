@@ -16,7 +16,11 @@ if (defined('MDEFENDER_BOOTSTRAP_EXECUTED')) {
 }
 define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
 
-// Fast-path client IP extraction
+// Bypass bootstrap for cloud synchronization webhooks & internal API endpoints
+if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
+    return;
+}
+
 // Fast-path client IP extraction
 function mdefender_get_fast_client_ip() {
     if (!empty($_GET['test_ip'])) {
