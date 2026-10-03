@@ -154,13 +154,13 @@ function sendAnalyzeRequest(endpointUrl, apiKey, data, timeoutMs = 5000) {
         port: parsed.port || (isHttps ? 443 : 80),
         path: parsed.pathname,
         method: 'POST',
-        agent: agent,
+        agent: false,
         timeout: timeoutMs,
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(postData),
           'Authorization': `Bearer ${apiKey}`,
-          'X-MDefender-Version': '1.2.6'
+          'X-MDefender-Version': '1.2.8'
         }
       };
 
