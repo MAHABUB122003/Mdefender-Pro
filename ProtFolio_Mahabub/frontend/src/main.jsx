@@ -6,7 +6,7 @@ import { initWaf } from 'mdefender-pro/client'
 
 initWaf({
   apiKey: import.meta.env.VITE_MDEFENDER_API_KEY || 'qRk5Mk5v3SA5hWU22rVk_hZuQ735ps9D1AjBFuAC6C8hD8rRdxhAhe5SEml125L1',
-  apiEndpoint: import.meta.env.VITE_MDEFENDER_API_ENDPOINT || 'http://127.0.0.1:8000',
+  apiEndpoint: import.meta.env.VITE_MDEFENDER_API_ENDPOINT || 'http://217.15.170.82:8000',
   domain: 'mahabubur.vercel.app'
 })
 
