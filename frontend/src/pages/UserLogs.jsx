@@ -12,7 +12,14 @@ export default function UserLogs() {
       return { logs: [], total: 0, total_pages: 0 }
     }
   })
-  const [websites, setWebsites] = useState([])
+  const [websites, setWebsites] = useState(() => {
+    try {
+      const cached = userStore.get('websites') || userStore.get('dashboard')
+      return (cached && Array.isArray(cached?.websites)) ? cached.websites : []
+    } catch {
+      return []
+    }
+  })
   const [websiteFilter, setWebsiteFilter] = useState('')
   const [loading, setLoading] = useState(() => {
     try {
@@ -42,6 +49,10 @@ export default function UserLogs() {
       const data = await api.getUserDashboard()
       if (data?.websites && Array.isArray(data.websites) && data.websites.length > 0) {
         setWebsites(data.websites)
+        try {
+          userStore.set('websites', data)
+          userStore.set('dashboard', data)
+        } catch {}
         return
       }
       const webRes = await api.getUserWebsites()
@@ -57,18 +68,6 @@ export default function UserLogs() {
   useEffect(() => {
     fetchWebsites()
   }, [fetchWebsites])
-
-  useEffect(() => {
-    if (logs?.logs && Array.isArray(logs.logs) && logs.logs.length > 0) {
-      const logDomains = [...new Set(logs.logs.map(l => l?.domain).filter(Boolean))]
-      setWebsites(prev => {
-        const existingDomains = new Set(prev.map(w => w.domain || w.id || w.name))
-        const missing = logDomains.filter(d => !existingDomains.has(d))
-        if (missing.length === 0) return prev
-        return [...prev, ...missing.map(d => ({ id: d, domain: d, name: d }))]
-      })
-    }
-  }, [logs?.logs])
 
   const fetchLogs = useCallback(async (manual = false) => {
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
