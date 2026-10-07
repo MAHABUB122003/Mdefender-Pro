@@ -608,11 +608,13 @@ class UserAPI:
         website_domains_list = [w['domain'] for w in websites if w.get('domain')]
         website_ids_list = [w['id'] for w in websites if w.get('id')]
 
-        # Build strict tenant-isolated user scope query across user_id and all owned website_ids
+        # Build strict tenant-isolated user scope query across user_id, owned website_ids and domains
         user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if website_ids_list:
             user_scope.append({'website_id': {'$in': website_ids_list}})
             user_scope.append({'website_id': {'$in': [self._resolve_id(wid) for wid in website_ids_list if wid]}})
+        if website_domains_list:
+            user_scope.append({'domain': {'$in': website_domains_list}})
         user_filter = {'$or': user_scope}
 
         # Base query for stats and logs
@@ -635,7 +637,7 @@ class UserAPI:
         attack_filter = {'$or': [{'action': {'$in': ['block', 'blocked']}}, {'status': {'$in': ['block', 'blocked']}}]}
         attack_query = {'$and': [base_query, attack_filter]}
 
-        # Retrieve recent activity (blocks & attacks) from security_events or attacks
+        # Retrieve recent activity (blocks & attacks) from security_events or attacks across all websites
         attack_logs = list(self.db.security_events.find(attack_query).sort('timestamp', -1).limit(25))
         if not attack_logs:
             attack_logs = list(self.db.attacks.find(base_query).sort('timestamp', -1).limit(25))
@@ -723,17 +725,19 @@ class UserAPI:
 
         if website_id and website_id != 'all':
             matching_sites = [w for w in websites if w['id'] in target_ids or w.get('domain') in target_domains]
-            tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in matching_sites))
+            site_req_sum = sum(w.get('total_requests', 0) for w in matching_sites)
+            site_today_sum = sum(w.get('requests_today', 0) for w in matching_sites if w.get('requests_today_date') == today)
+            req_today = max(today_events_count, site_today_sum)
+            tot_req = max(events_total, attacks_total, site_req_sum, req_today)
             tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in matching_sites))
-            req_today = max(today_events_count, sum(w.get('requests_today', 0) for w in matching_sites if w.get('requests_today_date') == today))
         else:
-            tot_req = max(events_total, attacks_total, sum(w.get('total_requests', 0) for w in websites), user_doc.get('total_requests', 0))
-            tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in websites), user_doc.get('total_blocked', 0))
-            
-            # Today's requests is strictly today's events or today's delta (never lifetime total)
-            user_today_delta = user_doc.get('requests_today', 0) if user_doc.get('requests_today_date') == today else 0
+            site_req_sum = sum(w.get('total_requests', 0) for w in websites)
             site_today_sum = sum(w.get('requests_today', 0) for w in websites if w.get('requests_today_date') == today)
+            user_today_delta = user_doc.get('requests_today', 0) if user_doc.get('requests_today_date') == today else 0
+            
             req_today = max(today_events_count, user_today_delta, site_today_sum)
+            tot_req = max(events_total, attacks_total, site_req_sum, user_doc.get('total_requests', 0), req_today)
+            tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in websites), user_doc.get('total_blocked', 0))
 
         active_sites_count = len(websites)
         user_full_name = user_doc.get('full_name') or user_doc.get('name', '')
@@ -904,11 +908,13 @@ class UserAPI:
             if w_id and w_id not in user_site_ids:
                 user_site_ids.append(w_id)
 
-        # Base strict user scope across user_id and owned website_ids
+        # Base strict user scope across user_id, owned website_ids and domains
         user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if user_site_ids:
             user_scope.append({'website_id': {'$in': user_site_ids}})
             user_scope.append({'website_id': {'$in': [self._resolve_id(sid) for sid in user_site_ids if sid]}})
+        if user_domains:
+            user_scope.append({'domain': {'$in': user_domains}})
         
         conditions = [{'$or': user_scope}]
 

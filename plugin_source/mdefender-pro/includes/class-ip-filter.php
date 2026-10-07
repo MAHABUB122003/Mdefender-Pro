@@ -263,6 +263,15 @@ class WAF_FW_IP_Filter {
         }
 
         $this->runtime_blacklist_cache = [];
+
+        // Clear previous attack blocker & login lockout attempts so the IP starts fresh from 0
+        if (class_exists('WAF_FW_Attack_Blocker')) {
+            WAF_FW_Attack_Blocker::instance()->clear_attempts($ip);
+        }
+        if (class_exists('WAF_FW_Login_Protector')) {
+            WAF_FW_Login_Protector::instance()->clear_attempts($ip);
+        }
+
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }

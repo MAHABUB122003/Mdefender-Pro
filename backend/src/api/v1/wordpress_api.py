@@ -264,19 +264,22 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             if ObjectId.is_valid(str(u_id)):
                 u_matches.append({"_id": ObjectId(str(u_id))})
             
+            # Aggregate totals across all websites owned by this user
+            all_user_sites = list(db.websites.find({"$or": [{"user_id": str(u_id)}, {"user_id": ObjectId(str(u_id))}] if ObjectId.is_valid(str(u_id)) else [{"user_id": str(u_id)}]}))
+            user_tot_req = sum(s.get("total_requests", 0) for s in all_user_sites)
+            user_tot_blk = sum(s.get("total_blocked", 0) for s in all_user_sites)
+            user_today_req = sum(s.get("requests_today", 0) for s in all_user_sites if s.get("requests_today_date") == today_str)
+            user_tot_req = max(user_tot_req, user_today_req)
+
             db.users.update_one(
                 {"$or": u_matches},
                 {
                     "$set": {
-                        "total_requests": new_lifetime_reqs,
-                        "total_blocked": new_lifetime_blocked,
+                        "total_requests": user_tot_req,
+                        "total_blocked": user_tot_blk,
+                        "requests_today": user_today_req,
                         "requests_today_date": today_str,
                         "updated_at": now_dt,
-                    },
-                    "$inc": {
-                        "requests_today": delta_reqs
-                    } if last_date == today_str else {
-                        "requests_today": new_today_reqs
                     }
                 }
             )
