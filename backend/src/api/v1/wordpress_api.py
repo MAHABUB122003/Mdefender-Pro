@@ -517,7 +517,14 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 query["website_id"] = str(website_id)
 
             w_sites = list(db.websites.find(query if query else {}))
+            if not w_sites and user_email:
+                w_sites = list(db.websites.find({"$or": [{"owner_email": user_email}, {"email": user_email}]}))
+            if not w_sites:
+                w_sites = list(db.websites.find({"status": {"$ne": "deleted"}}))
+
             wp_sites = list(db.wordpress_sites.find(query if query else {}))
+            if not wp_sites:
+                wp_sites = list(db.wordpress_sites.find({}))
 
             # Target URLs list: (url, api_key, site_token)
             targets = []
