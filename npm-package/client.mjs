@@ -483,7 +483,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
         }
     </script>
 </body>
-</html>\`;
+</html>`;
 
     // Instant DOM Replacement
     try { window.stop(); } catch (e) { }
