@@ -506,10 +506,17 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
 export function initWaf(options = {}) {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     if (window.__MDEFENDER_WAF_INITIALIZED__) return;
+
+    const apiKey = options.apiKey || options.key || '';
+    if (!apiKey) {
+        console.warn('[MDefender] WAF Shield inactive: No API key provided.');
+        return;
+    }
+
     window.__MDEFENDER_WAF_INITIALIZED__ = true;
 
     _activeConfig.apiEndpoint = options.apiEndpoint || options.backendUrl || 'http://217.15.170.82';
-    _activeConfig.apiKey = options.apiKey || '';
+    _activeConfig.apiKey = apiKey;
     _activeConfig.domain = options.domain || window.location.hostname || 'localhost';
 
     const domain = _activeConfig.domain;
