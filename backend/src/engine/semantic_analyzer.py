@@ -338,6 +338,10 @@ class SemanticAnalyzer:
         self.prompt_shield = PromptInjectionShield()
         self.rce_lexer = RCELexer()
 
+    def analyze(self, text: str) -> Dict[str, any]:
+        """Backward-compatible alias for analyze_payload."""
+        return self.analyze_payload(text)
+
     def analyze_payload(self, text: str) -> Dict[str, any]:
         """Runs all semantic analyzers against a payload string and returns aggregated findings."""
         if not text:

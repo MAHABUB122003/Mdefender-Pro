@@ -89,6 +89,13 @@ $ip_blacklist = $mdefender_cache_data['blacklist_ips'] ?? [];
 $is_blocked = false;
 $block_reason = '';
 
+// Never block loopback IPs unless explicitly testing with test_ip / ip_test / country_test / CF-IPCountry
+if (empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_GET['country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY'])) {
+    if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0' || $mdefender_ip === 'localhost') {
+        return;
+    }
+}
+
 $candidates = [$mdefender_ip];
 if (!empty($_GET['test_ip'])) {
     $t_ip = preg_replace('/:\d+$/', '', trim($_GET['test_ip']));
@@ -113,15 +120,14 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         if (filter_var($f_ip, FILTER_VALIDATE_IP)) $candidates[] = $f_ip;
     }
 }
-if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0') {
-    $candidates[] = '127.0.0.1';
-    $candidates[] = '::1';
-    $candidates[] = '0.0.0.0';
-    $candidates[] = 'localhost';
-}
 $candidates = array_values(array_unique(array_filter($candidates)));
 
 foreach ($candidates as $cand) {
+    if ($cand === '127.0.0.1' || $cand === '::1' || $cand === '0.0.0.0' || $cand === 'localhost') {
+        if (empty($_GET['test_ip']) && empty($_GET['ip_test'])) {
+            continue;
+        }
+    }
     if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true))) {
         $is_blocked = true;
         $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP).';

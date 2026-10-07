@@ -20,8 +20,19 @@ class WAF_FW_IP_Filter {
         }
 
         $ip = trim((string) $ip);
+        if (empty($_GET['test_ip']) && empty($_GET['ip_test'])) {
+            if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
+                return false;
+            }
+        }
+
         if (isset($this->runtime_blacklist_cache[$ip])) {
             return $this->runtime_blacklist_cache[$ip];
+        }
+
+        if ($this->is_whitelisted($ip)) {
+            $this->runtime_blacklist_cache[$ip] = false;
+            return false;
         }
 
         $candidates = [$ip];
@@ -49,17 +60,6 @@ class WAF_FW_IP_Filter {
             }
         }
 
-        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
-            $candidates[] = '127.0.0.1';
-            $candidates[] = '::1';
-            $candidates[] = '0.0.0.0';
-            $candidates[] = 'localhost';
-
-            $local_pub_ip = get_option('waf_fw_local_server_ip', '');
-            if (!empty($local_pub_ip)) {
-                $candidates[] = $local_pub_ip;
-            }
-        }
         $candidates = array_values(array_unique(array_filter($candidates)));
 
         // 1. Check ultra-fast local JSON fast-cache (0.005ms)
@@ -157,9 +157,15 @@ class WAF_FW_IP_Filter {
     }
 
     public function is_whitelisted($ip) {
+        $ip = trim((string) $ip);
+        if (empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY'])) {
+            if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
+                return true;
+            }
+        }
         $custom = get_option('waf_fw_ip_whitelist', '');
         if (!empty($custom)) {
-            $ips = array_map('trim', explode(',', $custom));
+            $ips = is_array($custom) ? $custom : array_map('trim', preg_split('/[,\r\n]+/', (string) $custom));
             if (in_array($ip, $ips, true)) {
                 return true;
             }

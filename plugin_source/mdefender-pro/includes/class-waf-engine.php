@@ -127,16 +127,16 @@ class WAF_FW_Engine {
             $query_params = $_GET;
             $headers = getallheaders();
 
+            if ($this->check_country_block($ip)) {
+                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
+            }
+
             if ($this->ip_filter->is_whitelisted($ip)) {
                 return $this->do_allow($ip, $url, $method, $user_agent, 'Whitelisted IP');
             }
 
             if ($this->ip_filter->is_blacklisted($ip)) {
                 return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'Access denied: Your IP address is blacklisted by security policy.', 'Blacklist Rule');
-            }
-
-            if ($this->check_country_block($ip)) {
-                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
             }
 
             if ($this->learning_mode) {
@@ -293,9 +293,9 @@ class WAF_FW_Engine {
             foreach ($blocked_rows as $row) {
                 if (!empty($row->ip)) {
                     $cand = trim((string) $row->ip);
-                    $bl_map[$cand] = true;
-                    if ($cand === '127.0.0.1') { $bl_map['::1'] = true; $bl_map['0.0.0.0'] = true; }
-                    if ($cand === '::1') { $bl_map['127.0.0.1'] = true; $bl_map['0.0.0.0'] = true; }
+                    if (!in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
+                        $bl_map[$cand] = true;
+                    }
                 }
             }
         }
@@ -305,12 +305,13 @@ class WAF_FW_Engine {
             foreach ($cloud_bl as $ip) {
                 if (!empty($ip)) {
                     $cand = trim((string) $ip);
-                    $bl_map[$cand] = true;
-                    if ($cand === '127.0.0.1') { $bl_map['::1'] = true; $bl_map['0.0.0.0'] = true; }
-                    if ($cand === '::1') { $bl_map['127.0.0.1'] = true; $bl_map['0.0.0.0'] = true; }
+                    if (!in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
+                        $bl_map[$cand] = true;
+                    }
                 }
             }
         }
+        unset($bl_map['127.0.0.1'], $bl_map['::1'], $bl_map['0.0.0.0'], $bl_map['localhost']);
 
         $raw_countries = get_option('waf_fw_blocked_countries', '');
         $blocked_countries = [];
@@ -469,16 +470,11 @@ class WAF_FW_Engine {
     }
 
     public function get_ip_country($ip) {
-        if (!empty($ip) && isset(self::$geo_memory_cache[$ip])) {
-            return self::$geo_memory_cache[$ip];
-        }
-
         // 1. Query param simulation for testing & development
         foreach (['country_test', 'test_country', 'country', 'geo_country'] as $param) {
             if (!empty($_GET[$param])) {
                 $test_c = strtoupper(substr(trim(sanitize_text_field($_GET[$param])), 0, 2));
                 if (strlen($test_c) === 2 && ctype_alpha($test_c)) {
-                    self::$geo_memory_cache[$ip] = $test_c;
                     return $test_c;
                 }
             }
@@ -503,10 +499,13 @@ class WAF_FW_Engine {
             if (!empty($_SERVER[$hk])) {
                 $h_code = strtoupper(substr(trim($_SERVER[$hk]), 0, 2));
                 if (strlen($h_code) === 2 && ctype_alpha($h_code) && $h_code !== 'XX' && $h_code !== 'T1') {
-                    self::$geo_memory_cache[$ip] = $h_code;
                     return $h_code;
                 }
             }
+        }
+
+        if (!empty($ip) && isset(self::$geo_memory_cache[$ip])) {
+            return self::$geo_memory_cache[$ip];
         }
 
         // 3. Local loopback / private IP handling (development & intranet environments)

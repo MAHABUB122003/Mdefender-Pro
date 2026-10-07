@@ -639,8 +639,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             $bl = json_decode('{b_str}', true);
                             $bl_ser = serialize($bl);
                             $c_val = '{c_str}';
-                            mysqli_query($c, "UPDATE wp_options SET option_value = '" . mysqli_real_escape_string($c, $bl_ser) . "' WHERE option_name = 'waf_fw_local_blacklist_cache'");
-                            mysqli_query($c, "UPDATE wp_options SET option_value = '" . mysqli_real_escape_string($c, $c_val) . "' WHERE option_name = 'waf_fw_blocked_countries'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_local_blacklist_cache', '" . mysqli_real_escape_string($c, $bl_ser) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $bl_ser) . "'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_blocked_countries', '" . mysqli_real_escape_string($c, $c_val) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $c_val) . "'");
                             
                             // Synchronize wp_waf_blacklist MySQL table
                             if (empty($bl)) {{
