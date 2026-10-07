@@ -176,7 +176,7 @@ const STATIC_ASSET_REGEX = /\.(js|jsx|ts|tsx|mjs|cjs|css|scss|sass|less|png|jpg|
 const DEFAULT_CONFIG = {
   apiKey: '',
   domain: '',
-  apiEndpoint: process.env.MDEFENDER_API_ENDPOINT || 'http://217.15.170.82',
+  apiEndpoint: process.env.MDEFENDER_API_ENDPOINT || 'https://217.15.170.82.sslip.io',
   mode: 'block',         // 'block' | 'monitor' | 'off'
   blockStatusCode: 403,
   timeout: 3000,

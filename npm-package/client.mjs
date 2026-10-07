@@ -519,7 +519,7 @@ export function initWaf(options = {}) {
 
     window.__MDEFENDER_WAF_INITIALIZED__ = true;
 
-    _activeConfig.apiEndpoint = options.apiEndpoint || options.backendUrl || 'http://217.15.170.82';
+    _activeConfig.apiEndpoint = options.apiEndpoint || options.backendUrl || 'https://217.15.170.82.sslip.io';
     _activeConfig.apiKey = apiKey;
     _activeConfig.domain = options.domain || window.location.hostname || 'localhost';
 
