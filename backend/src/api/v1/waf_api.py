@@ -275,12 +275,14 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
     except Exception:
         pass
 
-    # Track attack and auto-block repeating offenders
-    if decision["decision"] == "BLOCK" and ip:
+    # Track attack and auto-block repeating offenders (only for actual malicious payload threats)
+    attack_type_str = str(decision.get("attack_type") or "")
+    non_threat_types = ("Blacklisted IP", "Country Blocked", "Country Block", "Whitelisted IP", "User Authentication Success", "Successful Login", "None", "")
+    if decision["decision"] == "BLOCK" and ip and attack_type_str not in non_threat_types:
         try:
             ab.record_attack(
                 ip=ip,
-                attack_type=decision.get("attack_type") or "WAF Rule Violation",
+                attack_type=attack_type_str or "WAF Rule Violation",
                 url=req_data.get("url", ""),
                 user_id=auth_data.get("user_id"),
                 website_id=auth_data.get("website_id")
@@ -447,12 +449,14 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
                 "country": cname,
             })
 
-            # Record attack and auto-block repeating offenders
-            if is_blocked and ip and ip not in ("127.0.0.1", "::1", "localhost", "0.0.0.0"):
+            # Record attack and auto-block repeating offenders (only for genuine payload threats)
+            attack_type_str = str(attack_type or "")
+            non_threat_types = ("Blacklisted IP", "Country Blocked", "Country Block", "Whitelisted IP", "User Authentication Success", "Successful Login", "None", "")
+            if is_blocked and ip and ip not in ("127.0.0.1", "::1", "localhost", "0.0.0.0") and attack_type_str not in non_threat_types:
                 try:
                     ab.record_attack(
                         ip=ip,
-                        attack_type=attack_type or "WordPress WAF Block",
+                        attack_type=attack_type_str or "WordPress WAF Block",
                         url=url,
                         user_id=user_id_str,
                         website_id=website_id_str

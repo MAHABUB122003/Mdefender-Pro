@@ -572,11 +572,12 @@ class WAFAPI:
             self.rate_limiter.increment(ip)
         except Exception: pass
 
-        if is_blocked and ip and ip not in ('127.0.0.1', '::1', 'localhost', '0.0.0.0'):
+        atk_type = str(decision.get('attack_type') or 'WAF Rule Violation')
+        non_threat_types = ("Blacklisted IP", "Country Blocked", "Country Block", "Whitelisted IP", "User Authentication Success", "Successful Login", "None", "")
+        if is_blocked and ip and ip not in ('127.0.0.1', '::1', 'localhost', '0.0.0.0') and atk_type not in non_threat_types:
             try:
                 u_cfg = self.attack_blocker.get_user_settings(user_id) if user_id else {}
                 url_path = log_entry.get('url', '/') if isinstance(log_entry, dict) else '/'
-                atk_type = decision.get('attack_type') or 'WAF Rule Violation'
                 
                 self.attack_blocker.record_attack(
                     ip=ip,
