@@ -8,20 +8,22 @@ const _activeConfig = {
 };
 
 const ATTACK_PATTERNS = [
-    { type: 'Cross-Site Scripting (XSS)', regex: /<\s*(?:script|iframe|object|embed|svg|img|math|audio|video|style|link|body|input)\b/i },
+    { type: 'Cross-Site Scripting (XSS)', regex: /<\s*(?:script|iframe|object|embed|svg|img|math|audio|video|style|link|body|input|form)\b/i },
     { type: 'Cross-Site Scripting (XSS)', regex: /\bon(?:error|load|click|mouseover|focus|submit|animationend|change|input|pointerover|toggle)\s*=/i },
     { type: 'Cross-Site Scripting (XSS)', regex: /\b(?:javascript|data\s*:\s*text\/html|vbscript)\s*:/i },
     { type: 'Cross-Site Scripting (XSS)', regex: /\b(?:alert|eval|confirm|prompt|document\.cookie|document\.write|window\.location|String\.fromCharCode)\s*\(/i },
     { type: 'SQL Injection', regex: /\b(?:UNION\s+(?:ALL\s+)?SELECT|SELECT\s+.*?\s+FROM|INSERT\s+INTO|DELETE\s+FROM|DROP\s+(?:TABLE|DATABASE)|ALTER\s+TABLE)\b/i },
-    { type: 'SQL Injection', regex: /(?:'|\"|\b)\s*(?:OR|AND)\s+['"`]?([a-zA-Z0-9_-]+)['"`]?\s*=\s*['"`]?\1/i },
+    { type: 'SQL Injection', regex: /(?:'|"|\b)\s*(?:OR|AND)\s+['"`]?([a-zA-Z0-9_-]+)['"`]?\s*=\s*['"`]?\1/i },
     { type: 'SQL Injection', regex: /\b(?:SLEEP\s*\(\s*\d+\s*\)|BENCHMARK\s*\(|WAITFOR\s+DELAY|INFORMATION_SCHEMA|XP_CMDSHELL|HEX\s*\(|EXTRACTVALUE|UPDATEXML)\b/i },
     { type: 'SQL Injection', regex: /(?:--|#|\/\*).*?(?:DROP|ALTER|INSERT|DELETE|UPDATE|EXEC|SELECT)/i },
+    { type: 'SQL Injection', regex: /'\s*(?:--|#|\/\*)/i },
     { type: 'Local File Inclusion (LFI)', regex: /(?:\.\.\/|\.\.\\|etc\/passwd|etc\/shadow|win\.ini|boot\.ini|proc\/self\/environ|WEB-INF)/i },
     { type: 'Server-Side Request Forgery (SSRF)', regex: /(?:169\.254\.169\.254|metadata\.google\.internal|(?:gopher|dict|file):\/\/|=(?:https?:\/\/)?(?:127\.0\.0\.1|169\.254|localhost|0\.0\.0\.0))/i },
     { type: 'Remote Command Execution (RCE)', regex: /(?:;|\||\|\||&&|`|\$\()\s*(?:cat|ls|id|whoami|powershell|cmd|sh|bash|wget|curl|nc|netcat|python|perl|ruby)\b/i },
     { type: 'Server-Side Template Injection (SSTI)', regex: /(?:\{\{.*?\}\}|\$\{.*?\}|<%=.*?%>|#\{.*?\})/i },
     { type: 'XML External Entity (XXE)', regex: /(?:<!ENTITY\s+[\w-]+\s+SYSTEM|<!DOCTYPE\s+[\w-]+\s+\[)/i },
     { type: 'NoSQL Injection', regex: /(?:\$gt|\$ne|\$where|\$regex|\$or|\$nin|\$in)\b/i },
+    { type: 'Prototype Pollution', regex: /(?:__proto__|constructor\s*\[\s*['"]prototype['"]\s*\])/i },
     { type: 'Insecure Deserialization', regex: /(?:O:\d+:"[a-zA-Z0-9_]+":\d+:\{|c__builtin__\nsystem|cos\nsystem)/i },
     { type: 'AI Prompt Injection', regex: /(?:ignore\s+all\s+(?:previous|prior)\s+instructions|system\s+override|DAN\s+mode|developer\s+mode\s+enabled)/i }
 ];
@@ -678,6 +680,31 @@ export function initWaf(options = {}) {
 
         return originalSend.apply(this, arguments);
     };
+
+    // 3. Intercept Form Submissions (Login, Contact, Search inputs)
+    if (typeof document !== 'undefined') {
+        document.addEventListener('submit', function (e) {
+            try {
+                const form = e.target;
+                if (!form) return;
+                const formData = new FormData(form);
+                const values = [];
+                for (const [key, val] of formData.entries()) {
+                    if (typeof val === 'string') values.push(val);
+                }
+                const combined = normalizeInput(values.join(' '));
+                for (const pattern of ATTACK_PATTERNS) {
+                    if (pattern.regex.test(combined)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        renderOfficialBlockPage(pattern.type, null, domain);
+                        return false;
+                    }
+                }
+            } catch (err) {}
+        }, true);
+    }
 }
 
 export default { initWaf, renderOfficialBlockPage };
+
