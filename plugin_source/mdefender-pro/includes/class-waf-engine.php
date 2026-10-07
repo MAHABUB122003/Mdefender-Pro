@@ -287,30 +287,31 @@ class WAF_FW_Engine {
         }
 
         $blacklist_table = $wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
+
+        // Purge expired blocks first
+        if (class_exists('WAF_FW_IP_Filter')) {
+            WAF_FW_IP_Filter::instance()->cleanup_expired_blocks();
+        }
+
         $blocked_rows = $wpdb->get_results("SELECT ip FROM $blacklist_table");
         $bl_map = [];
+        $active_ips = [];
         if ($blocked_rows) {
             foreach ($blocked_rows as $row) {
                 if (!empty($row->ip)) {
                     $cand = trim((string) $row->ip);
                     if (!in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
                         $bl_map[$cand] = true;
+                        $active_ips[] = $cand;
                     }
                 }
             }
         }
 
-        $cloud_bl = get_option('waf_fw_local_blacklist_cache', []);
-        if (is_array($cloud_bl)) {
-            foreach ($cloud_bl as $ip) {
-                if (!empty($ip)) {
-                    $cand = trim((string) $ip);
-                    if (!in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
-                        $bl_map[$cand] = true;
-                    }
-                }
-            }
-        }
+        // Keep local option cache synchronized strictly to active DB IPs
+        $active_ips = array_values(array_unique($active_ips));
+        update_option('waf_fw_local_blacklist_cache', $active_ips);
+
         unset($bl_map['127.0.0.1'], $bl_map['::1'], $bl_map['0.0.0.0'], $bl_map['localhost']);
 
         $raw_countries = get_option('waf_fw_blocked_countries', '');
@@ -322,7 +323,7 @@ class WAF_FW_Engine {
         }
 
         $local_geo = get_transient('waf_fw_local_public_geo') ?: get_option('waf_fw_local_server_country', '');
-        if (empty($local_geo) && function_exists('wp_remote_get')) {
+        if (empty($local_geo) && function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
             $resp = wp_remote_get('http://ip-api.com/json/?fields=status,countryCode', ['timeout' => 0.8]);
             if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
                 $g = json_decode(wp_remote_retrieve_body($resp), true);

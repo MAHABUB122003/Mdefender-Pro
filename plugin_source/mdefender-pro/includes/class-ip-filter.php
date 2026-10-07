@@ -275,6 +275,30 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Notify cloud API if site is connected
+        $this->notify_cloud_unblock($ip);
+    }
+
+    private function notify_cloud_unblock($ip) {
+        if (php_sapi_name() === 'cli' || defined('WP_CLI')) return;
+        $api_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
+        $api_url = trim((string) get_option('waf_fw_ml_api_url', get_option('waf_fw_api_url', '')));
+        if (empty($api_key) || empty($api_url)) return;
+
+        $base = rtrim($api_url, '/');
+        $endpoint = $base . '/api/user/blacklist?ip=' . urlencode($ip);
+        if (function_exists('wp_remote_request')) {
+            wp_remote_request($endpoint, [
+                'method' => 'DELETE',
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                ],
+                'timeout' => 1.5,
+                'blocking' => false,
+            ]);
+        }
     }
 
     public function reset_runtime_cache() {
@@ -291,10 +315,11 @@ class WAF_FW_IP_Filter {
             $sanitized_ips = array_values(array_filter(array_map('trim', array_map('sanitize_text_field', $cloud_ips))));
         }
 
-        // Insert new cloud IPs into local table if not already present
+        // Exclude loopback / local addresses
+        $sanitized_ips = array_values(array_diff($sanitized_ips, ['127.0.0.1', '::1', '0.0.0.0', 'localhost']));
+
         if (!empty($sanitized_ips)) {
             foreach ($sanitized_ips as $c_ip) {
-                if (in_array($c_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) continue;
                 $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table WHERE ip = %s", $c_ip));
                 if (!$exists) {
                     $wpdb->insert($table, [
@@ -306,23 +331,28 @@ class WAF_FW_IP_Filter {
                     ]);
                 }
             }
-            // Only remove cloud-synced entries that were unblocked in the cloud
+            // Remove any IP in $table that is NOT in the active cloud blacklist
             $placeholders = implode(',', array_fill(0, count($sanitized_ips), '%s'));
             $wpdb->query($wpdb->prepare(
-                "DELETE FROM $table WHERE reason = 'Synced from MDefender-Pro Cloud' AND ip NOT IN ($placeholders)",
+                "DELETE FROM $table WHERE ip NOT IN ($placeholders)",
                 ...$sanitized_ips
             ));
         } else {
-            // Remove previous cloud synced entries if cloud list is explicitly cleared
-            $wpdb->query("DELETE FROM $table WHERE reason = 'Synced from MDefender-Pro Cloud'");
+            // Cloud blacklist is empty -> completely purge all blacklist records from DB
+            $wpdb->query("DELETE FROM $table");
         }
 
-        // Fetch all active IPs from DB to refresh local cache
-        $all_db_ips = $wpdb->get_col("SELECT ip FROM $table");
-        $merged_cache = array_values(array_unique(array_merge($all_db_ips ?: [], $sanitized_ips)));
-        update_option('waf_fw_local_blacklist_cache', $merged_cache);
+        // Synchronize local option cache strictly to sanitized_ips
+        update_option('waf_fw_local_blacklist_cache', $sanitized_ips);
 
         delete_transient('waf_fw_cloud_threat_ips');
+
+        if (class_exists('WAF_FW_Attack_Blocker')) {
+            WAF_FW_Attack_Blocker::instance()->clear_attempts('');
+        }
+        if (class_exists('WAF_FW_Login_Protector')) {
+            WAF_FW_Login_Protector::instance()->clear_attempts('');
+        }
 
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
@@ -342,9 +372,6 @@ class WAF_FW_IP_Filter {
             "DELETE FROM $table WHERE block_expires_at IS NOT NULL AND block_expires_at <= NOW()"
         );
         $this->runtime_blacklist_cache = [];
-        if (class_exists('WAF_FW_Engine')) {
-            WAF_FW_Engine::instance()->export_fast_cache();
-        }
     }
 }
 

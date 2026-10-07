@@ -367,10 +367,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     blacklist_cursor = db.blacklist.find({"$and": find_conditions})
     raw_blacklist = [item["ip"].strip() for item in blacklist_cursor if item.get("ip")]
     bl_set = set(raw_blacklist)
-    if "127.0.0.1" in bl_set or "::1" in bl_set:
-        bl_set.add("127.0.0.1")
-        bl_set.add("::1")
-        bl_set.add("0.0.0.0")
+    bl_set.difference_update({"127.0.0.1", "::1", "0.0.0.0", "localhost"})
     blacklist = list(bl_set)
 
     # Fetch active country blocks (strictly scoped to user or is_global)
@@ -476,10 +473,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             })
             raw_bl = [item["ip"].strip() for item in bl_cur if item.get("ip")]
             bl_set = set(raw_bl)
-            if "127.0.0.1" in bl_set or "::1" in bl_set:
-                bl_set.add("127.0.0.1")
-                bl_set.add("::1")
-                bl_set.add("0.0.0.0")
+            bl_set.difference_update({"127.0.0.1", "::1", "0.0.0.0", "localhost"})
             blacklist = list(bl_set)
 
             # Build fresh Country Blocks
