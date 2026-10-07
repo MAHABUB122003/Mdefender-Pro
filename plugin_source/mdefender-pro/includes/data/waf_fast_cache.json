@@ -1,8 +1,10 @@
 {
   "enabled": true,
-  "updated_at": 1791357282,
+  "updated_at": 1791368183,
   "blacklist_ips": {
-    "103.120.45.240": true
+    "127.0.0.1": true,
+    "::1": true,
+    "0.0.0.0": true
   },
   "blocked_countries": [],
   "local_server_country": "BD"

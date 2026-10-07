@@ -115,7 +115,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
     <title>403 Forbidden — Access Denied | MDefender-Pro AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #ffffff;
@@ -138,12 +138,12 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 50px 24px;
             -webkit-font-smoothing: antialiased;
         }
         .block-wrapper {
             width: 100%;
-            max-width: 900px;
+            max-width: 960px;
             margin: 0 auto;
             text-align: center;
         }
@@ -151,8 +151,8 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            margin-bottom: 28px;
+            gap: 18px;
+            margin-bottom: 32px;
             text-align: left;
         }
         .brand-logo-wrap {
@@ -162,149 +162,150 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             flex-shrink: 0;
         }
         .brand-logo-svg {
-            width: 50px;
-            height: 50px;
-            filter: drop-shadow(0 4px 12px rgba(246, 130, 31, 0.35));
+            width: 60px;
+            height: 60px;
+            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.38));
             transition: transform 0.2s ease, filter 0.2s ease;
         }
         .brand-logo-svg:hover {
             transform: scale(1.06);
-            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.48));
+            filter: drop-shadow(0 8px 22px rgba(246, 130, 31, 0.52));
         }
         .brand-info {
             display: flex;
             flex-direction: column;
         }
         .brand-title {
-            font-size: 16px;
-            font-weight: 800;
+            font-size: 18px;
+            font-weight: 900;
             color: #0f172a;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             line-height: 1.2;
             text-transform: uppercase;
         }
         .brand-subtitle {
-            font-size: 9.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #64748b;
-            letter-spacing: 1.5px;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            margin-top: 2px;
+            margin-top: 3px;
         }
         .brand-owner {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 800;
             color: #0f172a;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            margin-top: 2px;
+            margin-top: 3px;
         }
         .headline-403 {
-            font-size: 34px;
-            font-weight: 800;
+            font-size: 40px;
+            font-weight: 900;
             color: var(--text-heading);
-            letter-spacing: -0.5px;
+            letter-spacing: -0.6px;
             line-height: 1.15;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         .headline-denied {
-            font-size: 22px;
-            font-weight: 700;
+            font-size: 25px;
+            font-weight: 800;
             color: var(--text-heading);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
         .headline-restricted {
-            font-size: 14.5px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--orange-alert);
-            margin-bottom: 36px;
+            margin-bottom: 42px;
         }
         .info-columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 48px;
             text-align: left;
-            margin-bottom: 36px;
-            max-width: 820px;
+            margin-bottom: 42px;
+            max-width: 900px;
             margin-left: auto;
             margin-right: auto;
         }
         .info-box-title {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 20px;
+            font-weight: 800;
             color: var(--text-heading);
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .info-box-text {
-            font-size: 13.5px;
-            line-height: 1.55;
+            font-size: 15px;
+            line-height: 1.65;
             color: var(--text-sub);
         }
         .info-box-text p + p {
-            margin-top: 10px;
+            margin-top: 12px;
         }
         .tech-details-container {
             border-top: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
-            padding: 24px 0;
-            margin-bottom: 28px;
-            max-width: 820px;
+            padding: 30px 0;
+            margin-bottom: 34px;
+            max-width: 900px;
             margin-left: auto;
             margin-right: auto;
         }
         .tech-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px 24px;
+            gap: 24px 32px;
             text-align: left;
         }
         .tech-item-label {
-            font-size: 12px;
+            font-size: 13.5px;
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         .tech-item-value {
-            font-size: 12.5px;
+            font-size: 14.5px;
             color: #334155;
-            line-height: 1.4;
+            line-height: 1.5;
             word-break: break-word;
         }
         .tech-item-value-bold {
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 800;
             color: #0f172a;
             font-family: var(--font-mono);
         }
         .ip-flag-wrap {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
         .flag-icon {
-            width: 18px;
-            height: 13px;
-            border-radius: 2px;
-            border: 1px solid rgba(0, 0, 0, 0.08);
+            width: 22px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
             vertical-align: middle;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
         .attack-badge {
             display: inline-block;
             background-color: #ffedd5;
             color: #9a3412;
             border: 1px solid #fed7aa;
-            font-size: 11.5px;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 6px;
             margin-top: 2px;
         }
         .actions-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            margin-bottom: 24px;
+            gap: 14px;
+            margin-bottom: 28px;
             flex-wrap: wrap;
         }
         .btn {
@@ -312,10 +313,10 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             align-items: center;
             justify-content: center;
             font-family: var(--font-family);
-            font-size: 12px;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 10px 22px;
+            border-radius: 8px;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -328,6 +329,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
         .btn-primary:hover {
             background-color: #1e293b;
             border-color: #1e293b;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
         }
         .btn-secondary {
             background-color: #ffffff;
@@ -340,15 +342,16 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             color: #0f172a;
         }
         .footer-note {
-            font-size: 11px;
+            font-size: 12.5px;
             color: var(--text-muted);
             line-height: 1.5;
         }
-        @media (max-width: 720px) {
-            .info-columns { grid-template-columns: 1fr; gap: 20px; }
-            .tech-grid { grid-template-columns: 1fr; gap: 16px; }
-            .brand-header { flex-direction: column; text-align: center; gap: 10px; }
+        @media (max-width: 768px) {
+            .info-columns { grid-template-columns: 1fr; gap: 24px; }
+            .tech-grid { grid-template-columns: 1fr; gap: 18px; }
+            .brand-header { flex-direction: column; text-align: center; gap: 12px; }
             .brand-info { align-items: center; }
+            .headline-403 { font-size: 32px; }
         }
     </style>
 </head>
@@ -387,7 +390,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
 
         <h1 class="headline-403">403 Forbidden</h1>
         <h2 class="headline-denied">Access Denied</h2>
-        <div class="headline-restricted">Access to \${host} is restricted</div>
+        <div class="headline-restricted">Access to ${host} is restricted</div>
 
         <div class="info-columns">
             <div class="info-box">
@@ -418,34 +421,34 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
                 </div>
                 <div>
                     <div class="tech-item-label">Reference ID</div>
-                    <div class="tech-item-value-bold">\${referenceId}</div>
+                    <div class="tech-item-value-bold">${referenceId}</div>
                 </div>
                 <div>
                     <div class="tech-item-label">Timestamp</div>
-                    <div class="tech-item-value">\${nowUtc} (Ref: \${unixRef})</div>
+                    <div class="tech-item-value">${nowUtc} (Ref: ${unixRef})</div>
                 </div>
                 <div>
                     <div class="tech-item-label">Violation Reason</div>
-                    <div class="tech-item-value">Request blocked by rule ID: \${ruleId} (Ref: \${classification})</div>
+                    <div class="tech-item-value">Request blocked by rule ID: ${ruleId} (Ref: ${classification})</div>
                 </div>
                 <div>
                     <div class="tech-item-label">Attack Classification</div>
                     <div class="tech-item-value">
-                        <span class="attack-badge">\${classification}</span>
+                        <span class="attack-badge">${classification}</span>
                     </div>
                 </div>
                 <div>
                     <div class="tech-item-label">Protocol Details</div>
                     <div class="tech-item-value">
                         HTTP/1.1 (WAF_VER: 4.1.0)<br>
-                        \${host}
+                        ${host}
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="actions-row">
-            <button type="button" class="btn btn-primary" onclick="alert('Reference ID: ' + refId + '\\nPlease share with your IT administrator.')">
+            <button type="button" class="btn btn-primary" onclick="alert('Reference ID: ' + '${referenceId}' + '\\nPlease share with your IT administrator.')">
                 Contact Security Operations
             </button>
             <a href="/" class="btn btn-secondary">
@@ -462,7 +465,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
     </div>
 
     <script>
-        const refId = "\${referenceId}";
+        const refId = "${referenceId}";
         function copyRef() {
             navigator.clipboard.writeText(refId).then(() => {
                 const btn = document.getElementById('copyBtn');

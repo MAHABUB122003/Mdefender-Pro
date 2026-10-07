@@ -99,13 +99,13 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 50px 24px;
             -webkit-font-smoothing: antialiased;
         }
 
         .block-wrapper {
             width: 100%;
-            max-width: 900px;
+            max-width: 960px;
             margin: 0 auto;
             text-align: center;
         }
@@ -115,8 +115,8 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            margin-bottom: 28px;
+            gap: 18px;
+            margin-bottom: 32px;
             text-align: left;
         }
 
@@ -128,15 +128,15 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
         }
 
         .brand-logo-svg {
-            width: 50px;
-            height: 50px;
-            filter: drop-shadow(0 4px 12px rgba(246, 130, 31, 0.35));
+            width: 60px;
+            height: 60px;
+            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.38));
             transition: transform 0.2s ease, filter 0.2s ease;
         }
 
         .brand-logo-svg:hover {
             transform: scale(1.06);
-            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.48));
+            filter: drop-shadow(0 8px 22px rgba(246, 130, 31, 0.52));
         }
 
         .brand-info {
@@ -145,92 +145,92 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
         }
 
         .brand-title {
-            font-size: 16px;
-            font-weight: 800;
+            font-size: 18px;
+            font-weight: 900;
             color: #0f172a;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             line-height: 1.2;
             text-transform: uppercase;
         }
 
         .brand-subtitle {
-            font-size: 9.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #64748b;
-            letter-spacing: 1.5px;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            margin-top: 2px;
+            margin-top: 3px;
         }
 
         .brand-owner {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 800;
             color: #0f172a;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            margin-top: 2px;
+            margin-top: 3px;
         }
 
         /* Main Headlines */
         .headline-403 {
-            font-size: 34px;
-            font-weight: 800;
+            font-size: 40px;
+            font-weight: 900;
             color: var(--text-heading);
-            letter-spacing: -0.5px;
+            letter-spacing: -0.6px;
             line-height: 1.15;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
 
         .headline-denied {
-            font-size: 22px;
-            font-weight: 700;
+            font-size: 25px;
+            font-weight: 800;
             color: var(--text-heading);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .headline-restricted {
-            font-size: 14.5px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--orange-alert);
-            margin-bottom: 36px;
+            margin-bottom: 42px;
         }
 
         /* Two Columns Explanation */
         .info-columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 48px;
             text-align: left;
-            margin-bottom: 36px;
-            max-width: 820px;
+            margin-bottom: 42px;
+            max-width: 900px;
             margin-left: auto;
             margin-right: auto;
         }
 
         .info-box-title {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 20px;
+            font-weight: 800;
             color: var(--text-heading);
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .info-box-text {
-            font-size: 13.5px;
-            line-height: 1.55;
+            font-size: 15px;
+            line-height: 1.65;
             color: var(--text-sub);
         }
 
         .info-box-text p + p {
-            margin-top: 10px;
+            margin-top: 12px;
         }
 
         /* Technical Details Grid */
         .tech-details-container {
             border-top: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
-            padding: 24px 0;
-            margin-bottom: 28px;
-            max-width: 820px;
+            padding: 30px 0;
+            margin-bottom: 34px;
+            max-width: 900px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -238,26 +238,26 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
         .tech-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px 24px;
+            gap: 24px 32px;
             text-align: left;
         }
 
         .tech-item-label {
-            font-size: 12px;
+            font-size: 13.5px;
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
 
         .tech-item-value {
-            font-size: 12.5px;
+            font-size: 14.5px;
             color: #334155;
-            line-height: 1.4;
+            line-height: 1.5;
             word-break: break-word;
         }
 
         .tech-item-value-bold {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 700;
             color: #0f172a;
             font-family: var(--font-mono);
