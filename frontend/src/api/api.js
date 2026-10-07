@@ -395,7 +395,6 @@ export const api = {
   promoteUserAutoBlock: (ip) => apiCall('/api/user/auto-blocks/promote', { method: 'POST', body: JSON.stringify({ ip }) }),
 
   // Website Security Audit & Port Diagnostics
-  getUserWebsites: () => apiCall('/api/user/dashboard'),
   runSecurityAudit: (url) => apiCall('/api/user/security-audit', { method: 'POST', body: JSON.stringify({ url }) }),
 
   // Attack Learning Hub & Feedback Center

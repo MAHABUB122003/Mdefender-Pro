@@ -138,12 +138,12 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 70px 30px;
+            padding: 40px 20px;
             -webkit-font-smoothing: antialiased;
         }
         .block-wrapper {
-            width: 94%;
-            max-width: 1240px;
+            width: 100%;
+            max-width: 880px;
             margin: 0 auto;
             text-align: center;
         }
@@ -151,8 +151,8 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 24px;
-            margin-bottom: 40px;
+            gap: 16px;
+            margin-bottom: 26px;
             text-align: left;
         }
         .brand-logo-wrap {
@@ -162,150 +162,150 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             flex-shrink: 0;
         }
         .brand-logo-svg {
-            width: 84px;
-            height: 84px;
-            filter: drop-shadow(0 10px 24px rgba(246, 130, 31, 0.45));
+            width: 52px;
+            height: 52px;
+            filter: drop-shadow(0 4px 12px rgba(246, 130, 31, 0.35));
             transition: transform 0.2s ease, filter 0.2s ease;
         }
         .brand-logo-svg:hover {
             transform: scale(1.06);
-            filter: drop-shadow(0 12px 30px rgba(246, 130, 31, 0.62));
+            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.48));
         }
         .brand-info {
             display: flex;
             flex-direction: column;
         }
         .brand-title {
-            font-size: 25px;
-            font-weight: 900;
+            font-size: 16.5px;
+            font-weight: 800;
             color: #0f172a;
-            letter-spacing: 1px;
+            letter-spacing: 0.6px;
             line-height: 1.2;
             text-transform: uppercase;
         }
         .brand-subtitle {
-            font-size: 14.5px;
-            font-weight: 800;
+            font-size: 10px;
+            font-weight: 700;
             color: #64748b;
-            letter-spacing: 2.8px;
+            letter-spacing: 1.8px;
             text-transform: uppercase;
-            margin-top: 4px;
+            margin-top: 2px;
         }
         .brand-owner {
-            font-size: 19px;
-            font-weight: 900;
+            font-size: 13px;
+            font-weight: 800;
             color: #0f172a;
-            letter-spacing: 2px;
+            letter-spacing: 1.2px;
             text-transform: uppercase;
-            margin-top: 4px;
+            margin-top: 2px;
         }
         .headline-403 {
-            font-size: 58px;
-            font-weight: 900;
-            color: var(--text-heading);
-            letter-spacing: -1px;
-            line-height: 1.15;
-            margin-bottom: 10px;
-        }
-        .headline-denied {
-            font-size: 34px;
+            font-size: 36px;
             font-weight: 800;
             color: var(--text-heading);
-            margin-bottom: 14px;
+            letter-spacing: -0.5px;
+            line-height: 1.15;
+            margin-bottom: 4px;
+        }
+        .headline-denied {
+            font-size: 23px;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 8px;
         }
         .headline-restricted {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 14.5px;
+            font-weight: 600;
             color: var(--orange-alert);
-            margin-bottom: 54px;
+            margin-bottom: 34px;
         }
         .info-columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 64px;
+            gap: 38px;
             text-align: left;
-            margin-bottom: 54px;
-            max-width: 1160px;
+            margin-bottom: 34px;
+            max-width: 800px;
             margin-left: auto;
             margin-right: auto;
         }
         .info-box-title {
-            font-size: 26px;
-            font-weight: 800;
+            font-size: 18.5px;
+            font-weight: 700;
             color: var(--text-heading);
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
         .info-box-text {
-            font-size: 18px;
-            line-height: 1.75;
-            color: #334155;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-sub);
         }
         .info-box-text p + p {
-            margin-top: 16px;
+            margin-top: 10px;
         }
         .tech-details-container {
             border-top: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
-            padding: 42px 0;
-            margin-bottom: 48px;
-            max-width: 1160px;
+            padding: 24px 0;
+            margin-bottom: 28px;
+            max-width: 800px;
             margin-left: auto;
             margin-right: auto;
         }
         .tech-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 32px 42px;
+            gap: 18px 24px;
             text-align: left;
         }
         .tech-item-label {
-            font-size: 16.5px;
-            font-weight: 800;
+            font-size: 12.5px;
+            font-weight: 700;
             color: #0f172a;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         .tech-item-value {
-            font-size: 17.5px;
+            font-size: 13.5px;
             color: #334155;
-            line-height: 1.6;
+            line-height: 1.45;
             word-break: break-word;
         }
         .tech-item-value-bold {
-            font-size: 19px;
-            font-weight: 900;
+            font-size: 14px;
+            font-weight: 800;
             color: #0f172a;
             font-family: var(--font-mono);
         }
         .ip-flag-wrap {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 7px;
         }
         .flag-icon {
-            width: 30px;
-            height: 22px;
-            border-radius: 4px;
-            border: 1px solid rgba(0, 0, 0, 0.14);
+            width: 20px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
             vertical-align: middle;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
         .attack-badge {
             display: inline-block;
             background-color: #ffedd5;
             color: #9a3412;
             border: 1px solid #fed7aa;
-            font-size: 15.5px;
-            font-weight: 800;
-            padding: 6px 16px;
-            border-radius: 8px;
-            margin-top: 3px;
+            font-size: 12.5px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 6px;
+            margin-top: 2px;
         }
         .actions-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 18px;
-            margin-bottom: 38px;
+            gap: 12px;
+            margin-bottom: 24px;
             flex-wrap: wrap;
         }
         .btn {
@@ -313,10 +313,10 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             align-items: center;
             justify-content: center;
             font-family: var(--font-family);
-            font-size: 17px;
-            font-weight: 700;
-            padding: 14px 32px;
-            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 600;
+            padding: 9px 20px;
+            border-radius: 7px;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -329,7 +329,7 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
         .btn-primary:hover {
             background-color: #1e293b;
             border-color: #1e293b;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
         }
         .btn-secondary {
             background-color: #ffffff;
@@ -342,18 +342,17 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             color: #0f172a;
         }
         .footer-note {
-            font-size: 15px;
-            font-weight: 600;
-            color: #64748b;
-            line-height: 1.6;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
         }
         @media (max-width: 768px) {
-            .info-columns { grid-template-columns: 1fr; gap: 32px; }
-            .tech-grid { grid-template-columns: 1fr; gap: 24px; }
-            .brand-header { flex-direction: column; text-align: center; gap: 16px; }
+            .info-columns { grid-template-columns: 1fr; gap: 22px; }
+            .tech-grid { grid-template-columns: 1fr; gap: 16px; }
+            .brand-header { flex-direction: column; text-align: center; gap: 12px; }
             .brand-info { align-items: center; }
-            .headline-403 { font-size: 42px; }
-            .headline-denied { font-size: 26px; }
+            .headline-403 { font-size: 30px; }
+            .headline-denied { font-size: 20px; }
         }
     </style>
 </head>

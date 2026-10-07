@@ -40,8 +40,14 @@ export default function UserLogs() {
   const fetchWebsites = useCallback(async () => {
     try {
       const data = await api.getUserDashboard()
-      if (data?.websites && Array.isArray(data.websites)) {
+      if (data?.websites && Array.isArray(data.websites) && data.websites.length > 0) {
         setWebsites(data.websites)
+        return
+      }
+      const webRes = await api.getUserWebsites()
+      const sitesList = Array.isArray(webRes) ? webRes : (webRes?.websites || webRes?.data?.websites || [])
+      if (Array.isArray(sitesList) && sitesList.length > 0) {
+        setWebsites(sitesList)
       }
     } catch (err) {
       console.error('Error loading websites:', err)

@@ -920,15 +920,24 @@ class UserAPI:
 
         if website_id and website_id != 'all':
             target_ids = [website_id]
-            for s in user_sites:
+            target_domains = [website_id]
+            for s in user_sites + wp_sites:
                 sid = str(s.get('_id', ''))
                 sdom = s.get('domain', '')
-                if website_id in (sid, sdom) and sid:
-                    target_ids.append(sid)
+                surl = s.get('url', '')
+                if website_id in (sid, sdom, surl):
+                    if sid:
+                        target_ids.append(sid)
+                    if sdom:
+                        target_domains.append(sdom)
+                    if surl:
+                        target_domains.append(surl)
 
             conditions.append({'$or': [
                 {'website_id': {'$in': target_ids}},
                 {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
+                {'domain': {'$in': target_domains}},
+                {'url': {'$in': target_domains}},
             ]})
 
         if status_filter:
