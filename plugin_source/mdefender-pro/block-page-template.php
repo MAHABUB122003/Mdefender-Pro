@@ -28,7 +28,7 @@ if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && 
                 $city = !empty($data['city']) ? $data['city'] : '';
                 $country = !empty($data['country']) ? $data['country'] : '';
                 $country_code_lower = !empty($data['countryCode']) ? strtolower($data['countryCode']) : 'bd';
-                $geoip_info = $city && $country ? " (GeoIP: {$city}, {$country})" : ($country ? " (GeoIP: {$country})" : '');
+                $geoip_info = $country_code_lower ? " (GeoIP: " . strtoupper($country_code_lower) . ")" : '';
                 if (function_exists('set_transient')) {
                     $hour = defined('HOUR_IN_SECONDS') ? HOUR_IN_SECONDS : 3600;
                     set_transient($transient_key, ['info' => $geoip_info, 'code' => $country_code_lower], 12 * $hour);
@@ -39,8 +39,7 @@ if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && 
 }
 
 if (empty($geoip_info)) {
-    $geoip_info = " (GeoIP: Dhaka, Bangladesh)";
-    $country_code_lower = 'bd';
+    $geoip_info = " (GeoIP: " . strtoupper($country_code_lower) . ")";
 }
 
 // Convert timestamp to UTC & get Unix ref
@@ -62,31 +61,28 @@ $rule_id = (abs(crc32($rule_name)) % 10000) + 90000;
 
 // Server Host
 $server_host = !empty($_SERVER['HTTP_HOST']) ? sanitize_text_field($_SERVER['HTTP_HOST']) : (!empty($_SERVER['SERVER_NAME']) ? sanitize_text_field($_SERVER['SERVER_NAME']) : (function_exists('gethostname') ? gethostname() : 'localhost'));
-
 $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>403 &mdash; SECURITY ACTION REQUIRED</title>
+    <title>403 Forbidden &mdash; Access Denied | MDefender-Pro AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-body: #475569;
-            --text-muted: #94a3b8;
-            --border-table: #cbd5e1;
-            --border-card: #e2e8f0;
-            --primary-btn: #1e3a8a;
-            --primary-hover: #172554;
-            --danger: #dc2626;
-            --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --bg-color: #ffffff;
+            --text-main: #1e293b;
+            --text-heading: #0f172a;
+            --text-sub: #475569;
+            --text-muted: #64748b;
+            --border-light: #e2e8f0;
+            --border-dark: #cbd5e1;
+            --orange-alert: #ea580c;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', Consolas, monospace;
         }
 
         * {
@@ -97,7 +93,7 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
 
         body {
             font-family: var(--font-family);
-            background-color: var(--bg);
+            background-color: var(--bg-color);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
@@ -107,388 +103,392 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
             -webkit-font-smoothing: antialiased;
         }
 
-        .block-card {
+        .block-wrapper {
             width: 100%;
-            max-width: 780px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-card);
-            border-radius: 20px;
-            box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
-            padding: 48px 44px;
+            max-width: 900px;
+            margin: 0 auto;
             text-align: center;
         }
 
-        /* Top Brand Header */
-        .shield-icon-wrapper {
-            margin-bottom: 16px;
-            display: flex;
+        /* Header / Brand Logo */
+        .brand-header {
+            display: inline-flex;
+            align-items: center;
             justify-content: center;
+            gap: 16px;
+            margin-bottom: 28px;
+            text-align: left;
         }
 
-        .shield-badge {
-            width: 68px;
-            height: 68px;
-            filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.08));
+        .brand-logo-svg {
+            width: 52px;
+            height: 38px;
+            flex-shrink: 0;
+        }
+
+        .brand-info {
+            display: flex;
+            flex-direction: column;
         }
 
         .brand-title {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: 0.5px;
+            line-height: 1.2;
             text-transform: uppercase;
-            margin-bottom: 6px;
         }
 
         .brand-subtitle {
-            font-size: 11px;
+            font-size: 9.5px;
             font-weight: 700;
             color: #64748b;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 2.2px;
-            margin-bottom: 4px;
+            margin-top: 2px;
         }
 
         .brand-owner {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 800;
             color: #0f172a;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 24px;
+            margin-top: 2px;
         }
 
         /* Main Headlines */
         .headline-403 {
-            font-size: 24px;
+            font-size: 34px;
             font-weight: 800;
-            color: #0f172a;
-            letter-spacing: -0.3px;
-            margin-bottom: 6px;
+            color: var(--text-heading);
+            letter-spacing: -0.5px;
+            line-height: 1.15;
+            margin-bottom: 4px;
         }
 
-        .headline-waf {
-            font-size: 18px;
+        .headline-denied {
+            font-size: 22px;
             font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 6px;
-        }
-
-        .headline-restricted {
-            font-size: 13px;
-            font-weight: 400;
-            color: var(--text-body);
-            margin-bottom: 28px;
-        }
-
-        /* Details Table */
-        .table-wrap {
-            border: 1px solid var(--border-table);
-            border-radius: 10px;
-            overflow: hidden;
-            background: #ffffff;
-            margin-bottom: 26px;
-            text-align: left;
-        }
-
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .details-table tr {
-            border-bottom: 1px solid var(--border-table);
-        }
-
-        .details-table tr:last-child {
-            border-bottom: none;
-        }
-
-        .details-table th {
-            width: 250px;
-            background-color: #f8fafc;
-            color: #475569;
-            font-weight: 700;
-            font-size: 12.5px;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            padding: 14px 20px;
-            border-right: 1px solid var(--border-table);
-            vertical-align: middle;
-        }
-
-        .details-table td {
-            color: #334155;
-            font-weight: 500;
-            font-size: 13.5px;
-            padding: 14px 20px;
-            vertical-align: middle;
-            background-color: #ffffff;
-        }
-
-        /* Classification Row */
-        .classification-row th {
-            background-color: #f8fafc;
-        }
-
-        .classification-row td {
-            background-color: #fff8f8;
-        }
-
-        .classification-flex {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .classification-text {
-            color: var(--danger);
-            font-weight: 700;
-            font-size: 13.5px;
-        }
-
-        .info-tag {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #cbd5e1;
-            font-size: 11.5px;
-            font-weight: 600;
-            padding: 3px 12px;
-            border-radius: 4px;
-            letter-spacing: 0.2px;
-        }
-
-        .ip-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .country-flag {
-            display: inline-block;
-            border-radius: 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            vertical-align: middle;
-        }
-
-        /* Why did this happen */
-        .why-heading {
-            font-size: 15px;
-            font-weight: 700;
-            color: #0f172a;
+            color: var(--text-heading);
             margin-bottom: 8px;
         }
 
-        .why-paragraph {
-            font-size: 13px;
-            line-height: 1.6;
-            color: var(--text-body);
-            max-width: 660px;
-            margin: 0 auto 22px;
+        .headline-restricted {
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--orange-alert);
+            margin-bottom: 36px;
         }
 
-        /* Reference Box */
-        .reference-badge {
-            display: inline-block;
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            border-radius: 6px;
-            padding: 11px 26px;
-            font-family: var(--font-mono);
+        /* Two Columns Explanation */
+        .info-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            text-align: left;
+            margin-bottom: 36px;
+            max-width: 820px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .info-box-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 10px;
+        }
+
+        .info-box-text {
             font-size: 13.5px;
+            line-height: 1.55;
+            color: var(--text-sub);
+        }
+
+        .info-box-text p + p {
+            margin-top: 10px;
+        }
+
+        /* Technical Details Grid */
+        .tech-details-container {
+            border-top: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            padding: 24px 0;
+            margin-bottom: 28px;
+            max-width: 820px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px 24px;
+            text-align: left;
+        }
+
+        .tech-item-label {
+            font-size: 12px;
             font-weight: 700;
             color: #0f172a;
-            letter-spacing: 0.8px;
-            cursor: pointer;
+            margin-bottom: 4px;
+        }
+
+        .tech-item-value {
+            font-size: 12.5px;
+            color: #334155;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .tech-item-value-bold {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            font-family: var(--font-mono);
+        }
+
+        .ip-flag-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .flag-icon {
+            width: 18px;
+            height: 13px;
+            border-radius: 2px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            vertical-align: middle;
+        }
+
+        /* Attack Classification Badge */
+        .attack-badge {
+            display: inline-block;
+            background-color: #ffedd5;
+            color: #9a3412;
+            border: 1px solid #fed7aa;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 5px;
+            margin-top: 2px;
+        }
+
+        /* Actions / Buttons */
+        .actions-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
             margin-bottom: 24px;
-            transition: all 0.2s ease;
+            flex-wrap: wrap;
         }
 
-        .reference-badge:hover {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-        }
-
-        /* Action Button */
-        .btn-contact {
+        .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            background-color: var(--primary-btn);
-            color: #ffffff;
             font-family: var(--font-family);
-            font-size: 13.5px;
+            font-size: 12px;
             font-weight: 600;
-            text-decoration: none;
-            padding: 11px 28px;
+            padding: 8px 16px;
             border-radius: 6px;
-            border: none;
+            text-decoration: none;
             cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.06);
+            transition: all 0.15s ease;
         }
 
-        .btn-contact:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-1px);
+        .btn-primary {
+            background-color: #0f172a;
+            color: #ffffff;
+            border: 1px solid #0f172a;
+        }
+
+        .btn-primary:hover {
+            background-color: #1e293b;
+            border-color: #1e293b;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #334155;
+            border: 1px solid var(--border-dark);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f8fafc;
+            border-color: #94a3b8;
+            color: #0f172a;
         }
 
         /* Footer */
-        .block-footer {
-            margin-top: 32px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-card);
-            font-size: 12px;
+        .footer-note {
+            font-size: 11px;
             color: var(--text-muted);
+            line-height: 1.5;
         }
 
-        @media (max-width: 640px) {
-            .block-card {
-                padding: 28px 18px;
+        @media (max-width: 720px) {
+            .info-columns {
+                grid-template-columns: 1fr;
+                gap: 20px;
             }
-            .details-table th, .details-table td {
-                display: block;
-                width: 100%;
-                border-right: none;
+            .tech-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
             }
-            .details-table th {
-                padding-bottom: 4px;
-            }
-            .details-table td {
-                padding-top: 4px;
-            }
-            .details-table tr {
-                padding: 8px 0;
-            }
-            .classification-flex {
+            .brand-header {
                 flex-direction: column;
-                align-items: flex-start;
-                gap: 6px;
+                text-align: center;
+                gap: 10px;
+            }
+            .brand-info {
+                align-items: center;
             }
         }
     </style>
 </head>
 <body>
-    <div class="block-card">
-        <!-- Shield Logo Badge -->
-        <div class="shield-icon-wrapper">
-            <svg class="shield-badge" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div class="block-wrapper">
+        <!-- Top Logo & Brand Header -->
+        <div class="brand-header">
+            <svg class="brand-logo-svg" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                    <linearGradient id="shieldFill" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#cbd5e1" />
-                        <stop offset="50%" stop-color="#94a3b8" />
-                        <stop offset="100%" stop-color="#64748b" />
-                    </linearGradient>
-                    <linearGradient id="innerShield" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#f1f5f9" />
-                        <stop offset="100%" stop-color="#cbd5e1" />
+                    <linearGradient id="cloudOrangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f59e0b" />
+                        <stop offset="60%" stop-color="#ea580c" />
+                        <stop offset="100%" stop-color="#c2410c" />
                     </linearGradient>
                 </defs>
-                <!-- Shield Base -->
-                <path d="M50 8C72 18 84 21 84 42C84 66 64 85 50 94C36 85 16 66 16 42C16 21 28 18 50 8Z" fill="url(#shieldFill)" stroke="#475569" stroke-width="2" />
-                <path d="M50 14C68 23 78 26 78 43C78 63 61 79 50 87C39 79 22 63 22 43C22 26 32 23 50 14Z" fill="url(#innerShield)" />
-                <!-- Dark Stylized Emblem -->
-                <path d="M50 25C48 31 43 33 40 33C37 33 36 36 38 38C40 40 43 38 43 42C43 45 39 48 35 46C32 44 30 47 32 50C34 53 38 52 40 55C42 57 40 60 37 62C40 64 45 65 48 62C48 59 46 56 47 54C49 51 52 53 54 50C56 48 55 45 52 43C53 39 57 40 58 37C60 33 56 32 54 28C52 25 51 22 50 25Z" fill="#1e293b" />
+                <path d="M19 40C12.373 40 7 34.627 7 28C7 21.848 11.642 16.782 17.618 16.096C20.082 10.985 25.328 7.5 31.5 7.5C39.467 7.5 46.064 13.344 47.311 21.033C52.802 21.862 57 26.592 57 32.308C57 38.765 51.765 40 45.308 40H19Z" fill="url(#cloudOrangeGrad)"/>
+                <path d="M22 38H45.308C50.661 38 55 35.454 55 32.308C55 27.464 51.365 23.447 46.735 22.846L44.407 22.545L43.992 20.231C42.868 13.968 37.525 9.5 31.5 9.5C26.155 9.5 21.579 12.593 19.467 17.202L18.723 18.825L16.945 19.09C11.758 19.866 9 24.168 9 28C9 33.523 13.477 38 19 38L22 38Z" fill="#ffffff" fill-opacity="0.18"/>
             </svg>
+            <div class="brand-info">
+                <div class="brand-title">MDEFENDER-PRO AI</div>
+                <div class="brand-subtitle">A.S.A.P. SECURITY FIREWALL</div>
+                <div class="brand-owner"><?php echo esc_html(strtoupper($site_name)); ?></div>
+            </div>
         </div>
 
-        <div class="brand-title">MDEFENDER-PRO AI</div>
-        <div class="brand-subtitle">A.S.A.P. SECURITY FIREWALL</div>
-        <div class="brand-owner"><?php echo esc_html(strtoupper($site_name)); ?></div>
+        <!-- Headline -->
+        <h1 class="headline-403">403 Forbidden</h1>
+        <h2 class="headline-denied">Access Denied</h2>
+        <div class="headline-restricted">Access to <?php echo esc_html($server_host); ?> is restricted</div>
 
-        <h1 class="headline-403">403 &mdash; SECURITY ACTION REQUIRED</h1>
-        <h2 class="headline-waf">Access Denied by Corporate WAF</h2>
-        <div class="headline-restricted">Access to [<?php echo esc_html($site_host); ?>] restricted.</div>
+        <!-- 2 Columns: What happened? & What can I do? -->
+        <div class="info-columns">
+            <div class="info-box">
+                <div class="info-box-title">What happened?</div>
+                <div class="info-box-text">
+                    <p>This website is using a security service (MDefender-Pro AI) to protect itself from online attacks. The action you tried to perform has been blocked by corporate WAF.</p>
+                </div>
+            </div>
+            <div class="info-box">
+                <div class="info-box-title">What can I do?</div>
+                <div class="info-box-text">
+                    <p>If you are a visitor, please contact the site owner or support operations with the details below.</p>
+                    <p>If you believe this is a valid corporate action, please share the Reference ID below.</p>
+                </div>
+            </div>
+        </div>
 
-        <!-- Details Table -->
-        <div class="table-wrap">
-            <table class="details-table">
-                <tr class="classification-row">
-                    <th>ATTACK CLASSIFICATION</th>
-                    <td>
-                        <div class="classification-flex">
-                            <span class="classification-text"><?php echo esc_html($attack_type); ?></span>
-                            <span class="info-tag">Detailed info tag</span>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th>ORIGIN CLIENT IP</th>
-                    <td>
-                        <div class="ip-content">
+        <!-- Technical Details (3 Columns x 2 Rows) -->
+        <div class="tech-details-container">
+            <div class="tech-grid">
+                <!-- Column 1, Row 1 -->
+                <div>
+                    <div class="tech-item-label">Your IP</div>
+                    <div class="tech-item-value">
+                        <span class="ip-flag-wrap">
+                            <span><?php echo esc_html($client_ip); ?><?php echo esc_html($geoip_info); ?></span>
                             <?php if (!empty($country_code_lower)): ?>
                                 <img src="https://flagcdn.com/w40/<?php echo esc_attr($country_code_lower); ?>.png" 
                                      srcset="https://flagcdn.com/w80/<?php echo esc_attr($country_code_lower); ?>.png 2x" 
-                                     width="20" height="15" 
-                                     alt="<?php echo esc_attr(strtoupper($country_code_lower)); ?>"
-                                     class="country-flag">
+                                     alt="<?php echo esc_attr(strtoupper($country_code_lower)); ?>" 
+                                     class="flag-icon">
                             <?php endif; ?>
-                            <span><?php echo esc_html($client_ip); ?><?php echo esc_html($geoip_info); ?></span>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th>EVENT TIMESTAMP</th>
-                    <td><?php echo esc_html($utc_timestamp); ?> (Ref: <?php echo esc_html($unix_ref); ?>)</td>
-                </tr>
-                <tr>
-                    <th>VIOLATION REASON</th>
-                    <td>Request blocked by rule ID: <?php echo esc_html($rule_id); ?> (Ref: <?php echo esc_html($rule_name); ?>)</td>
-                </tr>
-                <tr>
-                    <th>PROTOCOL DETAILS</th>
-                    <td><?php echo esc_html($_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1'); ?> (WAF_VER: 4.1.0)</td>
-                </tr>
-                <tr>
-                    <th>SERVER HOST</th>
-                    <td><?php echo esc_html($server_host); ?></td>
-                </tr>
-            </table>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Column 2, Row 1 -->
+                <div>
+                    <div class="tech-item-label">Reference ID</div>
+                    <div class="tech-item-value-bold" id="refIdText"><?php echo esc_html($reference_id); ?></div>
+                </div>
+
+                <!-- Column 3, Row 1 -->
+                <div>
+                    <div class="tech-item-label">Timestamp</div>
+                    <div class="tech-item-value"><?php echo esc_html($utc_timestamp); ?> (Ref: <?php echo esc_html($unix_ref); ?>)</div>
+                </div>
+
+                <!-- Column 1, Row 2 -->
+                <div>
+                    <div class="tech-item-label">Violation Reason</div>
+                    <div class="tech-item-value">Request blocked by rule ID: <?php echo esc_html($rule_id); ?> (Ref: <?php echo esc_html($rule_name); ?>)</div>
+                </div>
+
+                <!-- Column 2, Row 2 -->
+                <div>
+                    <div class="tech-item-label">Attack Classification</div>
+                    <div class="tech-item-value">
+                        <span class="attack-badge"><?php echo esc_html($attack_type); ?></span>
+                    </div>
+                </div>
+
+                <!-- Column 3, Row 2 -->
+                <div>
+                    <div class="tech-item-label">Protocol Details</div>
+                    <div class="tech-item-value">
+                        <?php echo esc_html($_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1'); ?> (WAF_VER: 4.1.0)<br>
+                        <?php echo esc_html($server_host); ?>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Explanatory Section -->
-        <div class="why-heading">Why did this happen?</div>
-        <p class="why-paragraph">
-            To maintain system integrity, suspicious requests are automatically analyzed and filtered. If you believe this is a valid corporate action, please share the Reference ID below with your local IT/Security operations. Regular users should clear cache or contact support.
-        </p>
-
-        <!-- Reference ID -->
-        <div class="reference-badge" id="refIdBadge" onclick="copyRefId()" title="Click to copy Reference ID">
-            REFERENCE ID: <?php echo esc_html($reference_id); ?>
-        </div>
-
-        <!-- Action Button -->
-        <div>
-            <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=WAF Block Reference: <?php echo esc_attr($reference_id); ?>&body=Security Support,%0D%0A%0D%0AMy request was restricted by MDefender-Pro AI Firewall.%0D%0A%0D%0ADetails:%0D%0A- Reference ID: <?php echo esc_attr($reference_id); ?>%0D%0A- Client IP: <?php echo esc_attr($client_ip); ?>%0D%0A- Host: <?php echo esc_attr($site_host); ?>" 
-               class="btn-contact">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
+        <!-- Buttons -->
+        <div class="actions-row">
+            <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=WAF Block Reference: <?php echo esc_attr($reference_id); ?>&body=Security Support,%0D%0A%0D%0AMy request was restricted by MDefender-Pro AI Firewall.%0D%0A%0D%0ADetails:%0D%0A- Reference ID: <?php echo esc_attr($reference_id); ?>%0D%0A- Client IP: <?php echo esc_attr($client_ip); ?>%0D%0A- Host: <?php echo esc_attr($server_host); ?>" 
+               class="btn btn-primary">
                 Contact Security Operations
             </a>
+            <a href="/" class="btn btn-secondary">
+                Return to Homepage
+            </a>
+            <button type="button" class="btn btn-secondary" id="copyBtn" onclick="copyReferenceId()">
+                Copy Reference ID
+            </button>
         </div>
 
-        <div class="block-footer">
-            Secured by MDefender-Pro AI Firewall. All critical system events are logged and audited.
+        <!-- Footer -->
+        <div class="footer-note">
+            Performance & security by MDefender-Pro AI Firewall. All critical system events are logged and audited.
         </div>
     </div>
 
     <script>
-        function copyRefId() {
-            const refText = "<?php echo esc_js($reference_id); ?>";
-            navigator.clipboard.writeText(refText).then(() => {
-                const el = document.getElementById('refIdBadge');
-                const orig = el.innerText;
-                el.innerText = 'COPIED TO CLIPBOARD';
-                el.style.borderColor = '#10b981';
-                el.style.color = '#10b981';
-                setTimeout(() => {
-                    el.innerText = orig;
-                    el.style.borderColor = '';
-                    el.style.color = '';
-                }, 2000);
+        const refId = "<?php echo esc_js($reference_id); ?>";
+        function copyReferenceId() {
+            navigator.clipboard.writeText(refId).then(() => {
+                const btn = document.getElementById('copyBtn');
+                if (btn) {
+                    const original = btn.innerText;
+                    btn.innerText = 'Copied!';
+                    btn.style.borderColor = '#10b981';
+                    btn.style.color = '#10b981';
+                    setTimeout(() => {
+                        btn.innerText = original;
+                        btn.style.borderColor = '';
+                        btn.style.color = '';
+                    }, 2000);
+                }
+            }).catch(() => {
+                alert('Reference ID: ' + refId);
             });
         }
     </script>
