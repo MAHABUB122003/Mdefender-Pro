@@ -354,39 +354,43 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         user_or_conditions.append({"added_by_user_id": ObjectId(user_id)})
         user_or_conditions.append({"user_id": ObjectId(user_id)})
 
-    find_conditions = [
-        {"$or": user_or_conditions},
-        {
-            "$or": [
-                {"expires_at": None},
-                {"expires_at": {"$exists": False}},
-                {"expires_at": {"$gt": now}},
-            ]
-        }
-    ]
-    blacklist_cursor = db.blacklist.find({"$and": find_conditions})
-    raw_blacklist = [item["ip"].strip() for item in blacklist_cursor if item.get("ip")]
-    bl_set = set(raw_blacklist)
-    bl_set.difference_update({"127.0.0.1", "::1", "0.0.0.0", "localhost"})
-    blacklist = list(bl_set)
+    raw_blacklist = []
+    for item in db.blacklist.find():
+        ip_val = (item.get("ip") or "").strip()
+        if not ip_val or ip_val in ("127.0.0.1", "::1", "0.0.0.0", "localhost"):
+            continue
+        exp = item.get("expires_at")
+        if exp:
+            if isinstance(exp, str):
+                try:
+                    exp = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+                except Exception:
+                    try:
+                        exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        exp = None
+            if isinstance(exp, datetime) and exp <= now:
+                continue
+        
+        item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
+        item_email = item.get("added_by", "")
+        is_global = item.get("is_global", False)
+        if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
+            raw_blacklist.append(ip_val)
+    blacklist = list(set(raw_blacklist))
 
     # Fetch active country blocks (strictly scoped to user or is_global)
-    country_query = []
-    if user_id:
-        u_str = str(user_id)
-        country_query.extend([
-            {"user_id": u_str},
-            {"added_by_user_id": u_str},
-        ])
-        if ObjectId.is_valid(u_str):
-            country_query.append({"user_id": ObjectId(u_str)})
-            country_query.append({"added_by_user_id": ObjectId(u_str)})
-    if user_email:
-        country_query.append({"added_by": user_email})
-    country_query.append({"is_global": True})
-
-    country_cursor = db.country_blocks.find({"$or": country_query}) if country_query else []
-    blocked_countries = list(set([item["country_code"].strip().upper() for item in country_cursor if item.get("country_code")]))
+    country_set = set()
+    for item in db.country_blocks.find():
+        c_code = (item.get("country_code") or "").strip().upper()
+        if not c_code or len(c_code) != 2:
+            continue
+        item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
+        item_email = item.get("added_by", "")
+        is_global = item.get("is_global", False)
+        if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
+            country_set.add(c_code)
+    blocked_countries = list(country_set)
 
     # Fetch custom firewall rules (scoped to user)
     rules_query = [{"user_id": user_id}]
@@ -444,52 +448,46 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             user_email = user_doc.get("email", "") if user_doc else ""
             user_master_key = user_doc.get("api_key", "") if user_doc else ""
 
-            # Build fresh active Blacklist
+            # Build fresh active Blacklist with robust date parsing
             now = datetime.now()
-            user_or_conds = [
-                {"added_by_user_id": u_str},
-                {"user_id": u_str},
-                {"added_by_user_id": {"$exists": False}},
-                {"added_by_user_id": None},
-                {"is_global": True},
-            ]
-            if user_email:
-                user_or_conds.append({"added_by": user_email})
-            if ObjectId.is_valid(u_str):
-                user_or_conds.append({"added_by_user_id": ObjectId(u_str)})
-                user_or_conds.append({"user_id": ObjectId(u_str)})
+            raw_bl = []
+            for item in db.blacklist.find():
+                ip_val = (item.get("ip") or "").strip()
+                if not ip_val or ip_val in ("127.0.0.1", "::1", "0.0.0.0", "localhost"):
+                    continue
+                exp = item.get("expires_at")
+                if exp:
+                    if isinstance(exp, str):
+                        try:
+                            exp = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+                        except Exception:
+                            try:
+                                exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
+                            except Exception:
+                                exp = None
+                    if isinstance(exp, datetime) and exp <= now:
+                        continue
+                
+                item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
+                item_email = item.get("added_by", "")
+                is_global = item.get("is_global", False)
+                if not u_str or is_global or not item_u or item_u == u_str or (user_email and item_email == user_email):
+                    raw_bl.append(ip_val)
+            
+            blacklist = list(set(raw_bl))
 
-            bl_cur = db.blacklist.find({
-                "$and": [
-                    {"$or": user_or_conds},
-                    {
-                        "$or": [
-                            {"expires_at": None},
-                            {"expires_at": {"$exists": False}},
-                            {"expires_at": {"$gt": now}},
-                        ]
-                    }
-                ]
-            })
-            raw_bl = [item["ip"].strip() for item in bl_cur if item.get("ip")]
-            bl_set = set(raw_bl)
-            bl_set.difference_update({"127.0.0.1", "::1", "0.0.0.0", "localhost"})
-            blacklist = list(bl_set)
-
-            # Build fresh Country Blocks
-            c_query = [{"is_global": True}]
-            if u_str:
-                c_query.extend([
-                    {"user_id": u_str},
-                    {"added_by_user_id": u_str},
-                ])
-                if ObjectId.is_valid(u_str):
-                    c_query.append({"user_id": ObjectId(u_str)})
-                    c_query.append({"added_by_user_id": ObjectId(u_str)})
-            if user_email:
-                c_query.append({"added_by": user_email})
-            c_cur = db.country_blocks.find({"$or": c_query})
-            blocked_countries = list(set([item["country_code"].strip().upper() for item in c_cur if item.get("country_code")]))
+            # Build fresh Country Blocks with robust parsing
+            country_set = set()
+            for item in db.country_blocks.find():
+                c_code = (item.get("country_code") or "").strip().upper()
+                if not c_code or len(c_code) != 2:
+                    continue
+                item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
+                item_email = item.get("added_by", "")
+                is_global = item.get("is_global", False)
+                if not u_str or is_global or not item_u or item_u == u_str or (user_email and item_email == user_email):
+                    country_set.add(c_code)
+            blocked_countries = list(country_set)
 
             # Build custom rules
             r_query = [{"user_id": u_str}] if u_str else []
