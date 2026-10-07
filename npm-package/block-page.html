@@ -64,15 +64,15 @@
         }
 
         .brand-logo-svg {
-            width: 52px;
-            height: 52px;
-            filter: drop-shadow(0 6px 14px rgba(14, 165, 233, 0.28));
+            width: 50px;
+            height: 50px;
+            filter: drop-shadow(0 4px 12px rgba(246, 130, 31, 0.35));
             transition: transform 0.2s ease, filter 0.2s ease;
         }
 
         .brand-logo-svg:hover {
             transform: scale(1.06);
-            filter: drop-shadow(0 8px 18px rgba(14, 165, 233, 0.4));
+            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.48));
         }
 
         .brand-info {
@@ -305,63 +305,40 @@
         <!-- Top Logo & Brand Header -->
         <div class="brand-header">
             <div class="brand-logo-wrap">
-                <svg class="brand-logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg class="brand-logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <linearGradient id="mdefHexBorder" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#93c5fd" />
-                            <stop offset="30%" stop-color="#3b82f6" />
-                            <stop offset="70%" stop-color="#1d4ed8" />
-                            <stop offset="100%" stop-color="#0f172a" />
+                        <!-- Cloudflare Vibrant Sunset Orange Gradients -->
+                        <linearGradient id="cfShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ff9e2c" />
+                            <stop offset="45%" stop-color="#f6821f" />
+                            <stop offset="80%" stop-color="#ea580c" />
+                            <stop offset="100%" stop-color="#c2410c" />
                         </linearGradient>
-                        <linearGradient id="mdefHexBg" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#0b1329" />
-                            <stop offset="50%" stop-color="#0f172a" />
-                            <stop offset="100%" stop-color="#020617" />
+                        <linearGradient id="cfInnerCore" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#ffffff" />
+                            <stop offset="40%" stop-color="#fff4e6" />
+                            <stop offset="100%" stop-color="#ffd8a8" />
                         </linearGradient>
-                        <linearGradient id="mdefCyanGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stop-color="#38bdf8" />
-                            <stop offset="50%" stop-color="#0284c7" />
-                            <stop offset="100%" stop-color="#0369a1" />
-                        </linearGradient>
-                        <linearGradient id="mdefGoldCrown" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#fef08a" />
-                            <stop offset="50%" stop-color="#eab308" />
-                            <stop offset="100%" stop-color="#ca8a04" />
-                        </linearGradient>
-                        <linearGradient id="mdefLockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#e0f2fe" />
-                            <stop offset="50%" stop-color="#38bdf8" />
-                            <stop offset="100%" stop-color="#0284c7" />
+                        <linearGradient id="cfFacetShade" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
+                            <stop offset="100%" stop-color="#000000" stop-opacity="0.15" />
                         </linearGradient>
                     </defs>
-                    <!-- Hexagonal Outer Shield -->
-                    <polygon points="50,5 88,24 88,76 50,95 12,76 12,24" fill="url(#mdefHexBg)" stroke="url(#mdefHexBorder)" stroke-width="3" />
-                    <!-- Inner Hex Neon Cyan Line -->
-                    <polygon points="50,10 83,27 83,73 50,90 17,73 17,27" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.8" />
-                    <!-- Circuit Traces -->
-                    <path d="M22 36H32L38 42H44" stroke="#0ea5e9" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
-                    <path d="M78 36H68L62 42H56" stroke="#0ea5e9" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
-                    <circle cx="22" cy="36" r="1.5" fill="#38bdf8"/>
-                    <circle cx="78" cy="36" r="1.5" fill="#38bdf8"/>
-                    <path d="M25 64H34L40 58" stroke="#0ea5e9" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
-                    <path d="M75 64H66L60 58" stroke="#0ea5e9" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
-                    <circle cx="25" cy="64" r="1.5" fill="#38bdf8"/>
-                    <circle cx="75" cy="64" r="1.5" fill="#38bdf8"/>
-                    <!-- Golden Crown -->
-                    <path d="M43 23L46 27L50 21L54 27L57 23L56 30H44L43 23Z" fill="url(#mdefGoldCrown)" stroke="#ca8a04" stroke-width="0.6"/>
-                    <circle cx="43" cy="22" r="0.9" fill="#fef08a"/>
-                    <circle cx="50" cy="20" r="1" fill="#fef08a"/>
-                    <circle cx="57" cy="22" r="0.9" fill="#fef08a"/>
-                    <!-- Inner Security Shield -->
-                    <path d="M50 32C62 32 67 38 67 53C67 67 57 77 50 81C43 77 33 67 33 53C33 38 38 32 50 32Z" fill="url(#mdefCyanGlow)" stroke="#7dd3fc" stroke-width="1.5"/>
-                    <path d="M50 36C59 36 63 41 63 53C63 64 55 72 50 76C45 72 37 64 37 53C37 41 41 36 50 36Z" fill="#082f49" fill-opacity="0.9"/>
-                    <!-- Shackle -->
-                    <path d="M44 49V44C44 40.7 46.7 38 50 38C53.3 38 56 40.7 56 44V49" fill="none" stroke="url(#mdefLockGrad)" stroke-width="2.8" stroke-linecap="round"/>
-                    <!-- Lock Body -->
-                    <rect x="41.5" y="48" width="17" height="15" rx="3" fill="url(#mdefLockGrad)" stroke="#e0f2fe" stroke-width="0.8"/>
-                    <!-- Keyhole -->
-                    <circle cx="50" cy="54" r="1.8" fill="#082f49"/>
-                    <path d="M49 55L48.2 59.5H51.8L51 55H49Z" fill="#082f49"/>
+                    <!-- Main Shield Crest -->
+                    <path d="M32 3L54 11C54 28.5 45 47.5 32 58C19 47.5 10 28.5 10 11L32 3Z" 
+                          fill="url(#cfShieldGrad)"/>
+                    <!-- Shield Outer Edge Reflection -->
+                    <path d="M32 5.5L51.5 12.5C51.5 28 43.5 45 32 55C20.5 45 12.5 28 12.5 12.5L32 5.5Z" 
+                          fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.4"/>
+                    <!-- Dynamic Geometric 'M' Emblem -->
+                    <!-- Left M Wing -->
+                    <path d="M17 17L25 21V41.5L17 35V17Z" fill="url(#cfInnerCore)"/>
+                    <!-- Right M Wing -->
+                    <path d="M47 17L39 21V41.5L47 35V17Z" fill="url(#cfInnerCore)" fill-opacity="0.95"/>
+                    <!-- Center Spearhead / M Apex -->
+                    <path d="M32 15L39.5 26.5L32 34L24.5 26.5L32 15Z" fill="#ffffff"/>
+                    <!-- Bottom Defense Node -->
+                    <path d="M32 37L37 43.5L32 49L27 43.5L32 37Z" fill="url(#cfInnerCore)"/>
                 </svg>
             </div>
             <div class="brand-info">
