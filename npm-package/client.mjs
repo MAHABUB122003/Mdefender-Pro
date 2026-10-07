@@ -60,10 +60,15 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
 
     // 1. Dispatch Telemetry Beacon Immediately to MDefender Cloud WAF (Non-blocking)
     try {
-        const targetEndpoint = (_activeConfig.apiEndpoint || 'http://217.15.170.82').replace(/\/+$/, '') + '/api/v1/waf/analyze';
-        const targetDomain = domain || _activeConfig.domain || (typeof window !== 'undefined' ? window.location.hostname : 'localhost') || 'localhost';
-        const targetUrl = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/';
-        const targetQuery = typeof window !== 'undefined' ? window.location.search : '';
+        let rawEp = (_activeConfig.apiEndpoint || 'http://217.15.170.82').replace(/\/+$/, '');
+        let targetEndpoint = rawEp.endsWith('/waf-api') 
+            ? `${rawEp}/v1/waf/analyze` 
+            : `${rawEp}/api/v1/waf/analyze`;
+
+        // Mixed content safeguard: If site is on HTTPS and raw endpoint is plain HTTP, auto-use current origin /waf-api
+        if (typeof window !== 'undefined' && window.location.protocol === 'https:' && rawEp.startsWith('http://')) {
+            targetEndpoint = `${window.location.origin}/waf-api/v1/waf/analyze`;
+        }
 
         const reportPayload = {
             domain: targetDomain,
