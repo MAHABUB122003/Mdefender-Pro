@@ -292,9 +292,9 @@ class WAF_FW_Ajax_Handler {
         $this->check_access();
         $this->verify_nonce();
         $data = $this->get_json_input();
-        $ip = sanitize_text_field($data['ip'] ?? '');
-        $reason = sanitize_text_field($data['reason'] ?? 'Manually blocked');
-        $type = sanitize_text_field($data['type'] ?? 'permanent');
+        $ip = sanitize_text_field($_POST['ip'] ?? $data['ip'] ?? $_REQUEST['ip'] ?? '');
+        $reason = sanitize_text_field($_POST['reason'] ?? $data['reason'] ?? $_REQUEST['reason'] ?? 'Manually blocked');
+        $type = sanitize_text_field($_POST['type'] ?? $data['type'] ?? $_REQUEST['type'] ?? 'permanent');
         if (empty($ip)) {
             wp_send_json_error(['message' => 'IP is required']);
         }
@@ -307,7 +307,7 @@ class WAF_FW_Ajax_Handler {
         $this->check_access();
         $this->verify_nonce();
         $data = $this->get_json_input();
-        $ip = sanitize_text_field($_REQUEST['ip'] ?? $data['ip'] ?? '');
+        $ip = sanitize_text_field($_POST['ip'] ?? $_REQUEST['ip'] ?? $data['ip'] ?? '');
         if (empty($ip)) {
             wp_send_json_error(['message' => 'IP is required']);
         }
@@ -670,12 +670,8 @@ class WAF_FW_Ajax_Handler {
     }
 
     private function check_harden_access() {
-        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'waf_fw_ajax')) {
-            wp_send_json_error(['message' => 'Security check failed'], 403);
-        }
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized'], 403);
-        }
+        $this->check_access();
+        $this->verify_nonce();
     }
 
     public function harden_apply() {

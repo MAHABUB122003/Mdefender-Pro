@@ -631,16 +631,13 @@ class WAF_FW_Login_Protector {
         $ip = $this->get_client_ip();
         $this->clear_attempts($ip);
 
-        // Log successful login event to Live Admin Attack Stream!
-        WAF_FW_Logger::instance()->log_attack([
+        // Log legitimate administrator/user login to requests table (NOT as an attack event)
+        WAF_FW_Logger::instance()->log_request([
             'ip' => $ip,
             'url' => $_SERVER['REQUEST_URI'] ?? '/wp-login.php',
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'POST',
-            'attack_type' => 'Successful Login (User: ' . sanitize_text_field($user_login) . ')',
             'status' => 'allowed',
-            'rule_matched' => 'User Authentication Success',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'details' => ['username' => $user_login, 'event' => 'login_success']
         ]);
     }
 

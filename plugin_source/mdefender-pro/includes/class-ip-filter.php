@@ -281,19 +281,37 @@ class WAF_FW_IP_Filter {
         if (is_array($cloud_ips)) {
             $sanitized_ips = array_values(array_filter(array_map('trim', array_map('sanitize_text_field', $cloud_ips))));
         }
-        update_option('waf_fw_local_blacklist_cache', $sanitized_ips);
 
-        if (empty($sanitized_ips)) {
-            // If cloud blacklist is empty, purge all manual/auto entries
-            $wpdb->query("DELETE FROM $table");
-        } else {
-            // Remove any IP in MySQL that is not in the cloud blacklist
+        // Insert new cloud IPs into local table if not already present
+        if (!empty($sanitized_ips)) {
+            foreach ($sanitized_ips as $c_ip) {
+                if (in_array($c_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) continue;
+                $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table WHERE ip = %s", $c_ip));
+                if (!$exists) {
+                    $wpdb->insert($table, [
+                        'ip' => $c_ip,
+                        'reason' => 'Synced from MDefender-Pro Cloud',
+                        'type' => 'permanent',
+                        'auto_blocked' => 0,
+                        'blocked_at' => current_time('mysql'),
+                    ]);
+                }
+            }
+            // Only remove cloud-synced entries that were unblocked in the cloud
             $placeholders = implode(',', array_fill(0, count($sanitized_ips), '%s'));
             $wpdb->query($wpdb->prepare(
-                "DELETE FROM $table WHERE ip NOT IN ($placeholders)",
+                "DELETE FROM $table WHERE reason = 'Synced from MDefender-Pro Cloud' AND ip NOT IN ($placeholders)",
                 ...$sanitized_ips
             ));
+        } else {
+            // Remove previous cloud synced entries if cloud list is explicitly cleared
+            $wpdb->query("DELETE FROM $table WHERE reason = 'Synced from MDefender-Pro Cloud'");
         }
+
+        // Fetch all active IPs from DB to refresh local cache
+        $all_db_ips = $wpdb->get_col("SELECT ip FROM $table");
+        $merged_cache = array_values(array_unique(array_merge($all_db_ips ?: [], $sanitized_ips)));
+        update_option('waf_fw_local_blacklist_cache', $merged_cache);
 
         delete_transient('waf_fw_cloud_threat_ips');
 
