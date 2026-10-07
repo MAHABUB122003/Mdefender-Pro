@@ -127,6 +127,15 @@ class WAF_FW_Engine {
             $query_params = $_GET;
             $headers = getallheaders();
 
+            // Always allow Cloud Synchronization Webhooks & Internal WAF Sync Endpoints so the site can receive unblock & sync commands
+            $is_sync_endpoint = (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || 
+                                (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') || 
+                                (strpos($url, 'waf-fw') !== false) || 
+                                (strpos($url, 'wp-json/waf-fw') !== false));
+            if ($is_sync_endpoint) {
+                return $this->allowed_result($ip, $url, $method, 'WAF Sync Endpoint');
+            }
+
             if ($this->check_country_block($ip)) {
                 return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
             }

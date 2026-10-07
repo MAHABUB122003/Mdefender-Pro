@@ -676,8 +676,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     if site_token:
                         headers["X-Site-Token"] = site_token
 
-                    # 1. Attempt REST API Sync Endpoint first
-                    rest_endpoint = f"{clean_url}/wp-json/waf-fw/v1/sync"
+                    # 1. Attempt REST API Sync Endpoint first (with bypass param)
+                    rest_endpoint = f"{clean_url}/wp-json/waf-fw/v1/sync?waf_cloud_sync=1"
                     try:
                         resp = requests.post(
                             rest_endpoint,

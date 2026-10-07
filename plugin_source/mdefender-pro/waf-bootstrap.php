@@ -17,7 +17,9 @@ if (defined('MDEFENDER_BOOTSTRAP_EXECUTED')) {
 define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
 
 // Bypass bootstrap for cloud synchronization webhooks & internal API endpoints
-if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') || (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'waf-fw') !== false)) {
+if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || 
+    (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') || 
+    (isset($_SERVER['REQUEST_URI']) && (strpos($_SERVER['REQUEST_URI'], 'waf-fw') !== false || strpos($_SERVER['REQUEST_URI'], 'waf_cloud_sync') !== false))) {
     return;
 }
 
