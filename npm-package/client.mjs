@@ -53,14 +53,18 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
     window.__MDEFENDER_BLOCKED__ = true;
 
     const referenceId = refId || generateRefId();
-    const host = window.location.hostname || domain || 'localhost';
+    const host = window.location.hostname || domain || 'mahabubur.vercel.app';
     const nowUtc = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
     const unixRef = Math.floor(Date.now() / 1000);
     const classification = attackType || 'Cross-Site Scripting (XSS)';
 
+    const targetDomain = domain || _activeConfig.domain || (typeof window !== 'undefined' ? window.location.hostname : 'mahabubur.vercel.app') || 'mahabubur.vercel.app';
+    const targetUrl = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/';
+    const targetQuery = typeof window !== 'undefined' ? window.location.search : '';
+
     // 1. Dispatch Telemetry Beacon Immediately to MDefender Cloud WAF (Non-blocking)
     try {
-        let rawEp = (_activeConfig.apiEndpoint || 'http://217.15.170.82').replace(/\/+$/, '');
+        let rawEp = (_activeConfig.apiEndpoint || 'https://217.15.170.82.sslip.io').replace(/\/+$/, '');
         let targetEndpoint = rawEp.endsWith('/waf-api') 
             ? `${rawEp}/v1/waf/analyze` 
             : `${rawEp}/api/v1/waf/analyze`;
@@ -77,12 +81,12 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
                 method: 'GET',
                 url: targetUrl,
                 query_string: targetQuery,
-                ip: '127.0.0.1',
+                ip: '',
                 headers: {
                     'User-Agent': typeof navigator !== 'undefined' ? navigator.userAgent : 'Frontend-WAF',
                     'Authorization': _activeConfig.apiKey ? `Bearer ${_activeConfig.apiKey}` : undefined
                 },
-                body: '',
+                body: targetQuery || targetUrl || '',
                 attack_type: classification,
                 reference_id: referenceId
             }
@@ -101,10 +105,13 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
                 mode: 'cors',
                 keepalive: true
             }).catch(() => {});
-        } else if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        }
+        if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
             navigator.sendBeacon(targetEndpoint, new Blob([JSON.stringify(reportPayload)], { type: 'application/json' }));
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[MDefender] Telemetry dispatch error:', e);
+    }
 
     let hash = 0;
     for (let i = 0; i < classification.length; i++) {
@@ -538,7 +545,7 @@ export function initWaf(options = {}) {
             }
 
             // Real-time Cloud Deep ML Inspection (0-Day / Polymorphic AI Evaluation)
-            const targetEndpoint = (_activeConfig.apiEndpoint || 'http://217.15.170.82').replace(/\/+$/, '') + '/api/v1/waf/analyze';
+            const targetEndpoint = (_activeConfig.apiEndpoint || 'https://217.15.170.82.sslip.io').replace(/\/+$/, '') + '/api/v1/waf/analyze';
             const headers = { 'Content-Type': 'application/json' };
             if (_activeConfig.apiKey) {
                 headers['Authorization'] = `Bearer ${_activeConfig.apiKey}`;
