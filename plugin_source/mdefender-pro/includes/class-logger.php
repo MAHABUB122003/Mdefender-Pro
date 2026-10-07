@@ -46,23 +46,41 @@ class WAF_FW_Logger {
         error_log('[MDefender-Pro] ' . $message);
     }
 
-    public function log_request($data) {
-        global $wpdb;
-        $ip = $data['ip'] ?? '';
-        $country_code = $this->fast_get_country_code($ip);
+    private static $request_buffer = [];
+    private static $request_shutdown_registered = false;
 
-        $wpdb->insert(
-            $this->db->get_requests_table(),
-            [
-                'ip' => $ip,
-                'country_code' => $country_code,
-                'url' => $data['url'] ?? '',
-                'method' => $data['method'] ?? 'GET',
-                'status' => $data['status'] ?? 'allowed',
-                'user_agent' => $data['user_agent'] ?? '',
-                'created_at' => current_time('mysql'),
-            ]
-        );
+    public function log_request($data) {
+        self::$request_buffer[] = $data;
+        if (!self::$request_shutdown_registered) {
+            add_action('shutdown', [__CLASS__, 'flush_requests'], 25);
+            self::$request_shutdown_registered = true;
+        }
+    }
+
+    public static function flush_requests() {
+        if (empty(self::$request_buffer)) return;
+        global $wpdb;
+        $inst = self::instance();
+        $table = $inst->db->get_requests_table();
+        $now = current_time('mysql');
+
+        foreach (self::$request_buffer as $data) {
+            $ip = $data['ip'] ?? '';
+            $country_code = $inst->fast_get_country_code($ip);
+            $wpdb->insert(
+                $table,
+                [
+                    'ip' => $ip,
+                    'country_code' => $country_code,
+                    'url' => substr((string)($data['url'] ?? ''), 0, 500),
+                    'method' => substr((string)($data['method'] ?? 'GET'), 0, 10),
+                    'status' => substr((string)($data['status'] ?? 'allowed'), 0, 20),
+                    'user_agent' => substr((string)($data['user_agent'] ?? ''), 0, 255),
+                    'created_at' => $now,
+                ]
+            );
+        }
+        self::$request_buffer = [];
     }
 
     /**

@@ -527,8 +527,8 @@ class WAF_FW_Engine {
                 self::$geo_memory_cache[$ip] = strtoupper($local_cached);
                 return strtoupper($local_cached);
             }
-            if (function_exists('wp_remote_get')) {
-                $resp = wp_remote_get('http://ip-api.com/json/?fields=status,countryCode', ['timeout' => 1.0, 'sslverify' => false]);
+            if (function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
+                $resp = wp_remote_get('http://ip-api.com/json/?fields=status,countryCode', ['timeout' => 0.8, 'sslverify' => false]);
                 if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
                     $g = json_decode(wp_remote_retrieve_body($resp), true);
                     if (!empty($g['countryCode'])) {

@@ -457,8 +457,24 @@ add_action('waf_fw_cloud_heartbeat', 'waf_fw_cloud_heartbeat');
  * the WAF engine when a request is blocked or allowed.
  */
 function waf_fw_bump_stat($which, $amount = 1) {
-    $key = $which === 'blocked' ? 'waf_fw_stats_blocked' : 'waf_fw_stats_allowed';
-    update_option($key, (int) get_option($key, 0) + (int) $amount);
+    static $stats_buffer = ['blocked' => 0, 'allowed' => 0];
+    static $registered = false;
+
+    if (isset($stats_buffer[$which])) {
+        $stats_buffer[$which] += (int) $amount;
+    }
+
+    if (!$registered) {
+        $registered = true;
+        add_action('shutdown', function() use (&$stats_buffer) {
+            foreach ($stats_buffer as $key => $cnt) {
+                if ($cnt > 0) {
+                    $opt_name = $key === 'blocked' ? 'waf_fw_stats_blocked' : 'waf_fw_stats_allowed';
+                    update_option($opt_name, (int) get_option($opt_name, 0) + $cnt, false);
+                }
+            }
+        }, 30);
+    }
 }
 
 function waf_fw_init() {

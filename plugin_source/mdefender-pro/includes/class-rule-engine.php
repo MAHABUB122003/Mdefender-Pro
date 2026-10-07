@@ -72,7 +72,7 @@ class WAF_FW_Rule_Engine {
             
             // Next-Gen AI & Modern Zero-Day Attack Signatures
             ['name' => 'AI Security - Prompt Injection', 'pattern' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now|you\s+are\s+DAN\b)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\.prototype)\s*[\.\[]/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\.prototype)\s*(?:[\.\[]|["\']?\s*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JNDI / Log4j Injection Probe', 'pattern' => '/(?:\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'GraphQL Introspection Abuse', 'pattern' => '/(?:__schema\s*\{|__type\s*\(\s*name\s*:)/i', 'action' => 'block', 'severity' => 'medium', 'enabled' => true],
         ];

@@ -16,9 +16,9 @@ class WAF_FW_Rate_Limiter {
         return max(5, (int) get_option('waf_fw_rate_limit', 120));
     }
 
-    public function is_rate_limited($ip) {
+    public function is_rate_limited($ip, $custom_max = null) {
         if (empty($ip)) return false;
-        $max_requests = $this->get_max_requests();
+        $max_requests = $custom_max !== null ? max(1, (int) $custom_max) : $this->get_max_requests();
         $key = 'waf_fw_rate_' . md5($ip);
 
         // 1. Fast-path in-memory APCu cache (< 0.001ms)
@@ -36,8 +36,6 @@ class WAF_FW_Rate_Limiter {
                 apcu_store($key, $data, $this->window_seconds);
                 return true;
             }
-            $data[] = $now;
-            apcu_store($key, $data, $this->window_seconds);
             return false;
         }
 
@@ -59,8 +57,6 @@ class WAF_FW_Rate_Limiter {
             set_transient($key, json_encode($data), $this->window_seconds);
             return true;
         }
-        $data[] = $now;
-        set_transient($key, json_encode($data), $this->window_seconds);
         return false;
     }
 
