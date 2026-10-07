@@ -120,10 +120,22 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
             text-align: left;
         }
 
-        .brand-logo-svg {
-            width: 52px;
-            height: 38px;
+        .brand-logo-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
+        }
+
+        .brand-logo-svg {
+            width: 58px;
+            height: 42px;
+            filter: drop-shadow(0 4px 10px rgba(234, 88, 12, 0.22));
+            transition: transform 0.2s ease;
+        }
+
+        .brand-logo-svg:hover {
+            transform: scale(1.05);
         }
 
         .brand-info {
@@ -355,17 +367,29 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
     <div class="block-wrapper">
         <!-- Top Logo & Brand Header -->
         <div class="brand-header">
-            <svg class="brand-logo-svg" viewBox="0 0 64 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="cloudOrangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#f59e0b" />
-                        <stop offset="60%" stop-color="#ea580c" />
-                        <stop offset="100%" stop-color="#c2410c" />
-                    </linearGradient>
-                </defs>
-                <path d="M19 40C12.373 40 7 34.627 7 28C7 21.848 11.642 16.782 17.618 16.096C20.082 10.985 25.328 7.5 31.5 7.5C39.467 7.5 46.064 13.344 47.311 21.033C52.802 21.862 57 26.592 57 32.308C57 38.765 51.765 40 45.308 40H19Z" fill="url(#cloudOrangeGrad)"/>
-                <path d="M22 38H45.308C50.661 38 55 35.454 55 32.308C55 27.464 51.365 23.447 46.735 22.846L44.407 22.545L43.992 20.231C42.868 13.968 37.525 9.5 31.5 9.5C26.155 9.5 21.579 12.593 19.467 17.202L18.723 18.825L16.945 19.09C11.758 19.866 9 24.168 9 28C9 33.523 13.477 38 19 38L22 38Z" fill="#ffffff" fill-opacity="0.18"/>
-            </svg>
+            <div class="brand-logo-wrap">
+                <svg class="brand-logo-svg" viewBox="0 0 80 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="cloudOrangeGrad" x1="10%" y1="5%" x2="90%" y2="95%">
+                            <stop offset="0%" stop-color="#ff9d42" />
+                            <stop offset="35%" stop-color="#f97316" />
+                            <stop offset="75%" stop-color="#ea580c" />
+                            <stop offset="100%" stop-color="#c2410c" />
+                        </linearGradient>
+                        <linearGradient id="cloudInnerHighlight" x1="20%" y1="0%" x2="80%" y2="100%">
+                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35" />
+                            <stop offset="60%" stop-color="#ffffff" stop-opacity="0.05" />
+                            <stop offset="100%" stop-color="#ea580c" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Main Cloud Body -->
+                    <path d="M22 46C13.163 46 6 38.837 6 30C6 21.688 12.336 14.864 20.485 14.086C23.635 7.828 30.134 3.5 37.5 3.5C46.889 3.5 54.728 9.941 56.794 18.799C64.12 19.825 69.5 26.046 69.5 33.5C69.5 40.404 63.904 46 57 46H22Z" 
+                          fill="url(#cloudOrangeGrad)"/>
+                    <!-- Subtle 3D Top Inner Glow & Depth -->
+                    <path d="M22 44C14.268 44 8 37.732 8 30C8 22.84 13.388 16.945 20.352 16.1C21.492 16.02 22.427 15.22 22.75 14.12C25.433 8.784 31.026 5.5 37.5 5.5C45.397 5.5 52.052 10.875 54.004 18.35C54.341 19.64 55.485 20.57 56.815 20.73C63.02 21.57 67.5 26.88 67.5 33.25C67.5 39.187 62.687 44 56.75 44H22Z" 
+                          fill="url(#cloudInnerHighlight)"/>
+                </svg>
+            </div>
             <div class="brand-info">
                 <div class="brand-title">MDEFENDER-PRO AI</div>
                 <div class="brand-subtitle">A.S.A.P. SECURITY FIREWALL</div>
