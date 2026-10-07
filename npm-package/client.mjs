@@ -138,12 +138,12 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 50px 24px;
+            padding: 60px 24px;
             -webkit-font-smoothing: antialiased;
         }
         .block-wrapper {
             width: 100%;
-            max-width: 960px;
+            max-width: 1080px;
             margin: 0 auto;
             text-align: center;
         }
@@ -151,8 +151,8 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 18px;
-            margin-bottom: 32px;
+            gap: 20px;
+            margin-bottom: 36px;
             text-align: left;
         }
         .brand-logo-wrap {
@@ -162,21 +162,21 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             flex-shrink: 0;
         }
         .brand-logo-svg {
-            width: 60px;
-            height: 60px;
-            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.38));
+            width: 72px;
+            height: 72px;
+            filter: drop-shadow(0 8px 20px rgba(246, 130, 31, 0.42));
             transition: transform 0.2s ease, filter 0.2s ease;
         }
         .brand-logo-svg:hover {
             transform: scale(1.06);
-            filter: drop-shadow(0 8px 22px rgba(246, 130, 31, 0.52));
+            filter: drop-shadow(0 10px 26px rgba(246, 130, 31, 0.58));
         }
         .brand-info {
             display: flex;
             flex-direction: column;
         }
         .brand-title {
-            font-size: 18px;
+            font-size: 21px;
             font-weight: 900;
             color: #0f172a;
             letter-spacing: 0.8px;
@@ -184,128 +184,128 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             text-transform: uppercase;
         }
         .brand-subtitle {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             color: #64748b;
-            letter-spacing: 2px;
+            letter-spacing: 2.2px;
             text-transform: uppercase;
             margin-top: 3px;
         }
         .brand-owner {
-            font-size: 14px;
-            font-weight: 800;
+            font-size: 16px;
+            font-weight: 900;
             color: #0f172a;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             margin-top: 3px;
         }
         .headline-403 {
-            font-size: 40px;
+            font-size: 50px;
             font-weight: 900;
             color: var(--text-heading);
-            letter-spacing: -0.6px;
+            letter-spacing: -0.8px;
             line-height: 1.15;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .headline-denied {
-            font-size: 25px;
-            font-weight: 800;
-            color: var(--text-heading);
-            margin-bottom: 10px;
-        }
-        .headline-restricted {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--orange-alert);
-            margin-bottom: 42px;
-        }
-        .info-columns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 48px;
-            text-align: left;
-            margin-bottom: 42px;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .info-box-title {
-            font-size: 20px;
+            font-size: 30px;
             font-weight: 800;
             color: var(--text-heading);
             margin-bottom: 12px;
         }
+        .headline-restricted {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--orange-alert);
+            margin-bottom: 48px;
+        }
+        .info-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 56px;
+            text-align: left;
+            margin-bottom: 48px;
+            max-width: 1020px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .info-box-title {
+            font-size: 23px;
+            font-weight: 800;
+            color: var(--text-heading);
+            margin-bottom: 14px;
+        }
         .info-box-text {
-            font-size: 15px;
-            line-height: 1.65;
+            font-size: 16.5px;
+            line-height: 1.7;
             color: var(--text-sub);
         }
         .info-box-text p + p {
-            margin-top: 12px;
+            margin-top: 14px;
         }
         .tech-details-container {
             border-top: 1px solid var(--border-light);
             border-bottom: 1px solid var(--border-light);
-            padding: 30px 0;
-            margin-bottom: 34px;
-            max-width: 900px;
+            padding: 36px 0;
+            margin-bottom: 40px;
+            max-width: 1020px;
             margin-left: auto;
             margin-right: auto;
         }
         .tech-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 24px 32px;
+            gap: 28px 36px;
             text-align: left;
         }
         .tech-item-label {
-            font-size: 13.5px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 800;
             color: #0f172a;
             margin-bottom: 6px;
         }
         .tech-item-value {
-            font-size: 14.5px;
+            font-size: 16px;
             color: #334155;
-            line-height: 1.5;
+            line-height: 1.55;
             word-break: break-word;
         }
         .tech-item-value-bold {
-            font-size: 15px;
-            font-weight: 800;
+            font-size: 17px;
+            font-weight: 900;
             color: #0f172a;
             font-family: var(--font-mono);
         }
         .ip-flag-wrap {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 9px;
         }
         .flag-icon {
-            width: 22px;
-            height: 16px;
-            border-radius: 3px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            width: 26px;
+            height: 19px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
             vertical-align: middle;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
         .attack-badge {
             display: inline-block;
             background-color: #ffedd5;
             color: #9a3412;
             border: 1px solid #fed7aa;
-            font-size: 13px;
+            font-size: 14.5px;
             font-weight: 700;
-            padding: 4px 12px;
-            border-radius: 6px;
+            padding: 5px 14px;
+            border-radius: 7px;
             margin-top: 2px;
         }
         .actions-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 14px;
-            margin-bottom: 28px;
+            gap: 16px;
+            margin-bottom: 32px;
             flex-wrap: wrap;
         }
         .btn {
@@ -313,10 +313,10 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             align-items: center;
             justify-content: center;
             font-family: var(--font-family);
-            font-size: 14px;
+            font-size: 15.5px;
             font-weight: 700;
-            padding: 10px 22px;
-            border-radius: 8px;
+            padding: 12px 26px;
+            border-radius: 9px;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -342,16 +342,17 @@ export function renderOfficialBlockPage(attackType, refId, domain) {
             color: #0f172a;
         }
         .footer-note {
-            font-size: 12.5px;
+            font-size: 14px;
             color: var(--text-muted);
             line-height: 1.5;
         }
         @media (max-width: 768px) {
-            .info-columns { grid-template-columns: 1fr; gap: 24px; }
-            .tech-grid { grid-template-columns: 1fr; gap: 18px; }
-            .brand-header { flex-direction: column; text-align: center; gap: 12px; }
+            .info-columns { grid-template-columns: 1fr; gap: 28px; }
+            .tech-grid { grid-template-columns: 1fr; gap: 20px; }
+            .brand-header { flex-direction: column; text-align: center; gap: 14px; }
             .brand-info { align-items: center; }
-            .headline-403 { font-size: 32px; }
+            .headline-403 { font-size: 38px; }
+            .headline-denied { font-size: 24px; }
         }
     </style>
 </head>
