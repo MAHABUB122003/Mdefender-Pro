@@ -12,6 +12,7 @@ Plans are created/updated in Paddle from `plan_service.DEFAULT_PLANS` when a
 Paddle client is configured.
 """
 
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
