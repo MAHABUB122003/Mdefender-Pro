@@ -136,9 +136,9 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
         if (discovered.length > 0) {
           setRecords(discovered)
         } else {
-          // Provide default origin placeholder
+          // No records discovered: start with empty list or empty origin row
           setRecords([
-            { id: 'def-1', type: 'A', name: '@', content: '203.0.113.10', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
+            { id: 'def-1', type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
             { id: 'def-2', type: 'CNAME', name: 'www', content: cleanDomain, ttl: 'Auto', proxied: true, purpose: 'Alias' }
           ])
         }
@@ -151,7 +151,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
     } catch (err) {
       console.warn('DNS Discovery fallback:', err)
       setRecords([
-        { id: 'def-1', type: 'A', name: '@', content: '203.0.113.10', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
+        { id: 'def-1', type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
         { id: 'def-2', type: 'CNAME', name: 'www', content: cleanDomain, ttl: 'Auto', proxied: true, purpose: 'Alias' }
       ])
     } finally {
@@ -300,7 +300,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
               </div>
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#0f172a' }}>
-                  Connect your website to MDefender Cloud WAF
+                  Connect your domain to MDefender WAF
                 </h2>
                 <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
                   Enterprise domain-based DDoS &amp; Layer 7 Web Application Firewall
@@ -326,10 +326,10 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px'
         }}>
           {[
-            { num: 1, title: 'Add Website' },
+            { num: 1, title: 'Add Domain' },
             { num: 2, title: 'DNS Discovery & Review' },
             { num: 3, title: 'Nameservers & SSL' },
-            { num: 4, title: 'Cloud WAF Active' }
+            { num: 4, title: 'WAF Active' }
           ].map((s) => {
             const isCurrent = step === s.num
             const isDone = step > s.num
@@ -559,7 +559,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
                         Review DNS Records for {domain}
                       </h3>
                       <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                        Shield icons (🛡️ Proxied) route through MDefender Cloud WAF. Globe icons (🌐 DNS Only) resolve directly to origin.
+                        Shield icons (🛡️ Proxied) route through MDefender WAF. Globe icons (🌐 DNS Only) resolve directly to origin.
                       </p>
                     </div>
                     <button
