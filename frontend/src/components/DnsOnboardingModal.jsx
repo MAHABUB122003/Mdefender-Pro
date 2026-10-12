@@ -112,6 +112,111 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
     }
   }
 
+  // Client-Side Public DoH Resolver (Bypasses backend or VPS network issues)
+  const discoverPublicDnsDirect = async (cleanDomain) => {
+    const typeCodeMap = { 1: 'A', 28: 'AAAA', 5: 'CNAME', 15: 'MX', 16: 'TXT', 2: 'NS', 257: 'CAA' }
+    const discovered = []
+    const detectedNs = []
+    const seen = new Set()
+
+    const subList = [
+      'www', 'mail', 'ftp', 'cpanel', 'webmail', 'webdisk',
+      'api', 'admin', 'autodiscover', 'shop', 'blog', 'app', 'dev', 'portal', 'vpn', '_dmarc'
+    ]
+
+    const queryDoh = async (name, qtype) => {
+      try {
+        const resp = await fetch(`https://dns.google/resolve?name=${name}&type=${qtype}`, {
+          headers: { Accept: 'application/dns-json' }
+        })
+        if (resp.ok) {
+          const data = await resp.json()
+          return data.Answer || []
+        }
+      } catch {
+        try {
+          const resp = await fetch(`https://cloudflare-dns.com/dns-query?name=${name}&type=${qtype}`, {
+            headers: { Accept: 'application/dns-json' }
+          })
+          if (resp.ok) {
+            const data = await resp.json()
+            return data.Answer || []
+          }
+        } catch {}
+      }
+      return []
+    }
+
+    const queries = [
+      queryDoh(cleanDomain, 'ANY'),
+      queryDoh(cleanDomain, 'A'),
+      queryDoh(cleanDomain, 'MX'),
+      queryDoh(cleanDomain, 'TXT'),
+      queryDoh(cleanDomain, 'NS'),
+      ...subList.map((s) => queryDoh(`${s}.${cleanDomain}`, s === '_dmarc' ? 'TXT' : 'ANY')),
+      ...subList.map((s) => queryDoh(`${s}.${cleanDomain}`, 'A'))
+    ]
+
+    const results = await Promise.all(queries)
+    const allAnswers = results.flat()
+
+    allAnswers.forEach((ans) => {
+      const tCode = ans.type
+      const tName = typeCodeMap[tCode]
+      if (!tName) return
+
+      let rawName = (ans.name || '').replace(/\.$/, '').toLowerCase()
+      let data = (ans.data || '').trim()
+
+      let recName = '@'
+      if (rawName === cleanDomain) {
+        recName = '@'
+      } else if (rawName.endsWith('.' + cleanDomain)) {
+        recName = rawName.slice(0, -(cleanDomain.length + 1))
+      } else {
+        recName = rawName
+      }
+
+      if (tName === 'CNAME' || tName === 'NS') {
+        data = data.replace(/\.$/, '')
+      } else if (tName === 'MX') {
+        const parts = data.split(/\s+/)
+        data = (parts.length >= 2 ? parts[1] : data).replace(/\.$/, '')
+      } else if (tName === 'TXT') {
+        data = data.replace(/^"/, '').replace(/"$/, '')
+      }
+
+      if (tName === 'NS' && recName === '@') {
+        if (data && !detectedNs.includes(data)) detectedNs.push(data)
+        return
+      }
+
+      if (!data) return
+
+      const dedupKey = `${tName}:${recName}:${data}`
+      if (seen.has(dedupKey)) return
+      seen.add(dedupKey)
+
+      const nonProxied = ['mail', 'cpanel', 'webmail', 'ftp', 'smtp', 'pop', 'imap', 'vpn']
+      const isWeb = !nonProxied.includes(recName) && ['@', 'www', 'api', 'app'].includes(recName)
+
+      discovered.push({
+        id: 'doh-' + Math.random().toString(36).substr(2, 9),
+        type: tName,
+        name: recName,
+        content: data,
+        ttl: 'Auto',
+        proxied: !['MX', 'TXT', 'CAA'].includes(tName) && isWeb,
+        purpose: `${recName.toUpperCase()} ${tName} record`
+      })
+    })
+
+    const typeOrder = { A: 1, AAAA: 2, CNAME: 3, MX: 4, TXT: 5, CAA: 6 }
+    discovered.sort((a, b) => (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99))
+
+    return { records: discovered, current_nameservers: detectedNs }
+  }
+
   // Step 1 -> Step 2: Trigger DNS Discovery
   const handleStartDiscovery = async (e) => {
     e.preventDefault()
@@ -127,16 +232,36 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
 
     try {
       if (scanDns) {
-        const res = await api.discoverDns(cleanDomain, scanSubdomains)
-        const discovered = res?.data?.records || res?.records || []
-        const detectedNs = res?.data?.current_nameservers || res?.current_nameservers || []
+        let discovered = []
+        let detectedNs = []
+
+        try {
+          const res = await api.discoverDns(cleanDomain, scanSubdomains)
+          discovered = res?.data?.records || res?.records || []
+          detectedNs = res?.data?.current_nameservers || res?.current_nameservers || []
+        } catch (apiErr) {
+          console.warn('Backend discover API failed or 404, falling back to direct browser DoH:', apiErr)
+        }
+
+        // If backend returned empty or errored, run direct public DoH
+        if (discovered.length === 0) {
+          const dohRes = await discoverPublicDnsDirect(cleanDomain)
+          if (dohRes.records && dohRes.records.length > 0) {
+            discovered = dohRes.records
+          }
+          if (dohRes.current_nameservers && dohRes.current_nameservers.length > 0) {
+            detectedNs = dohRes.current_nameservers
+          }
+        }
+
         if (detectedNs && detectedNs.length > 0) {
           setCurrentNameservers(detectedNs)
         }
+
         if (discovered.length > 0) {
           setRecords(discovered)
         } else {
-          // No records discovered: start with empty list or empty origin row
+          // Manual fallback if domain genuinely has zero public records
           setRecords([
             { id: 'def-1', type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
             { id: 'def-2', type: 'CNAME', name: 'www', content: cleanDomain, ttl: 'Auto', proxied: true, purpose: 'Alias' }
@@ -150,10 +275,24 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
       }
     } catch (err) {
       console.warn('DNS Discovery fallback:', err)
-      setRecords([
-        { id: 'def-1', type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
-        { id: 'def-2', type: 'CNAME', name: 'www', content: cleanDomain, ttl: 'Auto', proxied: true, purpose: 'Alias' }
-      ])
+      // Even in catch, attempt client DoH
+      try {
+        const dohRes = await discoverPublicDnsDirect(cleanDomain)
+        if (dohRes.records && dohRes.records.length > 0) {
+          setRecords(dohRes.records)
+          if (dohRes.current_nameservers) setCurrentNameservers(dohRes.current_nameservers)
+        } else {
+          setRecords([
+            { id: 'def-1', type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
+            { id: 'def-2', type: 'CNAME', name: 'www', content: cleanDomain, ttl: 'Auto', proxied: true, purpose: 'Alias' }
+          ])
+        }
+      } catch {
+        setRecords([
+          { id: 'def-1', type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, purpose: 'IPv4 origin server' },
+          { id: 'def-2', type: 'CNAME', name: 'www', content: cleanDomain, ttl: 'Auto', proxied: true, purpose: 'Alias' }
+        ])
+      }
     } finally {
       setDiscovering(false)
     }
