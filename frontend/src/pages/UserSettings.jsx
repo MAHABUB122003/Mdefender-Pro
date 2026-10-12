@@ -266,7 +266,6 @@ export default function UserSettings() {
           { id: 'account', icon: 'fa-user-circle', label: 'Account', color: '#2563eb' },
           { id: 'security', icon: 'fa-shield-halved', label: 'Security', color: '#10b981' },
           { id: 'billing', icon: 'fa-crown', label: 'Billing', color: '#f59e0b' },
-          { id: 'api', icon: 'fa-key', label: 'API Key', color: '#8b5cf6' },
         ].map(s => (
           <button key={s.id} onClick={() => setActiveSection(activeSection === s.id ? null : s.id)} style={{
             padding: '10px 18px', borderRadius: '10px', border: `1px solid ${activeSection === s.id ? s.color : '#e2e8f0'}`,
@@ -755,76 +754,6 @@ export default function UserSettings() {
                     )}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {(activeSection === null || activeSection === 'api') && (
-          /* API Key */
-          <div style={{
-            background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden', gridColumn: activeSection === 'api' ? '1 / -1' : undefined,
-          }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6', fontSize: '16px' }}>
-                <i className="fas fa-key"></i>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>API Key</h3>
-                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Used to authenticate your websites</p>
-              </div>
-            </div>
-            <div style={{ padding: '20px 24px' }}>
-              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px', lineHeight: '1.5' }}>
-                Use this key to connect your websites to MDefender's protection network. Keep it secret and never share it publicly.
-              </p>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <div style={{
-                  flex: 1, padding: '14px 16px', background: '#f8fafc', border: '1.5px solid #e2e8f0',
-                  borderRadius: '10px', fontSize: '14px', fontFamily: "'Fira Code', Consolas, monospace",
-                  color: '#2563eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center',
-                }}>
-                  {showApiKey ? (profile?.api_key || 'No key generated') : (profile?.api_key ? '•'.repeat(36) : 'No key generated')}
-                </div>
-                <button onClick={() => setShowApiKey(!showApiKey)} style={{
-                  width: '44px', height: '44px', borderRadius: '10px', border: '1.5px solid #e2e8f0',
-                  background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#64748b', fontSize: '14px', flexShrink: 0, transition: 'all 0.2s',
-                }}>
-                  <i className={`fas ${showApiKey ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                </button>
-                <button onClick={copyApiKey} style={{
-                  width: '44px', height: '44px', borderRadius: '10px', border: '1.5px solid #e2e8f0',
-                  background: copiedApiKey ? '#ecfdf5' : '#fff',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: copiedApiKey ? '#10b981' : '#64748b', fontSize: '14px', flexShrink: 0,
-                  transition: 'all 0.2s', borderColor: copiedApiKey ? '#a7f3d0' : '#e2e8f0',
-                }}>
-                  <i className={`fas ${copiedApiKey ? 'fa-check' : 'fa-copy'}`}></i>
-                </button>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={async () => {
-                  if (!confirm('Regenerate API key? Your old key will stop working immediately.')) return
-                  try { await api.regenerateApiKey(); fetchProfile(); showMsg('API key regenerated.') } catch (err) { showErr(err.message) }
-                }} style={{
-                  padding: '10px 18px', background: '#fffbeb', color: '#d97706',
-                  border: '1px solid #fde68a', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                  cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px',
-                  transition: 'all 0.2s',
-                }}>
-                  <i className="fas fa-arrow-rotate-right"></i> Regenerate
-                </button>
-                <Link to="/user/connect" style={{
-                  padding: '10px 18px', background: '#eff6ff', color: '#2563eb',
-                  border: '1px solid #bfdbfe', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                  textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px',
-                  transition: 'all 0.2s',
-                }}>
-                  <i className="fas fa-link"></i> Setup Guide
-                </Link>
               </div>
             </div>
           </div>

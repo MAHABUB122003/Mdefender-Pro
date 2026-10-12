@@ -346,7 +346,7 @@ export const api = {
   updateUserProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
   changeUserPassword: (data) => apiCall('/api/user/change_password', { method: 'POST', body: JSON.stringify(data) }),
   regenerateApiKey: (data) => apiCall('/api/user/regenerate_key', { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
-  getUserWebsites: () => apiCall('/api/v1/websites'),
+  getUserWebsites: (platform) => apiCall(`/api/v1/websites${platform ? `?platform=${encodeURIComponent(platform)}` : ''}`),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
   removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),

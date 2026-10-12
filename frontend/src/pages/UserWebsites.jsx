@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
@@ -11,6 +11,15 @@ export default function UserWebsites() {
   const [newWebsite, setNewWebsite] = useState('')
   const [adding, setAdding] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
+
+  // Dedicated WordPress Websites (Filtered to exclude pure domains)
+  const wpWebsites = useMemo(() => {
+    const list = data?.websites || []
+    return list.filter(w => {
+      const p = (w.platform || '').toLowerCase()
+      return p === 'wordpress' || p === 'wp'
+    })
+  }, [data])
 
   // Domain Zone Management Modal (if needed for edge routing)
   const [selectedZoneWebsite, setSelectedZoneWebsite] = useState(null)
@@ -370,10 +379,10 @@ export default function UserWebsites() {
         <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main, #0f172a)', margin: '0 0 2px' }}>
-              My Protected Websites ({data?.websites?.length || 0})
+              My Protected WordPress Websites ({wpWebsites.length})
             </h3>
             <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b' }}>
-              Manage website API keys, protection status, and integration settings.
+              Manage WordPress website API keys, protection status, and integration settings.
             </p>
           </div>
           <button onClick={fetchData} className="btn-small" style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -383,10 +392,10 @@ export default function UserWebsites() {
         </div>
 
         <div>
-          {data?.websites?.length ? data.websites.map((w, i) => (
+          {wpWebsites.length ? wpWebsites.map((w, i) => (
             <div key={w.id || w._id || i} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '18px 24px', borderBottom: i < data.websites.length - 1 ? '1px solid var(--border-color, #f1f5f9)' : 'none',
+              padding: '18px 24px', borderBottom: i < wpWebsites.length - 1 ? '1px solid var(--border-color, #f1f5f9)' : 'none',
               transition: 'background 0.15s', flexWrap: 'wrap', gap: '14px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>

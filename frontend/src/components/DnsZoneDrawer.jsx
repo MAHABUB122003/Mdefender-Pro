@@ -388,7 +388,7 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                     <form onSubmit={handleAddRecord} style={{
                       background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '12px',
                       padding: '18px', marginBottom: '20px', display: 'grid',
-                      gridTemplateColumns: '100px 150px 1fr 110px auto auto', gap: '10px', alignItems: 'center'
+                      gridTemplateColumns: '100px 140px 1fr auto auto', gap: '10px', alignItems: 'center'
                     }}>
                       <select
                         value={newRecord.type}
@@ -413,23 +413,13 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                         style={{ height: '40px', borderRadius: '8px', border: '1px solid #cbd5e1', padding: '0 10px', fontSize: '13px', fontWeight: '600' }}
                         required
                       />
-                      <select
-                        value={newRecord.ttl}
-                        onChange={e => setNewRecord({ ...newRecord, ttl: e.target.value })}
-                        style={{ height: '40px', borderRadius: '8px', border: '1px solid #cbd5e1', padding: '0 8px', fontSize: '12px' }}
-                      >
-                        <option value="Auto">Auto</option>
-                        <option value="1 min">1 min</option>
-                        <option value="5 mins">5 mins</option>
-                        <option value="1 hour">1 hour</option>
-                      </select>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#0f172a', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
-                          disabled={['MX', 'TXT', 'SRV'].includes(newRecord.type)}
-                          checked={['MX', 'TXT', 'SRV'].includes(newRecord.type) ? false : newRecord.proxied}
+                          disabled={['MX', 'TXT', 'SRV', 'CAA'].includes(newRecord.type)}
+                          checked={['MX', 'TXT', 'SRV', 'CAA'].includes(newRecord.type) ? false : newRecord.proxied}
                           onChange={e => setNewRecord({ ...newRecord, proxied: e.target.checked })}
-                          style={{ width: '16px', height: '16px', accentColor: '#f97316' }}
+                          style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
                         />
                         <span>Proxied</span>
                       </label>
@@ -645,40 +635,78 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                     padding: '22px', marginBottom: '24px'
                   }}>
                     <div style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', marginBottom: '6px' }}>
-                      Assigned Anycast Nameservers
+                      Nameserver Delegation &amp; Migration
                     </div>
                     <p style={{ fontSize: '12.5px', color: '#64748b', margin: '0 0 16px' }}>
-                      Update the nameserver records at your domain registrar to point to MDefender:
+                      To activate MDefender Pro Edge WAF protection, update your nameservers at your domain registrar:
                     </p>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-                      {['ns1.mdefender.pro', 'ns2.mdefender.pro'].map((ns, i) => (
-                        <div key={ns} style={{
-                          background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '10px',
-                          padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                        }}>
-                          <div>
-                            <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase' }}>
-                              Nameserver {i + 1}
+                    {/* Step 1: Remove Existing Nameservers */}
+                    <div style={{
+                      background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '12px',
+                      padding: '16px', marginBottom: '16px'
+                    }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: '800', color: '#991b1b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fas fa-trash-can text-rose-600"></i>
+                        <span>Step 1: Remove these existing nameservers:</span>
+                      </div>
+                      {zone?.current_nameservers && zone.current_nameservers.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px' }}>
+                          {zone.current_nameservers.map((ns, idx) => (
+                            <div key={idx} style={{
+                              background: '#ffffff', border: '1px solid #fca5a5', borderRadius: '8px',
+                              padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px'
+                            }}>
+                              <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#dc2626', textTransform: 'uppercase' }}>Current NS {idx + 1}:</span>
+                              <code style={{ fontSize: '13px', fontWeight: '700', color: '#991b1b' }}>{ns}</code>
                             </div>
-                            <div style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>
-                              {ns}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(ns, ns)}
-                            style={{
-                              padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0',
-                              background: '#f8fafc', color: copiedField === ns ? '#10b981' : '#2563eb',
-                              fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
-                            }}
-                          >
-                            <i className={`fas ${copiedField === ns ? 'fa-check' : 'fa-copy'}`}></i>
-                            <span>{copiedField === ns ? 'Copied' : 'Copy'}</span>
-                          </button>
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <div style={{ fontSize: '12px', color: '#b91c1c' }}>
+                          Remove the previous nameservers configured at your registrar.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step 2: Add MDefender Anycast Nameservers */}
+                    <div style={{
+                      background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '12px',
+                      padding: '16px', marginBottom: '16px'
+                    }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: '800', color: '#166534', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fas fa-plus-circle text-emerald-600"></i>
+                        <span>Step 2: Add MDefender Pro Anycast nameservers:</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                        {['ns1.mdefender.pro', 'ns2.mdefender.pro'].map((ns, i) => (
+                          <div key={ns} style={{
+                            background: '#ffffff', border: '1.5px solid #86efac', borderRadius: '10px',
+                            padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          }}>
+                            <div>
+                              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#15803d', textTransform: 'uppercase' }}>
+                                MDefender NS {i + 1}
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>
+                                {ns}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(ns, ns)}
+                              style={{
+                                padding: '6px 12px', borderRadius: '6px', border: '1px solid #bbf7d0',
+                                background: '#f0fdf4', color: copiedField === ns ? '#10b981' : '#15803d',
+                                fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                              }}
+                            >
+                              <i className={`fas ${copiedField === ns ? 'fa-check' : 'fa-copy'}`}></i>
+                              <span>{copiedField === ns ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>

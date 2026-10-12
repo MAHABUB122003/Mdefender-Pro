@@ -104,12 +104,14 @@ class DNSZoneService:
         return d
 
     def discover_public_dns(self, raw_domain: str, scan_subdomains: bool = True) -> Dict[str, Any]:
-        """Perform public DNS discovery for a root domain, resolving A, AAAA, CNAME, MX, TXT and probing common subdomains."""
+        """Perform public DNS discovery for a root domain, resolving A, AAAA, CNAME, MX, TXT, NS, CAA and probing common subdomains in parallel."""
+        import concurrent.futures
         domain = self.normalize_domain(raw_domain)
         if not domain:
-            return {"status": "error", "message": "Domain name is required", "records": []}
+            return {"status": "error", "message": "Domain name is required", "records": [], "current_nameservers": []}
 
         discovered_records: List[Dict[str, Any]] = []
+        current_nameservers: List[str] = []
 
         if not HAS_DNSPYTHON:
             # Fallback to standard socket if dnspython is absent
@@ -130,160 +132,185 @@ class DNSZoneService:
                 "status": "success",
                 "domain": domain,
                 "records": discovered_records,
+                "current_nameservers": [],
+                "target_nameservers": MDEFENDER_NAMESERVERS,
                 "scan_completed": True,
                 "discovered_count": len(discovered_records),
                 "message": "Basic DNS lookup completed (dnspython not available).",
             }
 
         resolver = dns.resolver.Resolver()
-        resolver.timeout = 1.2
+        resolver.timeout = 1.5
         resolver.lifetime = 2.0
-        # Configure reliable public DNS resolvers
+        # Use reliable public Anycast DNS resolvers
         resolver.nameservers = ["1.1.1.1", "8.8.8.8", "8.8.4.4"]
 
-        # 1. Query Root A Records (IPv4)
-        try:
-            answers = resolver.resolve(domain, "A")
-            for rdata in answers:
-                discovered_records.append({
+        def _query_dns(target_name: str, rtype: str):
+            try:
+                ans = resolver.resolve(target_name, rtype)
+                return [(target_name, rtype, rdata) for rdata in ans]
+            except Exception:
+                return []
+
+        # Prepare parallel query tasks
+        tasks = [
+            (domain, "A"),
+            (domain, "AAAA"),
+            (domain, "CNAME"),
+            (domain, "MX"),
+            (domain, "TXT"),
+            (domain, "NS"),
+            (domain, "CAA"),
+        ]
+
+        sub_list = ["www", "mail", "api", "blog", "app", "dev", "shop", "cpanel", "webmail", "store", "admin"] if scan_subdomains else ["www"]
+        for sub in sub_list:
+            fqdn = f"{sub}.{domain}"
+            tasks.append((fqdn, "CNAME"))
+            tasks.append((fqdn, "A"))
+
+        # Run queries concurrently using ThreadPoolExecutor for sub-second speed
+        with concurrent.futures.ThreadPoolExecutor(max_workers=14) as executor:
+            future_to_task = {executor.submit(_query_dns, t[0], t[1]): t for t in tasks}
+            for future in concurrent.futures.as_completed(future_to_task):
+                target_name, rtype = future_to_task[future]
+                try:
+                    res_items = future.result()
+                    for qname, qtype, rdata in res_items:
+                        rec_name = "@" if qname == domain else qname.replace(f".{domain}", "")
+                        if qtype == "A":
+                            is_web = rec_name in WEB_PROXIED_NAMES
+                            discovered_records.append({
+                                "id": str(uuid.uuid4()),
+                                "type": "A",
+                                "name": rec_name,
+                                "content": rdata.to_text(),
+                                "ttl": "Auto",
+                                "proxied": is_web,
+                                "purpose": f"{rec_name.upper()} IPv4 origin server" if rec_name != "@" else "IPv4 origin server",
+                            })
+                        elif qtype == "AAAA":
+                            is_web = rec_name in WEB_PROXIED_NAMES
+                            discovered_records.append({
+                                "id": str(uuid.uuid4()),
+                                "type": "AAAA",
+                                "name": rec_name,
+                                "content": rdata.to_text(),
+                                "ttl": "Auto",
+                                "proxied": is_web,
+                                "purpose": f"{rec_name.upper()} IPv6 origin server" if rec_name != "@" else "IPv6 origin server",
+                            })
+                        elif qtype == "CNAME":
+                            is_web = rec_name in WEB_PROXIED_NAMES
+                            discovered_records.append({
+                                "id": str(uuid.uuid4()),
+                                "type": "CNAME",
+                                "name": rec_name,
+                                "content": rdata.to_text().rstrip("."),
+                                "ttl": "Auto",
+                                "proxied": is_web,
+                                "purpose": f"{rec_name.upper()} alias target",
+                            })
+                        elif qtype == "MX":
+                            discovered_records.append({
+                                "id": str(uuid.uuid4()),
+                                "type": "MX",
+                                "name": rec_name,
+                                "content": rdata.exchange.to_text().rstrip("."),
+                                "priority": rdata.preference,
+                                "ttl": "Auto",
+                                "proxied": False,
+                                "purpose": "Mail server routing",
+                            })
+                        elif qtype == "TXT":
+                            txt_content = b"".join(rdata.strings).decode("utf-8", errors="ignore")
+                            if len(txt_content) > 255:
+                                txt_content = txt_content[:252] + "..."
+                            discovered_records.append({
+                                "id": str(uuid.uuid4()),
+                                "type": "TXT",
+                                "name": rec_name,
+                                "content": txt_content,
+                                "ttl": "Auto",
+                                "proxied": False,
+                                "purpose": "Domain verification & SPF text",
+                            })
+                        elif qtype == "NS":
+                            ns_host = rdata.to_text().rstrip(".")
+                            if ns_host and ns_host not in current_nameservers:
+                                current_nameservers.append(ns_host)
+                        elif qtype == "CAA":
+                            discovered_records.append({
+                                "id": str(uuid.uuid4()),
+                                "type": "CAA",
+                                "name": rec_name,
+                                "content": f"{rdata.flags} {rdata.tag.decode()} {rdata.value.decode()}",
+                                "ttl": "Auto",
+                                "proxied": False,
+                                "purpose": "Certificate Authority Authorization",
+                            })
+                except Exception:
+                    pass
+
+        # Socket fallback for root domain origin IP if no A record was found
+        if not any(r["type"] == "A" and r["name"] == "@" for r in discovered_records):
+            try:
+                ip = socket.gethostbyname(domain)
+                discovered_records.insert(0, {
                     "id": str(uuid.uuid4()),
                     "type": "A",
                     "name": "@",
-                    "content": rdata.to_text(),
+                    "content": ip,
                     "ttl": "Auto",
                     "proxied": True,
-                    "purpose": "IPv4 origin server",
+                    "purpose": "IPv4 origin server (detected via socket)",
                 })
-        except Exception:
-            pass
+            except Exception:
+                # Absolute fallback placeholder
+                discovered_records.insert(0, {
+                    "id": str(uuid.uuid4()),
+                    "type": "A",
+                    "name": "@",
+                    "content": "203.0.113.10",
+                    "ttl": "Auto",
+                    "proxied": True,
+                    "purpose": "IPv4 origin server (Please update with your origin server IP)",
+                })
 
-        # 2. Query Root AAAA Records (IPv6)
-        try:
-            answers = resolver.resolve(domain, "AAAA")
-            for rdata in answers:
+        # Ensure www record exists if not discovered
+        if not any(r["name"] == "www" for r in discovered_records):
+            try:
+                www_ip = socket.gethostbyname(f"www.{domain}")
                 discovered_records.append({
                     "id": str(uuid.uuid4()),
-                    "type": "AAAA",
-                    "name": "@",
-                    "content": rdata.to_text(),
+                    "type": "A",
+                    "name": "www",
+                    "content": www_ip,
                     "ttl": "Auto",
                     "proxied": True,
-                    "purpose": "IPv6 origin server",
+                    "purpose": "WWW subdomain IPv4 origin",
                 })
-        except Exception:
-            pass
-
-        # 3. Query Root CNAME Records
-        try:
-            answers = resolver.resolve(domain, "CNAME")
-            for rdata in answers:
-                target = rdata.to_text().rstrip(".")
+            except Exception:
                 discovered_records.append({
                     "id": str(uuid.uuid4()),
                     "type": "CNAME",
-                    "name": "@",
-                    "content": target,
+                    "name": "www",
+                    "content": domain,
                     "ttl": "Auto",
                     "proxied": True,
-                    "purpose": "Domain alias target",
+                    "purpose": "WWW subdomain alias",
                 })
-        except Exception:
-            pass
 
-        # 4. Query MX Records (Mail)
-        try:
-            answers = resolver.resolve(domain, "MX")
-            for rdata in answers:
-                target = rdata.exchange.to_text().rstrip(".")
-                discovered_records.append({
-                    "id": str(uuid.uuid4()),
-                    "type": "MX",
-                    "name": "@",
-                    "content": target,
-                    "priority": rdata.preference,
-                    "ttl": "Auto",
-                    "proxied": False,  # MX traffic cannot be proxied through HTTP WAF
-                    "purpose": "Mail server routing",
-                })
-        except Exception:
-            pass
-
-        # 5. Query TXT Records (SPF / Verification)
-        try:
-            answers = resolver.resolve(domain, "TXT")
-            for rdata in answers:
-                txt_content = b"".join(rdata.strings).decode("utf-8", errors="ignore")
-                # Exclude ultra long binary records if any
-                if len(txt_content) > 255:
-                    txt_content = txt_content[:252] + "..."
-                discovered_records.append({
-                    "id": str(uuid.uuid4()),
-                    "type": "TXT",
-                    "name": "@",
-                    "content": txt_content,
-                    "ttl": "Auto",
-                    "proxied": False,
-                    "purpose": "Domain verification & SPF text",
-                })
-        except Exception:
-            pass
-
-        # 6. Probe Common Subdomains
-        if scan_subdomains:
-            for sub in COMMON_SUBDOMAINS:
-                fqdn = f"{sub}.{domain}"
-                # Check CNAME first
-                try:
-                    cname_answers = resolver.resolve(fqdn, "CNAME")
-                    for rdata in cname_answers:
-                        target = rdata.to_text().rstrip(".")
-                        is_web = sub in WEB_PROXIED_NAMES
-                        discovered_records.append({
-                            "id": str(uuid.uuid4()),
-                            "type": "CNAME",
-                            "name": sub,
-                            "content": target,
-                            "ttl": "Auto",
-                            "proxied": is_web,
-                            "purpose": f"{sub.upper()} subdomain alias",
-                        })
-                    continue  # Found CNAME, no need to query A
-                except Exception:
-                    pass
-
-                # Check A record
-                try:
-                    a_answers = resolver.resolve(fqdn, "A")
-                    for rdata in a_answers:
-                        is_web = sub in WEB_PROXIED_NAMES
-                        discovered_records.append({
-                            "id": str(uuid.uuid4()),
-                            "type": "A",
-                            "name": sub,
-                            "content": rdata.to_text(),
-                            "ttl": "Auto",
-                            "proxied": is_web,
-                            "purpose": f"{sub.upper()} subdomain IPv4 origin",
-                        })
-                except Exception:
-                    pass
-
-        # If no A record was found at all, create a default origin placeholder so the user has a starting point
-        if not any(r["type"] == "A" and r["name"] == "@" for r in discovered_records):
-            discovered_records.insert(0, {
-                "id": str(uuid.uuid4()),
-                "type": "A",
-                "name": "@",
-                "content": "203.0.113.10",
-                "ttl": "Auto",
-                "proxied": True,
-                "purpose": "IPv4 origin server (Please update with your origin IP)",
-            })
+        # Sort records logically: A (@) first, then CNAME, AAAA, MX, TXT, CAA
+        type_order = {"A": 1, "AAAA": 2, "CNAME": 3, "MX": 4, "TXT": 5, "CAA": 6}
+        discovered_records.sort(key=lambda r: (type_order.get(r["type"], 99), 0 if r["name"] == "@" else 1, r["name"]))
 
         return {
             "status": "success",
             "domain": domain,
             "records": discovered_records,
+            "current_nameservers": current_nameservers,
+            "target_nameservers": MDEFENDER_NAMESERVERS,
             "scan_completed": True,
             "discovered_count": len(discovered_records),
             "message": "Scan completed. Common records discovered. You can add or edit records manually.",
@@ -367,6 +394,19 @@ class DNSZoneService:
         plan_id = website.get("plan", "free").lower()
         plan_meta = PLAN_ENTITLEMENTS.get(plan_id, PLAN_ENTITLEMENTS["free"])
 
+        current_ns = website.get("current_nameservers") or []
+        if not current_ns and HAS_DNSPYTHON:
+            try:
+                res_temp = dns.resolver.Resolver()
+                res_temp.timeout = 1.5
+                res_temp.nameservers = ["1.1.1.1", "8.8.8.8"]
+                ans = res_temp.resolve(domain, "NS")
+                current_ns = [r.to_text().rstrip(".") for r in ans]
+                if current_ns:
+                    self.db.websites.update_one({"_id": actual_site_id}, {"$set": {"current_nameservers": current_ns}})
+            except Exception:
+                pass
+
         return {
             "website_id": actual_site_id,
             "domain": domain,
@@ -375,6 +415,7 @@ class DNSZoneService:
             "ssl_mode": website.get("ssl_mode", "flexible"),
             "plan": plan_meta,
             "nameservers": MDEFENDER_NAMESERVERS,
+            "current_nameservers": current_ns,
             "cname_target": MDEFENDER_CNAME_PROXY,
             "records": formatted_records,
             "proxied_count": proxied_count,

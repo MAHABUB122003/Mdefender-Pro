@@ -24,8 +24,9 @@ export default function UserDomains() {
       setLoading(true)
       const res = await api.getUserWebsites()
       const list = res?.data?.websites || res?.websites || []
-      // Display domains registered for Cloud WAF (or all domains)
-      setWebsites(list)
+      // Display only domain-based routing (exclude wordpress plugin websites)
+      const domainList = list.filter(w => (w.platform || '').toLowerCase() !== 'wordpress')
+      setWebsites(domainList)
     } catch (err) {
       console.error('Failed to load domains:', err)
       setFeedbackMsg({ type: 'error', text: 'Failed to load domains from server.' })
@@ -99,7 +100,7 @@ export default function UserDomains() {
     const domainName = domainObj.domain || domainObj.name || domainObj.url
     if (!siteId) return
 
-    if (!window.confirm(`Are you sure you want to remove "${domainName}" from MDefender Cloud WAF? This will immediately disable edge routing and active WAF protection.`)) {
+    if (!window.confirm(`Are you sure you want to remove "${domainName}" from MDefender? This will immediately disable edge routing and active WAF protection.`)) {
       return
     }
 
@@ -163,13 +164,13 @@ export default function UserDomains() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#ffffff', margin: 0 }}>
-                Cloud WAF Domains
+                Domains
               </h1>
               <span style={{
                 background: 'rgba(37, 99, 235, 0.25)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.3)',
                 padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px'
               }}>
-                SMART ANYCAST EDGE
+                ANYCAST EDGE ROUTING
               </span>
             </div>
             <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0', maxWidth: '640px', lineHeight: '1.5' }}>

@@ -27,17 +27,18 @@ from src.utils.api_key import generate_api_key
 
 router = APIRouter(prefix="/websites", tags=["Websites"])
 
-PLATFORMS = ["cloud", "wordpress", "node", "express", "react", "laravel", "python", "php", "other"]
+PLATFORMS = ["domain", "cloud", "wordpress", "node", "express", "react", "laravel", "python", "php", "other"]
 
 
 class WebsiteCreate(BaseModel):
     name: str | None = None
     url: str | None = None
     domain: str | None = None
-    platform: str = Field("cloud")
+    platform: str = Field("domain")
     plan: str = Field("free")
     ssl_mode: str = Field("flexible")
     dns_records: list[dict] | None = None
+    current_nameservers: list[str] | None = None
 
 
 class WebsiteUpdate(BaseModel):
@@ -111,9 +112,15 @@ def _website_out(doc):
 
 
 @router.get("")
-async def list_websites(user=Depends(get_current_user)):
+async def list_websites(platform: str | None = None, user=Depends(get_current_user)):
     db = MongoDB()
-    docs = list(db.websites.find({"user_id": str(user["id"])}).sort("connected_at", -1))
+    query = {"user_id": str(user["id"])}
+    if platform:
+        if platform == "wordpress":
+            query["platform"] = "wordpress"
+        elif platform in ("domain", "cloud"):
+            query["platform"] = {"$in": ["domain", "cloud"]}
+    docs = list(db.websites.find(query).sort("connected_at", -1))
     return success({"websites": [_website_out(d) for d in docs]})
 
 

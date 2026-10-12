@@ -285,7 +285,8 @@ class UserAPI:
     def add_website(self, user, data):
         domain = data.get('domain', '').strip()
         origin = data.get('origin_server', '').strip()
-        platform = data.get('platform', 'WordPress').strip()
+        raw_platform = (data.get('platform') or 'domain').lower().strip()
+        platform = 'wordpress' if 'wordpress' in raw_platform or 'wp' in raw_platform else 'domain'
         if not domain:
             return {'status': 'error', 'message': 'Domain is required'}
 
@@ -332,6 +333,7 @@ class UserAPI:
 
         selected_plan = (data.get('plan') or 'free').lower()
         ssl_mode = (data.get('ssl_mode') or 'flexible').lower()
+        current_ns = data.get('current_nameservers') or []
 
         update_fields = {
             'user_id': user_id_str,
@@ -345,6 +347,7 @@ class UserAPI:
             'verified': False,
             'status': 'active',
             'api_key': raw_key,
+            'current_nameservers': current_ns,
             'added_at': now_dt,
             'connected_at': now_dt,
             'requests_today': 0,
