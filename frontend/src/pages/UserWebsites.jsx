@@ -8,7 +8,7 @@ export default function UserWebsites() {
   const [data, setData] = useState(() => cachedData)
   const [loading, setLoading] = useState(() => !cachedData)
   const [newWebsite, setNewWebsite] = useState('')
-  const [platform, setPlatform] = useState('wordpress')
+  const [platform, setPlatform] = useState('cloud')
   const [adding, setAdding] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
@@ -20,7 +20,7 @@ export default function UserWebsites() {
   const [modalKey, setModalKey] = useState('')
   const [modalDomain, setModalDomain] = useState('')
   const [modalWebsiteId, setModalWebsiteId] = useState('')
-  const [modalTab, setModalTab] = useState('wordpress')
+  const [modalTab, setModalTab] = useState('cloud')
   const [isMasked, setIsMasked] = useState(true)
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedEndpoint, setCopiedEndpoint] = useState(false)
@@ -79,7 +79,7 @@ export default function UserWebsites() {
       setModalKey(siteKey)
       setModalDomain(cleanDomain)
       setModalWebsiteId(res?.website?._id || res?.website?.id || '')
-      setModalTab(platform === 'node' || platform === 'express' ? 'express' : (platform || 'wordpress'))
+      setModalTab(platform || 'cloud')
       setIsMasked(false)
       setShowKeyModal(true)
 
@@ -225,27 +225,36 @@ export default function UserWebsites() {
   }
 
   // Code integration snippets
-  const expressSnippet = `// 1. Install official NPM package
-// npm install mdefender-pro express
+  const cloudSnippet = `// 1. Cloud WAF (Smart Anycast DNS & Reverse Proxy)
+// Zero code changes required for React, Vite, Node, Next.js, Django, Laravel, or WordPress!
 
-const express = require('express');
-const { mdefender } = require('mdefender-pro');
+// Point your Domain Registrar Nameservers (Namecheap, GoDaddy, Hostinger, etc.):
+NS1: ns1.mdefender.pro
+NS2: ns2.mdefender.pro
 
-const app = express();
+// Or configure CNAME Subdomain Record:
+CNAME: proxy.mdefender.pro
 
-// 2. Attach MDefender Pro WAF Middleware
-app.use(mdefender({
-  apiKey: '${modalKey || 'YOUR_API_KEY_HERE'}',
-  domain: '${modalDomain || 'yourdomain.com'}',
-  apiEndpoint: '${apiEndpoint}',
-  mode: 'block' // 'block' | 'monitor' | 'off'
-}));
+// Edge Status: Sub-millisecond (0.35ms) Anycast inspection armed!
+// All malicious traffic is blocked at the edge with the Cyber 403 screen.`
 
-app.get('/', (req, res) => {
-  res.send('Protected by MDefender Pro!');
-});
+  const nginxSnippet = `# NGINX Reverse Proxy Configuration (/etc/nginx/conf.d/mdefender.conf)
+server {
+    listen 80;
+    server_name ${modalDomain || 'yourdomain.com'};
 
-app.listen(3000, () => console.log('Server running on port 3000'));`
+    location / {
+        proxy_pass http://217.15.170.82;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-MDefender-Key "${modalKey || 'YOUR_API_KEY_HERE'}";
+
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 3s;
+    }
+}`
 
   const pythonSnippet = `# 1. Install required dependencies
 # pip install requests fastapi uvicorn
@@ -309,18 +318,6 @@ function mdefender_waf_protect() {
 }
 mdefender_waf_protect();
 ?>`
-
-  const reactSnippet = `// 1. Install official NPM package
-// npm install mdefender-pro
-
-import { initWaf } from 'mdefender-pro/client';
-
-// 2. Initialize in your main.jsx or App.jsx
-initWaf({
-  apiKey: '${modalKey || 'YOUR_API_KEY_HERE'}',
-  backendUrl: '${apiEndpoint}',
-  mode: 'block'
-});`
 
   const envSnippet = `# .env Configuration
 MDEFENDER_API_KEY=${modalKey || 'YOUR_API_KEY_HERE'}
@@ -414,11 +411,11 @@ MDEFENDER_MODE=block`
                 boxSizing: 'border-box', cursor: 'pointer'
               }}
             >
+              <option value="cloud">Cloud WAF (Smart Anycast DNS)</option>
               <option value="wordpress">WordPress Plugin</option>
-              <option value="express">Node.js / Express</option>
+              <option value="nginx">NGINX / Reverse Proxy</option>
               <option value="python">Python / FastAPI / Django</option>
               <option value="php">PHP / Laravel</option>
-              <option value="react">React / Frontend SPA</option>
               <option value="other">Custom API / Other</option>
             </select>
           </div>
@@ -767,11 +764,11 @@ MDEFENDER_MODE=block`
                   border: '1px solid #e2e8f0', flexWrap: 'wrap'
                 }}>
                   {[
-                    { id: 'wordpress', label: 'WordPress', icon: 'fa-wordpress', color: '#0284c7' },
-                    { id: 'express', label: 'Node / Express', icon: 'fa-node-js', color: '#16a34a' },
+                    { id: 'cloud', label: 'Cloud Anycast DNS', icon: 'fa-cloud', color: '#f59e0b' },
+                    { id: 'wordpress', label: 'WordPress Plugin', icon: 'fa-wordpress', color: '#0284c7' },
+                    { id: 'nginx', label: 'NGINX Proxy', icon: 'fa-server', color: '#10b981' },
                     { id: 'python', label: 'Python / FastAPI', icon: 'fa-python', color: '#ca8a04' },
                     { id: 'php', label: 'PHP / Laravel', icon: 'fa-php', color: '#6366f1' },
-                    { id: 'react', label: 'React SPA', icon: 'fa-react', color: '#0891b2' },
                     { id: 'env', label: '.env Config', icon: 'fa-file-code', color: '#475569' },
                   ].map(tab => {
                     const isActive = modalTab === tab.id
@@ -791,12 +788,89 @@ MDEFENDER_MODE=block`
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        <i className={`fab ${tab.icon}`} style={{ color: isActive ? tab.color : '#94a3b8' }}></i>
+                        <i className={`fas ${tab.icon}`} style={{ color: isActive ? tab.color : '#94a3b8' }}></i>
                         <span>{tab.label}</span>
                       </button>
                     )
                   })}
                 </div>
+
+                {/* ================= TAB 0: Cloud Anycast DNS ================= */}
+                {modalTab === 'cloud' && (
+                  <div style={{
+                    background: '#ffffff', border: '1px solid #e2e8f0',
+                    borderRadius: '14px', padding: '20px', color: '#334155',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)', marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                      border: '1px solid #fde68a', borderRadius: '12px',
+                      padding: '16px 18px', marginBottom: '16px', flexWrap: 'wrap', gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '42px', height: '42px', borderRadius: '10px',
+                          background: '#f59e0b', color: '#ffffff', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', fontSize: '20px', boxShadow: '0 4px 10px rgba(245, 158, 11, 0.25)'
+                        }}>
+                          <i className="fas fa-cloud"></i>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#92400e' }}>
+                            Cloud WAF (Smart Anycast DNS &amp; Proxy)
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#b45309', marginTop: '2px' }}>
+                            Zero code required &bull; Cloudflare-Style &bull; Universal Compatibility
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ fontSize: '12.5px', color: '#475569' }}>
+                        Set the following Nameservers at your Domain Registrar (Namecheap, GoDaddy, Hostinger, etc.):
+                      </div>
+                      <div style={{
+                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px'
+                      }}>
+                        <div style={{
+                          background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
+                          padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', display: 'block' }}>PRIMARY NAMESERVER</span>
+                            <span style={{ fontFamily: 'monospace', fontSize: '12.5px', color: '#16a34a', fontWeight: '700' }}>ns1.mdefender.pro</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard('ns1.mdefender.pro')}
+                            style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            <i className="fas fa-copy"></i>
+                          </button>
+                        </div>
+
+                        <div style={{
+                          background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
+                          padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', display: 'block' }}>SECONDARY NAMESERVER</span>
+                            <span style={{ fontFamily: 'monospace', fontSize: '12.5px', color: '#16a34a', fontWeight: '700' }}>ns2.mdefender.pro</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard('ns2.mdefender.pro')}
+                            style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            <i className="fas fa-copy"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* ================= TAB 1: WordPress ================= */}
                 {modalTab === 'wordpress' && (
@@ -944,17 +1018,17 @@ MDEFENDER_MODE=block`
                           <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
                         </div>
                         <span style={{ fontSize: '11.5px', fontFamily: 'Consolas, monospace', color: '#e2e8f0', marginLeft: '6px', fontWeight: '600' }}>
-                          {modalTab === 'express' ? 'server.js' : modalTab === 'python' ? 'main.py' : modalTab === 'php' ? 'mdefender_waf.php' : modalTab === 'react' ? 'main.jsx' : '.env'}
+                          {modalTab === 'cloud' ? 'DNS-Guide.txt' : modalTab === 'nginx' ? 'nginx.conf' : modalTab === 'python' ? 'main.py' : modalTab === 'php' ? 'mdefender_waf.php' : '.env'}
                         </span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleCopySnippet(
-                          modalTab === 'express' ? expressSnippet :
+                          modalTab === 'cloud' ? cloudSnippet :
+                          modalTab === 'nginx' ? nginxSnippet :
                           modalTab === 'python' ? pythonSnippet :
-                          modalTab === 'php' ? phpSnippet :
-                          modalTab === 'react' ? reactSnippet : envSnippet
+                          modalTab === 'php' ? phpSnippet : envSnippet
                         )}
                         style={{
                           background: '#334155', border: '1px solid #475569',
@@ -977,10 +1051,10 @@ MDEFENDER_MODE=block`
                       lineHeight: '1.6', overflowX: 'auto', maxHeight: '250px', background: '#0b1120'
                     }}>
                       <code>
-                        {modalTab === 'express' && expressSnippet}
+                        {modalTab === 'cloud' && cloudSnippet}
+                        {modalTab === 'nginx' && nginxSnippet}
                         {modalTab === 'python' && pythonSnippet}
                         {modalTab === 'php' && phpSnippet}
-                        {modalTab === 'react' && reactSnippet}
                         {modalTab === 'env' && envSnippet}
                       </code>
                     </pre>

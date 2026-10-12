@@ -37,14 +37,13 @@ const docSections = [
   },
 
   {
-    group: 'Framework SDK Guides',
+    group: 'Cloud WAF & Integration',
     items: [
-      { id: 'sdk-nodejs', label: 'Node.js / Express (Backend)', icon: 'fa-node-js' },
-      { id: 'sdk-react-vite', label: 'React / Vite / SPA (Frontend)', icon: 'fa-react' },
-      { id: 'sdk-fullstack', label: 'Full-Stack Web App (End-to-End)', icon: 'fa-layer-group' },
+      { id: 'cloud-waf', label: 'Cloud WAF (Smart Anycast DNS)', icon: 'fa-cloud' },
+      { id: 'sdk-wordpress', label: 'WordPress Official Plugin', icon: 'fa-wordpress' },
+      { id: 'nginx-proxy', label: 'NGINX & Reverse Proxy Gateway', icon: 'fa-server' },
       { id: 'sdk-python', label: 'Python / FastAPI / Django', icon: 'fa-python' },
-      { id: 'sdk-php', label: 'PHP / Laravel', icon: 'fa-php' },
-      { id: 'sdk-wordpress', label: 'WordPress Official Plugin', icon: 'fa-wordpress' }
+      { id: 'sdk-php', label: 'PHP / Laravel', icon: 'fa-php' }
     ]
   },
   {
@@ -464,7 +463,7 @@ export default function Docs() {
                 How to Connect Your Website with MDefender
               </h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '28px' }}>
-                Integrate MDefender Pro into any website in seconds &mdash; without writing complex server code. From a single-line HTML drop-in script (like Tailwind CSS / Google Analytics CDN) to full-stack React, Next.js, Node.js, and WordPress plugins.
+                Integrate MDefender Pro into any website in minutes &mdash; without writing complex server code. Choose from Cloudflare-style Smart Anycast DNS delegation, CNAME proxy routing, or the official WordPress security plugin.
               </p>
 
               {/* Method 1: Cloud Anycast Reverse Proxy (Cloudflare-Style Smart DNS) */}
@@ -575,7 +574,7 @@ export default function Docs() {
                 />
               </div>
 
-              {/* Understanding Frontend vs Backend in Network Tab */}
+              {/* Edge Architecture Explanation */}
               <div style={{
                 background: t.cardBgAlt,
                 border: t.cardBorder,
@@ -586,30 +585,30 @@ export default function Docs() {
               }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '14px' }}>
                   <i className="fa-solid fa-network-wired" style={{ color: '#7c3aed', marginRight: '8px' }}></i>
-                  Understanding Frontend vs Backend in Network Tab
+                  How Cloud WAF Edge Filtering Protects Your Origin Server
                 </h3>
                 <p style={{ fontSize: '13px', color: t.muted, marginBottom: '16px', lineHeight: '1.6' }}>
-                  When building a modern full-stack web app (e.g. React/Vite on port 5173/5174 and Express on port 4000/5000):
+                  When traffic routes through MDefender Anycast Edge (DNS / CNAME Proxy):
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                   <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '16px', borderRadius: '10px', border: t.cardBorder }}>
-                    <h4 style={{ color: '#059669', margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
-                      <i className="fa-solid fa-server" style={{ marginRight: '6px' }}></i>
-                      Backend API Requests (Port 4000 / 5000)
+                    <h4 style={{ color: '#ef4444', margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
+                      <i className="fa-solid fa-ban" style={{ marginRight: '6px' }}></i>
+                      Malicious Requests Terminated at Edge (&lt; 0.35ms)
                     </h4>
                     <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
-                      When a malicious request is sent to your API (e.g. <code className="doc-inline-code">http://localhost:5000/api/books?id=&lt;script&gt;alert(1)&lt;/script&gt;</code>), the WAF intercepts it, stops execution, returns <strong>403 Forbidden</strong>, and renders the 403 Cyber Block Page.
+                      When a malicious request is sent (e.g. SQL injection, XSS payload, or webshell upload), MDefender Cloud terminates the connection at the edge, logs the attacker IP, and serves the high-security <strong>403 Forbidden Block Page</strong>. Your origin server never sees the attack.
                     </p>
                   </div>
 
                   <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '16px', borderRadius: '10px', border: t.cardBorder }}>
-                    <h4 style={{ color: t.accentText, margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
-                      <i className="fab fa-react" style={{ marginRight: '6px' }}></i>
-                      Frontend Dev Server (Port 5173 / 5174)
+                    <h4 style={{ color: '#059669', margin: '0 0 8px', fontSize: '14px', fontWeight: '700' }}>
+                      <i className="fa-solid fa-check" style={{ marginRight: '6px' }}></i>
+                      Clean Traffic Forwarded to Origin
                     </h4>
                     <p style={{ fontSize: '12.5px', color: t.muted, lineHeight: '1.6', margin: 0 }}>
-                      Visiting the static URL loads the client Single-Page Application bundle from Vite. With <code className="doc-inline-code">initWaf</code> in <code className="doc-inline-code">main.jsx</code> and <code className="doc-inline-code">mdefenderVite</code> in <code className="doc-inline-code">vite.config.js</code>, hostile exploits in URL queries or client state are blocked instantly with the bundled 403 Block Page.
+                      Legitimate visitors pass through seamlessly with sub-millisecond overhead. Origin server resources remain safe, protected, and fast.
                     </p>
                   </div>
                 </div>
@@ -633,13 +632,13 @@ export default function Docs() {
                 <CodeBlock
                   language="bash"
                   code={`# 1. Test XSS Attack (Expect 403 Forbidden & Cyber Block Page)
-curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"
+curl -i "https://yourdomain.com/?q=%3Cscript%3Ealert(1)%3C/script%3E"
 
 # 2. Test SQL Injection (Expect 403 Forbidden & Cyber Block Page)
-curl -i "http://localhost:5000/api/books?search=%27%20UNION%20SELECT%20null,password%20FROM%20users--"
+curl -i "https://yourdomain.com/?search=%27%20UNION%20SELECT%20null,password%20FROM%20users--"
 
-# 3. Test Safe Query (Expect 200 OK with data)
-curl -i "http://localhost:5000/api/books"`}
+# 3. Test Safe Query (Expect 200 OK with normal website response)
+curl -i "https://yourdomain.com/"`}
                 />
               </div>
             </div>
@@ -986,10 +985,181 @@ curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-
             </div>
           )}
 
-          {/* Section: Node.js SDK */}
-          {activeSection === 'sdk-nodejs' && (
+          {/* Section: Cloud WAF (Smart Anycast DNS / CNAME Reverse Proxy) */}
+          {activeSection === 'cloud-waf' && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  color: dark ? '#fbbf24' : '#b45309',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Cloud Anycast Edge WAF</span>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#059669',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Zero Code &bull; Universal Compatibility</span>
+              </div>
+
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>
+                Cloud WAF (Smart Anycast DNS &amp; Proxy)
+              </h1>
+              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
+                MDefender Pro Cloud WAF acts as an intelligent Anycast reverse proxy shield in front of your web servers &mdash; exactly like Cloudflare. It inspects all inbound HTTP/HTTPS traffic across <strong>2,000 signature rules</strong> and the <strong>5.48M++ attack ML engine</strong> with sub-millisecond execution (0.35ms), terminating malicious requests with a beautiful, high-security <strong>403 Forbidden Block Page</strong> before they can ever touch your origin server.
+              </p>
+
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(124,58,237,0.08))',
+                border: dark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #bfdbfe',
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: t.cardShadow,
+                marginBottom: '28px'
+              }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.heading, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa-solid fa-wand-magic-sparkles" style={{ color: t.accentText }}></i>
+                  Works for Any Technology Stack With Zero Code Changes
+                </h3>
+                <p style={{ fontSize: '13px', color: t.body, lineHeight: '1.7', margin: 0 }}>
+                  Because protection happens at the DNS/Network layer, you do <strong>not</strong> need to install NPM packages, modify backend code, or rewrite server routes. It protects <strong>React, Next.js, Node.js, Express, Laravel, WordPress, Django, FastAPI, Ruby on Rails, Go, ASP.NET, and Static HTML</strong> out of the box.
+                </p>
+              </div>
+
+              {/* Step 1: Add Website in Dashboard */}
+              <div style={{
+                background: t.cardGrad,
+                border: t.cardBorder,
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: t.cardShadow,
+                marginBottom: '28px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <span style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: 'rgba(37, 99, 235, 0.15)', color: '#2563eb',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: '800', fontSize: '14px'
+                  }}>1</span>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, margin: 0 }}>
+                    Register Your Domain in MDefender Dashboard
+                  </h3>
+                </div>
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', marginBottom: '14px' }}>
+                  Navigate to <Link to="/user/websites" style={{ color: t.accentText, fontWeight: '700', textDecoration: 'none' }}>Dashboard &rarr; Websites</Link>, click <strong>Add New Website</strong>, and enter your domain name (e.g. <code className="doc-inline-code">yourdomain.com</code>) along with your origin server IP address.
+                </p>
+              </div>
+
+              {/* Step 2: Configure DNS */}
+              <div style={{
+                background: t.cardGrad,
+                border: t.cardBorder,
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: t.cardShadow,
+                marginBottom: '28px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <span style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: 'rgba(245, 158, 11, 0.15)', color: '#d97706',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: '800', fontSize: '14px'
+                  }}>2</span>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, margin: 0 }}>
+                    Update DNS Nameservers or CNAME Record
+                  </h3>
+                </div>
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', marginBottom: '14px' }}>
+                  Log into your domain registrar (Namecheap, GoDaddy, Cloudflare, Hostinger, Google Domains, etc.) and update your DNS records to route traffic through MDefender Cloud:
+                </p>
+
+                <div style={{
+                  background: dark ? '#04070e' : '#f8fafc',
+                  border: dark ? '1px solid #1e293b' : '1px solid #cbd5e1',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ color: t.accentText, fontWeight: '700', fontSize: '13px', marginBottom: '8px' }}>
+                    Option A (Full Anycast DNS Delegation - Recommended):
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.8' }}>
+                    <div style={{ color: '#10b981' }}>Nameserver 1: <strong>ns1.mdefender.pro</strong></div>
+                    <div style={{ color: '#10b981' }}>Nameserver 2: <strong>ns2.mdefender.pro</strong></div>
+                  </div>
+
+                  <div style={{ marginTop: '16px', color: '#f59e0b', fontWeight: '700', fontSize: '13px', marginBottom: '8px' }}>
+                    Option B (CNAME Subdomain Setup):
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.8' }}>
+                    <div style={{ color: '#cbd5e1' }}>Record Type: <strong>CNAME</strong></div>
+                    <div style={{ color: '#cbd5e1' }}>Host / Name: <strong>@ (or www)</strong></div>
+                    <div style={{ color: '#38bdf8' }}>Target / Value: <strong>proxy.mdefender.pro</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Verification & Edge Defense */}
+              <div style={{
+                background: t.cardGrad,
+                border: t.cardBorder,
+                borderRadius: '16px',
+                padding: '24px',
+                boxShadow: t.cardShadow,
+                marginBottom: '28px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <span style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: 'rgba(16, 185, 129, 0.15)', color: '#059669',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: '800', fontSize: '14px'
+                  }}>3</span>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, margin: 0 }}>
+                    DNS Verification &amp; Instant Defense
+                  </h3>
+                </div>
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', marginBottom: '14px' }}>
+                  Click <strong>Verify DNS</strong> in your dashboard. Once records propagate, all incoming requests are filtered in under <strong>0.35ms</strong>. If any malicious payload is detected, MDefender Cloud responds with an HTTP 403 status code and displays the official cyber block page.
+                </p>
+
+                <h4 style={{ fontSize: '14px', fontWeight: '700', color: t.heading, marginTop: '18px', marginBottom: '8px' }}>
+                  Testing Your Cloud WAF Protection:
+                </h4>
+                <CodeBlock
+                  language="bash"
+                  code={`# 1. Test XSS attack probe (Expect HTTP 403 Forbidden with Cyber Block Page)
+curl -i "https://yourdomain.com/?q=%3Cscript%3Ealert(document.cookie)%3C/script%3E"
+
+# 2. Test SQL injection bypass probe (Expect HTTP 403 Forbidden)
+curl -i "https://yourdomain.com/?id=1'%20OR%20'1'='1'--"`}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Section: NGINX & Reverse Proxy Gateway */}
+          {activeSection === 'nginx-proxy' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#059669',
+                  fontSize: '12px',
+                  fontWeight: '700'
+                }}>Reverse Proxy Integration</span>
                 <span style={{
                   padding: '4px 12px',
                   borderRadius: '20px',
@@ -998,21 +1168,14 @@ curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-
                   color: dark ? '#60a5fa' : '#2563eb',
                   fontSize: '12px',
                   fontWeight: '700'
-                }}>Official npm Package</span>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#059669',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Zero External Dependencies</span>
+                }}>NGINX &bull; Caddy &bull; Apache</span>
               </div>
 
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Node.js &amp; Express Integration</h1>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>
+                NGINX &amp; Reverse Proxy Gateway Setup
+              </h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                Protect your Node.js, Express, or Next.js backend with <code className="doc-inline-code">mdefender-pro</code>. When you install the package, our high-performance cyber-styled <strong>403 Block Page</strong> is automatically bundled &mdash; simply add your API key to activate real-time threat defense.
+                If you run your own dedicated VPS or NGINX edge gateway, you can forward incoming requests to MDefender Cloud for real-time inspection via reverse proxy headers and automatic block page serving.
               </p>
 
               <div style={{
@@ -1023,314 +1186,34 @@ curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-
                 boxShadow: t.cardShadow,
                 marginBottom: '28px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-1" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Install the NPM Package
+                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
+                  NGINX Upstream Proxy Configuration
                 </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Run this in your website backend directory:
-                </p>
-                <CodeBlock language="bash" code={`npm install mdefender-pro`} />
-              </div>
-
-              <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '28px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-2" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Initialize Configuration via CLI
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Run our 1-click interactive CLI generator to configure your API key and options:
-                </p>
-                <CodeBlock language="bash" code={`npx mdefender-pro init`} />
-                <p style={{ fontSize: '13px', color: t.muted, marginTop: '12px' }}>
-                  Or manually create <code className="doc-inline-code">mdefender.config.js</code> in your project root:
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', marginBottom: '14px' }}>
+                  Add this block into your <code className="doc-inline-code">/etc/nginx/sites-available/your-site.conf</code>:
                 </p>
                 <CodeBlock
-                  language="javascript"
-                  code={`// mdefender.config.js
-module.exports = {
-  // Your Secret API Key from MDefender Dashboard -> Websites
-  apiKey: process.env.MDEFENDER_API_KEY || 'YOUR_API_KEY_HERE',
+                  language="nginx"
+                  code={`# /etc/nginx/conf.d/mdefender_proxy.conf
+server {
+    listen 80;
+    server_name yourdomain.com;
 
-  // Registered domain
-  domain: 'yourdomain.com',
+    # Forward all traffic to MDefender Cloud Edge Proxy
+    location / {
+        proxy_pass http://217.15.170.82;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-MDefender-Key "YOUR_SCOPED_API_KEY";
 
-  // Endpoint
-  apiEndpoint: 'http://217.15.170.82',
-
-  // Mode: 'block' (active defense) or 'monitor' (log-only)
-  mode: 'block',
-
-  // Safety timeout in ms (fails open if cloud unreachable)
-  timeout: 3000,
-
-  // Skip static assets
-  skipPaths: ['/favicon.ico', '/static', '/assets', '/health'],
-
-  // Log blocked attacks in console
-  logBlocked: true
-};`}
-                />
-              </div>
-
-              <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '28px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-3" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Attach WAF Middleware to Express
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Place <code className="doc-inline-code">mdefender()</code> right after body parsers (<code className="doc-inline-code">express.json()</code>) and before your application routes:
-                </p>
-                <CodeBlock
-                  language="javascript"
-                  code={`const express = require('express');
-const cors = require('cors');
-const mdefender = require('mdefender-pro');
-
-const app = express();
-
-// 1. Standard body parsers
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// 2. Attach MDefender Pro WAF Middleware
-// Automatically loads mdefender.config.js and serves bundled 403 block page
-app.use(mdefender());
-
-// 3. Application Routes
-app.use('/api/books', require('./routes/books'));
-app.use('/api/users', require('./routes/users'));
-
-app.listen(5000, () => {
-  console.log('Server running with MDefender Pro active protection!');
-});`}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Section: React / Vite / SPA Frontend SDK */}
-          {activeSection === 'sdk-react-vite' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(56, 189, 248, 0.15)',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  color: t.accentText,
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Frontend &amp; Single Page Apps</span>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#059669',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>0ms Client Shield + Vite Server Plugin</span>
-              </div>
-
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>React / Vite / SPA Frontend Integration</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                Protect Single Page Applications built with <strong>React, Vite, Vue, Svelte, or Next.js</strong>. MDefender Pro provides <strong>dual-layer frontend protection</strong>: client-side 0ms DOM/URL/Fetch protection and Vite dev/preview server 403 network blocking.
-              </p>
-
-              {/* Step 1: Install */}
-              <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '28px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-1" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Install the NPM Package
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Install <code className="doc-inline-code">mdefender-pro</code> in your frontend project:
-                </p>
-                <CodeBlock language="bash" code={`npm install mdefender-pro`} />
-              </div>
-
-              {/* Step 2: Client SPA Protection */}
-              <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '28px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-2" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Initialize Client Guard in <code className="doc-inline-code">main.jsx</code> / <code className="doc-inline-code">index.jsx</code>
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Call <code className="doc-inline-code">initWaf()</code> at the very top of your application entry point:
-                </p>
-                <CodeBlock
-                  language="javascript"
-                  code={`// src/main.jsx (or src/index.js)
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-import './index.css';
-
-// 1. Import and initialize MDefender Client Shield
-import { initWaf } from 'mdefender-pro/client';
-
-initWaf({
-  apiKey: 'YOUR_MDEFENDER_API_KEY', // from Dashboard -> Settings
-  domain: 'localhost',              // or your production domain
-  apiEndpoint: 'http://217.15.170.82' // MDefender Cloud Endpoint
-});
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);`}
-                />
-                <div style={{ padding: '12px 16px', borderRadius: '8px', background: dark ? 'rgba(37,99,235,0.1)' : '#eff6ff', border: dark ? '1px solid rgba(59,130,246,0.3)' : '1px solid #bfdbfe', marginTop: '14px' }}>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: dark ? '#93c5fd' : '#1d4ed8', lineHeight: '1.6' }}>
-                    <strong>What <code className="doc-inline-code">initWaf()</code> protects:</strong> Automatically intercepts malicious URL query parameters (XSS, LFI, SQLi), outgoing <code className="doc-inline-code">fetch</code> &amp; <code className="doc-inline-code">axios</code> payloads, and swaps the DOM with the 403 Security Screen while dispatching real-time incident telemetry to your dashboard.
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 3: Vite Server Plugin */}
-              <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '28px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-3" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Add the Vite Server Plugin in <code className="doc-inline-code">vite.config.js</code>
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Add <code className="doc-inline-code">mdefenderVite</code> to your plugins so Vite returns a real <code className="doc-inline-code">HTTP 403 Forbidden</code> status code over the network:
-                </p>
-                <CodeBlock
-                  language="javascript"
-                  code={`// vite.config.js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { mdefenderVite } from 'mdefender-pro/vite';
-
-export default defineConfig({
-  plugins: [
-    mdefenderVite({
-      apiKey: 'YOUR_MDEFENDER_API_KEY',
-      domain: 'localhost',
-      apiEndpoint: 'http://217.15.170.82'
-    }),
-    react()
-  ],
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:4000',
-        changeOrigin: true
-      }
+        # Fail open timeout safeguard
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 3s;
     }
-  }
-});`}
+}`}
                 />
-              </div>
-            </div>
-          )}
-
-          {/* Section: Full-Stack Web Apps */}
-          {activeSection === 'sdk-fullstack' && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(124,58,237,0.2))',
-                  border: '1px solid rgba(59, 130, 246, 0.4)',
-                  color: dark ? '#60a5fa' : '#2563eb',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Full-Stack Architecture</span>
-                <span style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#059669',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}>Backend + Frontend Unified Defense</span>
-              </div>
-
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Connecting Full-Stack Web Projects</h1>
-              <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                For modern applications with a separate <strong>Backend API (e.g. Express on Port 4000)</strong> and <strong>Frontend SPA (e.g. React/Vite on Port 5173)</strong>, connect both sides using the same API Key for complete end-to-end telemetry and defense.
-              </p>
-
-              <div style={{
-                background: t.cardBgAlt,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '28px'
-              }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', color: t.subheading, marginBottom: '16px' }}>
-                  <i className="fa-solid fa-diagram-project" style={{ color: t.accentText, marginRight: '8px' }}></i>
-                  Unified Full-Stack Protection Flow
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                  <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '18px', borderRadius: '10px', border: t.cardBorder }}>
-                    <div style={{ color: t.accentText, fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
-                      <i className="fab fa-react" style={{ marginRight: '6px' }}></i> Frontend Layer (Port 5173)
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: t.muted, lineHeight: '1.8' }}>
-                      <li><code className="doc-inline-code">mdefenderVite</code> in <code className="doc-inline-code">vite.config.js</code></li>
-                      <li><code className="doc-inline-code">initWaf()</code> in <code className="doc-inline-code">main.jsx</code></li>
-                      <li>Blocks direct URL/DOM attacks with 403 block page</li>
-                      <li>Captures client telemetry to MDefender Cloud</li>
-                    </ul>
-                  </div>
-
-                  <div style={{ background: dark ? '#0f172a' : '#f8fafc', padding: '18px', borderRadius: '10px', border: t.cardBorder }}>
-                    <div style={{ color: '#059669', fontWeight: '700', fontSize: '14px', marginBottom: '8px' }}>
-                      <i className="fab fa-node-js" style={{ marginRight: '6px' }}></i> Backend Layer (Port 4000)
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', color: t.muted, lineHeight: '1.8' }}>
-                      <li><code className="doc-inline-code">app.use(mdefender())</code> in <code className="doc-inline-code">index.js</code></li>
-                      <li>Inspects API endpoints (<code className="doc-inline-code">/api/books</code>, <code className="doc-inline-code">/api/users</code>)</li>
-                      <li>Blocks SQLi, RCE, and payload attacks with 403 status</li>
-                      <li>Streams telemetry to user dashboard</li>
-                    </ul>
-                  </div>
-                </div>
               </div>
             </div>
           )}

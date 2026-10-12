@@ -5,7 +5,7 @@ import copyToClipboard from '../utils/clipboard'
 export default function Connect({ token }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('nodejs')
+  const [activeTab, setActiveTab] = useState('dns')
   const [activeSubTab, setActiveSubTab] = useState('flask')
   const [copiedId, setCopiedId] = useState(null)
 
@@ -53,27 +53,34 @@ export default function Connect({ token }) {
       <div className="methods-grid">
         <div className="method-card">
           <div className="method-header">
-            <div className="method-icon"><i className="fas fa-code"></i></div>
-            <div><h3>Client Library</h3><p>Lightweight middleware for your app</p></div>
+            <div className="method-icon"><i className="fas fa-cloud"></i></div>
+            <div><h3>Cloud WAF (Smart Anycast DNS)</h3><p>Zero-code: Cloudflare-style reverse proxy shield</p></div>
             <span className="method-badge recommended">Recommended</span>
           </div>
           <div className="method-body">
             <div className="method-steps">
-              <div className="method-step"><span className="ms-num">1</span><div><strong>Register your website</strong><p>Go to Clients and add your domain with origin server IP.</p></div></div>
-              <div className="method-step"><span className="ms-num">2</span><div><strong>Copy your API key</strong><p>Each site gets a unique key. Copy it from the clients list.</p></div></div>
-              <div className="method-step"><span className="ms-num">3</span><div><strong>Add the middleware</strong><p>Install the client library and add one line to your app.</p></div></div>
-              <div className="method-step"><span className="ms-num">4</span><div><strong>You're protected</strong><p>All requests are analyzed in real-time.</p></div></div>
+              <div className="method-step"><span className="ms-num">1</span><div><strong>Register your domain</strong><p>Go to Websites and register your domain with origin IP.</p></div></div>
+              <div className="method-step"><span className="ms-num">2</span><div><strong>Update DNS Nameservers</strong><p>Point NS1: ns1.mdefender.pro and NS2: ns2.mdefender.pro.</p></div></div>
+              <div className="method-step"><span className="ms-num">3</span><div><strong>Or point CNAME</strong><p>Route CNAME record to proxy.mdefender.pro.</p></div></div>
+              <div className="method-step"><span className="ms-num">4</span><div><strong>Instant Protection</strong><p>All traffic is inspected in 0.35ms with automatic 403 block page.</p></div></div>
             </div>
             <div className="code-tabs">
               <div className="tab-buttons">
-                <button className={`tab-btn ${activeTab === 'nodejs' ? 'active' : ''}`} onClick={() => setActiveTab('nodejs')}><i className="fab fa-node-js"></i> Node.js</button>
+                <button className={`tab-btn ${activeTab === 'dns' ? 'active' : ''}`} onClick={() => setActiveTab('dns')}><i className="fas fa-globe"></i> Anycast DNS</button>
+                <button className={`tab-btn ${activeTab === 'wordpress' ? 'active' : ''}`} onClick={() => setActiveTab('wordpress')}><i className="fab fa-wordpress"></i> WordPress</button>
                 <button className={`tab-btn ${activeTab === 'python' ? 'active' : ''}`} onClick={() => setActiveTab('python')}><i className="fab fa-python"></i> Python</button>
                 <button className={`tab-btn ${activeTab === 'php' ? 'active' : ''}`} onClick={() => setActiveTab('php')}><i className="fab fa-php"></i> PHP</button>
               </div>
-              <div className={`tab-content ${activeTab === 'nodejs' ? 'active' : ''}`}>
+              <div className={`tab-content ${activeTab === 'dns' ? 'active' : ''}`}>
                 <div className="code-block">
-                  <div className="code-header"><span className="code-lang">JavaScript (Express)</span><button className={`copy-btn ${copiedId === 'nodejs-code' ? 'copied' : ''}`} onClick={() => copyCode('nodejs-code')}><i className="fas fa-copy"></i> {copiedId === 'nodejs-code' ? 'Copied!' : 'Copy'}</button></div>
-                  <pre><code id="nodejs-code"><span className="cmt">// 1. Install official package (includes bundled Cyber 403 Block Page)</span>{'\n'}<span className="cmt">// npm install mdefender-pro</span>{'\n\n'}<span className="kw">const</span> express = <span className="fn">require</span>(<span className="str">'express'</span>);{'\n'}<span className="kw">const</span> mdefender = <span className="fn">require</span>(<span className="str">'mdefender-pro'</span>);{'\n\n'}<span className="kw">const</span> app = <span className="fn">express</span>();{'\n'}app.<span className="fn">use</span>(express.<span className="fn">json</span>());{'\n\n'}<span className="cmt">// 2. Attach WAF middleware before your routes</span>{'\n'}<span className="cmt">// Automatically loads mdefender.config.js or configure inline:</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">mdefender</span>({'\n'}  <span className="key">apiKey</span>: <span className="str">'{clients[0]?.api_key || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">domain</span>: <span className="str">'{clients[0]?.domain || 'yourdomain.com'}'</span>,{'\n'}  <span className="key">apiEndpoint</span>: <span className="str">'http://localhost:8000'</span>{'\n'}));</code></pre>
+                  <div className="code-header"><span className="code-lang">DNS Configuration</span><button className={`copy-btn ${copiedId === 'dns-code' ? 'copied' : ''}`} onClick={() => copyCode('dns-code')}><i className="fas fa-copy"></i> {copiedId === 'dns-code' ? 'Copied!' : 'Copy'}</button></div>
+                  <pre><code id="dns-code"><span className="cmt">// 1. Set Nameservers at your Domain Registrar (Namecheap, GoDaddy, Hostinger, etc.):</span>{'\n'}<span className="kw">NS1:</span> <span className="str">ns1.mdefender.pro</span>{'\n'}<span className="kw">NS2:</span> <span className="str">ns2.mdefender.pro</span>{'\n\n'}<span className="cmt">// 2. Or configure CNAME Subdomain Record:</span>{'\n'}<span className="kw">CNAME:</span> <span className="str">proxy.mdefender.pro</span>{'\n\n'}<span className="cmt">// 3. Zero code changes required on your origin server!</span></code></pre>
+                </div>
+              </div>
+              <div className={`tab-content ${activeTab === 'wordpress' ? 'active' : ''}`}>
+                <div className="code-block">
+                  <div className="code-header"><span className="code-lang">WordPress Setup</span><button className={`copy-btn ${copiedId === 'wp-code' ? 'copied' : ''}`} onClick={() => copyCode('wp-code')}><i className="fas fa-copy"></i> {copiedId === 'wp-code' ? 'Copied!' : 'Copy'}</button></div>
+                  <pre><code id="wp-code"><span className="cmt">{'// 1. Download official WordPress Security Plugin: mdefender-pro.zip'}</span>{'\n'}<span className="cmt">{'// 2. In WP Admin -> Plugins -> Add New -> Upload Plugin -> Activate'}</span>{'\n'}<span className="cmt">{'// 3. In WP Admin -> MDefender Pro -> Settings -> Paste API Key:'}</span>{'\n'}<span className="key">API_KEY:</span> <span className="str">'{clients[0]?.api_key || 'YOUR_SCOPED_API_KEY'}'</span></code></pre>
                 </div>
               </div>
               <div className={`tab-content ${activeTab === 'python' ? 'active' : ''}`}>

@@ -90,58 +90,45 @@ const threatVectors = [
 ]
 
 const codeExamples = {
-  nodejs: `// 1. Install official NPM package
-// npm install mdefender-pro
+  cloud_waf: `# Method 1 (Recommended): Cloud Anycast DNS Delegation (Zero Code • Cloudflare-Style)
+# Works for React, Vite, Node, Next.js, Django, Laravel, WordPress, and any server!
 
-const express = require('express');
-const cors = require('cors');
-const mdefender = require('mdefender-pro');
+# 1. Update Nameservers at your Domain Registrar (Namecheap, GoDaddy, Hostinger, etc.):
+Nameserver 1: ns1.mdefender.pro
+Nameserver 2: ns2.mdefender.pro
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+# Or configure CNAME Subdomain Record:
+CNAME: proxy.mdefender.pro
 
-// 2. Attach MDefender Pro WAF Middleware (Inspects all requests in real-time)
-app.use(mdefender({
-  apiKey: process.env.MDEFENDER_API_KEY, // from Dashboard -> Settings
-  domain: 'localhost',                  // your domain
-  apiEndpoint: 'http://217.15.170.82',  // Cloud WAF Engine
-  mode: 'block'                         // Renders bundled 403 Block Page on attack
-}));
+# 2. Result: Sub-millisecond (0.35ms) Anycast Edge Inspection
+# Malicious requests (SQLi, XSS, RCE) are dropped instantly with 403 Cyber Block Page!`,
 
-// 3. Application Routes
-app.use('/api/books', require('./routes/books'));
-app.use('/api/orders', require('./routes/orders'));
+  wordpress: `# Method 2: Official WordPress Security Plugin (Deep Scan & WAF)
+# 1. Download official plugin directly:
+#    File: mdefender-pro.zip (v4.1.0)
+# 2. In WP Admin: Go to Plugins -> Add New -> Upload Plugin -> Activate
+# 3. Enter your Scoped API Key under MDefender Pro Settings
+# 4. Instant protection: 2,000 WAF signatures + 5.48M Attack ML Core + Webshell Scanner`,
 
-app.listen(5000, () => console.log('Protected server running on port 5000!'));`,
+  nginx: `# Method 3: NGINX Edge Reverse Proxy Gateway (/etc/nginx/conf.d/mdefender.conf)
+server {
+    listen 80;
+    server_name yourdomain.com;
 
-  react_vite: `// 1. In src/main.jsx (Client SPA Protection Shield):
-import { initWaf } from 'mdefender-pro/client';
+    location / {
+        proxy_pass http://217.15.170.82;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-MDefender-Key "YOUR_SCOPED_API_KEY";
 
-initWaf({
-  apiKey: 'YOUR_MDEFENDER_API_KEY', // from Dashboard -> Settings
-  domain: 'localhost',
-  apiEndpoint: 'http://217.15.170.82'
-});
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 3s;
+    }
+}`,
 
-// 2. In vite.config.js (Vite 403 Server Middleware Plugin):
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { mdefenderVite } from 'mdefender-pro/vite';
-
-export default defineConfig({
-  plugins: [
-    mdefenderVite({
-      apiKey: 'YOUR_MDEFENDER_API_KEY',
-      domain: 'localhost',
-      apiEndpoint: 'http://217.15.170.82'
-    }),
-    react()
-  ]
-});`,
-
-  python: `# Install: pip install mdefender-python
+  python: `# FastAPI / Django / Flask ASGI Middleware
 from fastapi import FastAPI
 from mdefender import MDefenderMiddleware
 
@@ -153,8 +140,7 @@ app.add_middleware(
     api_key="YOUR_MDEFENDER_API_KEY",
     api_endpoint="http://217.15.170.82",
     mode="block",
-    enable_ml=True, # Active 5,489,242+ Payload ML Model
-    rate_limit_rpm=120
+    enable_ml=True # Active 5,489,242+ Payload ML Model
 )
 
 @app.get("/api/v1/data")
@@ -162,13 +148,8 @@ def read_root():
     return {"status": "protected", "waf": "armed", "ml_core": "5.48M_dataset_active"}`,
 
   php: `<?php
-// Require Composer Autoloader
-require_once __DIR__ . '/vendor/autoload.php';
-
-use MDefender\\WafShield;
-
 // Enforce hybrid edge protection before routing
-$waf = new WafShield([
+$waf = new MDefender\\WafShield([
     'api_key'      => getenv('MDEFENDER_API_KEY'),
     'api_endpoint' => 'http://217.15.170.82',
     'mode'         => 'block',
@@ -176,22 +157,22 @@ $waf = new WafShield([
     'block_page'   => true // Serves bundled Cyber 403 block page
 ]);
 
-$waf->inspectRequest(); // Evaluates 2,000 rules + 5,489,242+ ML model in 0.4ms`,
+$waf->inspectRequest(); // Evaluates 2,000 rules + 5,489,242+ ML model in 0.35ms`,
 
   curl: `# 1. Test XSS Attack (Expect 403 Forbidden & Cyber Block Page):
-curl -i "http://localhost:5000/api/books?id=%3Cscript%3Ealert(1)%3C/script%3E"
+curl -i "https://yourdomain.com/?q=%3Cscript%3Ealert(1)%3C/script%3E"
 
 # 2. Test SQL Injection (Expect 403 Forbidden & Cyber Block Page):
-curl -i "http://localhost:5000/api/books?search=%27%20UNION%20SELECT%20null,password%20FROM%20users--"
+curl -i "https://yourdomain.com/?search=%27%20UNION%20SELECT%20null,password%20FROM%20users--"
 
-# 3. Test Safe Query (Expect 200 OK with data):
-curl -i "http://localhost:5000/api/books"`
+# 3. Test Safe Query (Expect 200 OK with normal website response):
+curl -i "https://yourdomain.com/"`
 }
 
 export default function Landing() {
   const { dark } = useTheme()
   const s = theme(dark)
-  const [selectedLang, setSelectedLang] = useState('nodejs')
+  const [selectedLang, setSelectedLang] = useState('cloud_waf')
   const [billingCycle, setBillingCycle] = useState('monthly')
 
   return (
@@ -885,7 +866,7 @@ export default function Landing() {
             Connect Any Website in 3 Minutes
           </h2>
           <p style={{ fontSize: '16px', color: dark ? '#94a3b8' : '#475569', maxWidth: '680px', margin: '0 auto' }}>
-            Zero complex configuration. When you install our package, the enterprise <strong>403 Cyber Block Page</strong> is bundled inside &mdash; just add your API key and your site is protected.
+            Zero code modification required. Simply point your DNS or install the WordPress plugin &mdash; our Anycast edge inspects traffic in 0.35ms with automatic <strong>403 Cyber Block Page</strong> defense.
           </p>
         </div>
 
@@ -927,13 +908,13 @@ export default function Landing() {
                 padding: '3px 10px',
                 borderRadius: '20px',
                 border: '1px solid rgba(16, 185, 129, 0.25)'
-              }}>Bundled Block Page</span>
+              }}>Zero Code Setup</span>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#f8fafc' : '#0f172a', marginBottom: '10px' }}>
-              Install NPM Package
+              Add Your Domain
             </h3>
             <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
-              Install the official package into your backend application. The 403 block page is automatically bundled inside:
+              Add your website domain and origin server IP in the MDefender dashboard under <Link to="/user/websites" style={{ color: dark ? '#38bdf8' : '#0284c7', textDecoration: 'none', fontWeight: '600' }}>Websites</Link>:
             </p>
             <div style={{
               background: dark ? '#04070e' : '#f1f5f9',
@@ -947,8 +928,8 @@ export default function Landing() {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <span>npm install mdefender-pro</span>
-              <i className="fa-solid fa-box" style={{ color: '#64748b' }}></i>
+              <span>domain: "yourwebsite.com"</span>
+              <i className="fa-solid fa-globe" style={{ color: '#64748b' }}></i>
             </div>
           </div>
 
@@ -983,13 +964,13 @@ export default function Landing() {
                 padding: '3px 10px',
                 borderRadius: '20px',
                 border: dark ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(139, 92, 246, 0.2)'
-              }}>API Key Auth</span>
+              }}>Cloudflare-Style DNS</span>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#f8fafc' : '#0f172a', marginBottom: '10px' }}>
-              Get Your API Key
+              Point Nameservers / CNAME
             </h3>
             <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
-              Copy your unique tenant API Key from the MDefender dashboard under <Link to="/user/settings" style={{ color: dark ? '#38bdf8' : '#0284c7', textDecoration: 'none', fontWeight: '600' }}>Settings</Link> or <Link to="/user/websites" style={{ color: dark ? '#38bdf8' : '#0284c7', textDecoration: 'none', fontWeight: '600' }}>Websites</Link>:
+              Update your domain's Nameservers at your registrar or activate the official WordPress security plugin:
             </p>
             <div style={{
               background: dark ? '#04070e' : '#f1f5f9',
@@ -1003,7 +984,7 @@ export default function Landing() {
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
             }}>
-              apiKey: "Ix2TtXbbBHJolIam3MY..."
+              NS: ns1.mdefender.pro | ns2.mdefender.pro
             </div>
           </div>
 
@@ -1041,10 +1022,10 @@ export default function Landing() {
               }}>Instant Active WAF</span>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#f8fafc' : '#0f172a', marginBottom: '10px' }}>
-              Attach Middleware
+              0.35ms Edge Defense Armed
             </h3>
             <p style={{ fontSize: '13px', color: dark ? '#94a3b8' : '#475569', lineHeight: '1.6', marginBottom: '16px' }}>
-              Add <code>app.use(mdefender())</code> to your Express app. Every request is inspected in &lt;1ms and threats are blocked with the 403 page!
+              Every inbound request is checked across 2,000 WAF rules + 5.48M ML vectors. Malicious attacks are terminated with the 403 page!
             </p>
             <div style={{
               background: dark ? '#04070e' : '#f1f5f9',
@@ -1058,7 +1039,7 @@ export default function Landing() {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <span>app.use(mdefender())</span>
+              <span>HTTP 403 Cyber Block Page Armed</span>
               <i className="fa-solid fa-shield-halved" style={{ color: '#10b981' }}></i>
             </div>
           </div>
@@ -1099,15 +1080,16 @@ export default function Landing() {
               Integrate in Minutes With Any Tech Stack
             </h2>
             <p style={{ fontSize: '15px', color: dark ? '#94a3b8' : '#475569' }}>
-              Drop in our lightweight SDK middleware without changing your core application architecture.
+              Deploy Cloud Anycast DNS, official CMS plugins, or custom gateway reverse proxies seamlessly.
             </p>
           </div>
 
           {/* Code Tab Buttons */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '18px', flexWrap: 'wrap' }}>
             {[
-              { id: 'nodejs', label: 'Node.js / Express (Backend)', icon: 'fa-node-js' },
-              { id: 'react_vite', label: 'React / Vite (Frontend)', icon: 'fa-react' },
+              { id: 'cloud_waf', label: 'Cloud WAF (Anycast DNS)', icon: 'fa-cloud' },
+              { id: 'wordpress', label: 'WordPress Plugin', icon: 'fa-wordpress' },
+              { id: 'nginx', label: 'NGINX Reverse Proxy', icon: 'fa-server' },
               { id: 'python', label: 'Python / FastAPI', icon: 'fa-python' },
               { id: 'php', label: 'PHP / Laravel', icon: 'fa-php' },
               { id: 'curl', label: 'cURL Verification', icon: 'fa-terminal' }
