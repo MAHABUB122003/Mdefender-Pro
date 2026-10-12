@@ -65,6 +65,8 @@ waf_ml_dataset.csv
 *malware*dataset*
 wordpress malware scner datasets/
 temp_extracted/
+datasets/
+!datasets/README.md
 
 # IDE & Editor Configs
 .vscode/

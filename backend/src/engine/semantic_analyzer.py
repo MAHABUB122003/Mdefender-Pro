@@ -328,6 +328,76 @@ class RCELexer:
         }
 
 
+class DeserializationShield:
+    """Detects PHP object injection, Java ysoserial gadget chains, and Python/YAML deserialization payloads."""
+
+    PHP_GADGET_CLASSES = {
+        "WP_THEME", "WP_BLOCK_TYPE_REGISTRY", "WP_BLOCK_LIST",
+        "WPORG\\REQUESTS\\SESSION", "WPORG\\REQUESTS\\HOOKS",
+        "LAMINAS", "GUZZLEHTTP", "MONOLOG", "SYMFONY", "LARAVEL",
+        "CAKEPHP", "BITRIX", "DOCTRINE", "SWIFT_MAILER", "CODEIGNITER",
+        "YII", "ZEND", "TYPO3", "SMARTY", "TWIG"
+    }
+
+    def analyze(self, text: str) -> Dict[str, any]:
+        if not text or len(text.strip()) < 8:
+            return {"is_deserialization": False, "score": 0.0, "reasons": []}
+
+        reasons = []
+        score = 0.0
+        upper_text = text.upper()
+
+        # 1. Direct PHP Serialized Object (O:8:"WP_Theme" or O:\d+:"...")
+        if re.search(r'(?i)\bO:\d+:"[^"]+":\d+:\{', text):
+            matched_gadget = any(cls in upper_text for cls in self.PHP_GADGET_CLASSES)
+            if matched_gadget:
+                reasons.append("PHP Object Deserialization gadget chain injection (PHPGGC pattern)")
+                score = max(score, 0.99)
+            elif any(sink in text.lower() for sink in ["system", "exec", "passthru", "shell_exec", "assert", "dispatch"]):
+                reasons.append("PHP Object Deserialization containing dangerous execution sink")
+                score = max(score, 0.98)
+            else:
+                reasons.append("Generic PHP serialized object injection in HTTP input")
+                score = max(score, 0.88)
+
+        # 2. Base64-encoded PHP Serialized Object (Tzo4Oi, TzoxMzo, Tzo2Oi, etc.)
+        if re.search(r'(?:Tzo\d|Tzox|Tzo2|Tzo3|Tzo4|Tzo5)[A-Za-z0-9+/=]{12,}', text):
+            try:
+                import base64
+                for b64_match in re.finditer(r'[A-Za-z0-9+/]{12,}={0,2}', text):
+                    b64_str = b64_match.group(0)
+                    if len(b64_str) % 4 == 0:
+                        try:
+                            decoded = base64.b64decode(b64_str, validate=False).decode('latin1', errors='ignore')
+                            if re.search(r'(?i)O:\d+:"[^"]+":\d+:\{', decoded):
+                                reasons.append("Base64-encoded PHP object deserialization gadget")
+                                score = max(score, 0.99)
+                                break
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        # 3. Java Deserialization magic bytes (rO0AB in base64, or hex \xac\xed\x00\x05)
+        if "rO0AB" in text:
+            reasons.append("Java ysoserial serialized gadget stream (rO0AB)")
+            score = max(score, 0.99)
+        if "\\xac\\xed\\x00\\x05" in text.lower() or "\\u00ac\\u00ed" in text.lower():
+            reasons.append("Java object serialization magic header (AC ED 00 05)")
+            score = max(score, 0.99)
+
+        # 4. Python Pickle & YAML deserialization
+        if any(p in text for p in ["c__builtin__", "cos\nsystem", "cposix\nsystem", "!!python/object", "!!python/module"]):
+            reasons.append("Insecure Python Pickle / PyYAML deserialization payload")
+            score = max(score, 0.98)
+
+        return {
+            "is_deserialization": score >= 0.70,
+            "score": round(score, 2),
+            "reasons": reasons
+        }
+
+
 class SemanticAnalyzer:
     """Unified coordinator for all semantic and AST domain analyzers."""
 
@@ -337,6 +407,7 @@ class SemanticAnalyzer:
         self.ssrf_shield = SSRFShield()
         self.prompt_shield = PromptInjectionShield()
         self.rce_lexer = RCELexer()
+        self.deserialization_shield = DeserializationShield()
 
     def analyze(self, text: str) -> Dict[str, any]:
         """Backward-compatible alias for analyze_payload."""
@@ -357,6 +428,7 @@ class SemanticAnalyzer:
         ssrf_res = self.ssrf_shield.analyze(text)
         prompt_res = self.prompt_shield.analyze(text)
         rce_res = self.rce_lexer.analyze(text)
+        deser_res = self.deserialization_shield.analyze(text)
 
         threat_categories = []
         reasons = []
@@ -387,6 +459,11 @@ class SemanticAnalyzer:
             reasons.extend(rce_res["reasons"])
             scores.append(rce_res["score"])
 
+        if deser_res["is_deserialization"]:
+            threat_categories.append("Insecure Deserialization")
+            reasons.extend(deser_res["reasons"])
+            scores.append(deser_res["score"])
+
         highest_score = max(scores)
 
         return {
@@ -399,5 +476,6 @@ class SemanticAnalyzer:
                 "ssrf": ssrf_res,
                 "prompt_injection": prompt_res,
                 "rce": rce_res,
+                "deserialization": deser_res,
             }
         }

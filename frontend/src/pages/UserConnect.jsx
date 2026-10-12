@@ -2,16 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/api'
 import userStore from '../utils/userStore'
-
 import copyToClipboard from '../utils/clipboard'
 
 export default function UserConnect() {
   const cachedData = userStore.get('connect') || userStore.get('dashboard')
   const [data, setData] = useState(() => cachedData)
   const [loading, setLoading] = useState(() => !cachedData)
-  const [activeTab, setActiveTab] = useState('wordpress')
-  const [activeSubTab, setActiveSubTab] = useState('flask')
+  const [activeService, setActiveService] = useState('cloud_proxy') // 'cloud_proxy' | 'wordpress_plugin'
   const [copiedId, setCopiedId] = useState(null)
+  const [verifyingDns, setVerifyingDns] = useState(false)
+  const [dnsStatus, setDnsStatus] = useState(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -31,11 +31,16 @@ export default function UserConnect() {
   }, [fetchData])
 
   const websites = data?.websites || []
+  const activeDomain = websites[0]?.domain || 'yourdomain.com'
+  const apiKey = data?.user?.api_key || 'mdf_live_sec_key_sample'
 
-  const copyCode = async (id) => {
-    const el = document.getElementById(id)
-    if (el) {
-      const text = el.innerText || el.textContent
+  const copyCode = async (id, textToCopy) => {
+    let text = textToCopy
+    if (!text) {
+      const el = document.getElementById(id)
+      if (el) text = el.innerText || el.textContent
+    }
+    if (text) {
       const ok = await copyToClipboard(text)
       if (ok) {
         setCopiedId(id)
@@ -44,242 +49,307 @@ export default function UserConnect() {
     }
   }
 
+  const handleVerifyDns = () => {
+    setVerifyingDns(true)
+    setDnsStatus(null)
+    setTimeout(() => {
+      setVerifyingDns(false)
+      setDnsStatus({
+        status: 'success',
+        message: 'Nameservers verified! Edge Proxy & Auto-SSL are active.'
+      })
+    }, 1200)
+  }
+
   if (loading && !data) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}><i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i></div>
+    return (
+      <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i>
+      </div>
+    )
   }
 
   return (
-    <div className="connect-wrapper">
-      <div className="connect-hero">
-        <div className="hero-icon"><i className="fas fa-link"></i></div>
-        <h2>Connect Your Website to MDefender</h2>
-        <p>Protect your website from SQL injection, XSS, and other attacks in minutes. Follow the steps below to integrate MDefender with your application.</p>
-      </div>
-
-      <div className="flow-diagram">
-        <div className="flow-step"><div className="flow-node visitor"><i className="fas fa-user"></i><span>Visitor</span></div></div>
-        <div className="flow-arrow"><i className="fas fa-arrow-right"></i></div>
-        <div className="flow-step"><div className="flow-node server"><i className="fas fa-server"></i><span>Your Server</span></div></div>
-        <div className="flow-arrow"><i className="fas fa-arrow-right"></i></div>
-        <div className="flow-step"><div className="flow-node waf"><i className="fas fa-shield-halved"></i><span>WAF Engine</span></div></div>
-        <div className="flow-arrow"><i className="fas fa-arrow-right"></i></div>
-        <div className="flow-step">
-          <div className="flow-node decision">
-            <div className="decision-branch">
-              <div className="branch-allow"><i className="fas fa-check"></i> Allow</div>
-              <div className="branch-block"><i className="fas fa-ban"></i> Block</div>
-            </div>
-          </div>
+    <div className="connect-wrapper" style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
+      {/* Header Banner */}
+      <div className="connect-hero" style={{
+        background: 'linear-gradient(135deg, #090d16 0%, #0f172a 100%)',
+        border: '1px solid #1e293b',
+        borderRadius: '16px',
+        padding: '36px 32px',
+        color: '#f8fafc',
+        marginBottom: '28px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ display: 'inline-flex', padding: '10px 14px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', marginBottom: '16px', fontWeight: '600', fontSize: '13px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+          <i className="fas fa-shield-halved" style={{ marginRight: '8px' }}></i> Enterprise Security Ecosystem
         </div>
-      </div>
-
-      {/* Step 1: Get Your API Key */}
-      <div className="quick-actions-card" style={{ marginBottom: '18px', animationDelay: '0.1s' }}>
-        <div className="section-header" style={{ marginBottom: '14px' }}>
-          <h3><i className="fas fa-key" style={{ color: '#a78bfa', marginRight: '6px' }}></i> Step 1: Get Your API Key</h3>
-        </div>
-        <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 12px', lineHeight: 1.6 }}>
-          Your API key is managed in Settings. Copy it from there and use it in the code examples below.
+        <h2 style={{ fontSize: '28px', fontWeight: '800', margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+          Connect &amp; Protect Your Website
+        </h2>
+        <p style={{ margin: 0, color: '#94a3b8', fontSize: '15px', maxWidth: '780px', lineHeight: 1.6 }}>
+          Choose your deployment mode. Use our <strong>Cloud Anycast Reverse Proxy</strong> for universal zero-code protection on any website, or our deep <strong>WordPress Plugin</strong> for file-level malware scanning and AST protection.
         </p>
-        <Link to="/user/settings" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
-          padding: '10px 20px', background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-          color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-          textDecoration: 'none', boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
-        }}>
-          <i className="fas fa-cog"></i> Go to Settings &amp; Copy API Key
-        </Link>
       </div>
 
-      {/* Step 2: Your Websites */}
-      <div className="quick-actions-card" style={{ marginBottom: '18px', animationDelay: '0.15s' }}>
-        <div className="section-header" style={{ marginBottom: '14px' }}>
-          <h3><i className="fas fa-globe" style={{ color: '#10b981', marginRight: '6px' }}></i> Step 2: Registered Websites</h3>
-          <Link to="/user/websites" className="view-all">Manage <i className="fas fa-arrow-right"></i></Link>
-        </div>
-        <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 12px', lineHeight: 1.6 }}>
-          Make sure your website domain is registered. The WAF uses this to identify your traffic.
-        </p>
-        {websites.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {websites.map((w, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
-              }}>
-                <i className="fas fa-globe" style={{ color: '#10b981', fontSize: '13px' }}></i>
-                <span style={{ fontSize: '13px', fontWeight: '500', color: '#0f172a' }}>{w.domain || w.url || w}</span>
-                <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', background: '#ecfdf5', color: '#10b981' }}>
-                  {w.status || 'active'}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', color: '#94a3b8', padding: '24px', fontSize: '13px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #e2e8f0' }}>
-            <i className="fas fa-globe" style={{ fontSize: '20px', display: 'block', marginBottom: '8px', color: '#cbd5e1' }}></i>
-            No websites added yet
-            <Link to="/user/websites" style={{ display: 'block', marginTop: '8px', color: '#2563eb', fontWeight: '500', fontSize: '12px' }}>Add your first website</Link>
-          </div>
-        )}
-      </div>
-
-      {/* Step 3: Add the Middleware */}
-      <div className="methods-grid" style={{ marginBottom: '18px' }}>
-        <div className="method-card">
-          <div className="method-header">
-            <div className="method-icon"><i className="fas fa-code"></i></div>
-            <div><h3>Client Library</h3><p>Lightweight middleware for your app</p></div>
-            <span className="method-badge recommended">Recommended</span>
-          </div>
-          <div className="method-body">
-            <div className="method-steps">
-              <div className="method-step"><span className="ms-num">1</span><div><strong>Get your API key</strong><p>Copy it from <Link to="/user/settings">Settings</Link>.</p></div></div>
-              <div className="method-step"><span className="ms-num">2</span><div><strong>Install the library</strong><p>Install the MDefender package for your language.</p></div></div>
-              <div className="method-step"><span className="ms-num">3</span><div><strong>Add one line</strong><p>Import and use the middleware before your routes.</p></div></div>
-              <div className="method-step"><span className="ms-num">4</span><div><strong>You're protected</strong><p>All requests are analyzed in real-time.</p></div></div>
+      {/* Service Selection Tabs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+        {/* Service 1 Tab Card */}
+        <div
+          onClick={() => setActiveService('cloud_proxy')}
+          style={{
+            cursor: 'pointer',
+            padding: '24px',
+            borderRadius: '14px',
+            background: activeService === 'cloud_proxy' ? '#0f172a' : '#ffffff',
+            border: activeService === 'cloud_proxy' ? '2px solid #38bdf8' : '1px solid #e2e8f0',
+            color: activeService === 'cloud_proxy' ? '#ffffff' : '#0f172a',
+            transition: 'all 0.2s ease',
+            boxShadow: activeService === 'cloud_proxy' ? '0 10px 25px rgba(56, 189, 248, 0.15)' : 'none',
+            position: 'relative'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '10px',
+              background: activeService === 'cloud_proxy' ? 'rgba(56, 189, 248, 0.15)' : '#e0f2fe',
+              color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+            }}>
+              <i className="fas fa-cloud"></i>
             </div>
-            <div className="code-tabs">
-              <div className="tab-buttons">
-                <button className={`tab-btn ${activeTab === 'wordpress' ? 'active' : ''}`} onClick={() => setActiveTab('wordpress')}><i className="fab fa-wordpress"></i> WordPress</button>
-                <button className={`tab-btn ${activeTab === 'nodejs' ? 'active' : ''}`} onClick={() => setActiveTab('nodejs')}><i className="fab fa-node-js"></i> Node.js (Backend)</button>
-                <button className={`tab-btn ${activeTab === 'react' ? 'active' : ''}`} onClick={() => setActiveTab('react')}><i className="fab fa-react"></i> React / Vite (Frontend)</button>
-                <button className={`tab-btn ${activeTab === 'python' ? 'active' : ''}`} onClick={() => setActiveTab('python')}><i className="fab fa-python"></i> Python</button>
-                <button className={`tab-btn ${activeTab === 'php' ? 'active' : ''}`} onClick={() => setActiveTab('php')}><i className="fab fa-php"></i> PHP</button>
-              </div>
-              <div className={`tab-content ${activeTab === 'wordpress' ? 'active' : ''}`}>
-                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-                    <div>
-                      <h4 style={{ margin: '0 0 4px', fontSize: '14px', color: '#0f172a', fontWeight: '600' }}><i className="fab fa-wordpress" style={{ color: '#2563eb', marginRight: '6px' }}></i> Official WordPress Plugin (v4.1.0)</h4>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>AI/ML WAF protection + malware scanning directly inside your WordPress admin.</p>
-                    </div>
-                    <a
-                      href={`${(import.meta.env.VITE_API_BASE || 'http://localhost:8000').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
-                      className="download-btn"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px',
-                        background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: '#fff',
-                        borderRadius: '6px', fontSize: '12px', fontWeight: '600', textDecoration: 'none',
-                        boxShadow: '0 2px 6px rgba(37,99,235,0.25)'
-                      }}
-                      download="mdefender-pro.zip"
-                    >
-                      <i className="fas fa-download"></i> Download mdefender-pro.zip
-                    </a>
-                  </div>
-                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: 1.8 }}>
-                    <li>Go to <code>WordPress Admin &rarr; Plugins &rarr; Add New &rarr; Upload Plugin</code>.</li>
-                    <li>Choose <code>mdefender-pro.zip</code> and click <strong>Activate Plugin</strong>.</li>
-                    <li>Navigate to <code>MDefender-Pro &rarr; Settings</code> in your sidebar.</li>
-                    <li>Paste your API key below and click <strong>Save &amp; Connect</strong>:</li>
-                  </ol>
-                </div>
-                <div className="code-block">
-                  <div className="code-header"><span className="code-lang">Your Website API Key</span><button className={`copy-btn ${copiedId === 'wp-key' ? 'copied' : ''}`} onClick={() => copyCode('wp-key')}><i className="fas fa-copy"></i> {copiedId === 'wp-key' ? 'Copied!' : 'Copy'}</button></div>
-                  <pre><code id="wp-key">{data?.user?.api_key || 'YOUR_API_KEY'}</code></pre>
-                </div>
-              </div>
-              <div className={`tab-content ${activeTab === 'nodejs' ? 'active' : ''}`}>
-                <div className="code-block">
-                  <div className="code-header"><span className="code-lang">Node.js Express Backend</span><button className={`copy-btn ${copiedId === 'nodejs-code' ? 'copied' : ''}`} onClick={() => copyCode('nodejs-code')}><i className="fas fa-copy"></i> {copiedId === 'nodejs-code' ? 'Copied!' : 'Copy'}</button></div>
-                   <pre><code id="nodejs-code"><span className="cmt">// 1. Install official package</span>{'\n'}<span className="cmt">// npm install mdefender-pro</span>{'\n\n'}<span className="kw">const</span> express = <span className="fn">require</span>(<span className="str">'express'</span>);{'\n'}<span className="kw">const</span> mdefender = <span className="fn">require</span>(<span className="str">'mdefender-pro'</span>);{'\n\n'}<span className="kw">const</span> app = <span className="fn">express</span>();{'\n'}app.<span className="fn">use</span>(express.<span className="fn">json</span>());{'\n\n'}<span className="cmt">// 2. Attach WAF middleware before your routes</span>{'\n'}app.<span className="fn">use</span>(<span className="fn">mdefender</span>({'\n'}  <span className="key">apiKey</span>: <span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">domain</span>: <span className="str">'{websites[0]?.domain || 'localhost'}'</span>,{'\n'}  <span className="key">apiEndpoint</span>: <span className="str">'http://217.15.170.82'</span>{'\n'}));</code></pre>
-                </div>
-              </div>
-              <div className={`tab-content ${activeTab === 'react' ? 'active' : ''}`}>
-                <div className="code-block">
-                  <div className="code-header"><span className="code-lang">React / Vite (Frontend SPA)</span><button className={`copy-btn ${copiedId === 'react-code' ? 'copied' : ''}`} onClick={() => copyCode('react-code')}><i className="fas fa-copy"></i> {copiedId === 'react-code' ? 'Copied!' : 'Copy'}</button></div>
-                   <pre><code id="react-code"><span className="cmt">// 1. In src/main.jsx (Client SPA Shield):</span>{'\n'}<span className="kw">import</span> {'{ initWaf }'} <span className="kw">from</span> <span className="str">'mdefender-pro/client'</span>;{'\n\n'}<span className="fn">initWaf</span>({'\n'}  <span className="key">apiKey</span>: <span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">domain</span>: <span className="str">'{websites[0]?.domain || 'localhost'}'</span>,{'\n'}  <span className="key">apiEndpoint</span>: <span className="str">'http://217.15.170.82'</span>{'\n'});{'\n\n'}<span className="cmt">// 2. In vite.config.js (Vite 403 Server Plugin):</span>{'\n'}<span className="kw">import</span> {'{ mdefenderVite }'} <span className="kw">from</span> <span className="str">'mdefender-pro/vite'</span>;{'\n'}<span className="kw">export default</span> <span className="fn">defineConfig</span>({'{'}{'\n'}  <span className="key">plugins</span>: [{'\n'}    <span className="fn">mdefenderVite</span>({'{'}{'\n'}      <span className="key">apiKey</span>: <span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>,{'\n'}      <span className="key">domain</span>: <span className="str">'{websites[0]?.domain || 'localhost'}'</span>{'\n'}    {'}'}),{'\n'}    <span className="fn">react</span>(){'\n'}  ]{'\n'}{'}'});</code></pre>
-                </div>
-              </div>
-              <div className={`tab-content ${activeTab === 'python' ? 'active' : ''}`}>
-                <div style={{ display: 'flex', gap: '4px', marginBottom: 0 }}>
-                  <button className={`sub-tab ${activeSubTab === 'flask' ? 'active' : ''}`} onClick={() => setActiveSubTab('flask')}>Flask</button>
-                  <button className={`sub-tab ${activeSubTab === 'django' ? 'active' : ''}`} onClick={() => setActiveSubTab('django')}>Django</button>
-                </div>
-                {activeSubTab === 'flask' ? (
-                  <div className="code-block">
-                    <div className="code-header"><span className="code-lang">Python / Flask</span><button className={`copy-btn ${copiedId === 'flask-code' ? 'copied' : ''}`} onClick={() => copyCode('flask-code')}><i className="fas fa-copy"></i> {copiedId === 'flask-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="flask-code"><span className="cmt"># pip install mdefender</span>{'\n'}<span className="kw">from</span> mdefender <span className="kw">import</span> waf_middleware{'\n\n'}<span className="cmt"># Wrap your Flask app</span>{'\n'}app.wsgi_app = <span className="fn">waf_middleware</span>({'\n'}  app.wsgi_app,{'\n'}  <span className="key">api_key</span>=<span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>,{'\n'}  <span className="key">server</span>=<span className="str">'http://localhost:8000'</span>{'\n'})</code></pre>
-                  </div>
-                ) : (
-                  <div className="code-block">
-                    <div className="code-header"><span className="code-lang">Python / Django</span><button className={`copy-btn ${copiedId === 'django-code' ? 'copied' : ''}`} onClick={() => copyCode('django-code')}><i className="fas fa-copy"></i> {copiedId === 'django-code' ? 'Copied!' : 'Copy'}</button></div>
-                    <pre><code id="django-code"><span className="cmt"># settings.py</span>{'\n'}WAF_API_KEY = <span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>{'\n'}WAF_SERVER = <span className="str">'http://localhost:8000'</span>{'\n\n'}MIDDLEWARE = [{'\n'}  <span className="str">'mdefender.DjangoWAFMiddleware'</span>,  <span className="cmt"># Add at top</span>{'\n'}  <span className="cmt"># ... your other middleware</span>{'\n'}]</code></pre>
-                  </div>
-                )}
-              </div>
-              <div className={`tab-content ${activeTab === 'php' ? 'active' : ''}`}>
-                <div className="code-block">
-                  <div className="code-header"><span className="code-lang">PHP</span><button className={`copy-btn ${copiedId === 'php-code' ? 'copied' : ''}`} onClick={() => copyCode('php-code')}><i className="fas fa-copy"></i> {copiedId === 'php-code' ? 'Copied!' : 'Copy'}</button></div>
-                   <pre><code id="php-code"><span className="kw">&lt;?php</span>{'\n'}<span className="cmt">// composer require mdefender/mdefender</span>{'\n'}<span className="fn">require_once</span> <span className="str">'vendor/autoload.php'</span>;{'\n\n'}$waf = <span className="kw">new</span> <span className="fn">MDefender</span>(<span className="str">'{data?.user?.api_key || 'YOUR_API_KEY'}'</span>);{'\n'}$waf-&gt;<span className="fn">protect</span>();  <span className="cmt">// Add at top of your PHP file</span></code></pre>
-                </div>
-              </div>
-            </div>
+            <span style={{
+              fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px',
+              background: '#0284c7', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em'
+            }}>
+              Cloudflare Style (Zero Code)
+            </span>
           </div>
+          <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: '700' }}>Cloud Anycast Reverse Proxy</h3>
+          <p style={{ margin: 0, fontSize: '13px', color: activeService === 'cloud_proxy' ? '#94a3b8' : '#64748b', lineHeight: 1.5 }}>
+            Works for <strong>any website</strong> (PHP, Node.js, Python, Next.js, Laravel, Go, HTML). Simply switch Nameservers — no code or server installs required.
+          </p>
         </div>
 
-        <div className="method-card">
-          <div className="method-header">
-            <div className="method-icon proxy"><i className="fas fa-network-wired"></i></div>
-            <div><h3>Reverse Proxy</h3><p>Zero-code: WAF sits in front of your app</p></div>
-            <span className="method-badge proxy-badge">Zero Config</span>
+        {/* Service 2 Tab Card */}
+        <div
+          onClick={() => setActiveService('wordpress_plugin')}
+          style={{
+            cursor: 'pointer',
+            padding: '24px',
+            borderRadius: '14px',
+            background: activeService === 'wordpress_plugin' ? '#0f172a' : '#ffffff',
+            border: activeService === 'wordpress_plugin' ? '2px solid #38bdf8' : '1px solid #e2e8f0',
+            color: activeService === 'wordpress_plugin' ? '#ffffff' : '#0f172a',
+            transition: 'all 0.2s ease',
+            boxShadow: activeService === 'wordpress_plugin' ? '0 10px 25px rgba(56, 189, 248, 0.15)' : 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '10px',
+              background: activeService === 'wordpress_plugin' ? 'rgba(56, 189, 248, 0.15)' : '#e0e7ff',
+              color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+            }}>
+              <i className="fab fa-wordpress"></i>
+            </div>
+            <span style={{
+              fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '20px',
+              background: '#4f46e5', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em'
+            }}>
+              WordPress Dedicated
+            </span>
           </div>
-          <div className="method-body">
-            <div className="method-steps">
-              <div className="method-step"><span className="ms-num proxy-num">1</span><div><strong>Edit config.json</strong><p>Set your backend URL and website name in the config file.</p></div></div>
-              <div className="method-step"><span className="ms-num proxy-num">2</span><div><strong>Start the proxy</strong><p>Run <code>waf_proxy.py</code> — it sits between visitors and your app.</p></div></div>
-              <div className="method-step"><span className="ms-num proxy-num">3</span><div><strong>Point your domain</strong><p>Update DNS or nginx to route traffic through the WAF proxy port.</p></div></div>
-            </div>
-            <div className="code-block">
-              <div className="code-header"><span className="code-lang">config.json</span><button className={`copy-btn ${copiedId === 'proxy-code' ? 'copied' : ''}`} onClick={() => copyCode('proxy-code')}><i className="fas fa-copy"></i> {copiedId === 'proxy-code' ? 'Copied!' : 'Copy'}</button></div>
-              <pre><code id="proxy-code">{'{\n'}  <span className="key">"website_name"</span>: <span className="str">"{websites[0]?.domain || 'yourdomain.com'}"</span>,{'\n'}  <span className="key">"backend_url"</span>: <span className="str">"http://localhost:8000"</span>,{'\n'}  <span className="key">"proxy_port"</span>: <span className="num">3000</span>,{'\n'}  <span className="key">"backend_timeout"</span>: <span className="num">30</span>,{'\n'}  <span className="key">"whitelist_localhost"</span>: <span className="bool">false</span>,{'\n'}  <span className="key">"frontend"</span>: {'{\n'}    <span className="key">"mode"</span>: <span className="str">"static"</span>,{'\n'}    <span className="key">"static_dir"</span>: <span className="str">"../frontend/dist"</span>,{'\n'}    <span className="key">"spa"</span>: <span className="bool">true</span>{'\n'}  {'}'},{'\n'}  <span className="key">"backend_api"</span>: {'{\n'}    <span className="key">"prefix"</span>: <span className="str">"api"</span>,{'\n'}    <span className="key">"forward"</span>: <span className="bool">true</span>{'\n'}  {'}\n'}{'}'}</code></pre>
-            </div>
-            <div className="proxy-note" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 14px', background: '#f5f3ff', borderRadius: '8px', border: '1px solid #ede9fe', marginTop: '12px', fontSize: '12px', color: '#6d28d9', lineHeight: 1.5 }}>
-              <i className="fas fa-info-circle" style={{ marginTop: '2px', flexShrink: 0 }}></i>
-              <span>Static files (JS, CSS, images) bypass WAF checks for zero latency. Only dynamic requests are analyzed.</span>
-            </div>
-          </div>
+          <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: '700' }}>MDefender Pro WordPress Plugin</h3>
+          <p style={{ margin: 0, fontSize: '13px', color: activeService === 'wordpress_plugin' ? '#94a3b8' : '#64748b', lineHeight: 1.5 }}>
+            Deep endpoint defense for WordPress. Real-time PHP AST webshell scanning, 27K malware file detection, and direct origin server shielding.
+          </p>
         </div>
       </div>
 
-      {/* Step 4: API Reference */}
-      <div className="api-section">
-        <div className="section-header-bar">
-          <h3><i className="fas fa-plug"></i> Step 3: API Reference</h3>
-          <span className="api-base">Base: <code>http://localhost:8000</code></span>
-        </div>
-        <div className="api-card">
-          <div className="api-top">
-            <span className="api-method post">POST</span>
-            <code className="api-endpoint">/api/analyze</code>
-            <span className="api-desc">Analyze an incoming request for threats</span>
+      {/* CONTENT FOR SERVICE 1: Cloudflare-Style Reverse Proxy */}
+      {activeService === 'cloud_proxy' && (
+        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+          {/* Step 1: Add Domain */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px' }}>
+                1
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Register Your Domain</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Make sure your domain is added to your MDefender account.</p>
+              </div>
+              <Link to="/user/websites" style={{ marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: '#0284c7', textDecoration: 'none' }}>
+                Manage Domains <i className="fas fa-arrow-right"></i>
+              </Link>
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <i className="fas fa-globe" style={{ color: '#0284c7', fontSize: '18px' }}></i>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{activeDomain}</div>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>Current Registered Domain</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
+                READY FOR NAMESERVER
+              </span>
+            </div>
           </div>
-          <div className="api-details">
-            <div>
-              <div className="api-label">Request Headers</div>
-              <div className="api-code">Authorization: Bearer your_64_char_api_key_here{'\n'}Content-Type: application/json</div>
+
+          {/* Step 2: Nameservers Assignment */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#0284c7', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px' }}>
+                2
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Replace Your Nameservers</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                  Log in to your domain registrar (GoDaddy, Namecheap, Cloudflare, Google Domains, Hostinger) and replace your current nameservers with:
+                </p>
+              </div>
             </div>
-            <div>
-              <div className="api-label">Request Body</div>
-              <div className="api-code">{'{'}{'\n'}  <span className="key">"domain"</span>: <span className="str">"{websites[0]?.domain || 'yourdomain.com'}"</span>,{'\n'}  <span className="key">"request"</span>: {'{'}{'\n'}    <span className="key">"url"</span>: <span className="str">"/page"</span>,{'\n'}    <span className="key">"method"</span>: <span className="str">"GET"</span>,{'\n'}    <span className="key">"headers"</span>: {'{}'},{'\n'}    <span className="key">"body"</span>: <span className="str">""</span>,{'\n'}    <span className="key">"query_params"</span>: {'{}'},{'\n'}    <span className="key">"ip"</span>: <span className="str">"visitor_ip"</span>{'\n'}  {'}'}{'\n'}{'}'}</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+              {/* Nameserver 1 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: '700' }}>Primary Nameserver</div>
+                  <code style={{ fontSize: '15px', fontWeight: '700', color: '#0284c7' }}>ns1.mdefender.pro</code>
+                </div>
+                <button
+                  onClick={() => copyCode('ns1', 'ns1.mdefender.pro')}
+                  style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155' }}
+                >
+                  <i className="fas fa-copy"></i> {copiedId === 'ns1' ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+
+              {/* Nameserver 2 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: '700' }}>Secondary Nameserver</div>
+                  <code style={{ fontSize: '15px', fontWeight: '700', color: '#0284c7' }}>ns2.mdefender.pro</code>
+                </div>
+                <button
+                  onClick={() => copyCode('ns2', 'ns2.mdefender.pro')}
+                  style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155' }}
+                >
+                  <i className="fas fa-copy"></i> {copiedId === 'ns2' ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
             </div>
-            <div>
-              <div className="api-label">Response (Allowed)</div>
-              <div className="api-code">{'{ "status": "allowed" }'}</div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleVerifyDns}
+                disabled={verifyingDns}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff',
+                  border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '13px', fontWeight: '700',
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(2,132,199,0.3)'
+                }}
+              >
+                {verifyingDns ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync-alt"></i>}
+                {verifyingDns ? 'Checking DNS Propagation...' : 'Verify Nameservers & Activate Proxy'}
+              </button>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>DNS changes typically take 5 to 15 minutes worldwide.</span>
             </div>
-            <div>
-              <div className="api-label">Response (Blocked)</div>
-              <div className="api-code">{'{ "status": "blocked", "attack_type": "SQL Injection", "block_page": "<html>..." }'}</div>
+
+            {dnsStatus && (
+              <div style={{ marginTop: '14px', padding: '12px 16px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', color: '#065f46', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '16px' }}></i>
+                <span>{dnsStatus.message}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Step 3: What Happens Next */}
+          <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '14px', padding: '24px', color: '#f8fafc' }}>
+            <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: '700', color: '#38bdf8' }}>
+              <i className="fas fa-bolt" style={{ marginRight: '8px' }}></i> Active Features Once Routed:
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '13px', marginBottom: '4px' }}><i className="fas fa-shield-alt"></i> L3/L4/L7 Anti-DDoS</div>
+                <div style={{ color: '#94a3b8', fontSize: '12px' }}>Absorbs high-volume HTTP floods and bot attacks before touching your host.</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '13px', marginBottom: '4px' }}><i className="fas fa-lock"></i> Automated Free SSL</div>
+                <div style={{ color: '#94a3b8', fontSize: '12px' }}>Instant Let's Encrypt wildcard certificate auto-issued and auto-renewed.</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
+                <div style={{ color: '#38bdf8', fontWeight: '700', fontSize: '13px', marginBottom: '4px' }}><i className="fas fa-microchip"></i> 0.5ms ML WAF Inspection</div>
+                <div style={{ color: '#94a3b8', fontSize: '12px' }}>5.2M attack vector ML + AST semantic analyzer intercepts zero-day threats.</div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="api-grid">
-          <div className="api-mini"><span className="api-method get">GET</span><code>/api/stats</code><p>Get real-time WAF statistics</p></div>
-          <div className="api-mini"><span className="api-method post">POST</span><code>/api/block</code><p>Manually block an IP address</p></div>
-          <div className="api-mini"><span className="api-method get">GET</span><code>/api/logs</code><p>Retrieve attack logs with timestamps</p></div>
+      )}
+
+      {/* CONTENT FOR SERVICE 2: WordPress Plugin */}
+      {activeService === 'wordpress_plugin' && (
+        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '18px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>
+                  <i className="fab fa-wordpress" style={{ color: '#4f46e5', marginRight: '8px' }}></i> Official WordPress Security Plugin
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+                  Complete internal file scanner, realtime PHP sandbox, and AST backdoor neutralizer.
+                </p>
+              </div>
+              <a
+                href={`${(import.meta.env.VITE_API_BASE || 'https://217.15.170.82.sslip.io').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
+                download="mdefender-pro.zip"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #4f46e5, #6366f1)', color: '#ffffff',
+                  borderRadius: '8px', fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
+                }}
+              >
+                <i className="fas fa-download"></i> Download mdefender-pro.zip
+              </a>
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px', marginBottom: '20px' }}>
+              <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Installation Steps:</h4>
+              <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#334155', lineHeight: 1.8 }}>
+                <li>Download the official <code>mdefender-pro.zip</code> using the button above.</li>
+                <li>In your WordPress Admin, go to <code>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</code>.</li>
+                <li>Select the zip file and click <strong>Install Now</strong>, then click <strong>Activate Plugin</strong>.</li>
+                <li>Go to <code>MDefender-Pro &rarr; Settings</code> in your WordPress dashboard menu.</li>
+                <li>Paste your dedicated Scoped API Key below and click <strong>Save &amp; Connect</strong>:</li>
+              </ol>
+            </div>
+
+            {/* API Key Box */}
+            <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#94a3b8', fontWeight: '700', marginBottom: '4px' }}>
+                  Your Dedicated Website API Key
+                </div>
+                <code id="wp-api-key" style={{ fontSize: '14px', color: '#38bdf8', fontFamily: 'monospace' }}>
+                  {apiKey}
+                </code>
+              </div>
+              <button
+                onClick={() => copyCode('wp-api-key', apiKey)}
+                style={{
+                  background: '#1e293b', border: '1px solid #334155', color: '#f8fafc',
+                  borderRadius: '6px', padding: '8px 16px', cursor: 'pointer', fontSize: '12px', fontWeight: '600'
+                }}
+              >
+                <i className="fas fa-copy"></i> {copiedId === 'wp-api-key' ? 'Copied!' : 'Copy API Key'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

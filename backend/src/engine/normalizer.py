@@ -26,6 +26,10 @@ class DeepNormalizer:
         if not text or not isinstance(text, str):
             return ""
 
+        # Safe input boundary guard against ReDoS & memory bombs
+        if len(text) > 16384:
+            text = text[:16384]
+
         current = text
 
         # Stage 1: Strip null bytes & bad control characters immediately
@@ -57,6 +61,9 @@ class DeepNormalizer:
         if not text:
             return [""]
 
+        if len(text) > 16384:
+            text = text[:16384]
+
         variants: Set[str] = set()
         variants.add(text)
 
@@ -86,7 +93,7 @@ class DeepNormalizer:
         current = text
         for _ in range(self.max_recursion_depth):
             try:
-                decoded = urllib.parse.unquote(current)
+                decoded = urllib.parse.unquote_plus(current)
                 if decoded == current:
                     break
                 current = decoded

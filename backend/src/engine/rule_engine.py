@@ -61,7 +61,7 @@ class RuleEngine:
                     sub_patterns.append(f"(?P<R_{i}_{idx}>{pat})")
             
             if sub_patterns:
-                combined_pattern = f"(?i)({'|'.join(sub_patterns)})"
+                combined_pattern = f"(?i)(?:{'|'.join(sub_patterns)})"
                 try:
                     compiled = re.compile(combined_pattern)
                     self._compiled_batches.append((compiled, batch))

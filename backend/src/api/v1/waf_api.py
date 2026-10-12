@@ -10,6 +10,8 @@ clients - the block page is rendered from a generic reason + reference ID.
 """
 
 import hashlib
+import hmac
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -23,6 +25,7 @@ from src.security.ip_filter import IPFilter
 from src.security.rate_limiter import RateLimiter
 from src.services.notification_service import NotificationService
 from src.utils.api_response import serialize, success
+from src.utils.block_page import render_block_page
 
 router = APIRouter(prefix="/waf", tags=["WAF"])
 
@@ -57,13 +60,17 @@ def _clean_host(host_or_url):
 
 
 def verify_api_key(db, api_key, domain=None):
-    """Resolve an API key to (user_id, website_id, website). None if invalid."""
-    if not api_key:
-        print("[DEBUG verify_api_key] api_key is empty")
+    """Resolve an API key to (user_id, website_id, website). None if invalid.
+    
+    Hardened against NoSQL regex injection and timing side-channel attacks.
+    """
+    if not api_key or not isinstance(api_key, str):
         return None
     api_key = api_key.strip()
+    if len(api_key) < 16:
+        return None
+
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-    print(f"[DEBUG verify_api_key] api_key={api_key[:10]}... domain={domain} key_hash={key_hash}")
     
     # 1. Scoped API key (from db.api_keys)
     record = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
@@ -92,13 +99,14 @@ def verify_api_key(db, api_key, domain=None):
     if user:
         user_id_str = str(user["_id"])
         expected = _hostname(domain) if domain else "localhost"
+        escaped_expected = re.escape(expected)
         website = None
         if domain:
             website = db.websites.find_one({
                 "user_id": user_id_str,
                 "$or": [
-                    {"domain": {"$regex": f"^{expected}", "$options": "i"}},
-                    {"url": {"$regex": f"://{expected}", "$options": "i"}},
+                    {"domain": {"$regex": f"^{escaped_expected}", "$options": "i"}},
+                    {"url": {"$regex": f"://{escaped_expected}", "$options": "i"}},
                     {"domain": expected},
                 ]
             })
@@ -246,6 +254,13 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
                 "risk_level": "critical",
                 "confidence": 1.0,
                 "reference_id": "GEO-BLOCK",
+                "block_page": render_block_page(
+                    reference_id="GEO-BLOCK",
+                    client_ip=ip or "127.0.0.1",
+                    attack_type="Country Block (Geo-Restriction)",
+                    reason=f"Access restricted from {c_name} ({c_code})",
+                    website_name=body.domain or website.get("domain") or "Protected Website"
+                )
             })
 
     mode = body.mode or website.get("waf_mode", "protect")
@@ -316,7 +331,7 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
         except Exception:
             pass
 
-    return success({
+    res_payload = {
         "decision": decision["decision"],
         "action": decision["action"],
         "risk_score": decision["risk_score"],
@@ -325,7 +340,16 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
         "reason": decision["reason"],
         "reference_id": decision["reference_id"],
         "attack_type": decision.get("attack_type"),
-    })
+    }
+    if decision["decision"] == "BLOCK":
+        res_payload["block_page"] = render_block_page(
+            reference_id=decision.get("reference_id"),
+            client_ip=ip or "127.0.0.1",
+            attack_type=decision.get("attack_type") or "Security Violation",
+            reason=decision.get("reason") or "Malicious request blocked",
+            website_name=body.domain or website.get("domain") or "Protected Website"
+        )
+    return success(res_payload)
 
 
 @router.post("/telemetry")

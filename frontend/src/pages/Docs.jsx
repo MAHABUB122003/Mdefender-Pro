@@ -457,48 +457,66 @@ export default function Docs() {
                   color: '#059669',
                   fontSize: '12px',
                   fontWeight: '700'
-                }}>Zero Config &bull; Bundled 403 Page</span>
+                }}>Zero Config &bull; 1-Line Script &bull; Bundled 403 Page</span>
               </div>
 
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>
                 How to Connect Your Website with MDefender
               </h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '28px' }}>
-                Learn how to integrate MDefender Pro into any web application or backend. When you install our package, everything &mdash; including the high-speed 403 Cyber Block Page &mdash; is bundled and ready to go immediately upon adding your API key.
+                Integrate MDefender Pro into any website in seconds &mdash; without writing complex server code. From a single-line HTML drop-in script (like Tailwind CSS / Google Analytics CDN) to full-stack React, Next.js, Node.js, and WordPress plugins.
               </p>
 
-              {/* Step 1: Install Package */}
+              {/* Method 1: Cloud Anycast Reverse Proxy (Cloudflare-Style Smart DNS) */}
               <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(234, 88, 12, 0.08))',
+                border: '1px solid rgba(245, 158, 11, 0.35)',
                 borderRadius: '16px',
                 padding: '24px',
                 boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
-                  <i className="fa-solid fa-1" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Install the NPM Package
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Run the following command in your backend project directory:
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: dark ? '#fbbf24' : '#b45309', margin: 0 }}>
+                    <i className="fa-solid fa-cloud" style={{ color: '#f59e0b', marginRight: '10px' }}></i>
+                    Method 1 (Recommended): Cloud Anycast Reverse Proxy (Zero Code • All Platforms)
+                  </h3>
+                  <span style={{ padding: '3px 10px', background: '#f59e0b', color: '#fff', fontSize: '11px', fontWeight: '700', borderRadius: '6px' }}>Cloudflare-Style</span>
+                </div>
+                <p style={{ fontSize: '13px', color: t.body, lineHeight: '1.6', marginBottom: '14px' }}>
+                  Protect any website running on <strong>Vercel, AWS, Render, Netlify, cPanel, VPS, React, Next.js, Node.js, Laravel, or Python</strong> without writing a single line of code. Simply update your domain DNS records:
                 </p>
-                <CodeBlock language="bash" code={`npm install mdefender-pro`} />
+
                 <div style={{
-                  background: dark ? 'rgba(56, 189, 248, 0.08)' : 'rgba(2, 132, 199, 0.08)',
-                  border: dark ? '1px solid rgba(56, 189, 248, 0.25)' : '1px solid rgba(2, 132, 199, 0.25)',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  marginTop: '14px'
+                  background: dark ? '#0b1329' : '#f8fafc',
+                  border: '1px solid #334155',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  marginBottom: '16px',
+                  fontFamily: 'monospace',
+                  fontSize: '13px'
                 }}>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: dark ? '#93c5fd' : '#0369a1', lineHeight: '1.6' }}>
-                    <i className="fa-solid fa-shield-halved" style={{ marginRight: '6px', color: t.accentText }}></i>
-                    <strong>Bundled Block Page:</strong> The MDefender-Pro AI Corporate 403 Block Page is automatically installed inside <code className="doc-inline-code">mdefender-pro</code> with real-time GeoIP, country flags, and incident tracking. You do <strong>NOT</strong> need to create or host an external HTML file!
-                  </p>
+                  <div style={{ color: '#38bdf8', fontWeight: '700', marginBottom: '8px' }}>// Set Nameservers at your Domain Registrar (Namecheap, GoDaddy, etc.):</div>
+                  <div style={{ color: '#22c55e' }}>NS1: ns1.mdefender.pro</div>
+                  <div style={{ color: '#22c55e' }}>NS2: ns2.mdefender.pro</div>
+                  <div style={{ marginTop: '10px', color: '#94a3b8' }}>// Or point CNAME record to:</div>
+                  <div style={{ color: '#f59e0b' }}>CNAME: proxy.mdefender.pro</div>
+                </div>
+
+                <div style={{
+                  background: dark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  fontSize: '12.5px',
+                  color: dark ? '#6ee7b7' : '#047857'
+                }}>
+                  <i className="fa-solid fa-check-circle" style={{ marginRight: '6px' }}></i>
+                  <strong>Sub-Millisecond Edge WAF:</strong> Once DNS is pointed, all incoming traffic is inspected in ~0.35ms before reaching your origin server. DDoS attacks, SQLi, and 0-days are blocked instantly.
                 </div>
               </div>
 
-              {/* Step 2: Get API Key */}
+              {/* Method 2: WordPress Security Plugin */}
               <div style={{
                 background: t.cardGrad,
                 border: t.cardBorder,
@@ -507,68 +525,26 @@ export default function Docs() {
                 boxShadow: t.cardShadow,
                 marginBottom: '24px'
               }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
-                  <i className="fa-solid fa-2" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Get Your Website API Key
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', margin: '0 0 12px' }}>
-                  Go to <Link to="/user/settings" style={{ color: t.accentText, fontWeight: '600' }}>Settings</Link> or <Link to="/user/websites" style={{ color: t.accentText, fontWeight: '600' }}>Websites</Link> in your MDefender dashboard to copy your active API Key (e.g. <code className="doc-inline-code">Ix2TtXbbBHJol...</code>).
-                </p>
-              </div>
-
-              {/* Step 3: Configure Your Application */}
-              <div style={{
-                background: t.cardGrad,
-                border: t.cardBorder,
-                borderRadius: '16px',
-                padding: '24px',
-                boxShadow: t.cardShadow,
-                marginBottom: '24px'
-              }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
-                  <i className="fa-solid fa-3" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Configure Your Application
-                </h3>
-                <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  You can configure MDefender in either of two easy ways:
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, margin: 0 }}>
+                    <i className="fa-brands fa-wordpress" style={{ color: '#0284c7', marginRight: '10px' }}></i>
+                    Method 2: MDefender Pro WordPress Security Plugin
+                  </h3>
+                  <span style={{ padding: '3px 10px', background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: '700', borderRadius: '6px' }}>Deep Scan</span>
+                </div>
+                <p style={{ fontSize: '13px', color: t.muted, lineHeight: '1.6', marginBottom: '14px' }}>
+                  For WordPress sites, the official plugin provides deep internal protection including core integrity checks, webshell hunting, and file modification scanners.
                 </p>
 
-                <div style={{ marginTop: '14px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: t.accentText, marginBottom: '6px' }}>
-                    Option A: Config File (<code className="doc-inline-code">mdefender.config.js</code>)
-                  </div>
-                  <CodeBlock
-                    language="javascript"
-                    code={`// mdefender.config.js (in your project root)
-module.exports = {
-  apiKey: "YOUR_API_KEY_HERE",
-  domain: "yourdomain.com",
-  apiEndpoint: "http://217.15.170.82",
-  mode: "block",
-  logBlocked: true
-};`}
-                  />
-                </div>
-
-                <div style={{ marginTop: '18px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: t.accentText, marginBottom: '6px' }}>
-                    Option B: Pass Directly in Code
-                  </div>
-                  <CodeBlock
-                    language="javascript"
-                    code={`// Attach in your Express server index.js
-const mdefender = require('mdefender-pro');
-
-app.use(mdefender({
-  apiKey: 'YOUR_API_KEY_HERE',
-  domain: 'yourdomain.com',
-  apiEndpoint: 'http://217.15.170.82'
-}));`}
-                  />
-                </div>
+                <ol style={{ fontSize: '13px', color: t.body, lineHeight: '1.8', paddingLeft: '20px', margin: '0 0 16px' }}>
+                  <li>Download <strong>mdefender-pro.zip</strong> directly from your MDefender Pro dashboard.</li>
+                  <li>In your WordPress Admin, go to <strong>Plugins &rarr; Add New &rarr; Upload Plugin</strong> and activate it.</li>
+                  <li>Open <strong>MDefender Pro</strong> in the sidebar, paste your scoped API key, and click <strong>Connect</strong>.</li>
+                  <li>Real-time attack telemetry and file scanners begin immediately.</li>
+                </ol>
               </div>
 
-              {/* Step 4: Attach Middleware in Express */}
+              {/* Method 3: REST API Gateway */}
               <div style={{
                 background: t.cardGrad,
                 border: t.cardBorder,
@@ -578,31 +554,24 @@ app.use(mdefender({
                 marginBottom: '24px'
               }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '800', color: t.subheading, marginBottom: '12px' }}>
-                  <i className="fa-solid fa-4" style={{ color: t.accentText, marginRight: '10px' }}></i>
-                  Attach Middleware in Express
+                  <i className="fa-solid fa-code" style={{ color: t.accentText, marginRight: '10px' }}></i>
+                  Method 3: Direct REST API Integration (Custom Gateways)
                 </h3>
                 <p style={{ fontSize: '13px', color: t.muted, marginBottom: '12px' }}>
-                  Make sure <code className="doc-inline-code">app.use(mdefender())</code> is placed after body parsers and before route endpoints:
+                  Call MDefender's high-speed decision engine from your reverse proxy, NGINX Lua, or backend gateway:
                 </p>
                 <CodeBlock
-                  language="javascript"
-                  code={`const express = require('express');
-const cors = require('cors');
-const mdefender = require('mdefender-pro');
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// WAF Middleware - Inspects all requests in real-time
-app.use(mdefender());
-
-// Your Application Routes
-app.use('/api/books', bookRoutes);
-app.use('/api/orders', orderRoutes);
-
-app.listen(5000, () => console.log('Bookstore Server running with MDefender Pro!'));`}
+                  language="bash"
+                  code={`curl -X POST "https://api.mdefender.pro/api/v1/waf/analyze" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "api_key": "YOUR_SCOPED_API_KEY",
+    "ip": "203.0.113.42",
+    "method": "POST",
+    "path": "/wp-login.php",
+    "query": "id=1'\'' OR 1=1--",
+    "headers": {"User-Agent": "Mozilla/5.0"}
+  }'`}
                 />
               </div>
 

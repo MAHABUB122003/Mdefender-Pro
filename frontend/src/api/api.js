@@ -349,6 +349,8 @@ export const api = {
   getUserWebsites: () => apiCall('/api/v1/websites'),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
   removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
+  verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),
+  getWebsiteInstallation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/installation`),
   getUserDashboard: (params = {}) => {
     let qs = ''
     if (typeof params === 'string') qs = `website_id=${encodeURIComponent(params)}`

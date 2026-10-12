@@ -1,5 +1,10 @@
 import time
+import os
+import sys
 import sqlite3
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.engine.decision_engine import DecisionEngine
 from src.engine.malware_detector import MalwareDetector
 

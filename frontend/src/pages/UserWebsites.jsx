@@ -119,6 +119,41 @@ export default function UserWebsites() {
     setShowKeyModal(true)
   }
 
+  const [verifyingDnsId, setVerifyingDnsId] = useState(null)
+
+  const handleVerifyDns = async (w) => {
+    const siteId = w.id || w._id || ''
+    const domainName = w.domain || w.name || w.url || ''
+    if (!siteId) return
+    setVerifyingDnsId(siteId)
+    setFeedbackMsg(null)
+    try {
+      const res = await api.verifyWebsiteDns(siteId)
+      const isVerified = res?.data?.verified || res?.verified
+      if (isVerified) {
+        setFeedbackMsg({
+          type: 'success',
+          text: `🎉 DNS Verified! Domain "${domainName}" is now actively routed through MDefender Anycast Edge.`
+        })
+      } else {
+        setFeedbackMsg({
+          type: 'error',
+          text: res?.data?.message || res?.message || `DNS verification pending for ${domainName}. Please ensure your NS or CNAME records have propagated.`
+        })
+      }
+      userStore.invalidate('websites')
+      userStore.invalidate('dashboard')
+      await fetchData()
+    } catch (err) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || `Failed to verify DNS for ${domainName}`
+      })
+    } finally {
+      setVerifyingDnsId(null)
+    }
+  }
+
   const handleRegenerateKey = async () => {
     if (!confirm(`Are you sure you want to regenerate the API key for ${modalDomain}? Any active connections using the old key will be disconnected.`)) return
     setRegenerating(true)
@@ -448,6 +483,15 @@ MDEFENDER_MODE=block`
                       <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px' }}></i>
                       {w.status || 'Active'}
                     </span>
+                    {w.verified ? (
+                      <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '6px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fas fa-check-double" style={{ fontSize: '9px' }}></i> Edge Verified
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fas fa-clock" style={{ fontSize: '9px' }}></i> Pending DNS
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
                     {w.platform ? `Platform: ${w.platform} • ` : ''}Added: {w.added_at || 'Protected'}
@@ -456,6 +500,25 @@ MDEFENDER_MODE=block`
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Verify DNS Button */}
+                <button
+                  onClick={() => handleVerifyDns(w)}
+                  disabled={verifyingDnsId === (w.id || w._id)}
+                  style={{
+                    padding: '8px 14px',
+                    background: w.verified ? '#f0fdf4' : '#fffbeb',
+                    color: w.verified ? '#16a34a' : '#d97706',
+                    border: `1px solid ${w.verified ? '#bbf7d0' : '#fde68a'}`,
+                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Check Anycast DNS propagation and verify edge traffic routing"
+                >
+                  <i className={`fas ${verifyingDnsId === (w.id || w._id) ? 'fa-spinner fa-spin' : (w.verified ? 'fa-circle-check' : 'fa-satellite-dish')}`}></i>
+                  <span>{verifyingDnsId === (w.id || w._id) ? 'Checking DNS...' : (w.verified ? 'DNS Active' : 'Verify DNS')}</span>
+                </button>
+
                 {/* View Key & Setup Button */}
                 <button
                   onClick={() => handleOpenKeyModal(w)}
@@ -467,7 +530,7 @@ MDEFENDER_MODE=block`
                   }}
                 >
                   <i className="fas fa-key"></i>
-                  <span>API Key &amp; Setup</span>
+                  <span>Setup Guide</span>
                 </button>
 
                 {/* Remove Website Button */}

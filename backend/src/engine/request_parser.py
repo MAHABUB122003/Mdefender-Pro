@@ -8,24 +8,39 @@ class RequestParser:
 
     def parse(self, request_data):
         raw_url = request_data.get('url', '') or request_data.get('path', '')
-        parsed_url = urllib.parse.urlparse(raw_url)
-        path = parsed_url.path or raw_url
+        try:
+            parsed_url = urllib.parse.urlparse(raw_url)
+            path = parsed_url.path or raw_url
+            url_query = parsed_url.query
+        except Exception:
+            path = raw_url.split('?')[0] if '?' in raw_url else raw_url
+            url_query = raw_url.split('?')[1] if '?' in raw_url else ''
+
         query_param_val = request_data.get('query_params', '')
         if isinstance(query_param_val, dict):
             query_param_str = urllib.parse.urlencode(query_param_val)
         else:
             query_param_str = str(query_param_val) if query_param_val else ''
 
-        query_str = request_data.get('query_string', '') or request_data.get('query', '') or query_param_str or parsed_url.query
+        query_str = request_data.get('query_string', '') or request_data.get('query', '') or query_param_str or url_query
         
+        parsed_qp = {}
+        if isinstance(query_param_val, dict):
+            parsed_qp = query_param_val
+        elif query_str:
+            try:
+                parsed_qp = urllib.parse.parse_qs(query_str, keep_blank_values=True)
+            except Exception:
+                parsed_qp = {}
+
         parsed = {
             'url': raw_url if '?' in raw_url or not query_str else f"{path}?{query_str}",
             'path': path,
             'query_string': query_str,
             'method': request_data.get('method', 'GET'),
             'headers': request_data.get('headers', {}),
-            'body': request_data.get('body', ''),
-            'query_params': query_param_val if isinstance(query_param_val, dict) else urllib.parse.parse_qs(query_str),
+            'body': (request_data.get('body') or '')[:16384] if isinstance(request_data.get('body'), str) else str(request_data.get('body', ''))[:16384],
+            'query_params': parsed_qp,
             'ip': request_data.get('ip', ''),
             'user_agent': request_data.get('user_agent') or request_data.get('headers', {}).get('User-Agent', ''),
             'referer': request_data.get('referer') or request_data.get('headers', {}).get('Referer', ''),

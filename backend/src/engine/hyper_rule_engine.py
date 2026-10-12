@@ -222,8 +222,54 @@ class HyperRuleEngine:
         self._category_regex_map["Encrypted WebShell"] = [
             re.compile(r"(?i)openssl_decrypt\s*\(\s*\$_(?:POST|COOKIE|SERVER|REQUEST)[\s\S]{0,100}AES"),
             re.compile(r"(?i)@eval\s*\(\s*openssl_decrypt"),
-            re.compile(r"(?i)\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\("),
-            re.compile(r"(?i)\bassert\s*\(\s*(?:base64_decode|gzinflate|str_rot13|\$_(?:GET|POST|REQUEST|COOKIE))\b"),
+        ]
+
+        # --- 13. Critical CVE Exploit Vectors (2024-2026 Focus) ---
+        cve_tokens = {
+            "${jndi:", "jndi:ldap://", "jndi:rmi://", "jndi:dns://",
+            "class.module.classloader", "class.classloader",
+            "allow_url_include=1", "auto_prepend_file=", "auto_append_file=",
+            "org.apache.activemq", "guestaccess.aspx", "/api/v1/totp/user-backup-code",
+            "/api/v1/cav/client/status", "/dana-na/", "connector.minimal.php",
+            "elementor_upload", "cve-2024-4577", "cve-2023-46604",
+            "cve-2021-44228", "cve-2022-22965", "cve-2023-34362", "cve-2024-21887"
+        }
+        self._compiled_token_sets["Critical CVE Exploit"] = cve_tokens
+        self._category_regex_map["Critical CVE Exploit"] = [
+            re.compile(r"(?i)\$\{jndi:(?:ldap|rmi|dns|nis|iiop|corba):\/\/"),
+            re.compile(r"(?i)class\.module\.classloader"),
+            re.compile(r"(?i)\?-d\s*(?:allow_url_include|auto_prepend_file|auto_append_file)"),
+            re.compile(r"(?i)(cve-\d{4}-\d{4,7})"),
+            re.compile(r"(?i)\/wp-content\/plugins\/wp-file-manager\/.*connector\.minimal\.php"),
+        ]
+
+        # --- 14. PHP Insecure Deserialization & PHPGGC Chains ---
+        deser_tokens = {
+            'o:8:"wp_theme"', 'o:13:"wp_block_list"', 'o:22:"wp_block_type_registry"',
+            'wporg\\requests\\hooks', 'wporg\\requests\\session',
+            'o:7:"cakephp"', 'o:6:"bitrix"', 'o:14:"laminas\\', 'o:10:"monolog\\',
+            'o:7:"symfony\\', 'o:7:"laravel\\', 'ro0ab', 'tzo4oi', 'tzoxmzo'
+        }
+        self._compiled_token_sets["PHP Deserialization (PHPGGC)"] = deser_tokens
+        self._category_regex_map["PHP Deserialization (PHPGGC)"] = [
+            re.compile(r'(?i)\bo:\d+:"[a-zA-Z0-9_\\]+":\d+:\{'),
+            re.compile(r'(?i)wporg\\requests\\(?:hooks|session)'),
+        ]
+
+        # --- 15. AI Prompt Injection & LLM Jailbreak Vectors ---
+        prompt_injection_tokens = {
+            "ignore all prior instructions", "ignore all previous instructions",
+            "ignore previous instructions", "disregard all previous instructions",
+            "disregard all instructions", "reveal your system prompt",
+            "reveal your hidden prompt", "output your entire prompt",
+            "do anything now mode", "system override:", "system prompt:"
+        }
+        self._compiled_token_sets["AI Prompt Injection"] = prompt_injection_tokens
+        self._category_regex_map["AI Prompt Injection"] = [
+            re.compile(r"(?i)ignore\s+(?:all\s+)?(?:previous|prior|above)\s+(?:instructions|prompts|directions)"),
+            re.compile(r"(?i)disregard\s+(?:all\s+)?(?:previous|prior|above)\s+(?:instructions|rules)"),
+            re.compile(r"(?i)reveal\s+(?:your\s+)?(?:system\s+prompt|initial\s+instructions|hidden\s+prompt)"),
+            re.compile(r"(?i)\byou\s+are\s+now\s+(?:unrestricted|dan|jailbroken|in\s+developer\s+mode)\b"),
         ]
 
         t1 = time.perf_counter()
