@@ -330,6 +330,9 @@ class UserAPI:
         now_dt = datetime.now()
         now_str = now_dt.strftime('%Y-%m-%d %H:%M:%S')
 
+        selected_plan = (data.get('plan') or 'free').lower()
+        ssl_mode = (data.get('ssl_mode') or 'flexible').lower()
+
         update_fields = {
             'user_id': user_id_str,
             'domain': domain,
@@ -337,6 +340,9 @@ class UserAPI:
             'url': domain,
             'platform': platform,
             'origin_server': origin,
+            'plan': selected_plan,
+            'ssl_mode': ssl_mode,
+            'verified': False,
             'status': 'active',
             'api_key': raw_key,
             'added_at': now_dt,
@@ -391,6 +397,49 @@ class UserAPI:
         except Exception as e:
             logger.warning(f"Could not record API key for website {website_id}: {e}")
 
+        # Seed DNS records
+        try:
+            from src.services.dns_zone_service import DNSZoneService
+            dns_svc = DNSZoneService(self.db)
+            records_in = data.get('dns_records')
+            if records_in and isinstance(records_in, list):
+                for rec in records_in:
+                    self.db.dns_records.insert_one({
+                        '_id': str(uuid.uuid4()),
+                        'website_id': website_id,
+                        'user_id': user_id_str,
+                        'domain': domain,
+                        'type': rec.get('type', 'A').upper(),
+                        'name': rec.get('name', '@'),
+                        'content': rec.get('content', ''),
+                        'ttl': rec.get('ttl', 'Auto'),
+                        'proxied': bool(rec.get('proxied', False)),
+                        'priority': rec.get('priority'),
+                        'purpose': rec.get('purpose', ''),
+                        'created_at': now_dt,
+                        'updated_at': now_dt,
+                    })
+            else:
+                discovery = dns_svc.discover_public_dns(domain, scan_subdomains=True)
+                for rec in discovery.get('records', []):
+                    self.db.dns_records.insert_one({
+                        '_id': str(uuid.uuid4()),
+                        'website_id': website_id,
+                        'user_id': user_id_str,
+                        'domain': domain,
+                        'type': rec['type'],
+                        'name': rec['name'],
+                        'content': rec['content'],
+                        'ttl': rec.get('ttl', 'Auto'),
+                        'proxied': rec.get('proxied', True),
+                        'priority': rec.get('priority'),
+                        'purpose': rec.get('purpose', ''),
+                        'created_at': now_dt,
+                        'updated_at': now_dt,
+                    })
+        except Exception as e:
+            logger.warning(f"Could not seed DNS records for {domain}: {e}")
+
         website_out = {
             'id': str(website_id),
             '_id': str(website_id),
@@ -398,6 +447,9 @@ class UserAPI:
             'name': domain,
             'url': domain,
             'platform': platform,
+            'plan': selected_plan,
+            'ssl_mode': ssl_mode,
+            'verified': False,
             'status': 'active',
             'api_key': raw_key,
             'added_at': now_str,

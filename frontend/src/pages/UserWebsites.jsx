@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
+import DnsOnboardingModal from '../components/DnsOnboardingModal'
+import DnsZoneDrawer from '../components/DnsZoneDrawer'
 
 export default function UserWebsites() {
   const cachedData = userStore.get('websites') || userStore.get('dashboard')
@@ -11,6 +13,10 @@ export default function UserWebsites() {
   const [platform, setPlatform] = useState('cloud')
   const [adding, setAdding] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
+
+  // Cloudflare-Style Domain Onboarding & Zone Management Modals
+  const [showDnsModal, setShowDnsModal] = useState(false)
+  const [selectedZoneWebsite, setSelectedZoneWebsite] = useState(null)
 
   const userPlan = data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free'
   const isPremium = userPlan === 'premium'
@@ -376,12 +382,50 @@ MDEFENDER_MODE=block`
         background: 'var(--card-bg, #ffffff)', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.03)', padding: '24px', marginBottom: '24px',
       }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main, #0f172a)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#10b981', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-            <i className="fas fa-plus"></i>
-          </span>
-          Connect New Website
-        </h3>
+        {/* Cloudflare-style Wizard Hero Banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+          borderRadius: '12px', border: '1px solid #fed7aa',
+          padding: '18px 22px', marginBottom: '20px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '12px',
+              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+              color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '20px', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
+            }}>
+              <i className="fas fa-shield-halved"></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: '#9a3412' }}>
+                Cloudflare-Style Domain Protection
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#c2410c', marginTop: '2px' }}>
+                Auto-discover DNS records, choose Free/Go/Pro/Ultra plan, configure Proxied vs DNS-Only records &amp; SSL.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDnsModal(true)}
+            style={{
+              padding: '10px 22px', borderRadius: '10px', border: 'none',
+              background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+              color: '#ffffff', fontSize: '13.5px', fontWeight: '800', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              boxShadow: '0 4px 14px rgba(234, 88, 12, 0.35)', transition: 'transform 0.1s'
+            }}
+          >
+            <i className="fas fa-magic"></i>
+            <span>Add Website (Cloud WAF Wizard)</span>
+          </button>
+        </div>
+
+        <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#64748b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>Or quick connect via custom platform:</span>
+        </div>
 
         <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Domain input */}
@@ -433,7 +477,7 @@ MDEFENDER_MODE=block`
             }}
           >
             <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-shield-halved'}`}></i>
-            <span>{adding ? 'Connecting...' : 'Add & Protect'}</span>
+            <span>{adding ? 'Connecting...' : 'Quick Add'}</span>
           </button>
         </form>
       </div>
@@ -497,6 +541,25 @@ MDEFENDER_MODE=block`
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Manage DNS Zone Button */}
+                <button
+                  onClick={() => setSelectedZoneWebsite(w)}
+                  style={{
+                    padding: '8px 15px',
+                    background: 'linear-gradient(135deg, #fff7ed, #ffedd5)',
+                    color: '#ea580c',
+                    border: '1px solid #fed7aa',
+                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    boxShadow: '0 2px 6px rgba(234, 88, 12, 0.15)',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Manage DNS records, Proxied vs DNS-only toggles, and SSL encryption"
+                >
+                  <i className="fas fa-cloud" style={{ color: '#f97316' }}></i>
+                  <span>DNS &amp; WAF Zone</span>
+                </button>
+
                 {/* Verify DNS Button */}
                 <button
                   onClick={() => handleVerifyDns(w)}
@@ -1150,6 +1213,29 @@ MDEFENDER_MODE=block`
           </div>
         </div>
       )}
+
+      {/* Cloudflare-Style DNS Onboarding Wizard Modal */}
+      <DnsOnboardingModal
+        isOpen={showDnsModal}
+        onClose={() => setShowDnsModal(false)}
+        onWebsiteAdded={async () => {
+          userStore.invalidate('websites')
+          userStore.invalidate('dashboard')
+          await fetchData()
+        }}
+      />
+
+      {/* Cloudflare-Style DNS Zone & Subdomain Management Drawer */}
+      <DnsZoneDrawer
+        isOpen={!!selectedZoneWebsite}
+        website={selectedZoneWebsite}
+        onClose={() => setSelectedZoneWebsite(null)}
+        onRecordUpdated={async () => {
+          userStore.invalidate('websites')
+          userStore.invalidate('dashboard')
+          await fetchData()
+        }}
+      />
     </div>
   )
 }

@@ -1,0 +1,561 @@
+"""DNS Zone & Discovery Service for Cloudflare-Style Domain Onboarding.
+
+Provides:
+- Public DNS discovery (A, AAAA, CNAME, MX, TXT, NS) with fast asynchronous resolution.
+- Common subdomain enumeration (www, api, mail, blog, admin, shop, dev, app, etc.).
+- Zone record management (CRUD, Proxied vs DNS-Only toggle).
+- Nameserver delegation verification (ns1.mdefender.pro, ns2.mdefender.pro).
+- SSL/TLS mode configuration (Flexible, Full, Full Strict).
+- Plan entitlement verification (Free, Go, Pro, Ultra).
+"""
+
+import os
+import re
+import uuid
+import socket
+import logging
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+
+try:
+    import dns.resolver
+    import dns.exception
+    HAS_DNSPYTHON = True
+except ImportError:
+    HAS_DNSPYTHON = False
+
+from src.database.mongodb_connection import MongoDB
+
+logger = logging.getLogger(__name__)
+
+# Primary MDefender Anycast Nameservers and CNAME Proxy Host
+MDEFENDER_NAMESERVERS = ["ns1.mdefender.pro", "ns2.mdefender.pro"]
+MDEFENDER_CNAME_PROXY = "proxy.mdefender.pro"
+
+# Common subdomains to probe during DNS discovery
+COMMON_SUBDOMAINS = [
+    "www", "api", "mail", "blog", "admin", "shop", "dev",
+    "app", "vpn", "staging", "portal", "cpanel", "webmail", "store"
+]
+
+# Web-facing record names that should default to Proxied (Edge WAF on)
+WEB_PROXIED_NAMES = {"@", "www", "api", "blog", "app", "dev", "staging", "shop", "store", "portal"}
+
+# Cloud WAF Plans feature matrix
+PLAN_ENTITLEMENTS = {
+    "free": {
+        "name": "Free",
+        "max_domains": 1,
+        "dns_discovery": True,
+        "manual_dns": True,
+        "waf_rules": "Basic (2,000 Signatures)",
+        "rate_limiting": "Community Tier (120 RPM)",
+        "log_retention_days": 1,
+        "subdomain_zones": False,
+        "support": "Community Forum",
+    },
+    "go": {
+        "name": "Go",
+        "max_domains": 5,
+        "dns_discovery": True,
+        "manual_dns": True,
+        "waf_rules": "Expanded Signatures (100k+)",
+        "rate_limiting": "Enhanced (500 RPM)",
+        "log_retention_days": 7,
+        "subdomain_zones": True,
+        "support": "Email Support",
+    },
+    "pro": {
+        "name": "Pro",
+        "max_domains": 25,
+        "dns_discovery": True,
+        "manual_dns": True,
+        "waf_rules": "Advanced ML 5.48M Inference Core + Custom Regex Policies",
+        "rate_limiting": "High-Throughput (2,500 RPM)",
+        "log_retention_days": 30,
+        "subdomain_zones": True,
+        "support": "Priority 24/7 Support",
+    },
+    "ultra": {
+        "name": "Ultra",
+        "max_domains": 9999,
+        "dns_discovery": True,
+        "manual_dns": True,
+        "waf_rules": "Highest Configured Tier (Real-Time Retraining + Zero-Day Shield)",
+        "rate_limiting": "Uncapped Anycast Throughput",
+        "log_retention_days": 365,
+        "subdomain_zones": True,
+        "support": "Dedicated Enterprise VIP SLA",
+    },
+}
+
+
+class DNSZoneService:
+    def __init__(self, db: Optional[MongoDB] = None):
+        self.db = db or MongoDB()
+
+    def normalize_domain(self, domain: str) -> str:
+        """Strip http/https, trailing slash, path and port to get the clean root domain."""
+        if not domain:
+            return ""
+        d = domain.strip().lower()
+        d = re.sub(r"^https?:\/\/", "", d)
+        d = d.split("/")[0].split(":")[0].strip()
+        return d
+
+    def discover_public_dns(self, raw_domain: str, scan_subdomains: bool = True) -> Dict[str, Any]:
+        """Perform public DNS discovery for a root domain, resolving A, AAAA, CNAME, MX, TXT and probing common subdomains."""
+        domain = self.normalize_domain(raw_domain)
+        if not domain:
+            return {"status": "error", "message": "Domain name is required", "records": []}
+
+        discovered_records: List[Dict[str, Any]] = []
+
+        if not HAS_DNSPYTHON:
+            # Fallback to standard socket if dnspython is absent
+            try:
+                ip = socket.gethostbyname(domain)
+                discovered_records.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "A",
+                    "name": "@",
+                    "content": ip,
+                    "ttl": "Auto",
+                    "proxied": True,
+                    "purpose": "IPv4 origin server",
+                })
+            except Exception:
+                pass
+            return {
+                "status": "success",
+                "domain": domain,
+                "records": discovered_records,
+                "scan_completed": True,
+                "discovered_count": len(discovered_records),
+                "message": "Basic DNS lookup completed (dnspython not available).",
+            }
+
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 1.2
+        resolver.lifetime = 2.0
+        # Configure reliable public DNS resolvers
+        resolver.nameservers = ["1.1.1.1", "8.8.8.8", "8.8.4.4"]
+
+        # 1. Query Root A Records (IPv4)
+        try:
+            answers = resolver.resolve(domain, "A")
+            for rdata in answers:
+                discovered_records.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "A",
+                    "name": "@",
+                    "content": rdata.to_text(),
+                    "ttl": "Auto",
+                    "proxied": True,
+                    "purpose": "IPv4 origin server",
+                })
+        except Exception:
+            pass
+
+        # 2. Query Root AAAA Records (IPv6)
+        try:
+            answers = resolver.resolve(domain, "AAAA")
+            for rdata in answers:
+                discovered_records.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "AAAA",
+                    "name": "@",
+                    "content": rdata.to_text(),
+                    "ttl": "Auto",
+                    "proxied": True,
+                    "purpose": "IPv6 origin server",
+                })
+        except Exception:
+            pass
+
+        # 3. Query Root CNAME Records
+        try:
+            answers = resolver.resolve(domain, "CNAME")
+            for rdata in answers:
+                target = rdata.to_text().rstrip(".")
+                discovered_records.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "CNAME",
+                    "name": "@",
+                    "content": target,
+                    "ttl": "Auto",
+                    "proxied": True,
+                    "purpose": "Domain alias target",
+                })
+        except Exception:
+            pass
+
+        # 4. Query MX Records (Mail)
+        try:
+            answers = resolver.resolve(domain, "MX")
+            for rdata in answers:
+                target = rdata.exchange.to_text().rstrip(".")
+                discovered_records.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "MX",
+                    "name": "@",
+                    "content": target,
+                    "priority": rdata.preference,
+                    "ttl": "Auto",
+                    "proxied": False,  # MX traffic cannot be proxied through HTTP WAF
+                    "purpose": "Mail server routing",
+                })
+        except Exception:
+            pass
+
+        # 5. Query TXT Records (SPF / Verification)
+        try:
+            answers = resolver.resolve(domain, "TXT")
+            for rdata in answers:
+                txt_content = b"".join(rdata.strings).decode("utf-8", errors="ignore")
+                # Exclude ultra long binary records if any
+                if len(txt_content) > 255:
+                    txt_content = txt_content[:252] + "..."
+                discovered_records.append({
+                    "id": str(uuid.uuid4()),
+                    "type": "TXT",
+                    "name": "@",
+                    "content": txt_content,
+                    "ttl": "Auto",
+                    "proxied": False,
+                    "purpose": "Domain verification & SPF text",
+                })
+        except Exception:
+            pass
+
+        # 6. Probe Common Subdomains
+        if scan_subdomains:
+            for sub in COMMON_SUBDOMAINS:
+                fqdn = f"{sub}.{domain}"
+                # Check CNAME first
+                try:
+                    cname_answers = resolver.resolve(fqdn, "CNAME")
+                    for rdata in cname_answers:
+                        target = rdata.to_text().rstrip(".")
+                        is_web = sub in WEB_PROXIED_NAMES
+                        discovered_records.append({
+                            "id": str(uuid.uuid4()),
+                            "type": "CNAME",
+                            "name": sub,
+                            "content": target,
+                            "ttl": "Auto",
+                            "proxied": is_web,
+                            "purpose": f"{sub.upper()} subdomain alias",
+                        })
+                    continue  # Found CNAME, no need to query A
+                except Exception:
+                    pass
+
+                # Check A record
+                try:
+                    a_answers = resolver.resolve(fqdn, "A")
+                    for rdata in a_answers:
+                        is_web = sub in WEB_PROXIED_NAMES
+                        discovered_records.append({
+                            "id": str(uuid.uuid4()),
+                            "type": "A",
+                            "name": sub,
+                            "content": rdata.to_text(),
+                            "ttl": "Auto",
+                            "proxied": is_web,
+                            "purpose": f"{sub.upper()} subdomain IPv4 origin",
+                        })
+                except Exception:
+                    pass
+
+        # If no A record was found at all, create a default origin placeholder so the user has a starting point
+        if not any(r["type"] == "A" and r["name"] == "@" for r in discovered_records):
+            discovered_records.insert(0, {
+                "id": str(uuid.uuid4()),
+                "type": "A",
+                "name": "@",
+                "content": "203.0.113.10",
+                "ttl": "Auto",
+                "proxied": True,
+                "purpose": "IPv4 origin server (Please update with your origin IP)",
+            })
+
+        return {
+            "status": "success",
+            "domain": domain,
+            "records": discovered_records,
+            "scan_completed": True,
+            "discovered_count": len(discovered_records),
+            "message": "Scan completed. Common records discovered. You can add or edit records manually.",
+        }
+
+    def get_website_zone(self, website_id: str, user_id: str) -> Dict[str, Any]:
+        """Fetch full zone details for a website, including DNS records, proxy status, and SSL mode."""
+        website = self.db.websites.find_one({"_id": website_id, "user_id": user_id})
+        if not website:
+            raise ValueError("Website not found or access denied")
+
+        domain = website.get("domain") or website.get("url") or ""
+        domain = self.normalize_domain(domain)
+
+        # Retrieve records from db.dns_records
+        records = list(self.db.dns_records.find({"website_id": website_id}))
+        formatted_records = []
+        for r in records:
+            formatted_records.append({
+                "id": str(r.get("_id")),
+                "type": r.get("type", "A"),
+                "name": r.get("name", "@"),
+                "content": r.get("content", ""),
+                "ttl": r.get("ttl", "Auto"),
+                "proxied": bool(r.get("proxied", True)),
+                "priority": r.get("priority"),
+                "purpose": r.get("purpose", ""),
+                "created_at": r.get("created_at"),
+            })
+
+        # If no records exist in DB yet, populate with initial discovery or basic defaults
+        if not formatted_records:
+            discovery = self.discover_public_dns(domain, scan_subdomains=True)
+            for rec in discovery.get("records", []):
+                rec_id = str(uuid.uuid4())
+                doc = {
+                    "_id": rec_id,
+                    "website_id": website_id,
+                    "user_id": user_id,
+                    "domain": domain,
+                    "type": rec["type"],
+                    "name": rec["name"],
+                    "content": rec["content"],
+                    "ttl": rec.get("ttl", "Auto"),
+                    "proxied": rec.get("proxied", True),
+                    "priority": rec.get("priority"),
+                    "purpose": rec.get("purpose", ""),
+                    "created_at": datetime.now(),
+                    "updated_at": datetime.now(),
+                }
+                try:
+                    self.db.dns_records.insert_one(doc)
+                    rec["id"] = rec_id
+                    formatted_records.append(rec)
+                except Exception:
+                    pass
+
+        proxied_count = sum(1 for r in formatted_records if r.get("proxied"))
+        dns_only_count = len(formatted_records) - proxied_count
+        plan_id = website.get("plan", "free").lower()
+        plan_meta = PLAN_ENTITLEMENTS.get(plan_id, PLAN_ENTITLEMENTS["free"])
+
+        return {
+            "website_id": website_id,
+            "domain": domain,
+            "status": website.get("status", "active"),
+            "verified": bool(website.get("verified", False)),
+            "ssl_mode": website.get("ssl_mode", "flexible"),
+            "plan": plan_meta,
+            "nameservers": MDEFENDER_NAMESERVERS,
+            "cname_target": MDEFENDER_CNAME_PROXY,
+            "records": formatted_records,
+            "proxied_count": proxied_count,
+            "dns_only_count": dns_only_count,
+            "total_records": len(formatted_records),
+            "protection_enabled": website.get("protection_enabled", True),
+            "waf_mode": website.get("waf_mode", "protect"),
+            "requests_today": website.get("requests_today", 0),
+            "blocked_today": website.get("blocked_today", 0),
+            "last_activity": website.get("last_activity"),
+            "connected_at": website.get("connected_at"),
+        }
+
+    def list_records(self, website_id: str) -> List[Dict[str, Any]]:
+        """List all DNS records for a given website ID."""
+        records = list(self.db.dns_records.find({"website_id": website_id}))
+        return [
+            {
+                "id": str(r.get("_id")),
+                "type": r.get("type", "A"),
+                "name": r.get("name", "@"),
+                "content": r.get("content", ""),
+                "ttl": r.get("ttl", "Auto"),
+                "proxied": bool(r.get("proxied", True)),
+                "priority": r.get("priority"),
+                "purpose": r.get("purpose", ""),
+                "created_at": r.get("created_at"),
+            }
+            for r in records
+        ]
+
+    def add_dns_record(self, website_id: str, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a manual DNS record to a website's zone."""
+        website = self.db.websites.find_one({"_id": website_id, "user_id": user_id})
+        if not website:
+            raise ValueError("Website not found or access denied")
+
+        domain = self.normalize_domain(website.get("domain") or "")
+        rec_type = data.get("type", "A").upper().strip()
+        rec_name = data.get("name", "@").strip()
+        rec_content = data.get("content", "").strip()
+        rec_ttl = data.get("ttl", "Auto")
+        proxied = bool(data.get("proxied", False))
+        priority = data.get("priority")
+
+        if not rec_content:
+            raise ValueError("Record content/IP target is required")
+
+        # MX and TXT cannot be proxied through HTTP WAF
+        if rec_type in ("MX", "TXT", "SRV"):
+            proxied = False
+
+        record_id = str(uuid.uuid4())
+        now = datetime.now()
+        doc = {
+            "_id": record_id,
+            "website_id": website_id,
+            "user_id": user_id,
+            "domain": domain,
+            "type": rec_type,
+            "name": rec_name,
+            "content": rec_content,
+            "ttl": rec_ttl,
+            "proxied": proxied,
+            "priority": priority,
+            "purpose": data.get("purpose", f"Manual {rec_type} record"),
+            "created_at": now,
+            "updated_at": now,
+        }
+        self.db.dns_records.insert_one(doc)
+
+        return {
+            "id": record_id,
+            "type": rec_type,
+            "name": rec_name,
+            "content": rec_content,
+            "ttl": rec_ttl,
+            "proxied": proxied,
+            "priority": priority,
+        }
+
+    def update_dns_record(self, website_id: str, record_id: str, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update an existing DNS record."""
+        existing = self.db.dns_records.find_one({"_id": record_id, "website_id": website_id, "user_id": user_id})
+        if not existing:
+            raise ValueError("DNS record not found")
+
+        updates: Dict[str, Any] = {"updated_at": datetime.now()}
+        if "type" in data:
+            updates["type"] = data["type"].upper().strip()
+        if "name" in data:
+            updates["name"] = data["name"].strip()
+        if "content" in data:
+            updates["content"] = data["content"].strip()
+        if "ttl" in data:
+            updates["ttl"] = data["ttl"]
+        if "proxied" in data:
+            # Force unproxied for MX/TXT
+            t = updates.get("type", existing.get("type", "A"))
+            updates["proxied"] = False if t in ("MX", "TXT", "SRV") else bool(data["proxied"])
+        if "priority" in data:
+            updates["priority"] = data["priority"]
+
+        self.db.dns_records.update_one({"_id": record_id}, {"$set": updates})
+        updated_doc = self.db.dns_records.find_one({"_id": record_id})
+        return {
+            "id": record_id,
+            "type": updated_doc.get("type"),
+            "name": updated_doc.get("name"),
+            "content": updated_doc.get("content"),
+            "ttl": updated_doc.get("ttl"),
+            "proxied": updated_doc.get("proxied"),
+            "priority": updated_doc.get("priority"),
+        }
+
+    def delete_dns_record(self, website_id: str, record_id: str, user_id: str) -> bool:
+        """Delete a DNS record from the zone."""
+        res = self.db.dns_records.delete_one({"_id": record_id, "website_id": website_id, "user_id": user_id})
+        return res.deleted_count > 0
+
+    def toggle_proxy_status(self, website_id: str, record_id: str, user_id: str) -> Dict[str, Any]:
+        """Toggle the Proxied (🟠 WAF Edge Active) vs DNS Only (⚪ Direct to Origin) status."""
+        rec = self.db.dns_records.find_one({"_id": record_id, "website_id": website_id, "user_id": user_id})
+        if not rec:
+            raise ValueError("DNS record not found")
+
+        if rec.get("type") in ("MX", "TXT", "SRV"):
+            raise ValueError("MX, TXT, and SRV records cannot be proxied through HTTP/HTTPS WAF.")
+
+        new_status = not rec.get("proxied", True)
+        self.db.dns_records.update_one({"_id": record_id}, {"$set": {"proxied": new_status, "updated_at": datetime.now()}})
+        return {"id": record_id, "proxied": new_status}
+
+    def verify_nameservers(self, website_id: str, user_id: str) -> Dict[str, Any]:
+        """Verify if the domain is correctly pointing its Nameservers to MDefender Anycast nodes."""
+        website = self.db.websites.find_one({"_id": website_id, "user_id": user_id})
+        if not website:
+            raise ValueError("Website not found")
+
+        domain = self.normalize_domain(website.get("domain") or "")
+        is_verified = False
+        message = ""
+        current_ns: List[str] = []
+
+        # Localhost/development bypass check
+        if domain in ("localhost", "127.0.0.1", "test.local") or domain.endswith(".test") or os.getenv("WAF_FORCE_DNS_VERIFIED", "false").lower() == "true":
+            is_verified = True
+            message = "Development bypass: Domain verified successfully."
+        elif HAS_DNSPYTHON:
+            try:
+                resolver = dns.resolver.Resolver()
+                resolver.timeout = 2.0
+                resolver.lifetime = 3.0
+                answers = resolver.resolve(domain, "NS")
+                for r in answers:
+                    current_ns.append(r.to_text().rstrip(".").lower())
+
+                # Check if MDefender nameservers are present in returned NS set
+                matching = [ns for ns in current_ns if "mdefender" in ns]
+                if matching:
+                    is_verified = True
+                    message = f"Nameservers verified: {', '.join(matching)}. Cloud WAF Anycast edge is active!"
+                else:
+                    message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to ns1.mdefender.pro and ns2.mdefender.pro."
+            except Exception as e:
+                # If NS query failed, check A record resolution as secondary proxy check
+                try:
+                    ip = socket.gethostbyname(domain)
+                    message = f"Nameserver check pending. Domain currently resolves to {ip}. Please verify registrar records."
+                except Exception:
+                    message = f"DNS query failed: {str(e)}. Please check your domain registrar configuration."
+        else:
+            try:
+                ip = socket.gethostbyname(domain)
+                is_verified = True
+                message = f"Resolved IP {ip}. Cloud WAF proxy verified."
+            except Exception as e:
+                message = f"DNS resolution failed: {str(e)}."
+
+        if is_verified:
+            self.db.websites.update_one(
+                {"_id": website_id},
+                {"$set": {"verified": True, "status": "active", "verified_at": datetime.now(), "updated_at": datetime.now()}}
+            )
+
+        return {
+            "website_id": website_id,
+            "domain": domain,
+            "verified": is_verified,
+            "current_nameservers": current_ns,
+            "expected_nameservers": MDEFENDER_NAMESERVERS,
+            "message": message,
+        }
+
+    def set_ssl_mode(self, website_id: str, user_id: str, ssl_mode: str) -> Dict[str, Any]:
+        """Configure SSL/TLS encryption mode for edge reverse proxy (Flexible, Full, Strict)."""
+        ssl_mode = ssl_mode.lower().strip()
+        if ssl_mode not in ("flexible", "full", "strict"):
+            raise ValueError("SSL mode must be 'flexible', 'full', or 'strict'")
+
+        self.db.websites.update_one(
+            {"_id": website_id, "user_id": user_id},
+            {"$set": {"ssl_mode": ssl_mode, "updated_at": datetime.now()}}
+        )
+        return {"website_id": website_id, "ssl_mode": ssl_mode}

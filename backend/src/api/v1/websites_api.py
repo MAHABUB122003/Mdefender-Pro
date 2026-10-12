@@ -21,24 +21,61 @@ from src.api.v1.deps import get_owned_website
 from src.auth.dependencies import get_current_user
 from src.database.mongodb_connection import MongoDB
 from src.services.subscription_service import SubscriptionService
+from src.services.dns_zone_service import DNSZoneService, PLAN_ENTITLEMENTS
 from src.utils.api_response import serialize, success
 from src.utils.api_key import generate_api_key
 
 router = APIRouter(prefix="/websites", tags=["Websites"])
 
-PLATFORMS = ["wordpress", "node", "express", "react", "laravel", "python", "php", "other"]
+PLATFORMS = ["cloud", "wordpress", "node", "express", "react", "laravel", "python", "php", "other"]
 
 
 class WebsiteCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=200)
-    url: str = Field(..., min_length=3, max_length=500)
-    platform: str = Field("other")
+    name: str | None = None
+    url: str | None = None
+    domain: str | None = None
+    platform: str = Field("cloud")
+    plan: str = Field("free")
+    ssl_mode: str = Field("flexible")
+    dns_records: list[dict] | None = None
 
 
 class WebsiteUpdate(BaseModel):
     name: str | None = None
     url: str | None = None
+    domain: str | None = None
     platform: str | None = None
+    plan: str | None = None
+    ssl_mode: str | None = None
+
+
+class DnsDiscoverRequest(BaseModel):
+    domain: str
+    scan_subdomains: bool = True
+
+
+class DnsRecordCreate(BaseModel):
+    type: str = Field(..., max_length=10)
+    name: str = Field(..., max_length=100)
+    content: str = Field(..., max_length=500)
+    ttl: str = Field("Auto")
+    proxied: bool = False
+    priority: int | None = None
+    purpose: str | None = None
+
+
+class DnsRecordUpdate(BaseModel):
+    type: str | None = None
+    name: str | None = None
+    content: str | None = None
+    ttl: str | None = None
+    proxied: bool | None = None
+    priority: int | None = None
+    purpose: str | None = None
+
+
+class SslModeUpdate(BaseModel):
+    ssl_mode: str
 
 
 class ApiKeyCreate(BaseModel):
@@ -58,7 +95,10 @@ def _website_out(doc):
         "_id": doc["_id"],
         "name": doc.get("name", doc.get("domain", "")),
         "url": doc.get("url", doc.get("domain", "")),
-        "platform": doc.get("platform", "other"),
+        "domain": doc.get("domain", doc.get("url", "")),
+        "platform": doc.get("platform", "cloud"),
+        "plan": doc.get("plan", "free"),
+        "ssl_mode": doc.get("ssl_mode", "flexible"),
         "status": doc.get("status", "active"),
         "protection_enabled": doc.get("protection_enabled", True),
         "waf_mode": doc.get("waf_mode", "protect"),
@@ -81,19 +121,27 @@ async def list_websites(user=Depends(get_current_user)):
 async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
     db = MongoDB()
     subs = SubscriptionService(db)
-    plan_id = subs.effective_plan(user)
-    check = subs.check_website_limit(user, plan_id)
+    user_plan = subs.effective_plan(user)
+    check = subs.check_website_limit(user, user_plan)
     if not check["allowed"]:
         raise HTTPException(status_code=403, detail=check["message"])
 
-    url = body.url.strip().rstrip("/")
-    if body.platform not in PLATFORMS:
-        raise HTTPException(status_code=400,
-                            detail="Platform must be one of: " + ", ".join(PLATFORMS))
+    raw_domain = body.domain or body.url or body.name or ""
+    clean_domain = raw_domain.strip().lower()
+    clean_domain = re.sub(r"^https?:\/\/", "", clean_domain).rstrip("/")
+    clean_domain = clean_domain.split("/")[0].split(":")[0].strip()
 
-    existing = db.websites.find_one({"$or": [{"url": url}, {"domain": url}]})
+    if not clean_domain:
+        raise HTTPException(status_code=400, detail="A valid root domain name is required")
+
+    platform = body.platform if body.platform in PLATFORMS else "cloud"
+    selected_plan = (body.plan or "free").lower()
+    ssl_mode = (body.ssl_mode or "flexible").lower()
+    name = (body.name or clean_domain).strip()
+
+    existing = db.websites.find_one({"$or": [{"url": clean_domain}, {"domain": clean_domain}]})
     if existing:
-        raise HTTPException(status_code=409, detail="This website is already registered")
+        raise HTTPException(status_code=409, detail=f"Website '{clean_domain}' is already registered")
 
     website_id = str(uuid.uuid4())
     now = datetime.now()
@@ -101,11 +149,13 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
     website = {
         "_id": website_id,
         "user_id": str(user["id"]),
-        "name": body.name.strip(),
-        "url": url,
-        "domain": url,
+        "name": name,
+        "url": clean_domain,
+        "domain": clean_domain,
         "api_key": raw_key,
-        "platform": body.platform,
+        "platform": platform,
+        "plan": selected_plan,
+        "ssl_mode": ssl_mode,
         "status": "active",
         "protection_enabled": True,
         "waf_mode": "protect",
@@ -120,22 +170,65 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
     try:
         db.websites.insert_one(website)
     except Exception:
-        raise HTTPException(status_code=409, detail="This website is already registered")
+        raise HTTPException(status_code=409, detail=f"Website '{clean_domain}' is already registered")
 
     db.api_keys.insert_one({
         "website_id": website_id,
         "user_id": str(user["id"]),
         "key_hash": _key_hash(raw_key),
-        "label": body.platform,
+        "label": platform,
         "created_at": now,
         "status": "active",
         "last_used": None,
     })
 
+    # Seed DNS records if provided, or run auto-discovery
+    dns_svc = DNSZoneService(db)
+    if body.dns_records and isinstance(body.dns_records, list):
+        for rec in body.dns_records:
+            rec_id = str(uuid.uuid4())
+            db.dns_records.insert_one({
+                "_id": rec_id,
+                "website_id": website_id,
+                "user_id": str(user["id"]),
+                "domain": clean_domain,
+                "type": rec.get("type", "A").upper(),
+                "name": rec.get("name", "@"),
+                "content": rec.get("content", ""),
+                "ttl": rec.get("ttl", "Auto"),
+                "proxied": bool(rec.get("proxied", False)),
+                "priority": rec.get("priority"),
+                "purpose": rec.get("purpose", ""),
+                "created_at": now,
+                "updated_at": now,
+            })
+    else:
+        # Pre-seed with public DNS discovery
+        try:
+            discovery = dns_svc.discover_public_dns(clean_domain, scan_subdomains=True)
+            for rec in discovery.get("records", []):
+                db.dns_records.insert_one({
+                    "_id": str(uuid.uuid4()),
+                    "website_id": website_id,
+                    "user_id": str(user["id"]),
+                    "domain": clean_domain,
+                    "type": rec["type"],
+                    "name": rec["name"],
+                    "content": rec["content"],
+                    "ttl": rec.get("ttl", "Auto"),
+                    "proxied": rec.get("proxied", True),
+                    "priority": rec.get("priority"),
+                    "purpose": rec.get("purpose", ""),
+                    "created_at": now,
+                    "updated_at": now,
+                })
+        except Exception:
+            pass
+
     from src.auth.audit_service import AuditService
     try:
         AuditService().log(user_id=str(user["id"]), action="website_added",
-                           ip_address="system", details={"website_id": website_id, "url": url})
+                           ip_address="system", details={"website_id": website_id, "url": clean_domain, "plan": selected_plan})
     except Exception:
         pass
 
@@ -144,6 +237,17 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
         "api_key": raw_key,
         "message": "Website added. Store the API key now - it is shown only once.",
     })
+
+
+@router.post("/dns/discover")
+async def discover_dns(body: DnsDiscoverRequest, user=Depends(get_current_user)):
+    """
+    Public DNS discovery for onboarding. Performs public DNS queries (A, AAAA, CNAME, MX, TXT)
+    and probes common subdomains.
+    """
+    dns_svc = DNSZoneService()
+    discovery = dns_svc.discover_public_dns(body.domain, scan_subdomains=body.scan_subdomains)
+    return success(discovery)
 
 
 @router.get("/{website_id}")
@@ -300,38 +404,51 @@ async def revoke_api_key(website_id: str, user=Depends(get_current_user)):
 
 @router.post("/{website_id}/verify-dns")
 async def verify_dns(website_id: str, user=Depends(get_current_user)):
-    """Verify domain DNS configuration (Nameservers, CNAME, or TXT token) for Cloudflare-style Anycast onboarding."""
+    """Verify domain DNS configuration (Nameservers, CNAME, or IP) for Cloudflare-style Anycast onboarding."""
     import socket
+    import os
     website = get_owned_website(user, website_id)
     domain = website.get("domain") or website.get("url", "")
     domain = domain.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
 
     db = MongoDB()
+    dns_svc = DNSZoneService(db)
     resolved_ips = []
     is_verified = False
     verification_method = None
     diag_message = ""
+    current_ns = []
 
-    # Simulated/Localhost development bypass or public resolution
-    if domain in ("localhost", "127.0.0.1", "test.local") or domain.endswith(".test"):
-        is_verified = True
-        verification_method = "local_dev_bypass"
-        diag_message = f"Local test domain '{domain}' automatically verified for development."
-    else:
-        try:
-            # Check A record resolution
-            ip = socket.gethostbyname(domain)
-            resolved_ips.append(ip)
-            # Check against MDefender proxy IP pool or any configured edge node
-            mdefender_proxy_ips = os.getenv("MDEFENDER_PROXY_IPS", "198.51.100.1,203.0.113.5").split(",")
-            if ip in mdefender_proxy_ips or os.getenv("WAF_FORCE_DNS_VERIFIED", "false").lower() == "true":
-                is_verified = True
-                verification_method = "anycast_ip_match"
-                diag_message = f"Domain {domain} is successfully pointed to MDefender Anycast IP ({ip})."
-            else:
-                diag_message = f"Domain {domain} resolved to {ip}, which does not match MDefender Anycast IP. Please update your DNS records."
-        except Exception as e:
-            diag_message = f"DNS resolution failed for {domain}: {str(e)}. Please check your registrar settings."
+    # 1. Nameserver check via DNSZoneService
+    try:
+        ns_res = dns_svc.verify_nameservers(website_id, str(user["id"]))
+        current_ns = ns_res.get("current_nameservers", [])
+        if ns_res.get("verified"):
+            is_verified = True
+            verification_method = "nameserver_delegation"
+            diag_message = ns_res.get("message", "Nameservers verified successfully.")
+    except Exception:
+        pass
+
+    # 2. Simulated/Localhost development bypass or public resolution if not already verified
+    if not is_verified:
+        if domain in ("localhost", "127.0.0.1", "test.local") or domain.endswith(".test"):
+            is_verified = True
+            verification_method = "local_dev_bypass"
+            diag_message = f"Local test domain '{domain}' automatically verified for development."
+        else:
+            try:
+                ip = socket.gethostbyname(domain)
+                resolved_ips.append(ip)
+                mdefender_proxy_ips = os.getenv("MDEFENDER_PROXY_IPS", "198.51.100.1,203.0.113.5").split(",")
+                if ip in mdefender_proxy_ips or os.getenv("WAF_FORCE_DNS_VERIFIED", "false").lower() == "true":
+                    is_verified = True
+                    verification_method = "anycast_ip_match"
+                    diag_message = f"Domain {domain} is successfully pointed to MDefender Anycast IP ({ip})."
+                else:
+                    diag_message = f"Domain {domain} currently resolves to {ip}. Please delegate nameservers to ns1.mdefender.pro & ns2.mdefender.pro."
+            except Exception as e:
+                diag_message = f"DNS resolution failed for {domain}: {str(e)}. Please check your registrar settings."
 
     if is_verified:
         db.websites.update_one(
@@ -344,11 +461,99 @@ async def verify_dns(website_id: str, user=Depends(get_current_user)):
         "domain": domain,
         "verified": is_verified,
         "method": verification_method,
+        "current_nameservers": current_ns,
         "resolved_ips": resolved_ips,
         "nameservers": ["ns1.mdefender.pro", "ns2.mdefender.pro"],
         "cname_target": "proxy.mdefender.pro",
         "message": diag_message
     })
+
+
+@router.get("/{website_id}/zone")
+async def get_website_zone(website_id: str, user=Depends(get_current_user)):
+    """Retrieve full DNS zone overview, plan entitlement, nameserver instructions, and DNS records."""
+    website = get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    zone = dns_svc.get_website_zone(website)
+    return success(zone)
+
+
+@router.get("/{website_id}/dns")
+async def list_dns_records(website_id: str, user=Depends(get_current_user)):
+    """List all DNS records for a website zone."""
+    get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    records = dns_svc.list_records(website_id)
+    return success({"records": records, "count": len(records)})
+
+
+@router.post("/{website_id}/dns")
+async def add_dns_record(website_id: str, body: DnsRecordCreate, user=Depends(get_current_user)):
+    """Add a manual DNS record to the website's zone."""
+    get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    try:
+        record = dns_svc.add_dns_record(
+            website_id=website_id,
+            user_id=str(user["id"]),
+            data=body.dict()
+        )
+        return success({"record": record, "message": f"DNS record {record['type']} '{record['name']}' added successfully."})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{website_id}/dns/{record_id}")
+async def update_dns_record(website_id: str, record_id: str, body: DnsRecordUpdate, user=Depends(get_current_user)):
+    """Update an existing DNS record."""
+    get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    try:
+        record = dns_svc.update_dns_record(
+            website_id=website_id,
+            record_id=record_id,
+            user_id=str(user["id"]),
+            data=body.dict(exclude_unset=True)
+        )
+        return success({"record": record, "message": "DNS record updated successfully."})
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/{website_id}/dns/{record_id}")
+async def delete_dns_record(website_id: str, record_id: str, user=Depends(get_current_user)):
+    """Delete a DNS record."""
+    get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    deleted = dns_svc.delete_dns_record(website_id=website_id, record_id=record_id, user_id=str(user["id"]))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="DNS record not found")
+    return success({"message": "DNS record deleted successfully."})
+
+
+@router.post("/{website_id}/dns/{record_id}/toggle-proxy")
+async def toggle_dns_proxy(website_id: str, record_id: str, user=Depends(get_current_user)):
+    """Toggle the Proxied (Edge WAF Armed) vs DNS Only (Direct to Origin) status."""
+    get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    try:
+        record = dns_svc.toggle_proxy_status(website_id=website_id, record_id=record_id, user_id=str(user["id"]))
+        state_str = "Proxied (Edge WAF Armed)" if record.get("proxied") else "DNS Only (Direct to Origin)"
+        return success({"record": record, "message": f"Proxy status updated to {state_str}."})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{website_id}/ssl")
+async def update_ssl_mode(website_id: str, body: SslModeUpdate, user=Depends(get_current_user)):
+    """Configure SSL/TLS encryption mode for edge reverse proxy (Flexible, Full, Strict)."""
+    get_owned_website(user, website_id)
+    dns_svc = DNSZoneService()
+    try:
+        updated = dns_svc.set_ssl_mode(website_id=website_id, user_id=str(user["id"]), ssl_mode=body.ssl_mode)
+        return success({"ssl_mode": updated.get("ssl_mode"), "message": f"SSL mode updated to {body.ssl_mode}."})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{website_id}/installation")

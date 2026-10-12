@@ -351,6 +351,22 @@ export const api = {
   removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),
   getWebsiteInstallation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/installation`),
+
+  // Cloudflare-Style Domain & DNS Zone Management APIs
+  discoverDns: (domain, scanSubdomains = true) =>
+    apiCall('/api/v1/websites/dns/discover', { method: 'POST', body: JSON.stringify({ domain, scan_subdomains: scanSubdomains }) }),
+  getWebsiteZone: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/zone`),
+  getDnsRecords: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/dns`),
+  addDnsRecord: (websiteId, data) =>
+    apiCall(`/api/v1/websites/${websiteId}/dns`, { method: 'POST', body: JSON.stringify(data) }),
+  updateDnsRecord: (websiteId, recordId, data) =>
+    apiCall(`/api/v1/websites/${websiteId}/dns/${recordId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteDnsRecord: (websiteId, recordId) =>
+    apiCall(`/api/v1/websites/${websiteId}/dns/${recordId}`, { method: 'DELETE' }),
+  toggleDnsProxy: (websiteId, recordId) =>
+    apiCall(`/api/v1/websites/${websiteId}/dns/${recordId}/toggle-proxy`, { method: 'POST' }),
+  updateSslMode: (websiteId, sslMode) =>
+    apiCall(`/api/v1/websites/${websiteId}/ssl`, { method: 'POST', body: JSON.stringify({ ssl_mode: sslMode }) }),
   getUserDashboard: (params = {}) => {
     let qs = ''
     if (typeof params === 'string') qs = `website_id=${encodeURIComponent(params)}`
