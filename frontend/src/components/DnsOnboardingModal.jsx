@@ -178,15 +178,21 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
   const handleAddManualRecord = (e) => {
     e.preventDefault()
     if (!newRecord.content.trim()) return
-    const isProxyable = !['MX', 'TXT', 'SRV'].includes(newRecord.type)
+    const isProxyable = !['MX', 'TXT', 'SRV', 'CAA'].includes(newRecord.type)
+    let rawName = (newRecord.name || '').trim().toLowerCase()
+    const cleanRoot = domain.trim().toLowerCase().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    if (rawName && cleanRoot && rawName.endsWith(`.${cleanRoot}`)) {
+      rawName = rawName.slice(0, -(cleanRoot.length + 1)).trim()
+    }
+    if (!rawName || rawName === cleanRoot) rawName = '@'
     setRecords([
       ...records,
       {
         id: `manual-${Date.now()}`,
         type: newRecord.type,
-        name: newRecord.name.trim() || '@',
+        name: rawName,
         content: newRecord.content.trim(),
-        ttl: newRecord.ttl,
+        ttl: 'Auto',
         proxied: isProxyable ? newRecord.proxied : false,
         priority: newRecord.priority ? parseInt(newRecord.priority, 10) : undefined,
         purpose: 'Manual entry'
@@ -520,12 +526,12 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
             <div>
               {discovering ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                  <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '32px', color: '#f97316', marginBottom: '14px' }}></i>
+                  <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '34px', color: '#2563eb', marginBottom: '14px' }}></i>
                   <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px' }}>
                     Scanning DNS records for {domain}...
                   </h3>
                   <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-                    Querying root A, AAAA, CNAME, MX, TXT and probing common subdomains.
+                    Deeply querying root A, AAAA, CNAME, MX, TXT, NS, CAA and probing all common subdomains. Please allow 2-5 seconds for complete accuracy.
                   </p>
                 </div>
               ) : (

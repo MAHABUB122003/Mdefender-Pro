@@ -3,6 +3,14 @@
  * MDefender Pro Full Site End-to-End Test Suite for XAMPP (http://localhost/mahabub)
  */
 
+// Set up mock server environment
+$_SERVER['HTTP_HOST'] = 'localhost';
+$_SERVER['REQUEST_URI'] = '/mahabub/';
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+$_SERVER['SERVER_NAME'] = 'localhost';
+$_SERVER['DOCUMENT_ROOT'] = 'C:/xampp/htdocs';
+
 define('WP_USE_THEMES', false);
 require_once 'C:/xampp/htdocs/mahabub/wp-load.php';
 

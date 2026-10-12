@@ -177,7 +177,7 @@ class WAF_FW_IP_Filter {
         $ip = trim((string) $ip);
         if (empty($ip)) return;
         $custom = get_option('waf_fw_ip_whitelist', '');
-        $ips = !empty($custom) ? array_filter(array_map('trim', explode(',', $custom))) : [];
+        $ips = is_array($custom) ? $custom : (!empty($custom) ? array_filter(array_map('trim', explode(',', (string) $custom))) : []);
         if (!in_array($ip, $ips, true)) {
             $ips[] = $ip;
             update_option('waf_fw_ip_whitelist', implode(',', array_values(array_unique($ips))));
@@ -192,8 +192,8 @@ class WAF_FW_IP_Filter {
     public function remove_from_whitelist($ip) {
         $ip = trim((string) $ip);
         $custom = get_option('waf_fw_ip_whitelist', '');
-        if (!empty($custom)) {
-            $ips = array_filter(array_map('trim', explode(',', $custom)));
+        $ips = is_array($custom) ? $custom : (!empty($custom) ? array_filter(array_map('trim', explode(',', (string) $custom))) : []);
+        if (!empty($ips)) {
             $ips = array_diff($ips, [$ip]);
             update_option('waf_fw_ip_whitelist', implode(',', array_values($ips)));
         }

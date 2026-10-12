@@ -371,17 +371,17 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
             <div class="brand-logo-wrap">
                 <svg class="brand-logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <!-- Cloudflare Vibrant Sunset Orange Gradients -->
+                        <!-- MDefender Cyber Shield Gradients -->
                         <linearGradient id="cfShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#ff9e2c" />
-                            <stop offset="45%" stop-color="#f6821f" />
-                            <stop offset="80%" stop-color="#ea580c" />
-                            <stop offset="100%" stop-color="#c2410c" />
+                            <stop offset="0%" stop-color="#3b82f6" />
+                            <stop offset="45%" stop-color="#2563eb" />
+                            <stop offset="80%" stop-color="#1d4ed8" />
+                            <stop offset="100%" stop-color="#1e3a8a" />
                         </linearGradient>
                         <linearGradient id="cfInnerCore" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stop-color="#ffffff" />
-                            <stop offset="40%" stop-color="#fff4e6" />
-                            <stop offset="100%" stop-color="#ffd8a8" />
+                            <stop offset="40%" stop-color="#eff6ff" />
+                            <stop offset="100%" stop-color="#dbeafe" />
                         </linearGradient>
                         <linearGradient id="cfFacetShade" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />

@@ -109,16 +109,22 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
     e.preventDefault()
     if (!newRecord.content.trim()) return
     setAddingRecord(true)
+    let rawName = (newRecord.name || '').trim().toLowerCase()
+    const cleanRoot = (domain || '').trim().toLowerCase().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+    if (rawName && cleanRoot && rawName.endsWith(`.${cleanRoot}`)) {
+      rawName = rawName.slice(0, -(cleanRoot.length + 1)).trim()
+    }
+    if (!rawName || rawName === cleanRoot) rawName = '@'
     try {
       await api.addDnsRecord(websiteId, {
         type: newRecord.type,
-        name: newRecord.name.trim() || '@',
+        name: rawName,
         content: newRecord.content.trim(),
-        ttl: newRecord.ttl,
-        proxied: ['MX', 'TXT', 'SRV'].includes(newRecord.type) ? false : newRecord.proxied,
+        ttl: 'Auto',
+        proxied: ['MX', 'TXT', 'SRV', 'CAA'].includes(newRecord.type) ? false : newRecord.proxied,
         priority: newRecord.priority ? parseInt(newRecord.priority, 10) : undefined
       })
-      setFeedback({ type: 'success', text: `Added ${newRecord.type} record for ${newRecord.name}.` })
+      setFeedback({ type: 'success', text: `Added ${newRecord.type} record for "${rawName}".` })
       setShowAddModal(false)
       setNewRecord({ type: 'A', name: '@', content: '', ttl: 'Auto', proxied: true, priority: '' })
       await loadZoneData()

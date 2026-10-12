@@ -32,14 +32,20 @@ logger = logging.getLogger(__name__)
 MDEFENDER_NAMESERVERS = ["ns1.mdefender.pro", "ns2.mdefender.pro"]
 MDEFENDER_CNAME_PROXY = "proxy.mdefender.pro"
 
-# Common subdomains to probe during DNS discovery
+# Common subdomains to probe during deep DNS discovery
 COMMON_SUBDOMAINS = [
-    "www", "api", "mail", "blog", "admin", "shop", "dev",
-    "app", "vpn", "staging", "portal", "cpanel", "webmail", "store"
+    "www", "mail", "api", "blog", "admin", "shop", "dev",
+    "app", "vpn", "staging", "portal", "cpanel", "webmail", "store",
+    "ftp", "secure", "test", "direct", "cdn", "m", "smtp", "pop", "imap", "whm", "autodiscover"
 ]
 
+# Non-HTTP protocols that must default to DNS Only (Direct Origin)
+NON_PROXIED_NAMES = {
+    "mail", "cpanel", "webmail", "whm", "ftp", "smtp", "pop", "imap", "vpn", "direct", "autodiscover", "sip"
+}
+
 # Web-facing record names that should default to Proxied (Edge WAF on)
-WEB_PROXIED_NAMES = {"@", "www", "api", "blog", "app", "dev", "staging", "shop", "store", "portal"}
+WEB_PROXIED_NAMES = {"@", "www", "api", "blog", "app", "dev", "staging", "shop", "store", "portal", "cdn", "secure"}
 
 # Cloud WAF Plans feature matrix
 PLAN_ENTITLEMENTS = {
@@ -161,16 +167,17 @@ class DNSZoneService:
             (domain, "TXT"),
             (domain, "NS"),
             (domain, "CAA"),
+            (f"_dmarc.{domain}", "TXT"),
         ]
 
-        sub_list = ["www", "mail", "api", "blog", "app", "dev", "shop", "cpanel", "webmail", "store", "admin"] if scan_subdomains else ["www"]
+        sub_list = COMMON_SUBDOMAINS if scan_subdomains else ["www"]
         for sub in sub_list:
             fqdn = f"{sub}.{domain}"
             tasks.append((fqdn, "CNAME"))
             tasks.append((fqdn, "A"))
 
-        # Run queries concurrently using ThreadPoolExecutor for sub-second speed
-        with concurrent.futures.ThreadPoolExecutor(max_workers=14) as executor:
+        # Run queries concurrently using ThreadPoolExecutor
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             future_to_task = {executor.submit(_query_dns, t[0], t[1]): t for t in tasks}
             for future in concurrent.futures.as_completed(future_to_task):
                 target_name, rtype = future_to_task[future]
@@ -178,8 +185,8 @@ class DNSZoneService:
                     res_items = future.result()
                     for qname, qtype, rdata in res_items:
                         rec_name = "@" if qname == domain else qname.replace(f".{domain}", "")
+                        is_web = (rec_name not in NON_PROXIED_NAMES) and (rec_name in WEB_PROXIED_NAMES or rec_name == "@")
                         if qtype == "A":
-                            is_web = rec_name in WEB_PROXIED_NAMES
                             discovered_records.append({
                                 "id": str(uuid.uuid4()),
                                 "type": "A",
@@ -190,7 +197,6 @@ class DNSZoneService:
                                 "purpose": f"{rec_name.upper()} IPv4 origin server" if rec_name != "@" else "IPv4 origin server",
                             })
                         elif qtype == "AAAA":
-                            is_web = rec_name in WEB_PROXIED_NAMES
                             discovered_records.append({
                                 "id": str(uuid.uuid4()),
                                 "type": "AAAA",
@@ -201,7 +207,6 @@ class DNSZoneService:
                                 "purpose": f"{rec_name.upper()} IPv6 origin server" if rec_name != "@" else "IPv6 origin server",
                             })
                         elif qtype == "CNAME":
-                            is_web = rec_name in WEB_PROXIED_NAMES
                             discovered_records.append({
                                 "id": str(uuid.uuid4()),
                                 "type": "CNAME",
