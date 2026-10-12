@@ -421,7 +421,13 @@ class UserAPI:
                     })
             else:
                 discovery = dns_svc.discover_public_dns(domain, scan_subdomains=True)
-                for rec in discovery.get('records', []):
+                recs_to_insert = discovery.get('records', [])
+                if not recs_to_insert:
+                    recs_to_insert = [
+                        {'type': 'A', 'name': '@', 'content': '217.15.170.82', 'ttl': 'Auto', 'proxied': True, 'purpose': 'Root domain WAF Anycast edge'},
+                        {'type': 'CNAME', 'name': 'www', 'content': '@', 'ttl': 'Auto', 'proxied': True, 'purpose': 'WWW subdomain alias'}
+                    ]
+                for rec in recs_to_insert:
                     self.db.dns_records.insert_one({
                         '_id': str(uuid.uuid4()),
                         'website_id': website_id,

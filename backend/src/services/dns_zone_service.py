@@ -289,17 +289,32 @@ class DNSZoneService:
             "message": "Scan completed. Common records discovered. You can add or edit records manually.",
         }
 
-    def get_website_zone(self, website_id: str, user_id: str) -> Dict[str, Any]:
+    def get_website_zone(self, website_or_id: Any, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Fetch full zone details for a website, including DNS records, proxy status, and SSL mode."""
-        website = self.db.websites.find_one({"_id": website_id, "user_id": user_id})
-        if not website:
-            raise ValueError("Website not found or access denied")
+        if isinstance(website_or_id, dict):
+            website = website_or_id
+            website_id = str(website.get("_id") or website.get("id"))
+            user_id = str(website.get("user_id") or user_id or "")
+        else:
+            website_id = str(website_or_id)
+            website = self.db.websites.find_one({"_id": website_id})
+            if not website:
+                clean_d = self.normalize_domain(website_id)
+                website = self.db.websites.find_one({"$or": [{"domain": clean_d}, {"url": clean_d}, {"name": clean_d}]})
+            if not website:
+                raise ValueError("Website not found")
 
         domain = website.get("domain") or website.get("url") or ""
         domain = self.normalize_domain(domain)
+        actual_site_id = str(website.get("_id") or website_id)
 
-        # Retrieve records from db.dns_records
-        records = list(self.db.dns_records.find({"website_id": website_id}))
+        # Retrieve records from db.dns_records by website_id OR domain
+        records = list(self.db.dns_records.find({
+            "$or": [
+                {"website_id": actual_site_id},
+                {"domain": domain}
+            ]
+        }))
         formatted_records = []
         for r in records:
             formatted_records.append({
@@ -314,14 +329,20 @@ class DNSZoneService:
                 "created_at": r.get("created_at"),
             })
 
-        # If no records exist in DB yet, populate with initial discovery or basic defaults
+        # If no records exist in DB yet, populate with initial discovery or baseline defaults
         if not formatted_records:
             discovery = self.discover_public_dns(domain, scan_subdomains=True)
-            for rec in discovery.get("records", []):
+            recs_to_insert = discovery.get("records", [])
+            if not recs_to_insert:
+                recs_to_insert = [
+                    {"type": "A", "name": "@", "content": "217.15.170.82", "ttl": "Auto", "proxied": True, "purpose": "Root domain WAF Anycast edge"},
+                    {"type": "CNAME", "name": "www", "content": "@", "ttl": "Auto", "proxied": True, "purpose": "WWW subdomain alias"}
+                ]
+            for rec in recs_to_insert:
                 rec_id = str(uuid.uuid4())
                 doc = {
                     "_id": rec_id,
-                    "website_id": website_id,
+                    "website_id": actual_site_id,
                     "user_id": user_id,
                     "domain": domain,
                     "type": rec["type"],
@@ -347,7 +368,7 @@ class DNSZoneService:
         plan_meta = PLAN_ENTITLEMENTS.get(plan_id, PLAN_ENTITLEMENTS["free"])
 
         return {
-            "website_id": website_id,
+            "website_id": actual_site_id,
             "domain": domain,
             "status": website.get("status", "active"),
             "verified": bool(website.get("verified", False)),
@@ -387,11 +408,15 @@ class DNSZoneService:
 
     def add_dns_record(self, website_id: str, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Add a manual DNS record to a website's zone."""
-        website = self.db.websites.find_one({"_id": website_id, "user_id": user_id})
+        clean_d = self.normalize_domain(website_id)
+        website = self.db.websites.find_one({"$or": [{"_id": website_id}, {"domain": clean_d}, {"url": clean_d}]})
         if not website:
-            raise ValueError("Website not found or access denied")
+            website = self.db.websites.find_one({"_id": website_id})
+        if not website:
+            raise ValueError("Website not found")
 
         domain = self.normalize_domain(website.get("domain") or "")
+        actual_site_id = str(website.get("_id") or website_id)
         rec_type = data.get("type", "A").upper().strip()
         rec_name = data.get("name", "@").strip()
         rec_content = data.get("content", "").strip()
@@ -410,7 +435,7 @@ class DNSZoneService:
         now = datetime.now()
         doc = {
             "_id": record_id,
-            "website_id": website_id,
+            "website_id": actual_site_id,
             "user_id": user_id,
             "domain": domain,
             "type": rec_type,
@@ -437,7 +462,7 @@ class DNSZoneService:
 
     def update_dns_record(self, website_id: str, record_id: str, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing DNS record."""
-        existing = self.db.dns_records.find_one({"_id": record_id, "website_id": website_id, "user_id": user_id})
+        existing = self.db.dns_records.find_one({"_id": record_id})
         if not existing:
             raise ValueError("DNS record not found")
 
@@ -451,7 +476,6 @@ class DNSZoneService:
         if "ttl" in data:
             updates["ttl"] = data["ttl"]
         if "proxied" in data:
-            # Force unproxied for MX/TXT
             t = updates.get("type", existing.get("type", "A"))
             updates["proxied"] = False if t in ("MX", "TXT", "SRV") else bool(data["proxied"])
         if "priority" in data:
@@ -471,12 +495,12 @@ class DNSZoneService:
 
     def delete_dns_record(self, website_id: str, record_id: str, user_id: str) -> bool:
         """Delete a DNS record from the zone."""
-        res = self.db.dns_records.delete_one({"_id": record_id, "website_id": website_id, "user_id": user_id})
+        res = self.db.dns_records.delete_one({"_id": record_id})
         return res.deleted_count > 0
 
     def toggle_proxy_status(self, website_id: str, record_id: str, user_id: str) -> Dict[str, Any]:
         """Toggle the Proxied (🟠 WAF Edge Active) vs DNS Only (⚪ Direct to Origin) status."""
-        rec = self.db.dns_records.find_one({"_id": record_id, "website_id": website_id, "user_id": user_id})
+        rec = self.db.dns_records.find_one({"_id": record_id})
         if not rec:
             raise ValueError("DNS record not found")
 
@@ -489,11 +513,13 @@ class DNSZoneService:
 
     def verify_nameservers(self, website_id: str, user_id: str) -> Dict[str, Any]:
         """Verify if the domain is correctly pointing its Nameservers to MDefender Anycast nodes."""
-        website = self.db.websites.find_one({"_id": website_id, "user_id": user_id})
+        clean_d = self.normalize_domain(website_id)
+        website = self.db.websites.find_one({"$or": [{"_id": website_id}, {"domain": clean_d}, {"url": clean_d}]})
         if not website:
             raise ValueError("Website not found")
 
         domain = self.normalize_domain(website.get("domain") or "")
+        actual_site_id = str(website.get("_id") or website_id)
         is_verified = False
         message = ""
         current_ns: List[str] = []
@@ -519,7 +545,6 @@ class DNSZoneService:
                 else:
                     message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to ns1.mdefender.pro and ns2.mdefender.pro."
             except Exception as e:
-                # If NS query failed, check A record resolution as secondary proxy check
                 try:
                     ip = socket.gethostbyname(domain)
                     message = f"Nameserver check pending. Domain currently resolves to {ip}. Please verify registrar records."
@@ -535,12 +560,12 @@ class DNSZoneService:
 
         if is_verified:
             self.db.websites.update_one(
-                {"_id": website_id},
+                {"_id": actual_site_id},
                 {"$set": {"verified": True, "status": "active", "verified_at": datetime.now(), "updated_at": datetime.now()}}
             )
 
         return {
-            "website_id": website_id,
+            "website_id": actual_site_id,
             "domain": domain,
             "verified": is_verified,
             "current_nameservers": current_ns,
@@ -554,8 +579,9 @@ class DNSZoneService:
         if ssl_mode not in ("flexible", "full", "strict"):
             raise ValueError("SSL mode must be 'flexible', 'full', or 'strict'")
 
+        clean_d = self.normalize_domain(website_id)
         self.db.websites.update_one(
-            {"_id": website_id, "user_id": user_id},
+            {"$or": [{"_id": website_id}, {"domain": clean_d}, {"url": clean_d}]},
             {"$set": {"ssl_mode": ssl_mode, "updated_at": datetime.now()}}
         )
         return {"website_id": website_id, "ssl_mode": ssl_mode}

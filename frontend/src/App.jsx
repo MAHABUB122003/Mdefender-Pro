@@ -21,6 +21,7 @@ import Register from './pages/Register'
 import UserLogin from './pages/UserLogin'
 import UserDashboard from './pages/UserDashboard'
 import UserWebsites from './pages/UserWebsites'
+import UserDomains from './pages/UserDomains'
 import UserLogs from './pages/UserLogs'
 import UserRules from './pages/UserRules'
 import UserSettings from './pages/UserSettings'
@@ -121,6 +122,7 @@ function App() {
         <Route path="dashboard" element={<UserDashboard />} />
         <Route path="logs" element={<UserLogs />} />
         <Route path="rules" element={<UserRules />} />
+        <Route path="domains" element={<UserDomains />} />
         <Route path="websites" element={<UserWebsites />} />
         <Route path="tools" element={<UserTools />} />
         <Route path="connect" element={<UserConnect />} />

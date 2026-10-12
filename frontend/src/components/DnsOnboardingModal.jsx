@@ -280,18 +280,18 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: '36px', height: '36px', borderRadius: '10px',
-                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
                 color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)', fontSize: '16px'
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', fontSize: '16px'
               }}>
                 <i className="fas fa-shield-halved"></i>
               </div>
               <div>
                 <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#0f172a' }}>
-                  Connect your website to Cloud WAF
+                  Connect your website to MDefender Cloud WAF
                 </h2>
                 <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
-                  Cloudflare-style domain-based DDoS &amp; Layer 7 Web Application Firewall
+                  Enterprise domain-based DDoS &amp; Layer 7 Web Application Firewall
                 </div>
               </div>
             </div>
@@ -547,7 +547,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
                         Review DNS Records for {domain}
                       </h3>
                       <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                        Orange clouds (🟠) route through MDefender Cloud WAF. Grey clouds (⚪) resolve directly to origin.
+                        Shield icons (🛡️ Proxied) route through MDefender Cloud WAF. Globe icons (🌐 DNS Only) resolve directly to origin.
                       </p>
                     </div>
                     <button
@@ -675,16 +675,16 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
                                       border: 'none', background: 'none', cursor: 'pointer',
                                       display: 'inline-flex', alignItems: 'center', gap: '6px',
                                       padding: '4px 8px', borderRadius: '6px',
-                                      backgroundColor: rec.proxied ? '#fff7ed' : '#f1f5f9'
+                                      backgroundColor: rec.proxied ? '#eff6ff' : '#f8fafc'
                                     }}
-                                    title="Click to toggle Proxied (🟠 Edge WAF) vs DNS Only (⚪ Direct Origin)"
+                                    title="Click to toggle Proxied (Edge WAF Armed) vs DNS Only (Direct Origin)"
                                   >
-                                    <i className={`fas fa-cloud ${rec.proxied ? 'fa-beat' : ''}`} style={{
-                                      color: rec.proxied ? '#f97316' : '#94a3b8', fontSize: '14px'
+                                    <i className={`fas ${rec.proxied ? 'fa-shield-halved' : 'fa-globe'}`} style={{
+                                      color: rec.proxied ? '#2563eb' : '#94a3b8', fontSize: '13px'
                                     }}></i>
                                     <span style={{
                                       fontSize: '11.5px', fontWeight: '700',
-                                      color: rec.proxied ? '#c2410c' : '#64748b'
+                                      color: rec.proxied ? '#1d4ed8' : '#64748b'
                                     }}>
                                       {rec.proxied ? 'Proxied (WAF)' : 'DNS Only'}
                                     </span>

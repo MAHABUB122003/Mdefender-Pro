@@ -52,9 +52,14 @@ export default function UserSidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-ban"></i></span>
             <span>Blacklist</span>
           </NavLink>
+          <NavLink to="/user/domains">
+            <span className="nav-icon"><i className="fas fa-network-wired"></i></span>
+            <span>Domains</span>
+            <span style={{ marginLeft: 'auto', fontSize: '9px', background: 'rgba(37, 99, 235, 0.2)', color: '#38bdf8', padding: '2px 5px', borderRadius: '4px', fontWeight: '800' }}>CLOUD</span>
+          </NavLink>
           <NavLink to="/user/websites">
-            <span className="nav-icon"><i className="fas fa-globe"></i></span>
-            <span>Websites</span>
+            <span className="nav-icon"><i className="fab fa-wordpress"></i></span>
+            <span>WordPress Sites</span>
           </NavLink>
           <NavLink to="/user/tools">
             <span className="nav-icon"><i className="fas fa-screwdriver-wrench"></i></span>

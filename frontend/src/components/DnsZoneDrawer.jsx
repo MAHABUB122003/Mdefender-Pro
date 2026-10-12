@@ -34,13 +34,15 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
   const [feedback, setFeedback] = useState(null)
   const [copiedField, setCopiedField] = useState(null)
 
-  const websiteId = website?.id || website?._id
+  const websiteId = website?.id || website?._id || website?.domain || website?.name
 
   const loadZoneData = useCallback(async () => {
-    if (!websiteId) return
+    const targetId = website?.id || website?._id || website?.domain || website?.name
+    if (!targetId) return
     setLoading(true)
+    setFeedback(null)
     try {
-      const res = await api.getWebsiteZone(websiteId)
+      const res = await api.getWebsiteZone(targetId)
       const data = res?.data || res
       setZone(data)
       if (data.ssl_mode) setCurrentSslMode(data.ssl_mode)
@@ -50,13 +52,13 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
     } finally {
       setLoading(false)
     }
-  }, [websiteId])
+  }, [website])
 
   useEffect(() => {
-    if (isOpen && websiteId) {
+    if (isOpen && website) {
       loadZoneData()
     }
-  }, [isOpen, websiteId, loadZoneData])
+  }, [isOpen, website, loadZoneData])
 
   if (!isOpen || !website) return null
 
@@ -205,11 +207,11 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
               width: '42px', height: '42px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+              background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
               color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
+              fontSize: '18px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
             }}>
-              <i className="fas fa-network-wired"></i>
+              <i className="fas fa-shield-halved"></i>
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -233,7 +235,7 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                 </span>
               </div>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                Cloudflare-style DNS Zone Editor &amp; Cloud WAF Routing Configuration
+                MDefender Pro DNS Zone Editor &amp; Anycast Edge Routing
               </div>
             </div>
           </div>
@@ -728,7 +730,7 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                       Subdomain Management Strategies
                     </h3>
                     <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-                      Cloudflare and MDefender Pro support two core approaches for routing and managing subdomains:
+                      MDefender Pro Cloud WAF supports two core approaches for routing and managing subdomains:
                     </p>
                   </div>
 

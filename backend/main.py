@@ -40,6 +40,7 @@ from src.auth.jwt_service import JWTService
 from src.auth.audit_service import AuditService
 from src.auth.config import AuthConfig
 from src.api.v1.routes import get_v1_router
+from src.utils.block_page import render_block_page
 
 app = FastAPI(title="MDefender Pro", version="2.0.0")
 
@@ -152,7 +153,20 @@ async def waf_self_protection_middleware(request: Request, call_next):
         
     client_ip = get_client_ip(request)
     query_params = dict(request.query_params)
-    
+    raw_host = request.headers.get("host", "").split(":")[0].strip().lower()
+    clean_host = raw_host[4:] if raw_host.startswith("www.") else raw_host
+
+    # Check if host is a registered Cloud WAF domain
+    registered_site = None
+    if clean_host and clean_host not in ("localhost", "127.0.0.1", "0.0.0.0"):
+        registered_site = db.websites.find_one({
+            "$or": [{"domain": clean_host}, {"url": clean_host}, {"name": clean_host}]
+        })
+
+    target_domain = clean_host if registered_site else "localhost"
+    target_user_id = str(registered_site.get("user_id")) if registered_site else None
+    target_site_id = str(registered_site.get("_id")) if registered_site else None
+
     req_payload = {
         'url': path,
         'query_string': request.url.query,
@@ -164,7 +178,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
     }
     
     decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
-        req_payload, user_id=None, domain='localhost', website_id=None
+        req_payload, user_id=target_user_id, domain=target_domain, website_id=target_site_id
     )
     
     if is_blocked:
@@ -172,22 +186,93 @@ async def waf_self_protection_middleware(request: Request, call_next):
         claimed_ip = get_claimed_ip_from_headers(forwarded_headers) or client_ip
         
         try:
-            waf_api.async_save_logs(decision, log_entry, event, is_blocked, ip, user_id=None, website_id=None)
+            waf_api.async_save_logs(decision, log_entry, event, is_blocked, ip, user_id=target_user_id, website_id=target_site_id)
+            if registered_site:
+                db.websites.update_one({"_id": registered_site["_id"]}, {"$inc": {"blocked_today": 1, "total_blocked": 1}})
         except Exception:
             pass
             
-        block_html = _templates.TemplateResponse("block_page.html", {
-            "request": request,
-            "client_ip": claimed_ip,
-            "real_ip": client_ip,
-            "attack_type": decision.get('attack_type', 'Unknown'),
-            "reason": f"Malicious payload detected (confidence: {decision.get('confidence', 0):.2f})",
-            "reference_id": decision.get('reference_id', 'N/A'),
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "website_name": "MDefender Pro Dashboard"
+        block_html = render_block_page(
+            reference_id=decision.get('reference_id', 'N/A'),
+            client_ip=claimed_ip,
+            attack_type=decision.get('attack_type', 'Security Threat Blocked'),
+            reason=f"Request blocked by MDefender Pro WAF (confidence: {decision.get('confidence', 0):.2f})",
+            website_name=target_domain
+        )
+        return HTMLResponse(content=block_html, status_code=403)
+
+    # Cloud WAF: If this is a registered domain and request is clean, proxy to origin server
+    if registered_site:
+        try:
+            db.websites.update_one({"_id": registered_site["_id"]}, {"$inc": {"requests_today": 1, "total_requests": 1}})
+        except Exception:
+            pass
+
+        # Look up origin server from DNS records or website document
+        origin_record = db.dns_records.find_one({
+            "$or": [{"domain": clean_host}, {"website_id": target_site_id}],
+            "type": "A",
+            "proxied": True
         })
-        return HTMLResponse(content=block_html.body.decode('utf-8'), status_code=403)
+        origin_ip = (origin_record or {}).get("content") or registered_site.get("origin_server")
         
+        # If valid external origin IP is configured
+        if origin_ip and origin_ip not in ("localhost", "127.0.0.1", "217.15.170.82", "203.0.113.10", "192.0.2.1"):
+            try:
+                import httpx
+                target_url = f"http://{origin_ip}{path}"
+                if request.url.query:
+                    target_url = f"{target_url}?{request.url.query}"
+
+                fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
+                fwd_headers["Host"] = raw_host
+                fwd_headers["X-Forwarded-For"] = client_ip
+                fwd_headers["X-Real-IP"] = client_ip
+                fwd_headers["X-Forwarded-Proto"] = request.url.scheme
+                fwd_headers["X-MDefender-Cloud-WAF"] = "active"
+
+                body = await request.body()
+                async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+                    origin_resp = await client.request(
+                        method=request.method,
+                        url=target_url,
+                        headers=fwd_headers,
+                        content=body
+                    )
+                    resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection")}
+                    resp_headers["X-MDefender-Protected"] = "true"
+                    return Response(
+                        content=origin_resp.content,
+                        status_code=origin_resp.status_code,
+                        headers=resp_headers
+                    )
+            except Exception as e:
+                return HTMLResponse(content=f"<h1>502 Bad Gateway</h1><p>MDefender Pro could not reach origin server ({origin_ip}): {e}</p>", status_code=502)
+
+        # Baseline edge landing page when origin is not yet pointed
+        landing_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><title>{clean_host} - MDefender Pro Cloud WAF</title>
+  <style>
+    body {{ margin:0; padding:24px; background:#070b14; color:#f8fafc; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; box-sizing:border-box; }}
+    .card {{ background:#0f172a; border:1px solid #1e3a8a; border-radius:18px; max-width:540px; width:100%; padding:36px; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,0.5); }}
+    .badge {{ display:inline-block; padding:4px 12px; background:rgba(37,99,235,0.2); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); border-radius:20px; font-size:12px; font-weight:700; margin-bottom:16px; }}
+    h2 {{ margin:0 0 10px; font-size:22px; color:#fff; }}
+    p {{ margin:0 0 16px; font-size:14px; color:#94a3b8; line-height:1.6; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">MDEFENDER PRO &bull; ANYCAST EDGE ARMED</div>
+    <h2>Cloud WAF Edge Active</h2>
+    <p>Domain <strong style="color:#38bdf8;">{clean_host}</strong> is successfully connected to MDefender Anycast Edge. Sub-millisecond Layer 7 threat inspection is armed.</p>
+    <p style="font-size:12.5px; color:#64748b;">To proxy traffic to your hosting server, update your Origin Server IPv4 address in the DNS Zone Editor.</p>
+  </div>
+</body>
+</html>"""
+        return HTMLResponse(content=landing_html, status_code=200)
+
     return await call_next(request)
 
 

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
-import DnsOnboardingModal from '../components/DnsOnboardingModal'
 import DnsZoneDrawer from '../components/DnsZoneDrawer'
 
 export default function UserWebsites() {
@@ -10,12 +9,10 @@ export default function UserWebsites() {
   const [data, setData] = useState(() => cachedData)
   const [loading, setLoading] = useState(() => !cachedData)
   const [newWebsite, setNewWebsite] = useState('')
-  const [platform, setPlatform] = useState('cloud')
   const [adding, setAdding] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
-  // Cloudflare-Style Domain Onboarding & Zone Management Modals
-  const [showDnsModal, setShowDnsModal] = useState(false)
+  // Domain Zone Management Modal (if needed for edge routing)
   const [selectedZoneWebsite, setSelectedZoneWebsite] = useState(null)
 
   const userPlan = data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free'
@@ -26,11 +23,10 @@ export default function UserWebsites() {
   const [modalKey, setModalKey] = useState('')
   const [modalDomain, setModalDomain] = useState('')
   const [modalWebsiteId, setModalWebsiteId] = useState('')
-  const [modalTab, setModalTab] = useState('cloud')
+  const [modalTab, setModalTab] = useState('wordpress')
   const [isMasked, setIsMasked] = useState(true)
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedEndpoint, setCopiedEndpoint] = useState(false)
-  const [copiedSnippet, setCopiedSnippet] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
   // Upgrade prompt modal state
@@ -71,7 +67,7 @@ export default function UserWebsites() {
 
     setAdding(true)
     try {
-      const res = await api.addUserWebsite({ domain: cleanDomain, platform })
+      const res = await api.addUserWebsite({ domain: cleanDomain, platform: 'wordpress' })
       if (res?.status === 'error') {
         if (res.message && res.message.toLowerCase().includes('upgrade to premium')) {
           setShowUpgradeModal(true)
@@ -85,12 +81,12 @@ export default function UserWebsites() {
       setModalKey(siteKey)
       setModalDomain(cleanDomain)
       setModalWebsiteId(res?.website?._id || res?.website?.id || '')
-      setModalTab(platform || 'cloud')
+      setModalTab('wordpress')
       setIsMasked(false)
       setShowKeyModal(true)
 
       setNewWebsite('')
-      setFeedbackMsg({ type: 'success', text: `Website "${cleanDomain}" connected successfully!` })
+      setFeedbackMsg({ type: 'success', text: `WordPress site "${cleanDomain}" connected successfully!` })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
       await fetchData()
@@ -114,14 +110,7 @@ export default function UserWebsites() {
     const key = w.api_key || data?.api_key || ''
     setModalKey(key)
     setIsMasked(true)
-
-    const p = (w.platform || '').toLowerCase()
-    if (p.includes('express') || p.includes('node')) setModalTab('express')
-    else if (p.includes('python') || p.includes('fastapi') || p.includes('django')) setModalTab('python')
-    else if (p.includes('react')) setModalTab('react')
-    else if (p.includes('php') || p.includes('laravel')) setModalTab('php')
-    else setModalTab('wordpress')
-
+    setModalTab('wordpress')
     setShowKeyModal(true)
   }
 
@@ -230,107 +219,6 @@ export default function UserWebsites() {
     )
   }
 
-  // Code integration snippets
-  const cloudSnippet = `// 1. Cloud WAF (Smart Anycast DNS & Reverse Proxy)
-// Zero code changes required for React, Vite, Node, Next.js, Django, Laravel, or WordPress!
-
-// Point your Domain Registrar Nameservers (Namecheap, GoDaddy, Hostinger, etc.):
-NS1: ns1.mdefender.pro
-NS2: ns2.mdefender.pro
-
-// Or configure CNAME Subdomain Record:
-CNAME: proxy.mdefender.pro
-
-// Edge Status: Sub-millisecond (0.35ms) Anycast inspection armed!
-// All malicious traffic is blocked at the edge with the Cyber 403 screen.`
-
-  const nginxSnippet = `# NGINX Reverse Proxy Configuration (/etc/nginx/conf.d/mdefender.conf)
-server {
-    listen 80;
-    server_name ${modalDomain || 'yourdomain.com'};
-
-    location / {
-        proxy_pass http://217.15.170.82;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-MDefender-Key "${modalKey || 'YOUR_API_KEY_HERE'}";
-
-        proxy_connect_timeout 2s;
-        proxy_read_timeout 3s;
-    }
-}`
-
-  const pythonSnippet = `# 1. Install required dependencies
-# pip install requests fastapi uvicorn
-
-import requests
-from fastapi import FastAPI, Request, HTTPException
-
-app = FastAPI()
-
-MDEFENDER_KEY = "${modalKey || 'YOUR_API_KEY_HERE'}"
-MDEFENDER_ENDPOINT = "${apiEndpoint}/api/v1/waf/analyze"
-
-@app.middleware("http")
-async def mdefender_waf_middleware(request: Request, call_next):
-    # Live WAF inspect
-    client_ip = request.client.host
-    try:
-        res = requests.post(MDEFENDER_ENDPOINT, json={
-            "api_key": MDEFENDER_KEY,
-            "ip": client_ip,
-            "path": request.url.path,
-            "method": request.method
-        }, timeout=0.8)
-        if res.status_code == 200 and res.json().get("action") == "block":
-            raise HTTPException(status_code=403, detail="Request blocked by MDefender Pro WAF")
-    except HTTPException:
-        raise
-    except Exception:
-        pass # Fail open on network glitch
-    return await call_next(request)`
-
-  const phpSnippet = `<?php
-// 1. MDefender Pro PHP Integration
-define('MDEFENDER_API_KEY', '${modalKey || 'YOUR_API_KEY_HERE'}');
-define('MDEFENDER_API_ENDPOINT', '${apiEndpoint}');
-
-function mdefender_waf_protect() {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    $uri = $_SERVER['REQUEST_URI'] ?? '/';
-    
-    $payload = json_encode([
-        'api_key' => MDEFENDER_API_KEY,
-        'ip' => $ip,
-        'path' => $uri,
-        'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET'
-    ]);
-    
-    $ch = curl_init(MDEFENDER_API_ENDPOINT . '/api/v1/waf/analyze');
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 800);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    $result = json_decode($response, true);
-    if ($result && isset($result['action']) && $result['action'] === 'block') {
-        http_response_code(403);
-        die('<h1>403 Forbidden</h1><p>Access blocked by MDefender Pro WAF.</p>');
-    }
-}
-mdefender_waf_protect();
-?>`
-
-  const envSnippet = `# .env Configuration
-MDEFENDER_API_KEY=${modalKey || 'YOUR_API_KEY_HERE'}
-MDEFENDER_DOMAIN=${modalDomain || 'yourdomain.com'}
-MDEFENDER_API_ENDPOINT=${apiEndpoint}
-MDEFENDER_MODE=block`
-
   return (
     <div style={{ padding: '4px 0 40px' }}>
       {/* Premium Banner */}
@@ -377,62 +265,74 @@ MDEFENDER_MODE=block`
         </div>
       )}
 
-      {/* Add New Website Card */}
+      {/* WordPress Plugin Integration Card */}
       <div className="card" style={{
         background: 'var(--card-bg, #ffffff)', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.03)', padding: '24px', marginBottom: '24px',
       }}>
-        {/* Cloudflare-style Wizard Hero Banner */}
+        {/* WordPress Hero Banner */}
         <div style={{
-          background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
-          borderRadius: '12px', border: '1px solid #fed7aa',
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+          borderRadius: '12px', border: '1px solid #bae6fd',
           padding: '18px 22px', marginBottom: '20px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '44px', height: '44px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+              width: '46px', height: '46px', borderRadius: '12px',
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
               color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '20px', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
+              fontSize: '22px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
             }}>
-              <i className="fas fa-shield-halved"></i>
+              <i className="fab fa-wordpress"></i>
             </div>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: '800', color: '#9a3412' }}>
-                Cloudflare-Style Domain Protection
+              <div style={{ fontSize: '15px', fontWeight: '800', color: '#0369a1' }}>
+                MDefender Pro WordPress Security
               </div>
-              <div style={{ fontSize: '12.5px', color: '#c2410c', marginTop: '2px' }}>
-                Auto-discover DNS records, choose Free/Go/Pro/Ultra plan, configure Proxied vs DNS-Only records &amp; SSL.
+              <div style={{ fontSize: '12.5px', color: '#0284c7', marginTop: '2px' }}>
+                Official security plugin v2.0. Real-time Layer 7 WAF, auto-malware scanner &amp; instant API key connect.
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowDnsModal(true)}
-            style={{
-              padding: '10px 22px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
-              color: '#ffffff', fontSize: '13.5px', fontWeight: '800', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              boxShadow: '0 4px 14px rgba(234, 88, 12, 0.35)', transition: 'transform 0.1s'
-            }}
-          >
-            <i className="fas fa-magic"></i>
-            <span>Add Website (Cloud WAF Wizard)</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <a
+              href="/api/v1/wordpress/download"
+              download="mdefender-pro.zip"
+              style={{
+                padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#ffffff', borderRadius: '9px', fontSize: '13px', fontWeight: '700',
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+              }}
+            >
+              <i className="fas fa-download"></i>
+              <span>Download Plugin (.ZIP)</span>
+            </a>
+            <a
+              href="/user/domains"
+              style={{
+                padding: '9px 16px', background: '#ffffff', border: '1.5px solid #0284c7',
+                color: '#0284c7', borderRadius: '9px', fontSize: '13px', fontWeight: '700',
+                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px'
+              }}
+            >
+              <i className="fas fa-network-wired"></i>
+              <span>Cloud WAF Domains &rarr;</span>
+            </a>
+          </div>
         </div>
 
-        <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#64748b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>Or quick connect via custom platform:</span>
+        <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#64748b', marginBottom: '12px' }}>
+          Connect a WordPress website to generate a dedicated Site API Key:
         </div>
 
         <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Domain input */}
-          <div style={{ flex: '2 1 240px', position: 'relative' }}>
+          <div style={{ flex: '1 1 320px', position: 'relative' }}>
             <input
               type="text"
-              placeholder="e.g. mycompany.com or store.example.org"
+              placeholder="e.g. mywordpresssite.com or blog.company.com"
               value={newWebsite}
               onChange={e => setNewWebsite(e.target.value)}
               style={{
@@ -444,26 +344,6 @@ MDEFENDER_MODE=block`
             />
           </div>
 
-          {/* Platform select */}
-          <div style={{ flex: '1 1 180px' }}>
-            <select
-              value={platform}
-              onChange={e => setPlatform(e.target.value)}
-              style={{
-                width: '100%', height: '46px', padding: '0 14px', border: '1.5px solid var(--border-color, #cbd5e1)', borderRadius: '10px',
-                fontSize: '13.5px', fontFamily: 'inherit', background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontWeight: '600',
-                boxSizing: 'border-box', cursor: 'pointer'
-              }}
-            >
-              <option value="cloud">Cloud WAF (Smart Anycast DNS)</option>
-              <option value="wordpress">WordPress Plugin</option>
-              <option value="nginx">NGINX / Reverse Proxy</option>
-              <option value="python">Python / FastAPI / Django</option>
-              <option value="php">PHP / Laravel</option>
-              <option value="other">Custom API / Other</option>
-            </select>
-          </div>
-
           {/* Submit Button */}
           <button
             type="submit"
@@ -472,12 +352,12 @@ MDEFENDER_MODE=block`
             style={{
               height: '46px', padding: '0 26px', borderRadius: '10px', fontSize: '14px', fontWeight: '700',
               display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: adding ? 'not-allowed' : 'pointer',
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#ffffff', border: 'none',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', flexShrink: 0
+              background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff', border: 'none',
+              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', flexShrink: 0
             }}
           >
-            <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fa-shield-halved'}`}></i>
-            <span>{adding ? 'Connecting...' : 'Quick Add'}</span>
+            <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fab fa-wordpress'}`}></i>
+            <span>{adding ? 'Connecting...' : 'Connect WordPress Site'}</span>
           </button>
         </form>
       </div>
@@ -511,11 +391,11 @@ MDEFENDER_MODE=block`
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
-                  width: '44px', height: '44px', borderRadius: '12px', background: '#ecfdf5',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#10b981',
-                  border: '1px solid #bbf7d0'
+                  width: '44px', height: '44px', borderRadius: '12px', background: '#f0f9ff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', color: '#0284c7',
+                  border: '1.5px solid #bae6fd'
                 }}>
-                  <i className="fas fa-globe"></i>
+                  <i className="fab fa-wordpress"></i>
                 </div>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -524,61 +404,17 @@ MDEFENDER_MODE=block`
                       <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px' }}></i>
                       {w.status || 'Active'}
                     </span>
-                    {w.verified ? (
-                      <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '6px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <i className="fas fa-check-double" style={{ fontSize: '9px' }}></i> Edge Verified
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '6px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <i className="fas fa-clock" style={{ fontSize: '9px' }}></i> Pending DNS
-                      </span>
-                    )}
+                    <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', borderRadius: '6px', fontWeight: '700' }}>
+                      WordPress Plugin
+                    </span>
                   </div>
                   <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
-                    {w.platform ? `Platform: ${w.platform} • ` : ''}Added: {w.added_at || 'Protected'}
+                    Added: {w.added_at ? (typeof w.added_at === 'string' ? w.added_at.split('T')[0] : 'Protected') : 'Protected'}
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {/* Manage DNS Zone Button */}
-                <button
-                  onClick={() => setSelectedZoneWebsite(w)}
-                  style={{
-                    padding: '8px 15px',
-                    background: 'linear-gradient(135deg, #fff7ed, #ffedd5)',
-                    color: '#ea580c',
-                    border: '1px solid #fed7aa',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    boxShadow: '0 2px 6px rgba(234, 88, 12, 0.15)',
-                    transition: 'all 0.15s'
-                  }}
-                  title="Manage DNS records, Proxied vs DNS-only toggles, and SSL encryption"
-                >
-                  <i className="fas fa-cloud" style={{ color: '#f97316' }}></i>
-                  <span>DNS &amp; WAF Zone</span>
-                </button>
-
-                {/* Verify DNS Button */}
-                <button
-                  onClick={() => handleVerifyDns(w)}
-                  disabled={verifyingDnsId === (w.id || w._id)}
-                  style={{
-                    padding: '8px 14px',
-                    background: w.verified ? '#f0fdf4' : '#fffbeb',
-                    color: w.verified ? '#16a34a' : '#d97706',
-                    border: `1px solid ${w.verified ? '#bbf7d0' : '#fde68a'}`,
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    transition: 'all 0.15s'
-                  }}
-                  title="Check Anycast DNS propagation and verify edge traffic routing"
-                >
-                  <i className={`fas ${verifyingDnsId === (w.id || w._id) ? 'fa-spinner fa-spin' : (w.verified ? 'fa-circle-check' : 'fa-satellite-dish')}`}></i>
-                  <span>{verifyingDnsId === (w.id || w._id) ? 'Checking DNS...' : (w.verified ? 'DNS Active' : 'Verify DNS')}</span>
-                </button>
-
                 {/* View Key & Setup Button */}
                 <button
                   onClick={() => handleOpenKeyModal(w)}
@@ -590,8 +426,10 @@ MDEFENDER_MODE=block`
                   }}
                 >
                   <i className="fas fa-key"></i>
-                  <span>Setup Guide</span>
+                  <span>Setup Guide &amp; Key</span>
                 </button>
+
+
 
                 {/* Remove Website Button */}
                 <button
@@ -811,318 +649,139 @@ MDEFENDER_MODE=block`
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <i className="fas fa-bolt" style={{ color: '#d97706' }}></i>
-                      <span>Fast Integration (1-Minute Setup)</span>
+                      <i className="fab fa-wordpress" style={{ color: '#0284c7' }}></i>
+                      <span>WordPress Plugin Setup (1-Minute Activation)</span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                      Choose your backend or CMS stack for plug-and-play setup instructions.
+                      Follow these 3 simple steps to connect and arm MDefender Pro on your WordPress site.
                     </div>
                   </div>
                 </div>
 
-                {/* Modern Pill Tabs */}
+                {/* WordPress Setup Guide Card */}
                 <div style={{
-                  display: 'flex', gap: '6px', marginBottom: '16px',
-                  background: '#f1f5f9', padding: '5px', borderRadius: '12px',
-                  border: '1px solid #e2e8f0', flexWrap: 'wrap'
+                  background: '#ffffff', border: '1px solid #e2e8f0',
+                  borderRadius: '14px', padding: '20px', color: '#334155',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
                 }}>
-                  {[
-                    { id: 'cloud', label: 'Cloud Anycast DNS', icon: 'fa-cloud', color: '#f59e0b' },
-                    { id: 'wordpress', label: 'WordPress Plugin', icon: 'fa-wordpress', color: '#0284c7' },
-                    { id: 'nginx', label: 'NGINX Proxy', icon: 'fa-server', color: '#10b981' },
-                    { id: 'python', label: 'Python / FastAPI', icon: 'fa-python', color: '#ca8a04' },
-                    { id: 'php', label: 'PHP / Laravel', icon: 'fa-php', color: '#6366f1' },
-                    { id: 'env', label: '.env Config', icon: 'fa-file-code', color: '#475569' },
-                  ].map(tab => {
-                    const isActive = modalTab === tab.id
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setModalTab(tab.id)}
-                        style={{
-                          flex: '1 1 95px', padding: '8px 12px', border: 'none', borderRadius: '8px',
-                          fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                          background: isActive ? '#ffffff' : 'transparent',
-                          color: isActive ? '#0f172a' : '#64748b',
-                          boxShadow: isActive ? '0 2px 6px rgba(0, 0, 0, 0.08)' : 'none',
-                          border: isActive ? '1px solid #cbd5e1' : '1px solid transparent',
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <i className={`fas ${tab.icon}`} style={{ color: isActive ? tab.color : '#94a3b8' }}></i>
-                        <span>{tab.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* ================= TAB 0: Cloud Anycast DNS ================= */}
-                {modalTab === 'cloud' && (
+                  {/* WordPress Download Card */}
                   <div style={{
-                    background: '#ffffff', border: '1px solid #e2e8f0',
-                    borderRadius: '14px', padding: '20px', color: '#334155',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)', marginBottom: '16px'
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                    border: '1px solid #bae6fd', borderRadius: '12px',
+                    padding: '16px 18px', marginBottom: '18px', flexWrap: 'wrap', gap: '12px'
                   }}>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                      border: '1px solid #fde68a', borderRadius: '12px',
-                      padding: '16px 18px', marginBottom: '16px', flexWrap: 'wrap', gap: '12px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '42px', height: '42px', borderRadius: '10px',
-                          background: '#f59e0b', color: '#ffffff', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: '20px', boxShadow: '0 4px 10px rgba(245, 158, 11, 0.25)'
-                        }}>
-                          <i className="fas fa-cloud"></i>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#92400e' }}>
-                            Cloud WAF (Smart Anycast DNS &amp; Proxy)
-                          </div>
-                          <div style={{ fontSize: '11.5px', color: '#b45309', marginTop: '2px' }}>
-                            Zero code required &bull; Cloudflare-Style &bull; Universal Compatibility
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ fontSize: '12.5px', color: '#475569' }}>
-                        Set the following Nameservers at your Domain Registrar (Namecheap, GoDaddy, Hostinger, etc.):
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{
-                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px'
+                        width: '42px', height: '42px', borderRadius: '10px',
+                        background: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '22px', boxShadow: '0 4px 10px rgba(2, 132, 199, 0.25)'
                       }}>
+                        <i className="fab fa-wordpress"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0369a1' }}>
+                          MDefender Pro WordPress Security Plugin
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: '#0284c7', marginTop: '2px' }}>
+                          Official release v2.0 &bull; Real-time WAF &amp; Malware scanner
+                        </div>
+                      </div>
+                    </div>
+
+                    <a
+                      href="/api/v1/wordpress/download"
+                      download="mdefender-pro.zip"
+                      style={{
+                        padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)',
+                        color: '#ffffff', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                        textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                      }}
+                    >
+                      <i className="fas fa-download"></i>
+                      <span>Download .ZIP</span>
+                    </a>
+                  </div>
+
+                  {/* Step-by-Step Setup */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <span style={{
+                        width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
+                        color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      }}>1</span>
+                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155' }}>
+                        Upload the plugin in your WP Dashboard under <strong>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</strong> and click <strong>Activate</strong>.
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <span style={{
+                        width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
+                        color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      }}>2</span>
+                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
+                        In WP Admin &rarr; <strong>MDefender Pro &rarr; Settings</strong>, paste your <strong>Site Secret API Key</strong>:
                         <div style={{
-                          background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
-                          padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0',
+                          borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
+                          alignItems: 'center', gap: '8px'
                         }}>
-                          <div>
-                            <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', display: 'block' }}>PRIMARY NAMESERVER</span>
-                            <span style={{ fontFamily: 'monospace', fontSize: '12.5px', color: '#16a34a', fontWeight: '700' }}>ns1.mdefender.pro</span>
-                          </div>
+                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#0284c7', wordBreak: 'break-all', fontWeight: '700' }}>
+                            {modalKey || 'API_KEY_HERE'}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard('ns1.mdefender.pro')}
-                            style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                            onClick={handleCopyKey}
+                            style={{
+                              background: '#ffffff', border: '1px solid #cbd5e1', color: '#334155',
+                              padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                            }}
                           >
-                            <i className="fas fa-copy"></i>
+                            <i className={`fas ${copiedKey ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
+                            {copiedKey ? 'Copied' : 'Copy'}
                           </button>
                         </div>
+                      </div>
+                    </div>
 
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <span style={{
+                        width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
+                        color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      }}>3</span>
+                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
+                        Set <strong>API Endpoint URL</strong> to:
                         <div style={{
-                          background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
-                          padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                          marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0',
+                          borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
+                          alignItems: 'center', gap: '8px'
                         }}>
-                          <div>
-                            <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', display: 'block' }}>SECONDARY NAMESERVER</span>
-                            <span style={{ fontFamily: 'monospace', fontSize: '12.5px', color: '#16a34a', fontWeight: '700' }}>ns2.mdefender.pro</span>
-                          </div>
+                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#4f46e5', fontWeight: '700' }}>
+                            {apiEndpoint}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard('ns2.mdefender.pro')}
-                            style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                            onClick={handleCopyEndpoint}
+                            style={{
+                              background: '#ffffff', border: '1px solid #cbd5e1', color: '#334155',
+                              padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                            }}
                           >
-                            <i className="fas fa-copy"></i>
+                            <i className={`fas ${copiedEndpoint ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
+                            {copiedEndpoint ? 'Copied' : 'Copy'}
                           </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
-
-                {/* ================= TAB 1: WordPress ================= */}
-                {modalTab === 'wordpress' && (
-                  <div style={{
-                    background: '#ffffff', border: '1px solid #e2e8f0',
-                    borderRadius: '14px', padding: '20px', color: '#334155',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-                  }}>
-                    {/* WordPress Download Card */}
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                      border: '1px solid #bae6fd', borderRadius: '12px',
-                      padding: '16px 18px', marginBottom: '18px', flexWrap: 'wrap', gap: '12px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '42px', height: '42px', borderRadius: '10px',
-                          background: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontSize: '22px', boxShadow: '0 4px 10px rgba(2, 132, 199, 0.25)'
-                        }}>
-                          <i className="fab fa-wordpress"></i>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0369a1' }}>
-                            MDefender Pro WordPress Security Plugin
-                          </div>
-                          <div style={{ fontSize: '11.5px', color: '#0284c7', marginTop: '2px' }}>
-                            Official release v2.0 • Real-time WAF &amp; Malware scanner
-                          </div>
-                        </div>
-                      </div>
-
-                      <a
-                        href="/api/v1/wordpress/download"
-                        download="mdefender-pro.zip"
-                        style={{
-                          padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)',
-                          color: '#ffffff', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
-                          textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
-                        }}
-                      >
-                        <i className="fas fa-download"></i>
-                        <span>Download .ZIP</span>
-                      </a>
-                    </div>
-
-                    {/* Step-by-Step Setup */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <span style={{
-                          width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
-                          color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
-                          alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                        }}>1</span>
-                        <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155' }}>
-                          Upload the plugin in your WP Dashboard under <strong>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</strong> and click <strong>Activate</strong>.
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <span style={{
-                          width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
-                          color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
-                          alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                        }}>2</span>
-                        <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
-                          In WP Admin &rarr; <strong>MDefender Pro &rarr; Settings</strong>, paste your <strong>Site Secret API Key</strong>:
-                          <div style={{
-                            marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0',
-                            borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
-                            alignItems: 'center', gap: '8px'
-                          }}>
-                            <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#0284c7', wordBreak: 'break-all', fontWeight: '700' }}>
-                              {modalKey || 'API_KEY_HERE'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleCopyKey}
-                              style={{
-                                background: '#ffffff', border: '1px solid #cbd5e1', color: '#334155',
-                                padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-                                cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                              }}
-                            >
-                              <i className={`fas ${copiedKey ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
-                              {copiedKey ? 'Copied' : 'Copy'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <span style={{
-                          width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
-                          color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
-                          alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                        }}>3</span>
-                        <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
-                          Set <strong>API Endpoint URL</strong> to:
-                          <div style={{
-                            marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0',
-                            borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
-                            alignItems: 'center', gap: '8px'
-                          }}>
-                            <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#4f46e5', fontWeight: '700' }}>
-                              {apiEndpoint}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleCopyEndpoint}
-                              style={{
-                                background: '#ffffff', border: '1px solid #cbd5e1', color: '#334155',
-                                padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-                                cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                              }}
-                            >
-                              <i className={`fas ${copiedEndpoint ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
-                              {copiedEndpoint ? 'Copied' : 'Copy'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ================= CODE TABS (Express, Python, PHP, React, .env) ================= */}
-                {modalTab !== 'wordpress' && (
-                  <div style={{
-                    background: '#0f172a', border: '1px solid #334155',
-                    borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.15)'
-                  }}>
-                    {/* IDE Header Bar */}
-                    <div style={{
-                      background: '#1e293b', padding: '10px 16px',
-                      borderBottom: '1px solid #334155',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
-                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>
-                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
-                        </div>
-                        <span style={{ fontSize: '11.5px', fontFamily: 'Consolas, monospace', color: '#e2e8f0', marginLeft: '6px', fontWeight: '600' }}>
-                          {modalTab === 'cloud' ? 'DNS-Guide.txt' : modalTab === 'nginx' ? 'nginx.conf' : modalTab === 'python' ? 'main.py' : modalTab === 'php' ? 'mdefender_waf.php' : '.env'}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleCopySnippet(
-                          modalTab === 'cloud' ? cloudSnippet :
-                          modalTab === 'nginx' ? nginxSnippet :
-                          modalTab === 'python' ? pythonSnippet :
-                          modalTab === 'php' ? phpSnippet : envSnippet
-                        )}
-                        style={{
-                          background: '#334155', border: '1px solid #475569',
-                          color: '#ffffff', padding: '4px 12px', borderRadius: '6px', fontSize: '11.5px',
-                          fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                          transition: 'background 0.15s'
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#475569'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = '#334155'; }}
-                      >
-                        <i className={`fas ${copiedSnippet ? 'fa-check text-green-400' : 'fa-copy'}`}></i>
-                        <span>{copiedSnippet ? 'Copied Code!' : 'Copy Code'}</span>
-                      </button>
-                    </div>
-
-                    {/* Pre Code Box */}
-                    <pre style={{
-                      margin: 0, padding: '16px 20px', color: '#f1f5f9',
-                      fontSize: '12.5px', fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                      lineHeight: '1.6', overflowX: 'auto', maxHeight: '250px', background: '#0b1120'
-                    }}>
-                      <code>
-                        {modalTab === 'cloud' && cloudSnippet}
-                        {modalTab === 'nginx' && nginxSnippet}
-                        {modalTab === 'python' && pythonSnippet}
-                        {modalTab === 'php' && phpSnippet}
-                        {modalTab === 'env' && envSnippet}
-                      </code>
-                    </pre>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -1214,16 +873,7 @@ MDEFENDER_MODE=block`
         </div>
       )}
 
-      {/* Cloudflare-Style DNS Onboarding Wizard Modal */}
-      <DnsOnboardingModal
-        isOpen={showDnsModal}
-        onClose={() => setShowDnsModal(false)}
-        onWebsiteAdded={async () => {
-          userStore.invalidate('websites')
-          userStore.invalidate('dashboard')
-          await fetchData()
-        }}
-      />
+
 
       {/* Cloudflare-Style DNS Zone & Subdomain Management Drawer */}
       <DnsZoneDrawer
