@@ -537,6 +537,9 @@ $dashboard = $logger->get_dashboard_data();
             <button type="button" class="waf-tab-btn" data-tab="security">
                 <span class="dashicons dashicons-admin-network"></span> Admin Security
             </button>
+            <button type="button" class="waf-tab-btn" data-tab="turnstile">
+                <span class="dashicons dashicons-shield"></span> Bot Challenge &amp; Turnstile
+            </button>
         </nav>
 
         <div class="waf-status-strip">
@@ -1001,6 +1004,112 @@ $dashboard = $logger->get_dashboard_data();
             </div>
         </div>
 
+        <!-- Tab 7: Bot Challenge & Turnstile Verification -->
+        <div id="waf-tab-turnstile" class="waf-tab-panel" style="display:none;">
+            <div class="waf-settings-grid">
+                <div class="waf-fw-card">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <h3 style="margin:0;"><span class="dashicons dashicons-shield"></span> MDefender Turnstile Shield</h3>
+                        <span class="waf-pill waf-pill-info" style="font-size:10px;">Cloudflare Style</span>
+                    </div>
+                    <p class="description">Non-intrusive, zero-friction bot verification using client-side WebCrypto Proof-of-Work (PoW) and browser heuristics. Blocks automated brute force bots without annoying picture puzzles or captcha distorted text.</p>
+                    <form id="wafFwTurnstileForm">
+                        <div class="waf-switch-row" style="margin-bottom: 16px;">
+                            <label class="waf-switch">
+                                <input type="checkbox" id="wafFwTurnstileEnabled" value="yes">
+                                <span class="waf-slider"></span>
+                            </label>
+                            <span class="waf-switch-label" id="wafTurnstileLabel" style="font-weight:600;">Turnstile Bot Challenge is OFF</span>
+                        </div>
+
+                        <p>
+                            <label for="wafFwTurnstileMode"><strong>Protection Scope / Challenge Mode</strong></label>
+                            <select id="wafFwTurnstileMode" class="widefat" style="margin-top:4px;">
+                                <option value="login_only" selected>Login &amp; Admin Forms Only (Recommended)</option>
+                                <option value="site_wide">Site-Wide Visitor Shield (Interstitial check for all visitors)</option>
+                            </select>
+                            <span class="description" style="display:block;margin-top:4px;color:#64748b;">
+                                <strong>Login Only:</strong> Embeds verification widget on <code>wp-login.php</code>, registration, and comments.<br>
+                                <strong>Site-Wide:</strong> Unverified visitors see an ultra-fast interstitial check screen before accessing any site page.
+                            </span>
+                        </p>
+
+                        <p>
+                            <label for="wafFwTurnstileTheme"><strong>Widget Appearance Theme</strong></label>
+                            <select id="wafFwTurnstileTheme" class="widefat" style="margin-top:4px;">
+                                <option value="auto" selected>Auto (Follow System / OS theme)</option>
+                                <option value="light">Light Mode (Clean White)</option>
+                                <option value="dark">Cyber Dark Mode</option>
+                            </select>
+                        </p>
+
+                        <div style="margin-top:20px;">
+                            <button type="submit" class="button button-primary">Save Turnstile Settings</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="waf-fw-card">
+                    <h3><span class="dashicons dashicons-visibility"></span> Live Interactive Preview</h3>
+                    <p class="description">This is how your visitors and administrators will see and interact with the Turnstile check. Click the box below to test live Proof-of-Work verification!</p>
+
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:26px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:14px;">
+                        <div id="mdefAdminTurnstilePreviewBox" class="mdef-ts-card" style="width:100%;max-width:320px;height:65px;padding:0 14px 0 12px;border-radius:8px;background:#ffffff;border:1px solid #dcdfe4;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all 0.25s cubic-bezier(0.16, 1, 0.3, 1);user-select:none;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div id="mdefAdminCheck" style="width:28px;height:28px;border-radius:6px;border:2px solid #cbd5e1;background:#ffffff;display:flex;align-items:center;justify-content:center;transition:all 0.22s ease;position:relative;flex-shrink:0;">
+                                    <div id="mdefAdminSpin" style="width:22px;height:22px;display:none;">
+                                        <svg viewBox="0 0 28 28" style="width:100%;height:100%;animation:wafSpin 0.75s linear infinite;">
+                                            <circle cx="14" cy="14" r="11" fill="none" stroke="rgba(37,99,235,0.15)" stroke-width="2.8" />
+                                            <circle cx="14" cy="14" r="11" fill="none" stroke="#2563eb" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="40 35" />
+                                        </svg>
+                                    </div>
+                                    <svg id="mdefAdminSvg" viewBox="0 0 24 24" style="width:17px;height:17px;fill:none;stroke:#ffffff;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;display:none;">
+                                        <path d="M4.5 12.5l5 5L19.5 7" />
+                                    </svg>
+                                </div>
+                                <div style="display:flex;flex-direction:column;justify-content:center;gap:2px;">
+                                    <div id="mdefAdminLabel" style="font-size:13.5px;font-weight:500;color:#1e293b;line-height:1.25;">Verify you are human</div>
+                                    <div id="mdefAdminSub" style="font-size:11px;color:#64748b;line-height:1.2;">Cloud security check</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0;">
+                                <div style="display:inline-flex;align-items:center;gap:4.5px;">
+                                    <svg style="width:15px;height:16px;filter:drop-shadow(0 1px 2px rgba(37,99,235,0.25));" viewBox="0 0 24 24">
+                                        <defs>
+                                            <linearGradient id="mdefShieldGradAdmin" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stop-color="#2563eb" />
+                                                <stop offset="60%" stop-color="#3b82f6" />
+                                                <stop offset="100%" stop-color="#06b6d4" />
+                                            </linearGradient>
+                                        </defs>
+                                        <path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z" fill="url(#mdefShieldGradAdmin)" />
+                                        <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.18" />
+                                        <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                                    </svg>
+                                    <span id="mdefAdminBrandName" style="font-size:11px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:#1e293b;">MDefender</span>
+                                </div>
+                                <div style="font-size:9px;color:#94a3b8;display:flex;align-items:center;gap:3.5px;">
+                                    <span>Turnstile</span>
+                                    <span style="font-size:7px;opacity:0.6;">&bull;</span>
+                                    <a href="https://mdefender.io" target="_blank" rel="noopener" style="color:#94a3b8;text-decoration:none;">Privacy</a>
+                                    <span style="font-size:7px;opacity:0.6;">&bull;</span>
+                                    <a href="https://mdefender.io" target="_blank" rel="noopener" style="color:#94a3b8;text-decoration:none;">Terms</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="mdefAdminPreviewStatus" style="font-size:12px;color:#64748b;margin-top:14px;text-align:center;font-weight:500;">Click the checkbox to test live Proof-of-Work verification</div>
+                    </div>
+
+                    <div style="margin-top:18px;border-top:1px solid #f1f5f9;padding-top:14px;font-size:12px;color:#475569;">
+                        <ul style="margin:0;padding-left:18px;line-height:1.6;">
+                            <li><strong>Zero Third-Party Dependency:</strong> 100% self-hosted &amp; privacy-first.</li>
+                            <li><strong>Tamper-Proof:</strong> Challenges &amp; clearance tokens are signed with HMAC-SHA256.</li>
+                            <li><strong>24-Hour Clearance:</strong> Legitimate visitors are never re-prompted during active sessions.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1284,10 +1393,123 @@ $dashboard = $logger->get_dashboard_data();
                     if (d.scheduled_scan_frequency) $('#wafFwScheduleFrequency').val(d.scheduled_scan_frequency);
                     if (d.scheduled_scan_type) $('#wafFwScheduleScanType').val(d.scheduled_scan_type);
                 }
+                if (d.turnstile_enabled !== undefined) {
+                    $('#wafFwTurnstileEnabled').prop('checked', d.turnstile_enabled === 'yes');
+                    $('#wafTurnstileLabel').text('Turnstile Bot Challenge is ' + (d.turnstile_enabled === 'yes' ? 'ON' : 'OFF'));
+                }
+                if (d.turnstile_mode) $('#wafFwTurnstileMode').val(d.turnstile_mode);
+                if (d.turnstile_theme) $('#wafFwTurnstileTheme').val(d.turnstile_theme);
                 $('#wafFwProtection').prop('checked', d.protection_enabled === 'yes');
                 $('#wafProtectionLabel').text('WAF Protection is ' + (d.protection_enabled === 'yes' ? 'ON' : 'OFF'));
                 updateStatus(d);
                 updateBlockPreview();
+            }
+        });
+
+        $('#wafFwTurnstileEnabled').on('change', function() {
+            var on = $(this).is(':checked');
+            $('#wafTurnstileLabel').text('Turnstile Bot Challenge is ' + (on ? 'ON' : 'OFF'));
+        });
+
+        // Interactive Turnstile Live Preview in Admin Settings
+        function updateTurnstilePreviewTheme(theme) {
+            var $box = $('#mdefAdminTurnstilePreviewBox');
+            var $title = $('#mdefAdminLabel');
+            var $brand = $('#mdefAdminBrandName');
+            var $chk = $('#mdefAdminCheck');
+            if (theme === 'dark') {
+                $box.css({ 'background': '#0f172a', 'border-color': 'rgba(255,255,255,0.12)', 'box-shadow': '0 4px 14px rgba(0,0,0,0.35)' });
+                $title.css('color', '#f8fafc');
+                $brand.css('color', '#f1f5f9');
+                if (!$box.data('solved')) {
+                    $chk.css({ 'background': 'rgba(255,255,255,0.04)', 'border-color': 'rgba(255,255,255,0.25)' });
+                }
+            } else {
+                $box.css({ 'background': '#ffffff', 'border-color': '#dcdfe4', 'box-shadow': '0 1px 3px rgba(0,0,0,0.05)' });
+                $title.css('color', '#1e293b');
+                $brand.css('color', '#1e293b');
+                if (!$box.data('solved')) {
+                    $chk.css({ 'background': '#ffffff', 'border-color': '#cbd5e1' });
+                }
+            }
+        }
+        $('#wafFwTurnstileTheme').on('change', function() {
+            updateTurnstilePreviewTheme($(this).val());
+        });
+
+        $('#mdefAdminTurnstilePreviewBox').on('click', async function() {
+            var $box = $(this);
+            var $spin = $('#mdefAdminSpin');
+            var $check = $('#mdefAdminCheck');
+            var $svg = $('#mdefAdminSvg');
+            var $lbl = $('#mdefAdminLabel');
+            var $sub = $('#mdefAdminSub');
+            var $status = $('#mdefAdminPreviewStatus');
+
+            if ($box.data('solving') || $box.data('solved')) return;
+            $box.data('solving', true);
+
+            $spin.show();
+            $check.css({ 'border-color': '#2563eb', 'background': 'transparent' });
+            $lbl.text('Verifying...');
+            $sub.text('Solving security challenge...');
+            $status.text('Requesting PoW challenge...');
+
+            try {
+                var tStart = performance.now();
+                var cRes = await fetch(ajaxurl + '?action=waf_turnstile_challenge');
+                var cData = await cRes.json();
+                if (!cData.success) throw new Error(cData.data ? cData.data.message : 'Challenge request failed');
+
+                var ch = cData.data;
+                var salt = ch.salt;
+                var diff = ch.difficulty || 3;
+                var targetPrefix = '0'.repeat(diff);
+                var nonce = 0;
+                var enc = new TextEncoder();
+
+                $status.text('Computing client-side Proof-of-Work (difficulty ' + diff + ')...');
+
+                while (true) {
+                    var str = ch.nonce + ':' + ch.salt + ':' + nonce;
+                    var hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(str));
+                    var hashArr = Array.from(new Uint8Array(hashBuf));
+                    var hashHex = hashArr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+                    if (hashHex.startsWith(targetPrefix)) break;
+                    nonce++;
+                    if (nonce > 500000) throw new Error('Difficulty calculation exceeded');
+                }
+
+                var elapsed = Math.round(performance.now() - tStart);
+                $status.text('Proof-of-work computed in ' + elapsed + 'ms. Verifying solution...');
+
+                var fd = new FormData();
+                fd.append('action', 'waf_turnstile_verify');
+                fd.append('token', ch.challenge_token);
+                fd.append('solution', nonce.toString());
+                fd.append('duration_ms', elapsed.toString());
+
+                var vRes = await fetch(ajaxurl, { method: 'POST', body: fd });
+                var vData = await vRes.json();
+                if (!vData.success) throw new Error(vData.data ? vData.data.message : 'Verification failed');
+
+                $spin.hide();
+                $svg.show();
+                $check.css({ 'border-color': '#10b981', 'background': '#10b981', 'box-shadow': '0 0 10px rgba(16,185,129,0.4)' });
+                $lbl.text('Success!');
+                $lbl.css('color', '#059669');
+                $sub.text('✓ Verification complete');
+                $sub.css('color', '#059669');
+                $status.html('<span style="color:#059669;font-weight:600;">✓ Verification Passed! Solved in ' + elapsed + 'ms (' + nonce + ' iterations). Ready to protect logins!</span>');
+                $box.data('solved', true);
+            } catch (err) {
+                $spin.hide();
+                $lbl.text('Verification Failed');
+                $lbl.css('color', '#dc2626');
+                $sub.text('Click to retry');
+                $check.css('border-color', '#ef4444');
+                $status.html('<span style="color:#dc2626;">Error: ' + err.message + '</span>');
+                $box.data('solving', false);
             }
         });
 
@@ -1348,7 +1570,10 @@ $dashboard = $logger->get_dashboard_data();
                 blockColors: 'block_colors',
                 emailAlerts: 'email_alerts',
                 learningMode: 'learning_mode',
-                blockedCountries: 'blocked_countries'
+                blockedCountries: 'blocked_countries',
+                turnstileEnabled: 'turnstile_enabled',
+                turnstileMode: 'turnstile_mode',
+                turnstileTheme: 'turnstile_theme'
             };
 
             var data = {};

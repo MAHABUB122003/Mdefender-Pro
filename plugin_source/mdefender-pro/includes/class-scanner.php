@@ -69,7 +69,7 @@ class WAF_FW_Scanner {
         ];
         
         $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/'];
-        $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql'];
+        $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp'];
         
         $bulk_inserts = [];
         $total_files = 0;
@@ -104,7 +104,7 @@ class WAF_FW_Scanner {
                 if ($skip) continue;
                 
                 $ext = strtolower(pathinfo($fp, PATHINFO_EXTENSION));
-                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess') continue;
+                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess' && strpos(basename($fp), '.env') !== 0) continue;
                 if ($file->getSize() > 10000000) continue; // Skip files > 10MB
                 
                 $bulk_inserts[] = $wpdb->prepare("(%d, %s, 'pending', %s)", $scan_id, $rel_path, $cat);
@@ -142,7 +142,7 @@ class WAF_FW_Scanner {
                 $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
                 
                 $ext = strtolower(pathinfo($fp, PATHINFO_EXTENSION));
-                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess') continue;
+                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess' && strpos(basename($fp), '.env') !== 0) continue;
                 if ($file->getSize() > 10000000) continue;
                 
                 $bulk_inserts[] = $wpdb->prepare("(%d, %s, 'pending', %s)", $scan_id, $rel_path, $cat);
@@ -1167,6 +1167,23 @@ class WAF_FW_Scanner {
             $findings[] = "SEO Blackhat Spam: Concealed pharma/gambling keywords injected";
         }
 
+        // Privilege Escalation / Unauthorized Administrator Account Backdoor
+        if (preg_match('/(?:wp_create_user|wp_insert_user)[\s\S]{0,200}set_role\s*\(\s*[\'"]administrator[\'"]/i', $content) ||
+            preg_match('/(?:wp_create_user|wp_insert_user)[\s\S]{0,100}[\'"]administrator[\'"]/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Privilege Escalation Backdoor: Unauthorized WordPress administrator account creation detected";
+        }
+
+        // Obfuscation via repeated chr() character code concatenation
+        if (preg_match_all('/chr\s*\(\s*\d+\s*\)/i', $content, $chr_matches) >= 4) {
+            $score = max($score, 85);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Heuristic Obfuscation: Suspicious chr() character code concatenation chain detected (" . count($chr_matches[0]) . " calls)";
+        }
+
         return [
             'score' => $score,
             'confidence' => $confidence,
@@ -1195,16 +1212,25 @@ class WAF_FW_Scanner {
                     '/\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot)/i',
                     '/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i',
                     '/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i',
+                    '/(?:wp_create_user|wp_insert_user)[\s\S]{0,150}(?:set_role\s*\(\s*[\'"]administrator[\'"]|[\'"]role[\'"]\s*=>\s*[\'"]administrator[\'"])/i',
+                    '/\$(?:GLOBALS|_[A-Z]+)\s*\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
+                    '/register_shutdown_function\s*\(\s*[\'"](?:assert|system|eval|passthru)[\'"]/i',
+                    '/add_action\s*\(\s*[\'"](?:init|admin_init|wp_head)[\'"]\s*,[\s\S]{0,120}wp_create_user/i',
+                    '/\$[a-zA-Z0-9_]+\s*=\s*[\'"](?:system|exec|passthru|shell_exec|assert)[\'"]\s*;[\s\S]{0,50}\$[a-zA-Z0-9_]+\s*\(/i',
+                    '/(?:auto_prepend_file|auto_append_file)\s*=\s*[^\s;]+/i',
+                    '/move_uploaded_file\s*\(\s*\$_FILES\[[^\]]+\]\[[\'"]tmp_name[\'"]\][\s\S]{0,100}\.(?:php|phtml|ico)/i',
                 ],
             ],
             'crypto' => [
-                'weight' => 40,
+                'weight' => 85,
                 'patterns' => [
                     '/stratum\s*:\/\//i',
                     '/mine\.\w+\.\w+/i',
                     '/Monero|xmr\b/i',
                     '/cryptonight/i',
                     '/wallet\s*=\s*[\'\"][13][a-km-zA-HJ-NP-Z0-9]{26,33}[\'\"]/i',
+                    '/CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot|jsecoin/i',
+                    '/addEventListener\s*\(\s*[\'"]key(?:press|down|up)[\'"][\s\S]{0,100}(?:fetch|XMLHttpRequest|\.send)/i',
                 ],
             ],
         ];
@@ -1228,6 +1254,9 @@ class WAF_FW_Scanner {
             '/api[_-]?key\s*[=:]\s*[\'\"][a-zA-Z0-9]{16,64}[\'\"]/i',
             '/password\s*[=:]\s*[\'\"][^\'\"]{6,}[\'\"]/i',
             '/DB_PASSWORD|DB_HOST|DB_USER.*[\'\"][^\'\"]+[\'\"]/i',
+            '/(?:DB_PASSWORD|DB_HOST|DB_USER|DB_NAME)\s*=\s*[^\s]+/i',
+            '/(?:AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID)\s*=\s*[^\s]+/i',
+            '/(?:JWT_SECRET|jwt_secret)\s*=\s*[^\s]+/i',
             '/mysql:\/\/[^:\s]+:[^@\s]+@/i',
             '/postgres:\/\/[^:\s]+:[^@\s]+@/i',
             '/redis:\/\/:[^@\s]+@/i',
@@ -1410,8 +1439,8 @@ class WAF_FW_Scanner {
         if ($size > 10000000 || $size === 0) return null;
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql'];
-        if (!in_array($ext, $scanable)) return null;
+        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp'];
+        if (!in_array($ext, $scanable) && basename($path) !== '.htaccess' && strpos(basename($path), '.env') !== 0) return null;
 
         $name = basename($path);
         $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
@@ -1484,12 +1513,19 @@ class WAF_FW_Scanner {
             }
         }
 
-        // 4. Dangerous Executable in Uploads directory (Strict rule)
-        if ($is_php && ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false)) {
-            $total_score = max($total_score, 90);
-            $confidence = 'HIGH';
-            $classification = 'CONFIRMED_MALWARE';
-            $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
+        // 4. Dangerous Executable or Sensitive Data in Uploads directory (Strict rule)
+        if ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false) {
+            if ($is_php) {
+                $total_score = max($total_score, 90);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
+            } elseif (in_array($ext, ['env', 'sql', 'bak', 'backup', 'conf', 'config', 'key', 'pem']) || strpos($name, '.env') === 0) {
+                $total_score = max($total_score, 85);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = 'Critical Exposure: Sensitive configuration/database backup exposed in public uploads (' . $name . ')';
+            }
         }
 
         // 5. PHP AST Dataflow Taint Analysis

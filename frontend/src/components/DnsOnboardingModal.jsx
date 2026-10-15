@@ -79,6 +79,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
   const [scanSubdomains, setScanSubdomains] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState('pro')
   const [sslMode, setSslMode] = useState('flexible') // flexible, full, strict
+  const [botChallengeEnabled, setBotChallengeEnabled] = useState(false)
 
   // Step 2 DNS records state
   const [discovering, setDiscovering] = useState(false)
@@ -355,6 +356,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
         platform: 'domain',
         plan: selectedPlan,
         ssl_mode: sslMode,
+        bot_challenge_enabled: botChallengeEnabled,
         dns_records: records,
         current_nameservers: currentNameservers
       }
@@ -564,6 +566,18 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
                       style={{ width: '16px', height: '16px', accentColor: '#f97316' }}
                     />
                     <span>Discover common subdomains where possible (www, api, mail, blog, admin, shop, etc.)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#1e293b', marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
+                    <input
+                      type="checkbox"
+                      checked={botChallengeEnabled}
+                      onChange={e => setBotChallengeEnabled(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                    />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1d4ed8' }}>
+                      <i className="fas fa-robot"></i>
+                      Enable MDefender Turnstile Bot Challenge &amp; Under-Attack Shield
+                    </span>
                   </label>
                 </div>
               </div>

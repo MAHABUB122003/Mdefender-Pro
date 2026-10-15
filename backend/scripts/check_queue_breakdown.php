@@ -3,7 +3,10 @@ require_once 'C:/xampp/htdocs/mahabub/wp-load.php';
 
 global $wpdb;
 $files_tbl = WAF_FW_DB::instance()->get_scan_files_queue_table();
-$counts = $wpdb->get_results("SELECT status, count(*) as cnt FROM $files_tbl WHERE scan_id = 50 GROUP BY status", ARRAY_A);
+$queue_tbl = WAF_FW_DB::instance()->get_scan_queue_table();
+$latest_id = $wpdb->get_var("SELECT id FROM $queue_tbl ORDER BY id DESC LIMIT 1");
+echo "Latest Scan ID: $latest_id\n";
+$counts = $wpdb->get_results("SELECT status, count(*) as cnt FROM $files_tbl WHERE scan_id = $latest_id GROUP BY status", ARRAY_A);
 
 echo "Queue items status breakdown for scan 50:\n";
 foreach ($counts as $c) {

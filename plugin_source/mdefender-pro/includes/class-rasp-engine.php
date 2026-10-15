@@ -54,6 +54,12 @@ class WAF_FW_RASP_Engine {
 
         // 4. Disable PHP Execution in REST uploads and XML-RPC
         $this->harden_runtime_interfaces();
+
+        // 5. Real-Time Theme & Plugin File Save Interceptor (Prevents saving backdoors/payloads to disk)
+        if (function_exists('add_action')) {
+            add_action('wp_ajax_edit_theme_plugin_file', [$this, 'inspect_theme_plugin_file_save'], 0);
+            add_action('admin_init', [$this, 'inspect_theme_plugin_file_save'], 0);
+        }
     }
 
     /**
@@ -140,8 +146,10 @@ class WAF_FW_RASP_Engine {
         if (!is_string($content) || empty($content)) return false;
 
         $dangerous_patterns = [
-            // Execution sinks with untrusted input
-            '/\b(?:eval|assert|passthru|shell_exec|system|popen|proc_open|pcntl_exec)\s*\(\s*(?:\$_(?:GET|POST|REQUEST|COOKIE|SERVER|FILES)|base64_decode|gzinflate|str_rot13|hex2bin|chr)/i',
+            // Execution sinks with untrusted input (including error suppression @eval, @assert)
+            '/@?\s*(?:eval|assert|passthru|shell_exec|system|popen|proc_open|pcntl_exec)\s*\(\s*(?:\$_(?:GET|POST|REQUEST|COOKIE|SERVER|FILES)|base64_decode|gzinflate|str_rot13|hex2bin|chr)/i',
+            // Direct superglobal parameter invocation
+            '/\$_(?:GET|POST|REQUEST|COOKIE)\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\[/i',
             // Dynamic variable function execution: $a($_POST['x'])
             '/\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)/i',
             // File manipulation sinks with input: file_put_contents($a, $_POST['b'])
@@ -150,11 +158,18 @@ class WAF_FW_RASP_Engine {
             '/\b(?:gzinflate|gzuncompress|gzdecode)\s*\(\s*base64_decode/i',
             '/\bbase64_decode\s*\(\s*["\'][A-Za-z0-9+\/]{40,}={0,2}["\']\s*\)/i',
             // Known Web Shell identities
-            '/(?:c99shell|r57shell|WSO\s*set_time_limit|FilesMan|b374k|weevely|ALFA_DATA|ALFA\s+TEAM|Godzilla|Behinder|China\s+Chopper)/i',
+            '/(?:c99shell|r57shell|WSO\s*set_time_limit|FilesMan|b374k|weevely|ALFA_DATA|ALFA\s+TEAM|Godzilla|Behinder|China\s+Chopper|AntSword|IndoXploit)/i',
             // Preg replace executable modifier: preg_replace('/.*/e', ...)
             '/preg_replace\s*\(\s*["\'].*\/e["\']/i',
             // Create function backdoor
             '/create_function\s*\([^,]+,\s*(?:\$_(?:GET|POST|REQUEST)|base64_decode)/i',
+            // Unauthorized WordPress Administrator Account Backdoor
+            '/(?:wp_create_user|wp_insert_user)[\s\S]{0,150}(?:set_role\s*\(\s*[\'"]administrator[\'"]|[\'"]role[\'"]\s*=>\s*[\'"]administrator[\'"])/i',
+            // Heavy chr() ASCII concatenation obfuscation
+            '/chr\s*\(\s*\d+\s*\)\s*\.\s*chr/i',
+            // In-browser cryptominer / keylogger
+            '/CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot/i',
+            '/addEventListener\s*\(\s*[\'"]key(?:press|down|up)[\'"][\s\S]{0,100}(?:fetch|XMLHttpRequest|\.send)/i',
         ];
 
         foreach ($dangerous_patterns as $pattern) {
@@ -164,6 +179,41 @@ class WAF_FW_RASP_Engine {
         }
 
         return false;
+    }
+
+    /**
+     * Real-time Theme & Plugin File Save Interceptor.
+     * Prevents attackers, compromised admin sessions, or rogue scripts from saving backdoors to disk.
+     */
+    public function inspect_theme_plugin_file_save() {
+        if (!isset($_POST['newcontent']) && !isset($_POST['content'])) {
+            return;
+        }
+
+        $code = $_POST['newcontent'] ?? $_POST['content'] ?? '';
+        if (empty($code) || !is_string($code)) {
+            return;
+        }
+
+        $target_file = sanitize_text_field($_POST['file'] ?? $_POST['target_file'] ?? 'unknown_file');
+
+        if ($this->contains_webshell_signatures($code)) {
+            $this->log_rasp_violation("RASP File Save Shield: Blocked malicious payload/backdoor save attempt in {$target_file}", $code);
+
+            if (defined('DOING_AJAX') && DOING_AJAX) {
+                wp_send_json_error([
+                    'message' => "MDefender-Pro Security Alert: File save blocked! Malicious backdoor or execution payload detected in {$target_file}."
+                ], 403);
+                exit;
+            } else {
+                status_header(403);
+                wp_die(
+                    "<h1>MDefender-Pro RASP Security Shield</h1><p><strong>Action Blocked:</strong> Attempting to save malicious payloads, webshells, or backdoors into <code>{$target_file}</code> is forbidden by MDefender-Pro security policy.</p>",
+                    'File Save Blocked by MDefender-Pro',
+                    ['response' => 403]
+                );
+            }
+        }
     }
 
     /**

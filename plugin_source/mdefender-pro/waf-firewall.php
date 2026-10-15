@@ -49,10 +49,16 @@ require_once WAF_FW_PLUGIN_DIR . 'includes/class-2fa.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-core-integrity.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-posthack-recovery.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-attack-blocker.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-turnstile.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-waf-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-ajax-handler.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-scanner.php';
 require_once WAF_FW_PLUGIN_DIR . 'admin/class-admin.php';
+
+// Initialize Turnstile Bot Challenge Engine
+if (class_exists('WAF_FW_Turnstile')) {
+    WAF_FW_Turnstile::instance()->init();
+}
 
 function waf_fw_activate() {
     try {
@@ -516,9 +522,12 @@ function waf_fw_analyze_request() {
     // Prevent double analysis in a single request lifecycle
     if (!empty($GLOBALS['waf_fw_analyzed'])) return;
 
-    // In wp-admin panel, authenticated administrators are bypassed for admin tasks unless testing with ?waf_test=1
+    // In wp-admin panel, authenticated administrators are bypassed for routine administrative tasks
+    // BUT file editing (theme/plugin editor) and file uploads are ALWAYS inspected to prevent backdoor persistence
     if (is_admin() && function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
-        if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+        if (isset($_POST['newcontent']) || !empty($_FILES)) {
+            // Must inspect to prevent backdoor injection or web shell upload
+        } elseif (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
             return;
         }
     }

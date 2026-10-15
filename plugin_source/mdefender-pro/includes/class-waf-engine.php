@@ -405,8 +405,7 @@ class WAF_FW_Engine {
                 'country_code' => $country,
                 'timestamp' => current_time('mysql'),
             ]);
-
-            self::flush_telemetry();
+            // Telemetry will flush asynchronously on WordPress 'shutdown' action without blocking the visitor
         }
         return $result;
     }
@@ -585,40 +584,30 @@ class WAF_FW_Engine {
             }
         }
 
-        // 6. Fast Multi-Provider GeoIP Resolution Engine
+        // 6. Non-blocking GeoIP Resolution
+        // If country blocking is not active, return default country immediately (< 0.001ms) so the web page loads instantly
+        $raw_countries = get_option('waf_fw_blocked_countries', '');
+        $has_blocked_countries = !empty($raw_countries);
+        if (!$has_blocked_countries) {
+            $default_c = get_option('waf_fw_local_server_country', 'BD') ?: 'BD';
+            self::$geo_memory_cache[$ip] = $default_c;
+            return $default_c;
+        }
+
         $resolved_country = 'XX';
 
-        // Helper closure for HTTP GET with fallback
+        // Single fast provider with tight 0.4s timeout only when country blocking is active
         $fetch_geo_url = function($url) {
             if (function_exists('wp_remote_get')) {
-                $resp = wp_remote_get($url, ['timeout' => 1.8, 'sslverify' => false, 'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']]);
+                $resp = wp_remote_get($url, ['timeout' => 0.4, 'sslverify' => false, 'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']]);
                 if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
                     return wp_remote_retrieve_body($resp);
                 }
             }
-            if (function_exists('curl_init')) {
-                $ch = curl_init($url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'MDefender-Pro-GeoIP/1.0');
-                $out = curl_exec($ch);
-                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                if ($code === 200 && $out) return $out;
-            }
-            if (ini_get('allow_url_fopen')) {
-                $ctx = stream_context_create([
-                    'http' => ['timeout' => 2.0, 'header' => "User-Agent: MDefender-Pro-GeoIP/1.0\r\n"],
-                    'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false]
-                ]);
-                $out = @file_get_contents($url, false, $ctx);
-                if ($out) return $out;
-            }
             return null;
         };
 
-        // Provider 1: ip-api.com
+        // Single primary provider: ip-api.com
         $body1 = $fetch_geo_url("http://ip-api.com/json/{$ip}?fields=status,countryCode");
         if ($body1) {
             $g1 = json_decode($body1, true);

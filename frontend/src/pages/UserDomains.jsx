@@ -16,6 +16,7 @@ export default function UserDomains() {
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const [verifyingId, setVerifyingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [togglingBotId, setTogglingBotId] = useState(null)
 
   const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
 
@@ -91,6 +92,39 @@ export default function UserDomains() {
       })
     } finally {
       setVerifyingId(null)
+    }
+  }
+
+  // Toggle MDefender Turnstile Bot Challenge
+  const handleToggleBotChallenge = async (domainObj) => {
+    const siteId = domainObj.id || domainObj._id
+    const domainName = domainObj.domain || domainObj.name || domainObj.url
+    if (!siteId) return
+
+    const newStatus = !domainObj.bot_challenge_enabled
+    setTogglingBotId(siteId)
+    setFeedbackMsg(null)
+
+    try {
+      await api.toggleBotChallenge(siteId, newStatus)
+      setFeedbackMsg({
+        type: 'success',
+        text: `🛡️ MDefender Turnstile Bot Challenge ${newStatus ? 'ACTIVATED (Under-Attack / Bot Shield ON)' : 'DEACTIVATED'} for "${domainName}".`
+      })
+      // Update local state immediately
+      setWebsites(prev => prev.map(w => {
+        if ((w.id || w._id) === siteId) {
+          return { ...w, bot_challenge_enabled: newStatus }
+        }
+        return w
+      }))
+    } catch (err) {
+      setFeedbackMsg({
+        type: 'error',
+        text: err.message || `Failed to update Bot Challenge for ${domainName}`
+      })
+    } finally {
+      setTogglingBotId(null)
     }
   }
 
@@ -405,6 +439,17 @@ export default function UserDomains() {
                             <i className="fas fa-clock" style={{ fontSize: '9px' }}></i> Pending Nameservers
                           </span>
                         )}
+
+                        {/* Turnstile Bot Badge */}
+                        {w.bot_challenge_enabled && (
+                          <span style={{
+                            fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
+                            background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0',
+                            display: 'inline-flex', alignItems: 'center', gap: '4px'
+                          }}>
+                            <i className="fas fa-robot" style={{ fontSize: '9px' }}></i> Turnstile Shield ON
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ fontSize: '12px', color: '#64748b', marginTop: '5px', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
@@ -425,6 +470,27 @@ export default function UserDomains() {
 
                   {/* Actions */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    {/* Bot Challenge Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBotChallenge(w)}
+                      disabled={togglingBotId === siteId}
+                      style={{
+                        padding: '8px 14px', borderRadius: '8px',
+                        border: `1.5px solid ${w.bot_challenge_enabled ? '#a7f3d0' : '#e2e8f0'}`,
+                        background: w.bot_challenge_enabled ? '#ecfdf5' : '#f8fafc',
+                        color: w.bot_challenge_enabled ? '#047857' : '#64748b',
+                        fontSize: '12.5px', fontWeight: '700',
+                        cursor: togglingBotId === siteId ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title="Toggle MDefender Turnstile (Bot Challenge & Interstitial Gate)"
+                    >
+                      <i className={`fas ${togglingBotId === siteId ? 'fa-spinner fa-spin' : 'fa-robot'}`}></i>
+                      <span>Bot Challenge: {w.bot_challenge_enabled ? 'ON' : 'OFF'}</span>
+                    </button>
+
                     {/* DNS Zone Button */}
                     <button
                       type="button"

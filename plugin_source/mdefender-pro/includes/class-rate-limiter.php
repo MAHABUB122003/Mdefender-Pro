@@ -18,6 +18,9 @@ class WAF_FW_Rate_Limiter {
 
     public function is_rate_limited($ip, $custom_max = null) {
         if (empty($ip)) return false;
+        if (get_option('waf_fw_rate_limit_enabled', 'yes') === 'no') {
+            return false;
+        }
         $max_requests = $custom_max !== null ? max(1, (int) $custom_max) : $this->get_max_requests();
         $key = 'waf_fw_rate_' . md5($ip);
 

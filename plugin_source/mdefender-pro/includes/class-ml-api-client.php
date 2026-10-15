@@ -255,7 +255,7 @@ class WAF_FW_ML_Api_Client {
             'domain'  => $domain,
             'mode'    => get_option('waf_fw_cloud_mode', 'protect'),
             'request' => is_array($request_data) ? $request_data : ['url' => '/', 'method' => 'GET', 'body' => '', 'headers' => [], 'ip' => ''],
-        ], 0.25);
+        ], 2.5);
     }
 
     /**

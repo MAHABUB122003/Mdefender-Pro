@@ -40,6 +40,7 @@ from src.auth.jwt_service import JWTService
 from src.auth.audit_service import AuditService
 from src.auth.config import AuthConfig
 from src.api.v1.routes import get_v1_router
+from src.api.v1 import turnstile_api
 from src.utils.block_page import render_block_page
 
 app = FastAPI(title="MDefender Pro", version="2.0.0")
@@ -58,6 +59,7 @@ auth_config = AuthConfig()
 app.include_router(get_v1_router())
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(turnstile_api.router, prefix="/__mdefender", tags=["Turnstile"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -143,6 +145,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
         path.startswith("/api/v1/")
         or path.startswith("/api/")
         or path == "/api"
+        or path.startswith("/__mdefender/")
         or path == "/health"
         or path.startswith("/health/")
         or path.startswith("/docs")
@@ -159,13 +162,47 @@ async def waf_self_protection_middleware(request: Request, call_next):
     # Check if host is a registered Cloud WAF domain
     registered_site = None
     if clean_host and clean_host not in ("localhost", "127.0.0.1", "0.0.0.0"):
+        host_variants = [
+            clean_host,
+            f"http://{clean_host}",
+            f"https://{clean_host}",
+            f"http://{clean_host}/",
+            f"https://{clean_host}/"
+        ]
         registered_site = db.websites.find_one({
-            "$or": [{"domain": clean_host}, {"url": clean_host}, {"name": clean_host}]
+            "$or": [
+                {"domain": {"$in": host_variants}},
+                {"url": {"$in": host_variants}},
+                {"name": {"$in": host_variants}}
+            ]
         })
 
     target_domain = clean_host if registered_site else "localhost"
     target_user_id = str(registered_site.get("user_id")) if registered_site else None
     target_site_id = str(registered_site.get("_id")) if registered_site else None
+
+    # Bot Challenge Gate: If domain has Turnstile enabled, ensure visitor has verified clearance cookie
+    if registered_site and registered_site.get("bot_challenge_enabled", False):
+        clearance_cookie = request.cookies.get("__mdef_challenge_token")
+        from src.engine.turnstile_service import TurnstileService
+        is_cleared = False
+        if clearance_cookie:
+            is_cleared = TurnstileService.verify_clearance_token(
+                token=clearance_cookie,
+                domain=clean_host,
+                client_ip=client_ip
+            )
+        
+        if not is_cleared:
+            ray_id = secrets.token_hex(8)
+            redirect_target = path + (f"?{request.url.query}" if request.url.query else "")
+            challenge_html = TurnstileService.render_interstitial_page(
+                domain=clean_host,
+                client_ip=client_ip,
+                ray_id=ray_id,
+                redirect_url=redirect_target
+            )
+            return HTMLResponse(content=challenge_html, status_code=403)
 
     req_payload = {
         'url': path,

@@ -36,7 +36,8 @@ class WAF_FW_Login_Protector {
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
 
-        if (get_option('waf_harden_login_captcha', 'no') === 'yes') {
+        $turnstile_active = get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')) === 'yes';
+        if (!$turnstile_active && get_option('waf_harden_login_captcha', 'no') === 'yes') {
             add_action('login_form', [$this, 'render_captcha_form']);
             add_filter('wp_authenticate_user', [$this, 'validate_captcha'], 10, 2);
             add_action('wp_ajax_waf_captcha_image', [$this, 'generate_captcha_image']);
@@ -314,10 +315,13 @@ class WAF_FW_Login_Protector {
        ===================================================================== */
 
     public function render_captcha_form() {
+        if (get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')) === 'yes') {
+            return;
+        }
         $site_key = get_option('waf_harden_recaptcha_site_key', '');
         $secret_key = get_option('waf_harden_recaptcha_secret_key', '');
 
-        echo '<div style="margin-bottom:16px;">';
+        echo '<div style="margin: 14px 0 16px; background: #ffffff; border: 1px solid #dcdfe4; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-family: -apple-system, BlinkMacSystemFont, sans-serif;">';
 
         if ($site_key && $secret_key) {
             $this->render_recaptcha($site_key);

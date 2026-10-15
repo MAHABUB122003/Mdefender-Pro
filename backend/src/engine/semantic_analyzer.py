@@ -304,7 +304,7 @@ class RCELexer:
                 score = max(score, 0.98)
 
         # 2. Obfuscated whitespace / internal field separator (${IFS}, $IFS, $IFS$9)
-        if re.search(r"(?i)\$(?:IFS|\{IFS\})", text):
+        if re.search(r"(?i)\$(?:IFS|\{IFS\}|\{IFS\}\d?)", text):
             reasons.append("Shell IFS whitespace obfuscation bypass")
             score = max(score, 0.95)
 
@@ -316,13 +316,98 @@ class RCELexer:
                     reasons.append(f"Quote-obfuscated shell command execution ({cmd})")
                     score = max(score, 0.96)
 
-        # 4. Windows PowerShell / Cmd download cradles
+        # 4. Windows PowerShell / Cmd download cradles and encoded commands
         if re.search(r"(?i)\b(?:Invoke-Expression|IEX|DownloadString|certutil\s+-urlcache|bitsadmin\s+/transfer)\b", text):
             reasons.append("Windows living-off-the-land download cradle (IEX/certutil)")
             score = max(score, 0.98)
+        if re.search(r"(?i)powershell(?:\.exe)?\s+(?:-e|-enc|-encodedcommand)\s+[A-Za-z0-9+/=]{10,}", text):
+            reasons.append("PowerShell encoded payload execution")
+            score = max(score, 0.99)
+
+        # 5. Shell piping / Heredoc redirection (bash<<<, echo ... | base64 -d | sh)
+        if "bash<<<" in text or "sh<<<" in text:
+            reasons.append("Bash heredoc string redirection execution")
+            score = max(score, 0.98)
+        if re.search(r"(?i)echo\s+[A-Za-z0-9+/=]{8,}\s*\|\s*(?:base64\s+-d|openssl)\s*\|\s*(?:ba)?sh", text):
+            reasons.append("Base64-piped arbitrary shell execution")
+            score = max(score, 0.99)
+        if re.search(r"(?i)\{\s*(?:cat|head|tail|more|less)\s*,\s*\/[^\}]+\}", text):
+            reasons.append("Brace-expansion shell command execution")
+            score = max(score, 0.97)
 
         return {
             "is_rce": score >= 0.70,
+            "score": round(score, 2),
+            "reasons": reasons
+        }
+
+
+class PathTraversalLexer:
+    """Evaluates multi-layer URL encoding, overlong UTF-8, NTFS ADS, and directory traversal sequences."""
+
+    SENSITIVE_FILES = {
+        "/etc/passwd", "/etc/shadow", "/etc/hosts", "/etc/group", "/etc/issue",
+        "/proc/self/environ", "/proc/self/fd", "/proc/version", "/proc/cmdline",
+        "/etc/nginx/nginx.conf", "/etc/apache2/apache2.conf", "/var/log/syslog",
+        "/var/log/auth.log", "c:/boot.ini", "c:/windows/win.ini", "boot.ini", "win.ini",
+        "web.config", ".env", ".git/config", "id_rsa", "system32/config/sam",
+        "wp-config.php", "configuration.php", "database.yml"
+    }
+
+    OVERLONG_UTF8 = ["%c0%af", "%c0%ae", "%c1%9c", "%e0%80%af", "%f0%80%80%af"]
+
+    def analyze(self, text: str) -> Dict[str, any]:
+        if not text or len(text.strip()) < 2:
+            return {"is_traversal": False, "score": 0.0, "reasons": []}
+
+        reasons = []
+        score = 0.0
+
+        # Multi-layer URL decoding (up to 3 levels)
+        decoded = text
+        for _ in range(3):
+            d = urllib.parse.unquote(decoded)
+            if d == decoded:
+                break
+            decoded = d
+
+        lower_raw = text.lower()
+        lower_dec = decoded.lower().replace("\\", "/")
+
+        # 1. Overlong UTF-8 / Double-Encoding bypass
+        if any(tok in lower_raw for tok in self.OVERLONG_UTF8) or "%252e" in lower_raw:
+            reasons.append("Overlong UTF-8 / Double-encoded traversal byte sequence")
+            score = max(score, 0.98)
+
+        # 2. Path Traversal Sequences (../, ..\, ....//, ....\\, /..;/)
+        if re.search(r"(?:\.\./|\.\.\\|\.\.//|\.\.\\\\|/\.\.;/|/\.;/)", text) or "../" in lower_dec:
+            traversal_count = lower_dec.count("../")
+            if traversal_count >= 2:
+                reasons.append(f"Deep directory traversal sequence ({traversal_count} levels)")
+                score = max(score, 0.99)
+            else:
+                reasons.append("Relative path traversal sequence (../)")
+                score = max(score, 0.92)
+
+        # 3. Sensitive OS & Application File Access
+        for sens in self.SENSITIVE_FILES:
+            if sens in lower_dec:
+                reasons.append(f"Targeted sensitive system file access ({sens})")
+                score = max(score, 0.99)
+                break
+
+        # 4. Windows NTFS Alternate Data Streams (::$DATA)
+        if "::$data" in lower_raw or "::$index_allocation" in lower_raw:
+            reasons.append("Windows NTFS Alternate Data Stream (ADS) bypass")
+            score = max(score, 0.98)
+
+        # 5. PHP Filter Chains & Protocol Wrappers (php://filter, data://)
+        if re.search(r"(?i)php:\/\/filter\/(?:read=|convert\.)", text) or "php://input" in lower_raw:
+            reasons.append("PHP stream filter LFI / wrapper arbitrary read")
+            score = max(score, 0.98)
+
+        return {
+            "is_traversal": score >= 0.70,
             "score": round(score, 2),
             "reasons": reasons
         }
@@ -408,6 +493,7 @@ class SemanticAnalyzer:
         self.prompt_shield = PromptInjectionShield()
         self.rce_lexer = RCELexer()
         self.deserialization_shield = DeserializationShield()
+        self.path_lexer = PathTraversalLexer()
 
     def analyze(self, text: str) -> Dict[str, any]:
         """Backward-compatible alias for analyze_payload."""
@@ -429,6 +515,7 @@ class SemanticAnalyzer:
         prompt_res = self.prompt_shield.analyze(text)
         rce_res = self.rce_lexer.analyze(text)
         deser_res = self.deserialization_shield.analyze(text)
+        path_res = self.path_lexer.analyze(text)
 
         threat_categories = []
         reasons = []
@@ -464,6 +551,11 @@ class SemanticAnalyzer:
             reasons.extend(deser_res["reasons"])
             scores.append(deser_res["score"])
 
+        if path_res["is_traversal"]:
+            threat_categories.append("Directory Traversal / LFI")
+            reasons.extend(path_res["reasons"])
+            scores.append(path_res["score"])
+
         highest_score = max(scores)
 
         return {
@@ -477,5 +569,6 @@ class SemanticAnalyzer:
                 "prompt_injection": prompt_res,
                 "rce": rce_res,
                 "deserialization": deser_res,
+                "traversal": path_res,
             }
         }

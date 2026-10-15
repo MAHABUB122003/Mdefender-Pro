@@ -348,6 +348,9 @@ class WAF_FW_Ajax_Handler {
             'scheduled_scan_type' => get_option('waf_fw_scheduled_scan_type', 'full'),
             'learning_mode' => get_option('waf_fw_learning_mode', 'no'),
             'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
+            'turnstile_enabled' => get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')),
+            'turnstile_mode' => get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'login_only')),
+            'turnstile_theme' => get_option('waf_fw_turnstile_theme', get_option('waf_turnstile_theme', 'auto')),
         ]);
     }
 
@@ -364,10 +367,27 @@ class WAF_FW_Ajax_Handler {
             'main_waf_api_url', 'main_waf_admin_url',
             'learning_mode', 'blocked_countries',
             'dashboard_url',
+            'turnstile_enabled', 'turnstile_mode', 'turnstile_theme',
         ];
 
         if (isset($data['learning_mode'])) {
             WAF_FW_Engine::instance()->set_learning_mode($data['learning_mode'] === 'yes');
+        }
+
+        if (isset($data['turnstile_enabled'])) {
+            $val = $data['turnstile_enabled'] === 'yes' ? 'yes' : 'no';
+            update_option('waf_fw_turnstile_enabled', $val);
+            update_option('waf_turnstile_enabled', $val);
+        }
+        if (isset($data['turnstile_mode'])) {
+            $mode = in_array($data['turnstile_mode'], ['login_only', 'site_wide'], true) ? $data['turnstile_mode'] : 'login_only';
+            update_option('waf_fw_turnstile_mode', $mode);
+            update_option('waf_turnstile_mode', $mode);
+        }
+        if (isset($data['turnstile_theme'])) {
+            $theme = sanitize_text_field($data['turnstile_theme']);
+            update_option('waf_fw_turnstile_theme', $theme);
+            update_option('waf_turnstile_theme', $theme);
         }
         
         foreach ($allowed as $key) {

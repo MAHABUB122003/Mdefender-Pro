@@ -58,13 +58,17 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             
-            // Remote Command Execution
+            // Remote Command Execution & WebShells
+            ['name' => 'Remote Code Execution - PHP Functions', 'pattern' => '/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode|gzinflate|create_function)\s*[\(\[])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Backticks and Subshells', 'pattern' => '/(?:`[^`]+`|\$\([^\)]+\))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Reverse Shells & Netcat', 'pattern' => '/(?:\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c|ep)|curl\s+[^\s|]+\s*\|\s*(?:bash|sh))\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:[;&]\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'PHP Deserialization Object Injection', 'pattern' => '/(?:\bO:\d+:"[^"]+":\d+:\{)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             
             // Server-Side Request Forgery & Template Injection
-            ['name' => 'Path Traversal', 'pattern' => '/(?:\/proc\/(?:self|version|cpuinfo|meminfo)\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'SSTI - Jinja2 Template', 'pattern' => '/(?:\{\{\s*[\'\"]?.*[\'\"]?\s*\}\})/', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Path Traversal - Sensitive Files', 'pattern' => '/(?:\/(?:etc\/(?:passwd|shadow|issue|hosts|group)|var\/log\/|proc\/self\/environ|windows[\/\\]win\.ini)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSTI - Template Expressions', 'pattern' => '/(?:\{\{[^}]*\}\}|\$\{[^}]*\}|<%=[^%]*%>)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSTI - Python Internals', 'pattern' => '/(?:__class__|__mro__|__subclasses__|__builtins__)/', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF - Internal IP', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF - Cloud Metadata', 'pattern' => '/(?:\/latest\/meta-data|\/computeMetadata|metadata\.google)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],

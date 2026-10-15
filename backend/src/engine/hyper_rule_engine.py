@@ -94,8 +94,10 @@ class HyperRuleEngine:
             "eval(base64_decode", "eval(gzinflate", "assert(base64_decode", "assert($_POST", "assert($_GET",
             "preg_replace('/.*/e'", "create_function(", "php://input", "php://filter", "phar://",
             "data://text/plain", "zip://", "whoami", "uname -a", "cat /etc/passwd", "cmd.exe /c",
-            "powershell -enc", "powershell -ep bypass", "wget http", "curl http", "nc -e /bin/sh",
-            "bash -i >& /dev/tcp", "python -c 'import socket", "perl -e 'use Socket"
+            "powershell -enc", "powershell.exe -enc", "powershell -ep bypass", "powershell -nop", "powershell -w hidden",
+            "invoke-expression", "iex(", "invoke-webrequest", "iwr ", "wget http", "curl http", "nc -e /bin/sh",
+            "bash -i >& /dev/tcp", "python -c 'import socket", "perl -e 'use Socket", "${ifs}", "$ifs$9",
+            "bash<<<", "| sh", "| bash", "| cmd", "| powershell", "base64 -d | sh", "python3 -c", "curl -s", "wget -q"
         }
         self._compiled_token_sets["Remote Code Execution"] = rce_tokens
         self._category_regex_map["Remote Code Execution"] = [
@@ -104,7 +106,10 @@ class HyperRuleEngine:
             re.compile(r"(?i)\bassert\s*\(\s*(\$_(POST|GET|REQUEST|COOKIE)|base64_decode)\b"),
             re.compile(r"(?i)\bpreg_replace\s*\(\s*['\"][^'\"]*\/e['\"]"),
             re.compile(r"(?i)(php|data|phar|zip):\/\/(input|filter|plain)"),
-            re.compile(r"(?i)(cmd\.exe|powershell(\.exe)?\s+(-enc|-ep|-command)|bash\s+-i|nc\s+-e)"),
+            re.compile(r"(?i)(cmd\.exe|powershell(\.exe)?\s+(-enc|-ep|-command|-nop|-w\s+hidden)|bash\s+-i|nc\s+-e|bash<<<)"),
+            re.compile(r"(?i)(\$\{IFS\}|\$IFS\$?\d?|\|\s*(?:ba)?sh|(?:;|\|{1,2}|&&|&|\r?\n|%0a)\s*(?:id\b|whoami|uname|cat\s+\/etc|hostname\b|ifconfig\b|ip\s+a(?:ddr)?|ps\s+(?:-ef|aux)|pwd\b|ping\s+-[icn]))\b"),
+            re.compile(r"(?i)(?:;|\|{1,2}|&&|&|\r?\n|%0a)\s*ping\b[\s\S]{0,30}(?:127\.0\.0\.1|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"),
+            re.compile(r"(?i)(echo\s+[a-zA-Z0-9+/=]{8,}\s*\|\s*(?:base64\s+-d|openssl)\s*\|\s*(?:ba)?sh)"),
         ]
 
         # --- 4. WordPress 0-Day & Plugin CVE Vectors (250,000+ permutations) ---
@@ -113,7 +118,8 @@ class HyperRuleEngine:
             "wp_create_user", "wp_insert_user", "add_user_meta", "update_user_meta", "wp_set_current_user",
             "wp_set_auth_cookie", "wp_roles->add_cap", "elementor/v1/upload_file", "duplicator_download",
             "revslider_show_image", "gravityforms_upload", "woocommerce_upload", "wpscan_nonce",
-            "wpscan_test", "wp-config.php", ".wp-config.php.swp", "wp-config.php.bak", "wp-config.old"
+            "wpscan_test", "wp-config.php", ".wp-config.php.swp", "wp-config.php.bak", "wp-config.old",
+            "auto_prepend_file", "auto_append_file", ".user.ini"
         }
         self._compiled_token_sets["WordPress Exploit"] = wp_cve_tokens
         self._category_regex_map["WordPress Exploit"] = [
@@ -121,36 +127,41 @@ class HyperRuleEngine:
             re.compile(r"(?i)(wp-config\.php(\.bak|\.old|\.swp|\.dist)?)"),
             re.compile(r"(?i)(rest_route=\/wp\/v2\/users|wp-json\/wp\/v2\/users)"),
             re.compile(r"(?i)admin-ajax\.php\?action=(upload|install|backup|export|eval)"),
+            re.compile(r"(?i)add_action\s*\(\s*['\"](?:init|admin_init|wp_head)['\"]\s*,[\s\S]{0,80}(?:wp_create_user|eval|assert)"),
         ]
 
         # --- 5. Directory Traversal, LFI & RFI (200,000+ permutations) ---
         lfi_tokens = {
             "../", "..\\", "....//", "....\\\\", "%2e%2e%2f", "%2e%2e/", "..%2f", "%2e%2e%5c",
-            "/etc/passwd", "/etc/shadow", "/etc/hosts", "/proc/self/environ", "/proc/self/fd",
+            "%c0%af", "%c0%ae", "%c1%9c", "%e0%80%af", "%f0%80%80%af", "%252e%252e%252f", "..%252f", "..%c0%af",
+            "::$data", "::$index_allocation", "/..;/", "/.;/", "/web-inf/web.xml", "/meta-inf/",
+            "/etc/passwd", "/etc/shadow", "/etc/hosts", "/etc/group", "/proc/self/environ", "/proc/self/fd",
+            "/proc/version", "/proc/cmdline", "/etc/nginx/nginx.conf", "/var/log/syslog",
             "/var/log/apache2", "/var/log/nginx", "/var/log/auth.log", "c:\\boot.ini", "c:\\windows\\win.ini",
-            "c:\\windows\\system32\\drivers\\etc\\hosts", "%00", "\\0", "php://filter/read=convert.base64-encode"
+            "c:\\windows\\system32\\drivers\\etc\\hosts", "system32/config/sam", "%00", "\\0",
+            "php://filter/read=convert.base64-encode", "php://filter/convert.base64-encode", "data://text/plain;base64"
         }
         self._compiled_token_sets["Directory Traversal"] = lfi_tokens
         self._category_regex_map["Directory Traversal"] = [
-            re.compile(r"(?i)(\.\.\/|\.\.\\|%2e%2e%2f|%2e%2e\/|\.\.%2f|%2e%2e%5c)"),
-            re.compile(r"(?i)(\/etc\/(passwd|shadow|hosts|issue)|proc\/self\/environ)"),
-            re.compile(r"(?i)(c:(\\|\/)(windows(\\|\/)win\.ini|boot\.ini))"),
+            re.compile(r"(?i)(\.\.\/|\.\.\\|%2e%2e%2f|%2e%2e\/|\.\.%2f|%2e%2e%5c|%c0%af|%c0%ae|%252e%252e)"),
+            re.compile(r"(?i)(\/etc\/(passwd|shadow|hosts|group|issue)|proc\/(self\/environ|version|cmdline))"),
+            re.compile(r"(?i)(c:(\\|\/)(windows(\\|\/)(win\.ini|system32)|boot\.ini))"),
+            re.compile(r"(?i)(::\$DATA|web\.config|\.env|\.git\/config|id_rsa)"),
             re.compile(r"(?i)php:\/\/filter\/.*resource="),
         ]
 
         # --- 6. SSRF & Cloud Metadata Exploitation (150,000+ permutations) ---
         ssrf_tokens = {
             "169.254.169.254", "metadata.google.internal", "metadata.goog", "100.100.100.200",
-            "fd00:ec2::254", "http://0.0.0.0", "http://127.0.0.1", "http://localhost", "http://[::1]",
-            "http://2130706433", "http://017700000001", "http://0x7f000001", "latest/meta-data",
-            "latest/dynamic/instance-identity", "computeMetadata/v1", "/v1/secrets", "gopher://", "dict://"
+            "fd00:ec2::254", "latest/meta-data", "latest/dynamic/instance-identity",
+            "computemetadata/v1", "/v1/secrets", "gopher://", "dict://", "tftp://"
         }
         self._compiled_token_sets["SSRF & Cloud Metadata"] = ssrf_tokens
         self._category_regex_map["SSRF & Cloud Metadata"] = [
             re.compile(r"(?i)(169\.254\.169\.254|metadata\.google\.internal|100\.100\.100\.200)"),
-            re.compile(r"(?i)(latest\/meta-data|latest\/dynamic\/instance-identity|computeMetadata\/v1)"),
-            re.compile(r"(?i)(gopher|dict|ldap|tftp):\/\/"),
-            re.compile(r"(?i)https?:\/\/(127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|0x7f000001|2130706433)"),
+            re.compile(r"(?i)(latest\/meta-data|latest\/dynamic\/instance-identity|computemetadata\/v1)"),
+            re.compile(r"(?i)(gopher|dict|tftp):\/\/"),
+            re.compile(r"(?i)(?:url|uri|dest|target|redirect|src|endpoint|file|page)=\s*https?:\/\/(?:127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|0x7f000001|2130706433)"),
         ]
 
         # --- 7. Malicious Bots, Crawlers & Scanners (150,000+ permutations) ---
@@ -191,22 +202,28 @@ class HyperRuleEngine:
         webshell_tokens = {
             "c99sh", "r57shell", "wso_version", "filesman", "b374k", "weevely", "godzilla",
             "behinder", "china chopper", "antsword", "indoxploit", "alfa_data", "alfa team",
+            "$_request['cmd']", "$_post['cmd']", "$_get['cmd']", "phpinfo()", "<?php phpinfo",
             "coinhive.min.js", "cryptoloot", "coinimp", "mineralt", "webminepool", "cryptonight"
         }
         self._compiled_token_sets["WebShell Signature"] = webshell_tokens
         self._category_regex_map["WebShell Signature"] = [
             re.compile(r"(?i)\b(c99sh|r57shell|WSO_VERSION|FilesMan|b374k|weevely|Godzilla|Behinder|China\s+Chopper|AntSword|IndoXploit|ALFA_DATA|ALFA\s+TEAM)\b"),
+            re.compile(r"(?i)\$_(?:GET|POST|REQUEST|COOKIE)\[['\"](?:cmd|command|eval|shell|exec|c|x|pass|code)['\"]\]"),
+            re.compile(r"(?i)\$[a-zA-Z0-9_]+\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)\b"),
+            re.compile(r"(?i)(<\?php[\s\S]{0,80}(?:phpinfo|eval|system|assert|passthru|shell_exec)\()"),
             re.compile(r"(?i)(coinhive\.min\.js|cryptoloot|CoinImp|mineralt|webminepool|cryptonight)"),
+            re.compile(r"(?i)(<\?php|<\?=)[\s\S]{0,100}\b(eval|assert|system|exec|passthru|shell_exec|ini_get|base64_decode)\b"),
+            re.compile(r"(?i)\bini_get\s*\(\s*['\"](?:disable_functions|safe_mode|open_basedir)['\"]\)"),
         ]
 
         # --- 11. SEO Blackhat Spam & Search Engine Cloaking (100,000+ permutations) ---
         seo_spam_tokens = {
-            "viagra", "cialis", "levitra", "kamagra", "online-casino", "payday loans",
-            "replica rolex", "fake bags", "tramadol", "phentermine", "ambien", "modafinil",
-            "googlebot", "bingbot", "baiduspider", "duckduckbot", "yandexbot", "sogou"
+            "online-casino", "payday loans", "replica rolex", "fake bags",
+            "tramadol", "phentermine", "ambien", "modafinil"
         }
         self._compiled_token_sets["SEO Spam & Cloaking"] = seo_spam_tokens
         self._category_regex_map["SEO Spam & Cloaking"] = [
+            re.compile(r"(?i)\b(viagra|cialis|levitra|kamagra)\b"),
             re.compile(r"(?i)(display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*(?:0px|1px))[\s\S]{0,120}?(viagra|cialis|levitra|online-casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol)"),
             re.compile(r"(?i)(\$_SERVER\[['\"]HTTP_USER_AGENT['\"]]|\$_SERVER\[['\"]HTTP_REFERER['\"]])[\s\S]{0,80}(googlebot|bingbot|yahoo|baiduspider|yandex|crawler)[\s\S]{0,120}(header\s*\(\s*['\"]Location:|wp_redirect|exit\s*\(\s*\)|die\s*\(\s*\))"),
             re.compile(r"[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]{8,}.*?(?:激安|通販|送料無料|人気|正規品|割引|特価)"),

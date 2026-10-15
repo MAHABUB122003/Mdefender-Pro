@@ -37,6 +37,8 @@ class WebsiteCreate(BaseModel):
     platform: str = Field("domain")
     plan: str = Field("free")
     ssl_mode: str = Field("flexible")
+    bot_challenge_enabled: bool = Field(False)
+    challenge_mode: str = Field("interactive_turnstile")
     dns_records: list[dict] | None = None
     current_nameservers: list[str] | None = None
 
@@ -48,6 +50,8 @@ class WebsiteUpdate(BaseModel):
     platform: str | None = None
     plan: str | None = None
     ssl_mode: str | None = None
+    bot_challenge_enabled: bool | None = None
+    challenge_mode: str | None = None
 
 
 class DnsDiscoverRequest(BaseModel):
@@ -108,6 +112,8 @@ def _website_out(doc):
         "last_activity": doc.get("last_activity"),
         "connected_at": doc.get("connected_at", doc.get("added_at")),
         "verified": doc.get("verified", False),
+        "bot_challenge_enabled": doc.get("bot_challenge_enabled", False),
+        "challenge_mode": doc.get("challenge_mode", "interactive_turnstile"),
     })
 
 
@@ -326,6 +332,33 @@ async def verify_website(website_id: str, user=Depends(get_current_user)):
                            {"$set": {"verified": True, "last_activity": datetime.now(),
                                      "updated_at": datetime.now()}})
     return success({"website_id": website_id, "verified": True})
+
+
+class BotChallengeToggle(BaseModel):
+    enabled: bool
+    challenge_mode: str = "interactive_turnstile"
+
+
+@router.post("/{website_id}/bot-challenge")
+@router.put("/{website_id}/bot-challenge")
+async def toggle_bot_challenge(website_id: str, body: BotChallengeToggle, user=Depends(get_current_user)):
+    """Toggles MDefender Turnstile bot challenge ON/OFF for this domain/website."""
+    website = get_owned_website(user, website_id)
+    db = MongoDB()
+    db.websites.update_one(
+        {"_id": website["_id"]},
+        {"$set": {
+            "bot_challenge_enabled": body.enabled,
+            "challenge_mode": body.challenge_mode,
+            "updated_at": datetime.now()
+        }}
+    )
+    return success({
+        "website_id": website_id,
+        "bot_challenge_enabled": body.enabled,
+        "challenge_mode": body.challenge_mode,
+        "message": f"Turnstile Bot Challenge {'activated' if body.enabled else 'deactivated'} for {website.get('domain') or website.get('name')}"
+    })
 
 
 # ---------- API keys ----------

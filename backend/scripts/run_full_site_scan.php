@@ -63,17 +63,18 @@ if (isset($results_data['core_integrity'])) {
     echo "[+] Core Integrity: " . ($ci['status'] ?? 'OK') . " | Modified: " . count($ci['modified_files'] ?? []) . " | Missing: " . count($ci['missing_files'] ?? []) . "\n";
 }
 
-if (isset($results_data['malware_signatures'])) {
-    $ms = $results_data['malware_signatures'];
-    echo "[+] Malware / Heuristic Signature Engine:\n";
-    echo "    - Total Infected / Suspicious Files: " . ($ms['total_issues'] ?? 0) . "\n";
-    echo "    - Critical Malicious Count: " . ($ms['malicious_count'] ?? 0) . "\n";
-    echo "    - Warning / Suspicious Count: " . ($ms['suspicious_count'] ?? 0) . "\n";
+if (isset($results_data['malware_scan'])) {
+    $ms = $results_data['malware_scan'];
+    echo "[+] Malware / Heuristic Signature & AST Engine:\n";
+    echo "    - Total Files Inspected: " . ($ms['total_scanned'] ?? 0) . "\n";
+    echo "    - Total Issues Found: " . ($ms['total_issues'] ?? 0) . "\n";
+    echo "    - Suspicious / Malicious Files: " . ($ms['suspicious_found'] ?? 0) . "\n";
+    echo "    - Infected Core Files: " . ($ms['infected_core'] ?? 0) . "\n";
 }
 
 if (isset($results_data['ml_malware_scan'])) {
     $ml = $results_data['ml_malware_scan'];
-    echo "[+] AI / ML Malware Engine:\n";
+    echo "[+] Cloud AI / ML Malware Engine:\n";
     echo "    - AI Status: " . ($ml['status'] ?? 'N/A') . "\n";
     echo "    - Total AI Inspected: " . ($ml['total_scanned'] ?? 0) . "\n";
     echo "    - AI Malicious Detections: " . ($ml['malicious_count'] ?? 0) . "\n";
@@ -94,13 +95,18 @@ if (isset($results_data['config_audit'])) {
 
 echo "\n--- EVIDENCE OF CAPTURED TEST THREATS ---\n";
 $all_threat_files = [];
-if (!empty($results_data['malware_signatures']['malicious_files'])) {
-    foreach ($results_data['malware_signatures']['malicious_files'] as $f) {
+if (!empty($results_data['malware_scan']['suspicious_files'])) {
+    foreach ($results_data['malware_scan']['suspicious_files'] as $f) {
         $all_threat_files[$f['file']] = $f;
     }
 }
-if (!empty($results_data['malware_signatures']['suspicious_files'])) {
-    foreach ($results_data['malware_signatures']['suspicious_files'] as $f) {
+if (!empty($results_data['malware_scan']['infected_core_files'])) {
+    foreach ($results_data['malware_scan']['infected_core_files'] as $f) {
+        $all_threat_files[$f['file']] = $f;
+    }
+}
+if (!empty($results_data['malware_scan']['secrets_found'])) {
+    foreach ($results_data['malware_scan']['secrets_found'] as $f) {
         $all_threat_files[$f['file']] = $f;
     }
 }

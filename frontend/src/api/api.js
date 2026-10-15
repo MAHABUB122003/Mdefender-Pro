@@ -367,6 +367,11 @@ export const api = {
     apiCall(`/api/v1/websites/${websiteId}/dns/${recordId}/toggle-proxy`, { method: 'POST' }),
   updateSslMode: (websiteId, sslMode) =>
     apiCall(`/api/v1/websites/${websiteId}/ssl`, { method: 'POST', body: JSON.stringify({ ssl_mode: sslMode }) }),
+  toggleBotChallenge: (websiteId, enabled, mode = 'interactive_turnstile') =>
+    apiCall(`/api/v1/websites/${websiteId}/bot-challenge`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled, challenge_mode: mode })
+    }),
   getUserDashboard: (params = {}) => {
     let qs = ''
     if (typeof params === 'string') qs = `website_id=${encodeURIComponent(params)}`
