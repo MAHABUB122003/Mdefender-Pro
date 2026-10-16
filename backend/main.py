@@ -225,6 +225,19 @@ async def waf_self_protection_middleware(request: Request, call_next):
             )
             return HTMLResponse(content=challenge_html, status_code=403)
 
+    req_body_bytes = b""
+    req_body_str = ""
+    if request.method in ("POST", "PUT", "PATCH"):
+        try:
+            req_body_bytes = await request.body()
+            if req_body_bytes:
+                req_body_str = req_body_bytes.decode("utf-8", errors="ignore")
+            async def receive():
+                return {"type": "http.request", "body": req_body_bytes}
+            request._receive = receive
+        except Exception:
+            pass
+
     req_payload = {
         'url': path,
         'query_string': request.url.query,
@@ -233,6 +246,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
         'headers': dict(request.headers),
         'user_agent': request.headers.get('user-agent', ''),
         'method': request.method,
+        'body': req_body_str,
     }
     
     decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
@@ -289,7 +303,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 fwd_headers["X-Forwarded-Proto"] = request.url.scheme
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
 
-                body = await request.body()
+                body = req_body_bytes
                 async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
                     origin_resp = await client.request(
                         method=request.method,
