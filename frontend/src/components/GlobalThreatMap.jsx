@@ -152,6 +152,12 @@ export default function GlobalThreatMap() {
   const [logIndex, setLogIndex] = useState(0)
 
   useEffect(() => {
+    // Preload both high-speed WebP images into browser cache for instant switching
+    const img1 = new Image()
+    img1.src = '/assets/global_threat_map.webp'
+    const img2 = new Image()
+    img2.src = '/assets/cyber_threat_matrix.webp'
+
     const timer = setInterval(() => {
       setLogIndex(prev => (prev + 1) % liveThreatLog.length)
     }, 2800)
@@ -456,18 +462,26 @@ export default function GlobalThreatMap() {
           overflow: 'hidden'
         }}>
           {/* Main Cyber Threat Map Artwork */}
-          <img
-            src={activeView === 'radar' ? '/assets/global_threat_map.jpg' : '/assets/cyber_threat_matrix.jpg'}
-            alt="MDefender Pro Global Threat Intelligence Map"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center',
-              display: 'block',
-              transition: 'opacity 0.3s ease'
-            }}
-          />
+          <picture style={{ width: '100%', height: '100%', display: 'block' }}>
+            <source
+              srcSet={activeView === 'radar' ? '/assets/global_threat_map.webp' : '/assets/cyber_threat_matrix.webp'}
+              type="image/webp"
+            />
+            <img
+              src={activeView === 'radar' ? '/assets/global_threat_map.jpg' : '/assets/cyber_threat_matrix.jpg'}
+              alt="MDefender Pro Global Threat Intelligence Map"
+              loading="eager"
+              decoding="async"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                display: 'block',
+                transition: 'opacity 0.25s ease'
+              }}
+            />
+          </picture>
 
           {/* Interactive PoP Hotspot Nodes */}
           {filteredNodes.map(node => {

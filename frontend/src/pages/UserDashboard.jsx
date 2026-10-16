@@ -86,6 +86,7 @@ export default function UserDashboard() {
     if (manual) setRefreshing(true)
     try {
       const params = siteId && siteId !== 'all' ? { website_id: siteId } : {}
+      if (manual) params.refresh = '1'
       const result = await api.getUserDashboard(params)
       setData(result)
       userStore.set('dashboard', result)
@@ -248,14 +249,7 @@ export default function UserDashboard() {
     }
   }
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#94a3b8' }}>
-        <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#2563eb' }}></i>
-        <div style={{ marginTop: '12px', fontSize: '13px', fontWeight: '500' }}>Loading Security Telemetry...</div>
-      </div>
-    )
-  }
+
 
   return (
     <>

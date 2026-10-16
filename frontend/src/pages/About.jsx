@@ -264,11 +264,16 @@ export default function About() {
             position: 'relative',
             maxHeight: 460
           }}>
-            <img
-              src="/blog/ai_zeroday_defense.jpg"
-              alt="MDefender Pro AI Neural Defense System"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
+            <picture>
+              <source srcSet="/blog/ai_zeroday_defense.webp" type="image/webp" />
+              <img
+                src="/blog/ai_zeroday_defense.jpg"
+                alt="MDefender Pro AI Neural Defense System"
+                loading="lazy"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </picture>
             <div style={{
               position: 'absolute',
               bottom: 0,

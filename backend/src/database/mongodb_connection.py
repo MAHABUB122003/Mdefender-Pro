@@ -152,6 +152,12 @@ class MongoDB:
             self._db.security_events.create_index('user_id')
             self._db.security_events.create_index('website_id')
             self._db.security_events.create_index('timestamp')
+            self._db.security_events.create_index([('user_id', 1), ('timestamp', -1)])
+            self._db.security_events.create_index([('website_id', 1), ('timestamp', -1)])
+            self._db.security_events.create_index([('action', 1), ('timestamp', -1)])
+        if hasattr(self._db, 'attacks'):
+            self._db.attacks.create_index([('user_id', 1), ('timestamp', -1)])
+            self._db.attacks.create_index([('website_id', 1), ('timestamp', -1)])
         for coll in ('entitlements', 'notifications', 'usage_metrics', 'paddle_transactions'):
             if hasattr(self._db, coll):
                 self._db[coll].create_index('user_id')

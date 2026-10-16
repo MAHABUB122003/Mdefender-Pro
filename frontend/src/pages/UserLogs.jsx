@@ -46,6 +46,11 @@ export default function UserLogs() {
 
   const fetchWebsites = useCallback(async () => {
     try {
+      const cached = userStore.get('websites') || userStore.get('dashboard')
+      if (cached?.websites && Array.isArray(cached.websites) && cached.websites.length > 0) {
+        setWebsites(cached.websites)
+        return
+      }
       const data = await api.getUserDashboard()
       if (data?.websites && Array.isArray(data.websites) && data.websites.length > 0) {
         setWebsites(data.websites)
@@ -53,12 +58,6 @@ export default function UserLogs() {
           userStore.set('websites', data)
           userStore.set('dashboard', data)
         } catch {}
-        return
-      }
-      const webRes = await api.getUserWebsites()
-      const sitesList = Array.isArray(webRes) ? webRes : (webRes?.websites || webRes?.data?.websites || [])
-      if (Array.isArray(sitesList) && sitesList.length > 0) {
-        setWebsites(sitesList)
       }
     } catch (err) {
       console.error('Error loading websites:', err)

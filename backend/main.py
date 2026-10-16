@@ -702,7 +702,8 @@ async def user_remove_website(request: Request, user: dict = Depends(verify_user
 async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
         website_id = request.query_params.get('website_id')
-        res = user_api.get_dashboard_stats(user, website_id=website_id)
+        refresh = request.query_params.get('refresh') in ('1', 'true')
+        res = user_api.get_dashboard_stats(user, website_id=website_id, force_refresh=refresh)
         return JSONResponse(status_code=200, content=res)
     except Exception as e:
         print(f"[Error] user_dashboard exception: {e}")

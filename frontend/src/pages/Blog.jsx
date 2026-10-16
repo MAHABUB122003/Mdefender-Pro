@@ -779,17 +779,22 @@ export default function Blog() {
           >
             {/* Visual Image Banner */}
             <div style={{ position: 'relative', overflow: 'hidden', minHeight: 300 }}>
-              <img
-                src={featuredPost.image}
-                alt={featuredPost.title}
-                className="blog-card-img"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transition: 'transform 0.5s ease'
-                }}
-              />
+              <picture style={{ width: '100%', height: '100%', display: 'block' }}>
+                <source srcSet={featuredPost.image.replace('.jpg', '.webp')} type="image/webp" />
+                <img
+                  src={featuredPost.image}
+                  alt={featuredPost.title}
+                  className="blog-card-img"
+                  loading="eager"
+                  decoding="async"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transition: 'transform 0.5s ease'
+                  }}
+                />
+              </picture>
               <div style={{
                 position: 'absolute',
                 top: 18,
@@ -923,17 +928,22 @@ export default function Blog() {
               <div>
                 {/* Visual Thumbnail */}
                 <div style={{ width: '100%', height: 210, overflow: 'hidden', position: 'relative' }}>
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="blog-card-img"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      transition: 'transform 0.4s ease'
-                    }}
-                  />
+                  <picture style={{ width: '100%', height: '100%', display: 'block' }}>
+                    <source srcSet={post.image.replace('.jpg', '.webp')} type="image/webp" />
+                    <img
+                      src={post.image}
+                      alt={post.title}
+                      className="blog-card-img"
+                      loading="lazy"
+                      decoding="async"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        transition: 'transform 0.4s ease'
+                      }}
+                    />
+                  </picture>
                   <div style={{
                     position: 'absolute',
                     top: 14,
@@ -1158,11 +1168,16 @@ export default function Blog() {
           >
             {/* Top Visual Banner inside Modal */}
             <div style={{ position: 'relative', width: '100%', height: 260, overflow: 'hidden' }}>
-              <img
-                src={activeArticle.image}
-                alt={activeArticle.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+              <picture style={{ width: '100%', height: '100%', display: 'block' }}>
+                <source srcSet={activeArticle.image.replace('.jpg', '.webp')} type="image/webp" />
+                <img
+                  src={activeArticle.image}
+                  alt={activeArticle.title}
+                  loading="lazy"
+                  decoding="async"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </picture>
               <div style={{
                 position: 'absolute',
                 inset: 0,

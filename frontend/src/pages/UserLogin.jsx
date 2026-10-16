@@ -4,7 +4,9 @@ import { useTheme } from '../contexts/ThemeContext'
 import theme from '../utils/theme'
 import api from '../api/api'
 
-export default function UserLogin() {
+import userStore from '../utils/userStore'
+
+export default function UserLogin({ onLoginSuccess }) {
   const navigate = useNavigate()
   const { dark } = useTheme()
   const s = theme(dark)
@@ -36,6 +38,32 @@ export default function UserLogin() {
     }
   }, [showSuccess, searchParams, setSearchParams])
 
+  const handleLoginSuccess = (user) => {
+    if (user) {
+      userStore.set('profile', user)
+      if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan)
+      if (user.name) localStorage.setItem('mdefender_user_name', user.name)
+      if (!userStore.get('dashboard')) {
+        userStore.set('dashboard', {
+          user,
+          websites: [],
+          total_requests: 0,
+          blocked_threats: 0,
+          requests_today: 0,
+          recent_attacks: [],
+          attack_types: ['SQL Injection', 'XSS', 'LFI', 'RCE', 'Bot Scan'],
+          attack_counts: [0, 0, 0, 0, 0],
+          daily_requests: [0, 0, 0, 0, 0, 0, 0]
+        })
+      }
+    }
+    userStore.prefetchUserData(api)
+    if (onLoginSuccess && user) {
+      onLoginSuccess(user)
+    }
+    navigate(getPostLoginUrl(), { replace: true })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -45,14 +73,14 @@ export default function UserLogin() {
       if (mfaRequired) {
         const data = await api.verifyMFA(tempToken, mfaCode)
         if (data.status === 'success') {
-          window.location.href = getPostLoginUrl()
+          handleLoginSuccess(data.user)
         } else {
           setError(data.message || 'Invalid verification code')
         }
       } else {
         const data = await api.login(emailOrUsername, password, rememberMe)
         if (data.status === 'success') {
-          window.location.href = getPostLoginUrl()
+          handleLoginSuccess(data.user)
         } else if (data.mfa_required) {
           setMfaRequired(true)
           setTempToken(data.temp_token || '')

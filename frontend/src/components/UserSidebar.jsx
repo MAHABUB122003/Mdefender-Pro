@@ -28,7 +28,10 @@ export default function UserSidebar({ isOpen }) {
               justifyContent: 'center',
               background: '#070b14'
             }}>
-              <img src="/assets/mdefender_logo.jpg" alt="MDefender" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <picture>
+                <source srcSet="/assets/mdefender_logo.webp" type="image/webp" />
+                <img src="/assets/mdefender_logo.jpg" alt="MDefender" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="eager" decoding="async" />
+              </picture>
             </div>
             <div className="logo-text">
               <h2>MDefender</h2>

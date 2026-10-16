@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import theme from '../utils/theme'
 import api from '../api/api'
+import adminStore from '../utils/adminStore'
+import userStore from '../utils/userStore'
 
-export default function Login() {
+export default function Login({ onLoginSuccess }) {
+  const navigate = useNavigate()
   const { dark } = useTheme()
   const s = theme(dark)
   const [username, setUsername] = useState('')
@@ -19,7 +22,13 @@ export default function Login() {
     try {
       const data = await api.adminLogin(username, password)
       if (data.status === 'success') {
-        window.location.href = '/admin/dashboard'
+        const user = data.user || { role: 'super_admin', username }
+        userStore.set('admin_profile', user)
+        adminStore.prefetchAdminData(api)
+        if (onLoginSuccess) {
+          onLoginSuccess(user)
+        }
+        navigate('/admin/dashboard', { replace: true })
       } else {
         setError(data.message || data.detail || 'Invalid credentials')
       }

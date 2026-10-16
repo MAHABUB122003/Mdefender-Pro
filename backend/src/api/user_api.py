@@ -19,6 +19,8 @@ class UserAPI:
         self.rule_engine = RuleEngine()
         self.password_service = PasswordService()
         self.email_service = EmailService()
+        self._stats_cache = {}
+        self._stats_cache_ttl = 15
 
     @staticmethod
     def _format_dt(val, fmt='%Y-%m-%d %H:%M:%S', default=''):
@@ -571,7 +573,17 @@ class UserAPI:
         logger.info(f"Password changed for: {user.get('email', 'unknown')}")
         return {'status': 'success', 'message': 'Password changed successfully'}
 
-    def get_dashboard_stats(self, user, website_id=None):
+    def get_dashboard_stats(self, user, website_id=None, force_refresh=False):
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+        cache_key = f"{user_id_str}_{website_id or 'all'}"
+        now_ts = datetime.now().timestamp()
+
+        if not force_refresh and cache_key in self._stats_cache:
+            cached_data, cached_at = self._stats_cache[cache_key]
+            if now_ts - cached_at < self._stats_cache_ttl:
+                return cached_data
+
         today = datetime.now().strftime('%Y-%m-%d')
 
         if user.get('requests_today_date') != today:
@@ -580,9 +592,6 @@ class UserAPI:
                 {'$set': {'requests_today': 0, 'requests_today_date': today}}
             )
             user['requests_today'] = 0
-
-        user_id_str = str(user['_id'])
-        user_id_obj = self._resolve_id(user_id_str)
 
         # Query websites from the websites and wordpress_sites collections scoped to the user
         websites_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
@@ -832,6 +841,8 @@ class UserAPI:
             'protection_status': 'active',
             'selected_website': website_id or 'all',
         }
+        self._stats_cache[cache_key] = (result, now_ts)
+        return result
 
     def get_all_users(self):
         users = []
@@ -1305,6 +1316,7 @@ class UserAPI:
         final_query = {'$and': conditions} if len(conditions) > 1 else conditions[0]
 
         try:
+            self._stats_cache.clear()
             r1 = self.db.security_events.delete_many(final_query)
             r2 = self.db.attacks.delete_many(final_query)
             r3 = self.db.requests.delete_many(final_query)
