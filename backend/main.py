@@ -54,6 +54,27 @@ async def startup_event():
     print(f"Frontend App: http://localhost:5173")
     print("="*45 + "\n")
 
+    # Initialize MDefender Authoritative DNS Server Daemon (Port 53)
+    if os.getenv("DNS_SERVER_ENABLED", "true").lower() in ("true", "1", "yes"):
+        try:
+            from src.services.dns_server import MDefenderDNSServer
+            dns_port = int(os.getenv("DNS_SERVER_PORT", "53"))
+            edge_ip = os.getenv("WAF_EDGE_IP", "217.15.170.82")
+            dns_daemon = MDefenderDNSServer(port=dns_port, edge_ip=edge_ip)
+            asyncio.create_task(dns_daemon.start())
+            print(f"[DNS] Authoritative DNS Daemon initialized (Port {dns_port}, Edge IP: {edge_ip})")
+        except Exception as e:
+            print(f"[DNS] Could not initialize DNS daemon: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        from src.services.dns_server import MDefenderDNSServer
+        dns_daemon = MDefenderDNSServer()
+        await dns_daemon.stop()
+    except Exception:
+        pass
+
 auth_config = AuthConfig()
 
 app.include_router(get_v1_router())

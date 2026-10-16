@@ -472,6 +472,7 @@ class DNSZoneService:
             "updated_at": now,
         }
         self.db.dns_records.insert_one(doc)
+        self._invalidate_dns_daemon_cache(domain)
 
         return {
             "id": record_id,
@@ -482,6 +483,14 @@ class DNSZoneService:
             "proxied": proxied,
             "priority": priority,
         }
+
+    def _invalidate_dns_daemon_cache(self, domain: Optional[str] = None):
+        """Notify Authoritative DNS Daemon to invalidate cached zone records."""
+        try:
+            from src.services.dns_server import AuthoritativeDNSResolver
+            AuthoritativeDNSResolver().invalidate_cache(domain)
+        except Exception:
+            pass
 
     def update_dns_record(self, website_id: str, record_id: str, user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Update an existing DNS record."""
@@ -505,6 +514,7 @@ class DNSZoneService:
             updates["priority"] = data["priority"]
 
         self.db.dns_records.update_one({"_id": record_id}, {"$set": updates})
+        self._invalidate_dns_daemon_cache(existing.get("domain"))
         updated_doc = self.db.dns_records.find_one({"_id": record_id})
         return {
             "id": record_id,
@@ -518,7 +528,10 @@ class DNSZoneService:
 
     def delete_dns_record(self, website_id: str, record_id: str, user_id: str) -> bool:
         """Delete a DNS record from the zone."""
+        existing = self.db.dns_records.find_one({"_id": record_id})
         res = self.db.dns_records.delete_one({"_id": record_id})
+        if existing:
+            self._invalidate_dns_daemon_cache(existing.get("domain"))
         return res.deleted_count > 0
 
     def toggle_proxy_status(self, website_id: str, record_id: str, user_id: str) -> Dict[str, Any]:
@@ -532,6 +545,7 @@ class DNSZoneService:
 
         new_status = not rec.get("proxied", True)
         self.db.dns_records.update_one({"_id": record_id}, {"$set": {"proxied": new_status, "updated_at": datetime.now()}})
+        self._invalidate_dns_daemon_cache(rec.get("domain"))
         return {"id": record_id, "proxied": new_status}
 
     def verify_nameservers(self, website_id: str, user_id: str) -> Dict[str, Any]:
