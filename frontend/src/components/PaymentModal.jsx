@@ -12,7 +12,7 @@ export default function PaymentModal({ isOpen, onClose, plan = 'pro', billingCyc
   const usdPrice = plan === 'go'
     ? (isYearly ? 90 : 9)
     : plan === 'enterprise'
-      ? (isYearly ? 470 : 49)
+      ? (isYearly ? 350 : 35)
       : (isYearly ? 190 : 20)
 
   useEffect(() => {

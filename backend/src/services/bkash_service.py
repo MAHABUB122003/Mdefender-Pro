@@ -25,7 +25,7 @@ PLAN_PRICING = {
     "go": {"monthly": 9.0, "yearly": 90.0, "name": "Developer Go"},
     "pro": {"monthly": 20.0, "yearly": 190.0, "name": "Enterprise Pro"},
     "premium": {"monthly": 20.0, "yearly": 190.0, "name": "Enterprise Pro"},
-    "enterprise": {"monthly": 49.0, "yearly": 470.0, "name": "Dedicated Enterprise"}
+    "enterprise": {"monthly": 35.0, "yearly": 350.0, "name": "Dedicated Enterprise"}
 }
 
 

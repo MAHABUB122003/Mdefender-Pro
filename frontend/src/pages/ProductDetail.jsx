@@ -1088,7 +1088,7 @@ export default function ProductDetail() {
               fontWeight: 600,
               textDecoration: 'none'
             }}>
-              Transparent Plans ($0 - $49)
+              Transparent Plans ($0 - $35)
             </Link>
           </div>
         </section>
@@ -2179,7 +2179,7 @@ export default function ProductDetail() {
                 textDecoration: 'none'
               }}
             >
-              View Transparent Pricing ($0 - $49)
+              View Transparent Pricing ($0 - $35)
             </Link>
           </div>
         </div>

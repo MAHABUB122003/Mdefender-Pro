@@ -27,7 +27,7 @@ DEFAULT_PLAN_PRICING = {
     "go": {"monthly": 9.0, "yearly": 90.0, "name": "Developer Go"},
     "pro": {"monthly": 20.0, "yearly": 190.0, "name": "Enterprise Pro"},
     "premium": {"monthly": 20.0, "yearly": 190.0, "name": "Enterprise Pro"},
-    "enterprise": {"monthly": 49.0, "yearly": 470.0, "name": "Dedicated Enterprise"}
+    "enterprise": {"monthly": 35.0, "yearly": 350.0, "name": "Dedicated Enterprise"}
 }
 
 
@@ -48,8 +48,8 @@ class PaymentService:
         for p in plans:
             pid = p["id"]
             pricing_map[pid] = {
-                "monthly": float(p.get("monthly_price", DEFAULT_PLAN_PRICING.get(pid, {}).get("monthly", 29.0))),
-                "yearly": float(p.get("yearly_price", DEFAULT_PLAN_PRICING.get(pid, {}).get("yearly", 290.0))),
+                "monthly": float(p.get("monthly_price", DEFAULT_PLAN_PRICING.get(pid, {}).get("monthly", 20.0))),
+                "yearly": float(p.get("yearly_price", DEFAULT_PLAN_PRICING.get(pid, {}).get("yearly", 190.0))),
                 "name": p.get("name") or DEFAULT_PLAN_PRICING.get(pid, {}).get("name", pid.capitalize()),
             }
         pricing_map["premium"] = pricing_map.get("pro", DEFAULT_PLAN_PRICING["pro"])
@@ -154,7 +154,7 @@ class PaymentService:
 
         plan_key = "pro"
         cycle = "monthly"
-        amount = 29.0
+        amount = 20.0
         payment_status = "paid"
 
         # Check existing payment to avoid duplicates
@@ -178,11 +178,11 @@ class PaymentService:
                 metadata = session.metadata or {}
                 plan_key = metadata.get("plan", "pro")
                 cycle = metadata.get("billing_cycle", "monthly")
-                amount = float(session.amount_total or 2900) / 100.0
+                amount = float(session.amount_total or 2000) / 100.0
             except Exception as e:
                 _log.warning("Could not verify session with Stripe API (%s); using default plan params.", e)
 
-        pricing = PLAN_PRICING.get(plan_key, PLAN_PRICING["pro"])
+        pricing = DEFAULT_PLAN_PRICING.get(plan_key, DEFAULT_PLAN_PRICING["pro"])
         duration_days = 365 if cycle == "yearly" else 30
         now = datetime.now()
         plan_expires = now + timedelta(days=duration_days)
@@ -254,7 +254,7 @@ class PaymentService:
             user_email = data_object.get("customer_email") or metadata.get("user_email")
             plan_key = metadata.get("plan", "pro")
             cycle = metadata.get("billing_cycle", "monthly")
-            amount = float(data_object.get("amount_total", 2900)) / 100.0
+            amount = float(data_object.get("amount_total", 2000)) / 100.0
 
             user = self.db.users.find_one({"email": user_email})
             if user:

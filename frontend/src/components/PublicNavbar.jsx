@@ -677,7 +677,7 @@ export default function PublicNavbar() {
               <Link to="/products/wordpress" style={{ color: c.muted, textDecoration: 'none', fontSize: 13.5 }} onClick={() => setMobileOpen(false)}>Official WordPress Security Plugin</Link>
               <Link to="/products/rules" style={{ color: c.muted, textDecoration: 'none', fontSize: 13.5 }} onClick={() => setMobileOpen(false)}>Custom Regex Policy Builder</Link>
             </div>
-            <Link to="/pricing" style={{ color: c.text, textDecoration: 'none', fontSize: 16, fontWeight: 700 }} onClick={() => setMobileOpen(false)}>Pricing &amp; Plans ($0 - $49)</Link>
+            <Link to="/pricing" style={{ color: c.text, textDecoration: 'none', fontSize: 16, fontWeight: 700 }} onClick={() => setMobileOpen(false)}>Pricing &amp; Plans ($0 - $35)</Link>
             <Link to="/docs" style={{ color: c.text, textDecoration: 'none', fontSize: 16, fontWeight: 700 }} onClick={() => setMobileOpen(false)}>Developer Documentation</Link>
             <Link to="/blog" style={{ color: c.text, textDecoration: 'none', fontSize: 16, fontWeight: 700 }} onClick={() => setMobileOpen(false)}>Threat Intelligence Blog</Link>
             <Link to="/about" style={{ color: c.text, textDecoration: 'none', fontSize: 16, fontWeight: 700 }} onClick={() => setMobileOpen(false)}>About &amp; Architecture</Link>

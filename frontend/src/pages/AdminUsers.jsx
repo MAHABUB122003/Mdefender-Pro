@@ -887,8 +887,8 @@ export default function AdminUsers() {
                   >
                     <option value="free">Starter Free ($0)</option>
                     <option value="go">Developer Go ($9/mo)</option>
-                    <option value="pro">Enterprise Pro ($29/mo)</option>
-                    <option value="enterprise">Dedicated Enterprise ($99/mo)</option>
+                    <option value="pro">Enterprise Pro ($20/mo)</option>
+                    <option value="enterprise">Dedicated Enterprise ($35/mo)</option>
                   </select>
                 </div>
 
@@ -1200,8 +1200,8 @@ export default function AdminUsers() {
                 >
                   <option value="free">Starter Free</option>
                   <option value="go">Developer Go ($9/mo)</option>
-                  <option value="pro">Enterprise Pro ($29/mo)</option>
-                  <option value="enterprise">Dedicated Enterprise ($99/mo)</option>
+                  <option value="pro">Enterprise Pro ($20/mo)</option>
+                  <option value="enterprise">Dedicated Enterprise ($35/mo)</option>
                 </select>
               </div>
 
