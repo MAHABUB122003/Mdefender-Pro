@@ -94,7 +94,8 @@ export default function UserDashboard() {
       userStore.set('dashboard', result)
       setLastRefreshed(new Date())
       if (result?.user?.name) localStorage.setItem('mdefender_user_name', result.user.name)
-      if (result?.user?.plan) localStorage.setItem('mdefender_user_plan', result.user.plan)
+      const freshPlan = result?.user?.plan || result?.plan
+      if (freshPlan) localStorage.setItem('mdefender_user_plan', freshPlan)
     } catch (err) {
       console.error(err)
     } finally {
@@ -289,7 +290,7 @@ export default function UserDashboard() {
                 color: isPremium ? '#6366f1' : '#64748b',
                 border: isPremium ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid #cbd5e1'
               }}>
-                {userPlan === 'go' ? 'Developer Go' : userPlan === 'pro' ? 'Enterprise Pro' : userPlan === 'enterprise' ? 'Dedicated Enterprise' : 'Starter Free'}
+                {userPlan === 'go' ? 'Developer Go' : (userPlan === 'pro' || userPlan === 'premium') ? 'Enterprise Pro' : (userPlan === 'enterprise' || userPlan === 'ultra') ? 'Dedicated Enterprise' : 'Starter Free'}
               </span>
             </div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>

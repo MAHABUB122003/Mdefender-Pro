@@ -24,8 +24,9 @@ export default function UserWebsites() {
   // Domain Zone Management Modal (if needed for edge routing)
   const [selectedZoneWebsite, setSelectedZoneWebsite] = useState(null)
 
-  const userPlan = data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free'
-  const isPremium = userPlan === 'premium'
+  const rawPlan = data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free'
+  const userPlan = (typeof rawPlan === 'string' ? rawPlan : (rawPlan?.id || rawPlan?.name || 'free')).toLowerCase()
+  const isPremium = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
 
   // API Key & Integration Modal State
   const [showKeyModal, setShowKeyModal] = useState(false)
@@ -180,15 +181,16 @@ export default function UserWebsites() {
   }
 
   const handleRemoveWebsite = async (w) => {
-    const targetId = (typeof w === 'object') ? (w.id || w._id || w.domain || w.name) : w
+    const targetId = (typeof w === 'object') ? (w.id || w._id || w.website_id || w.domain || w.name) : w
     const domainName = (typeof w === 'object') ? (w.domain || w.name || w.url || 'this website') : w
     if (!confirm(`Are you sure you want to remove ${domainName}? This will disconnect all protection.`)) return
     try {
       await api.removeUserWebsite(targetId)
-      setFeedbackMsg({ type: 'success', text: `Website "${domainName}" removed.` })
+      setFeedbackMsg({ type: 'success', text: `Website "${domainName}" removed successfully.` })
+      userStore.clear()
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
-      fetchData()
+      await fetchData()
     } catch (err) {
       setFeedbackMsg({ type: 'error', text: err.message || 'Failed to remove website' })
     }

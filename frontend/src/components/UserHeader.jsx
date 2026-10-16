@@ -32,8 +32,16 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   const storedName = localStorage.getItem('mdefender_user_name') || 'User'
   const userName = storedName
   const location = useLocation()
-  const pageName = pageNames[location.pathname] || 'Dashboard'
-  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
+  const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
+  const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+  const planLabel = {
+    free: 'Free Plan',
+    go: 'Developer Go',
+    pro: 'Enterprise Pro',
+    enterprise: 'Dedicated Enterprise',
+    ultra: 'Ultra Enterprise',
+    premium: 'Enterprise Pro'
+  }[userPlan] || (isPaid ? 'Enterprise Pro' : 'Free Plan')
 
   useEffect(() => {
     window.__doLogout = onLogout
@@ -76,8 +84,8 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
         </div>
       </div>
       <div className="header-right">
-        <span className="header-threat-badge" style={isPremium ? {} : { background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderColor: '#fde68a', color: '#d97706' }}>
-          <i className={`fas ${isPremium ? 'fa-shield-halved' : 'fa-crown'}`}></i> {isPremium ? 'Premium' : 'Free Plan'}
+        <span className="header-threat-badge" style={isPaid ? {} : { background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderColor: '#fde68a', color: '#d97706' }}>
+          <i className={`fas ${isPaid ? 'fa-shield-halved' : 'fa-crown'}`}></i> {planLabel}
         </span>
         <div className="header-clock">
           <i className="fas fa-clock"></i>

@@ -365,8 +365,32 @@ def verify_user_token_compat(request: Request):
         else:
             raise HTTPException(status_code=401, detail='Invalid or expired token')
     else:
-        if payload.get('is_admin'):
-            raise HTTPException(status_code=403, detail='Admin token used for user endpoint')
+        if payload.get('is_admin') or payload.get('role') == 'super_admin':
+            admin_user = None
+            try:
+                if ObjectId.is_valid(str(payload.get('sub'))):
+                    admin_user = db.users.find_one({'_id': ObjectId(payload['sub'])})
+            except Exception:
+                pass
+            if not admin_user:
+                admin_user = db.users.find_one({'$or': [{'email': payload.get('email')}, {'username': 'admin'}, {'role': 'admin'}, {'role': 'super_admin'}]})
+            admin_id = str(admin_user['_id']) if admin_user else str(payload.get('sub', 'admin'))
+            return {
+                '_id': admin_user['_id'] if admin_user else admin_id,
+                'id': admin_id,
+                'email': payload.get('email') or (admin_user.get('email') if admin_user else 'admin@mdefender-pro.io'),
+                'name': 'Administrator',
+                'full_name': 'Administrator',
+                'username': 'administrator',
+                'role': 'super_admin',
+                'is_admin': True,
+                'email_verified': True,
+                'plan': 'enterprise',
+                'websites': admin_user.get('websites', []) if admin_user else [],
+                'requests_today': 0,
+                'requests_today_date': '',
+                'total_requests': 0,
+            }
         try:
             user_oid = ObjectId(payload['sub'])
         except Exception:

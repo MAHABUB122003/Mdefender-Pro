@@ -481,6 +481,7 @@ class UserAPI:
         
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
+        is_admin = bool(user.get('is_admin') or user.get('role') in ('admin', 'super_admin'))
         
         target_ids = [website_id]
         if ObjectId.is_valid(website_id):
@@ -488,45 +489,104 @@ class UserAPI:
 
         user_cond = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
         
-        # Find website doc strictly belonging to this user
-        site_doc = self.db.websites.find_one({
-            '$and': [
-                user_cond,
-                {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]}
-            ]
-        })
+        # 1. Look up in websites collection
+        if is_admin:
+            site_doc = self.db.websites.find_one({
+                '$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]
+            })
+        else:
+            site_doc = self.db.websites.find_one({
+                '$and': [
+                    user_cond,
+                    {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]}
+                ]
+            })
 
-        if not site_doc:
-            return {'status': 'error', 'message': 'Website not found or unauthorized'}
+        if site_doc:
+            domain = site_doc.get('domain')
+            actual_id = site_doc['_id']
 
-        domain = site_doc.get('domain')
-        actual_id = site_doc['_id']
+            if is_admin:
+                self.db.websites.delete_one({'_id': actual_id})
+                if domain:
+                    self.db.wordpress_sites.delete_many({'domain': domain})
+                self.db.wordpress_sites.delete_many({'website_id': str(actual_id)})
+                self.db.api_keys.delete_many({'website_id': str(actual_id)})
+            else:
+                self.db.websites.delete_one({'_id': actual_id, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+                if domain:
+                    self.db.wordpress_sites.delete_many({'domain': domain, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+                self.db.wordpress_sites.delete_many({'website_id': str(actual_id), '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+                self.db.api_keys.delete_many({
+                    'website_id': str(actual_id),
+                    '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
+                })
 
-        # 1. Delete strictly scoped to this user
-        self.db.websites.delete_one({'_id': actual_id, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+            if domain:
+                try:
+                    self.db.users.update_many(
+                        {},
+                        {'$pull': {'websites': domain}}
+                    )
+                except Exception:
+                    pass
 
-        # 2. Delete from wordpress_sites for this user
-        if domain:
-            self.db.wordpress_sites.delete_many({'domain': domain, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
-        self.db.wordpress_sites.delete_many({'website_id': str(actual_id), '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+            self._stats_cache.clear()
+            return {'status': 'success', 'message': f'Website {domain or website_id} removed successfully'}
 
-        # 3. Delete associated API keys for this user
-        self.db.api_keys.delete_many({
-            'website_id': str(actual_id),
-            '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
-        })
+        # 2. Fallback: Look up in wordpress_sites collection
+        if is_admin:
+            wp_doc = self.db.wordpress_sites.find_one({
+                '$or': [{'_id': {'$in': target_ids}}, {'website_id': {'$in': [str(t) for t in target_ids]}}, {'domain': website_id}, {'site_url': website_id}]
+            })
+        else:
+            wp_doc = self.db.wordpress_sites.find_one({
+                '$and': [
+                    user_cond,
+                    {'$or': [{'_id': {'$in': target_ids}}, {'website_id': {'$in': [str(t) for t in target_ids]}}, {'domain': website_id}, {'site_url': website_id}]}
+                ]
+            })
 
-        # 4. Remove from user's websites array if present
-        if domain:
-            try:
-                self.db.users.update_one(
-                    {'_id': user_id_obj},
-                    {'$pull': {'websites': domain}}
-                )
-            except Exception:
-                pass
+        if wp_doc:
+            domain = wp_doc.get('domain')
+            actual_id = wp_doc['_id']
+            ws_id = wp_doc.get('website_id')
 
-        return {'status': 'success', 'message': f'Website {domain or website_id} removed successfully'}
+            if is_admin:
+                self.db.wordpress_sites.delete_many({'$or': [{'_id': actual_id}, {'domain': domain}]})
+                if ws_id:
+                    self.db.websites.delete_many({'_id': ws_id})
+                    self.db.api_keys.delete_many({'website_id': str(ws_id)})
+            else:
+                self.db.wordpress_sites.delete_many({
+                    '$and': [
+                        user_cond,
+                        {'$or': [{'_id': actual_id}, {'domain': domain}]}
+                    ]
+                })
+                if ws_id:
+                    self.db.websites.delete_many({
+                        '_id': ws_id,
+                        '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
+                    })
+                    self.db.api_keys.delete_many({
+                        'website_id': str(ws_id),
+                        '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
+                    })
+
+            if domain:
+                try:
+                    self.db.users.update_many(
+                        {},
+                        {'$pull': {'websites': domain}}
+                    )
+                except Exception:
+                    pass
+
+            self._stats_cache.clear()
+            return {'status': 'success', 'message': f'WordPress site {domain or website_id} removed successfully'}
+
+        return {'status': 'error', 'message': 'Website not found or unauthorized'}
 
     def update_profile(self, user, data):
         updates = {}
