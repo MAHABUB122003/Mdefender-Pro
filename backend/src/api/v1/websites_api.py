@@ -505,10 +505,23 @@ async def verify_dns(website_id: str, user=Depends(get_current_user)):
                 diag_message = f"DNS resolution failed for {domain}: {str(e)}. Please check your registrar settings."
 
     if is_verified:
+        was_verified = bool(website.get("verified"))
         db.websites.update_one(
             {"_id": website["_id"]},
             {"$set": {"verified": True, "status": "active", "verified_at": datetime.now(), "updated_at": datetime.now()}}
         )
+        if not was_verified and website.get("user_id"):
+            try:
+                from src.services.notification_service import NotificationService
+                NotificationService(db).notify(
+                    user_id=website.get("user_id"),
+                    title="Domain Verified Successfully",
+                    message=f"Domain '{domain}' is now actively protected by MDefender Anycast Edge.",
+                    category="general",
+                    website_id=str(website["_id"])
+                )
+            except Exception:
+                pass
 
     return success({
         "website_id": website_id,
