@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../api/api'
 import userStore from '../utils/userStore'
-import PaymentModal from '../components/PaymentModal'
-import copyToClipboard from '../utils/clipboard'
 
 export default function UserSettings() {
   const navigate = useNavigate()
@@ -16,17 +14,11 @@ export default function UserSettings() {
   const [errMsg, setErrMsg] = useState('')
   const [pwLoading, setPwLoading] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
-  const [planLoading, setPlanLoading] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState('monthly')
-  const [checkoutOpen, setCheckoutOpen] = useState(false)
-  const [paymentHistory, setPaymentHistory] = useState([])
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [mfaSetup, setMfaSetup] = useState(null)
   const [mfaCode, setMfaCode] = useState('')
   const [mfaLoading, setMfaLoading] = useState(false)
   const [mfaDisableForm, setMfaDisableForm] = useState({ password: '', code: '' })
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [copiedApiKey, setCopiedApiKey] = useState(false)
   const [pwStrength, setPwStrength] = useState({ score: 0, label: '', color: '#e2e8f0' })
   const [activeSection, setActiveSection] = useState(null)
 
@@ -47,10 +39,6 @@ export default function UserSettings() {
       if (mergedUser?.full_name) localStorage.setItem('mdefender_user_name', mergedUser.full_name)
       const mfaData = await api.getMFAStatus()
       setMfaEnabled(mfaData.mfa_enabled || false)
-      try {
-        const history = await api.getPaymentHistory()
-        setPaymentHistory(history || [])
-      } catch {}
     } catch {
       navigate('/user/login')
     } finally {
@@ -141,47 +129,10 @@ export default function UserSettings() {
     finally { setMfaLoading(false) }
   }
 
-  const handleUpgrade = async () => {
-    if (!confirm(`Upgrade to Premium?`)) return
-    setPlanLoading(true)
-    try {
-      const days = selectedPlan === 'yearly' ? 365 : 30
-      await api.upgradePlan(days)
-      showMsg('Upgraded to Premium!')
-      fetchProfile()
-    } catch (err) { showErr(err.message || 'Upgrade failed') }
-    finally { setPlanLoading(false) }
-  }
-
-  const handleDowngrade = async () => {
-    if (!confirm('Downgrade to Free plan?')) return
-    setPlanLoading(true)
-    try {
-      await api.downgradePlan()
-      showMsg('Downgraded to Free plan.')
-      fetchProfile()
-    } catch (err) { showErr(err.message || 'Downgrade failed') }
-    finally { setPlanLoading(false) }
-  }
-
-  const copyApiKey = async () => {
-    if (!profile?.api_key) return
-    const ok = await copyToClipboard(profile.api_key)
-    if (ok) {
-      setCopiedApiKey(true)
-      setTimeout(() => setCopiedApiKey(false), 2000)
-    }
-  }
-
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px', color: '#94a3b8' }}>
-      <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px' }}></i>
-    </div>
-  )
-
-  const isPremium = profile?.plan === 'premium'
   const displayName = profile?.full_name || profile?.name || profile?.username || (profile?.email ? profile.email.split('@')[0] : '') || 'User'
   const userInitial = (displayName || 'U')[0].toUpperCase()
+  const planName = (profile?.plan || 'Free').toUpperCase()
+  const isPremium = profile?.plan && profile?.plan !== 'free'
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -213,7 +164,7 @@ export default function UserSettings() {
         overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', top: 0, right: 0, width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%)', borderRadius: '50%', transform: 'translate(40%, -40%)' }}></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
           <div style={{
             width: '72px', height: '72px', borderRadius: '16px',
             background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
@@ -224,7 +175,7 @@ export default function UserSettings() {
           }}>
             {userInitial}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
               <h1 style={{ fontSize: '22px', fontWeight: '700', margin: 0 }}>{displayName}</h1>
               <span style={{
@@ -236,7 +187,7 @@ export default function UserSettings() {
                 border: `1px solid ${isPremium ? 'rgba(168,85,247,0.3)' : 'rgba(100,116,139,0.2)'}`,
               }}>
                 <i className={`fas ${isPremium ? 'fa-crown' : 'fa-user'}`}></i>
-                {isPremium ? 'Premium' : 'Free'}
+                {planName}
               </span>
             </div>
             <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -249,23 +200,33 @@ export default function UserSettings() {
               )}
             </div>
           </div>
-          <Link to="/user/dashboard" style={{
-            padding: '10px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-            background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.1)',
-            textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px',
-            transition: 'all 0.2s', flexShrink: 0,
-          }}>
-            <i className="fas fa-arrow-left"></i> Dashboard
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <Link to="/user/pricing" style={{
+              padding: '10px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: '700',
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)', color: '#fff',
+              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px',
+              boxShadow: '0 2px 10px rgba(37,99,235,0.3)',
+              transition: 'all 0.2s',
+            }}>
+              <i className="fas fa-tags"></i> Pricing &amp; Plans
+            </Link>
+            <Link to="/user/dashboard" style={{
+              padding: '10px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+              background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.1)',
+              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px',
+              transition: 'all 0.2s',
+            }}>
+              <i className="fas fa-arrow-left"></i> Dashboard
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Section Navigation */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {[
-          { id: 'account', icon: 'fa-user-circle', label: 'Account', color: '#2563eb' },
-          { id: 'security', icon: 'fa-shield-halved', label: 'Security', color: '#10b981' },
-          { id: 'billing', icon: 'fa-crown', label: 'Billing', color: '#f59e0b' },
+          { id: 'account', icon: 'fa-user-circle', label: 'Account Profile', color: '#2563eb' },
+          { id: 'security', icon: 'fa-shield-halved', label: 'Security & 2FA', color: '#10b981' },
         ].map(s => (
           <button key={s.id} onClick={() => setActiveSection(activeSection === s.id ? null : s.id)} style={{
             padding: '10px 18px', borderRadius: '10px', border: `1px solid ${activeSection === s.id ? s.color : '#e2e8f0'}`,
@@ -280,7 +241,7 @@ export default function UserSettings() {
       </div>
 
       {/* Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: (activeSection === null || activeSection === 'billing' || activeSection === 'api') ? '1fr' : '1fr 1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: activeSection === null ? '1fr 1fr' : '1fr', gap: '20px' }}>
         {(activeSection === null || activeSection === 'account') && (
           <>
             {/* Profile Info */}
@@ -613,165 +574,8 @@ export default function UserSettings() {
           </>
         )}
 
-        {(activeSection === null || activeSection === 'billing') && (
-          /* Plan Details */
-          <div style={{
-            background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden', gridColumn: activeSection === 'billing' ? '1 / -1' : undefined,
-          }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', fontSize: '16px' }}>
-                  <i className="fas fa-crown"></i>
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Subscription &amp; Billing</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Manage payment methods and active protection plan</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setCheckoutOpen(true)}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                  color: '#fff',
-                  border: 'none',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 8px rgba(37,99,235,0.3)'
-                }}
-              >
-                <i className="fas fa-credit-card"></i> {isPremium ? 'Renew / Change Plan' : 'Upgrade Plan'}
-              </button>
-            </div>
-
-            <div style={{ padding: '24px' }}>
-              {isPremium ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', padding: '18px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <div style={{
-                      width: '48px', height: '48px', borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '22px', color: '#fff',
-                    }}>
-                      <i className="fas fa-crown"></i>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Enterprise Pro Plan</div>
-                      <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <i className="fas fa-circle" style={{ fontSize: '6px' }}></i> Active Protection &middot; 2,000 WAF Rules &amp; 5,489,242+ Dataset ML Model
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {profile?.plan_expires && (
-                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
-                        Expires: <strong style={{ color: '#0f172a' }}>{new Date(profile.plan_expires).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</strong>
-                      </span>
-                    )}
-                    <button onClick={async () => {
-                      if (!confirm('Are you sure you want to downgrade to the Free plan?')) return
-                      setPlanLoading(true)
-                      try {
-                        await api.downgradePlan()
-                        showMsg('Downgraded to Free plan.')
-                        fetchProfile()
-                      } catch (err) {
-                        showErr(err.message)
-                      } finally {
-                        setPlanLoading(false)
-                      }
-                    }} disabled={planLoading} style={{
-                      padding: '8px 14px', background: '#fef2f2', color: '#dc2626',
-                      border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px',
-                      fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                      Downgrade
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ padding: '18px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-                  <div>
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>Starter Free Plan</div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>1 Website &middot; 10,000 requests / month &middot; Basic Rules</div>
-                  </div>
-                  <button onClick={() => setCheckoutOpen(true)} style={{
-                    padding: '9px 18px', background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                    color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px',
-                    fontWeight: '700', cursor: 'pointer',
-                  }}>
-                    Upgrade to Enterprise Pro ($29/mo)
-                  </button>
-                </div>
-              )}
-
-              {/* Invoices Table */}
-              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fas fa-file-invoice" style={{ color: '#64748b' }}></i> Invoices &amp; Transaction Receipts
-              </h4>
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
-                      <th style={{ padding: '10px 14px' }}>Invoice</th>
-                      <th style={{ padding: '10px 14px' }}>Date</th>
-                      <th style={{ padding: '10px 14px' }}>Amount</th>
-                      <th style={{ padding: '10px 14px' }}>Method</th>
-                      <th style={{ padding: '10px 14px' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentHistory.length > 0 ? (
-                      paymentHistory.map((inv, idx) => (
-                        <tr key={idx} style={{ borderBottom: idx < paymentHistory.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                          <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontWeight: '600', color: '#2563eb' }}>{inv.invoice_id}</td>
-                          <td style={{ padding: '10px 14px', color: '#64748b' }}>{inv.created_at || 'Recent'}</td>
-                          <td style={{ padding: '10px 14px', fontWeight: '700', color: '#0f172a' }}>${inv.amount}.00 USD</td>
-                          <td style={{ padding: '10px 14px', color: '#64748b' }}>
-                            <i className="fas fa-credit-card" style={{ marginRight: '6px' }}></i>
-                            {inv.card_brand ? `${inv.card_brand} ···· ${inv.card_last4}` : (inv.bank_ref ? 'Bank Wire Transfer' : 'Direct Payment')}
-                          </td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', fontSize: '11px', fontWeight: '700' }}>
-                              PAID
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
-                          No past billing invoices recorded yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Payment Checkout Modal */}
-      <PaymentModal
-        isOpen={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        plan="pro"
-        billingCycle="monthly"
-        onSuccess={() => {
-          setCheckoutOpen(false)
-          fetchProfile()
-          showMsg('Payment completed! Your account is upgraded to Enterprise Pro.')
-        }}
-      />
     </div>
   )
 }
+

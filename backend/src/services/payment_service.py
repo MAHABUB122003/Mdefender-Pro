@@ -25,9 +25,9 @@ _log = logging.getLogger(__name__)
 DEFAULT_PLAN_PRICING = {
     "free": {"monthly": 0.0, "yearly": 0.0, "name": "Starter Free"},
     "go": {"monthly": 9.0, "yearly": 90.0, "name": "Developer Go"},
-    "pro": {"monthly": 29.0, "yearly": 290.0, "name": "Enterprise Pro"},
-    "premium": {"monthly": 29.0, "yearly": 290.0, "name": "Enterprise Pro"},
-    "enterprise": {"monthly": 99.0, "yearly": 990.0, "name": "Dedicated Enterprise"}
+    "pro": {"monthly": 20.0, "yearly": 190.0, "name": "Enterprise Pro"},
+    "premium": {"monthly": 20.0, "yearly": 190.0, "name": "Enterprise Pro"},
+    "enterprise": {"monthly": 49.0, "yearly": 470.0, "name": "Dedicated Enterprise"}
 }
 
 

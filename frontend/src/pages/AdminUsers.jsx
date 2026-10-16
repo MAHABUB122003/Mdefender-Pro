@@ -1010,7 +1010,7 @@ export default function AdminUsers() {
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
                 >
                   <option value="pro">Enterprise Pro (Recommended - 2M+ Signatures & DDoS)</option>
-                  <option value="go">Developer Go (5.48M ML Core)</option>
+                  <option value="go">Developer Go (6.5M+ ML Core)</option>
                   <option value="enterprise">Dedicated Enterprise (Ultimate Quota)</option>
                 </select>
               </div>

@@ -97,6 +97,31 @@ class SubscriptionService:
                 upsert=True,
             )
 
+        # Synchronize plan & status directly to the users collection for instant app-wide recognition
+        try:
+            user_query = {"_id": ObjectId(user_id)} if ObjectId.is_valid(str(user_id)) else {"_id": str(user_id)}
+            if status in ("active", "trialing"):
+                self.db.users.update_one(
+                    user_query,
+                    {"$set": {
+                        "plan": plan,
+                        "plan_tier": plan,
+                        "payment_status": "active",
+                        "paddle_subscription_id": subscription_id,
+                        "paddle_customer_id": record["customer_id"],
+                        "last_payment_date": datetime.now()
+                    }}
+                )
+            elif status in ("canceled", "past_due"):
+                self.db.users.update_one(
+                    user_query,
+                    {"$set": {
+                        "payment_status": status
+                    }}
+                )
+        except Exception:
+            pass
+
     def record_transaction(self, user_id, event):
         """Record a completed/failed Paddle transaction (invoice-like record)."""
         data = event.get("data", {})

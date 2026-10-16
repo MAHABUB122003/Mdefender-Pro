@@ -13,7 +13,7 @@ DEFAULT_FLAGS = {
     "wordpress_scanner_enabled": True,
     "technical_dashboard_enabled": True,
     "wordpress_dashboard_enabled": True,
-    "paddle_billing_enabled": False,
+    "paddle_billing_enabled": True,
     "real_time_monitoring_enabled": False,
     "maintenance_mode": False,
     "public_registration": True,

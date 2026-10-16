@@ -24,10 +24,11 @@ PADDLE_API = {
 
 
 class PaddleService:
-    def __init__(self, api_key=None, environment=None, webhook_secret=None):
+    def __init__(self, api_key=None, environment=None, webhook_secret=None, client_token=None):
         self.api_key = api_key or os.getenv("PADDLE_API_KEY", "")
-        self.environment = (environment or os.getenv("PADDLE_ENVIRONMENT", "sandbox")).lower()
+        self.environment = (environment or os.getenv("PADDLE_ENVIRONMENT", "production")).lower()
         self.webhook_secret = webhook_secret or os.getenv("PADDLE_WEBHOOK_SECRET", "")
+        self.client_token = client_token or os.getenv("PADDLE_CLIENT_TOKEN", "")
         self.base_url = PADDLE_API.get(self.environment, PADDLE_API["sandbox"])
 
     @property
@@ -38,6 +39,7 @@ class PaddleService:
         return {
             "configured": self.configured,
             "environment": self.environment,
+            "client_token": self.client_token,
         }
 
     def _headers(self):
@@ -63,18 +65,30 @@ class PaddleService:
             payload["cancel_url"] = cancel_url
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.post(f"{self.base_url}/checkout/custom",
+                resp = await client.post(f"{self.base_url}/transactions",
                                          headers=self._headers(), json=payload)
                 data = resp.json()
                 if resp.status_code >= 400:
-                    return {"error": f"Paddle API error {resp.status_code}: {data.get('error', {})}"}
-                checkout = data.get("data", data)
+                    err = data.get('error', {})
+                    err_code = err.get('code', 'paddle_error')
+                    err_detail = err.get('detail') or str(err)
+                    if err_code == 'transaction_checkout_not_enabled':
+                        err_msg = (
+                            "Checkouts are not yet enabled for your live Paddle account. "
+                            "Please complete the Paddle onboarding tasks (business verification & website approval) "
+                            "in your Paddle dashboard at https://vendors.paddle.com."
+                        )
+                    else:
+                        err_msg = f"Paddle error: {err_detail}"
+                    return {"error": err_msg, "error_code": err_code, "checkout_url": None}
+                txn = data.get("data", data)
+                checkout_info = txn.get("checkout") or {}
                 return {
-                    "checkout_id": checkout.get("id"),
-                    "checkout_url": checkout.get("url"),
+                    "checkout_id": txn.get("id"),
+                    "checkout_url": checkout_info.get("url"),
                 }
         except Exception as e:
-            return {"error": f"Paddle request failed: {e}"}
+            return {"error": f"Paddle request failed: {e}", "checkout_url": None}
 
     async def list_prices(self):
         if not self.api_key:
@@ -154,7 +168,10 @@ class PaddleService:
         # Replay protection: reject events that are too old.
         if abs(time.time() - ts_int) > max_age_seconds:
             return False
-        signed_payload = f"{ts}:{raw_body}".encode("utf-8")
+        if isinstance(raw_body, bytes):
+            signed_payload = str(ts).encode("utf-8") + b":" + raw_body
+        else:
+            signed_payload = f"{ts}:{raw_body}".encode("utf-8")
         expected = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected.lower(), h1.lower())
 

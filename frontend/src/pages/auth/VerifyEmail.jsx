@@ -18,6 +18,9 @@ export default function VerifyEmail() {
 
   const token = searchParams.get('token') || searchParams.get('dev_token') || ''
   const email = searchParams.get('email') || ''
+  const planParam = searchParams.get('plan') || ''
+  const cycleParam = searchParams.get('cycle') || 'monthly'
+  const loginUrl = `/user/login?verified=true${planParam ? `&plan=${planParam}&cycle=${cycleParam}` : ''}`
   const hasAttemptedRef = useRef(false)
 
   // Auto-verification on page load if token is present
@@ -41,12 +44,12 @@ export default function VerifyEmail() {
   useEffect(() => {
     if (status !== 'success') return
     if (redirectCountdown <= 0) {
-      navigate('/user/login?verified=true')
+      navigate(loginUrl)
       return
     }
     const t = setTimeout(() => setRedirectCountdown(c => c - 1), 1000)
     return () => clearTimeout(t)
-  }, [status, redirectCountdown, navigate])
+  }, [status, redirectCountdown, navigate, loginUrl])
 
   const performAutoVerification = async (verifyToken) => {
     setStatus('verifying')
@@ -292,8 +295,8 @@ export default function VerifyEmail() {
               {message}
             </p>
 
-            <Link to="/user/login?verified=true" className="btn-action success">
-              <span>Continue to Dashboard</span>
+            <Link to={loginUrl} className="btn-action success">
+              <span>Continue to Login &amp; Checkout</span>
               <i className="fas fa-arrow-right" style={{ fontSize: 12 }}></i>
             </Link>
 

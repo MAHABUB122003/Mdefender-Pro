@@ -20,8 +20,8 @@ const DEFAULT_PLANS = [
       { text: 'Core WAF Rule Engine (500+ Signatures)', included: true },
       { text: 'Basic Anomaly & Rate Limiting', included: true },
       { text: 'Real-Time Edge Security Block Page', included: true },
-      { text: '5.48M+ Dataset ML Classifier', included: false },
-      { text: '2,000,000+ Hyper-Scale Attack Signatures', included: false },
+      { text: '6.5M+ Threat Neural Classifier', included: false },
+      { text: '639K+ AI Prompt Injection Shield', included: false },
       { text: 'Custom Regex Rules Builder', included: false },
       { text: 'Layer 7 Volumetric DDoS Mitigation', included: false },
       { text: '24/7 Priority SLA Response', included: false },
@@ -41,7 +41,7 @@ const DEFAULT_PLANS = [
       { text: '5 Protected Websites / APIs', included: true },
       { text: '100,000 requests / month', included: true },
       { text: 'Core WAF + Heuristic Vectorizer', included: true },
-      { text: '5.48M+ Dataset ML Classifier', included: true },
+      { text: '6.5M+ Threat Neural Classifier', included: true },
       { text: '50,000+ Threat Signatures & Hashes', included: true },
       { text: '20 Custom Regex Rules Builder', included: true },
       { text: 'Real-Time Email Security Threat Alerts', included: true },
@@ -57,18 +57,18 @@ const DEFAULT_PLANS = [
     id: 'pro',
     name: 'Enterprise Pro',
     badge: 'Most Popular',
-    monthly: 29,
-    yearly: 290,
+    monthly: 20,
+    yearly: 190,
     desc: 'Maximum cyber defense for mission-critical production clusters, SaaS platforms, and high-traffic stores.',
     features: [
-      { text: '25 Protected Domains & APIs', included: true },
+      { text: '10 Protected Domains & APIs', included: true },
       { text: '1,000,000 Requests / Month', included: true },
       { text: 'Full 2,000,000+ Hyper-Scale Signatures', included: true },
-      { text: '5,489,242+ Dataset Deep ML Core', included: true },
-      { text: '53,800+ Live Threat IPs & Zero-FP Whitelist', included: true },
+      { text: '6,501,208+ Dataset Deep ML Core', included: true },
+      { text: '639K+ Generative AI Prompt Shield', included: true },
       { text: 'Unlimited Custom Regex Policies', included: true },
       { text: 'Layer 7 Volumetric DDoS Mitigation Shield', included: true },
-      { text: 'Single-Pass (<0.50ms) Edge Inspection', included: true },
+      { text: 'Sub-Millisecond (0.12ms) Edge Inspection', included: true },
       { text: 'Automated Bot & Scanner Ban (sqlmap/Nikto)', included: true },
       { text: '24/7 Priority SLA & Dedicated Response', included: true },
     ],
@@ -80,17 +80,17 @@ const DEFAULT_PLANS = [
     id: 'enterprise',
     name: 'Dedicated Enterprise',
     badge: 'Maximum Scale',
-    monthly: 99,
-    yearly: 990,
-    desc: 'Dedicated security infrastructure, multi-cluster proxy nodes, and unlimited custom policy automation.',
+    monthly: 49,
+    yearly: 470,
+    desc: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute guaranteed SLA response.',
     features: [
-      { text: '500 Protected Domains & APIs', included: true },
+      { text: '15 Protected Domains & APIs', included: true },
       { text: '10,000,000+ Requests / Month', included: true },
       { text: 'Dedicated ML Neural Vectorizer Node', included: true },
       { text: 'Full 2,000,000+ Hyper-Scale Signatures', included: true },
-      { text: 'Automated Layer 7 DDoS Mitigation', included: true },
+      { text: '639K+ AI Gateway & LLM Jailbreak Guard', included: true },
+      { text: 'Automated Layer 7 DDoS Mitigation Scrubber', included: true },
       { text: 'Unlimited Custom Zero-Day Rules', included: true },
-      { text: 'High-Velocity Anti-Bot Defense', included: true },
       { text: 'Dedicated Account Security Architect', included: true },
       { text: 'Custom Webhook & SOC SIEM Integrations', included: true },
       { text: '15-Minute Guaranteed SLA Response', included: true },
@@ -102,24 +102,22 @@ const DEFAULT_PLANS = [
 ]
 
 const comparisonFeatures = [
-  { name: 'Protected Domains & APIs', free: '1 Domain', go: '5 Domains', pro: '10 Domains' },
-  { name: 'Attack Payload Training Dataset', free: 'Basic (100k)', go: '5.48M Model', pro: '5,489,242+ Neural Core' },
-  { name: 'Active Attack Signatures', free: '500 Signatures', go: '50,000+ Signatures', pro: '2,000,000+ Hyper-Scale' },
-  { name: 'Edge Latency Benchmark', free: 'Standard (15ms)', go: 'Accelerated (3ms)', pro: 'Single-Pass (<0.50ms)' },
-  { name: 'Zero-Day & Polymorphic AI Detection', free: 'No', go: 'Heuristic Scoring', pro: 'Neural AST Vectorizer' },
-  { name: 'Layer 7 DDoS Volumetric Flood Shield', free: 'No', go: 'Basic Rate Limiter', pro: 'Active Volumetric Shield' },
-
-  { name: 'Automated Bot & Offensive Tool Ban', free: 'Basic Scrapers', go: 'Scanner Signatures', pro: 'Zero-Day Fingerprinting' },
-  { name: 'WordPress 1-Click Native Plugin Sync', free: 'Yes', go: 'Yes', pro: 'Yes + Edge Accelerator' },
-  { name: 'Multi-Tenant Centralized SOC Console', free: 'Single User', go: 'Single User', pro: 'Multi-Tenant Enterprise' },
-  { name: 'Attack Learning Feedback Engine', free: 'No', go: 'Weekly Feed', pro: 'Real-Time Continuous' },
-  { name: 'Customer Support & SLA Response', free: 'Community', go: 'Priority Email (4h)', pro: '24/7 Dedicated SLA (15m)' },
+  { name: 'Protected Domains & APIs', free: '1 Domain', go: '5 Domains', pro: '10 Domains', enterprise: '15 Domains' },
+  { name: 'Threat Training Dataset', free: '500 Signatures', go: '6.5M Model', pro: '6,501,208+ Neural Core', enterprise: '6.5M+ Dedicated Node' },
+  { name: 'Generative AI Prompt Injection Shield', free: 'No', go: 'Standard Guard', pro: '639K+ Jailbreak Filter', enterprise: 'Full AI Gateway' },
+  { name: 'Active Attack Signatures', free: '500 Signatures', go: '50,000+ Signatures', pro: '2,000,000+ Hyper-Scale', enterprise: 'Full Mesh 2M+' },
+  { name: 'Edge Latency Benchmark', free: 'Standard (15ms)', go: 'Accelerated (3ms)', pro: 'Single-Pass (0.12ms)', enterprise: 'Ultra-Low (<0.10ms)' },
+  { name: 'Layer 7 DDoS Volumetric Flood Shield', free: 'No', go: 'Basic Rate Limiter', pro: 'Adaptive Token Bucket', enterprise: '240+ PoP Anycast Mesh' },
+  { name: 'Automated Bot & Scanner Ban', free: 'Basic Scrapers', go: 'Scanner Signatures', pro: 'Zero-Day Fingerprinting', enterprise: 'Full Behavioral AI' },
+  { name: 'WordPress 1-Click Native Plugin Sync', free: 'Yes', go: 'Yes', pro: 'Yes + Edge Accelerator', enterprise: 'Multi-Site Fleet Sync' },
+  { name: 'Multi-Tenant Centralized SOC Console', free: 'Single User', go: 'Single User', pro: 'Multi-Tenant Enterprise', enterprise: 'Role-Based Access + SSO' },
+  { name: 'Customer Support & SLA Response', free: 'Community', go: 'Priority Email (4h)', pro: '24/7 Dedicated (1h)', enterprise: '15-Minute Critical SLA' },
 ]
 
 const faqs = [
   {
-    q: 'How does the 5,489,242+ dataset Machine Learning model protect my website?',
-    a: 'MDefender Pro unifies a deterministic 2,000-rule regex matrix with an active neural vectorizer trained on over 5,489,242 real-world attack payloads. This enables sub-millisecond recognition of zero-day exploits, obfuscated SQL injection, cross-site scripting (XSS), and polymorphic evasions before they reach your backend servers.'
+    q: 'How does the 6,501,208+ dataset Machine Learning model protect my website?',
+    a: 'MDefender Pro unifies a deterministic 2,000-rule regex matrix with an active neural vectorizer trained on over 6,501,208 verified attack payloads. With 99.23% ML precision and a 0.75% false positive rate, it delivers sub-millisecond (0.12ms) recognition of zero-day exploits, obfuscated SQL injections, XSS, and 639K+ LLM jailbreaks before they touch your backend servers.'
   },
   {
     q: 'Which payment methods do you support for subscriptions?',
@@ -131,7 +129,7 @@ const faqs = [
   },
   {
     q: 'What happens if my site experiences a massive Layer 7 DDoS attack?',
-    a: 'On our Enterprise Pro tier, MDefender Pro’s adaptive token-bucket rate limiter and volumetric flood shield automatically absorbs and drops flood waves at the edge in real-time, preventing your origin servers and databases from becoming overwhelmed.'
+    a: 'On our Enterprise Pro and Dedicated Enterprise tiers, MDefender Pro’s adaptive token-bucket rate limiter and volumetric flood scrubber automatically absorb and drop flood waves at the edge in real-time, preventing your origin servers and databases from becoming overwhelmed.'
   },
   {
     q: 'Is there a long-term contract or cancellation fee?',
@@ -171,17 +169,22 @@ export default function Pricing() {
   }, [])
 
   const handlePlanSelect = (planId) => {
+    const cycle = isYearly ? 'yearly' : 'monthly'
     if (planId === 'free') {
-      navigate('/register')
+      const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token')
+      if (token) {
+        navigate('/user/dashboard')
+      } else {
+        navigate('/register?plan=free')
+      }
       return
     }
     const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token')
     if (!token) {
-      navigate(`/register?plan=${planId}`)
+      navigate(`/register?plan=${planId}&cycle=${cycle}`)
       return
     }
-    setSelectedPlan(planId)
-    setCheckoutModalOpen(true)
+    navigate(`/user/pricing?plan=${planId}&cycle=${cycle}`)
   }
 
   return (
@@ -304,7 +307,7 @@ export default function Pricing() {
             maxWidth: 720,
             margin: '0 auto 36px'
           }}>
-            Protect your origins with <strong>2,000+ deterministic security rules</strong> and our <strong>5,489,242+ attack payload trained ML Neural Core</strong>. Simple pricing, zero hidden fees.
+            Protect your origins with <strong>2,000+ deterministic security rules</strong> and our <strong>6,501,208+ attack payload trained ML Neural Core</strong> (99.23% precision). Simple pricing, zero hidden fees.
           </p>
 
           {/* Monthly / Yearly Toggle */}
@@ -332,29 +335,29 @@ export default function Pricing() {
             return (
               <div
                 key={p.id}
-                className="pricing-card"
+                className={`pricing-card card-3d-interactive ${p.highlight ? 'neon-border-3d' : ''}`}
                 style={{
-                  background: dark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
+                  background: dark ? 'rgba(15, 23, 42, 0.88)' : '#ffffff',
                   borderRadius: 22,
-                  border: p.highlight
-                    ? '2px solid #6366f1'
-                    : `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
                   padding: '40px 32px 34px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
+                  position: 'relative',
+                  transform: p.highlight ? 'scale(1.03) translateY(-6px)' : 'none',
+                  zIndex: p.highlight ? 5 : 1,
                   boxShadow: p.highlight
-                    ? (dark ? '0 15px 50px rgba(99,102,241,0.3)' : '0 10px 40px rgba(99,102,241,0.15)')
-                    : (dark ? '0 8px 30px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.04)')
+                    ? (dark ? '0 18px 45px rgba(99,102,241,0.22)' : '0 12px 35px rgba(99,102,241,0.12)')
+                    : (dark ? '0 8px 25px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.04)')
                 }}
               >
                 {/* Popular Highlight Badge */}
                 {p.highlight && (
-                  <div style={{
+                  <div className="floating-chip-3d" style={{
                     position: 'absolute',
                     top: -14,
                     right: 28,
-                    background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                    background: 'linear-gradient(135deg, #4338ca, #6366f1)',
                     color: '#ffffff',
                     fontSize: 11.5,
                     fontWeight: 800,
@@ -362,7 +365,8 @@ export default function Pricing() {
                     borderRadius: 20,
                     textTransform: 'uppercase',
                     letterSpacing: '0.6px',
-                    boxShadow: '0 4px 14px rgba(99,102,241,0.4)'
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.35)',
+                    zIndex: 10
                   }}>
                     <i className="fas fa-crown" style={{ marginRight: 5 }}></i>
                     {p.badge}
@@ -511,10 +515,13 @@ export default function Pricing() {
             <thead>
               <tr style={{ background: dark ? 'rgba(30,41,59,0.6)' : '#f1f5f9', borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
                 <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 700, color: s.text }}>Security Capability</th>
-                <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 600, color: s.textSecondary }}>Starter Free</th>
-                <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 600, color: s.textSecondary }}>Developer Go</th>
+                <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 600, color: s.textSecondary }}>Starter Free ($0)</th>
+                <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 600, color: s.textSecondary }}>Developer Go ($9)</th>
                 <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 800, color: '#6366f1', background: dark ? 'rgba(99,102,241,0.1)' : '#eef2ff' }}>
-                  Enterprise Pro
+                  Enterprise Pro ($20)
+                </th>
+                <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 800, color: '#8b5cf6', background: dark ? 'rgba(139,92,246,0.1)' : '#f5f3ff' }}>
+                  Dedicated Enterprise ($49)
                 </th>
               </tr>
             </thead>
@@ -542,6 +549,18 @@ export default function Pricing() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
                       <span>{row.pro}</span>
+                    </div>
+                  </td>
+                  <td style={{
+                    padding: '16px 22px',
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    color: '#8b5cf6',
+                    background: dark ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.02)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <i className="fas fa-shield" style={{ color: '#8b5cf6' }}></i>
+                      <span>{row.enterprise}</span>
                     </div>
                   </td>
                 </tr>

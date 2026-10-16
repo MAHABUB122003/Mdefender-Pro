@@ -270,7 +270,7 @@ export default function UserRules() {
               <span style={{ color: '#34d399', fontWeight: '800' }}>53,817</span> <span style={{ color: '#94a3b8' }}>Live Threat IPs</span>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.06)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '12px' }}>
-              <span style={{ color: '#f59e0b', fontWeight: '800' }}>5.48M</span> <span style={{ color: '#94a3b8' }}>ML Core</span>
+              <span style={{ color: '#f59e0b', fontWeight: '800' }}>6.5M+</span> <span style={{ color: '#94a3b8' }}>ML Core</span>
             </div>
           </div>
         </div>

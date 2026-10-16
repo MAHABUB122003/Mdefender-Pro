@@ -12,6 +12,7 @@ Tenant isolation: every operation is scoped to the authenticated user.
 
 import hashlib
 import uuid
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,6 +23,7 @@ from src.auth.dependencies import get_current_user
 from src.database.mongodb_connection import MongoDB
 from src.services.subscription_service import SubscriptionService
 from src.services.dns_zone_service import DNSZoneService, PLAN_ENTITLEMENTS
+from src.services.ssl_service import UniversalSSLService
 from src.utils.api_response import serialize, success
 from src.utils.api_key import generate_api_key
 
@@ -81,6 +83,18 @@ class DnsRecordUpdate(BaseModel):
 
 class SslModeUpdate(BaseModel):
     ssl_mode: str
+
+
+class SslSettingsUpdate(BaseModel):
+    universal_ssl_enabled: bool | None = None
+    always_use_https: bool | None = None
+    auto_https_rewrites: bool | None = None
+    min_tls_version: str | None = None
+    tls_13_enabled: bool | None = None
+    hsts_enabled: bool | None = None
+    hsts_max_age: int | None = None
+    hsts_include_subdomains: bool | None = None
+    hsts_preload: bool | None = None
 
 
 class ApiKeyCreate(BaseModel):
@@ -584,15 +598,64 @@ async def toggle_dns_proxy(website_id: str, record_id: str, user=Depends(get_cur
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/{website_id}/ssl")
+async def get_universal_ssl(website_id: str, user=Depends(get_current_user)):
+    """Retrieve full Universal SSL certificate status, encryption mode, and TLS security settings."""
+    get_owned_website(user, website_id)
+    ssl_svc = UniversalSSLService()
+    try:
+        details = ssl_svc.get_ssl_details(website_id)
+        return success(details)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/{website_id}/ssl")
 async def update_ssl_mode(website_id: str, body: SslModeUpdate, user=Depends(get_current_user)):
-    """Configure SSL/TLS encryption mode for edge reverse proxy (Flexible, Full, Strict)."""
+    """Configure SSL/TLS encryption mode for edge reverse proxy (Flexible, Full, Strict, Off)."""
     get_owned_website(user, website_id)
-    dns_svc = DNSZoneService()
+    ssl_svc = UniversalSSLService()
     try:
-        updated = dns_svc.set_ssl_mode(website_id=website_id, user_id=str(user["id"]), ssl_mode=body.ssl_mode)
+        updated = ssl_svc.set_ssl_mode(website_id=website_id, user_id=str(user["id"]), ssl_mode=body.ssl_mode)
         return success({"ssl_mode": updated.get("ssl_mode"), "message": f"SSL mode updated to {body.ssl_mode}."})
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{website_id}/ssl/settings")
+async def update_ssl_settings(website_id: str, body: SslSettingsUpdate, user=Depends(get_current_user)):
+    """Configure Universal SSL settings (Always Use HTTPS, Minimum TLS Version, HSTS, etc.)."""
+    get_owned_website(user, website_id)
+    ssl_svc = UniversalSSLService()
+    try:
+        payload = body.dict(exclude_unset=True)
+        details = ssl_svc.update_settings(website_id=website_id, user_id=str(user["id"]), settings=payload)
+        return success({"settings": details, "message": "Universal SSL settings updated successfully."})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{website_id}/ssl/reissue")
+async def reissue_edge_certificate(website_id: str, user=Depends(get_current_user)):
+    """Order / re-issue free Universal Edge SSL certificate with fresh 90-day validity."""
+    get_owned_website(user, website_id)
+    ssl_svc = UniversalSSLService()
+    try:
+        details = ssl_svc.reissue_certificate(website_id=website_id, user_id=str(user["id"]))
+        return success({"certificate": details.get("certificate"), "message": "Universal Edge SSL Certificate re-issued and deployed to all Anycast PoPs."})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{website_id}/ssl/probe")
+async def probe_ssl_health(website_id: str, user=Depends(get_current_user)):
+    """Perform real-time TLS handshake probe and return edge cipher and certificate telemetry."""
+    get_owned_website(user, website_id)
+    ssl_svc = UniversalSSLService()
+    try:
+        telemetry = ssl_svc.probe_ssl_health(website_id)
+        return success(telemetry)
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 

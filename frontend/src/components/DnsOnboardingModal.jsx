@@ -5,67 +5,67 @@ import copyToClipboard from '../utils/clipboard'
 const PLANS = [
   {
     id: 'free',
-    name: 'Free',
+    name: 'Starter Free',
     price: '$0',
     billing: 'Forever Free',
     badge: 'Community',
     color: '#64748b',
     features: [
       '1 Protected Domain',
-      'Public DNS Auto-Discovery',
-      'Manual DNS Management',
-      'Basic WAF (2,000 Signatures)',
-      '1-Day Threat Log Retention',
-      'Community Support'
+      '10,000 requests / month',
+      'Core WAF (500+ Signatures)',
+      'Basic Anomaly & Rate Limiting',
+      'Real-Time Edge Block Page',
+      'Community Discord Support'
     ]
   },
   {
     id: 'go',
-    name: 'Go',
+    name: 'Developer Go',
     price: '$9',
     billing: 'per month',
-    badge: 'Popular for Devs',
+    badge: 'Growing Apps',
     color: '#0284c7',
     features: [
       'Up to 5 Protected Domains',
-      'Deep Subdomain Discovery',
-      'Root & Subdomain Zone Management',
-      'Expanded WAF (100k+ Signatures)',
-      '7-Day Threat Log Retention',
-      'Standard Email Support'
+      '100,000 requests / month',
+      '6,501,208+ Threat Neural ML Core',
+      'Core WAF + Heuristic Vectorizer',
+      '20 Custom Regex Rules Builder',
+      'Priority Email Technical Support'
     ]
   },
   {
     id: 'pro',
-    name: 'Pro',
-    price: '$29',
+    name: 'Enterprise Pro',
+    price: '$20',
     billing: 'per month',
-    badge: 'Production Ready',
-    color: '#2563eb',
+    badge: 'Most Popular',
+    color: '#4f46e5',
     popular: true,
     features: [
-      'Up to 25 Protected Domains',
-      'Deep Subdomain Discovery',
-      'Full DNS Zone Delegations',
-      'ML 5.48M Inference Core + Custom Rules',
-      '30-Day Threat Log Retention',
-      'Priority 24/7 Support'
+      'Up to 10 Protected Domains',
+      '1,000,000 Requests / Month',
+      'Full 2,000,000+ Signatures & ML Core',
+      'Layer 7 Volumetric DDoS Mitigation',
+      'Sub-Millisecond (0.12ms) Inspection',
+      '24/7 Priority SLA Response'
     ]
   },
   {
-    id: 'ultra',
-    name: 'Ultra',
-    price: '$99',
+    id: 'enterprise',
+    name: 'Dedicated Enterprise',
+    price: '$49',
     billing: 'per month',
-    badge: 'Enterprise SLA',
+    badge: 'Maximum Scale',
     color: '#7c3aed',
     features: [
-      'Unlimited Protected Domains',
-      'Instant Subdomain Discovery',
-      'Advanced Subdomain Delegations',
-      'Real-Time Retraining + Zero-Day Shield',
-      '365-Day Compliance Audit Retention',
-      'Dedicated Enterprise VIP SLA'
+      'Up to 15 Protected Domains',
+      '10,000,000+ Requests / Month',
+      'Dedicated ML Neural Vectorizer Node',
+      '639K+ AI Prompt Injection Shield',
+      'Automated DDoS Scrubber Mesh',
+      '15-Minute Guaranteed SLA Response'
     ]
   }
 ]

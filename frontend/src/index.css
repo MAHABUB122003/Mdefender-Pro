@@ -1166,3 +1166,232 @@ a { color: inherit; text-decoration: none; }
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(37,99,235,0.4);
 }
+
+/* ========================================================================= */
+/* ===== ENTERPRISE 3D DESIGN SYSTEM & KINETIC CYBER ANIMATIONS             */
+/* ========================================================================= */
+
+@keyframes float3D {
+  0%, 100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotateX(2deg) rotateY(-2deg);
+  }
+}
+
+@keyframes float3DRev {
+  0%, 100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotateX(-2deg) rotateY(2deg);
+  }
+}
+
+@keyframes pulseHalo {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes borderGlow3D {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes radarSweepScan {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmerGlow {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes dataPacketFlow {
+  0% {
+    stroke-dashoffset: 200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 3D Perspective Containers */
+.perspective-container {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.perspective-deep {
+  perspective: 2000px;
+  transform-style: preserve-3d;
+}
+
+/* 3D Kinetic Card */
+.card-3d-interactive {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.card-3d-interactive:hover {
+  transform: translateY(-6px) rotateX(3deg) rotateY(-3deg) scale3d(1.015, 1.015, 1.015);
+  box-shadow: 0 25px 60px -10px rgba(37, 99, 235, 0.3), 0 0 30px rgba(56, 189, 248, 0.15) !important;
+}
+
+/* 3D Floating Chip */
+.floating-chip-3d {
+  animation: float3D 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+  box-shadow: 0 14px 35px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+.floating-chip-3d-rev {
+  animation: float3DRev 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+  box-shadow: 0 14px 35px -5px rgba(0, 0, 0, 0.4), 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+/* Glowing 3D Glass Layer */
+.glass-panel-3d {
+  background: rgba(10, 15, 29, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  position: relative;
+}
+
+/* Isometric Cyber Grid Plane */
+.isometric-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 80%);
+  pointer-events: none;
+}
+
+/* Refined Enterprise 3D Elevated Card - Eye-Friendly Cyber Aesthetic */
+.neon-border-3d {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(99, 102, 241, 0.42) !important;
+  box-shadow: 0 16px 40px -12px rgba(99, 102, 241, 0.18), 0 0 0 1px rgba(99, 102, 241, 0.2) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  z-index: 2;
+}
+
+.neon-border-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12), transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.3s;
+}
+
+.neon-border-3d:hover {
+  border-color: rgba(99, 102, 241, 0.7) !important;
+  box-shadow: 0 20px 48px -10px rgba(99, 102, 241, 0.26), 0 0 24px rgba(99, 102, 241, 0.15) !important;
+}
+
+.neon-border-3d:hover::before {
+  opacity: 1;
+}
+
+/* HUD Corner Brackets */
+.hud-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: #38bdf8;
+  pointer-events: none;
+  opacity: 0.8;
+}
+.hud-corner-tl { top: 6px; left: 6px; border-top: 1.5px solid; border-left: 1.5px solid; }
+.hud-corner-tr { top: 6px; right: 6px; border-top: 1.5px solid; border-right: 1.5px solid; }
+.hud-corner-bl { bottom: 6px; left: 6px; border-bottom: 1.5px solid; border-left: 1.5px solid; }
+.hud-corner-br { bottom: 6px; right: 6px; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+
+/* ========================================================================= */
+/* MDefender Pro Infinite Scrolling Ticker Animation Styles                */
+/* ========================================================================= */
+@keyframes tickerScrollLeft {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes tickerScrollRight {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.security-ticker-track-left {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: tickerScrollLeft 48s linear infinite;
+}
+
+.security-ticker-track-right {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: tickerScrollRight 52s linear infinite;
+}
+
+.security-ticker-container:hover .security-ticker-track-left,
+.security-ticker-container:hover .security-ticker-track-right {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .security-ticker-track-left,
+  .security-ticker-track-right {
+    animation: none;
+    transform: none;
+  }
+}
+
+.ticker-fade-mask {
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+

@@ -43,9 +43,9 @@ const DEFAULT_PLANS = {
     name: 'Enterprise Pro',
     display_name: 'Enterprise Pro',
     badge: 'Most Popular',
-    monthly_price: 29,
-    yearly_price: 290,
-    website_limit: 25,
+    monthly_price: 20,
+    yearly_price: 190,
+    website_limit: 10,
     requests_per_day: 1000000,
     scans_per_day: 200,
     max_scan_size_mb: 25,
@@ -61,9 +61,9 @@ const DEFAULT_PLANS = {
     name: 'Dedicated Enterprise',
     display_name: 'Enterprise Ultimate',
     badge: 'Maximum Scale',
-    monthly_price: 99,
-    yearly_price: 990,
-    website_limit: 500,
+    monthly_price: 49,
+    yearly_price: 470,
+    website_limit: 15,
     requests_per_day: 10000000,
     scans_per_day: 10000,
     max_scan_size_mb: 100,
@@ -383,6 +383,59 @@ export default function AdminPricing() {
                           />
                         </div>
                       </div>
+
+                      {pid !== 'free' && (
+                        <div style={{ gridColumn: '1 / -1', marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #e2e8f0' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            <div>
+                              <label style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
+                                Paddle Monthly Price ID
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="pri_01..."
+                                value={p.price_id_monthly || ''}
+                                onChange={(e) => handleChange(pid, 'price_id_monthly', e.target.value.trim())}
+                                style={{
+                                  width: '100%',
+                                  padding: '5px 8px',
+                                  marginTop: '2px',
+                                  borderRadius: '6px',
+                                  background: '#ffffff',
+                                  border: '1px solid #cbd5e1',
+                                  color: '#0f172a',
+                                  fontFamily: 'monospace',
+                                  fontSize: '11px',
+                                  outline: 'none'
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
+                                Paddle Yearly Price ID
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="pri_01..."
+                                value={p.price_id_yearly || ''}
+                                onChange={(e) => handleChange(pid, 'price_id_yearly', e.target.value.trim())}
+                                style={{
+                                  width: '100%',
+                                  padding: '5px 8px',
+                                  marginTop: '2px',
+                                  borderRadius: '6px',
+                                  background: '#ffffff',
+                                  border: '1px solid #cbd5e1',
+                                  color: '#0f172a',
+                                  fontFamily: 'monospace',
+                                  fontSize: '11px',
+                                  outline: 'none'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -449,7 +502,7 @@ export default function AdminPricing() {
                           checked={p.ml_waf ?? false}
                           onChange={(e) => handleChange(pid, 'ml_waf', e.target.checked)}
                         />
-                        <span><strong>5,489,242+ Dataset ML WAF Classifier</strong></span>
+                        <span><strong>6,501,208+ Dataset ML WAF Classifier</strong></span>
                       </label>
 
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#334155', fontSize: '12px' }}>

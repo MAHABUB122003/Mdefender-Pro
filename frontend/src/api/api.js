@@ -367,6 +367,14 @@ export const api = {
     apiCall(`/api/v1/websites/${websiteId}/dns/${recordId}/toggle-proxy`, { method: 'POST' }),
   updateSslMode: (websiteId, sslMode) =>
     apiCall(`/api/v1/websites/${websiteId}/ssl`, { method: 'POST', body: JSON.stringify({ ssl_mode: sslMode }) }),
+  getUniversalSsl: (websiteId) =>
+    apiCall(`/api/v1/websites/${websiteId}/ssl`),
+  updateSslSettings: (websiteId, settings) =>
+    apiCall(`/api/v1/websites/${websiteId}/ssl/settings`, { method: 'POST', body: JSON.stringify(settings) }),
+  reissueEdgeCert: (websiteId) =>
+    apiCall(`/api/v1/websites/${websiteId}/ssl/reissue`, { method: 'POST' }),
+  probeSslHealth: (websiteId) =>
+    apiCall(`/api/v1/websites/${websiteId}/ssl/probe`),
   toggleBotChallenge: (websiteId, enabled, mode = 'interactive_turnstile') =>
     apiCall(`/api/v1/websites/${websiteId}/bot-challenge`, {
       method: 'POST',
@@ -380,6 +388,14 @@ export const api = {
   },
   upgradePlan: (days = 30) => apiCall('/api/user/upgrade-plan', { method: 'POST', body: JSON.stringify({ plan: 'premium', days }) }),
   downgradePlan: () => apiCall('/api/user/downgrade-plan', { method: 'POST' }),
+  // Paddle Billing APIs
+  getBillingConfig: () => apiCall('/api/v1/billing/config'),
+  getBillingPlans: () => apiCall('/api/v1/billing/plans'),
+  createPaddleCheckout: (data) => apiCall('/api/v1/billing/checkout', { method: 'POST', body: JSON.stringify(data) }),
+  getBillingSubscription: () => apiCall('/api/v1/billing/subscription'),
+  cancelSubscription: () => apiCall('/api/v1/billing/cancel', { method: 'POST' }),
+  changeBillingPlan: (plan) => apiCall('/api/v1/billing/change-plan', { method: 'POST', body: JSON.stringify({ plan }) }),
+
   getPaymentConfig: () => apiCall('/api/payment/config'),
   createStripeCheckoutSession: (data) => apiCall('/api/payment/create-checkout-session', { method: 'POST', body: JSON.stringify(data) }),
   verifyStripeSession: (sessionId) => apiCall('/api/payment/verify-session', { method: 'POST', body: JSON.stringify({ session_id: sessionId }) }),

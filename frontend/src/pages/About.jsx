@@ -10,16 +10,16 @@ export default function About() {
   const [activeTab, setActiveTab] = useState('architecture')
 
   const stats = [
-    { value: '5,489,242+', label: 'ML Neural Training Vectors', icon: 'fa-brain', color: '#6366f1' },
+    { value: '6,501,208+', label: 'ML Neural Threat Vectors', icon: 'fa-brain', color: '#6366f1' },
     { value: '2,000,000+', label: 'Hyper-Scale Attack Signatures', icon: 'fa-shield-halved', color: '#3b82f6' },
-    { value: '<0.50ms', label: 'Single-Pass Latency', icon: 'fa-bolt', color: '#10b981' },
-    { value: '99.99%', label: 'Zero-Day Detection Rate', icon: 'fa-bullseye', color: '#8b5cf6' },
+    { value: '0.12ms', label: 'Single-Pass Latency', icon: 'fa-bolt', color: '#10b981' },
+    { value: '99.23%', label: 'ML Precision (0.75% FPR)', icon: 'fa-bullseye', color: '#8b5cf6' },
   ]
 
   const comparisonData = [
     {
       feature: 'Core Threat Inspection Engine',
-      mdefender: '2,000,000+ Hyper-Scale Signatures + 5.48M ML Neural Core',
+      mdefender: '2,000,000+ Hyper-Scale Signatures + 6.5M+ ML Neural Core',
       traditional: 'Static Regex Pattern Matchers Only',
       competitor: 'Basic Heuristic Scoring',
       highlight: true
@@ -27,14 +27,14 @@ export default function About() {
 
     {
       feature: 'Zero-Day & Polymorphic Attack Defense',
-      mdefender: 'Real-time N-Gram Character Vectorization & Anomaly AI',
+      mdefender: 'Real-time N-Gram Character Vectorization & 639K+ LLM Guard',
       traditional: 'Fails until CVE signature is manually written',
       competitor: 'Delayed Cloud Signature Updates',
       highlight: true
     },
     {
       feature: 'Inspection Latency Overhead',
-      mdefender: '< 0.85ms (Ultra-Low Sub-Millisecond)',
+      mdefender: '0.12ms (Sub-Millisecond Edge Evaluation)',
       traditional: '15ms - 45ms (Noticeable slowdown)',
       competitor: '8ms - 20ms',
       highlight: false
@@ -214,7 +214,7 @@ export default function About() {
             maxWidth: 780,
             margin: '0 auto 40px'
           }}>
-            Traditional WAFs rely on brittle static regex rules that threat actors easily bypass with obfuscation. MDefender Pro combines <strong>2,000+ deterministic security rules</strong> with a <strong>5,489,242+ payload-trained Neural Network</strong> to stop zero-days and layer-7 floods in sub-millisecond real time.
+            Traditional WAFs rely on brittle static regex rules that threat actors easily bypass with obfuscation. MDefender Pro combines <strong>2,000+ deterministic security rules</strong> with a <strong>6,501,208+ payload-trained Neural Network</strong> to stop zero-days, 639K+ LLM jailbreaks, and layer-7 floods in sub-millisecond (0.12ms) real time.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 44 }}>
@@ -288,7 +288,7 @@ export default function About() {
                   Autonomous Neural WAF &amp; Zero-Day Payload Inspection
                 </div>
                 <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
-                  Trained on 5,489,242+ hostile payloads &middot; Evaluated in &lt;0.85ms at global cloud edge
+                  Trained on 6,501,208+ hostile payloads &middot; Evaluated in 0.12ms at 240+ global cloud edge PoPs
                 </div>
               </div>
 
@@ -302,7 +302,7 @@ export default function About() {
                   fontSize: 12,
                   fontWeight: 700
                 }}>
-                  <i className="fas fa-circle" style={{ fontSize: 8, marginRight: 5 }}></i> 0.38ms Latency
+                  <i className="fas fa-circle" style={{ fontSize: 8, marginRight: 5 }}></i> 0.12ms Latency
                 </span>
                 <span style={{
                   padding: '5px 12px',
@@ -313,7 +313,7 @@ export default function About() {
                   fontSize: 12,
                   fontWeight: 700
                 }}>
-                  5.48M+ Model Loaded
+                  6.5M+ Neural Model Loaded
                 </span>
               </div>
             </div>
@@ -330,15 +330,24 @@ export default function About() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 20,
-          background: dark ? 'rgba(15, 23, 42, 0.7)' : '#ffffff',
-          borderRadius: 18,
-          padding: '36px 30px',
-          border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
-          boxShadow: dark ? '0 10px 40px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.04)'
+          gap: 20
         }}>
           {stats.map((st, idx) => (
-            <div key={idx} style={{ textAlign: 'center', padding: '10px 16px' }}>
+            <div
+              key={idx}
+              className="card-3d-interactive"
+              style={{
+                textAlign: 'center',
+                padding: '30px 20px',
+                background: dark ? 'rgba(15, 23, 42, 0.75)' : '#ffffff',
+                borderRadius: 18,
+                border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                boxShadow: dark ? '0 12px 35px rgba(0,0,0,0.45)' : '0 4px 20px rgba(0,0,0,0.04)',
+                position: 'relative'
+              }}
+            >
+              <div className="hud-corner hud-corner-tl" style={{ borderColor: st.color }}></div>
+              <div className="hud-corner hud-corner-br" style={{ borderColor: st.color }}></div>
               <div style={{
                 width: 44,
                 height: 44,
@@ -381,15 +390,18 @@ export default function About() {
           gap: 24
         }}>
           {corePillars.map((p, i) => (
-            <div key={i} className="about-card" style={{
+            <div key={i} className="about-card card-3d-interactive" style={{
               background: dark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
               borderRadius: 16,
               padding: '32px 28px',
               border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              position: 'relative'
             }}>
+              <div className="hud-corner hud-corner-tl" style={{ borderColor: p.color }}></div>
+              <div className="hud-corner hud-corner-br" style={{ borderColor: p.color }}></div>
               <div>
                 <div style={{
                   width: 50,
@@ -540,7 +552,7 @@ export default function About() {
               Experience the Sub-Millisecond AI WAF Difference
             </div>
             <div style={{ fontSize: 13, color: s.textSecondary }}>
-              Deploy 2,000 WAF rules + 5,489,242+ dataset neural protection in under 2 minutes.
+              Deploy 2,000 WAF rules + 6,501,208+ dataset neural protection in under 2 minutes.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -634,7 +646,7 @@ export default function About() {
             border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`
           }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', marginBottom: 8 }}>
-              Stage 3: 5.48M+ Neural Inference
+              Stage 3: 6.5M+ Neural Inference
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 800, color: s.text, marginBottom: 10 }}>
               Polymorphic AI Deep Vectorization

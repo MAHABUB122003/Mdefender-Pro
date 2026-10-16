@@ -48,6 +48,10 @@ export default function UserSidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-link"></i></span>
             <span>Connect</span>
           </NavLink>
+          <NavLink to="/user/pricing">
+            <span className="nav-icon"><i className="fas fa-tags"></i></span>
+            <span>Pricing &amp; Plans</span>
+          </NavLink>
           <NavLink to="/user/blacklist">
             <span className="nav-icon"><i className="fas fa-ban"></i></span>
             <span>Blacklist</span>

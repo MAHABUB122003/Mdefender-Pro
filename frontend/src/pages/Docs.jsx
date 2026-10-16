@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import PublicNavbar from '../components/PublicNavbar'
+import Docs3DArchitecture from '../components/Docs3DArchitecture'
 import copyToClipboard from '../utils/clipboard'
 
 const docSections = [
@@ -15,7 +16,7 @@ const docSections = [
     ]
   },
   {
-    group: '5,489,242+ Dataset ML Core',
+    group: '6,501,208+ Dataset ML Core',
     items: [
       { id: 'ml-overview', label: 'Machine Learning Model', icon: 'fa-microchip' },
       { id: 'ml-vectorizer', label: 'Character N-Gram Vectorizer', icon: 'fa-cubes-stacked' },
@@ -83,46 +84,58 @@ function CodeBlock({ code, language = 'javascript' }) {
   }
 
   return (
-    <div style={{
-      borderRadius: '10px',
-      overflow: 'hidden',
-      margin: '18px 0',
-      background: '#070b14',
-      border: '1px solid #1e293b',
-      boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-    }}>
+    <div
+      className="card-3d-interactive"
+      style={{
+        borderRadius: '12px',
+        overflow: 'hidden',
+        margin: '20px 0',
+        background: '#040711',
+        border: '1px solid rgba(59, 130, 246, 0.3)',
+        boxShadow: '0 12px 30px rgba(0,0,0,0.5), 0 0 20px rgba(37, 99, 235, 0.1)',
+        position: 'relative'
+      }}
+    >
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '8px 16px',
-        background: '#04070e',
-        borderBottom: '1px solid #1e293b',
+        padding: '10px 16px',
+        background: '#070c18',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         fontSize: '11px',
         color: '#94a3b8',
         fontFamily: 'monospace'
       }}>
-        <span>{language.toUpperCase()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }}></span>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></span>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+          <span style={{ marginLeft: '6px', color: '#38bdf8', fontWeight: 'bold' }}>{language.toUpperCase()}</span>
+        </div>
         <button
           onClick={handleCopy}
           style={{
-            background: 'none',
-            border: 'none',
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '6px',
+            padding: '3px 10px',
             color: copied ? '#10b981' : '#cbd5e1',
             cursor: 'pointer',
             fontSize: '11px',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px'
+            gap: '6px',
+            transition: 'all 0.2s'
           }}
         >
           <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`}></i>
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? 'Copied' : 'Copy Code'}
         </button>
       </div>
       <pre style={{
         margin: 0,
-        padding: '18px 20px',
+        padding: '20px',
         color: '#e2e8f0',
         fontSize: '13px',
         lineHeight: '1.65',
@@ -335,7 +348,7 @@ export default function Docs() {
             <div>
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>What is MDefender Pro?</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                <strong>MDefender Pro</strong> is an enterprise-grade, hybrid Web Application Firewall (WAF) and real-time API protection suite. It combines a deterministic catalog of <strong>2,000 verified WAF signature rules</strong> with a state-of-the-art <strong>Machine Learning model trained on 5.48M++ real-world attack vectors</strong> to safeguard applications against OWASP Top 10 vulnerabilities, zero-day payloads, and bot scrapers with sub-millisecond execution.
+                <strong>MDefender Pro</strong> is an enterprise-grade, hybrid Web Application Firewall (WAF) and real-time API protection suite. It combines a deterministic catalog of <strong>2,000 verified WAF signature rules</strong> with a state-of-the-art <strong>Machine Learning model trained on 6,501,208+ real-world attack vectors</strong> (and 639K+ Generative AI prompt injections) to safeguard applications against OWASP Top 10 vulnerabilities, zero-day payloads, and bot scrapers with 0.12ms execution.
               </p>
 
               <div style={{
@@ -344,33 +357,42 @@ export default function Docs() {
                 gap: '16px',
                 margin: '28px 0'
               }}>
-                <div style={{ padding: '22px', borderRadius: '10px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow }}>
-                  <div style={{ color: t.accentText, fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
-                    <i className="fas fa-microchip" style={{ marginRight: '6px' }}></i> 5,489,242+ Dataset ML Model
+                <div className="card-3d-interactive" style={{ padding: '24px', borderRadius: '14px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow, position: 'relative' }}>
+                  <div className="hud-corner hud-corner-tl" style={{ borderColor: t.accentText }}></div>
+                  <div className="hud-corner hud-corner-br" style={{ borderColor: t.accentText }}></div>
+                  <div style={{ color: t.accentText, fontWeight: '800', fontSize: '15px', marginBottom: '8px' }}>
+                    <i className="fas fa-microchip" style={{ marginRight: '8px' }}></i> 6,501,208+ Dataset ML Model
                   </div>
                   <p style={{ fontSize: '13px', color: t.muted, margin: 0, lineHeight: '1.6' }}>
-                    Trained across CSIC HTTP, CICIDS, and honeypot corpora using character n-gram TF-IDF vectorization.
+                    Trained across CSIC HTTP, CICIDS, and 639K+ AI jailbreak corpora using character n-gram TF-IDF vectorization (99.23% precision).
                   </p>
                 </div>
 
-                <div style={{ padding: '22px', borderRadius: '10px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow }}>
-                  <div style={{ color: dark ? '#60a5fa' : '#2563eb', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
-                    <i className="fas fa-shield-halved" style={{ marginRight: '6px' }}></i> 2,000 WAF Rules
+                <div className="card-3d-interactive" style={{ padding: '24px', borderRadius: '14px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow, position: 'relative' }}>
+                  <div className="hud-corner hud-corner-tl" style={{ borderColor: '#60a5fa' }}></div>
+                  <div className="hud-corner hud-corner-br" style={{ borderColor: '#60a5fa' }}></div>
+                  <div style={{ color: dark ? '#60a5fa' : '#2563eb', fontWeight: '800', fontSize: '15px', marginBottom: '8px' }}>
+                    <i className="fas fa-shield-halved" style={{ marginRight: '8px' }}></i> 2,000 WAF Rules
                   </div>
                   <p style={{ fontSize: '13px', color: t.muted, margin: 0, lineHeight: '1.6' }}>
                     Exhaustive regex catalog covering SQLi, XSS, RCE, LFI, CMS exploits, and scanner bots.
                   </p>
                 </div>
 
-                <div style={{ padding: '22px', borderRadius: '10px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow }}>
-                  <div style={{ color: '#059669', fontWeight: '700', fontSize: '15px', marginBottom: '6px' }}>
-                    <i className="fas fa-bolt" style={{ marginRight: '6px' }}></i> &lt; 0.85ms Latency
+                <div className="card-3d-interactive" style={{ padding: '24px', borderRadius: '14px', background: t.cardBg, border: t.cardBorder, boxShadow: t.cardShadow, position: 'relative' }}>
+                  <div className="hud-corner hud-corner-tl" style={{ borderColor: '#10b981' }}></div>
+                  <div className="hud-corner hud-corner-br" style={{ borderColor: '#10b981' }}></div>
+                  <div style={{ color: '#10b981', fontWeight: '800', fontSize: '15px', marginBottom: '8px' }}>
+                    <i className="fas fa-bolt" style={{ marginRight: '8px' }}></i> &lt; 0.12ms Latency
                   </div>
                   <p style={{ fontSize: '13px', color: t.muted, margin: 0, lineHeight: '1.6' }}>
                     Pre-compiled in-memory lookup table and low-overhead SGD inference guarantee zero application lag.
                   </p>
                 </div>
               </div>
+
+              {/* 3D Interactive Pipeline Architecture Diagram */}
+              <Docs3DArchitecture />
             </div>
           )}
 
@@ -414,7 +436,7 @@ export default function Docs() {
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                     <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(139,92,246,0.15)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', flexShrink: 0 }}>3</span>
                     <div>
-                      <strong style={{ fontSize: '15px', color: t.heading }}>Tier 2: 5,489,242+ Dataset ML Inference Classifier (0.34ms)</strong>
+                      <strong style={{ fontSize: '15px', color: t.heading }}>Tier 2: 6,501,208+ Dataset ML Inference Classifier (0.12ms)</strong>
                       <p style={{ fontSize: '13px', color: t.muted, marginTop: '4px', lineHeight: '1.6' }}>
                         Vectorizes text into character n-grams and evaluates against the trained linear SGD / logistic model, outputting probability confidence and attack category.
                       </p>
@@ -649,11 +671,11 @@ curl -i "https://yourdomain.com/"`}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: t.accentText, fontSize: '12px', fontWeight: '700' }}>AI Core</span>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>5,489,242+ Training Samples</span>
+                <span style={{ padding: '4px 12px', borderRadius: '20px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#059669', fontSize: '12px', fontWeight: '700' }}>6,501,208+ Training Samples</span>
               </div>
-              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>The 5,489,242+ Dataset Machine Learning Core</h1>
+              <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>The 6,501,208+ Dataset Machine Learning Core</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                MDefender Pro's Machine Learning core is engineered to stop polymorphic payloads, zero-day CVE exploits, and obfuscations that evade traditional static signatures.
+                MDefender Pro's Machine Learning core is engineered to stop polymorphic payloads, zero-day CVE exploits, and 639K+ Generative AI prompt injection attacks that evade traditional static signatures.
               </p>
 
               <div style={{
@@ -666,10 +688,10 @@ curl -i "https://yourdomain.com/"`}
               }}>
                 <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '12px', color: t.accentText }}>Training Corpus &amp; Dataset Highlights:</h3>
                 <ul style={{ paddingLeft: '20px', fontSize: '13px', lineHeight: '1.8', color: t.muted }}>
-                  <li><strong>5,489,242+ Sample Corpus:</strong> Combines HTTP traffic corpora from CSIC 2010, CICIDS2017, OWASP ModSecurity Core Rule Set vectors, and real-world honeypot captures.</li>
+                  <li><strong>6,501,208+ Sample Corpus:</strong> Combines HTTP traffic corpora from CSIC 2010, CICIDS2017, OWASP ModSecurity Core Rule Set vectors, 639,536 Generative AI Jailbreaks, and real-world honeypot captures.</li>
                   <li><strong>Character N-Gram Vectorizer:</strong> Analyzes 3-gram to 5-gram token distributions to capture structural syntactic patterns rather than relying on exact keyword substrings.</li>
-                  <li><strong>Dual Classifier Output:</strong> Generates a binary attack probability (0.0 to 1.0) and a multi-class threat classifier (SQLi, XSS, RCE, LFI, SSRF, Deserialization).</li>
-                  <li><strong>Inference Speed:</strong> Optimized via scikit-learn SGDClassifier / joblib serialization to execute inference in less than 0.35ms.</li>
+                  <li><strong>Dual Classifier Output:</strong> Generates a binary attack probability (0.0 to 1.0) and a multi-class threat classifier (SQLi, XSS, RCE, LFI, SSRF, Deserialization, AI Prompt Injection).</li>
+                  <li><strong>Inference Speed:</strong> Optimized via scikit-learn SGDClassifier / joblib serialization to execute inference in less than 0.12ms at 99.23% ML precision.</li>
                 </ul>
               </div>
 
@@ -1013,7 +1035,7 @@ curl -i "http://localhost:5000/api/fetch?url=http://169.254.169.254/latest/meta-
                 Cloud WAF (Smart Anycast DNS &amp; Proxy)
               </h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                MDefender Pro Cloud WAF acts as an intelligent Anycast reverse proxy shield in front of your web servers &mdash; exactly like Cloudflare. It inspects all inbound HTTP/HTTPS traffic across <strong>2,000 signature rules</strong> and the <strong>5.48M++ attack ML engine</strong> with sub-millisecond execution (0.35ms), terminating malicious requests with a beautiful, high-security <strong>403 Forbidden Block Page</strong> before they can ever touch your origin server.
+                MDefender Pro Cloud WAF acts as an intelligent Anycast reverse proxy shield in front of your web servers &mdash; exactly like Cloudflare. It inspects all inbound HTTP/HTTPS traffic across <strong>2,000 signature rules</strong> and the <strong>6,501,208+ attack ML engine</strong> with sub-millisecond execution (0.12ms), terminating malicious requests with a beautiful, high-security <strong>403 Forbidden Block Page</strong> before they can ever touch your origin server.
               </p>
 
               <div style={{
@@ -1353,7 +1375,7 @@ class MDefenderWaf
 
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>WordPress Plugin &amp; ML Cloud Security</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                Protect any WordPress site with the official <strong>MDefender Pro Security Plugin</strong>. It integrates your WordPress site directly with our <strong>5,489,242+ Dataset Machine Learning Core</strong> for real-time WAF request blocking and deep malware scanning.
+                Protect any WordPress site with the official <strong>MDefender Pro Security Plugin</strong>. It integrates your WordPress site directly with our <strong>6,501,208+ Dataset Machine Learning Core</strong> for real-time WAF request blocking and deep malware scanning.
               </p>
 
               {/* Download Plugin Action Card */}
@@ -1638,7 +1660,7 @@ class MDefenderWaf
 
               <h1 style={{ fontSize: '34px', fontWeight: '900', marginBottom: '16px', color: t.heading }}>Attack Learning Lab &amp; Feedback Hub</h1>
               <p style={{ fontSize: '15px', lineHeight: '1.7', color: t.body, marginBottom: '24px' }}>
-                Located at <code className="doc-inline-code">/admin/learning</code>, the <strong>Attack Learning Lab</strong> empowers security teams to handle false positive reports, test new attack vectors in a live sandbox, and fine-tune the 5,489,242+ dataset ML classifier with <strong>zero server downtime</strong>.
+                Located at <code className="doc-inline-code">/admin/learning</code>, the <strong>Attack Learning Lab</strong> empowers security teams to handle false positive reports, test new attack vectors in a live sandbox, and fine-tune the 6,501,208+ dataset ML classifier with <strong>zero server downtime</strong>.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -1706,10 +1728,10 @@ class MDefenderWaf
                       <td style={{ padding: '12px 16px', color: '#059669' }}>65,000 req/sec</td>
                     </tr>
                     <tr style={{ borderBottom: `1px solid ${t.tableBorder}` }}>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', color: t.heading }}>5,489,242+ Dataset ML Inference</td>
-                      <td style={{ padding: '12px 16px', color: t.accentText, fontWeight: '700' }}>0.34 ms</td>
-                      <td style={{ padding: '12px 16px', color: dark ? '#60a5fa' : '#2563eb' }}>0.55 ms</td>
-                      <td style={{ padding: '12px 16px', color: '#059669' }}>48,000 req/sec</td>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', color: t.heading }}>6,501,208+ Dataset ML Inference</td>
+                      <td style={{ padding: '12px 16px', color: t.accentText, fontWeight: '700' }}>0.12 ms</td>
+                      <td style={{ padding: '12px 16px', color: dark ? '#60a5fa' : '#2563eb' }}>0.25 ms</td>
+                      <td style={{ padding: '12px 16px', color: '#059669' }}>75,000 req/sec</td>
                     </tr>
                     <tr>
                       <td style={{ padding: '12px 16px', fontWeight: '700', color: t.heading }}>Total End-to-End Decision</td>
@@ -1761,8 +1783,8 @@ class MDefenderWaf
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
                 {[
                   {
-                    q: 'How does the 5,489,242+ dataset ML model differ from static regex rules?',
-                    a: 'Static rules match exact known signatures. The 5,489,242+ dataset ML model vectorizes structural character n-grams and calculates statistical anomaly probability, enabling it to stop never-before-seen zero-day exploits and polymorphic bypasses.'
+                    q: 'How does the 6,501,208+ dataset ML model differ from static regex rules?',
+                    a: 'Static rules match exact known signatures. The 6,501,208+ dataset ML model vectorizes structural character n-grams and calculates statistical anomaly probability, enabling it to stop never-before-seen zero-day exploits, polymorphic bypasses, and 639K+ prompt injections.'
                   },
                   {
                     q: 'Does MDefender Pro add noticeable latency to HTTP requests?',

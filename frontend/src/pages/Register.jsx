@@ -1,11 +1,15 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import theme from '../utils/theme'
 import api from '../api/api'
 
 export default function Register() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const planParam = searchParams.get('plan') || ''
+  const cycleParam = searchParams.get('cycle') || 'monthly'
+
   const { dark } = useTheme()
   const s = theme(dark)
 
@@ -359,6 +363,25 @@ export default function Register() {
               <p style={{ color: dark ? '#94a3b8' : '#64748b', fontSize: 13, margin: 0 }}>
                 Deploy AI Web Defense & DDoS Mitigation in minutes.
               </p>
+              {planParam && (
+                <div style={{
+                  marginTop: 12,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  background: 'rgba(99,102,241,0.12)',
+                  border: '1px solid rgba(99,102,241,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: '#6366f1'
+                }}>
+                  <i className="fas fa-tags"></i>
+                  <span>Selected Plan: <strong>{planParam.toUpperCase()}</strong> ({cycleParam}) &mdash; Auto-checkout upon login</span>
+                </div>
+              )}
             </div>
 
             {/* Google Fast Sign-Up */}
@@ -544,7 +567,7 @@ export default function Register() {
             {/* Bottom Link to Sign In */}
             <div style={{ textAlign: 'center', marginTop: 22, color: dark ? '#94a3b8' : '#64748b', fontSize: 13 }}>
               Already registered?{' '}
-              <Link to="/user/login" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 700 }}>
+              <Link to={planParam ? `/user/login?plan=${planParam}&cycle=${cycleParam}` : '/user/login'} style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 700 }}>
                 Sign In to Dashboard
               </Link>
             </div>
@@ -636,7 +659,7 @@ export default function Register() {
                   Instant Simulation (Development Mode)
                 </div>
                 <Link
-                  to={`/auth/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`}
+                  to={`/auth/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}${planParam ? `&plan=${planParam}&cycle=${cycleParam}` : ''}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -710,7 +733,7 @@ export default function Register() {
                 <i className="fas fa-pen" style={{ fontSize: 10 }}></i> Wrong email? Edit
               </button>
 
-              <Link to="/user/login" style={{ color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>
+              <Link to={planParam ? `/user/login?plan=${planParam}&cycle=${cycleParam}` : '/user/login'} style={{ color: '#6366f1', fontWeight: 600, textDecoration: 'none' }}>
                 Return to Login
               </Link>
             </div>

@@ -15,6 +15,8 @@ import Layout from './components/Layout'
 import UserLayout from './components/UserLayout'
 import Landing from './pages/Landing'
 import About from './pages/About'
+import Industries from './pages/Industries'
+import ProductDetail from './pages/ProductDetail'
 import Pricing from './pages/Pricing'
 import Blog from './pages/Blog'
 import Register from './pages/Register'
@@ -25,6 +27,7 @@ import UserDomains from './pages/UserDomains'
 import UserLogs from './pages/UserLogs'
 import UserRules from './pages/UserRules'
 import UserSettings from './pages/UserSettings'
+import UserPricing from './pages/UserPricing'
 import UserConnect from './pages/UserConnect'
 import UserBlacklist from './pages/UserBlacklist'
 import UserTools from './pages/UserTools'
@@ -95,7 +98,10 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/products" element={<ProductDetail />} />
+      <Route path="/products/:slug" element={<ProductDetail />} />
       <Route path="/about" element={<About />} />
+      <Route path="/industries" element={<Navigate to="/products" replace />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/blog" element={<Blog />} />
@@ -126,6 +132,8 @@ function App() {
         <Route path="websites" element={<UserWebsites />} />
         <Route path="tools" element={<UserTools />} />
         <Route path="connect" element={<UserConnect />} />
+        <Route path="pricing" element={<UserPricing />} />
+        <Route path="plans" element={<Navigate to="/user/pricing" replace />} />
         <Route path="blacklist" element={<UserBlacklist />} />
         <Route path="settings" element={<UserSettings />} />
         <Route path="sessions" element={<SessionsPage />} />

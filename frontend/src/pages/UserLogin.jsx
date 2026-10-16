@@ -9,6 +9,8 @@ export default function UserLogin() {
   const { dark } = useTheme()
   const s = theme(dark)
   const [searchParams, setSearchParams] = useSearchParams()
+  const planParam = searchParams.get('plan') || ''
+  const cycleParam = searchParams.get('cycle') || 'monthly'
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
   const [mfaCode, setMfaCode] = useState('')
@@ -18,6 +20,10 @@ export default function UserLogin() {
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(searchParams.get('verified') === 'true')
   const [rememberMe, setRememberMe] = useState(false)
+
+  const getPostLoginUrl = () => {
+    return planParam ? `/user/pricing?plan=${planParam}&cycle=${cycleParam}` : '/user/dashboard'
+  }
 
   useEffect(() => {
     if (showSuccess) {
@@ -39,20 +45,20 @@ export default function UserLogin() {
       if (mfaRequired) {
         const data = await api.verifyMFA(tempToken, mfaCode)
         if (data.status === 'success') {
-          window.location.href = '/user/dashboard'
+          window.location.href = getPostLoginUrl()
         } else {
           setError(data.message || 'Invalid verification code')
         }
       } else {
         const data = await api.login(emailOrUsername, password, rememberMe)
         if (data.status === 'success') {
-          window.location.href = '/user/dashboard'
+          window.location.href = getPostLoginUrl()
         } else if (data.mfa_required) {
           setMfaRequired(true)
           setTempToken(data.temp_token || '')
           setError('')
         } else if (data.email_not_verified) {
-          navigate('/auth/verify-email')
+          navigate(`/auth/verify-email${planParam ? `?plan=${planParam}&cycle=${cycleParam}` : ''}`)
           return
         } else {
           setError(data.message || 'Invalid credentials')
@@ -147,6 +153,26 @@ export default function UserLogin() {
               ? 'Enter the 6-digit code from your authenticator app'
               : 'Sign in to your security dashboard'}
           </p>
+
+          {planParam && (
+            <div style={{
+              marginTop: 14,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: 'rgba(99,102,241,0.12)',
+              border: '1px solid rgba(99,102,241,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: '#6366f1'
+            }}>
+              <i className="fas fa-tags"></i>
+              <span>Sign in to purchase <strong>{planParam.toUpperCase()}</strong> ({cycleParam})</span>
+            </div>
+          )}
         </div>
 
         {showSuccess && (
@@ -222,7 +248,7 @@ export default function UserLogin() {
             </button>
 
             <div style={{ textAlign: 'center', marginTop: 24, color: dark ? '#64748b' : '#64748b', fontSize: 13 }}>
-              Don&apos;t have an account? <Link to="/register" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 600 }}>Create one</Link>
+              Don&apos;t have an account? <Link to={planParam ? `/register?plan=${planParam}&cycle=${cycleParam}` : '/register'} style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 600 }}>Create one</Link>
             </div>
             <div style={{ textAlign: 'center', marginTop: 14 }}>
               <Link to="/" style={{ color: dark ? '#475569' : '#94a3b8', fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>

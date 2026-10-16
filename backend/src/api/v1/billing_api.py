@@ -48,7 +48,8 @@ def _feature_enabled(db):
 
 class CheckoutRequest(BaseModel):
     plan: str
-    return_url: str
+    billing_cycle: str | None = "monthly"
+    return_url: str | None = None
     success_url: str | None = None
 
 
@@ -56,15 +57,31 @@ class ChangePlanRequest(BaseModel):
     plan: str
 
 
+@router.get("/config")
+async def get_billing_config():
+    db = MongoDB()
+    service = _paddle(db)
+    return success({
+        "enabled": _feature_enabled(db),
+        "configured": service.configured,
+        "environment": service.environment,
+        "client_token": service.client_token,
+    })
+
+
 @router.get("/plans")
 async def list_plans(user=Depends(get_current_user_optional)):
     db = MongoDB()
     plans = PlanService(db).all_plans()
     current_plan = SubscriptionService(db).effective_plan(user) if user else "free"
+    service = _paddle(db)
     return success({
         "plans": plans,
         "current_plan": current_plan,
         "billing_enabled": _feature_enabled(db),
+        "paddle_configured": service.configured,
+        "client_token": service.client_token,
+        "environment": service.environment,
     })
 
 
@@ -78,23 +95,38 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user))
     if not service.configured:
         return success({"enabled": True, "checkout_url": None,
                         "message": "Billing is not configured on the server yet"})
-    plan = PlanService(db).get_plan(body.plan)
-    price_id = plan.get("price_id", "")
+    plan_service = PlanService(db)
+    plan = plan_service.get_plan(body.plan)
+    price_id = plan_service.get_price_id(body.plan, body.billing_cycle)
     if not price_id:
         return success({"enabled": True, "checkout_url": None,
-                        "message": f"No Paddle price configured for the {plan['name']} plan"})
+                        "message": f"No Paddle price configured for the {plan.get('name', body.plan)} ({body.billing_cycle}) plan"})
+    
+    uid = str(user.get("id") or user.get("_id"))
+    customer_email = user.get("email", "")
+    return_url = body.return_url or body.success_url or "http://localhost:5173/settings"
+
     checkout = await service.create_checkout_session(
         items=[{"price_id": price_id, "quantity": 1}],
-        customer_email=user.get("email"),
-        custom_data={"user_id": user["id"], "plan": body.plan},
-        success_url=body.success_url or body.return_url,
-        cancel_url=body.return_url,
+        customer_email=customer_email,
+        custom_data={"user_id": uid, "plan": body.plan, "billing_cycle": body.billing_cycle or "monthly"},
+        success_url=body.success_url or return_url,
+        cancel_url=return_url,
     )
-    if not checkout.get("checkout_url"):
-        return success({"enabled": True, "checkout_url": None,
-                        "message": checkout.get("error", "Billing temporarily unavailable")})
-    return success({"enabled": True, "checkout_id": checkout.get("checkout_id"),
-                    "checkout_url": checkout.get("checkout_url")})
+    if checkout.get("error"):
+        return {
+            "success": False,
+            "error": {
+                "code": checkout.get("error_code", "CHECKOUT_ERROR"),
+                "message": checkout.get("error")
+            }
+        }
+    return success({
+        "enabled": True,
+        "checkout_id": checkout.get("checkout_id"),
+        "checkout_url": checkout.get("checkout_url"),
+        "price_id": price_id
+    })
 
 
 @router.get("/subscription")
@@ -154,6 +186,20 @@ async def paddle_webhook(request: Request):
         return {"success": False, "error": {"code": "INVALID_PAYLOAD",
                                             "message": "Malformed event payload"}}
     event_type = event.get("event_type", event.get("type", "unknown"))
+    event_id = event.get("event_id") or data.get("id")
+    if event_id:
+        try:
+            existing = db.paddle_events.find_one({"event_id": event_id})
+            if existing:
+                return success({"ok": True, "duplicate": True, "event_type": event_type})
+            db.paddle_events.insert_one({
+                "event_id": event_id,
+                "event_type": event_type,
+                "received_at": datetime.now()
+            })
+        except Exception:
+            pass
+
     data = event.get("data", event)
 
     user_id = None

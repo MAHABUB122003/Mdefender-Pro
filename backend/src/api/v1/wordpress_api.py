@@ -78,6 +78,7 @@ async def plugin_meta():
 
 
 @router.get("/plugin")
+@router.get("/plugin/download")
 async def download_plugin():
     info = _plugin_info()
     if not info:

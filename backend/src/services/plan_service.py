@@ -13,6 +13,8 @@ DEFAULT_PLANS = {
         "display_name": "Starter",
         "badge": "Free Forever",
         "price_id": "",
+        "price_id_monthly": "",
+        "price_id_yearly": "",
         "monthly_price": 0,
         "yearly_price": 0,
         "website_limit": 1,
@@ -32,6 +34,8 @@ DEFAULT_PLANS = {
         "display_name": "Developer Go",
         "badge": "Growing Apps",
         "price_id": "",
+        "price_id_monthly": "",
+        "price_id_yearly": "",
         "monthly_price": 9,
         "yearly_price": 90,
         "website_limit": 5,
@@ -51,8 +55,10 @@ DEFAULT_PLANS = {
         "display_name": "Enterprise Pro",
         "badge": "Most Popular",
         "price_id": "",
-        "monthly_price": 29,
-        "yearly_price": 290,
+        "price_id_monthly": "",
+        "price_id_yearly": "",
+        "monthly_price": 20,
+        "yearly_price": 190,
         "website_limit": 10,
         "requests_per_day": 1000000,
         "scans_per_day": 200,
@@ -71,9 +77,11 @@ DEFAULT_PLANS = {
         "display_name": "Enterprise Ultimate",
         "badge": "Maximum Scale",
         "price_id": "",
-        "monthly_price": 99,
-        "yearly_price": 990,
-        "website_limit": 500,
+        "price_id_monthly": "",
+        "price_id_yearly": "",
+        "monthly_price": 49,
+        "yearly_price": 470,
+        "website_limit": 15,
         "requests_per_day": 10000000,
         "scans_per_day": 10000,
         "max_scan_size_mb": 100,
@@ -92,6 +100,8 @@ PLAN_KEYS = [
     "display_name",
     "badge",
     "price_id",
+    "price_id_monthly",
+    "price_id_yearly",
     "monthly_price",
     "yearly_price",
     "website_limit",
@@ -112,6 +122,14 @@ class PlanService:
     def __init__(self, db=None):
         self.db = db or MongoDB()
 
+    def get_price_id(self, plan_id, billing_cycle="monthly"):
+        """Get the specific Paddle price ID for a plan and billing cycle."""
+        plan = self.get_plan(plan_id)
+        is_yearly = str(billing_cycle or "").lower() in ("yearly", "annually", "annual")
+        if is_yearly:
+            return plan.get("price_id_yearly") or plan.get("price_id") or ""
+        return plan.get("price_id_monthly") or plan.get("price_id") or ""
+
     def get_plan(self, plan_id):
         """Resolve a plan config. DB override wins; falls back to defaults."""
         plan_id = (plan_id or "free").lower()
@@ -127,6 +145,16 @@ class PlanService:
         config = dict(DEFAULT_PLANS.get(plan_id, DEFAULT_PLANS["free"]))
         if plan_id in stored and isinstance(stored[plan_id], dict):
             config.update(stored[plan_id])
+
+        # Read environment variable fallbacks if not explicitly overridden in DB
+        import os
+        env_m = os.getenv(f"PADDLE_PRICE_{plan_id.upper()}_MONTHLY", "").strip()
+        env_y = os.getenv(f"PADDLE_PRICE_{plan_id.upper()}_YEARLY", "").strip()
+        if env_m and not config.get("price_id_monthly"):
+            config["price_id_monthly"] = env_m
+        if env_y and not config.get("price_id_yearly"):
+            config["price_id_yearly"] = env_y
+
         config["id"] = plan_id
         return config
 
@@ -141,11 +169,7 @@ class PlanService:
         except Exception:
             stored = {}
         for pid in ["free", "go", "pro", "enterprise"]:
-            config = dict(DEFAULT_PLANS.get(pid, {}))
-            if pid in stored and isinstance(stored[pid], dict):
-                config.update(stored[pid])
-            config["id"] = pid
-            result.append(config)
+            result.append(self.get_plan(pid))
         return result
 
     def save_plans(self, plans):

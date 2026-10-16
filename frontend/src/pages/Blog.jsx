@@ -9,7 +9,7 @@ const blogPosts = [
   {
     id: 'ai-zeroday-threats',
     title: 'Neutralizing AI-Generated Polymorphic Zero-Day Exploits at the Cloud Edge',
-    excerpt: 'Threat actors are now weaponizing generative AI to synthesize evasive SQL injection and RCE mutations that bypass static regex signatures. Discover how MDefender Pro’s 5,489,242+ payload-trained neural vectorizer inspects AST syntactic intent in <0.85ms.',
+    excerpt: 'Threat actors are now weaponizing generative AI to synthesize evasive SQL injection and RCE mutations that bypass static regex signatures. Discover how MDefender Pro’s 6,501,208+ payload-trained neural vectorizer inspects AST syntactic intent in <0.12ms.',
     category: 'Threat Intelligence',
     date: 'Sep 24, 2026',
     readTime: '6 min read',
@@ -41,11 +41,11 @@ By combining inline C-style comment segmentation, hexadecimal literals, SQL keyw
 ### How MDefender Pro Dual-Engine Neutralizes Mutation
 Instead of solely evaluating isolated substrings, MDefender Pro implements a **two-phase hybrid pipeline**:
 
-1. **Deterministic Filter Ring (2,000+ Signatures):** Catches known signatures, scanner user-agents (sqlmap, Nikto), and RFC compliance violations in 0.15ms.
-2. **5,489,242+ Payload-Trained Neural Vectorizer:** Evaluates token distribution entropy, syntax tree reconstruction, and token n-grams. When syntactic anomaly confidence exceeds 85%, the request is quarantined and served an instant 403 Cyber Block Page.
+1. **Deterministic Filter Ring (2,000+ Signatures):** Catches known signatures, scanner user-agents (sqlmap, Nikto), and RFC compliance violations in 0.05ms.
+2. **6,501,208+ Payload-Trained Neural Vectorizer:** Evaluates token distribution entropy, syntax tree reconstruction, and token n-grams. When syntactic anomaly confidence exceeds 85%, the request is quarantined and served an instant 403 Cyber Block Page.
 
 \`\`\`
-[Incoming Request] ──> [Deterministic Regex Gate] ──> [Neural Token Vectorizer (5.48M+ Dataset)] ──> [Verdict: BLOCK (0.38ms)]
+[Incoming Request] ──> [Deterministic Regex Gate] ──> [Neural Token Vectorizer (6.5M+ Dataset)] ──> [Verdict: BLOCK (0.12ms)]
 \`\`\`
 
 ---
@@ -672,7 +672,7 @@ export default function Blog() {
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
           <span style={{ textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800 }}>LIVE THREAT RADAR:</span>
         </div>
-        <span>5,489,242+ Dataset ML Core active &bull; Sub-millisecond AST Vectorizer online &bull; Zero false positives recorded across edge fleet</span>
+        <span>6,501,208+ Dataset ML Core active &bull; Sub-millisecond (0.12ms) AST Vectorizer online &bull; Zero false positives recorded across edge fleet</span>
       </div>
 
       {/* Header Section */}
@@ -1325,7 +1325,7 @@ export default function Blog() {
               }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: dark ? '#ffffff' : '#0f172a' }}>Deploy AI Web Defense in Under 2 Minutes</div>
-                  <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#475569' }}>Protect your web applications with 2,000 WAF rules and 5,489,242+ attack dataset ML inference.</div>
+                  <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#475569' }}>Protect your web applications with 2,000 WAF rules and 6,501,208+ attack dataset ML inference.</div>
                 </div>
                 <Link to="/register" style={{
                   padding: '11px 24px',
