@@ -31,7 +31,23 @@ export default function UserConnect() {
   }, [fetchData])
 
   const websites = data?.websites || []
-  const activeDomain = websites[0]?.domain || 'yourdomain.com'
+  const customDomains = websites.filter(w => {
+    const p = (w.platform || '').toLowerCase()
+    return p !== 'wordpress' && p !== 'wp' && !p.includes('wordpress')
+  })
+  const wpSites = websites.filter(w => {
+    const p = (w.platform || '').toLowerCase()
+    return p === 'wordpress' || p === 'wp' || p.includes('wordpress')
+  })
+  const [selectedCustomDomain, setSelectedCustomDomain] = useState(() => customDomains[0]?.domain || '')
+  
+  useEffect(() => {
+    if (customDomains.length > 0 && !selectedCustomDomain) {
+      setSelectedCustomDomain(customDomains[0].domain)
+    }
+  }, [customDomains, selectedCustomDomain])
+
+  const activeDomain = selectedCustomDomain || customDomains[0]?.domain || ''
   const apiKey = data?.user?.api_key || 'mdf_live_sec_key_sample'
 
   const copyCode = async (id, textToCopy) => {
@@ -126,7 +142,7 @@ export default function UserConnect() {
           </div>
           <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: '700' }}>Cloud Anycast Reverse Proxy</h3>
           <p style={{ margin: 0, fontSize: '13px', color: activeService === 'cloud_proxy' ? '#94a3b8' : '#64748b', lineHeight: 1.5 }}>
-            Works for <strong>any website</strong> (PHP, Node.js, Python, Next.js, Laravel, Go, HTML). Simply switch Nameservers — no code or server installs required.
+            Works for <strong>any custom domain</strong> (Node.js, Python, Next.js, Laravel, Go, HTML). Simply switch Nameservers — no code or server installs required.
           </p>
         </div>
 
@@ -161,7 +177,7 @@ export default function UserConnect() {
           </div>
           <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: '700' }}>MDefender Pro WordPress Plugin</h3>
           <p style={{ margin: 0, fontSize: '13px', color: activeService === 'wordpress_plugin' ? '#94a3b8' : '#64748b', lineHeight: 1.5 }}>
-            Deep endpoint defense for WordPress. Real-time PHP AST webshell scanning, 27K malware file detection, and direct origin server shielding.
+            Deep endpoint defense for WordPress. Real-time PHP AST webshell scanning, 27K malware file detection, and direct origin server shielding via API Key.
           </p>
         </div>
       </div>
@@ -176,26 +192,39 @@ export default function UserConnect() {
                 1
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Register Your Domain</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Make sure your domain is added to your MDefender account.</p>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Register Your Custom Domain</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>Manage your Anycast DNS proxy domains separately from WordPress plugin sites.</p>
               </div>
-              <Link to="/user/websites" style={{ marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: '#0284c7', textDecoration: 'none' }}>
-                Manage Domains <i className="fas fa-arrow-right"></i>
+              <Link to="/user/domains" style={{ marginLeft: 'auto', fontSize: '13px', fontWeight: '600', color: '#0284c7', textDecoration: 'none' }}>
+                Manage Custom Domains <i className="fas fa-arrow-right"></i>
               </Link>
             </div>
 
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <i className="fas fa-globe" style={{ color: '#0284c7', fontSize: '18px' }}></i>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{activeDomain}</div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>Current Registered Domain</div>
+            {customDomains.length > 0 ? (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <i className="fas fa-globe" style={{ color: '#0284c7', fontSize: '18px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{activeDomain}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>Custom Anycast Domain</div>
+                  </div>
                 </div>
+                <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
+                  READY FOR NAMESERVERS
+                </span>
               </div>
-              <span style={{ fontSize: '11px', fontWeight: '700', padding: '4px 10px', borderRadius: '6px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
-                READY FOR NAMESERVER
-              </span>
-            </div>
+            ) : (
+              <div style={{ background: '#f8fafc', border: '1.5px dashed #cbd5e1', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
+                <i className="fas fa-network-wired" style={{ fontSize: '26px', color: '#94a3b8', marginBottom: '8px', display: 'block' }}></i>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', marginBottom: '4px' }}>No Custom Domains Added Yet</div>
+                <p style={{ fontSize: '12.5px', color: '#64748b', margin: '0 0 14px' }}>
+                  Your connected WordPress sites use our direct plugin and API key. To protect custom origins with global Anycast Nameservers, add your custom domain here:
+                </p>
+                <Link to="/user/domains" style={{ padding: '8px 16px', background: '#0284c7', color: '#fff', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fas fa-plus"></i> Add Custom Anycast Domain
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Step 2: Nameservers Assignment */}
@@ -302,19 +331,55 @@ export default function UserConnect() {
                   Complete internal file scanner, realtime PHP sandbox, and AST backdoor neutralizer.
                 </p>
               </div>
-              <a
-                href={`${(import.meta.env.VITE_API_BASE || 'https://mdefender-pro.crafix.tech').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
-                download="mdefender-pro.zip"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #4f46e5, #6366f1)', color: '#ffffff',
-                  borderRadius: '8px', fontSize: '13px', fontWeight: '700', textDecoration: 'none',
-                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
-                }}
-              >
-                <i className="fas fa-download"></i> Download mdefender-pro.zip
-              </a>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <Link
+                  to="/user/websites"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 16px',
+                    background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1',
+                    borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none'
+                  }}
+                >
+                  <i className="fas fa-list-check"></i> Manage WP Sites ({wpSites.length})
+                </Link>
+                <a
+                  href={`${(import.meta.env.VITE_API_BASE || 'https://mdefender-pro.crafix.tech').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
+                  download="mdefender-pro.zip"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
+                    background: 'linear-gradient(135deg, #4f46e5, #6366f1)', color: '#ffffff',
+                    borderRadius: '8px', fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
+                  }}
+                >
+                  <i className="fas fa-download"></i> Download mdefender-pro.zip
+                </a>
+              </div>
             </div>
+
+            {wpSites.length > 0 && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', marginBottom: '10px' }}>
+                  Your Connected WordPress Sites ({wpSites.length}):
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {wpSites.map(site => (
+                    <div key={site.id || site.domain} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <i className="fab fa-wordpress" style={{ color: '#4f46e5', fontSize: '18px' }}></i>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{site.domain || site.name}</div>
+                          <div style={{ fontSize: '11.5px', color: '#64748b' }}>Connected via WordPress Plugin API Key</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '6px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }}>
+                        SHIELDED &amp; ACTIVE
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px', marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>Installation Steps:</h4>

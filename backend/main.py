@@ -348,22 +348,36 @@ def verify_user_token_compat(request: Request):
     if not token:
         raise HTTPException(status_code=401, detail='Unauthorized')
     payload = jwt_svc.decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail='Invalid or expired token')
-    if payload.get('is_admin'):
-        raise HTTPException(status_code=403, detail='Admin token used for user endpoint')
-    try:
-        user_oid = ObjectId(payload['sub'])
-    except Exception:
-        user_oid = None
-
     user = None
-    if user_oid:
-        user = db.users.find_one({'_id': user_oid})
-    if not user:
-        user = db.users.find_one({'_id': payload['sub']})
-    if not user:
-        raise HTTPException(status_code=401, detail='User not found')
+    if not payload:
+        # Support WordPress Plugin API key authentication
+        user_by_key = db.users.find_one({'api_key': token})
+        if not user_by_key:
+            ws = db.websites.find_one({'api_key': token})
+            if ws and ws.get('user_id'):
+                u_id = ws['user_id']
+                u_cond = [{'_id': u_id}, {'id': u_id}]
+                if ObjectId.is_valid(str(u_id)):
+                    u_cond.append({'_id': ObjectId(str(u_id))})
+                user_by_key = db.users.find_one({'$or': u_cond})
+        if user_by_key:
+            user = user_by_key
+        else:
+            raise HTTPException(status_code=401, detail='Invalid or expired token')
+    else:
+        if payload.get('is_admin'):
+            raise HTTPException(status_code=403, detail='Admin token used for user endpoint')
+        try:
+            user_oid = ObjectId(payload['sub'])
+        except Exception:
+            user_oid = None
+
+        if user_oid:
+            user = db.users.find_one({'_id': user_oid})
+        if not user:
+            user = db.users.find_one({'_id': payload['sub']})
+        if not user:
+            raise HTTPException(status_code=401, detail='User not found')
     if not user.get('is_active', True):
         raise HTTPException(status_code=403, detail='Account is deactivated')
         

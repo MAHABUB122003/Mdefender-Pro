@@ -4,6 +4,99 @@ import { useTheme } from '../contexts/ThemeContext'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 
+const DEFAULT_USER_PLANS = [
+  {
+    id: 'free',
+    name: 'Starter Free',
+    badge: 'Free Forever',
+    badgeColor: '#64748b',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    description: 'Essential L7 protection for personal blogs and developer test sites.',
+    features: [
+      '1 Protected Website / Origin',
+      'Core WAF Rule Engine (500+ Signatures)',
+      '10,000 Edge Requests / Month',
+      'Basic Anomaly & Rate Limiting',
+      'Real-Time Edge Security Block Page',
+      'Community Forum Support'
+    ],
+    notIncluded: [
+      '6.5M+ Threat Neural Classifier',
+      '639K+ Generative AI Prompt Shield',
+      'Layer 7 DDoS Volumetric Mitigation',
+      'Custom Regex Policy Authoring',
+      '24/7 Dedicated SLA Response'
+    ]
+  },
+  {
+    id: 'go',
+    name: 'Developer Go',
+    badge: 'Growing Apps',
+    badgeColor: '#0ea5e9',
+    monthlyPrice: 9,
+    yearlyPrice: 90,
+    description: 'Advanced edge security, bot defense, and rate limiting for growing web services.',
+    features: [
+      '5 Protected Websites / APIs',
+      '100,000 Edge Requests / Month',
+      'Core WAF + Heuristic Vectorizer',
+      '6.5M+ Threat Neural Classifier',
+      '50,000+ Threat Signatures & Hashes',
+      '20 Custom Regex Policies',
+      'Priority Email Support'
+    ],
+    notIncluded: [
+      'Full 2,000,000+ Signatures Matrix',
+      'Layer 7 DDoS Volumetric Scrubber',
+      '24/7 Dedicated SLA Response'
+    ]
+  },
+  {
+    id: 'pro',
+    name: 'Enterprise Pro',
+    badge: 'Most Popular',
+    badgeColor: '#6366f1',
+    isPopular: true,
+    monthlyPrice: 20,
+    yearlyPrice: 190,
+    description: 'Maximum cyber defense for mission-critical SaaS, e-commerce, and high-traffic origins.',
+    features: [
+      '10 Protected Websites & APIs',
+      '1,000,000 Edge Requests / Month',
+      'Full 2,000,000+ Hyper-Scale Signatures',
+      '6,501,208+ Dataset Deep ML Core',
+      '639K+ AI Prompt Injection Shield',
+      'Unlimited Custom Regex Policies',
+      'Layer 7 Volumetric DDoS Mitigation',
+      'Sub-Millisecond (0.12ms) Edge Inspection',
+      '24/7 Priority SLA Response'
+    ],
+    notIncluded: []
+  },
+  {
+    id: 'enterprise',
+    name: 'Dedicated Enterprise',
+    badge: 'Maximum Scale',
+    badgeColor: '#8b5cf6',
+    monthlyPrice: 49,
+    yearlyPrice: 470,
+    description: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute SLA.',
+    features: [
+      '15 Protected Websites & APIs',
+      '10,000,000+ Edge Requests / Month',
+      'Dedicated Neural Vectorizer Node',
+      'Full 2,000,000+ Signatures Matrix',
+      '639K+ AI Gateway & Jailbreak Guard',
+      'Automated DDoS Scrubber Mesh',
+      'Unlimited Zero-Day Custom Policies',
+      'Dedicated Security Architect',
+      '15-Minute Guaranteed SLA Response'
+    ],
+    notIncluded: []
+  }
+]
+
 export default function UserPricing() {
   const { dark } = useTheme()
   const [searchParams] = useSearchParams()
@@ -12,6 +105,7 @@ export default function UserPricing() {
 
   const cachedUser = userStore.get('profile') || userStore.get('dashboard')?.user || null
   const [profile, setProfile] = useState(() => cachedUser)
+  const [plansList, setPlansList] = useState(DEFAULT_USER_PLANS)
   const [billingCycle, setBillingCycle] = useState(initialCycleParam)
   const [billingData, setBillingData] = useState(null)
   const [paymentHistory, setPaymentHistory] = useState([])
@@ -61,6 +155,29 @@ export default function UserPricing() {
 
   useEffect(() => {
     fetchBilling()
+  }, [])
+
+  // Dynamic admin pricing sync: reflect any live overrides from Admin Pricing panel
+  useEffect(() => {
+    api.getPublicPricing()
+      .then(res => {
+        if (res?.data?.plans) {
+          const raw = res.data.plans
+          setPlansList(prev => prev.map(p => {
+            const match = Array.isArray(raw) ? raw.find(r => r.id === p.id) : raw[p.id]
+            if (match) {
+              return {
+                ...p,
+                name: match.name || match.display_name || p.name,
+                monthlyPrice: match.monthly_price !== undefined ? match.monthly_price : p.monthlyPrice,
+                yearlyPrice: match.yearly_price !== undefined ? match.yearly_price : p.yearlyPrice,
+              }
+            }
+            return p
+          }))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Auto-init Paddle SDK once config is fetched
@@ -183,6 +300,11 @@ export default function UserPricing() {
         return
       }
 
+      if (checkoutData.message && !checkoutData.checkout_url && !checkoutData.checkout_id && !checkoutData.price_id) {
+        showToast(checkoutData.message, true)
+        return
+      }
+
       throw new Error('Unable to launch checkout session. Please try again.')
     } catch (err) {
       showToast(err.message || 'Failed to launch Paddle Checkout', true)
@@ -197,99 +319,6 @@ export default function UserPricing() {
       handleCheckout(initialPlanParam)
     }
   }, [initialPlanParam])
-
-  const PLANS = [
-    {
-      id: 'free',
-      name: 'Starter Free',
-      badge: 'Free Forever',
-      badgeColor: '#64748b',
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      description: 'Essential L7 protection for personal blogs and developer test sites.',
-      features: [
-        '1 Protected Website / Origin',
-        'Core WAF Rule Engine (500+ Signatures)',
-        '10,000 Edge Requests / Month',
-        'Basic Anomaly & Rate Limiting',
-        'Real-Time Edge Security Block Page',
-        'Community Forum Support'
-      ],
-      notIncluded: [
-        '6.5M+ Threat Neural Classifier',
-        '639K+ Generative AI Prompt Shield',
-        'Layer 7 DDoS Volumetric Mitigation',
-        'Custom Regex Policy Authoring',
-        '24/7 Dedicated SLA Response'
-      ]
-    },
-    {
-      id: 'go',
-      name: 'Developer Go',
-      badge: 'Growing Apps',
-      badgeColor: '#0ea5e9',
-      monthlyPrice: 9,
-      yearlyPrice: 90,
-      description: 'Advanced edge security, bot defense, and rate limiting for growing web services.',
-      features: [
-        '5 Protected Websites / APIs',
-        '100,000 Edge Requests / Month',
-        'Core WAF + Heuristic Vectorizer',
-        '6.5M+ Threat Neural Classifier',
-        '50,000+ Threat Signatures & Hashes',
-        '20 Custom Regex Policies',
-        'Priority Email Support'
-      ],
-      notIncluded: [
-        'Full 2,000,000+ Signatures Matrix',
-        'Layer 7 DDoS Volumetric Scrubber',
-        '24/7 Dedicated SLA Response'
-      ]
-    },
-    {
-      id: 'pro',
-      name: 'Enterprise Pro',
-      badge: 'Most Popular',
-      badgeColor: '#6366f1',
-      isPopular: true,
-      monthlyPrice: 20,
-      yearlyPrice: 190,
-      description: 'Maximum cyber defense for mission-critical SaaS, e-commerce, and high-traffic origins.',
-      features: [
-        '10 Protected Websites & APIs',
-        '1,000,000 Edge Requests / Month',
-        'Full 2,000,000+ Hyper-Scale Signatures',
-        '6,501,208+ Dataset Deep ML Core',
-        '639K+ AI Prompt Injection Shield',
-        'Unlimited Custom Regex Policies',
-        'Layer 7 Volumetric DDoS Mitigation',
-        'Sub-Millisecond (0.12ms) Edge Inspection',
-        '24/7 Priority SLA Response'
-      ],
-      notIncluded: []
-    },
-    {
-      id: 'enterprise',
-      name: 'Dedicated Enterprise',
-      badge: 'Maximum Scale',
-      badgeColor: '#8b5cf6',
-      monthlyPrice: 35,
-      yearlyPrice: 350,
-      description: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute SLA.',
-      features: [
-        '15 Protected Websites & APIs',
-        '10,000,000+ Edge Requests / Month',
-        'Dedicated Neural Vectorizer Node',
-        'Full 2,000,000+ Signatures Matrix',
-        '639K+ AI Gateway & Jailbreak Guard',
-        'Automated DDoS Scrubber Mesh',
-        'Unlimited Zero-Day Custom Policies',
-        'Dedicated Security Architect',
-        '15-Minute Guaranteed SLA Response'
-      ],
-      notIncluded: []
-    }
-  ]
 
   return (
     <div style={{
@@ -550,7 +579,7 @@ export default function UserPricing() {
         gap: '20px',
         marginBottom: '40px'
       }}>
-        {PLANS.map(plan => {
+        {plansList.map(plan => {
           const isCurrent = plan.id === currentPlanId
           const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
           const isPopular = plan.isPopular

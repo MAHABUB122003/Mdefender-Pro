@@ -241,6 +241,34 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Notify cloud API so the block is immediately visible on Cloud User Dashboard
+        $this->notify_cloud_block($ip, $reason, $expires_at);
+    }
+
+    private function notify_cloud_block($ip, $reason = '', $expires_at = null) {
+        if (php_sapi_name() === 'cli' || defined('WP_CLI')) return;
+        $api_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
+        $api_url = trim((string) get_option('waf_fw_ml_api_url', get_option('waf_fw_api_url', '')));
+        if (empty($api_key) || empty($api_url)) return;
+
+        $base = rtrim($api_url, '/');
+        $endpoint = $base . '/api/user/blacklist';
+        if (function_exists('wp_remote_post')) {
+            wp_remote_post($endpoint, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                ],
+                'body' => json_encode([
+                    'ip' => $ip,
+                    'reason' => $reason ?: 'Auto-blocked by WordPress Plugin',
+                    'duration' => $expires_at ? 'temporary' : 'permanent',
+                ]),
+                'timeout' => 2.0,
+                'blocking' => false,
+            ]);
+        }
     }
 
     public function add_temporary_block($ip, $reason, $duration_seconds) {

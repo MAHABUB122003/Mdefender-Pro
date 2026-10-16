@@ -41,8 +41,9 @@ export default function UserLogs() {
   const [ipLocations, setIpLocations] = useState({})
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d' })
-  const [submittingBlock, setSubmittingBlock] = useState(false)
   const perPage = 20
+  const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
+  const isPaidUser = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
 
   const fetchWebsites = useCallback(async () => {
     try {
@@ -353,7 +354,65 @@ export default function UserLogs() {
         </form>
       </div>
 
-      <div className="logs-table" style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '12px', overflow: 'hidden' }}>
+      {/* Free Plan Upgrade Lock Banner */}
+      {!isPaidUser && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1.5px solid #fde68a',
+          borderRadius: '14px',
+          padding: '20px 24px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+          boxShadow: '0 2px 10px rgba(245, 158, 11, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#d97706', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <i className="fas fa-lock"></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: '#92400e' }}>
+                Deep Log Inspection &amp; Live Telemetry is Locked
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#b45309', marginTop: '3px' }}>
+                Your current plan is Starter Free. Upgrade to Developer Go ($9), Enterprise Pro ($20), or Dedicated Enterprise ($49) to unlock live attack logs, payload payloads, geolocation intelligence, and forensic search.
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/user/pricing"
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              background: '#d97706',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: '700',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(217, 119, 6, 0.3)'
+            }}
+          >
+            <i className="fas fa-crown"></i> Upgrade to Unlock
+          </Link>
+        </div>
+      )}
+
+      <div className="logs-table" style={{
+        background: '#fff',
+        border: '1px solid #cbd5e1',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        position: 'relative',
+        filter: !isPaidUser ? 'blur(4px)' : 'none',
+        pointerEvents: !isPaidUser ? 'none' : 'auto',
+        userSelect: !isPaidUser ? 'none' : 'auto'
+      }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>

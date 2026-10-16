@@ -392,7 +392,8 @@ export const api = {
   },
   upgradePlan: (days = 30) => apiCall('/api/user/upgrade-plan', { method: 'POST', body: JSON.stringify({ plan: 'premium', days }) }),
   downgradePlan: () => apiCall('/api/user/downgrade-plan', { method: 'POST' }),
-  // Paddle Billing APIs
+  // Paddle & Public Pricing APIs
+  getPublicPricing: () => apiCall('/api/v1/pricing/plans'),
   getBillingConfig: () => apiCall('/api/v1/billing/config'),
   getBillingPlans: () => apiCall('/api/v1/billing/plans'),
   createPaddleCheckout: (data) => apiCall('/api/v1/billing/checkout', { method: 'POST', body: JSON.stringify(data) }),

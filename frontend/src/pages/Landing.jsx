@@ -1740,7 +1740,7 @@ export default function Landing() {
             </Link>
           </div>
 
-          {/* 4. Dedicated Enterprise ($35/mo) */}
+          {/* 4. Dedicated Enterprise ($49/mo) */}
           <div style={{
             background: dark ? '#0a0f1d' : '#ffffff',
             border: dark ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid #e9d5ff',
@@ -1760,7 +1760,7 @@ export default function Landing() {
                 Dedicated infrastructure, custom proxy nodes, and 15-minute SLA.
               </p>
               <div style={{ fontSize: '36px', fontWeight: '900', color: dark ? '#c084fc' : '#7c3aed', marginBottom: '22px' }}>
-                ${billingCycle === 'yearly' ? '350' : '35'} <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748b' }}>/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
+                ${billingCycle === 'yearly' ? '470' : '49'} <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748b' }}>/{billingCycle === 'yearly' ? 'year' : 'mo'}</span>
               </div>
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 26px', fontSize: '12.5px', color: dark ? '#cbd5e1' : '#334155', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <li><i className="fas fa-check" style={{ color: '#10b981', marginRight: '8px' }}></i> <strong>15 Protected Domains &amp; APIs</strong></li>

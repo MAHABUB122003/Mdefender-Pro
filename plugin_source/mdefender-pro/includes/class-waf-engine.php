@@ -111,6 +111,75 @@ class WAF_FW_Engine {
         return '0.0.0.0';
     }
 
+    public function get_comprehensive_payload() {
+        $parts = [];
+
+        // 1. Raw body (php://input)
+        $raw_body = '';
+        $input = @fopen('php://input', 'rb');
+        if ($input) {
+            $raw_body = @stream_get_contents($input);
+            @fclose($input);
+        }
+        if (empty($raw_body)) {
+            $raw_body = @file_get_contents('php://input') ?: '';
+        }
+        if (!empty($raw_body)) {
+            $parts[] = $raw_body;
+            if (isset($raw_body[0]) && ($raw_body[0] === '{' || $raw_body[0] === '[')) {
+                $decoded = json_decode($raw_body, true);
+                if (is_array($decoded)) {
+                    $parts[] = $this->flatten_array_data($decoded);
+                }
+            }
+        }
+
+        // 2. Form POST parameters ($_POST)
+        if (!empty($_POST) && is_array($_POST)) {
+            $parts[] = $this->flatten_array_data($_POST);
+        }
+
+        // 3. GET parameters ($_GET)
+        if (!empty($_GET) && is_array($_GET)) {
+            $parts[] = $this->flatten_array_data($_GET);
+        }
+
+        // 4. Cookies ($_COOKIE)
+        if (!empty($_COOKIE) && is_array($_COOKIE)) {
+            $cookie_vals = [];
+            foreach ($_COOKIE as $k => $v) {
+                if (is_string($v) && strlen($v) < 64 && ctype_alnum($v)) {
+                    continue;
+                }
+                $cookie_vals[] = is_array($v) ? $this->flatten_array_data($v) : (string)$v;
+            }
+            if (!empty($cookie_vals)) {
+                $parts[] = implode(' ', $cookie_vals);
+            }
+        }
+
+        // 5. Query string
+        if (!empty($_SERVER['QUERY_STRING'])) {
+            $parts[] = (string) $_SERVER['QUERY_STRING'];
+        }
+
+        return implode(' ', array_filter($parts));
+    }
+
+    public function flatten_array_data($arr, $depth = 0) {
+        if ($depth > 8 || !is_array($arr)) return is_scalar($arr) ? (string)$arr : '';
+        $out = [];
+        foreach ($arr as $k => $v) {
+            if (is_string($k)) $out[] = $k;
+            if (is_array($v)) {
+                $out[] = $this->flatten_array_data($v, $depth + 1);
+            } elseif (is_scalar($v)) {
+                $out[] = (string)$v;
+            }
+        }
+        return implode(' ', $out);
+    }
+
     public function analyze_current_request() {
         try {
             if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') {
@@ -121,6 +190,7 @@ class WAF_FW_Engine {
             $url = $_SERVER['REQUEST_URI'] ?? '/';
             $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
             $body = file_get_contents('php://input');
+            $comprehensive_payload = $this->get_comprehensive_payload();
             $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
             $referer = $_SERVER['HTTP_REFERER'] ?? '';
             $query_string = $_SERVER['QUERY_STRING'] ?? '';
@@ -170,7 +240,7 @@ class WAF_FW_Engine {
             $is_custom_login = (!empty($custom_slug) && (strpos($url_path, '/' . strtolower($custom_slug)) !== false || trim($url_path, '/') === strtolower($custom_slug)));
             $is_wp_admin_path = ($is_custom_login || strpos($url_path, 'wp-login.php') !== false || strpos($url_path, 'wp-admin') !== false || strpos($url_path, 'admin-ajax.php') !== false);
             if ($is_wp_admin_path && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
-                $features = $this->feature_extractor->extract_features($url . ' ' . $body . ' ' . $query_string);
+                $features = $this->feature_extractor->extract_features($url . ' ' . $comprehensive_payload);
                 $has_dangerous_attack = false;
                 foreach (['sql_score', 'xss_score', 'lfi_score', 'rce_score', 'ssti_score', 'ssrf_score'] as $key) {
                     if (($features[$key] ?? 0) >= 0.5) {
@@ -186,7 +256,10 @@ class WAF_FW_Engine {
             $request_data = [
                 'url' => $url,
                 'method' => $method,
-                'body' => $body,
+                'body' => $comprehensive_payload,
+                'raw_body' => $body,
+                'post_params' => $_POST,
+                'cookies' => $_COOKIE,
                 'query_string' => $query_string,
                 'query_params' => $query_params,
                 'headers' => $headers,
@@ -201,7 +274,7 @@ class WAF_FW_Engine {
                 return $this->do_block($ip, $url, $method, $attack_type, 0.9, $user_agent, $referer, $body, "Blocked by rule: $attack_type", $rule_matches[0]['rule_name']);
             }
 
-            $features = $this->feature_extractor->extract_features($url . ' ' . $body . ' ' . $query_string);
+            $features = $this->feature_extractor->extract_features($url . ' ' . $comprehensive_payload);
             $attack_keys = ['sql_score', 'xss_score', 'lfi_score', 'rce_score', 'ssti_score', 'ssrf_score'];
             $has_attack_signal = false;
             foreach ($attack_keys as $key) {

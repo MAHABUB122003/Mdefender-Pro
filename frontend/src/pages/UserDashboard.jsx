@@ -79,8 +79,8 @@ export default function UserDashboard() {
   const [lastRefreshed, setLastRefreshed] = useState(() => new Date())
   const [ddosEnabled, setDdosEnabled] = useState(true)
   const [ddosToggling, setDdosToggling] = useState(false)
-  const [mlStatus, setMlStatus] = useState(null)
-  const isPremium = data?.plan === 'premium' || localStorage.getItem('mdefender_user_plan') === 'premium'
+  const userPlan = (data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free').toLowerCase()
+  const isPremium = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
 
   const fetchData = useCallback(async (manual = false, siteId = selectedWebsite) => {
     if (manual) setRefreshing(true)
@@ -278,6 +278,17 @@ export default function UserDashboard() {
               <span className="badge success" style={{ fontSize: '11px' }}>
                 <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px' }}></i> LIVE
               </span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '700',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                background: isPremium ? 'rgba(99, 102, 241, 0.12)' : '#f1f5f9',
+                color: isPremium ? '#6366f1' : '#64748b',
+                border: isPremium ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid #cbd5e1'
+              }}>
+                {userPlan === 'go' ? 'Developer Go' : userPlan === 'pro' ? 'Enterprise Pro' : userPlan === 'enterprise' ? 'Dedicated Enterprise' : 'Starter Free'}
+              </span>
             </div>
             <div style={{ fontSize: '12px', color: '#64748b' }}>
               Multi-site telemetry enabled for {data?.websites?.length || 0} WordPress website(s)
@@ -398,7 +409,7 @@ export default function UserDashboard() {
 
           {!isPremium && (
             <Link
-              to="/user/settings"
+              to="/user/pricing"
               style={{
                 padding: '6px 14px',
                 borderRadius: '8px',
@@ -473,7 +484,7 @@ export default function UserDashboard() {
           </div>
           {!isPremium && (
             <div className="premium-overlay-small">
-              <Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view live traffic trends</Link>
+              <Link to="/user/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view live traffic trends</Link>
             </div>
           )}
         </div>
@@ -488,7 +499,7 @@ export default function UserDashboard() {
           </div>
           {!isPremium && (
             <div className="premium-overlay-small">
-              <Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view threat categorization</Link>
+              <Link to="/user/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view threat categorization</Link>
             </div>
           )}
         </div>
@@ -545,7 +556,7 @@ export default function UserDashboard() {
               )}
             </tbody>
           </table>
-          {!isPremium && <div className="premium-overlay-small"><Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view attacker details</Link></div>}
+          {!isPremium && <div className="premium-overlay-small"><Link to="/user/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to view attacker details</Link></div>}
         </div>
 
         {/* Live Block Events */}
@@ -584,7 +595,7 @@ export default function UserDashboard() {
               </div>
             )}
           </div>
-          {!isPremium && <div className="premium-overlay-small"><Link to="/user/settings" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to inspect block streams</Link></div>}
+          {!isPremium && <div className="premium-overlay-small"><Link to="/user/pricing" className="upgrade-link"><i className="fas fa-lock"></i> Upgrade to inspect block streams</Link></div>}
         </div>
       </div>
 

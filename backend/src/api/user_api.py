@@ -813,6 +813,9 @@ class UserAPI:
         user_full_name = user_doc.get('full_name') or user_doc.get('name', '')
         user_uname = user_doc.get('username') or (user_doc.get('email', '').split('@')[0] if user_doc.get('email') else '')
 
+        from src.services.subscription_service import SubscriptionService
+        effective_plan = SubscriptionService(self.db).effective_plan(user_doc)
+
         return {
             'user': {
                 'id': str(user_doc['_id']),
@@ -821,12 +824,12 @@ class UserAPI:
                 'full_name': user_full_name,
                 'username': user_uname,
                 'email_verified': user_doc.get('email_verified', False),
-                'plan': user_doc.get('plan', 'free'),
+                'plan': effective_plan,
                 'created_at': self._format_dt(user_doc.get('created_at'), '%Y-%m-%d'),
                 'last_login': self._format_dt(user_doc.get('last_login')),
             },
             'api_key': user_doc.get('api_key', ''),
-            'plan': user_doc.get('plan', 'free'),
+            'plan': effective_plan,
             'requests_today': req_today,
             'total_requests': tot_req,
             'total_blocked': tot_block,

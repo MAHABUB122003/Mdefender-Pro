@@ -37,6 +37,9 @@ class WAF_FW_Rate_Limiter {
             }));
             if (count($data) >= $max_requests) {
                 apcu_store($key, $data, $this->window_seconds);
+                if (class_exists('WAF_FW_IP_Filter')) {
+                    WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Rate limit exceeded (' . $max_requests . ' req/min)', 3600);
+                }
                 return true;
             }
             return false;
@@ -58,6 +61,9 @@ class WAF_FW_Rate_Limiter {
         }));
         if (count($data) >= $max_requests) {
             set_transient($key, json_encode($data), $this->window_seconds);
+            if (class_exists('WAF_FW_IP_Filter')) {
+                WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Rate limit exceeded (' . $max_requests . ' req/min)', 3600);
+            }
             return true;
         }
         return false;

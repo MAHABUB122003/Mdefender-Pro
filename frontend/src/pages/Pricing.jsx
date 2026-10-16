@@ -80,8 +80,8 @@ const DEFAULT_PLANS = [
     id: 'enterprise',
     name: 'Dedicated Enterprise',
     badge: 'Maximum Scale',
-    monthly: 35,
-    yearly: 350,
+    monthly: 49,
+    yearly: 470,
     desc: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute guaranteed SLA response.',
     features: [
       { text: '15 Protected Domains & APIs', included: true },
@@ -521,7 +521,7 @@ export default function Pricing() {
                   Enterprise Pro ($20)
                 </th>
                 <th style={{ padding: '16px 22px', fontSize: 13.5, fontWeight: 800, color: '#8b5cf6', background: dark ? 'rgba(139,92,246,0.1)' : '#f5f3ff' }}>
-                  Dedicated Enterprise ($35)
+                  Dedicated Enterprise ($49)
                 </th>
               </tr>
             </thead>

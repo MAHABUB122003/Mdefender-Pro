@@ -100,11 +100,17 @@ class WAF_FW_Rule_Engine {
         if (!empty($data['body'])) {
             $combined .= ' ' . $data['body'];
         }
+        if (!empty($data['post_params']) && is_array($data['post_params'])) {
+            $combined .= ' ' . $this->flatten_values($data['post_params']);
+        }
+        if (!empty($data['cookies']) && is_array($data['cookies'])) {
+            $combined .= ' ' . $this->flatten_values($data['cookies']);
+        }
         if (!empty($data['query_string'])) {
             $combined .= ' ' . $data['query_string'];
         }
         if (!empty($data['query_params']) && is_array($data['query_params'])) {
-            $combined .= ' ' . implode(' ', array_values($data['query_params']));
+            $combined .= ' ' . $this->flatten_values($data['query_params']);
         }
         // Inspect custom headers and cookies for Burp Suite & API tampering
         if (!empty($data['headers']) && is_array($data['headers'])) {
@@ -306,5 +312,19 @@ class WAF_FW_Rule_Engine {
             return $new_val;
         }
         return false;
+    }
+
+    public function flatten_values($arr, $depth = 0) {
+        if ($depth > 8 || !is_array($arr)) return is_scalar($arr) ? (string)$arr : '';
+        $out = [];
+        foreach ($arr as $k => $v) {
+            if (is_string($k)) $out[] = $k;
+            if (is_array($v)) {
+                $out[] = $this->flatten_values($v, $depth + 1);
+            } elseif (is_scalar($v)) {
+                $out[] = (string)$v;
+            }
+        }
+        return implode(' ', $out);
     }
 }

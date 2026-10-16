@@ -640,6 +640,9 @@ async def get_profile(user: dict = Depends(get_current_user)):
     if not user_doc:
         raise HTTPException(status_code=404, detail='User not found')
 
+    from src.services.subscription_service import SubscriptionService
+    effective_plan = SubscriptionService(db).effective_plan(user_doc)
+
     return {
         'status': 'success',
         'user': {
@@ -649,7 +652,7 @@ async def get_profile(user: dict = Depends(get_current_user)):
             'email': user_doc['email'],
             'email_verified': user_doc.get('email_verified', False),
             'mfa_enabled': user_doc.get('mfa_enabled', False),
-            'plan': user_doc.get('plan', 'free'),
+            'plan': effective_plan,
             'api_key': user_doc.get('api_key', ''),
             'created_at': user_doc.get('created_at', '').isoformat() if isinstance(user_doc.get('created_at'), datetime) else str(user_doc.get('created_at', '')),
             'last_login': user_doc.get('last_login', '').isoformat() if isinstance(user_doc.get('last_login'), datetime) else str(user_doc.get('last_login', '')),
