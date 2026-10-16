@@ -137,7 +137,8 @@ class MongoDB:
             self._db.malware_scans.create_index('domain')
         if hasattr(self._db, 'websites'):
             self._db.websites.create_index('user_id')
-            self._db.websites.create_index('domain', unique=True)
+            self._db.websites.create_index([('user_id', 1), ('domain', 1), ('platform', 1)], unique=True)
+            self._db.websites.create_index('domain')
         if hasattr(self._db, 'api_keys'):
             self._db.api_keys.create_index('user_id')
             self._db.api_keys.create_index('key_hash', unique=True)

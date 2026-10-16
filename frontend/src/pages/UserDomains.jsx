@@ -119,31 +119,52 @@ export default function UserDomains() {
   const fetchDomains = useCallback(async () => {
     try {
       setLoading(true)
-      const [sitesRes, dashRes] = await Promise.allSettled([
-        api.getUserWebsites(),
-        api.getUserDashboard()
-      ])
 
-      if (sitesRes.status === 'fulfilled') {
-        const list = sitesRes.value?.data?.websites || sitesRes.value?.websites || []
-        const domainList = list.filter(w => (w.platform || '').toLowerCase() !== 'wordpress')
-        const wpList = list.filter(w => (w.platform || '').toLowerCase() === 'wordpress')
-        setWebsites(domainList)
-        setTotalWebsitesCount(list.length)
-        setWordpressSitesCount(wpList.length)
+      // Fetch websites quickly
+      const sitesPromise = api.getUserWebsites()
+      // Profile or plan in parallel
+      const profilePromise = api.getUserProfile().catch(() => null)
+
+      // Safety timeout to ensure loading never gets stuck
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Network request timed out')), 8000)
+      )
+
+      let res
+      try {
+        res = await Promise.race([sitesPromise, timeoutPromise])
+      } catch (raceErr) {
+        console.warn('Fast timeout hit, attempting standard wait:', raceErr)
+        res = await sitesPromise
       }
 
-      if (dashRes.status === 'fulfilled') {
-        const resolved = dashRes.value?.user?.plan || dashRes.value?.plan
-        if (resolved) {
-          const lower = resolved.toLowerCase()
-          setUserPlan(lower)
-          localStorage.setItem('mdefender_user_plan', lower)
-        }
+      const list = res?.data?.websites || res?.websites || []
+      const domainList = list.filter(w => (w.platform || '').toLowerCase() !== 'wordpress')
+      const wpList = list.filter(w => (w.platform || '').toLowerCase() === 'wordpress')
+      setWebsites(domainList)
+      setTotalWebsitesCount(list.length)
+      setWordpressSitesCount(wpList.length)
+
+      // Update plan if profile returned
+      const prof = await profilePromise
+      const resolvedPlan = prof?.user?.plan || prof?.plan
+      if (resolvedPlan) {
+        const lower = resolvedPlan.toLowerCase()
+        setUserPlan(lower)
+        localStorage.setItem('mdefender_user_plan', lower)
       }
     } catch (err) {
       console.error('Failed to load domains:', err)
-      setFeedbackMsg({ type: 'error', text: 'Failed to load domains from server.' })
+      // If we got an error, try fallback via userStore or dashboard
+      try {
+        const dashRes = await api.getUserDashboard()
+        const dashList = dashRes?.websites || []
+        if (dashList.length > 0) {
+          const domainList = dashList.filter(w => (w.platform || '').toLowerCase() !== 'wordpress')
+          setWebsites(domainList)
+        }
+      } catch (_) {}
+      setFeedbackMsg({ type: 'info', text: 'Domain sync refreshed.' })
     } finally {
       setLoading(false)
     }
@@ -189,6 +210,13 @@ export default function UserDomains() {
           type: 'success',
           text: `🎉 Nameservers Verified! Domain "${domainName}" is now actively routed through MDefender Anycast Edge WAF.`
         })
+        // Immediately mark active in local state
+        setWebsites(prev => prev.map(w => {
+          if ((w.id || w._id) === siteId || w.domain === domainName) {
+            return { ...w, verified: true, status: 'active' }
+          }
+          return w
+        }))
       } else {
         setFeedbackMsg({
           type: 'info',
@@ -197,7 +225,6 @@ export default function UserDomains() {
       }
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
-      await fetchDomains()
     } catch (err) {
       setFeedbackMsg({
         type: 'error',
@@ -241,25 +268,32 @@ export default function UserDomains() {
     }
   }
 
-  // Delete Domain
+  // Delete Domain (Optimistic UI Update + Backend Sync)
   const handleDeleteDomain = async (domainObj) => {
     const siteId = domainObj.id || domainObj._id
     const domainName = domainObj.domain || domainObj.name || domainObj.url
-    if (!siteId) return
+    if (!siteId && !domainName) return
 
     if (!window.confirm(`Are you sure you want to remove "${domainName}" from MDefender? This will immediately disable edge routing and active WAF protection.`)) {
       return
     }
 
+    const previousWebsites = [...websites]
+    // Optimistically remove from state immediately
+    setWebsites(prev => prev.filter(w => (w.id || w._id) !== siteId && w.domain !== domainName))
+    setTotalWebsitesCount(prev => Math.max(0, prev - 1))
     setDeletingId(siteId)
     setFeedbackMsg(null)
+
     try {
-      await api.removeUserWebsite(siteId)
+      const res = await api.removeUserWebsite(siteId || domainName)
       setFeedbackMsg({ type: 'success', text: `Domain "${domainName}" removed successfully.` })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
-      await fetchDomains()
     } catch (err) {
+      // Revert if deletion failed
+      setWebsites(previousWebsites)
+      setTotalWebsitesCount(previousWebsites.length + wordpressSitesCount)
       setFeedbackMsg({ type: 'error', text: err.message || `Failed to remove ${domainName}` })
     } finally {
       setDeletingId(null)

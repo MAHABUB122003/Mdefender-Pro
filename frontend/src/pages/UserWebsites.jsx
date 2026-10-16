@@ -17,7 +17,7 @@ export default function UserWebsites() {
     const list = data?.websites || []
     return list.filter(w => {
       const p = (w.platform || '').toLowerCase()
-      return p === 'wordpress' || p === 'wp'
+      return p === 'wordpress' || p === 'wp' || p.startsWith('wordpress')
     })
   }, [data])
 

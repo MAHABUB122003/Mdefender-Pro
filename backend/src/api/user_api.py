@@ -312,18 +312,31 @@ class UserAPI:
         if current_websites_count >= max_sites:
             return {'status': 'error', 'message': f'Your {plan} plan allows up to {max_sites} website(s). Upgrade to Premium to connect more domains.'}
 
-        # Check if already added by this user
+        # Check if already added by this user for the SAME platform category
+        # A user can have mahabubur.shop as both a Cloud/Domain Edge proxy AND a WordPress site simultaneously
+        if platform == 'wordpress':
+            platform_filter = {'$or': [{'platform': 'wordpress'}, {'platform': {'$regex': '^wordpress', '$options': 'i'}}]}
+            platform_label = "WordPress site"
+        else:
+            platform_filter = {'$or': [{'platform': 'domain'}, {'platform': 'cloud'}, {'platform': {'$nin': ['wordpress']}}]}
+            platform_label = "Domain"
+
         existing_site = self.db.websites.find_one({
             '$and': [
                 {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
-                {'$or': [{'domain': domain}, {'url': domain}, {'name': domain}]}
+                {'$or': [{'domain': domain}, {'url': domain}, {'name': domain}]},
+                platform_filter
             ]
         })
         if existing_site:
-            return {'status': 'error', 'message': f'Domain "{domain}" is already connected to your account.'}
+            return {'status': 'error', 'message': f'{platform_label} "{domain}" is already connected to your account.'}
 
         orphan_site = self.db.websites.find_one({
-            '$or': [{'domain': domain}, {'url': domain}]
+            '$and': [
+                {'$or': [{'domain': domain}, {'url': domain}]},
+                platform_filter,
+                {'$or': [{'user_id': {'$exists': False}}, {'user_id': None}, {'user_id': ''}]}
+            ]
         })
 
         # Generate unique dedicated scoped API Key for this website
@@ -374,10 +387,7 @@ class UserAPI:
                 self.db.websites.insert_one(new_doc)
             except Exception:
                 try:
-                    self.db.websites.update_one({'domain': domain}, {'$set': update_fields}, upsert=True)
-                    existing = self.db.websites.find_one({'domain': domain})
-                    if existing:
-                        website_id = str(existing['_id'])
+                    self.db.websites.update_one({'_id': website_id}, {'$set': update_fields}, upsert=True)
                 except Exception:
                     pass
 
@@ -479,7 +489,7 @@ class UserAPI:
         if not website_id:
             return {'status': 'error', 'message': 'Website ID is required'}
         
-        user_id_str = str(user['_id'])
+        user_id_str = str(user.get('_id') or user.get('id') or '')
         user_id_obj = self._resolve_id(user_id_str)
         is_admin = bool(user.get('is_admin') or user.get('role') in ('admin', 'super_admin'))
         
@@ -487,7 +497,7 @@ class UserAPI:
         if ObjectId.is_valid(website_id):
             target_ids.append(ObjectId(website_id))
 
-        user_cond = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
+        user_cond = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}, {'user_id': str(user_id_obj)}]}
         
         # 1. Look up in websites collection
         if is_admin:
@@ -501,38 +511,57 @@ class UserAPI:
                     {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]}
                 ]
             })
+            if not site_doc:
+                # Also try looking up strictly by _id in case user_id was stored differently
+                raw_doc = self.db.websites.find_one({'_id': {'$in': target_ids}})
+                if raw_doc and str(raw_doc.get('user_id', '')).lower() == user_id_str.lower():
+                    site_doc = raw_doc
 
         if site_doc:
             domain = site_doc.get('domain')
             actual_id = site_doc['_id']
+            site_platform = (site_doc.get('platform') or '').lower()
+            is_wp = 'wordpress' in site_platform or 'wp' in site_platform
 
-            if is_admin:
-                self.db.websites.delete_one({'_id': actual_id})
-                if domain:
-                    self.db.wordpress_sites.delete_many({'domain': domain})
-                self.db.wordpress_sites.delete_many({'website_id': str(actual_id)})
-                self.db.api_keys.delete_many({'website_id': str(actual_id)})
-            else:
-                self.db.websites.delete_one({'_id': actual_id, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
-                if domain:
-                    self.db.wordpress_sites.delete_many({'domain': domain, '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
-                self.db.wordpress_sites.delete_many({'website_id': str(actual_id), '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
-                self.db.api_keys.delete_many({
-                    'website_id': str(actual_id),
-                    '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
-                })
+            # Delete the website document
+            self.db.websites.delete_one({'_id': actual_id})
 
-            if domain:
+            # Clean up DNS records for this specific website
+            self.db.dns_records.delete_many({
+                '$or': [{'website_id': str(actual_id)}, {'website_id': actual_id}]
+            })
+
+            # Clean up API keys for this specific website
+            self.db.api_keys.delete_many({
+                '$or': [{'website_id': str(actual_id)}, {'website_id': actual_id}]
+            })
+
+            # ONLY delete from wordpress_sites if this site was actually a WordPress site!
+            if is_wp:
+                wp_del_query = {'$or': [{'_id': {'$in': target_ids}}, {'website_id': str(actual_id)}]}
+                if not is_admin:
+                    wp_del_query = {'$and': [user_cond, wp_del_query]}
+                self.db.wordpress_sites.delete_many(wp_del_query)
+
+            # Check if user has any other website with this same domain (e.g. domain vs wordpress)
+            remaining = self.db.websites.count_documents({
+                '$and': [
+                    user_cond,
+                    {'domain': domain}
+                ]
+            })
+            if remaining == 0 and domain:
                 try:
                     self.db.users.update_many(
-                        {},
+                        user_cond,
                         {'$pull': {'websites': domain}}
                     )
                 except Exception:
                     pass
 
             self._stats_cache.clear()
-            return {'status': 'success', 'message': f'Website {domain or website_id} removed successfully'}
+            label = "WordPress site" if is_wp else "Domain"
+            return {'status': 'success', 'message': f'{label} "{domain or website_id}" removed successfully'}
 
         # 2. Fallback: Look up in wordpress_sites collection
         if is_admin:
@@ -553,20 +582,21 @@ class UserAPI:
             ws_id = wp_doc.get('website_id')
 
             if is_admin:
-                self.db.wordpress_sites.delete_many({'$or': [{'_id': actual_id}, {'domain': domain}]})
+                self.db.wordpress_sites.delete_many({'_id': actual_id})
                 if ws_id:
-                    self.db.websites.delete_many({'_id': ws_id})
+                    self.db.websites.delete_many({'_id': ws_id, 'platform': {'$regex': '^wordpress', '$options': 'i'}})
                     self.db.api_keys.delete_many({'website_id': str(ws_id)})
             else:
                 self.db.wordpress_sites.delete_many({
                     '$and': [
                         user_cond,
-                        {'$or': [{'_id': actual_id}, {'domain': domain}]}
+                        {'_id': actual_id}
                     ]
                 })
                 if ws_id:
                     self.db.websites.delete_many({
                         '_id': ws_id,
+                        'platform': {'$regex': '^wordpress', '$options': 'i'},
                         '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
                     })
                     self.db.api_keys.delete_many({
@@ -574,17 +604,8 @@ class UserAPI:
                         '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
                     })
 
-            if domain:
-                try:
-                    self.db.users.update_many(
-                        {},
-                        {'$pull': {'websites': domain}}
-                    )
-                except Exception:
-                    pass
-
             self._stats_cache.clear()
-            return {'status': 'success', 'message': f'WordPress site {domain or website_id} removed successfully'}
+            return {'status': 'success', 'message': f'WordPress site "{domain or website_id}" removed successfully'}
 
         return {'status': 'error', 'message': 'Website not found or unauthorized'}
 

@@ -1,7 +1,9 @@
 const API_BASE = (
-  import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE !== 'http://localhost:8000'
-    ? import.meta.env.VITE_API_BASE
-    : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:8000')
+  typeof window !== 'undefined' && (window.location.hostname === 'mdefender-pro.crafix.tech' || window.location.hostname !== 'localhost')
+    ? ''
+    : (import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE !== 'http://localhost:8000'
+        ? import.meta.env.VITE_API_BASE
+        : 'http://localhost:8000')
 ).replace(/\/+$/, "");
 
 let csrfToken = null;
@@ -81,13 +83,22 @@ async function apiCall(endpoint, options = {}) {
     headers['X-CSRF-Token'] = csrf;
   }
 
-  const { skipAuthRedirect, ...fetchOptions } = options;
+  const { skipAuthRedirect, timeout = 12000, ...fetchOptions } = options;
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-    credentials: 'include',
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+      credentials: 'include',
+      signal: options.signal || controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (response.status === 401 || (response.status === 403 && (endpoint === '/api/auth/me' || endpoint === '/api/auth/refresh'))) {
     const data = await response.json().catch(() => ({}));
@@ -352,7 +363,13 @@ export const api = {
   regenerateApiKey: (data) => apiCall('/api/user/regenerate_key', { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
   getUserWebsites: (platform) => apiCall(`/api/v1/websites${platform ? `?platform=${encodeURIComponent(platform)}` : ''}`),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
-  removeUserWebsite: (id) => apiCall(`/api/user/websites?id=${id}`, { method: 'DELETE' }),
+  removeUserWebsite: async (id) => {
+    try {
+      return await apiCall(`/api/user/websites?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      return await apiCall(`/api/v1/websites/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    }
+  },
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),
   getWebsiteInstallation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/installation`),
 

@@ -110,8 +110,10 @@ def _generate_raw_key():
 
 
 def _website_out(doc):
+    raw_id = str(doc["_id"])
     return serialize({
-        "_id": doc["_id"],
+        "_id": raw_id,
+        "id": raw_id,
         "name": doc.get("name", doc.get("domain", "")),
         "url": doc.get("url", doc.get("domain", "")),
         "domain": doc.get("domain", doc.get("url", "")),
@@ -134,12 +136,18 @@ def _website_out(doc):
 @router.get("")
 async def list_websites(platform: str | None = None, user=Depends(get_current_user)):
     db = MongoDB()
-    query = {"user_id": str(user["id"])}
+    from bson import ObjectId
+    user_id_str = str(user["id"])
+    user_cond = [{"user_id": user_id_str}]
+    if ObjectId.is_valid(user_id_str):
+        user_cond.append({"user_id": ObjectId(user_id_str)})
+    
+    query = {"$or": user_cond}
     if platform:
         if platform == "wordpress":
-            query["platform"] = "wordpress"
+            query["platform"] = {"$regex": "^wordpress", "$options": "i"}
         elif platform in ("domain", "cloud"):
-            query["platform"] = {"$in": ["domain", "cloud"]}
+            query["platform"] = {"$nin": ["wordpress", "WordPress", "WordPress (XAMPP)"]}
     docs = list(db.websites.find(query).sort("connected_at", -1))
     return success({"websites": [_website_out(d) for d in docs]})
 
@@ -166,9 +174,29 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
     ssl_mode = (body.ssl_mode or "flexible").lower()
     name = (body.name or clean_domain).strip()
 
-    existing = db.websites.find_one({"$or": [{"url": clean_domain}, {"domain": clean_domain}]})
+    from bson import ObjectId
+    user_id_str = str(user["id"])
+    user_cond = [{"user_id": user_id_str}]
+    if ObjectId.is_valid(user_id_str):
+        user_cond.append({"user_id": ObjectId(user_id_str)})
+
+    # Allow dual-mode protection: WordPress Plugin + Domain/Cloud Edge WAF on same domain
+    if platform == "wordpress":
+        plat_filter = {"$or": [{"platform": "wordpress"}, {"platform": {"$regex": "^wordpress", "$options": "i"}}]}
+        plat_label = "WordPress site"
+    else:
+        plat_filter = {"$or": [{"platform": "domain"}, {"platform": "cloud"}, {"platform": {"$nin": ["wordpress", "WordPress"]}}]}
+        plat_label = "Domain"
+
+    existing = db.websites.find_one({
+        "$and": [
+            {"$or": user_cond},
+            {"$or": [{"url": clean_domain}, {"domain": clean_domain}]},
+            plat_filter
+        ]
+    })
     if existing:
-        raise HTTPException(status_code=409, detail=f"Website '{clean_domain}' is already registered")
+        raise HTTPException(status_code=409, detail=f"{plat_label} '{clean_domain}' is already registered on your account")
 
     website_id = str(uuid.uuid4())
     now = datetime.now()
@@ -306,15 +334,32 @@ async def update_website(website_id: str, body: WebsiteUpdate, user=Depends(get_
 async def remove_website(website_id: str, user=Depends(get_current_user)):
     website = get_owned_website(user, website_id)
     db = MongoDB()
-    db.websites.delete_one({"_id": website["_id"]})
-    db.api_keys.delete_many({"website_id": website_id})
+    actual_id = website["_id"]
+    domain = website.get("domain") or website.get("url")
+    site_platform = (website.get("platform") or "").lower()
+    is_wp = "wordpress" in site_platform or "wp" in site_platform
+
+    # Delete website document
+    db.websites.delete_one({"_id": actual_id})
+
+    # Delete DNS records associated with this website
+    db.dns_records.delete_many({"$or": [{"website_id": str(actual_id)}, {"website_id": actual_id}]})
+
+    # Delete API keys associated with this website
+    db.api_keys.delete_many({"$or": [{"website_id": str(actual_id)}, {"website_id": actual_id}]})
+
+    # Only delete from wordpress_sites if this site was actually a WordPress site!
+    if is_wp:
+        db.wordpress_sites.delete_many({"$or": [{"website_id": str(actual_id)}, {"_id": actual_id}]})
+
     from src.auth.audit_service import AuditService
     try:
         AuditService().log(user_id=str(user["id"]), action="website_removed",
-                           ip_address="system", details={"website_id": website_id})
+                           ip_address="system", details={"website_id": website_id, "domain": domain})
     except Exception:
         pass
-    return success(message="Website removed")
+    label = "WordPress site" if is_wp else "Domain"
+    return success(message=f"{label} '{domain or website_id}' removed successfully")
 
 
 @router.post("/{website_id}/pause")

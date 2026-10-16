@@ -551,35 +551,91 @@ class DNSZoneService:
         if domain in ("localhost", "127.0.0.1", "test.local") or domain.endswith(".test") or os.getenv("WAF_FORCE_DNS_VERIFIED", "false").lower() == "true":
             is_verified = True
             message = "Development bypass: Domain verified successfully."
-        elif HAS_DNSPYTHON:
-            try:
-                resolver = dns.resolver.Resolver()
-                resolver.timeout = 2.0
-                resolver.lifetime = 3.0
-                answers = resolver.resolve(domain, "NS")
-                for r in answers:
-                    current_ns.append(r.to_text().rstrip(".").lower())
+        else:
+            # Multi-tier verification:
+            # Tier 1: Recursive DNS resolver
+            if HAS_DNSPYTHON:
+                try:
+                    resolver = dns.resolver.Resolver()
+                    resolver.timeout = 2.0
+                    resolver.lifetime = 2.5
+                    answers = resolver.resolve(domain, "NS")
+                    for r in answers:
+                        current_ns.append(r.to_text().rstrip(".").lower())
+                except Exception:
+                    pass
 
-                # Check if MDefender nameservers are present in returned NS set
-                matching = [ns for ns in current_ns if "mdefender" in ns]
-                if matching:
-                    is_verified = True
-                    message = f"Nameservers verified: {', '.join(matching)}. Cloud WAF Anycast edge is active!"
-                else:
-                    message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to {MDEFENDER_NAMESERVERS[0]} and {MDEFENDER_NAMESERVERS[1]}."
-            except Exception as e:
+            # Tier 2: Direct Parent TLD authoritative referral check (direct from registry)
+            if not current_ns and HAS_DNSPYTHON:
+                try:
+                    parts = domain.rstrip(".").split(".")
+                    tld = parts[-1]
+                    root_server = "198.41.0.4"  # a.root-servers.net
+                    msg = dns.message.make_query(tld, "NS")
+                    resp = dns.query.udp(msg, root_server, timeout=2.0)
+                    tld_servers = []
+                    for rrset in resp.additional:
+                        if rrset.rdtype == dns.rdatatype.A:
+                            for item in rrset:
+                                tld_servers.append(str(item))
+                    if not tld_servers:
+                        for rrset in resp.authority:
+                            if rrset.rdtype == dns.rdatatype.NS:
+                                for item in rrset:
+                                    tld_servers.append(str(item))
+                    for s in tld_servers[:3]:
+                        try:
+                            tld_ip = s if s.replace(".", "").isdigit() else str(dns.resolver.resolve(s, "A", lifetime=2.0)[0])
+                            q = dns.message.make_query(domain, "NS")
+                            r = dns.query.udp(q, tld_ip, timeout=2.0)
+                            for rrset in r.authority:
+                                if rrset.rdtype == dns.rdatatype.NS:
+                                    for item in rrset:
+                                        current_ns.append(str(item).rstrip(".").lower())
+                            if current_ns:
+                                break
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+
+            # Tier 3: RDAP registry query via HTTPS (RFC 7482)
+            if not current_ns:
+                try:
+                    import urllib.request
+                    import json
+                    req = urllib.request.Request(
+                        f"https://rdap.org/domain/{domain}",
+                        headers={"Accept": "application/json", "User-Agent": "MDefender-Pro/1.0"}
+                    )
+                    with urllib.request.urlopen(req, timeout=3.0) as r:
+                        rdap_data = json.loads(r.read().decode("utf-8"))
+                        for ns_entry in rdap_data.get("nameservers", []):
+                            ns_name = (ns_entry.get("ldhName") or "").lower().strip()
+                            if ns_name:
+                                current_ns.append(ns_name)
+                except Exception:
+                    pass
+
+            # Check if MDefender nameservers are present in returned NS set
+            matching = [ns for ns in current_ns if "mdefender" in ns]
+            if matching:
+                is_verified = True
+                message = f"Nameservers verified: {', '.join(matching)}. Cloud WAF Anycast edge is active!"
+            elif current_ns:
+                message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to {MDEFENDER_NAMESERVERS[0]} and {MDEFENDER_NAMESERVERS[1]}."
+            else:
+                # Tier 4: IP match check
                 try:
                     ip = socket.gethostbyname(domain)
-                    message = f"Nameserver check pending. Domain currently resolves to {ip}. Please verify registrar records."
-                except Exception:
-                    message = f"DNS query failed: {str(e)}. Please check your domain registrar configuration."
-        else:
-            try:
-                ip = socket.gethostbyname(domain)
-                is_verified = True
-                message = f"Resolved IP {ip}. Cloud WAF proxy verified."
-            except Exception as e:
-                message = f"DNS resolution failed: {str(e)}."
+                    proxy_ips = os.getenv("MDEFENDER_PROXY_IPS", "217.15.170.82,198.51.100.1").split(",")
+                    if ip in proxy_ips or ip == "217.15.170.82":
+                        is_verified = True
+                        message = f"Domain {domain} is pointed directly to MDefender Anycast IP ({ip})."
+                    else:
+                        message = f"Nameserver propagation pending for {domain}. Current IP: {ip}. Please allow up to 30 minutes for global DNS cache refresh."
+                except Exception as e:
+                    message = f"DNS query pending for {domain}. Please verify your domain registrar configuration."
 
         if is_verified:
             self.db.websites.update_one(
