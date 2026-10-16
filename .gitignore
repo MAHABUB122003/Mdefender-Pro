@@ -54,6 +54,9 @@ uvicorn_out.log
 *.sqlite
 *.sqlite3
 quarantine/
+scratch/
+.pytest_cache/
+backend/.pytest_cache/
 
 # Large Datasets & Archives
 *.csv
