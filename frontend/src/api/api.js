@@ -1,4 +1,8 @@
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:8000").replace(/\/+$/, "");
+const API_BASE = (
+  import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE !== 'http://localhost:8000'
+    ? import.meta.env.VITE_API_BASE
+    : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:8000')
+).replace(/\/+$/, "");
 
 let csrfToken = null;
 
