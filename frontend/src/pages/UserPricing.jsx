@@ -273,8 +273,8 @@ export default function UserPricing() {
       name: 'Dedicated Enterprise',
       badge: 'Maximum Scale',
       badgeColor: '#8b5cf6',
-      monthlyPrice: 49,
-      yearlyPrice: 470,
+      monthlyPrice: 35,
+      yearlyPrice: 350,
       description: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute SLA.',
       features: [
         '15 Protected Websites & APIs',

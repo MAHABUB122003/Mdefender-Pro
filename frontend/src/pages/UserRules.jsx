@@ -18,7 +18,6 @@ const CATEGORIES = [
 const ITEMS_PER_PAGE = 25
 
 export default function UserRules() {
-  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
   const [rules, setRules] = useState(() => userStore.get('rules') || [])
   const [loading, setLoading] = useState(() => !userStore.get('rules'))
   const [refreshing, setRefreshing] = useState(false)
@@ -55,6 +54,10 @@ export default function UserRules() {
   }, [searchQuery, categoryFilter, activeTab])
 
   const openAddModal = () => {
+    if (!canUseCustomRules) {
+      alert('Custom Rule authoring requires Developer Go or Enterprise Pro plan. Please upgrade your plan.')
+      return
+    }
     setEditingId(null)
     setForm({ name: '', pattern: '', action: 'block', severity: 'critical', enabled: true })
     setShowModal(true)
@@ -125,32 +128,9 @@ export default function UserRules() {
     return filteredRules.slice(start, start + ITEMS_PER_PAGE)
   }, [filteredRules, currentPage])
 
-  if (!isPremium) {
-    return (
-      <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <div style={{
-          width: '80px', height: '80px', borderRadius: '20px', background: '#fffbeb',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
-          fontSize: '32px', color: '#d97706',
-        }}>
-          <i className="fas fa-lock"></i>
-        </div>
-        <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>Premium Feature</h2>
-        <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '440px', margin: '0 auto 24px' }}>
-          2,000+ Enterprise WAF Rules and custom rule management are available for Premium subscribers.
-        </p>
-        <Link to="/user/settings" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px',
-          padding: '12px 28px', background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-          color: '#fff', borderRadius: '10px', fontSize: '14px', fontWeight: '700',
-          textDecoration: 'none', fontFamily: 'inherit',
-          boxShadow: '0 4px 12px rgba(37,99,235,0.25)'
-        }}>
-          <i className="fas fa-crown"></i> Upgrade to Premium
-        </Link>
-      </div>
-    )
-  }
+  const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
+  const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+  const canUseCustomRules = isPaid
 
   const [testPayload, setTestPayload] = useState("' UNION SELECT 1, user(), version()-- -")
   const [testResult, setTestResult] = useState(null)
@@ -632,15 +612,62 @@ export default function UserRules() {
             </div>
 
             {activeTab === 'custom' && (
-              <button 
-                className="btn-primary" 
-                onClick={openAddModal} 
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}
-              >
-                <i className="fas fa-plus"></i> Add Custom Rule
-              </button>
+              canUseCustomRules ? (
+                <button 
+                  className="btn-primary" 
+                  onClick={openAddModal} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}
+                >
+                  <i className="fas fa-plus"></i> Add Custom Rule
+                </button>
+              ) : (
+                <Link
+                  to="/user/pricing"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 18px',
+                    borderRadius: '8px', fontSize: '13px', fontWeight: '700',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    color: '#fff', textDecoration: 'none', boxShadow: '0 2px 8px rgba(217, 119, 6, 0.3)'
+                  }}
+                >
+                  <i className="fas fa-crown"></i> Unlock Custom Rules ($9/mo)
+                </Link>
+              )
             )}
           </div>
+
+      {/* Free Plan notice on Custom Rules tab */}
+      {activeTab === 'custom' && !canUseCustomRules && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1.5px solid #fde68a', borderRadius: '12px', padding: '16px 20px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px',
+          marginBottom: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#f59e0b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+              <i className="fas fa-shield-halved"></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: '#92400e' }}>
+                Custom Regex Rule Builder is a Paid Plan Feature
+              </div>
+              <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>
+                Your current plan includes Core 500+ Signatures. Upgrade to Developer Go ($9) or Enterprise Pro ($20) to write unlimited custom rules and zero-day patches.
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/user/pricing"
+            style={{
+              padding: '9px 18px', borderRadius: '8px', background: '#d97706', color: '#fff',
+              fontSize: '13px', fontWeight: '700', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px'
+            }}
+          >
+            <i className="fas fa-crown"></i> Upgrade Plan
+          </Link>
+        </div>
+      )}
 
       {/* Rules Table */}
       <div className="rules-table">

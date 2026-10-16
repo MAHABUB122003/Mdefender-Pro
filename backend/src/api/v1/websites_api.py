@@ -500,7 +500,7 @@ async def verify_dns(website_id: str, user=Depends(get_current_user)):
                     verification_method = "anycast_ip_match"
                     diag_message = f"Domain {domain} is successfully pointed to MDefender Anycast IP ({ip})."
                 else:
-                    diag_message = f"Domain {domain} currently resolves to {ip}. Please delegate nameservers to ns1.mdefender.pro & ns2.mdefender.pro."
+                    diag_message = f"Domain {domain} currently resolves to {ip}. Please delegate nameservers to ns1.mdefender-pro.crafix.tech & ns2.mdefender-pro.crafix.tech."
             except Exception as e:
                 diag_message = f"DNS resolution failed for {domain}: {str(e)}. Please check your registrar settings."
 
@@ -517,8 +517,8 @@ async def verify_dns(website_id: str, user=Depends(get_current_user)):
         "method": verification_method,
         "current_nameservers": current_ns,
         "resolved_ips": resolved_ips,
-        "nameservers": ["ns1.mdefender.pro", "ns2.mdefender.pro"],
-        "cname_target": "proxy.mdefender.pro",
+        "nameservers": ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"],
+        "cname_target": "proxy.mdefender-pro.crafix.tech",
         "message": diag_message
     })
 
@@ -669,7 +669,7 @@ async def installation_instructions(website_id: str, user=Depends(get_current_us
 
     dns_proxy_steps = [
         "Log into your domain registrar (Namecheap, GoDaddy, Cloudflare, etc.).",
-        "Change your domain Nameservers to: ns1.mdefender.pro and ns2.mdefender.pro (OR add a CNAME record pointing to proxy.mdefender.pro).",
+        "Change your domain Nameservers to: ns1.mdefender-pro.crafix.tech and ns2.mdefender-pro.crafix.tech (OR add a CNAME record pointing to proxy.mdefender-pro.crafix.tech).",
         "Wait 1–5 minutes for DNS propagation.",
         "Click 'Verify DNS' in your MDefender Pro dashboard.",
         "All incoming web traffic is now routed through MDefender's Sub-Millisecond Anycast WAF Edge!"
@@ -711,7 +711,7 @@ async def installation_instructions(website_id: str, user=Depends(get_current_us
         "website_id": website_id,
         "domain": domain,
         "platform": platform,
-        "nameservers": ["ns1.mdefender.pro", "ns2.mdefender.pro"],
-        "cname_target": "proxy.mdefender.pro",
+        "nameservers": ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"],
+        "cname_target": "proxy.mdefender-pro.crafix.tech",
         **cfg
     })

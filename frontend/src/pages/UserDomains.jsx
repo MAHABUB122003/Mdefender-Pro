@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
 import DnsZoneDrawer from '../components/DnsZoneDrawer'
 import DnsOnboardingModal from '../components/DnsOnboardingModal'
-import PaymentModal from '../components/PaymentModal'
 
 export const DOMAIN_PLANS = [
   {
@@ -78,8 +78,8 @@ export const DOMAIN_PLANS = [
     badge: 'Maximum Scale',
     limit: 15,
     requests: '10,000,000+ requests / month',
-    monthlyPrice: 49,
-    yearlyPrice: 470,
+    monthlyPrice: 35,
+    yearlyPrice: 350,
     color: '#7c3aed',
     desc: 'Dedicated infrastructure, custom proxy nodes, and 15-minute guaranteed SLA.',
     features: [
@@ -95,7 +95,10 @@ export const DOMAIN_PLANS = [
 ]
 
 export default function UserDomains() {
+  const navigate = useNavigate()
   const [websites, setWebsites] = useState([])
+  const [totalWebsitesCount, setTotalWebsitesCount] = useState(0)
+  const [wordpressSitesCount, setWordpressSitesCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [feedbackMsg, setFeedbackMsg] = useState(null)
@@ -103,18 +106,15 @@ export default function UserDomains() {
   // Drawer & Modal state
   const [selectedZoneDomain, setSelectedZoneDomain] = useState(null)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
-  const [showPricingModal, setShowPricingModal] = useState(false)
-  const [pricingCycle, setPricingCycle] = useState('monthly')
-  const [checkoutPlan, setCheckoutPlan] = useState(null)
   const [verifyingId, setVerifyingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [togglingBotId, setTogglingBotId] = useState(null)
 
   const [userPlan, setUserPlan] = useState(() => {
-    return localStorage.getItem('mdefender_user_plan') || 'free'
+    return (localStorage.getItem('mdefender_user_plan') || 'free').toLowerCase()
   })
 
-  const isPremium = userPlan === 'premium' || userPlan === 'pro' || userPlan === 'enterprise'
+  const isPremium = userPlan === 'premium' || userPlan === 'pro' || userPlan === 'enterprise' || userPlan === 'go'
 
   const fetchDomains = useCallback(async () => {
     try {
@@ -127,7 +127,10 @@ export default function UserDomains() {
       if (sitesRes.status === 'fulfilled') {
         const list = sitesRes.value?.data?.websites || sitesRes.value?.websites || []
         const domainList = list.filter(w => (w.platform || '').toLowerCase() !== 'wordpress')
+        const wpList = list.filter(w => (w.platform || '').toLowerCase() === 'wordpress')
         setWebsites(domainList)
+        setTotalWebsitesCount(list.length)
+        setWordpressSitesCount(wpList.length)
       }
 
       if (dashRes.status === 'fulfilled') {
@@ -263,11 +266,11 @@ export default function UserDomains() {
     }
   }
 
-  // Quota & Plan calculations
+  // Quota & Plan calculations (Unified: WordPress + Custom Domains)
   const normalizedPlan = (userPlan === 'premium' ? 'pro' : userPlan || 'free').toLowerCase()
   const currentPlanObj = DOMAIN_PLANS.find(p => p.id === normalizedPlan) || DOMAIN_PLANS[0]
   const domainLimit = currentPlanObj.limit
-  const quotaUsed = websites.length
+  const quotaUsed = totalWebsitesCount || websites.length
   const isLimitReached = quotaUsed >= domainLimit
   const quotaPercent = Math.min(100, Math.round((quotaUsed / domainLimit) * 100))
 
@@ -275,9 +278,9 @@ export default function UserDomains() {
     if (isLimitReached) {
       setFeedbackMsg({
         type: 'error',
-        text: `Domain Limit Reached (${quotaUsed}/${domainLimit} Domains). Your ${currentPlanObj.name} plan allows up to ${domainLimit} domain(s). Please upgrade your plan to connect additional domains.`
+        text: `Protected Website Quota Reached (${quotaUsed}/${domainLimit} Websites used across WordPress and Custom Domains). Your ${currentPlanObj.name} plan allows up to ${domainLimit} website(s). Please upgrade your plan to connect additional domains.`
       })
-      setShowPricingModal(true)
+      navigate('/user/pricing')
     } else {
       setShowOnboardingModal(true)
     }
@@ -346,7 +349,7 @@ export default function UserDomains() {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button
             type="button"
-            onClick={() => setShowPricingModal(true)}
+            onClick={() => navigate('/user/pricing')}
             style={{
               padding: '11px 18px', borderRadius: '10px',
               border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -415,7 +418,7 @@ export default function UserDomains() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
               <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main, #0f172a)' }}>
-                Domain Quota: {quotaUsed} / {domainLimit} Used
+                Protected Websites: {quotaUsed} / {domainLimit} ({websites.length} Domains, {wordpressSitesCount} WordPress)
               </span>
               {isLimitReached && (
                 <span style={{ fontSize: '10px', fontWeight: '800', padding: '1px 6px', borderRadius: '4px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
@@ -454,7 +457,7 @@ export default function UserDomains() {
 
         <button
           type="button"
-          onClick={() => setShowPricingModal(true)}
+          onClick={() => navigate('/user/pricing')}
           style={{
             padding: '7px 16px',
             borderRadius: '8px',
@@ -806,271 +809,20 @@ export default function UserDomains() {
         <DnsOnboardingModal
           isOpen={showOnboardingModal}
           onClose={() => setShowOnboardingModal(false)}
+          userPlan={userPlan}
+          totalWebsites={quotaUsed}
+          websiteLimit={domainLimit}
           onWebsiteAdded={(newSite) => {
             setShowOnboardingModal(false)
             fetchDomains()
             setFeedbackMsg({
               type: 'success',
-              text: `Domain "${newSite.domain || newSite.name}" connected! Please point your registrar nameservers to ns1.mdefender.pro and ns2.mdefender.pro.`
+              text: `Domain "${newSite.domain || newSite.name}" connected! Please point your registrar nameservers to ns1.mdefender-pro.crafix.tech and ns2.mdefender-pro.crafix.tech.`
             })
           }}
         />
       )}
 
-      {/* Synchronized Pricing & Entitlements Modal */}
-      {showPricingModal && (
-        <div
-          onClick={() => setShowPricingModal(false)}
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
-            padding: '20px 16px'
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#ffffff', borderRadius: '22px', border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35)',
-              width: '100%', maxWidth: '1140px', maxHeight: '92vh',
-              overflowY: 'auto', display: 'flex', flexDirection: 'column',
-              color: '#0f172a', position: 'relative'
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '22px 28px', borderBottom: '1px solid #f1f5f9',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              position: 'sticky', top: 0, background: '#ffffff', zIndex: 10
-            }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '38px', height: '38px', borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                    color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '18px', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
-                  }}>
-                    <i className="fas fa-tags"></i>
-                  </div>
-                  <div>
-                    <h2 style={{ fontSize: '18.5px', fontWeight: '800', margin: 0, color: '#0f172a' }}>
-                      Subscription Pricing &amp; Domain Quota Plans
-                    </h2>
-                    <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
-                      Transparent pricing with zero hidden fees. Upgrade or downgrade anytime.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                {/* Billing Cycle Switcher */}
-                <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '3px', borderRadius: '9px', border: '1px solid #e2e8f0' }}>
-                  <button
-                    type="button"
-                    onClick={() => setPricingCycle('monthly')}
-                    style={{
-                      padding: '5px 14px', borderRadius: '7px', border: 'none',
-                      background: pricingCycle === 'monthly' ? '#2563eb' : 'transparent',
-                      color: pricingCycle === 'monthly' ? '#ffffff' : '#64748b',
-                      fontSize: '12px', fontWeight: '700', cursor: 'pointer'
-                    }}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPricingCycle('yearly')}
-                    style={{
-                      padding: '5px 14px', borderRadius: '7px', border: 'none',
-                      background: pricingCycle === 'yearly' ? '#2563eb' : 'transparent',
-                      color: pricingCycle === 'yearly' ? '#ffffff' : '#64748b',
-                      fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                      display: 'inline-flex', alignItems: 'center', gap: '5px'
-                    }}
-                  >
-                    <span>Yearly</span>
-                    <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', background: '#10b981', color: '#ffffff' }}>SAVE 20%</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setShowPricingModal(false)}
-                  style={{
-                    width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #e2e8f0',
-                    background: '#f8fafc', color: '#64748b', cursor: 'pointer', fontSize: '14px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-            </div>
-
-            {/* 4 Plans Grid */}
-            <div style={{ padding: '24px 28px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: '18px', alignItems: 'stretch' }}>
-              {DOMAIN_PLANS.map((plan) => {
-                const isCurrent = normalizedPlan === plan.id
-                const isHighlighted = plan.popular
-                const price = pricingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice
-                return (
-                  <div
-                    key={plan.id}
-                    style={{
-                      borderRadius: '16px',
-                      border: isHighlighted
-                        ? '1.5px solid rgba(99, 102, 241, 0.45)'
-                        : isCurrent
-                          ? `1.5px solid ${plan.color}`
-                          : '1px solid #e2e8f0',
-                      background: isHighlighted ? '#faf5ff' : '#ffffff',
-                      boxShadow: isHighlighted ? '0 8px 25px rgba(99, 102, 241, 0.12)' : '0 2px 8px rgba(0,0,0,0.03)',
-                      padding: '24px 20px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      position: 'relative'
-                    }}
-                  >
-                    {isHighlighted && (
-                      <div style={{
-                        position: 'absolute', top: '-11px', right: '16px',
-                        background: 'linear-gradient(135deg, #4338ca, #6366f1)',
-                        color: '#ffffff', fontSize: '10px', fontWeight: '800',
-                        padding: '2px 10px', borderRadius: '20px', textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        ★ Most Popular
-                      </div>
-                    )}
-
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>{plan.name}</span>
-                        {isCurrent && (
-                          <span style={{ fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px', background: '#dcfce7', color: '#15803d' }}>
-                            ACTIVE
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px', minHeight: '34px', lineHeight: 1.45 }}>
-                        {plan.desc}
-                      </p>
-
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '18px' }}>
-                        <span style={{ fontSize: '32px', fontWeight: '900', color: isHighlighted ? '#4f46e5' : '#0f172a' }}>
-                          ${price}
-                        </span>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>
-                          {plan.id === 'free' ? 'forever' : pricingCycle === 'yearly' ? '/year' : '/mo'}
-                        </span>
-                      </div>
-
-                      {/* Quota Highlights */}
-                      <div style={{
-                        background: '#f8fafc', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px',
-                        border: '1px solid #f1f5f9', fontSize: '12px', color: '#334155'
-                      }}>
-                        <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '4px' }}>
-                          <i className="fas fa-globe" style={{ color: plan.color, marginRight: '6px' }}></i>
-                          {plan.limit} Protected Domain{plan.limit > 1 ? 's' : ''}
-                        </div>
-                        <div style={{ color: '#64748b' }}>
-                          <i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i>
-                          {plan.requests}
-                        </div>
-                      </div>
-
-                      {/* Feature Checklist */}
-                      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {plan.features.map((f, i) => (
-                          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: f.ok ? '#334155' : '#94a3b8' }}>
-                            <i className={`fas ${f.ok ? 'fa-check' : 'fa-times'}`} style={{ color: f.ok ? '#10b981' : '#cbd5e1', marginTop: '2px', fontSize: '11px', flexShrink: 0 }}></i>
-                            <span style={{ textDecoration: f.ok ? 'none' : 'line-through' }}>{f.text}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {isCurrent ? (
-                      <button
-                        disabled
-                        style={{
-                          width: '100%', padding: '10px', borderRadius: '9px',
-                          background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0',
-                          fontSize: '13px', fontWeight: '700', cursor: 'default'
-                        }}
-                      >
-                        Current Plan
-                      </button>
-                    ) : plan.id === 'free' ? (
-                      <button
-                        onClick={async () => {
-                          try {
-                            if (api.updateUserPlan) {
-                              await api.updateUserPlan('free')
-                            }
-                            setUserPlan('free')
-                            localStorage.setItem('mdefender_user_plan', 'free')
-                            setShowPricingModal(false)
-                            fetchDomains()
-                          } catch (err) {
-                            setFeedbackMsg({ type: 'error', text: err.message || 'Failed to switch to Free plan' })
-                          }
-                        }}
-                        style={{
-                          width: '100%', padding: '10px', borderRadius: '9px',
-                          background: '#f8fafc', color: '#0f172a', border: '1px solid #cbd5e1',
-                          fontSize: '13px', fontWeight: '700', cursor: 'pointer'
-                        }}
-                      >
-                        Select Free Forever
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setCheckoutPlan(plan.id)
-                          setShowPricingModal(false)
-                        }}
-                        style={{
-                          width: '100%', padding: '10px', borderRadius: '9px',
-                          background: isHighlighted ? 'linear-gradient(135deg, #4338ca, #6366f1)' : plan.color,
-                          color: '#ffffff', border: 'none', fontSize: '13px', fontWeight: '700',
-                          cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                        }}
-                      >
-                        Upgrade to {plan.name}
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Integrated Checkout Payment Modal */}
-      {checkoutPlan && (
-        <PaymentModal
-          isOpen={Boolean(checkoutPlan)}
-          plan={checkoutPlan}
-          billingCycle={pricingCycle}
-          onClose={() => setCheckoutPlan(null)}
-          onSuccess={() => {
-            setCheckoutPlan(null)
-            setUserPlan(checkoutPlan)
-            localStorage.setItem('mdefender_user_plan', checkoutPlan)
-            setFeedbackMsg({
-              type: 'success',
-              text: `🎉 Plan upgraded to ${DOMAIN_PLANS.find(p => p.id === checkoutPlan)?.name || 'Enterprise Pro'}! Your new domain quota is now active.`
-            })
-            fetchDomains()
-          }}
-        />
-      )}
     </div>
   )
 }

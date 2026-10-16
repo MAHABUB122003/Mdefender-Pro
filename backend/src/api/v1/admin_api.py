@@ -403,6 +403,19 @@ async def create_user_account(body: CreateUserBody, admin_email: str = Depends(g
     res = db.users.insert_one(user_doc)
     user_id = str(res.inserted_id)
 
+    if plan_key != "free":
+        try:
+            from src.services.subscription_service import SubscriptionService
+            days_val = body.duration_days if (body.duration_days and body.duration_days > 0) else 365
+            SubscriptionService(db).grant_entitlement(
+                user_id=user_id,
+                plan=plan_key,
+                days=days_val,
+                note={"granted_by": admin_email, "note": body.gift_note or "Assigned during account creation"}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to sync entitlement during user create: {e}")
+
     AuditService().log(user_id=admin_email, action="admin_created_user", ip_address="admin_panel",
                        details={"created_user": email, "plan": plan_key, "user_id": user_id})
 
@@ -457,6 +470,18 @@ async def gift_user_plan(body: GiftPlanBody, admin_email: str = Depends(get_curr
         }
     )
 
+    try:
+        from src.services.subscription_service import SubscriptionService
+        days_val = 36500 if (body.is_lifetime or (body.duration_days and body.duration_days >= 36500)) else (body.duration_days or 30)
+        SubscriptionService(db).grant_entitlement(
+            user_id=str(user["_id"]),
+            plan=plan_key,
+            days=days_val,
+            note={"granted_by": admin_email, "note": note}
+        )
+    except Exception as e:
+        logger.warning(f"Failed to sync entitlement during plan gift: {e}")
+
     AuditService().log(user_id=admin_email, action="user_plan_gifted", ip_address="admin_panel",
                        details={"target_user": user.get("email"), "plan": plan_key, "duration": duration_desc, "note": note})
 
@@ -466,6 +491,53 @@ async def gift_user_plan(body: GiftPlanBody, admin_email: str = Depends(get_curr
         "duration": duration_desc,
         "expires_at": expires_at.strftime("%Y-%m-%d") if expires_at else "Never (Lifetime)"
     }, message=f"Successfully gifted {plan_key.upper()} plan ({duration_desc}) to {user.get('email')}!")
+
+
+@router.post("/users/plan")
+async def update_user_plan_route(body: GrantPlanBody, admin_email: str = Depends(get_current_admin)):
+    """Admin endpoint to set or upgrade a user's subscription tier."""
+    db = get_db()
+    user = _resolve_user_doc(db, body.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    plan_key = body.plan.lower()
+    now = datetime.now()
+    days_val = body.duration_days or 30
+    expires_at = now + timedelta(days=days_val)
+
+    db.users.update_one(
+        {"_id": user["_id"]},
+        {
+            "$set": {
+                "plan": plan_key,
+                "plan_tier": plan_key,
+                "plan_expires": expires_at,
+                "payment_status": "active" if plan_key != "free" else "free",
+                "updated_at": now,
+            }
+        }
+    )
+
+    try:
+        from src.services.subscription_service import SubscriptionService
+        SubscriptionService(db).grant_entitlement(
+            user_id=str(user["_id"]),
+            plan=plan_key,
+            days=days_val,
+            note={"granted_by": admin_email, "note": f"Admin plan update to {plan_key}"}
+        )
+    except Exception as e:
+        logger.warning(f"Failed to sync entitlement during plan update: {e}")
+
+    AuditService().log(user_id=admin_email, action="admin_updated_user_plan", ip_address="admin_panel",
+                       details={"target_user": user.get("email"), "plan": plan_key, "days": days_val})
+
+    return success({
+        "email": user.get("email"),
+        "plan": plan_key,
+        "expires_at": expires_at.strftime("%Y-%m-%d")
+    }, message=f"User plan updated to {plan_key.upper()} successfully!")
 
 
 @router.post("/users/change-password")

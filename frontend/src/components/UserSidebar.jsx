@@ -1,7 +1,16 @@
 import { NavLink } from 'react-router-dom'
 
 export default function UserSidebar({ isOpen }) {
-  const isPremium = localStorage.getItem('mdefender_user_plan') === 'premium'
+  const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
+  const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+  const isCustomRulesAllowed = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+
+  const planName = {
+    free: 'Starter Free',
+    go: 'Developer Go',
+    pro: 'Enterprise Pro',
+    enterprise: 'Dedicated Enterprise'
+  }[userPlan] || (isPaid ? 'Premium Plan' : 'Starter Free')
 
   return (
     <>
@@ -33,15 +42,14 @@ export default function UserSidebar({ isOpen }) {
             <span className="nav-icon"><i className="fas fa-chart-pie"></i></span>
             <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/user/logs" className={!isPremium ? 'premium-nav' : ''}>
+          <NavLink to="/user/logs">
             <span className="nav-icon"><i className="fas fa-list"></i></span>
             <span>Logs</span>
-            {!isPremium && <span className="pro-badge">PRO</span>}
           </NavLink>
-          <NavLink to="/user/rules" className={!isPremium ? 'premium-nav' : ''}>
+          <NavLink to="/user/rules">
             <span className="nav-icon"><i className="fas fa-shield"></i></span>
             <span>Rules</span>
-            {!isPremium && <span className="pro-badge">PRO</span>}
+            {!isCustomRulesAllowed && <span className="pro-badge" style={{ background: '#f59e0b', color: '#fff', fontSize: '9px', fontWeight: '800', padding: '1px 5px', borderRadius: '4px' }}>CORE</span>}
           </NavLink>
           <div className="nav-label">Management</div>
           <NavLink to="/user/connect">
@@ -75,8 +83,8 @@ export default function UserSidebar({ isOpen }) {
         </nav>
         <div className="sidebar-footer">
           <div className="sidebar-status">
-            <span className={`status-dot ${isPremium ? 'online' : ''}`} style={!isPremium ? { background: '#f59e0b' } : {}}></span>
-            <span>{isPremium ? 'Premium Plan' : 'Free Plan'}</span>
+            <span className={`status-dot ${isPaid ? 'online' : ''}`} style={!isPaid ? { background: '#f59e0b' } : {}}></span>
+            <span style={{ fontSize: '12px', fontWeight: '700' }}>{planName}</span>
           </div>
           <button className="logout-btn" onClick={() => window.__doLogout && window.__doLogout()}>
             <i className="fas fa-right-from-bracket"></i>

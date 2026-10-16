@@ -217,10 +217,10 @@ export default function UserConnect() {
               <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: '700' }}>Primary Nameserver</div>
-                  <code style={{ fontSize: '15px', fontWeight: '700', color: '#0284c7' }}>ns1.mdefender.pro</code>
+                  <code style={{ fontSize: '15px', fontWeight: '700', color: '#0284c7' }}>ns1.mdefender-pro.crafix.tech</code>
                 </div>
                 <button
-                  onClick={() => copyCode('ns1', 'ns1.mdefender.pro')}
+                  onClick={() => copyCode('ns1', 'ns1.mdefender-pro.crafix.tech')}
                   style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155' }}
                 >
                   <i className="fas fa-copy"></i> {copiedId === 'ns1' ? 'Copied!' : 'Copy'}
@@ -231,10 +231,10 @@ export default function UserConnect() {
               <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: '700' }}>Secondary Nameserver</div>
-                  <code style={{ fontSize: '15px', fontWeight: '700', color: '#0284c7' }}>ns2.mdefender.pro</code>
+                  <code style={{ fontSize: '15px', fontWeight: '700', color: '#0284c7' }}>ns2.mdefender-pro.crafix.tech</code>
                 </div>
                 <button
-                  onClick={() => copyCode('ns2', 'ns2.mdefender.pro')}
+                  onClick={() => copyCode('ns2', 'ns2.mdefender-pro.crafix.tech')}
                   style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155' }}
                 >
                   <i className="fas fa-copy"></i> {copiedId === 'ns2' ? 'Copied!' : 'Copy'}
@@ -303,7 +303,7 @@ export default function UserConnect() {
                 </p>
               </div>
               <a
-                href={`${(import.meta.env.VITE_API_BASE || 'https://217.15.170.82.sslip.io').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
+                href={`${(import.meta.env.VITE_API_BASE || 'https://mdefender-pro.crafix.tech').replace(/\/+$/, '')}/api/v1/wordpress/plugin`}
                 download="mdefender-pro.zip"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px',

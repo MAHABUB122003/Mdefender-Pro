@@ -29,8 +29,8 @@ from src.database.mongodb_connection import MongoDB
 logger = logging.getLogger(__name__)
 
 # Primary MDefender Anycast Nameservers and CNAME Proxy Host
-MDEFENDER_NAMESERVERS = ["ns1.mdefender.pro", "ns2.mdefender.pro"]
-MDEFENDER_CNAME_PROXY = "proxy.mdefender.pro"
+MDEFENDER_NAMESERVERS = os.getenv("MDEFENDER_NAMESERVERS", "ns1.mdefender-pro.crafix.tech,ns2.mdefender-pro.crafix.tech").split(",")
+MDEFENDER_CNAME_PROXY = os.getenv("MDEFENDER_CNAME_PROXY", "proxy.mdefender-pro.crafix.tech")
 
 # Common subdomains to probe during deep DNS discovery
 COMMON_SUBDOMAINS = [
@@ -566,7 +566,7 @@ class DNSZoneService:
                     is_verified = True
                     message = f"Nameservers verified: {', '.join(matching)}. Cloud WAF Anycast edge is active!"
                 else:
-                    message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to ns1.mdefender.pro and ns2.mdefender.pro."
+                    message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to {MDEFENDER_NAMESERVERS[0]} and {MDEFENDER_NAMESERVERS[1]}."
             except Exception as e:
                 try:
                     ip = socket.gethostbyname(domain)

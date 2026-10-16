@@ -307,7 +307,7 @@
                         <span style="font-size:12.5px;color:#475569;font-weight:500;">Connected to MDefender Cloud Core</span>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <a href="<?php echo esc_url(get_option('waf_fw_dashboard_url', 'http://217.15.170.82/user/dashboard')); ?>" target="_blank" rel="noopener" class="button button-primary" style="background:#2563eb;border-color:#1d4ed8;font-weight:700;display:inline-flex;align-items:center;gap:6px;height:32px;line-height:30px;font-size:12px;border-radius:6px;">
+                        <a href="<?php echo esc_url(get_option('waf_fw_dashboard_url', 'https://mdefender-pro.crafix.tech/user/dashboard')); ?>" target="_blank" rel="noopener" class="button button-primary" style="background:#2563eb;border-color:#1d4ed8;font-weight:700;display:inline-flex;align-items:center;gap:6px;height:32px;line-height:30px;font-size:12px;border-radius:6px;">
                             <span class="dashicons dashicons-external" style="font-size:14px;width:14px;height:14px;"></span> Open Cloud Portal
                         </a>
                         <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="button" style="font-weight:600;display:inline-flex;align-items:center;gap:6px;height:32px;line-height:30px;font-size:12px;border-radius:6px;background:#fff;border-color:#cbd5e1;color:#334155;">

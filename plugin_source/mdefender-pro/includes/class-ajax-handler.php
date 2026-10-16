@@ -322,7 +322,7 @@ class WAF_FW_Ajax_Handler {
             'security_level' => get_option('waf_fw_security_level', 'high'),
             'confidence_threshold' => (float) get_option('waf_fw_confidence_threshold', 0.7),
             'rate_limit' => (int) get_option('waf_fw_rate_limit', 100),
-            'ml_api_url' => (strpos(get_option('waf_fw_ml_api_url', ''), 'localhost:8000') !== false || !get_option('waf_fw_ml_api_url')) ? 'http://217.15.170.82' : get_option('waf_fw_ml_api_url'),
+            'ml_api_url' => (strpos(get_option('waf_fw_ml_api_url', ''), 'localhost:8000') !== false || !get_option('waf_fw_ml_api_url') || get_option('waf_fw_ml_api_url') === 'http://217.15.170.82') ? 'https://mdefender-pro.crafix.tech' : get_option('waf_fw_ml_api_url'),
             'ml_api_key' => get_option('waf_fw_ml_api_key', ''),
             'website_id' => get_option('waf_fw_website_id', ''),
             'cloud_mode' => get_option('waf_fw_cloud_mode', 'protect'),
@@ -341,8 +341,8 @@ class WAF_FW_Ajax_Handler {
             'attack_block_duration' => (int) get_option('waf_fw_attack_block_duration', 86400),
             'attack_window' => (int) get_option('waf_fw_attack_window', 86400),
             'protection_enabled' => get_option('waf_fw_protection_enabled', 'yes'),
-            'main_waf_api_url' => get_option('waf_fw_main_waf_api_url', 'http://217.15.170.82/api'),
-            'main_waf_admin_url' => get_option('waf_fw_main_waf_admin_url', 'http://217.15.170.82'),
+            'main_waf_api_url' => get_option('waf_fw_main_waf_api_url', 'https://mdefender-pro.crafix.tech/api'),
+            'main_waf_admin_url' => get_option('waf_fw_main_waf_admin_url', 'https://mdefender-pro.crafix.tech'),
             'scheduled_scan_enabled' => get_option('waf_fw_scheduled_scan_enabled', 'no'),
             'scheduled_scan_frequency' => get_option('waf_fw_scheduled_scan_frequency', 'weekly'),
             'scheduled_scan_type' => get_option('waf_fw_scheduled_scan_type', 'full'),
@@ -404,8 +404,8 @@ class WAF_FW_Ajax_Handler {
 
         // Ensure default cloud API URL is set
         $ml_url = get_option('waf_fw_ml_api_url', '');
-        if (empty($ml_url) || strpos($ml_url, 'onrender.com') !== false || strpos($ml_url, 'mdefender-pro.io') !== false) {
-            update_option('waf_fw_ml_api_url', 'http://217.15.170.82');
+        if (empty($ml_url) || strpos($ml_url, 'onrender.com') !== false || strpos($ml_url, 'mdefender-pro.io') !== false || $ml_url === 'http://217.15.170.82') {
+            update_option('waf_fw_ml_api_url', 'https://mdefender-pro.crafix.tech');
         }
 
         // Cloud credentials changed -> attempt a connect handshake so the

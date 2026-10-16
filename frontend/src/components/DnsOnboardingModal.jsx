@@ -55,7 +55,7 @@ const PLANS = [
   {
     id: 'enterprise',
     name: 'Dedicated Enterprise',
-    price: '$49',
+    price: '$35',
     billing: 'per month',
     badge: 'Maximum Scale',
     color: '#7c3aed',
@@ -72,12 +72,21 @@ const PLANS = [
 
 const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV']
 
-export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) {
+export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded, userPlan = 'free', totalWebsites = 0, websiteLimit = 1 }) {
   const [step, setStep] = useState(1) // 1: Input & Plan, 2: DNS Discovery Review, 3: Nameservers & SSL, 4: Active
   const [domain, setDomain] = useState('')
   const [scanDns, setScanDns] = useState(true)
   const [scanSubdomains, setScanSubdomains] = useState(true)
-  const [selectedPlan, setSelectedPlan] = useState('pro')
+  
+  const currentPlanKey = (userPlan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : 'free') || 'free').toLowerCase()
+  const activePlanName = {
+    free: 'Starter Free',
+    go: 'Developer Go',
+    pro: 'Enterprise Pro',
+    enterprise: 'Dedicated Enterprise'
+  }[currentPlanKey] || 'Enterprise Pro'
+
+  const [selectedPlan, setSelectedPlan] = useState(currentPlanKey)
   const [sslMode, setSslMode] = useState('flexible') // flexible, full, strict
   const [botChallengeEnabled, setBotChallengeEnabled] = useState(false)
 
@@ -582,65 +591,36 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
                 </div>
               </div>
 
-              {/* Choose a Plan Matrix */}
-              <div style={{ marginBottom: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '14px' }}>
-                  <label style={{ fontSize: '13.5px', fontWeight: '700', color: '#0f172a' }}>
-                    Choose a plan
-                  </label>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>
-                    Switch or upgrade anytime from settings
-                  </span>
+              {/* Unified Account Plan Quota Card */}
+              <div style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px',
+                marginBottom: '26px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                    color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
+                  }}>
+                    <i className="fas fa-shield-halved"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
+                      Active Plan: <span style={{ color: '#2563eb' }}>{activePlanName}</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                      Protected under your account's unified quota ({totalWebsites} of {websiteLimit} website slots used).
+                    </div>
+                  </div>
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                  {PLANS.map((plan) => {
-                    const isSelected = selectedPlan === plan.id
-                    return (
-                      <div
-                        key={plan.id}
-                        onClick={() => setSelectedPlan(plan.id)}
-                        style={{
-                          border: `2px solid ${isSelected ? plan.color : '#e2e8f0'}`,
-                          borderRadius: '12px', padding: '16px', cursor: 'pointer',
-                          background: isSelected ? '#f8fafc' : '#ffffff',
-                          boxShadow: isSelected ? `0 4px 16px ${plan.color}22` : 'none',
-                          transition: 'all 0.15s ease', position: 'relative'
-                        }}
-                      >
-                        {plan.popular && (
-                          <div style={{
-                            position: 'absolute', top: '-9px', right: '12px',
-                            background: plan.color, color: '#fff', fontSize: '9.5px', fontWeight: '800',
-                            padding: '1px 8px', borderRadius: '10px', textTransform: 'uppercase'
-                          }}>
-                            Recommended
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>{plan.name}</span>
-                          <span style={{
-                            fontSize: '10px', fontWeight: '700', padding: '2px 6px', borderRadius: '6px',
-                            background: `${plan.color}15`, color: plan.color
-                          }}>
-                            {plan.badge}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '12px' }}>
-                          <span style={{ fontSize: '20px', fontWeight: '900', color: '#0f172a' }}>{plan.price}</span>
-                          <span style={{ fontSize: '11px', color: '#64748b' }}>/{plan.billing}</span>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#475569', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {plan.features.slice(0, 3).map((f, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <i className="fas fa-check" style={{ color: '#10b981', fontSize: '9px' }}></i>
-                              <span>{f}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    padding: '4px 10px', borderRadius: '20px', background: '#dcfce7',
+                    color: '#166534', fontSize: '11px', fontWeight: '700', border: '1px solid #bbf7d0'
+                  }}>
+                    <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i> Quota Ready
+                  </span>
                 </div>
               </div>
 
@@ -954,7 +934,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded }) 
                     <span>Step 2: Add MDefender Pro Anycast nameservers:</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                    {['ns1.mdefender.pro', 'ns2.mdefender.pro'].map((ns, i) => (
+                    {['ns1.mdefender-pro.crafix.tech', 'ns2.mdefender-pro.crafix.tech'].map((ns, i) => (
                       <div key={ns} style={{
                         background: '#ffffff', border: '1.5px solid #86efac', borderRadius: '10px',
                         padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'

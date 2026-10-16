@@ -1231,7 +1231,7 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                         <span>Step 2: Add MDefender Pro Anycast nameservers:</span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                        {['ns1.mdefender.pro', 'ns2.mdefender.pro'].map((ns, i) => (
+                        {['ns1.mdefender-pro.crafix.tech', 'ns2.mdefender-pro.crafix.tech'].map((ns, i) => (
                           <div key={ns} style={{
                             background: '#ffffff', border: '1.5px solid #86efac', borderRadius: '10px',
                             padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'

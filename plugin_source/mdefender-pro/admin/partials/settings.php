@@ -658,9 +658,9 @@ $dashboard = $logger->get_dashboard_data();
                             <label for="wafFwMlUrl" style="font-weight:600;font-size:13px;color:#1e293b;">Cloud Server Endpoint / URL</label>
                             <div class="waf-key-input-wrapper">
                                 <span class="dashicons dashicons-admin-site-alt3 waf-key-lead-icon"></span>
-                                <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="http://217.15.170.82" value="<?php echo esc_attr(get_option('waf_fw_ml_api_url', 'http://217.15.170.82')); ?>" autocomplete="off">
+                                <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="https://mdefender-pro.crafix.tech" value="<?php echo esc_attr(get_option('waf_fw_ml_api_url', 'https://mdefender-pro.crafix.tech')); ?>" autocomplete="off">
                             </div>
-                            <span class="description" style="font-size:12px;color:#64748b;margin:4px 0 0;display:block;"><span class="dashicons dashicons-info" style="font-size:14px;vertical-align:middle;"></span> Your MDefender-Pro Cloud VPS IP or Domain (e.g. <code>http://217.15.170.82</code>).</span>
+                            <span class="description" style="font-size:12px;color:#64748b;margin:4px 0 0;display:block;"><span class="dashicons dashicons-info" style="font-size:14px;vertical-align:middle;"></span> Your MDefender-Pro Cloud Domain (e.g. <code>https://mdefender-pro.crafix.tech</code>).</span>
                         </div>
 
                         <div class="waf-api-key-group">
@@ -1254,7 +1254,7 @@ $dashboard = $logger->get_dashboard_data();
             e.preventDefault();
             var btn = $('#wafSaveMlBtn');
             var key = $('#wafFwMlKey').val().trim();
-            var url = $('#wafFwMlUrl').val().trim() || 'http://217.15.170.82';
+            var url = $('#wafFwMlUrl').val().trim() || 'https://mdefender-pro.crafix.tech';
             if (!key) {
                 $('#wafMlTestResult').html('<div style="background:var(--war-red-light);border:1px solid #fecaca;border-radius:6px;padding:12px;color:#b91c1c;">Please enter your Website API key.</div>').show();
                 return;
