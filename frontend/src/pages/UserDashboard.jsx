@@ -78,8 +78,9 @@ export default function UserDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastRefreshed, setLastRefreshed] = useState(() => new Date())
   const [ddosEnabled, setDdosEnabled] = useState(true)
-  const [ddosToggling, setDdosToggling] = useState(false)
-  const userPlan = (data?.user?.plan || data?.plan || localStorage.getItem('mdefender_user_plan') || 'free').toLowerCase()
+  const [mlStatus, setMlStatus] = useState(null)
+  const rawPlan = data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free'
+  const userPlan = (typeof rawPlan === 'string' ? rawPlan : (rawPlan?.id || rawPlan?.name || 'free')).toLowerCase()
   const isPremium = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
 
   const fetchData = useCallback(async (manual = false, siteId = selectedWebsite) => {
