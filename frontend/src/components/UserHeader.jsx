@@ -32,6 +32,7 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   const storedName = localStorage.getItem('mdefender_user_name') || 'User'
   const userName = storedName
   const location = useLocation()
+  const pageName = pageNames[location.pathname] || 'Dashboard'
   const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
   const planLabel = {
