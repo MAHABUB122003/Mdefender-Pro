@@ -5,9 +5,9 @@ export default function Sidebar({ isOpen }) {
     <>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} id="sidebar">
         <div className="sidebar-brand">
-          <div className="logo">
-            <div className="logo-icon" style={{ background: 'linear-gradient(135deg, #ef4444, #7c3aed)' }}>
-              <i className="fas fa-shield-halved"></i>
+          <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+            <div className="logo-icon" style={{ width: '36px', height: '36px', borderRadius: '9px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+              <img src="/assets/mdefender_logo.png" alt="MDefender Pro" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div className="logo-text">
               <h2>MDefender</h2>

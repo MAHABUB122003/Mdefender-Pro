@@ -20,11 +20,27 @@ if (!function_exists('waf_get_country_name')) {
     }
 }
 
+global $wpdb;
 $logger = WAF_FW_Logger::instance();
 $logs = $logger->get_logs($_GET);
+
+// Real database totals for status pills
+$table_attacks = $logger->get_db()->get_attacks_table();
+$table_requests = $logger->get_db()->get_requests_table();
+$total_blocked_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_attacks}");
+$total_allowed_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_requests}");
+$total_all_count = $total_blocked_count + $total_allowed_count;
 ?>
 
 <style>
+    @keyframes mdfSpin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .mdf-export-item:hover {
+        background: #F7F5EE !important;
+        color: #0B2522 !important;
+    }
     .war-r-table tbody tr.waf-log-row:hover {
         background: #f8fafc !important;
         cursor: pointer;
@@ -44,13 +60,13 @@ $logs = $logger->get_logs($_GET);
         color: #475569;
     }
     .waf-log-pill:hover {
-        border-color: #2563eb;
-        color: #2563eb;
+        border-color: #0B2522;
+        color: #0B2522;
     }
     .waf-log-pill.active {
-        background: #2563eb;
+        background: #0B2522;
         color: #fff;
-        border-color: #2563eb;
+        border-color: #0B2522;
     }
 
     @media (max-width: 782px) {
@@ -95,15 +111,51 @@ $logs = $logger->get_logs($_GET);
 </style>
 
 <div class="wrap" style="max-width: 1400px; margin: 0 auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-top:10px;flex-wrap:wrap;gap:12px;">
-        <div>
-            <h1 style="margin:0;font-size:24px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px;">
-                <span class="dashicons dashicons-shield" style="font-size:28px;width:28px;height:28px;color:#2563eb;"></span>
-                Security Traffic & Attack Logs
-            </h1>
-            <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Unified live inspection of all incoming HTTP requests, blocked attacks, and normal visitor traffic.</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-top:10px;flex-wrap:wrap;gap:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:10px;background:#0B2522;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(11,37,34,0.18);overflow:hidden;flex-shrink:0;">
+                <img src="<?php echo esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-icon.png'); ?>" alt="MDefender Pro Logo" style="width:26px;height:26px;object-fit:contain;">
+            </div>
+            <div>
+                <h1 style="margin:0;font-size:22px;font-weight:800;color:#0B2522;display:flex;align-items:center;gap:8px;line-height:1.2;">
+                    Security Traffic &amp; Attack Logs
+                </h1>
+                <p style="margin:3px 0 0;font-size:13px;color:#64748b;">Unified live inspection and forensic export of incoming HTTP requests, blocked attacks, and normal visitor traffic.</p>
+            </div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <!-- Export CSV Button Group with Dropdown -->
+            <div class="mdf-export-group" style="position:relative;display:inline-block;">
+                <button type="button" id="mdf-btn-export-main" onclick="wafFwToggleExportMenu(event)" class="button button-primary" style="background: linear-gradient(135deg, #0B2522 0%, #164e43 100%); border-color: #0B2522; color: #fff; height: 36px; line-height: 34px; font-weight: 700; padding: 0 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(11,37,34,0.18); cursor: pointer;">
+                    <span class="dashicons dashicons-download" style="font-size: 18px; width: 18px; height: 18px; line-height: 18px;"></span>
+                    <span>Export Logs (CSV)</span>
+                    <span class="dashicons dashicons-arrow-down-alt2" style="font-size: 12px; width: 12px; height: 12px; margin-left: 2px;"></span>
+                </button>
+                <div id="mdf-export-dropdown" style="display:none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); width: 260px; z-index: 1000; overflow: hidden; padding: 6px 0;">
+                    <a href="javascript:void(0)" onclick="wafFwExportCsv('all')" class="mdf-export-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-decoration: none; color: #0f172a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
+                        <span class="dashicons dashicons-media-spreadsheet" style="color: #059669; font-size: 18px; width: 18px; height: 18px;"></span>
+                        <div>
+                            <div>Export All Logs (.CSV)</div>
+                            <div style="font-size: 11px; color: #64748b; font-weight: normal;">Full database records (<?php echo number_format($total_all_count); ?> logs)</div>
+                        </div>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwExportCsv('filtered')" class="mdf-export-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-decoration: none; color: #0f172a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
+                        <span class="dashicons dashicons-filter" style="color: #E8792F; font-size: 18px; width: 18px; height: 18px;"></span>
+                        <div>
+                            <div>Export Filtered Logs (.CSV)</div>
+                            <div style="font-size: 11px; color: #64748b; font-weight: normal;">Only matching current query (<?php echo number_format($logs['total']); ?> logs)</div>
+                        </div>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwExportCsv('blocked')" class="mdf-export-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-decoration: none; color: #0f172a; font-size: 13px; font-weight: 600; transition: background 0.15s;">
+                        <span class="dashicons dashicons-shield-alt" style="color: #dc2626; font-size: 18px; width: 18px; height: 18px;"></span>
+                        <div>
+                            <div>Export Blocked Attacks (.CSV)</div>
+                            <div style="font-size: 11px; color: #64748b; font-weight: normal;">403 security threats (<?php echo number_format($total_blocked_count); ?> attacks)</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
             <a href="<?php echo admin_url('admin.php?page=waf-firewall-settings'); ?>" class="button" style="height:36px;line-height:34px;font-weight:600;">WAF Settings</a>
             <button type="button" onclick="wafFwClearLogs()" class="button button-danger" style="background:#dc2626;color:#fff;border-color:#dc2626;height:36px;font-weight:600;">Clear All Logs</button>
         </div>
@@ -113,15 +165,17 @@ $logs = $logger->get_logs($_GET);
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
         <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="waf-log-pill <?php echo empty($_GET['status']) ? 'active' : ''; ?>">
             <span>All Traffic</span>
-            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($logs['total']); ?></span>
+            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($total_all_count); ?></span>
         </a>
         <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs&status=blocked'); ?>" class="waf-log-pill <?php echo ($_GET['status'] ?? '') === 'blocked' ? 'active' : ''; ?>">
             <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;"></span>
             <span>Blocked Attacks</span>
+            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($total_blocked_count); ?></span>
         </a>
         <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs&status=allowed'); ?>" class="waf-log-pill <?php echo ($_GET['status'] ?? '') === 'allowed' ? 'active' : ''; ?>">
             <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>
             <span>Allowed Normal Traffic</span>
+            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($total_allowed_count); ?></span>
         </a>
     </div>
 
@@ -141,9 +195,13 @@ $logs = $logger->get_logs($_GET);
                     <option value="allowed" <?php selected($_GET['status'] ?? '', 'allowed'); ?>>Allowed Traffic Only</option>
                 </select>
             </div>
-            <div style="display:flex;gap:8px;">
-                <button type="submit" class="button button-primary" style="height:36px;line-height:34px;padding:0 18px;background:#2563eb;border-color:#1d4ed8;font-weight:600;">Filter Logs</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button type="submit" class="button button-primary" style="height:36px;line-height:34px;padding:0 18px;background:#0B2522;border-color:#0B2522;font-weight:600;">Filter Logs</button>
                 <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="button" style="height:36px;line-height:34px;padding:0 14px;">Reset</a>
+                <button type="button" onclick="wafFwExportCsv('filtered')" class="button" title="Download matching rows as CSV" style="height:36px;line-height:34px;padding:0 14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;border-color:#cbd5e1;background:#fff;color:#0B2522;">
+                    <span class="dashicons dashicons-media-spreadsheet" style="color:#059669;font-size:16px;width:16px;height:16px;line-height:16px;"></span>
+                    <span>Export Filtered CSV</span>
+                </button>
             </div>
         </form>
 
@@ -525,4 +583,51 @@ function wafFwClearLogs() {
         alert('Request failed');
     });
 }
+
+function wafFwToggleExportMenu(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    jQuery('#mdf-export-dropdown').toggle();
+}
+
+function wafFwExportCsv(scope) {
+    scope = scope || 'all';
+    jQuery('#mdf-export-dropdown').hide();
+
+    var $btn = jQuery('#mdf-btn-export-main');
+    var origHtml = $btn.html();
+    $btn.prop('disabled', true).css('opacity', '0.85').html('<span class="dashicons dashicons-update" style="font-size:16px;width:16px;height:16px;line-height:16px;animation:mdfSpin 0.9s infinite linear;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Exporting CSV...');
+
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+    var exportUrl = ajaxurl + '?action=waf_fw_export_logs&nonce=' + encodeURIComponent(nonce) + '&scope=' + encodeURIComponent(scope);
+
+    if (scope === 'filtered') {
+        var searchVal = jQuery('input[name="search"]').val();
+        var statusVal = jQuery('select[name="status"]').val();
+        if (searchVal) exportUrl += '&search=' + encodeURIComponent(searchVal);
+        if (statusVal) exportUrl += '&status=' + encodeURIComponent(statusVal);
+    }
+
+    var downloadAnchor = document.createElement('a');
+    downloadAnchor.href = exportUrl;
+    downloadAnchor.setAttribute('download', '');
+    downloadAnchor.style.display = 'none';
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+
+    setTimeout(function() {
+        if (downloadAnchor.parentNode) {
+            downloadAnchor.parentNode.removeChild(downloadAnchor);
+        }
+        $btn.prop('disabled', false).css('opacity', '1').html(origHtml);
+    }, 2000);
+}
+
+jQuery(document).on('click', function(e) {
+    if (!jQuery(e.target).closest('.mdf-export-group').length) {
+        jQuery('#mdf-export-dropdown').hide();
+    }
+});
 </script>

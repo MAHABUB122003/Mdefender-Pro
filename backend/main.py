@@ -292,25 +292,36 @@ async def waf_self_protection_middleware(request: Request, call_next):
         if origin_ip and origin_ip not in ("localhost", "127.0.0.1", "217.15.170.82", "203.0.113.10", "192.0.2.1"):
             try:
                 import httpx
-                target_url = f"http://{origin_ip}{path}"
+                target_url_https = f"https://{origin_ip}{path}"
                 if request.url.query:
-                    target_url = f"{target_url}?{request.url.query}"
+                    target_url_https = f"{target_url_https}?{request.url.query}"
 
                 fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
                 fwd_headers["Host"] = raw_host
                 fwd_headers["X-Forwarded-For"] = client_ip
                 fwd_headers["X-Real-IP"] = client_ip
-                fwd_headers["X-Forwarded-Proto"] = request.url.scheme
+                fwd_headers["X-Forwarded-Proto"] = "https"
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
 
                 body = req_body_bytes
-                async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
-                    origin_resp = await client.request(
-                        method=request.method,
-                        url=target_url,
-                        headers=fwd_headers,
-                        content=body
-                    )
+                async with httpx.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
+                    try:
+                        origin_resp = await client.request(
+                            method=request.method,
+                            url=target_url_https,
+                            headers=fwd_headers,
+                            content=body
+                        )
+                    except Exception:
+                        # Fallback to plain HTTP if origin does not support HTTPS
+                        target_url_http = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                        origin_resp = await client.request(
+                            method=request.method,
+                            url=target_url_http,
+                            headers=fwd_headers,
+                            content=body
+                        )
+
                     resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection")}
                     resp_headers["X-MDefender-Protected"] = "true"
                     return Response(
@@ -1160,6 +1171,119 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         
     return {'status': 'success', 'message': f'IP {ip} unblocked and removed from blacklist'}
 
+@app.post("/api/user/blacklist/unblock-expired")
+@app.post("/api/v1/user/blacklist/unblock-expired")
+async def user_unblock_expired_blacklist(user: dict = Depends(verify_user_token_compat)):
+    from bson import ObjectId
+    user_id_str = str(user['_id'])
+    user_email = user.get('email', '')
+    now = datetime.now()
+
+    conds = [
+        {'added_by_user_id': user_id_str},
+        {'user_id': user_id_str},
+    ]
+    if user_email:
+        conds.append({'added_by': user_email})
+    if ObjectId.is_valid(user_id_str):
+        conds.append({'added_by_user_id': ObjectId(user_id_str)})
+        conds.append({'user_id': ObjectId(user_id_str)})
+
+    query = {
+        '$and': [
+            {'$or': conds},
+            {'expires_at': {'$ne': None, '$lte': now}}
+        ]
+    }
+
+    expired_entries = list(db.blacklist.find(query))
+    expired_ips = list({e.get('ip') for e in expired_entries if e.get('ip')})
+
+    # Also clean auto_blocks that have expired
+    auto_exp_query = {'expires_at': {'$ne': None, '$lte': now}}
+    auto_expired = list(db.auto_blocks.find(auto_exp_query))
+    for ae in auto_expired:
+        ip_val = ae.get('ip')
+        if ip_val and ip_val not in expired_ips:
+            expired_ips.append(ip_val)
+
+    if not expired_ips:
+        return {'status': 'success', 'message': 'No expired IP bans found.', 'unblocked_count': 0}
+
+    db.blacklist.delete_many({
+        'ip': {'$in': expired_ips},
+        '$or': conds + [{'added_by_user_id': {'$exists': False}}, {'added_by_user_id': None}]
+    })
+    db.auto_blocks.delete_many({'ip': {'$in': expired_ips}})
+    db.attack_attempts.delete_many({'ip': {'$in': expired_ips}})
+
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user['_id'])
+    except Exception:
+        pass
+
+    return {
+        'status': 'success',
+        'message': f'Successfully unblocked {len(expired_ips)} expired IP(s)',
+        'unblocked_count': len(expired_ips),
+        'unblocked_ips': expired_ips
+    }
+
+@app.post("/api/user/blacklist/unblock-batch")
+@app.post("/api/v1/user/blacklist/unblock-batch")
+async def user_unblock_batch_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from bson import ObjectId
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    ips = data.get('ips', [])
+    if not ips or not isinstance(ips, list):
+        return {'status': 'error', 'message': 'No IP addresses provided for batch unblock'}
+
+    clean_ips = [str(x).strip() for x in ips if str(x).strip()]
+    if not clean_ips:
+        return {'status': 'error', 'message': 'List of IPs is empty'}
+
+    user_id_str = str(user['_id'])
+    user_email = user.get('email', '')
+
+    conds = [
+        {'added_by_user_id': user_id_str},
+        {'user_id': user_id_str},
+        {'added_by_user_id': {'$exists': False}},
+        {'added_by_user_id': None},
+        {'is_global': {'$ne': True}},
+    ]
+    if user_email:
+        del_conds = conds + [{'added_by': user_email}]
+    else:
+        del_conds = conds
+    if ObjectId.is_valid(user_id_str):
+        del_conds.append({'added_by_user_id': ObjectId(user_id_str)})
+        del_conds.append({'user_id': ObjectId(user_id_str)})
+
+    db.blacklist.delete_many({
+        'ip': {'$in': clean_ips},
+        '$or': del_conds
+    })
+    db.auto_blocks.delete_many({'ip': {'$in': clean_ips}})
+    db.attack_attempts.delete_many({'ip': {'$in': clean_ips}})
+
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user['_id'])
+    except Exception:
+        pass
+
+    return {
+        'status': 'success',
+        'message': f'Successfully unblocked {len(clean_ips)} selected IP(s)',
+        'unblocked_count': len(clean_ips)
+    }
+
+
 @app.get("/api/user/whitelist")
 async def user_get_whitelist(user: dict = Depends(verify_user_token_compat)):
     user_id = str(user['_id'])
@@ -1707,6 +1831,7 @@ async def api_get_logs(request: Request):
     return waf_api.get_logs(params, user_id=auth_data.get('user_id'), website_id=auth_data.get('website_id'))
 
 
+@app.get("/api/v1/wordpress/plugin")
 @app.get("/api/wordpress/plugin")
 @app.get("/api/download/wp-plugin")
 @app.get("/downloads/mdefender-pro.zip")

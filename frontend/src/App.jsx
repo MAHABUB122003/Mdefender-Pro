@@ -19,6 +19,7 @@ const BlockPage = lazy(() => import('./pages/BlockPage'))
 const Layout = lazy(() => import('./components/Layout'))
 const UserLayout = lazy(() => import('./components/UserLayout'))
 const About = lazy(() => import('./pages/About'))
+const Solutions = lazy(() => import('./pages/Solutions'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Blog = lazy(() => import('./pages/Blog'))
@@ -139,26 +140,35 @@ function App() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/solutions" element={<Solutions />} />
         <Route path="/products" element={<ProductDetail />} />
         <Route path="/products/:slug" element={<ProductDetail />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/industries" element={<Navigate to="/products" replace />} />
+        <Route path="/about" element={<Solutions />} />
+        <Route path="/industries" element={<Navigate to="/solutions" replace />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:id" element={<Blog />} />
+        <Route path="/threat-intelligence" element={<Blog />} />
+        <Route path="/threat-intelligence/:id" element={<Blog />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/blocked" element={<BlockPage />} />
 
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
         <Route path="/register" element={
-          userState ? <Navigate to="/user/dashboard" replace /> : <Register />
+          userState ? <Navigate to={window.location.search?.includes('plan=') ? `/user/pricing${window.location.search}` : "/user/dashboard"} replace /> : <Register />
         } />
         <Route path="/user/login" element={
-          userState ? <Navigate to="/user/dashboard" replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
+          userState ? <Navigate to={window.location.search?.includes('plan=') ? `/user/pricing${window.location.search}` : "/user/dashboard"} replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
+        } />
+        <Route path="/login" element={
+          userState ? <Navigate to={window.location.search?.includes('plan=') ? `/user/pricing${window.location.search}` : "/user/dashboard"} replace /> : <UserLogin onLoginSuccess={(u) => setUserState(u)} />
         } />
 
         {/* Persistent User Layout with 0ms Instant Page Switching */}

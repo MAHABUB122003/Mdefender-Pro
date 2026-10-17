@@ -1,1387 +1,2206 @@
-import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { useTheme } from '../contexts/ThemeContext'
-import PublicNavbar from '../components/PublicNavbar'
-import theme from '../utils/theme'
-import copyToClipboard from '../utils/clipboard'
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import PublicNavbar from '../components/PublicNavbar';
+import ThreatIntelVisual from '../components/ThreatIntelVisual';
+import { BLOG_POSTS, CATEGORIES } from '../data/threatIntelData';
+import copyToClipboard from '../utils/clipboard';
+import {
+  Shield,
+  ShieldCheck,
+  ShieldAlert,
+  Search,
+  ArrowRight,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Share2,
+  Check,
+  Copy,
+  Tag,
+  ChevronRight,
+  Radio,
+  ExternalLink,
+  Layers,
+  Activity,
+  Cpu,
+  Lock,
+  Globe,
+  FileText,
+  AlertTriangle,
+} from 'lucide-react';
 
-const blogPosts = [
-  {
-    id: 'ai-zeroday-threats',
-    title: 'Neutralizing AI-Generated Polymorphic Zero-Day Exploits at the Cloud Edge',
-    excerpt: 'Threat actors are now weaponizing generative AI to synthesize evasive SQL injection and RCE mutations that bypass static regex signatures. Discover how MDefender Pro’s 6,501,208+ payload-trained neural vectorizer inspects AST syntactic intent in <0.12ms.',
-    category: 'Threat Intelligence',
-    date: 'Sep 24, 2026',
-    readTime: '6 min read',
-    author: 'MDefender Threat Lab',
-    role: 'Core AI Research',
-    icon: 'fa-brain',
-    image: '/blog/ai_zeroday_defense.jpg',
-    featured: true,
-    tags: ['AI Security', 'Zero-Day', 'Neural WAF', 'Polymorphic Attacks'],
-    content: `
-### Executive Summary
-The weaponization of generative artificial intelligence has fundamentally shifted web application defense. Traditional Web Application Firewalls (WAFs) relying exclusively on deterministic regular expressions are increasingly blind to **polymorphic payload mutations**—payloads rewritten dynamically to alter syntactic appearance while preserving hostile execution.
+// ============================================================================
+// HELPER COMPONENTS FOR RICH ARTICLE RENDERING
+// ============================================================================
+function CodeSnippetBox({ code }) {
+  const [copied, setCopied] = useState(false);
 
-In this research briefing, the MDefender Threat Intelligence team analyzes how neural tokenization and character N-gram embeddings intercept polymorphic zero-days before they reach backend application logic.
+  const handleCopy = async () => {
+    const ok = await copyToClipboard(code);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
----
-
-### The Anatomy of Polymorphic Attack Payloads
-Consider a standard SQL Injection targeting an authentication endpoint. A traditional pattern matcher looks for strings such as \`' OR '1'='1\` or \`UNION SELECT\`.
-
-However, an AI-synthesized evasion payload might look like:
-\`\`\`sql
-admin'/*%!50000UnIoN*//**//*!50000SeLeCt*/0x6e756c6c,(cOnCaT(cHaR(114,111,111,116),0x3a,pAsSwOrD))/**/fRoM/**/uSeRs-- -
-\`\`\`
-By combining inline C-style comment segmentation, hexadecimal literals, SQL keyword case oscillation, and dialect-specific MySQL version comments (\`/*!50000...\`), the attacker produces an execution tree identical to a raw UNION query while easily evading static string filters.
-
----
-
-### How MDefender Pro Dual-Engine Neutralizes Mutation
-Instead of solely evaluating isolated substrings, MDefender Pro implements a **two-phase hybrid pipeline**:
-
-1. **Deterministic Filter Ring (2,000+ Signatures):** Catches known signatures, scanner user-agents (sqlmap, Nikto), and RFC compliance violations in 0.05ms.
-2. **6,501,208+ Payload-Trained Neural Vectorizer:** Evaluates token distribution entropy, syntax tree reconstruction, and token n-grams. When syntactic anomaly confidence exceeds 85%, the request is quarantined and served an instant 403 Cyber Block Page.
-
-\`\`\`
-[Incoming Request] ──> [Deterministic Regex Gate] ──> [Neural Token Vectorizer (6.5M+ Dataset)] ──> [Verdict: BLOCK (0.12ms)]
-\`\`\`
-
----
-
-### Key Takeaways for DevOps & SecOps Teams
-- **Defense in Depth:** Static rules provide low-latency baseline filtering, but must be paired with ML anomaly inspection.
-- **Continuous Edge Telemetry:** MDefender Pro autonomously extracts new mutation vectors from blocked traffic and feeds them into the Attack Learning dataset.
-`
-  },
-  {
-    id: 'layer7-ddos-mitigation',
-    title: 'Mitigating Sophisticated Layer 7 Volumetric HTTP Flood Attacks',
-    excerpt: 'Modern volumetric attacks mimic realistic browser traffic with rotating TLS fingerprints and distributed residential proxies. Learn how token-bucket algorithms and adaptive heuristic scoring keep APIs online during multi-gigabit floods.',
-    category: 'DDoS Mitigation',
-    date: 'Sep 18, 2026',
-    readTime: '8 min read',
-    author: 'DevOps & SRE Team',
-    role: 'Infrastructure Lead',
-    icon: 'fa-network-wired',
-    image: '/blog/ddos_mitigation_flood.jpg',
-    featured: false,
-    tags: ['DDoS', 'Rate Limiting', 'HTTP/2', 'Edge Shield'],
-    content: `
-### The New Wave of Application-Layer DDoS
-Application-layer (Layer 7) DDoS attacks have surged in volume and sophistication. Unlike Layer 3/4 volumetric floods that saturate raw network bandwidth, Layer 7 attacks target resource-intensive backend endpoints (e.g., \`/api/search\`, \`/auth/login\`, checkout workflows) to exhaust server CPU and database connection pools.
-
----
-
-### The Challenge of Distributed Proxy Networks
-Adversaries leverage bulletproof residential proxy networks (spanning 100,000+ unique IPs) to distribute HTTP/2 multiplexed streams. Each individual IP may only send 2 to 3 requests per minute, rendering traditional single-IP rate limiters ineffective.
-
----
-
-### MDefender Pro's Multi-Tier Mitigation Architecture
-MDefender Pro applies an adaptive token-bucket rate limiter combined with client behavioral heuristics:
-- **Global Origin Throttling:** Detects cluster-wide deviation from baseline traffic volume.
-- **Dynamic IP Reputation Scoring:** Cross-references client IP subnets against known Tor exit nodes, data center hosting providers, and residential proxies.
-- **Automatic Burst Buffering:** Absorbs volumetric spikes while serving verified clients with sub-millisecond response times.
-`
-  },
-  {
-    id: 'wordpress-rce-hardening',
-    title: 'Deep Defense for WordPress: Preventing Plugin Vulnerabilities and Web Shells',
-    excerpt: 'WordPress powers over 40% of the web, making third-party plugins a prime target for remote code execution and unauthorized file uploads. Here is how MDefender Pro creates a zero-trust execution perimeter.',
-    category: 'WordPress Security',
-    date: 'Sep 10, 2026',
-    readTime: '7 min read',
-    author: 'Security Research Team',
-    role: 'Vulnerability Analyst',
-    icon: 'fa-wordpress',
-    image: '/blog/wordpress_security_shield.jpg',
-    featured: false,
-    tags: ['WordPress', 'PHP Security', 'Web Shell', 'Plugin Defense'],
-    content: `
-### The Reality of WordPress Vulnerability Landscape
-Over 90% of WordPress security breaches originate not from the WordPress core, but from unpatched or abandoned third-party plugins and themes. Common vectors include:
-1. **Unauthenticated Arbitrary File Upload (RCE):** Attackers upload PHP web shells disguised as image attachments.
-2. **Broken Object Level Authorization (BOLA):** Flawed AJAX handlers in plugins allowing unauthorized settings updates.
-3. **XML-RPC & REST API Brute Force:** Automated credential stuffing bypassing login rate limits.
-
----
-
-### 1-Click Defense with MDefender Pro Native Plugin
-The MDefender Pro WordPress plugin acts as an inline cloud-synchronized shield. Before WordPress parses incoming PHP superglobals (\`$_GET\`, \`$_POST\`, \`$_FILES\`, \`$_COOKIE\`), the request is passed through MDefender Pro WAF.
-- Uploaded file contents are analyzed for PHP code execution wrappers (e.g., \`eval(gzinflate(...))\`, \`passthru\`, \`system\`).
-- XML-RPC endpoints and sensitive file paths (\`wp-config.php\`, \`.env\`, \`debug.log\`) are shielded automatically.
-`
-  },
-  {
-    id: 'ssrf-cloud-metadata-protection',
-    title: 'Shielding Cloud Infrastructure from SSRF and Metadata Exfiltration',
-    excerpt: 'Server-Side Request Forgery (SSRF) remains one of the most critical threats to cloud-native microservices on AWS, GCP, and Azure. Discover our automated metadata protection rules.',
-    category: 'Cloud Security',
-    date: 'Sep 02, 2026',
-    readTime: '5 min read',
-    author: 'Cloud Architecture Team',
-    role: 'Security Engineer',
-    icon: 'fa-cloud',
-    image: '/blog/cloud_metadata_ssrf.jpg',
-    featured: false,
-    tags: ['SSRF', 'AWS IMDS', 'Cloud Security', 'Metadata API'],
-    content: `
-### Understanding Server-Side Request Forgery (SSRF)
-SSRF occurs when a web application fetches a remote resource (such as a profile picture from a URL, a webhook test, or an image converter) without validating user-supplied destination addresses.
-
-In modern cloud environments, attackers use SSRF to force the server to query internal IP addresses:
-- \`http://169.254.169.254/latest/meta-data/\` (AWS IMDSv1 token extraction)
-- \`http://metadata.google.internal/computeMetadata/v1/\` (GCP service account tokens)
-- \`http://127.0.0.1:6379\` (Redis internal command injection)
-
----
-
-### MDefender Pro Autonomous Cloud Guard
-MDefender Pro automatically inspects and sanitizes all URL parameters, JSON body fields, and GraphQL arguments for RFC 1918 private IP subnets, loopback addresses, and cloud provider metadata hostnames, dropping the exploit attempt before any internal request can be initiated.
-`
-  },
-  {
-    id: 'submillisecond-waf-engineering',
-    title: 'Engineering Sub-Millisecond WAF Latency: Why Performance is a Security Feature',
-    excerpt: 'A security solution that introduces 50ms of latency gets disabled by developers. Learn the low-level optimizations that enable MDefender Pro to inspect 2,000 rules in under 0.85ms.',
-    category: 'Engineering',
-    date: 'Aug 26, 2026',
-    readTime: '9 min read',
-    author: 'Core Performance Team',
-    role: 'Lead Systems Architect',
-    icon: 'fa-bolt',
-    image: '/blog/submillisecond_waf_chip.jpg',
-    featured: false,
-    tags: ['Performance', 'C/Rust', 'Latency', 'Architecture'],
-    content: `
-### The Latency Dilemma in Web Security
-Security measures must never degrade end-user experience. Studies show that every 100ms of additional latency reduces e-commerce conversion rates by up to 7%.
-
-When developing MDefender Pro, our primary engineering objective was: **Zero Compromise on Speed**.
-
----
-
-### Key Architectural Optimizations
-1. **Single-Pass Memory Parsing:** HTTP payloads are parsed into immutable byte slices, avoiding redundant string allocations.
-2. **Aho-Corasick & DFA Rule Grouping:** 2,000+ regular expressions are compiled into unified Deterministic Finite Automata (DFA), evaluating hundreds of conditions in a single traversal.
-3. **Asynchronous Telemetry Offloading:** Security audit logs, analytics, and learning events are dispatched asynchronously via background worker threads, freeing the main HTTP event loop immediately.
-`
-  },
-  {
-    id: 'attack-learning-engine',
-    title: 'How Our Attack Learning Engine Turns Hostile Payloads into Proactive Defense',
-    excerpt: 'Static threat feeds become outdated within hours. Discover how MDefender Pro’s Attack Learning module continuously analyzes blocked attacks to dynamically harden your application perimeter.',
-    category: 'Threat Intelligence',
-    date: 'Aug 19, 2026',
-    readTime: '6 min read',
-    author: 'ML Operations Team',
-    role: 'Lead Data Scientist',
-    icon: 'fa-chart-line-up',
-    image: '/blog/attack_learning_ai.jpg',
-    featured: false,
-    tags: ['Machine Learning', 'Threat Hunting', 'Automation', 'Adaptive Security'],
-    content: `
-### The Feedback Loop of Modern Defense
-In traditional security architectures, when an attack is blocked, the log is stored in a database and largely forgotten unless a human analyst manually conducts an audit.
-
-MDefender Pro introduces an **Autonomous Feedback Loop**:
-1. **Payload Capture & Sanitization:** Hostile payloads are tokenized, stripped of PII, and categorized by threat class.
-2. **Heuristic Vector Clustering:** Our learning engine clusters incoming attack campaigns to identify coordinated scans across multiple tenants.
-3. **Automated Signature Refinement:** Heuristic thresholds adjust in real-time, proactively safeguarding peer tenants against identical campaign vectors.
-`
-  },
-  {
-    id: 'hyperscale-threat-indexing',
-    title: 'Hyper-Scale Threat Indexing: Matching 2,000,000+ Attack Vectors in Single-Pass O(N) Time',
-    excerpt: 'Inspecting millions of cyber threat signatures usually cripples origin latency. Explore how MDefender Pro uses compiled Radix Tries, inverted token indexing, and zero-copy byte buffers to scan 2,000,000+ signatures in under 0.50ms.',
-    category: 'Engineering',
-    date: 'Oct 01, 2026',
-    readTime: '7 min read',
-    author: 'Systems Engineering Team',
-    role: 'Lead Compiler & WAF Architect',
-    icon: 'fa-microchip',
-    image: '/blog/hyperscale_signature_engine.jpg',
-    featured: false,
-    tags: ['Radix Trie', 'Hyper-Scale', 'Performance', '2M+ Signatures', 'Zero Latency'],
-    content: `
-### The Challenge: Evaluating 2,000,000 Signatures Without Latency
-In traditional security architectures, matching a request against millions of attack patterns sequentially would introduce hundreds of milliseconds of delay per HTTP request.
-
-MDefender Pro solves this with an enterprise-grade **Radix-Tree & Inverted Token Indexing** architecture:
-
-1. **Inverted Token Indexing:** Before regex traversal, the engine extracts deterministic attack trigrams (e.g., \`UNION SELECT\`, \`script\`, \`base64_decode\`, \`system(\`) in O(1) time. If no threat token exists, the request passes immediately.
-2. **Single-Pass Radix Trie Traversal:** Multiple signatures are compiled into unified state machines, evaluating 2,000,000+ attack patterns in a single linear pass over the payload.
-3. **Zero Client-Side Overhead:** All 2M+ threat vectors execute centrally at the Root SaaS Backend; WordPress plugins communicate via sub-millisecond API telemetry without storing or downloading massive signature databases locally.
-`
-  },
-  {
-    id: 'runtime-application-self-protection-rasp',
-    title: 'Runtime Application Self-Protection (RASP): Blocking In-Memory Web Shells & Injections',
-    excerpt: 'Prevent unauthenticated PHP file write and upload exploits before they touch the physical file system. How MDefender Pro’s native RASP engine protects WordPress core and uploads directory.',
-    category: 'WordPress Security',
-    date: 'Sep 28, 2026',
-    readTime: '6 min read',
-    author: 'Threat Research Lab',
-    role: 'Senior Exploit Analyst',
-    icon: 'fa-shield-virus',
-    image: '/blog/rasp_memory_shield.jpg',
-    featured: false,
-    tags: ['RASP', 'Web Shell', 'WordPress Security', 'Memory Protection', 'PHP Sandbox'],
-    content: `
-### Moving Beyond Perimeter Firewalls to In-Memory RASP
-Standard firewalls inspect HTTP headers and query strings at the network edge. However, complex multi-part file uploads and serialized payloads often slip through edge gates.
-
-MDefender Pro implements **Runtime Application Self-Protection (RASP)** directly within the runtime environment:
-
-- **Pre-Write Interception:** Hooks into PHP stream wrappers and \`wp_handle_upload\` hooks to inspect payload contents *before* file creation.
-- **Polyglot & Obfuscation Analysis:** Detects hidden PHP shells nested inside valid PNG/JPEG headers and GIF comment blocks (e.g., \`<?php eval(gzuncompress(...)); ?>\`).
-- **Zero False-Positive Core Whitelisting:** Cross-references 19,480+ official WordPress core checksums to ensure legitimate updates and core files are never blocked.
-`
-  },
-  {
-    id: 'global-threat-intelligence-ingestion',
-    title: 'Global Threat Intelligence: Ingesting 53,800+ Malicious IPs & Live Feeds in Real-Time',
-    excerpt: 'How MDefender Pro continuously aggregates threat intelligence from FireHOL Level 1-3, EmergingThreats, Blocklist.de, and Abuse.ch into an edge-synchronized SQLite reputation database.',
-    category: 'Threat Intelligence',
-    date: 'Sep 20, 2026',
-    readTime: '5 min read',
-    author: 'SecOps Telemetry Team',
-    role: 'Threat Intelligence Analyst',
-    icon: 'fa-globe',
-    image: '/blog/global_threat_intel.jpg',
-    featured: false,
-    tags: ['Threat Intel', 'FireHOL', 'IP Reputation', 'Botnet Defense', 'SOC Feeds'],
-    content: `
-### Aggregating High-Fidelity Global Threat Feeds
-Threat actors constantly rotate bulletproof hosting IP ranges, Tor exit nodes, and automated botnet proxies.
-
-MDefender Pro maintains an automated, real-time ingestion pipeline:
-- **53,817+ Active Malicious IPs & CIDR Subnets:** Aggregated from tier-1 threat feeds including FireHOL, Emerging Threats, and Blocklist.de.
-- **Subnet Trie Indexing:** Incoming client IPs are matched against IPv4/IPv6 CIDR ranges in 0.05ms using binary prefix tries.
-- **Automated Reputation Degradation:** Scanners executing sqlmap, Nikto, or brute-force scripts are immediately appended to global tenant blacklists.
-`
-  }
-]
-
-const categories = ['All', 'Threat Intelligence', 'DDoS Mitigation', 'WordPress Security', 'Cloud Security', 'Engineering']
-
-const categoryColors = {
-  'Threat Intelligence': { bg: 'rgba(99,102,241,0.12)', text: '#6366f1', border: 'rgba(99,102,241,0.3)' },
-  'DDoS Mitigation': { bg: 'rgba(239,68,68,0.12)', text: '#ef4444', border: 'rgba(239,68,68,0.3)' },
-  'WordPress Security': { bg: 'rgba(16,185,129,0.12)', text: '#10b981', border: 'rgba(16,185,129,0.3)' },
-  'Cloud Security': { bg: 'rgba(6,182,212,0.12)', text: '#06b6d4', border: 'rgba(6,182,212,0.3)' },
-  'Engineering': { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b', border: 'rgba(245,158,11,0.3)' }
+  return (
+    <div
+      style={{
+        borderRadius: '12px',
+        overflow: 'hidden',
+        margin: '24px 0',
+        background: '#10221F',
+        border: '1px solid #233B36',
+        boxShadow: '0 8px 24px rgba(16, 34, 31, 0.12)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '10px 18px',
+          background: '#0B1A17',
+          borderBottom: '1px solid #1C332E',
+          fontSize: '11px',
+          color: '#87948D',
+          fontFamily: "'SF Mono', Monaco, monospace",
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#E85D45' }} />
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#D97735' }} />
+          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#28745D' }} />
+          <span style={{ marginLeft: '10px', color: '#B7C6C2', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+            Security Payload Inspection
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          style={{
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: copied ? '#28745D' : '#F8F8F4',
+            cursor: 'pointer',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {copied ? <Check size={12} strokeWidth={2.4} /> : <Copy size={12} strokeWidth={2.2} />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      <pre
+        style={{
+          margin: 0,
+          padding: '20px 22px',
+          color: '#E5EBE4',
+          fontSize: '13.5px',
+          lineHeight: '1.65',
+          fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace",
+          overflowX: 'auto',
+        }}
+      >
+        <code>{code.trim()}</code>
+      </pre>
+    </div>
+  );
 }
 
-// Inline Markdown Formatter Helper
-function renderFormattedText(text, dark) {
-  if (!text) return null
-  // Regex to split by bold (**text**) and code (`code`)
-  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g)
+function renderFormattedInlineText(text) {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      const inner = part.slice(2, -2)
+      const inner = part.slice(2, -2);
       return (
-        <strong key={index} style={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 700 }}>
+        <strong key={index} style={{ color: '#10221F', fontWeight: 750 }}>
           {inner}
         </strong>
-      )
+      );
     }
     if (part.startsWith('`') && part.endsWith('`')) {
-      const inner = part.slice(1, -1)
+      const inner = part.slice(1, -1);
       return (
         <code
           key={index}
           style={{
-            background: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
-            color: dark ? '#38bdf8' : '#0284c7',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontSize: '0.9em',
-            fontFamily: "'SF Mono', Monaco, monospace"
+            background: '#E9EEE8',
+            color: '#10221F',
+            padding: '2px 7px',
+            borderRadius: '5px',
+            fontSize: '0.88em',
+            fontFamily: "'SF Mono', Monaco, monospace",
+            border: '1px solid #D9DFD9',
           }}
         >
           {inner}
         </code>
-      )
+      );
     }
-    return part
-  })
+    return part;
+  });
 }
 
-function CodeSnippetBox({ code, dark }) {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = async () => {
-    const ok = await copyToClipboard(code)
-    if (ok) {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
+function ArticleBodyRenderer({ content }) {
+  // Extract and replace code blocks with tokens to prevent inner newlines from being split
+  const codeBlocks = [];
+  let tokenized = content.replace(/\r\n/g, '\n').replace(/```([a-z]*)\n([\s\S]*?)```/g, (_match, _lang, code) => {
+    const token = `__CODE_BLOCK_${codeBlocks.length}__`;
+    codeBlocks.push(code);
+    return `\n\n${token}\n\n`;
+  });
+
+  // Separate headings cleanly from following text
+  tokenized = tokenized.replace(/^(###\s+[^\n]+)\n([^\n#])/gm, '$1\n\n$2');
+
+  const blocks = tokenized.trim().split(/\n\s*\n/);
 
   return (
-    <div style={{
-      borderRadius: '12px',
-      overflow: 'hidden',
-      margin: '20px 0',
-      background: dark ? '#070b14' : '#0f172a',
-      border: `1px solid ${dark ? '#1e293b' : '#334155'}`,
-      boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '9px 18px',
-        background: dark ? '#04070e' : '#020617',
-        borderBottom: '1px solid #1e293b',
-        fontSize: '11px',
-        color: '#94a3b8',
-        fontFamily: 'monospace'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#ef4444' }}></span>
-          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#f59e0b' }}></span>
-          <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#10b981' }}></span>
-          <span style={{ marginLeft: '8px', color: '#64748b' }}>SECURITY PAYLOAD INSPECTION</span>
-        </div>
-        <button
-          onClick={handleCopy}
-          style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: copied ? '#10b981' : '#e2e8f0',
-            cursor: 'pointer',
-            padding: '3px 10px',
-            borderRadius: '6px',
-            fontSize: '11px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
-        >
-          <i className={`fas ${copied ? 'fa-check' : 'fa-copy'}`}></i>
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre style={{
-        margin: 0,
-        padding: '18px 22px',
-        color: '#38bdf8',
-        fontSize: '13px',
-        lineHeight: '1.65',
-        fontFamily: "'SF Mono', Monaco, 'Cascadia Code', monospace",
-        overflowX: 'auto'
-      }}>
-        <code>{code.trim()}</code>
-      </pre>
-    </div>
-  )
-}
-
-function ArticleRenderer({ content, dark }) {
-  const blocks = content.trim().split('\n\n')
-
-  return (
-    <div style={{ fontSize: '15px', lineHeight: '1.8' }}>
+    <div className="article-body-content">
       {blocks.map((block, idx) => {
-        const text = block.trim()
+        const text = block.trim();
+        if (!text) return null;
 
-        // Headers
+        // Code block placeholder token
+        if (text.startsWith('__CODE_BLOCK_') && text.endsWith('__')) {
+          const index = parseInt(text.replace('__CODE_BLOCK_', '').replace('__', ''), 10);
+          const rawCode = codeBlocks[index];
+          if (!rawCode || !rawCode.trim()) return null;
+          return <CodeSnippetBox key={idx} code={rawCode} />;
+        }
+
+        // Level 3 Headings
         if (text.startsWith('### ')) {
+          const lines = text.split('\n');
+          const headingTitle = lines[0].replace('### ', '').trim();
+          const subsequentText = lines.slice(1).join('\n').trim();
+          const anchorId = headingTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
           return (
-            <div key={idx} style={{ margin: '32px 0 14px' }}>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 800,
-                color: dark ? '#ffffff' : '#0f172a',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                letterSpacing: '-0.3px',
-                margin: 0
-              }}>
-                <span style={{
-                  width: '4px',
-                  height: '20px',
-                  borderRadius: '2px',
-                  background: 'linear-gradient(180deg, #6366f1, #3b82f6)'
-                }}></span>
-                {text.replace('### ', '')}
+            <div key={idx} id={anchorId} style={{ scrollMarginTop: '100px', margin: '42px 0 16px' }}>
+              <h3
+                style={{
+                  fontSize: '30px',
+                  fontWeight: 750,
+                  lineHeight: 1.1,
+                  letterSpacing: '-0.05em',
+                  color: '#10221F',
+                  margin: '0 0 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <span
+                  style={{
+                    width: '4px',
+                    height: '24px',
+                    borderRadius: '2px',
+                    background: '#D97735',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }}
+                />
+                <span>{headingTitle}</span>
               </h3>
+              {subsequentText && (
+                <p style={{ fontSize: '17px', lineHeight: 1.78, color: '#344054', margin: '0 0 22px' }}>
+                  {renderFormattedInlineText(subsequentText)}
+                </p>
+              )}
             </div>
-          )
+          );
         }
 
-        // Code Blocks
-        if (text.startsWith('```')) {
-          const rawCode = text.replace(/```[a-z]*\n?/g, '')
-          return <CodeSnippetBox key={idx} code={rawCode} dark={dark} />
-        }
-
-        // Dividers
+        // Horizontal Dividers
         if (text === '---') {
           return (
-            <div key={idx} style={{
-              margin: '32px 0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px'
-            }}>
-              <div style={{ flex: 1, height: '1px', background: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0' }}></div>
-              <i className="fas fa-shield-halved" style={{ color: '#6366f1', fontSize: '12px' }}></i>
-              <div style={{ flex: 1, height: '1px', background: dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0' }}></div>
+            <div
+              key={idx}
+              style={{
+                margin: '40px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+              }}
+            >
+              <div style={{ flex: 1, height: '1px', background: '#D9DFD9' }} />
+              <Shield size={16} strokeWidth={2.4} style={{ color: '#D97735' }} />
+              <div style={{ flex: 1, height: '1px', background: '#D9DFD9' }} />
             </div>
-          )
+          );
         }
 
         // Numbered List
         if (/^\d+\.\s/.test(text)) {
-          const items = text.split('\n').filter(Boolean)
+          const items = text.split('\n').filter(Boolean);
           return (
-            <div key={idx} style={{
-              margin: '18px 0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              {items.map((item, itemIdx) => {
-                const match = item.match(/^(\d+)\.\s*(.*)/)
-                const num = match ? match[1] : itemIdx + 1
-                const bodyText = match ? match[2] : item
+            <div key={idx} style={{ margin: '20px 0 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {items.map((item, i) => {
+                const match = item.match(/^(\d+)\.\s+(.*)/);
+                const num = match ? match[1] : i + 1;
+                const rest = match ? match[2] : item;
                 return (
-                  <div key={itemIdx} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '14px',
-                    background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                    border: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`,
-                    padding: '12px 16px',
-                    borderRadius: '10px'
-                  }}>
-                    <span style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: 'rgba(99,102,241,0.15)',
-                      color: '#6366f1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      flexShrink: 0,
-                      marginTop: '2px'
-                    }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        background: '#E9EEE8',
+                        color: '#10221F',
+                        fontWeight: 750,
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        border: '1px solid #D9DFD9',
+                        marginTop: '2px',
+                      }}
+                    >
                       {num}
                     </span>
-                    <div style={{ color: dark ? '#cbd5e1' : '#334155', fontSize: '14px', lineHeight: '1.7' }}>
-                      {renderFormattedText(bodyText, dark)}
+                    <div style={{ fontSize: '17px', lineHeight: 1.78, color: '#344054', flex: 1 }}>
+                      {renderFormattedInlineText(rest)}
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
-          )
+          );
         }
 
-        // Bullet List
-        if (text.startsWith('- ') || text.startsWith('* ')) {
-          const items = text.split('\n').filter(Boolean)
+        // Unordered Bullet List
+        if (text.startsWith('- ')) {
+          const items = text.split('\n').filter(Boolean);
           return (
-            <div key={idx} style={{
-              margin: '18px 0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              {items.map((item, itemIdx) => {
-                const cleanItem = item.replace(/^[-*]\s*/, '')
-                return (
-                  <div key={itemIdx} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '12px'
-                  }}>
-                    <i className="fas fa-check-circle" style={{
-                      color: '#10b981',
-                      fontSize: '13px',
-                      marginTop: '5px',
-                      flexShrink: 0
-                    }}></i>
-                    <div style={{ color: dark ? '#cbd5e1' : '#334155', fontSize: '14px', lineHeight: '1.7' }}>
-                      {renderFormattedText(cleanItem, dark)}
-                    </div>
+            <ul
+              key={idx}
+              style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: '20px 0 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              {items.map((item, i) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: '#D97735',
+                      marginTop: '11px',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ fontSize: '17px', lineHeight: 1.78, color: '#344054' }}>
+                    {renderFormattedInlineText(item.replace(/^- /, ''))}
                   </div>
-                )
-              })}
-            </div>
-          )
+                </li>
+              ))}
+            </ul>
+          );
         }
 
         // Standard Paragraph
         return (
-          <p key={idx} style={{
-            color: dark ? '#cbd5e1' : '#334155',
-            margin: '0 0 18px',
-            fontSize: '15px',
-            lineHeight: '1.8'
-          }}>
-            {renderFormattedText(text, dark)}
+          <p
+            key={idx}
+            style={{
+              fontSize: '17px',
+              lineHeight: 1.78,
+              color: '#344054',
+              margin: '0 0 22px',
+            }}
+          >
+            {renderFormattedInlineText(text)}
           </p>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
-export default function Blog() {
-  const { dark } = useTheme()
-  const s = theme(dark)
+function IocSecurityTable({ iocs, advisoryId }) {
+  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [allCopied, setAllCopied] = useState(false);
 
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeArticle, setActiveArticle] = useState(null)
-  const [emailSubscribed, setEmailSubscribed] = useState(false)
-  const [subEmail, setSubEmail] = useState('')
-  const [copiedLink, setCopiedLink] = useState(false)
+  if (!iocs || !iocs.length) return null;
 
-  const featuredPost = useMemo(() => {
-    return blogPosts.find(p => p.featured) || blogPosts[0]
-  }, [])
+  const handleCopySingle = async (val, index) => {
+    const ok = await copyToClipboard(val);
+    if (ok) {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 1800);
+    }
+  };
 
-  const filteredPosts = useMemo(() => {
-    return blogPosts.filter(post => {
-      const matchCategory = selectedCategory === 'All' || post.category === selectedCategory
-      const matchQuery = searchQuery.trim() === '' ||
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-      return matchCategory && matchQuery
-    })
-  }, [selectedCategory, searchQuery])
-
-  const handleSubscribe = (e) => {
-    e.preventDefault()
-    if (!subEmail || !subEmail.includes('@')) return
-    setEmailSubscribed(true)
-    setSubEmail('')
-  }
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href)
-    setCopiedLink(true)
-    setTimeout(() => setCopiedLink(false), 2500)
-  }
-
-  // Related articles recommendation
-  const relatedArticles = useMemo(() => {
-    if (!activeArticle) return []
-    return blogPosts.filter(p => p.id !== activeArticle.id).slice(0, 2)
-  }, [activeArticle])
+  const handleCopyAll = async () => {
+    const text = iocs.map((ioc) => `[${ioc.type}] ${ioc.value} # ${ioc.notes || ''}`).join('\n');
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      setAllCopied(true);
+      setTimeout(() => setAllCopied(false), 2000);
+    }
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: dark ? '#070b14' : '#f8fafc',
-      color: dark ? '#f1f5f9' : '#0f172a',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      overflowX: 'hidden'
-    }}>
+    <div
+      style={{
+        margin: '40px 0 24px',
+        borderRadius: '12px',
+        border: '1.5px solid #CBD8CF',
+        background: '#FFFFFF',
+        overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(16, 34, 31, 0.04)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '14px 20px',
+          background: '#F7F5EE',
+          borderBottom: '1.5px solid #CBD8CF',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <ShieldAlert size={18} color="#D97735" strokeWidth={2.4} />
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: '#0B2522', letterSpacing: '-0.01em' }}>
+              Forensic Indicators of Compromise (IOCs)
+            </div>
+            <div style={{ fontSize: '11px', color: '#53615D' }}>
+              Telemetry Observables &bull; STIX 2.1 Format Reference
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleCopyAll}
+          style={{
+            background: allCopied ? '#28745D' : '#0B2522',
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 12px',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'background 0.15s ease',
+          }}
+        >
+          {allCopied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} strokeWidth={2} />}
+          <span>{allCopied ? 'All Copied to Clipboard!' : 'Copy All Observables'}</span>
+        </button>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+          <thead>
+            <tr style={{ background: '#FAF9F5', borderBottom: '1px solid #E5EBE4', color: '#4A5D5A', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <th style={{ padding: '10px 18px', fontWeight: 700, width: '22%' }}>Indicator Type</th>
+              <th style={{ padding: '10px 18px', fontWeight: 700, width: '43%' }}>Observable Value</th>
+              <th style={{ padding: '10px 18px', fontWeight: 700, width: '35%' }}>Forensic Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {iocs.map((ioc, idx) => (
+              <tr
+                key={idx}
+                style={{
+                  borderBottom: idx === iocs.length - 1 ? 'none' : '1px solid #E5EBE4',
+                  background: idx % 2 === 0 ? '#FFFFFF' : '#FBFBFA',
+                }}
+              >
+                <td style={{ padding: '12px 18px', verticalAlign: 'top', fontWeight: 700, color: '#0B2522' }}>
+                  <span style={{ background: '#E9EEE8', padding: '3px 8px', borderRadius: '4px', fontSize: '10.5px', color: '#28745D', border: '1px solid #D9DFD9' }}>
+                    {ioc.type}
+                  </span>
+                </td>
+                <td style={{ padding: '12px 18px', verticalAlign: 'top', fontFamily: 'monospace', color: '#0B2522', wordBreak: 'break-all' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', background: 'rgba(232, 121, 47, 0.08)', padding: '2px 6px', borderRadius: '4px', color: '#9A3412' }}>
+                      {ioc.value}
+                    </span>
+                    <button
+                      type="button"
+                      title="Copy indicator value"
+                      onClick={() => handleCopySingle(ioc.value, idx)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid #CBD8CF',
+                        borderRadius: '4px',
+                        padding: '3px 6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: copiedIndex === idx ? '#28745D' : '#53615D',
+                      }}
+                    >
+                      {copiedIndex === idx ? <Check size={11} strokeWidth={2.4} /> : <Copy size={11} strokeWidth={2} />}
+                    </button>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 18px', verticalAlign: 'top', color: '#53615D', fontSize: '11.5px', lineHeight: 1.5 }}>
+                  {ioc.notes}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT: MDEFENDER PRO THREAT INTELLIGENCE & SECURITY LAB
+// ============================================================================
+export default function Blog() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id: urlArticleId } = useParams();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeArticleId, setActiveArticleId] = useState(urlArticleId || null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Sync state if URL param changes (e.g. browser back/forward)
+  useEffect(() => {
+    setActiveArticleId(urlArticleId || null);
+    if (urlArticleId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [urlArticleId]);
+
+  // Current active post object if viewing article detail
+  const activeArticle = useMemo(() => {
+    if (!activeArticleId) return null;
+    return BLOG_POSTS.find((p) => p.id === activeArticleId) || null;
+  }, [activeArticleId]);
+
+  // Featured article: always the designated featured post
+  const featuredPost = useMemo(() => {
+    return BLOG_POSTS.find((p) => p.featured) || BLOG_POSTS[0];
+  }, []);
+
+  // Filter research library: never duplicate the featured article in the grid
+  const filteredPosts = useMemo(() => {
+    return BLOG_POSTS.filter((post) => {
+      // Exclude the featured article from the research grid
+      if (post.id === featuredPost.id) return false;
+
+      const matchCategory = selectedCategory === 'All' || post.category === selectedCategory;
+      const matchQuery =
+        searchQuery.trim() === '' ||
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return matchCategory && matchQuery;
+    });
+  }, [selectedCategory, searchQuery, featuredPost.id]);
+
+  // Headings for table of contents in article detail view
+  const tableOfContents = useMemo(() => {
+    if (!activeArticle) return [];
+    const lines = activeArticle.content.split('\n');
+    return lines
+      .filter((l) => l.startsWith('### '))
+      .map((l) => {
+        const title = l.replace('### ', '').trim();
+        return {
+          title,
+          id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        };
+      });
+  }, [activeArticle]);
+
+  // Previous and next article navigation
+  const { prevArticle, nextArticle } = useMemo(() => {
+    if (!activeArticle) return { prevArticle: null, nextArticle: null };
+    const currentIndex = BLOG_POSTS.findIndex((p) => p.id === activeArticle.id);
+    const prev = currentIndex > 0 ? BLOG_POSTS[currentIndex - 1] : null;
+    const next = currentIndex < BLOG_POSTS.length - 1 ? BLOG_POSTS[currentIndex + 1] : null;
+    return { prevArticle: prev, nextArticle: next };
+  }, [activeArticle]);
+
+  // Related articles (up to 3, excluding the current one)
+  const relatedArticles = useMemo(() => {
+    if (!activeArticle) return [];
+    return BLOG_POSTS.filter((p) => p.id !== activeArticle.id).slice(0, 3);
+  }, [activeArticle]);
+
+  // Navigation handlers
+  const handleOpenArticle = (id) => {
+    setActiveArticleId(id);
+    navigate(`/threat-intelligence/${id}`, { replace: false });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToHub = () => {
+    setActiveArticleId(null);
+    navigate('/threat-intelligence', { replace: false });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleShareArticle = async () => {
+    const ok = await copyToClipboard(window.location.href);
+    if (ok) {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#F8F8F4',
+        color: '#53615D',
+        fontFamily: "Inter, Geist, Arial, -apple-system, BlinkMacSystemFont, sans-serif",
+        overflowX: 'hidden',
+        position: 'relative',
+      }}
+    >
+      {/* Dynamic Global CSS for Typography, Card Animations & Focus Rings */}
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.97) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        * { box-sizing: border-box; }
+        ::selection { background: #E9EEE8; color: #10221F; }
 
-        .blog-card {
-          transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-          cursor: pointer;
-        }
-        .blog-card:hover {
-          transform: translateY(-6px);
-          box-shadow: ${dark ? '0 20px 40px rgba(0,0,0,0.65)' : '0 14px 34px rgba(0,0,0,0.08)'} !important;
-          border-color: rgba(99,102,241,0.5) !important;
-        }
-        .blog-card:hover .blog-card-img {
-          transform: scale(1.05);
-        }
-        .blog-card:hover h3, .blog-card:hover h2 {
-          color: #6366f1 !important;
+        /* Focus rings: accessible orange contrast */
+        input:focus-visible, button:focus-visible, a:focus-visible {
+          outline: 2px solid #D97735 !important;
+          outline-offset: 2px !important;
         }
 
-        .category-pill {
-          padding: 8px 18px;
-          border-radius: 20px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          border: 1px solid transparent;
-          background: transparent;
-          color: ${dark ? '#94a3b8' : '#64748b'};
+        .threat-card {
+          transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
         }
-        .category-pill:hover {
-          color: ${dark ? '#f8fafc' : '#0f172a'};
-          background: ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'};
+        .threat-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 18px 34px rgba(16, 34, 31, 0.10) !important;
+          border-color: #CBD7CC !important;
         }
-        .category-pill-active {
-          background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
-          color: #ffffff !important;
-          box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+        .threat-card:hover .card-read-link {
+          color: #D97735 !important;
+        }
+        .threat-card:hover .card-read-link svg {
+          transform: translateX(4px);
         }
 
-        .blog-tag-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          font-size: 11.5px;
-          font-weight: 600;
-          padding: 3px 10px;
-          border-radius: 6px;
-          background: ${dark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'};
-          color: ${dark ? '#94a3b8' : '#64748b'};
-          border: 1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'};
-          transition: all 0.2s;
+        .filter-pill {
+          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .blog-tag-badge:hover {
-          color: #6366f1;
-          border-color: rgba(99,102,241,0.3);
+        .filter-pill:hover:not(.active) {
+          border-color: #D97735 !important;
+          color: #D97735 !important;
+        }
+
+        .search-input-field:focus {
+          border-color: #D97735 !important;
+          box-shadow: 0 0 0 3px rgba(217, 119, 53, 0.18) !important;
+        }
+
+        /* Responsive Layout Breakpoints matching prompt */
+        @media (max-width: 900px) {
+          .hero-grid {
+            grid-template-columns: 1fr !important;
+            gap: 40px !important;
+          }
+          .featured-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .featured-img-side {
+            min-height: 240px !important;
+          }
+          .article-detail-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .article-toc-sticky {
+            position: static !important;
+            width: 100% !important;
+            margin-bottom: 32px !important;
+          }
+          .research-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .focus-areas-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .prev-next-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .related-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .research-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .hero-main-title {
+            font-size: 58px !important;
+          }
+          .article-main-title {
+            font-size: 42px !important;
+          }
+          .featured-text-side {
+            padding: 24px !important;
+          }
         }
       `}</style>
 
+      {/* Global Brand Navbar */}
       <PublicNavbar />
 
-      {/* Live Threat Intelligence Ticker */}
-      <div style={{
-        marginTop: 64,
-        background: dark ? 'rgba(15,23,42,0.9)' : '#eef2ff',
-        borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#c7d2fe'}`,
-        padding: '9px 20px',
-        fontSize: 12,
-        fontWeight: 600,
-        color: dark ? '#94a3b8' : '#4338ca',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        overflow: 'hidden'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', flexShrink: 0 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
-          <span style={{ textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 800 }}>LIVE THREAT RADAR:</span>
-        </div>
-        <span>6,501,208+ Dataset ML Core active &bull; Sub-millisecond (0.12ms) AST Vectorizer online &bull; Zero false positives recorded across edge fleet</span>
-      </div>
-
-      {/* Header Section */}
-      <section style={{
-        padding: '50px 24px 36px',
-        maxWidth: 1240,
-        margin: '0 auto',
-        textAlign: 'center',
-        position: 'relative'
-      }}>
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 16px',
-          borderRadius: 30,
-          background: dark ? 'rgba(99,102,241,0.12)' : '#eef2ff',
-          border: `1px solid ${dark ? 'rgba(99,102,241,0.3)' : '#c7d2fe'}`,
-          color: '#6366f1',
-          fontSize: 12.5,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.6px',
-          marginBottom: 16
-        }}>
-          <i className="fas fa-radar"></i> MDefender Threat Intel &amp; Security Lab
-        </div>
-
-        <h1 style={{
-          fontSize: 'clamp(32px, 4.8vw, 52px)',
-          fontWeight: 900,
-          lineHeight: 1.15,
-          letterSpacing: '-1px',
-          maxWidth: 920,
-          margin: '0 auto 16px',
-          color: dark ? '#ffffff' : '#0f172a'
-        }}>
-          Cybersecurity Threat Intelligence, Zero-Day Research &amp; AI WAF Architecture
-        </h1>
-
-        <p style={{
-          fontSize: 'clamp(15px, 1.8vw, 17.5px)',
-          lineHeight: 1.65,
-          color: dark ? '#94a3b8' : '#475569',
-          maxWidth: 720,
-          margin: '0 auto 34px'
-        }}>
-          Technical briefings, exploit vector analyses, and defensive architecture deep-dives authored by our security engineers and threat researchers.
-        </p>
-
-        {/* Search & Category Filter */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: 480 }}>
-            <i className="fas fa-search" style={{ position: 'absolute', left: 16, top: 16, color: '#64748b', fontSize: 13 }}></i>
-            <input
-              type="text"
-              placeholder="Search threat reports, zero-days, CVEs, or tags..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 18px 12px 42px',
-                borderRadius: 12,
-                fontSize: 14,
-                border: `1.5px solid ${dark ? '#1e293b' : '#cbd5e1'}`,
-                background: dark ? '#0a0e1a' : '#ffffff',
-                color: dark ? '#e2e8f0' : '#0f172a',
-                outline: 'none',
-                boxShadow: dark ? 'none' : '0 2px 10px rgba(0,0,0,0.04)'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {categories.map(cat => (
-              <button
-                key={cat}
-                className={`category-pill ${selectedCategory === cat ? 'category-pill-active' : ''}`}
-                onClick={() => setSelectedCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================= FEATURED HERO SPOTLIGHT ARTICLE ================= */}
-      {selectedCategory === 'All' && searchQuery.trim() === '' && (
-        <section style={{ maxWidth: 1240, margin: '0 auto 40px', padding: '0 24px' }}>
-          <div
-            className="blog-card"
-            onClick={() => setActiveArticle(featuredPost)}
+      {/* ==================================================================== */}
+      {/* VIEW A: DEDICATED ARTICLE DETAIL PAGE ("SHOW LIKE BLOG PAGE")        */}
+      {/* ==================================================================== */}
+      {activeArticle ? (
+        <main id="main-content" style={{ paddingTop: 'calc(76px + 40px)', paddingBottom: '92px' }}>
+          <article
             style={{
-              background: dark ? '#0c1222' : '#ffffff',
-              borderRadius: 20,
-              border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
-              overflow: 'hidden',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-              boxShadow: dark ? '0 15px 40px rgba(0,0,0,0.45)' : '0 10px 30px rgba(0,0,0,0.06)',
-              position: 'relative'
+              maxWidth: '1180px',
+              margin: '0 auto',
+              padding: '0 clamp(18px, 3vw, 32px)',
             }}
           >
-            {/* Visual Image Banner */}
-            <div style={{ position: 'relative', overflow: 'hidden', minHeight: 300 }}>
-              <picture style={{ width: '100%', height: '100%', display: 'block' }}>
-                <source srcSet={featuredPost.image.replace('.jpg', '.webp')} type="image/webp" />
-                <img
-                  src={featuredPost.image}
-                  alt={featuredPost.title}
-                  className="blog-card-img"
-                  loading="eager"
-                  decoding="async"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.5s ease'
-                  }}
-                />
-              </picture>
-              <div style={{
-                position: 'absolute',
-                top: 18,
-                left: 18,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                borderRadius: 20,
-                background: 'rgba(99,102,241,0.95)',
-                backdropFilter: 'blur(10px)',
-                color: '#ffffff',
-                fontSize: 11.5,
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.6px',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.3)'
-              }}>
-                <i className="fas fa-bolt"></i> Spotlight Threat Report
-              </div>
-            </div>
-
-            {/* Content Details */}
-            <div style={{ padding: '34px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: 20,
-                    background: categoryColors[featuredPost.category]?.bg || 'rgba(99,102,241,0.12)',
-                    color: categoryColors[featuredPost.category]?.text || '#6366f1',
-                    border: `1px solid ${categoryColors[featuredPost.category]?.border || 'rgba(99,102,241,0.3)'}`,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: 'uppercase'
-                  }}>
-                    {featuredPost.category}
-                  </span>
-                  <span style={{ fontSize: 12.5, color: dark ? '#94a3b8' : '#64748b' }}>
-                    <i className="fas fa-clock" style={{ marginRight: 5 }}></i> {featuredPost.readTime}
-                  </span>
-                </div>
-
-                <h2 style={{
-                  fontSize: 'clamp(21px, 2.2vw, 26px)',
-                  fontWeight: 900,
-                  color: dark ? '#ffffff' : '#0f172a',
-                  lineHeight: 1.3,
-                  letterSpacing: '-0.5px',
-                  marginBottom: 12,
-                  transition: 'color 0.2s'
-                }}>
-                  {featuredPost.title}
-                </h2>
-
-                <p style={{ fontSize: 14.5, color: dark ? '#94a3b8' : '#475569', lineHeight: 1.65, marginBottom: 18 }}>
-                  {featuredPost.excerpt}
-                </p>
-
-                {/* Clean tag pills without raw hash symbol */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-                  {featuredPost.tags.map((tag, i) => (
-                    <span key={i} className="blog-tag-badge">
-                      <i className="fas fa-tag" style={{ fontSize: 9, opacity: 0.7 }}></i>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: 16,
-                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: 14
-                  }}>
-                    <i className="fas fa-brain"></i>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{featuredPost.author}</div>
-                    <div style={{ fontSize: 11.5, color: dark ? '#94a3b8' : '#64748b' }}>{featuredPost.date}</div>
-                  </div>
-                </div>
-
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Read Technical Report <i className="fas fa-arrow-right"></i>
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ================= STANDARD GRID ARTICLES ================= */}
-      <section style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 80px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 26
-        }}>
-          {filteredPosts.map(post => (
+            {/* Top Breadcrumb & Return Action */}
             <div
-              key={post.id}
-              className="blog-card"
-              onClick={() => setActiveArticle(post)}
               style={{
-                background: dark ? '#0c1222' : '#ffffff',
-                borderRadius: 18,
-                border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: dark ? '0 8px 30px rgba(0,0,0,0.35)' : '0 4px 20px rgba(0,0,0,0.04)',
-                position: 'relative'
-              }}
-            >
-              <div>
-                {/* Visual Thumbnail */}
-                <div style={{ width: '100%', height: 210, overflow: 'hidden', position: 'relative' }}>
-                  <picture style={{ width: '100%', height: '100%', display: 'block' }}>
-                    <source srcSet={post.image.replace('.jpg', '.webp')} type="image/webp" />
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="blog-card-img"
-                      loading="lazy"
-                      decoding="async"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        transition: 'transform 0.4s ease'
-                      }}
-                    />
-                  </picture>
-                  <div style={{
-                    position: 'absolute',
-                    top: 14,
-                    left: 14,
-                    padding: '4px 12px',
-                    borderRadius: 20,
-                    background: categoryColors[post.category]?.bg || 'rgba(15,23,42,0.85)',
-                    color: categoryColors[post.category]?.text || '#6366f1',
-                    border: `1px solid ${categoryColors[post.category]?.border || 'rgba(99,102,241,0.3)'}`,
-                    backdropFilter: 'blur(8px)',
-                    fontSize: 11,
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    {post.category}
-                  </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 12,
-                    right: 14,
-                    padding: '3px 10px',
-                    borderRadius: 6,
-                    background: 'rgba(0,0,0,0.7)',
-                    backdropFilter: 'blur(6px)',
-                    color: '#e2e8f0',
-                    fontSize: 11.5,
-                    fontWeight: 600
-                  }}>
-                    <i className="fas fa-clock" style={{ marginRight: 5, fontSize: 10 }}></i>
-                    {post.readTime}
-                  </div>
-                </div>
-
-                {/* Body Content */}
-                <div style={{ padding: '22px 22px 14px' }}>
-                  <h3 style={{
-                    fontSize: 18,
-                    fontWeight: 800,
-                    color: dark ? '#ffffff' : '#0f172a',
-                    lineHeight: 1.35,
-                    marginBottom: 10,
-                    letterSpacing: '-0.3px',
-                    transition: 'color 0.2s'
-                  }}>
-                    {post.title}
-                  </h3>
-
-                  <p style={{
-                    fontSize: 13.5,
-                    lineHeight: 1.65,
-                    color: dark ? '#94a3b8' : '#475569',
-                    marginBottom: 16
-                  }}>
-                    {post.excerpt}
-                  </p>
-
-                  {/* Clean tag pills without raw hash symbol */}
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {post.tags.slice(0, 3).map((tag, idx) => (
-                      <span key={idx} className="blog-tag-badge">
-                        <i className="fas fa-tag" style={{ fontSize: 9, opacity: 0.7 }}></i>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Author Strip */}
-              <div style={{
-                padding: '14px 22px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 9,
-                    background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontSize: 12
-                  }}>
-                    <i className={`fas ${post.icon}`}></i>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{post.author}</div>
-                    <div style={{ fontSize: 11, color: dark ? '#94a3b8' : '#64748b' }}>{post.date}</div>
-                  </div>
-                </div>
-
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  Read <i className="fas fa-arrow-right" style={{ fontSize: 11 }}></i>
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Threat Intel Newsletter CTA */}
-      <section style={{ maxWidth: 1240, margin: '0 auto 80px', padding: '0 24px' }}>
-        <div style={{
-          background: dark
-            ? 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,27,75,0.85) 100%)'
-            : 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)',
-          borderRadius: 24,
-          padding: '52px 36px',
-          border: `1px solid ${dark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.3)'}`,
-          boxShadow: dark ? '0 20px 50px rgba(0,0,0,0.45)' : '0 8px 30px rgba(99,102,241,0.08)',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: 'rgba(99,102,241,0.15)',
-            color: '#6366f1',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px',
-            fontSize: 22
-          }}>
-            <i className="fas fa-paper-plane"></i>
-          </div>
-          <h2 style={{ fontSize: 28, fontWeight: 900, color: dark ? '#ffffff' : '#0f172a', letterSpacing: '-0.6px', marginBottom: 8 }}>
-            Subscribe to MDefender Threat Intelligence
-          </h2>
-          <p style={{ fontSize: 15, color: dark ? '#94a3b8' : '#475569', maxWidth: 580, margin: '0 auto 26px', lineHeight: 1.6 }}>
-            Receive zero-day exploit advisories, AI payload detection rules, and cybersecurity architecture briefings directly in your inbox.
-          </p>
-
-          {emailSubscribed ? (
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '12px 24px',
-              borderRadius: 10,
-              background: dark ? 'rgba(16,185,129,0.12)' : '#ecfdf5',
-              border: `1px solid ${dark ? 'rgba(16,185,129,0.3)' : '#a7f3d0'}`,
-              color: '#10b981',
-              fontWeight: 700,
-              fontSize: 14
-            }}>
-              <i className="fas fa-check-circle"></i> You are subscribed to MDefender Threat Intel!
-            </div>
-          ) : (
-            <form onSubmit={handleSubscribe} style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap', maxWidth: 520, margin: '0 auto' }}>
-              <input
-                type="email"
-                required
-                placeholder="Enter your work security email..."
-                value={subEmail}
-                onChange={e => setSubEmail(e.target.value)}
-                style={{
-                  flex: '1 1 280px',
-                  padding: '13px 18px',
-                  borderRadius: 10,
-                  fontSize: 14,
-                  border: `1.5px solid ${dark ? '#1e293b' : '#cbd5e1'}`,
-                  background: dark ? '#0a0e1a' : '#ffffff',
-                  color: dark ? '#f1f5f9' : '#0f172a',
-                  outline: 'none'
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  padding: '13px 26px',
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: 14,
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)'
-                }}
-              >
-                Join 14,000+ Engineers
-              </button>
-            </form>
-          )}
-        </div>
-      </section>
-
-      {/* ================= ARTICLE DETAIL MODAL ================= */}
-      {activeArticle && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 1000,
-          background: dark ? 'rgba(0,0,0,0.88)' : 'rgba(0,0,0,0.65)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px 16px'
-        }} onClick={() => setActiveArticle(null)}>
-          <div
-            style={{
-              background: dark ? '#0c1222' : '#ffffff',
-              borderRadius: 22,
-              width: '100%',
-              maxWidth: 860,
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
-              boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
-              position: 'relative',
-              animation: 'modalFadeIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Top Visual Banner inside Modal */}
-            <div style={{ position: 'relative', width: '100%', height: 260, overflow: 'hidden' }}>
-              <picture style={{ width: '100%', height: '100%', display: 'block' }}>
-                <source srcSet={activeArticle.image.replace('.jpg', '.webp')} type="image/webp" />
-                <img
-                  src={activeArticle.image}
-                  alt={activeArticle.title}
-                  loading="lazy"
-                  decoding="async"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </picture>
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                background: dark
-                  ? 'linear-gradient(to top, #0c1222 0%, rgba(12,18,34,0.4) 60%, transparent 100%)'
-                  : 'linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.2) 60%, transparent 100%)'
-              }}></div>
-
-              {/* Close Button */}
-              <button
-                onClick={() => setActiveArticle(null)}
-                style={{
-                  position: 'absolute',
-                  top: 16,
-                  right: 16,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: 'rgba(0,0,0,0.65)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  color: '#ffffff',
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '24px 36px 40px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: 20,
-                    background: categoryColors[activeArticle.category]?.bg || 'rgba(99,102,241,0.15)',
-                    color: categoryColors[activeArticle.category]?.text || '#6366f1',
-                    border: `1px solid ${categoryColors[activeArticle.category]?.border || 'rgba(99,102,241,0.3)'}`,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: 'uppercase'
-                  }}>
-                    {activeArticle.category}
-                  </span>
-                  <span style={{ fontSize: 13, color: dark ? '#94a3b8' : '#64748b' }}>{activeArticle.date} • {activeArticle.readTime}</span>
-                </div>
-
-                <button
-                  onClick={handleCopyLink}
-                  style={{
-                    background: 'none',
-                    border: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
-                    padding: '5px 12px',
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: copiedLink ? '#10b981' : (dark ? '#94a3b8' : '#64748b'),
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
-                >
-                  <i className={`fas ${copiedLink ? 'fa-check' : 'fa-link'}`}></i>
-                  {copiedLink ? 'Link Copied!' : 'Share Article'}
-                </button>
-              </div>
-
-              <h1 style={{ fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 900, color: dark ? '#ffffff' : '#0f172a', lineHeight: 1.25, letterSpacing: '-0.7px', marginBottom: 18 }}>
-                {activeArticle.title}
-              </h1>
-
-              {/* Author Strip */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 22, borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}` }}>
-                <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 11,
-                  background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ffffff',
-                  fontSize: 16
-                }}>
-                  <i className={`fas ${activeArticle.icon}`}></i>
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a' }}>{activeArticle.author}</div>
-                  <div style={{ fontSize: 12, color: dark ? '#94a3b8' : '#64748b' }}>{activeArticle.role} &middot; MDefender Pro Threat Intelligence Lab</div>
-                </div>
-              </div>
-
-              {/* Rich Parsed Article Content Without Raw Markdown Artifacts */}
-              <div style={{ marginTop: 24 }}>
-                <ArticleRenderer content={activeArticle.content} dark={dark} />
-              </div>
-
-              {/* Tags inside Modal */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 24, paddingTop: 18, borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}` }}>
-                {activeArticle.tags.map((tag, i) => (
-                  <span key={i} className="blog-tag-badge">
-                    <i className="fas fa-tag" style={{ fontSize: 9, opacity: 0.7 }}></i>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              {/* Related Technical Reports */}
-              {relatedArticles.length > 0 && (
-                <div style={{ marginTop: 32 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: dark ? '#f1f5f9' : '#0f172a', marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Recommended Threat Reports
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-                    {relatedArticles.map(rel => (
-                      <div
-                        key={rel.id}
-                        onClick={() => setActiveArticle(rel)}
-                        style={{
-                          background: dark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
-                          border: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
-                          borderRadius: 12,
-                          padding: '14px 16px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', marginBottom: 4 }}>
-                          {rel.category}
-                        </div>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: dark ? '#f1f5f9' : '#0f172a', lineHeight: 1.4, marginBottom: 6 }}>
-                          {rel.title}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: dark ? '#94a3b8' : '#64748b' }}>
-                          {rel.readTime} &bull; {rel.date}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Bottom CTA Inside Modal */}
-              <div style={{
-                marginTop: 36,
-                padding: '24px 22px',
-                borderRadius: 16,
-                background: dark ? 'rgba(99,102,241,0.08)' : '#eef2ff',
-                border: `1px solid ${dark ? 'rgba(99,102,241,0.2)' : '#c7d2fe'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
-                gap: 14
-              }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: dark ? '#ffffff' : '#0f172a' }}>Deploy AI Web Defense in Under 2 Minutes</div>
-                  <div style={{ fontSize: 13, color: dark ? '#94a3b8' : '#475569' }}>Protect your web applications with 2,000 WAF rules and 6,501,208+ attack dataset ML inference.</div>
-                </div>
-                <Link to="/register" style={{
-                  padding: '11px 24px',
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-                  color: '#fff',
-                  fontSize: 14,
+                gap: '12px',
+                marginBottom: '36px',
+              }}
+            >
+              <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#87948D' }}>
+                <button
+                  type="button"
+                  onClick={handleBackToHub}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#87948D',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#87948D')}
+                >
+                  <ArrowLeft size={13} strokeWidth={2.4} />
+                  <span>Threat Intelligence Hub</span>
+                </button>
+                <span>/</span>
+                <span style={{ color: '#53615D' }}>{activeArticle.category}</span>
+                <span>/</span>
+                <span style={{ color: '#10221F', fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '280px' }}>
+                  {activeArticle.title}
+                </span>
+              </nav>
+
+              <button
+                type="button"
+                onClick={handleShareArticle}
+                aria-label="Share this threat intelligence briefing"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #D9DFD9',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '11px',
                   fontWeight: 700,
-                  textDecoration: 'none',
-                  boxShadow: '0 4px 14px rgba(99,102,241,0.35)'
-                }}>
-                  Start Free Protection
-                </Link>
+                  color: copiedLink ? '#28745D' : '#10221F',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 1px 3px rgba(16, 34, 31, 0.04)',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#D97735')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#D9DFD9')}
+              >
+                {copiedLink ? <Check size={13} strokeWidth={2.4} /> : <Share2 size={13} strokeWidth={2.2} />}
+                <span>{copiedLink ? 'Link Copied!' : 'Share Briefing'}</span>
+              </button>
+            </div>
+
+            {/* Centered Article Header (Max Width 850px) */}
+            <header
+              style={{
+                maxWidth: '850px',
+                margin: '0 auto 40px',
+                textAlign: 'center',
+              }}
+            >
+              {/* Category Eyebrow */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 12px',
+                  borderRadius: '999px',
+                  background: '#E9EEE8',
+                  border: '1px solid #D9DFD9',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.13em',
+                  color: '#D97735',
+                  marginBottom: '18px',
+                }}
+              >
+                <Radio size={12} strokeWidth={2.4} />
+                <span>{activeArticle.category}</span>
+              </div>
+
+              {/* Title */}
+              <h1
+                className="article-main-title"
+                style={{
+                  fontSize: 'clamp(42px, 6vw, 72px)',
+                  lineHeight: 1.02,
+                  letterSpacing: '-0.075em',
+                  fontWeight: 750,
+                  color: '#10221F',
+                  margin: '0 auto 20px',
+                }}
+              >
+                {activeArticle.title}
+              </h1>
+
+              {/* Summary */}
+              <p
+                style={{
+                  fontSize: '17px',
+                  lineHeight: 1.65,
+                  color: '#53615D',
+                  maxWidth: '670px',
+                  margin: '0 auto 26px',
+                }}
+              >
+                {activeArticle.excerpt}
+              </p>
+
+              {/* Centered Metadata Bar with Icons and 11px Text */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  gap: '20px',
+                  fontSize: '11px',
+                  color: '#87948D',
+                  paddingTop: '16px',
+                  borderTop: '1px solid #D9DFD9',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: '#E9EEE8',
+                      color: '#10221F',
+                      fontSize: '11px',
+                      fontWeight: 750,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid #D9DFD9',
+                    }}
+                  >
+                    {activeArticle.authorInitials}
+                  </div>
+                  <span style={{ color: '#10221F', fontWeight: 600 }}>{activeArticle.author}</span>
+                  <span>&bull;</span>
+                  <span>{activeArticle.role}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Calendar size={13} strokeWidth={2.2} />
+                  <span>{activeArticle.date}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={13} strokeWidth={2.2} />
+                  <span>{activeArticle.readTime}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#28745D' }}>
+                  <Shield size={13} strokeWidth={2.4} />
+                  <span style={{ fontWeight: 700 }}>Peer-Reviewed Advisory</span>
+                </div>
+              </div>
+            </header>
+
+            {/* Visual Technical Cover Image */}
+            <div
+              style={{
+                maxWidth: '1000px',
+                margin: '0 auto 36px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '1.5px solid #CBD8CF',
+                boxShadow: '0 18px 42px rgba(16, 34, 31, 0.07)',
+                background: '#F7F5EE',
+                aspectRatio: '16/9',
+                maxHeight: '480px',
+              }}
+            >
+              <img
+                src={activeArticle.image}
+                alt={activeArticle.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+
+            {/* Forensic Threat Dossier Matrix HUD */}
+            <div
+              style={{
+                maxWidth: '1000px',
+                margin: '0 auto 46px',
+                background: '#FFFFFF',
+                borderRadius: '14px',
+                border: '1.5px solid #CBD8CF',
+                padding: '20px 24px',
+                boxShadow: '0 8px 24px rgba(16, 34, 31, 0.04)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                gap: '20px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                  Advisory &amp; CVE Reference
+                </div>
+                <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#10221F', fontFamily: 'monospace' }}>
+                  {activeArticle.cve || activeArticle.advisoryId}
+                </div>
+                <div style={{ fontSize: '11px', color: '#53615D', marginTop: '2px' }}>{activeArticle.advisoryId}</div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                  CVSS v3.1 Severity Rating
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      background: activeArticle.severity === 'Critical' ? '#FEE2E2' : '#FEF3C7',
+                      color: activeArticle.severity === 'Critical' ? '#991B1B' : '#92400E',
+                      fontWeight: 800,
+                      fontSize: '11.5px',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      border: `1px solid ${activeArticle.severity === 'Critical' ? '#FECACA' : '#FDE68A'}`,
+                    }}
+                  >
+                    CVSS {activeArticle.cvss || '9.8'} {activeArticle.severity}
+                  </span>
+                </div>
+                <div style={{ fontSize: '10px', color: '#87948D', marginTop: '4px', fontFamily: 'monospace' }}>
+                  {activeArticle.vector || 'Network / Low Complexity'}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                  MDefender Pro Virtual Patch
+                </div>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#28745D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShieldCheck size={14} />
+                  <span>{activeArticle.mitigationRule || 'Rule Active'}</span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600, marginTop: '2px' }}>
+                  Edge Latency: {activeArticle.mitigationLatency || '<0.12ms'}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                  Campaign Telemetry Status
+                </div>
+                <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#E8792F', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8792F' }} />
+                  <span>{activeArticle.status || 'Active Wild Exploitation'}</span>
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#53615D', marginTop: '3px' }}>
+                  {activeArticle.affectedSoftware || 'Multi-Platform'}
+                </div>
+              </div>
+            </div>
+
+            {/* Callout Box: Sage Background, 3px Orange Left Border, 8px Right Radius, 18px Padding */}
+            <aside
+              style={{
+                maxWidth: '890px',
+                margin: '0 auto 46px',
+                background: '#E9EEE8',
+                borderLeft: '3px solid #D97735',
+                borderTopRightRadius: '8px',
+                borderBottomRightRadius: '8px',
+                padding: '18px 22px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '14px',
+              }}
+            >
+              <Shield size={20} strokeWidth={2.4} style={{ color: '#D97735', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#10221F', marginBottom: '4px' }}>
+                  MDefender Security Lab Technical Directive
+                </div>
+                <div style={{ fontSize: '14px', lineHeight: 1.6, color: '#53615D' }}>
+                  This research report documents real-world attack vectors observed by MDefender Pro edge inspection telemetry across 180+ global anycast POPs. Countermeasure signatures are active in the core ruleset.
+                </div>
+              </div>
+            </aside>
+
+            {/* Two-Column Content Layout: 190px Table of Contents + 680px Article Body */}
+            <div
+              className="article-detail-grid"
+              style={{
+                maxWidth: '890px',
+                margin: '0 auto 64px',
+                display: 'grid',
+                gridTemplateColumns: '190px 1fr',
+                gap: '40px',
+                alignItems: 'start',
+              }}
+            >
+              {/* Sticky Table of Contents Desktop */}
+              <nav
+                className="article-toc-sticky"
+                aria-label="Table of contents"
+                style={{
+                  position: 'sticky',
+                  top: '110px',
+                  background: '#FFFFFF',
+                  borderRadius: '12px',
+                  border: '1px solid #D9DFD9',
+                  padding: '18px',
+                  boxShadow: '0 4px 16px rgba(16, 34, 31, 0.04)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.13em',
+                    color: '#D97735',
+                    marginBottom: '12px',
+                  }}
+                >
+                  Table of Contents
+                </div>
+
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {tableOfContents.map((item, i) => (
+                    <li key={i}>
+                      <a
+                        href={`#${item.id}`}
+                        style={{
+                          fontSize: '11px',
+                          lineHeight: 1.45,
+                          color: '#53615D',
+                          textDecoration: 'none',
+                          display: 'block',
+                          borderLeft: '2px solid transparent',
+                          paddingLeft: '8px',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#D97735';
+                          e.currentTarget.style.borderLeftColor = '#D97735';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#53615D';
+                          e.currentTarget.style.borderLeftColor = 'transparent';
+                        }}
+                      >
+                        {item.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              {/* Main Article Body (680px content width) */}
+              <section style={{ maxWidth: '680px' }}>
+                <ArticleBodyRenderer content={activeArticle.content} />
+
+                {/* Indicators of Compromise Forensic Matrix */}
+                <IocSecurityTable iocs={activeArticle.iocs} advisoryId={activeArticle.advisoryId} />
+
+                {/* Tags Strip */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    marginTop: '36px',
+                    paddingTop: '24px',
+                    borderTop: '1px solid #D9DFD9',
+                  }}
+                >
+                  <Tag size={13} strokeWidth={2.4} style={{ color: '#87948D' }} />
+                  {activeArticle.tags.map((tag, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: '#53615D',
+                        background: '#E9EEE8',
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                        border: '1px solid #D9DFD9',
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* Previous / Next Article Navigation Cards */}
+            <div
+              className="prev-next-grid"
+              style={{
+                maxWidth: '890px',
+                margin: '0 auto 64px',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '18px',
+              }}
+            >
+              {prevArticle ? (
+                <button
+                  type="button"
+                  onClick={() => handleOpenArticle(prevArticle.id)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #D9DFD9',
+                    borderRadius: '10px',
+                    padding: '18px 20px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(16, 34, 31, 0.04)',
+                    transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = '#D97735';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = '#D9DFD9';
+                  }}
+                >
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#87948D', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    &larr; Previous Briefing
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#10221F', lineHeight: 1.35 }}>
+                    {prevArticle.title}
+                  </div>
+                </button>
+              ) : <div />}
+
+              {nextArticle ? (
+                <button
+                  type="button"
+                  onClick={() => handleOpenArticle(nextArticle.id)}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #D9DFD9',
+                    borderRadius: '10px',
+                    padding: '18px 20px',
+                    textAlign: 'right',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(16, 34, 31, 0.04)',
+                    transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = '#D97735';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = '#D9DFD9';
+                  }}
+                >
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#87948D', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    Next Briefing &rarr;
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#10221F', lineHeight: 1.35 }}>
+                    {nextArticle.title}
+                  </div>
+                </button>
+              ) : <div />}
+            </div>
+
+            {/* Related Research Articles (3 Columns Desktop, 1 Column Mobile) */}
+            {relatedArticles.length > 0 && (
+              <section style={{ maxWidth: '1000px', margin: '0 auto', paddingTop: '42px', borderTop: '1px solid #D9DFD9' }}>
+                <h3
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 750,
+                    letterSpacing: '-0.04em',
+                    color: '#10221F',
+                    marginBottom: '22px',
+                  }}
+                >
+                  Related Threat Intelligence Briefings
+                </h3>
+
+                <div
+                  className="related-grid"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '18px',
+                  }}
+                >
+                  {relatedArticles.map((rel) => (
+                    <article
+                      key={rel.id}
+                      onClick={() => handleOpenArticle(rel.id)}
+                      className="threat-card"
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #D9DFD9',
+                        borderRadius: '14px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 8px 24px rgba(16, 34, 31, 0.04)',
+                      }}
+                    >
+                      <div style={{ aspectRatio: '16/9', overflow: 'hidden', background: '#F7F5EE', position: 'relative', borderBottom: '1px solid #D9DFD9' }}>
+                        <img
+                          src={rel.image}
+                          alt={rel.title}
+                          loading="lazy"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                        <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#D97735', marginBottom: '6px' }}>
+                          {rel.category}
+                        </div>
+                        <h4 style={{ fontSize: '15px', fontWeight: 700, lineHeight: 1.3, color: '#10221F', margin: '0 0 10px' }}>
+                          {rel.title}
+                        </h4>
+                        <div style={{ marginTop: 'auto', fontSize: '11px', color: '#87948D' }}>
+                          {rel.date} &bull; {rel.readTime}
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+          </article>
+        </main>
+      ) : (
+        /* ================================================================== */
+        /* VIEW B: MAIN THREAT INTELLIGENCE & SECURITY LAB HUB               */
+        /* ================================================================== */
+        <main id="main-content">
+          {/* ===================== HERO SECTION ===================== */}
+          <section
+            style={{
+              paddingTop: 'calc(76px + 92px)',
+              paddingBottom: '80px',
+              position: 'relative',
+              background: 'radial-gradient(circle at 75% 20%, rgba(217, 119, 53, 0.08) 0%, rgba(233, 238, 232, 0.4) 40%, rgba(248, 248, 244, 0) 70%)',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '1180px',
+                margin: '0 auto',
+                padding: '0 clamp(18px, 3.2vw, 32px)',
+              }}
+            >
+              <div
+                className="hero-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 400px',
+                  gap: '80px',
+                  alignItems: 'center',
+                }}
+              >
+                {/* Left Column: Eyebrow, Main Title & Description */}
+                <div>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      textTransform: 'uppercase',
+                      fontWeight: 800,
+                      letterSpacing: '0.13em',
+                      color: '#D97735',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    THREAT INTELLIGENCE &amp; SECURITY LAB
+                  </div>
+
+                  <h1
+                    className="hero-main-title"
+                    style={{
+                      fontSize: 'clamp(54px, 7vw, 88px)',
+                      lineHeight: 0.92,
+                      letterSpacing: '-0.08em',
+                      fontWeight: 780,
+                      color: '#10221F',
+                      margin: '0 0 24px',
+                    }}
+                  >
+                    Know what’s coming.{' '}
+                    <span style={{ color: '#D97735' }}>Build what lasts.</span>
+                  </h1>
+
+                  <p
+                    style={{
+                      fontSize: 'clamp(15px, 1.8vw, 17px)',
+                      lineHeight: 1.65,
+                      color: '#53615D',
+                      margin: 0,
+                      maxWidth: '560px',
+                    }}
+                  >
+                    Reverse-engineered exploit vectors, emerging polymorphic mutations, and sub-millisecond edge countermeasures published directly by the MDefender Pro research fleet.
+                  </p>
+                </div>
+
+                {/* Right Column: Search Card */}
+                <div>
+                  <div
+                    style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #D9DFD9',
+                      borderRadius: '14px',
+                      padding: '18px',
+                      boxShadow: '0 18px 42px rgba(16, 34, 31, 0.07)',
+                    }}
+                  >
+                    <label
+                      htmlFor="lab-search-input"
+                      style={{
+                        display: 'block',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#10221F',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        marginBottom: '10px',
+                      }}
+                    >
+                      Search Intelligence Archive
+                    </label>
+
+                    <div style={{ position: 'relative', width: '100%', marginBottom: '10px' }}>
+                      <Search
+                        size={16}
+                        strokeWidth={2.4}
+                        style={{
+                          position: 'absolute',
+                          left: '14px',
+                          top: '15px',
+                          color: '#87948D',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                      <input
+                        id="lab-search-input"
+                        type="search"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search the lab"
+                        className="search-input-field"
+                        style={{
+                          width: '100%',
+                          height: '46px',
+                          paddingLeft: '40px',
+                          paddingRight: '14px',
+                          borderRadius: '8px',
+                          border: '1px solid #CBD7CC',
+                          background: '#FFFFFF',
+                          fontSize: '14px',
+                          color: '#10221F',
+                          outline: 'none',
+                          transition: 'all 0.18s ease',
+                        }}
+                      />
+                    </div>
+
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: '11px',
+                        color: '#53615D',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Filter by CVE identifier, SQLi evasion, RCE pattern, or threat taxonomy tag.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===================== FEATURED BRIEFING SECTION ===================== */}
+          <section
+            style={{
+              padding: '92px 0',
+              background: '#F8F8F4',
+              borderTop: '1px solid #D9DFD9',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '1180px',
+                margin: '0 auto',
+                padding: '0 clamp(18px, 3.2vw, 32px)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '28px',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      textTransform: 'uppercase',
+                      fontWeight: 800,
+                      letterSpacing: '0.13em',
+                      color: '#D97735',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    KEY ADVISORY
+                  </div>
+                  <h2
+                    style={{
+                      fontSize: '38px',
+                      lineHeight: 1.05,
+                      letterSpacing: '-0.065em',
+                      fontWeight: 750,
+                      color: '#10221F',
+                      margin: 0,
+                    }}
+                  >
+                    Featured Research Briefing
+                  </h2>
+                </div>
+              </div>
+
+              {/* Two-Column Featured Card: White Background, 1px Border, 16px Radius, Overflow Hidden */}
+              <div
+                onClick={() => handleOpenArticle(featuredPost.id)}
+                className="threat-card"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #D9DFD9',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  boxShadow: '0 18px 42px rgba(16, 34, 31, 0.07)',
+                  cursor: 'pointer',
+                }}
+              >
+                <div
+                  className="featured-grid"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.05fr 1fr',
+                  }}
+                >
+                  {/* Real Branded Image Side */}
+                  <div
+                    className="featured-img-side"
+                    style={{
+                      minHeight: '360px',
+                      background: '#F7F5EE',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRight: '1px solid #D9DFD9',
+                    }}
+                  >
+                    <img
+                      src={featuredPost.image}
+                      alt={featuredPost.title}
+                      loading="eager"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '18px',
+                        left: '18px',
+                        background: 'rgba(255, 255, 255, 0.94)',
+                        backdropFilter: 'blur(8px)',
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        color: '#D97735',
+                        border: '1px solid rgba(217, 119, 53, 0.25)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      Featured Advisory &bull; CVSS {featuredPost.cvss || '9.8'}
+                    </div>
+                  </div>
+
+                  {/* Text Side: Padding 42px */}
+                  <div
+                    className="featured-text-side"
+                    style={{
+                      padding: '42px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.13em',
+                        color: '#D97735',
+                        marginBottom: '10px',
+                      }}
+                    >
+                      {featuredPost.category}
+                    </div>
+
+                    <h3
+                      style={{
+                        fontSize: '32px',
+                        lineHeight: 1.12,
+                        letterSpacing: '-0.06em',
+                        fontWeight: 750,
+                        color: '#10221F',
+                        margin: '0 0 14px',
+                      }}
+                    >
+                      {featuredPost.title}
+                    </h3>
+
+                    <p
+                      style={{
+                        fontSize: '14px',
+                        lineHeight: 1.6,
+                        color: '#53615D',
+                        margin: '0 0 24px',
+                      }}
+                    >
+                      {featuredPost.excerpt}
+                    </p>
+
+                    {/* Author & Read Action Row */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '16px',
+                        paddingTop: '20px',
+                        borderTop: '1px solid #D9DFD9',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            background: '#E9EEE8',
+                            color: '#10221F',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid #D9DFD9',
+                          }}
+                        >
+                          {featuredPost.authorInitials}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: '#10221F' }}>{featuredPost.author}</div>
+                          <div style={{ fontSize: '10.5px', color: '#87948D' }}>{featuredPost.date} &bull; {featuredPost.readTime}</div>
+                        </div>
+                      </div>
+
+                      <div
+                        className="card-read-link"
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: '#D97735',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.18s ease',
+                        }}
+                      >
+                        <span>Read briefing</span>
+                        <ArrowRight size={14} strokeWidth={2.4} style={{ transition: 'transform 0.18s ease' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===================== RESEARCH LIBRARY SECTION (Soft Sage #E9EEE8) ===================== */}
+          <section
+            style={{
+              padding: '92px 0 100px',
+              background: '#E9EEE8',
+              borderTop: '1px solid #D9DFD9',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '1180px',
+                margin: '0 auto',
+                padding: '0 clamp(18px, 3.2vw, 32px)',
+              }}
+            >
+              {/* Header & Filter Row */}
+              <div style={{ marginBottom: '36px' }}>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    textTransform: 'uppercase',
+                    fontWeight: 800,
+                    letterSpacing: '0.13em',
+                    color: '#D97735',
+                    marginBottom: '6px',
+                  }}
+                >
+                  INVESTIGATIVE DOSSIERS
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '20px',
+                    marginBottom: '26px',
+                  }}
+                >
+                  <h2
+                    style={{
+                      fontSize: '38px',
+                      lineHeight: 1.05,
+                      letterSpacing: '-0.065em',
+                      fontWeight: 750,
+                      color: '#10221F',
+                      margin: 0,
+                    }}
+                  >
+                    Research Library
+                  </h2>
+
+                  <div style={{ fontSize: '11px', color: '#53615D', fontWeight: 600 }}>
+                    Showing {filteredPosts.length} of {BLOG_POSTS.length - 1} archived dossiers
+                  </div>
+                </div>
+
+                {/* Filter Row: Pills with White Background and Gray Borders */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {CATEGORIES.map((cat) => {
+                    const isActive = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`filter-pill ${isActive ? 'active' : ''}`}
+                        style={{
+                          padding: '7px 18px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: isActive ? '1px solid #10221F' : '1px solid #D9DFD9',
+                          background: isActive ? '#10221F' : '#FFFFFF',
+                          color: isActive ? '#FFFFFF' : '#53615D',
+                          boxShadow: isActive ? '0 2px 8px rgba(16, 34, 31, 0.18)' : '0 1px 3px rgba(16, 34, 31, 0.03)',
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Article Grid: 3 Columns Desktop, 2 Columns Tablet, 1 Column Mobile. Gap: 18px */}
+              {filteredPosts.length > 0 ? (
+                <div
+                  className="research-grid"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '18px',
+                  }}
+                >
+                  {filteredPosts.map((post) => (
+                    <article
+                      key={post.id}
+                      onClick={() => handleOpenArticle(post.id)}
+                      className="threat-card"
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #D9DFD9',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 18px 42px rgba(16, 34, 31, 0.07)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div>
+                        {/* 16/9 Card Image with Real Brand Asset */}
+                        <div
+                          style={{
+                            aspectRatio: '16/9',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            background: '#F7F5EE',
+                            borderBottom: '1px solid #CBD8CF',
+                          }}
+                        >
+                          <img
+                            src={post.image}
+                            alt={post.title}
+                            loading="lazy"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                              transition: 'transform 0.4s ease',
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+
+                        {/* Card Body Padding: 20px */}
+                        <div style={{ padding: '20px' }}>
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              marginBottom: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#87948D' }}>
+                              <span>{post.date}</span>
+                              <span>&bull;</span>
+                              <span>{post.readTime}</span>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.06em',
+                                color: '#D97735',
+                                background: 'rgba(217, 119, 53, 0.08)',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid rgba(217, 119, 53, 0.2)',
+                              }}
+                            >
+                              {post.category}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                            {post.cve && (
+                              <div style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 800, color: '#10221F', letterSpacing: '0.02em' }}>
+                                {post.cve}
+                              </div>
+                            )}
+                            {post.cvss && (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  color: Number(post.cvss) >= 9.0 ? '#DC2626' : '#D97735',
+                                  background: Number(post.cvss) >= 9.0 ? '#FEE2E2' : '#FEF3C7',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  border: `1px solid ${Number(post.cvss) >= 9.0 ? '#FECACA' : '#FDE68A'}`,
+                                }}
+                              >
+                                CVSS {post.cvss}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3
+                            style={{
+                              fontSize: '18px',
+                              lineHeight: 1.17,
+                              letterSpacing: '-0.04em',
+                              fontWeight: 700,
+                              color: '#10221F',
+                              margin: '0 0 10px',
+                            }}
+                          >
+                            {post.title}
+                          </h3>
+
+                          <p
+                            style={{
+                              fontSize: '13px',
+                              lineHeight: 1.6,
+                              color: '#53615D',
+                              margin: '0 0 16px',
+                            }}
+                          >
+                            {post.excerpt}
+                          </p>
+
+                          {/* Tags: 9-10px, radius 999px */}
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {post.tags.slice(0, 3).map((tag, tIdx) => (
+                              <span
+                                key={tIdx}
+                                style={{
+                                  fontSize: '9.5px',
+                                  fontWeight: 600,
+                                  color: '#53615D',
+                                  background: '#F8F8F4',
+                                  border: '1px solid #D9DFD9',
+                                  padding: '2px 8px',
+                                  borderRadius: '999px',
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Footer: Read Briefing Action */}
+                      <div
+                        style={{
+                          padding: '14px 20px 18px',
+                          borderTop: '1px solid #D9DFD9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', color: '#87948D' }}>{post.author}</span>
+                        <div
+                          className="card-read-link"
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#10221F',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            transition: 'all 0.18s ease',
+                          }}
+                        >
+                          <span>Read briefing</span>
+                          <ArrowRight size={13} strokeWidth={2.4} style={{ transition: 'transform 0.18s ease' }} />
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                /* Empty Search State: Dashed Gray Border, Centered Navy Heading, Muted Copy, Orange Reset Action */
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1.5px dashed #CBD7CC',
+                    borderRadius: '16px',
+                    padding: '56px 24px',
+                    textAlign: 'center',
+                    maxWidth: '560px',
+                    margin: '20px auto',
+                  }}
+                >
+                  <Search size={32} strokeWidth={2} style={{ color: '#87948D', margin: '0 auto 14px' }} />
+                  <h3 style={{ fontSize: '20px', fontWeight: 750, color: '#10221F', margin: '0 0 8px' }}>
+                    No matching threat dossiers found
+                  </h3>
+                  <p style={{ fontSize: '13.5px', color: '#53615D', margin: '0 0 20px' }}>
+                    We could not find any research reports matching &ldquo;{searchQuery}&rdquo;. Try checking another category or clearing your query.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedCategory('All');
+                    }}
+                    style={{
+                      background: '#D97735',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '9px 20px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    Reset Search Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ===================== FOCUS AREAS SECTION (Deep Navy #10221F) ===================== */}
+          <section
+            style={{
+              padding: '92px 0 100px',
+              background: '#10221F',
+              color: '#FFFFFF',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '1180px',
+                margin: '0 auto',
+                padding: '0 clamp(18px, 3.2vw, 32px)',
+              }}
+            >
+              <div style={{ maxWidth: '640px', marginBottom: '48px' }}>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    textTransform: 'uppercase',
+                    fontWeight: 800,
+                    letterSpacing: '0.13em',
+                    color: '#E39A63',
+                    marginBottom: '8px',
+                  }}
+                >
+                  SECURITY LAB PILLARS
+                </div>
+                <h2
+                  style={{
+                    fontSize: '38px',
+                    lineHeight: 1.05,
+                    letterSpacing: '-0.065em',
+                    fontWeight: 750,
+                    color: '#FFFFFF',
+                    margin: '0 0 14px',
+                  }}
+                >
+                  Core Research Focus Areas
+                </h2>
+                <p
+                  style={{
+                    fontSize: '15px',
+                    lineHeight: 1.6,
+                    color: '#B7C6C2',
+                    margin: 0,
+                  }}
+                >
+                  MDefender Pro researchers publish active vulnerability intelligence across four critical enterprise cybersecurity disciplines.
+                </p>
+              </div>
+
+              {/* Grid: Two Columns with Thin Translucent White Dividers */}
+              <div
+                className="focus-areas-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '32px',
+                }}
+              >
+                {[
+                  {
+                    num: '01',
+                    accentColor: '#D97735',
+                    title: 'Web Application Security',
+                    desc: 'Deep deterministic and AST token parsing for zero-day SQL injection, remote code execution, cross-site scripting (XSS), and SSRF attacks across modern web runtimes.',
+                  },
+                  {
+                    num: '02',
+                    accentColor: '#EAF4FF',
+                    title: 'Cloud & Infrastructure',
+                    desc: 'Hardening multi-cluster Kubernetes ingress, Docker daemon exposures, AWS/GCP metadata exfiltration vectors, and Layer 7 distributed volumetric HTTP/2 floods.',
+                  },
+                  {
+                    num: '03',
+                    accentColor: '#D97735',
+                    title: 'AI & Machine Learning',
+                    desc: 'Shielding LLMs and generative agents against adversarial prompt injection, jailbreaks, data exfiltration, and synthetic polymorphic payload mutation at edge speed.',
+                  },
+                  {
+                    num: '04',
+                    accentColor: '#EAF4FF',
+                    title: 'Enterprise Defense',
+                    desc: 'Unified security operations telemetry, instant WordPress RASP auto-patching, automated IP reputation degradation, and continuous SOC SIEM compliance integration.',
+                  },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.09)',
+                      borderRadius: '14px',
+                      padding: '28px 30px',
+                      transition: 'border-color 0.2s ease',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        color: item.accentColor,
+                        fontFamily: "'SF Mono', Monaco, monospace",
+                        marginBottom: '12px',
+                      }}
+                    >
+                      {item.num} / CORE PILLAR
+                    </div>
+                    <h3
+                      style={{
+                        fontSize: '22px',
+                        fontWeight: 750,
+                        letterSpacing: '-0.03em',
+                        color: '#FFFFFF',
+                        margin: '0 0 10px',
+                      }}
+                    >
+                      {item.title}
+                    </h3>
+                    <p
+                      style={{
+                        fontSize: '14px',
+                        lineHeight: 1.65,
+                        color: '#B7C6C2',
+                        margin: 0,
+                      }}
+                    >
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </main>
+      )}
+
+      {/* ===================== FOOTER SECTION (Warm Ivory #F8F8F4) ===================== */}
+      <footer
+        style={{
+          background: '#F8F8F4',
+          borderTop: '1px solid #D9DFD9',
+          paddingTop: '36px',
+          paddingBottom: '26px',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1180px',
+            margin: '0 auto',
+            padding: '0 clamp(18px, 3.2vw, 32px)',
+          }}
+        >
+          {/* Main Footer Row: Logo Left, Links Right */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '24px',
+              paddingBottom: '26px',
+            }}
+          >
+            {/* Logo and Description on Left */}
+            <div style={{ maxWidth: '340px' }}>
+              <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <div
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '7px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 6px rgba(11, 37, 34, 0.08)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <img src="/assets/mdefender_logo.png" alt="MDefender Pro" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#10221F' }}>
+                  MDefender <span style={{ color: '#D97735' }}>Pro</span>
+                </span>
+              </Link>
+              <p style={{ fontSize: '12px', lineHeight: 1.55, color: '#53615D', margin: 0 }}>
+                Enterprise autonomous cloud WAF, sub-millisecond edge threat intelligence, and zero-day defense for global infrastructure.
+              </p>
+            </div>
+
+            {/* Links on Right with 11px Text */}
+            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#10221F', marginBottom: '4px' }}>
+                  Platform
+                </span>
+                <Link to="/products/waf" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>Cloud WAF</Link>
+                <Link to="/products/wordpress" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>WordPress Security</Link>
+                <Link to="/pricing" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>Pricing Plans</Link>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#10221F', marginBottom: '4px' }}>
+                  Threat Lab
+                </span>
+                <Link to="/threat-intelligence" style={{ fontSize: '11px', color: '#D97735', fontWeight: 600, textDecoration: 'none' }}>Research Briefings</Link>
+                <Link to="/docs" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>Documentation</Link>
+                <Link to="/about" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>About MDefender</Link>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#10221F', marginBottom: '4px' }}>
+                  Account
+                </span>
+                <Link to="/user/login" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>Sign In</Link>
+                <Link to="/register" style={{ fontSize: '11px', color: '#53615D', textDecoration: 'none' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#D97735')} onMouseLeave={(e) => (e.currentTarget.style.color = '#53615D')}>Create Account</Link>
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Global Footer */}
-      <footer style={{
-        padding: '36px 40px',
-        borderTop: `1px solid ${dark ? '#1e293b' : '#e2e8f0'}`,
-        background: dark ? '#04070e' : '#ffffff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 20,
-        fontSize: 13,
-        color: '#64748b'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <i className="fas fa-shield-halved" style={{ color: '#6366f1', fontSize: 16 }}></i>
-          <span style={{ fontWeight: 800, color: dark ? '#ffffff' : '#0f172a' }}>MDefender Pro Threat Intelligence</span>
-          <span>&middot; Autonomous Edge Security Publications</span>
-        </div>
-        <div>
-          &copy; {new Date().getFullYear()} MDefender Pro Security Inc.
+          {/* Bottom Copyright Row Separated by a 1px Border */}
+          <div
+            style={{
+              paddingTop: '18px',
+              borderTop: '1px solid #D9DFD9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+              fontSize: '11px',
+              color: '#87948D',
+            }}
+          >
+            <div>
+              &copy; {new Date().getFullYear()} MDefender Pro Cyber Systems Inc. All rights reserved.
+            </div>
+
+            {/* Status Label: Green Dot & "Systems operational" */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#28745D',
+                  boxShadow: '0 0 6px #28745D',
+                }}
+              />
+              <span style={{ fontWeight: 600, color: '#28745D' }}>Systems operational</span>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }

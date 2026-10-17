@@ -45,39 +45,49 @@ class WAF_FW_Admin {
     public function admin_head_styles() {
         ?>
         <style>
+            #adminmenu .toplevel_page_waf-firewall .wp-menu-image {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
             #adminmenu .toplevel_page_waf-firewall .wp-menu-image img {
                 width: 20px;
                 height: 20px;
-                padding: 6px 0 0;
-                opacity: 0.9;
+                padding: 0;
+                margin-top: 7px;
+                border-radius: 4px;
+                object-fit: contain;
+                opacity: 0.95;
+                transition: transform 0.15s ease, opacity 0.15s ease;
             }
-            #adminmenu .toplevel_page_waf-firewall:hover .wp-menu-image img {
-                opacity: 1;
-            }
+            #adminmenu .toplevel_page_waf-firewall:hover .wp-menu-image img,
             #adminmenu .toplevel_page_waf-firewall.current .wp-menu-image img {
                 opacity: 1;
+                transform: scale(1.08);
             }
             .waf-badge-pro {
-                background: #f59e0b;
+                background: #E8792F;
                 color: #fff;
                 font-size: 10px;
                 padding: 2px 6px;
                 border-radius: 10px;
                 margin-left: 4px;
-                font-weight: 600;
+                font-weight: 700;
+                letter-spacing: 0.3px;
             }
         </style>
         <?php
     }
 
     public function add_admin_menu() {
+        $icon_url = defined('WAF_FW_PLUGIN_URL') ? WAF_FW_PLUGIN_URL . 'assets/images/mdefender-icon.png' : 'dashicons-shield';
         add_menu_page(
             'MDefender-Pro - AI Web Application Firewall',
             'MDefender-Pro',
             'manage_options',
             'waf-firewall',
             [$this, 'render_dashboard'],
-            'dashicons-shield',
+            $icon_url,
             100
         );
 
@@ -151,10 +161,13 @@ class WAF_FW_Admin {
         $is_waf = (strpos($hook, 'waf') !== false || strpos($hook, 'mdefender') !== false || strpos($page, 'waf-firewall') !== false);
         if (!$is_waf) return;
 
-        wp_enqueue_style('waf-fw-admin', WAF_FW_PLUGIN_URL . 'assets/css/admin.css', [], WAF_FW_VERSION);
-        wp_enqueue_script('waf-fw-admin', WAF_FW_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], WAF_FW_VERSION, true);
+        $css_ver = file_exists(WAF_FW_PLUGIN_DIR . 'assets/css/admin.css') ? filemtime(WAF_FW_PLUGIN_DIR . 'assets/css/admin.css') : (defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0');
+        $js_ver = file_exists(WAF_FW_PLUGIN_DIR . 'assets/js/dashboard.js') ? filemtime(WAF_FW_PLUGIN_DIR . 'assets/js/dashboard.js') : (defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0');
+
+        wp_enqueue_style('waf-fw-admin', WAF_FW_PLUGIN_URL . 'assets/css/admin.css', [], $css_ver);
+        wp_enqueue_script('waf-fw-admin', WAF_FW_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], $css_ver, true);
         wp_enqueue_script('waf-fw-charts', 'https://cdn.jsdelivr.net/npm/chart.js', [], '4.4.0', true);
-        wp_enqueue_script('waf-fw-dashboard', WAF_FW_PLUGIN_URL . 'assets/js/dashboard.js', ['jquery', 'waf-fw-charts'], WAF_FW_VERSION, true);
+        wp_enqueue_script('waf-fw-dashboard', WAF_FW_PLUGIN_URL . 'assets/js/dashboard.js', ['jquery', 'waf-fw-charts'], $js_ver, true);
 
         if ($page === 'waf-firewall-scan' || strpos($hook, 'scan') !== false) {
             wp_enqueue_script('waf-fw-scan', WAF_FW_PLUGIN_URL . 'assets/js/scan.js', ['jquery'], WAF_FW_VERSION, true);

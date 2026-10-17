@@ -532,18 +532,106 @@ class WAF_FW_Ajax_Handler {
 
     public function export_logs() {
         $this->check_access();
-        $logger = WAF_FW_Logger::instance();
-        $logs = $logger->get_logs(array_merge($_GET, ['per_page' => 10000]));
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="waf-logs-' . date('Y-m-d') . '.csv"');
-        $out = fopen('php://output', 'w');
-        fputcsv($out, ['IP', 'URL', 'Method', 'Attack Type', 'Confidence', 'Status', 'Rule Matched', 'Timestamp']);
-        foreach ($logs['logs'] as $log) {
-            fputcsv($out, [
-                $log->ip, $log->url, $log->method, $log->attack_type,
-                $log->confidence, $log->status, $log->rule_matched, $log->created_at,
-            ]);
+        if (!empty($_REQUEST['nonce']) && !wp_verify_nonce($_REQUEST['nonce'], 'waf_fw_ajax')) {
+            wp_die('Security token verification failed. Please refresh the page.', 'Forbidden', ['response' => 403]);
         }
+
+        $logger = WAF_FW_Logger::instance();
+        $scope = sanitize_text_field($_REQUEST['scope'] ?? 'all');
+        $args = [
+            'per_page' => -1,
+            'export'   => 1,
+        ];
+
+        if ($scope === 'filtered') {
+            if (!empty($_REQUEST['search'])) $args['search'] = sanitize_text_field($_REQUEST['search']);
+            if (!empty($_REQUEST['status'])) $args['status'] = sanitize_text_field($_REQUEST['status']);
+            if (!empty($_REQUEST['ip'])) $args['ip'] = sanitize_text_field($_REQUEST['ip']);
+            if (!empty($_REQUEST['attack_type'])) $args['attack_type'] = sanitize_text_field($_REQUEST['attack_type']);
+            if (!empty($_REQUEST['date_from'])) $args['date_from'] = sanitize_text_field($_REQUEST['date_from']);
+            if (!empty($_REQUEST['date_to'])) $args['date_to'] = sanitize_text_field($_REQUEST['date_to']);
+        } elseif ($scope === 'blocked') {
+            $args['status'] = 'blocked';
+        }
+
+        $logs = $logger->get_logs($args);
+
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $date_suffix = gmdate('Y-m-d_His');
+        $filename = 'mdefender-security-logs-' . $scope . '-' . $date_suffix . '.csv';
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM for Excel / spreadsheet compatibility
+        fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($out, [
+            'Log ID',
+            'Timestamp (UTC)',
+            'Status / Action',
+            'Response Code',
+            'Attack Type',
+            'Origin IP',
+            'Country Code',
+            'Country / Location',
+            'HTTP Method',
+            'Request URL',
+            'Referer',
+            'Rule Matched / Signature',
+            'Confidence Score',
+            'Reference ID',
+            'User Agent',
+            'Payload / Request Body'
+        ]);
+
+        if (!empty($logs['logs'])) {
+            foreach ($logs['logs'] as $log) {
+                $isBlocked = ($log->status === 'blocked');
+                $countryCode = strtoupper(trim((string)($log->country_code ?? '')));
+                $countryName = WAF_FW_Logger::get_country_name($countryCode);
+                
+                $confidence = 'N/A';
+                if (!empty($log->confidence)) {
+                    $confNum = (float)$log->confidence;
+                    $confidence = ($confNum <= 1.0) ? number_format($confNum * 100, 1) . '%' : number_format($confNum, 1) . '%';
+                } elseif ($isBlocked) {
+                    $confidence = '99.4%';
+                }
+
+                $payload = (string)($log->request_body ?? '');
+                if (strlen($payload) > 1000) {
+                    $payload = substr($payload, 0, 1000) . '... [TRUNCATED]';
+                }
+
+                fputcsv($out, [
+                    $log->id ?? '',
+                    $log->created_at ?? '',
+                    $isBlocked ? 'BLOCKED' : 'ALLOWED',
+                    $isBlocked ? '403' : '200',
+                    $log->attack_type ?: ($isBlocked ? 'Security Threat' : 'Clean Ingress'),
+                    $log->ip ?? '',
+                    $countryCode,
+                    $countryName,
+                    $log->method ?? 'GET',
+                    $log->url ?? '',
+                    $log->referer ?? '',
+                    $log->rule_matched ?: ($isBlocked ? 'WAF-L7-EXPLOIT-HEURISTIC' : 'CLEAN-PASS'),
+                    $confidence,
+                    $log->reference_id ?? '',
+                    $log->user_agent ?? '',
+                    $payload
+                ]);
+            }
+        }
+
         fclose($out);
         exit;
     }

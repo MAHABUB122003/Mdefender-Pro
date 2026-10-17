@@ -1,121 +1,287 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useTheme } from '../../contexts/ThemeContext'
-import theme from '../../utils/theme'
-import api from '../../api/api'
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  KeyRound,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+} from 'lucide-react';
+import api from '../../api/api';
+import AuthSplitLayout from '../../components/AuthSplitLayout';
 
 export default function ForgotPassword() {
-  const { dark } = useTheme()
-  const s = theme(dark)
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('idle')
-  const [message, setMessage] = useState('')
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setStatus('loading')
-    try {
-      const data = await api.forgotPassword(email)
-      setStatus('success')
-      setMessage(data.message || 'Password reset link sent!')
-    } catch (err) {
-      setStatus('error')
-      setMessage(err.message || 'Something went wrong')
-    }
-  }
+    e.preventDefault();
+    if (!email.trim()) return;
 
-  const inputStyle = {
-    width: '100%', padding: '13px 14px 13px 42px',
-    border: `1.5px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`, borderRadius: 10,
-    fontSize: 14, transition: 'all 0.2s', boxSizing: 'border-box',
-    background: dark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-    color: s.text, fontFamily: 'inherit', outline: 'none',
-  }
+    setStatus('loading');
+    setMessage('');
+    try {
+      const data = await api.forgotPassword(email.trim().toLowerCase());
+      setStatus('success');
+      setMessage(data.message || 'If an account exists for that email, a password reset link is on its way.');
+    } catch {
+      setStatus('success');
+      setMessage('If an account exists for that email, a password reset link is on its way.');
+    }
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, background: dark ? '#0f172a' : '#f8fafc',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    }}>
-      <style>{`
-        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .fp-card { border-radius: 16px; padding: 40px 36px 36px; box-shadow: ${dark ? '0 4px 24px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.04)'}; border: 1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}; width: 100%; max-width: 420px; animation: fadeSlideIn 0.5s ease forwards; background: ${dark ? '#1e293b' : '#fff'}; }
-        .fp-card input:focus { outline: none; border-color: #6366f1 !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); background: ${dark ? '#0f172a' : '#fff'} !important; }
-        .fp-card input::placeholder { color: ${dark ? '#334155' : '#94a3b8'}; font-size: 13px; }
-        .fp-submit {
-          width: 100%; padding: 13px; background: linear-gradient(135deg, #4f46e5, #6366f1);
-          color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
-          cursor: pointer; transition: all 0.2s; display: flex; align-items: center;
-          justify-content: center; gap: 8px; letter-spacing: 0.01em;
-        }
-        .fp-submit:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.35); transform: translateY(-1px); }
-        .fp-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .fp-submit .spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
-        .fp-submit.loading .spinner { display: inline-block; }
-        .fp-submit.loading .btn-text { display: none; }
-      `}</style>
-
-      <div className="fp-card">
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 20 }}>
-            <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #4f46e5, #6366f1)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="fas fa-shield-halved" style={{ fontSize: 16, color: '#fff' }}></i>
-            </div>
-            <span style={{ fontSize: 16, fontWeight: 700, color: s.text, letterSpacing: '-0.3px' }}>MDefender Pro</span>
-          </Link>
-
+    <AuthSplitLayout>
+      {/* Security icon box: 38 × 38px, radius 10px, background #E8EEE8, color #10201E */}
+      <div style={{ marginBottom: '18px' }}>
+        <div
+          style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: status === 'success' ? '#E8F3EC' : '#E8EEE8',
+            border: `1px solid ${status === 'success' ? '#CFE2D4' : '#D4E1D6'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: status === 'success' ? '#28745D' : '#10201E',
+          }}
+        >
           {status === 'success' ? (
-            <>
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: dark ? 'rgba(16,185,129,0.1)' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <i className="fas fa-envelope-open-text" style={{ fontSize: 22, color: '#10b981' }}></i>
-              </div>
-              <h2 style={{ color: s.text, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Check your email</h2>
-              <p style={{ color: dark ? '#64748b' : '#64748b', fontSize: 14, marginBottom: 24 }}>{message}</p>
-              <Link to="/user/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 14px', textDecoration: 'none', background: 'linear-gradient(135deg, #4f46e5, #6366f1)', color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
-                <i className="fas fa-arrow-left"></i> Back to Sign In
-              </Link>
-            </>
+            <ShieldCheck size={18} strokeWidth={2.4} />
           ) : (
-            <>
-              <div style={{ width: 56, height: 56, borderRadius: 14, background: dark ? 'rgba(99,102,241,0.1)' : '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <i className="fas fa-key" style={{ fontSize: 22, color: '#6366f1' }}></i>
-              </div>
-              <h2 style={{ color: s.text, fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Forgot your password?</h2>
-              <p style={{ color: dark ? '#64748b' : '#64748b', fontSize: 14, marginBottom: 4 }}>Enter your email and we&apos;ll send you a reset link.</p>
-            </>
+            <KeyRound size={17} strokeWidth={2.2} />
           )}
         </div>
+      </div>
 
-        {status !== 'success' && (
-          <form onSubmit={handleSubmit} autoComplete="off">
-            <div style={{ position: 'relative', marginBottom: 18 }}>
-              <label style={{ display: 'block', marginBottom: 6, color: dark ? '#94a3b8' : '#475569', fontWeight: 500, fontSize: 13 }}>Email Address</label>
-              <i className="fas fa-envelope" style={{ position: 'absolute', left: 14, top: 38, color: dark ? '#475569' : '#94a3b8', fontSize: 14, pointerEvents: 'none' }}></i>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="Enter your email" required style={inputStyle} />
-            </div>
+      {/* Form Header */}
+      <div style={{ marginBottom: '22px' }}>
+        <div
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            color: '#E8792F',
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            marginBottom: '7px',
+          }}
+        >
+          ACCOUNT RECOVERY
+        </div>
 
-            {status === 'error' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13, fontWeight: 500, background: dark ? 'rgba(239,68,68,0.08)' : '#fef2f2', color: '#ef4444', border: `1px solid ${dark ? 'rgba(239,68,68,0.15)' : '#fecaca'}` }}>
-                <i className="fas fa-exclamation-circle" style={{ fontSize: 13 }}></i> {message}
-              </div>
-            )}
+        <h1
+          style={{
+            fontSize: '31px',
+            fontWeight: 600,
+            letterSpacing: '-0.06em',
+            color: '#10201E',
+            lineHeight: 1.12,
+            marginBottom: '8px',
+          }}
+        >
+          {status === 'success' ? 'Check your inbox.' : 'Reset your password securely.'}
+        </h1>
 
-            <button type="submit" className={`fp-submit ${status === 'loading' ? 'loading' : ''}`} disabled={status === 'loading'}>
-              <span className="spinner"></span>
-              <span className="btn-text">Send Reset Link</span>
-            </button>
-          </form>
-        )}
+        <p
+          style={{
+            fontSize: '13px',
+            lineHeight: 1.5,
+            color: '#60716B',
+            margin: 0,
+          }}
+        >
+          {status === 'success'
+            ? 'If an account exists for that email, a password reset link is on its way.'
+            : 'Enter your account email and we will send a secure reset link.'}
+        </p>
+      </div>
 
-        <div style={{ marginTop: 20, textAlign: 'center' }}>
-          <Link to="/user/login" style={{ color: '#6366f1', fontSize: 13, textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <i className="fas fa-arrow-left" style={{ fontSize: 11 }}></i> Back to Sign In
+      {/* Success State View */}
+      {status === 'success' ? (
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              background: '#E8F3EC',
+              border: '1px solid #CFE2D4',
+              color: '#28745D',
+              fontSize: '12px',
+              fontWeight: 500,
+              marginBottom: '20px',
+              lineHeight: 1.5,
+            }}
+          >
+            <CheckCircle2 size={16} style={{ color: '#28745D', flexShrink: 0 }} />
+            <span>If an account exists for that email, a password reset link is on its way.</span>
+          </div>
+
+          <Link
+            to="/user/login"
+            className="auth-primary-btn"
+            style={{
+              width: '100%',
+              height: '45px',
+              borderRadius: '8px',
+              background: '#0B2522',
+              color: '#FFFFFF',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              textDecoration: 'none',
+              boxShadow: '0 8px 16px rgba(11, 37, 34, 0.14)',
+              transition: 'all 0.18s ease',
+            }}
+          >
+            <span>Back to sign in</span>
+            <ArrowRight size={15} strokeWidth={2.4} />
           </Link>
         </div>
-      </div>
-    </div>
-  )
+      ) : (
+        <>
+          {/* Error Notification */}
+          {status === 'error' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background: '#FFF4ED',
+                border: '1px solid #F2C7A7',
+                color: '#A34F22',
+                fontSize: '12px',
+                fontWeight: 500,
+                marginBottom: '16px',
+              }}
+            >
+              <AlertCircle size={15} style={{ color: '#A34F22', flexShrink: 0 }} />
+              <span>{message}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '17px' }}>
+            <div>
+              <label
+                htmlFor="forgot-email"
+                style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#10201E',
+                  marginBottom: '8px',
+                }}
+              >
+                Email address
+              </label>
+              <input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="auth-input-field"
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 13px',
+                  borderRadius: '8px',
+                  border: '1px solid #CBD8CF',
+                  background: '#FFFFFF',
+                  fontSize: '13px',
+                  color: '#10201E',
+                  outline: 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              />
+              <div style={{ fontSize: '11px', color: '#60716B', marginTop: '6px' }}>
+                We never reveal whether an account exists.
+              </div>
+            </div>
+
+            {/* Primary CTA Button: height 45px */}
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="auth-primary-btn"
+              style={{
+                width: '100%',
+                height: '45px',
+                borderRadius: '8px',
+                background: '#0B2522',
+                color: '#FFFFFF',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: status === 'loading' ? 'not-allowed' : 'pointer',
+                boxShadow: '0 8px 16px rgba(11, 37, 34, 0.14)',
+                transition: 'all 0.18s ease',
+                marginTop: '2px',
+                opacity: status === 'loading' ? 0.8 : 1,
+              }}
+            >
+              <span>{status === 'loading' ? 'Sending link...' : 'Send reset link'}</span>
+              {status !== 'loading' && <ArrowRight size={15} strokeWidth={2.4} />}
+            </button>
+          </form>
+
+          {/* Bottom Switcher: Back to sign in */}
+          <div
+            style={{
+              marginTop: '24px',
+              textAlign: 'center',
+            }}
+          >
+            <Link
+              to="/user/login"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                color: '#60716B',
+                textDecoration: 'none',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#E8792F')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#60716B')}
+            >
+              <ArrowLeft size={13} strokeWidth={2.4} />
+              <span>Back to sign in</span>
+            </Link>
+          </div>
+        </>
+      )}
+
+      <style>{`
+        .auth-input-field:focus {
+          border-color: #E8792F !important;
+          box-shadow: 0 0 0 3px rgba(232, 121, 47, 0.14) !important;
+        }
+        .auth-primary-btn:hover:not(:disabled) {
+          background-color: #153B34 !important;
+          transform: translateY(-1px) !important;
+        }
+      `}</style>
+    </AuthSplitLayout>
+  );
 }

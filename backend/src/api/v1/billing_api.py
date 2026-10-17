@@ -49,6 +49,8 @@ def _feature_enabled(db):
 class CheckoutRequest(BaseModel):
     plan: str
     billing_cycle: str | None = "monthly"
+    customer_email: str | None = None
+    email: str | None = None
     return_url: str | None = None
     success_url: str | None = None
 
@@ -86,7 +88,7 @@ async def list_plans(user=Depends(get_current_user_optional)):
 
 
 @router.post("/checkout")
-async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user)):
+async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user_optional)):
     db = MongoDB()
     if not _feature_enabled(db):
         return success({"enabled": False, "message": "Online billing is not enabled yet",
@@ -102,13 +104,13 @@ async def create_checkout(body: CheckoutRequest, user=Depends(get_current_user))
         return success({"enabled": True, "checkout_url": None,
                         "message": f"No Paddle price configured for the {plan.get('name', body.plan)} ({body.billing_cycle}) plan"})
     
-    uid = str(user.get("id") or user.get("_id"))
-    customer_email = user.get("email", "")
+    uid = str(user.get("id") or user.get("_id")) if user else ""
+    customer_email = (user.get("email", "") if user else "") or body.customer_email or body.email or ""
     return_url = body.return_url or body.success_url or "http://localhost:5173/settings"
 
     checkout = await service.create_checkout_session(
         items=[{"price_id": price_id, "quantity": 1}],
-        customer_email=customer_email,
+        customer_email=customer_email or None,
         custom_data={"user_id": uid, "plan": body.plan, "billing_cycle": body.billing_cycle or "monthly"},
         success_url=body.success_url or return_url,
         cancel_url=return_url,

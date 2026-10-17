@@ -127,16 +127,18 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
             flex-shrink: 0;
         }
 
-        .brand-logo-svg {
-            width: 60px;
-            height: 60px;
-            filter: drop-shadow(0 6px 16px rgba(246, 130, 31, 0.38));
-            transition: transform 0.2s ease, filter 0.2s ease;
+        .brand-logo-img {
+            width: 58px;
+            height: 58px;
+            border-radius: 14px;
+            object-fit: contain;
+            box-shadow: 0 6px 18px rgba(11, 37, 34, 0.16);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .brand-logo-svg:hover {
+        .brand-logo-img:hover {
             transform: scale(1.06);
-            filter: drop-shadow(0 8px 22px rgba(246, 130, 31, 0.52));
+            box-shadow: 0 8px 24px rgba(232, 121, 47, 0.28);
         }
 
         .brand-info {
@@ -369,41 +371,10 @@ $admin_email = get_option('admin_email') ?: 'security@' . $site_host;
         <!-- Top Logo & Brand Header -->
         <div class="brand-header">
             <div class="brand-logo-wrap">
-                <svg class="brand-logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <!-- MDefender Cyber Shield Gradients -->
-                        <linearGradient id="cfShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#3b82f6" />
-                            <stop offset="45%" stop-color="#2563eb" />
-                            <stop offset="80%" stop-color="#1d4ed8" />
-                            <stop offset="100%" stop-color="#1e3a8a" />
-                        </linearGradient>
-                        <linearGradient id="cfInnerCore" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stop-color="#ffffff" />
-                            <stop offset="40%" stop-color="#eff6ff" />
-                            <stop offset="100%" stop-color="#dbeafe" />
-                        </linearGradient>
-                        <linearGradient id="cfFacetShade" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
-                            <stop offset="100%" stop-color="#000000" stop-opacity="0.15" />
-                        </linearGradient>
-                    </defs>
-                    <!-- Main Shield Crest -->
-                    <path d="M32 3L54 11C54 28.5 45 47.5 32 58C19 47.5 10 28.5 10 11L32 3Z" 
-                          fill="url(#cfShieldGrad)"/>
-                    <!-- Shield Outer Edge Reflection -->
-                    <path d="M32 5.5L51.5 12.5C51.5 28 43.5 45 32 55C20.5 45 12.5 28 12.5 12.5L32 5.5Z" 
-                          fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.4"/>
-                    <!-- Dynamic Geometric 'M' Emblem -->
-                    <!-- Left M Wing -->
-                    <path d="M17 17L25 21V41.5L17 35V17Z" fill="url(#cfInnerCore)"/>
-                    <!-- Right M Wing -->
-                    <path d="M47 17L39 21V41.5L47 35V17Z" fill="url(#cfInnerCore)" fill-opacity="0.95"/>
-                    <!-- Center Spearhead / M Apex -->
-                    <path d="M32 15L39.5 26.5L32 34L24.5 26.5L32 15Z" fill="#ffffff"/>
-                    <!-- Bottom Defense Node -->
-                    <path d="M32 37L37 43.5L32 49L27 43.5L32 37Z" fill="url(#cfInnerCore)"/>
-                </svg>
+                <?php
+                $plugin_logo_url = defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.png') : '';
+                ?>
+                <img class="brand-logo-img" src="<?php echo $plugin_logo_url ?: 'data:image/png;base64,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'; ?>" alt="MDefender Pro Logo">
             </div>
             <div class="brand-info">
                 <div class="brand-title">MDEFENDER-PRO AI</div>

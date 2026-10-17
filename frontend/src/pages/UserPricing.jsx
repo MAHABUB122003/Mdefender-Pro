@@ -3,6 +3,21 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import api from '../api/api'
 import userStore from '../utils/userStore'
+import {
+  Shield,
+  Check,
+  X,
+  ArrowRight,
+  ArrowUpRight,
+  Zap,
+  Sparkles,
+  Globe,
+  RefreshCw,
+  FileText,
+  AlertTriangle,
+  CreditCard,
+  Lock,
+} from 'lucide-react'
 
 const DEFAULT_USER_PLANS = [
   {
@@ -324,9 +339,9 @@ export default function UserPricing() {
     <div style={{
       maxWidth: '1240px',
       margin: '0 auto',
-      padding: '24px 20px 60px',
-      color: '#0f172a',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+      padding: '28px 24px 68px',
+      color: '#10201E',
+      fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif"
     }}>
       {/* Toast Notification */}
       {toastMessage && (
@@ -334,11 +349,11 @@ export default function UserPricing() {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: toastMessage.isError ? '#ef4444' : '#10b981',
+          background: toastMessage.isError ? '#A34F22' : '#0B2522',
           color: '#ffffff',
           padding: '12px 20px',
           borderRadius: '10px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.25)',
           zIndex: 9999,
           fontWeight: '600',
           display: 'flex',
@@ -346,20 +361,20 @@ export default function UserPricing() {
           gap: '10px',
           fontSize: '13.5px'
         }}>
-          <i className={`fas ${toastMessage.isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
-          {toastMessage.text}
+          {toastMessage.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
+          <span>{toastMessage.text}</span>
         </div>
       )}
 
       {/* Paddle Onboarding Pending Notice Banner */}
       {onboardingNotice && (
         <div style={{
-          background: '#fffbeb',
-          border: '1.5px solid #fcd34d',
+          background: '#FFF8F4',
+          border: '1.5px solid #FCD3B6',
           borderRadius: '14px',
           padding: '20px 24px',
           marginBottom: '24px',
-          boxShadow: '0 4px 16px rgba(245, 158, 11, 0.1)',
+          boxShadow: '0 4px 16px rgba(232, 121, 47, 0.08)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -371,21 +386,20 @@ export default function UserPricing() {
               width: '40px',
               height: '40px',
               borderRadius: '10px',
-              background: '#fef3c7',
-              color: '#d97706',
+              background: '#FFF4ED',
+              color: '#E8792F',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
               flexShrink: 0
             }}>
-              <i className="fas fa-triangle-exclamation"></i>
+              <AlertTriangle size={20} strokeWidth={2.4} />
             </div>
             <div>
-              <h4 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: '800', color: '#92400e' }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: '800', color: '#A34F22' }}>
                 {onboardingNotice.title}
               </h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#b45309', lineHeight: '1.5' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#873B11', lineHeight: '1.5' }}>
                 {onboardingNotice.message}
               </p>
             </div>
@@ -398,7 +412,7 @@ export default function UserPricing() {
               style={{
                 padding: '9px 18px',
                 borderRadius: '8px',
-                background: '#d97706',
+                background: '#0B2522',
                 color: '#ffffff',
                 textDecoration: 'none',
                 fontWeight: '700',
@@ -409,7 +423,7 @@ export default function UserPricing() {
               }}
             >
               <span>Complete in Paddle</span>
-              <i className="fas fa-arrow-up-right-from-square" style={{ fontSize: '11px' }}></i>
+              <ArrowUpRight size={13} strokeWidth={2.4} />
             </a>
             <button
               onClick={() => setOnboardingNotice(null)}
@@ -417,8 +431,8 @@ export default function UserPricing() {
                 padding: '9px 14px',
                 borderRadius: '8px',
                 background: '#ffffff',
-                border: '1px solid #fcd34d',
-                color: '#78350f',
+                border: '1px solid #D9E1DC',
+                color: '#10201E',
                 fontSize: '13px',
                 fontWeight: '600',
                 cursor: 'pointer'
@@ -430,14 +444,14 @@ export default function UserPricing() {
         </div>
       )}
 
-      {/* Header Banner - Matching Dashboard White Style */}
+      {/* Header Banner */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
         padding: '28px 32px',
         marginBottom: '28px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        border: '1px solid #D9E1DC',
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -452,12 +466,16 @@ export default function UserPricing() {
               fontSize: '11px',
               fontWeight: '800',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              background: '#eff6ff',
-              color: '#2563eb',
-              border: '1px solid #bfdbfe'
+              letterSpacing: '0.08em',
+              background: '#E8EEE8',
+              color: '#0B2522',
+              border: '1px solid #D9E1DC',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              <i className="fas fa-shield-halved" style={{ marginRight: '5px' }}></i> Active Security
+              <Shield size={12} strokeWidth={2.4} style={{ color: '#2A8B68' }} />
+              <span>Active Security Workspace</span>
             </span>
             <span style={{
               padding: '4px 10px',
@@ -465,40 +483,46 @@ export default function UserPricing() {
               fontSize: '11px',
               fontWeight: '800',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              background: isPaidActive ? '#ecfdf5' : '#f8fafc',
-              color: isPaidActive ? '#059669' : '#64748b',
-              border: `1px solid ${isPaidActive ? '#a7f3d0' : '#e2e8f0'}`
+              letterSpacing: '0.08em',
+              background: isPaidActive ? '#E8F3EC' : '#F7F6F1',
+              color: isPaidActive ? '#2A8B68' : '#60716B',
+              border: `1px solid ${isPaidActive ? '#CFE2D4' : '#D9E1DC'}`
             }}>
               Current Plan: {currentPlanId.toUpperCase()}
             </span>
           </div>
 
-          <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 6px', color: '#0f172a' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.03em' }}>
             Subscription &amp; Protection Plans
           </h1>
-          <p style={{ margin: 0, fontSize: '13.5px', color: '#64748b', maxWidth: '640px', lineHeight: '1.5' }}>
-            Instant self-service checkout. Upgrade to protect more domains, deploy 2M+ attack signatures, and unlock 6.5M+ neural threat inspection.
+          <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '640px', lineHeight: '1.55' }}>
+            Self-service upgrade with instant activation. Protect more domains, deploy 2M+ attack signatures, and unlock 6.5M+ neural threat vectorizer.
           </p>
         </div>
 
         {/* Quick User Plan Card */}
         <div style={{
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
+          background: '#FBFCFA',
+          border: '1px solid #D9E1DC',
           borderRadius: '12px',
           padding: '16px 20px',
           minWidth: '220px'
         }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>
+          <div style={{ fontSize: '11px', color: '#60716B', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.08em', marginBottom: '4px' }}>
             Account Status
           </div>
-          <div style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <i className={`fas ${isPaidActive ? 'fa-circle-check' : 'fa-shield'}`} style={{ color: isPaidActive ? '#10b981' : '#2563eb' }}></i>
-            {currentPlanId === 'go' ? 'Developer Go' : currentPlanId === 'enterprise' ? 'Dedicated Enterprise' : currentPlanId === 'pro' ? 'Enterprise Pro' : 'Starter Free'}
+          <div style={{ fontSize: '17px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: isPaidActive ? '#2A8B68' : '#E8792F',
+              boxShadow: isPaidActive ? '0 0 6px #2A8B68' : 'none'
+            }} />
+            <span>{currentPlanId === 'go' ? 'Developer Go' : currentPlanId === 'enterprise' ? 'Dedicated Enterprise' : currentPlanId === 'pro' ? 'Enterprise Pro' : 'Starter Free'}</span>
           </div>
           {profile?.plan_expires && (
-            <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px' }}>
+            <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>
               Valid through: {new Date(profile.plan_expires).toLocaleDateString()}
             </div>
           )}
@@ -514,26 +538,28 @@ export default function UserPricing() {
         marginBottom: '32px'
       }}>
         <div style={{
-          background: '#f1f5f9',
-          padding: '4px',
-          borderRadius: '12px',
+          background: '#E8EEE8',
+          padding: '5px',
+          borderRadius: '999px',
           display: 'inline-flex',
-          border: '1px solid #e2e8f0'
+          gap: '5px',
+          border: '1px solid #D9E1DC',
+          boxShadow: 'inset 0 1px 3px rgba(11, 37, 34, 0.05)'
         }}>
           <button
             type="button"
             onClick={() => setBillingCycle('monthly')}
             style={{
-              padding: '8px 20px',
-              borderRadius: '9px',
+              padding: '8px 22px',
+              borderRadius: '999px',
               border: 'none',
-              background: !isYearly ? '#ffffff' : 'transparent',
-              color: !isYearly ? '#0f172a' : '#64748b',
+              background: !isYearly ? '#0B2522' : 'transparent',
+              color: !isYearly ? '#ffffff' : '#60716B',
               fontWeight: '700',
               fontSize: '13px',
               cursor: 'pointer',
-              boxShadow: !isYearly ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.15s'
+              boxShadow: !isYearly ? '0 2px 8px rgba(11, 37, 34, 0.2)' : 'none',
+              transition: 'all 0.18s ease'
             }}
           >
             Monthly Billing
@@ -542,29 +568,31 @@ export default function UserPricing() {
             type="button"
             onClick={() => setBillingCycle('yearly')}
             style={{
-              padding: '8px 20px',
-              borderRadius: '9px',
+              padding: '8px 22px',
+              borderRadius: '999px',
               border: 'none',
-              background: isYearly ? '#ffffff' : 'transparent',
-              color: isYearly ? '#0f172a' : '#64748b',
+              background: isYearly ? '#0B2522' : 'transparent',
+              color: isYearly ? '#ffffff' : '#60716B',
               fontWeight: '700',
               fontSize: '13px',
               cursor: 'pointer',
-              boxShadow: isYearly ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              boxShadow: isYearly ? '0 2px 8px rgba(11, 37, 34, 0.2)' : 'none',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.15s'
+              gap: '8px',
+              transition: 'all 0.18s ease'
             }}
           >
             <span>Annual Billing</span>
             <span style={{
-              background: '#10b981',
+              background: '#E8792F',
               color: '#ffffff',
               fontSize: '10px',
-              padding: '1px 6px',
-              borderRadius: '10px',
-              fontWeight: '800'
+              padding: '2px 8px',
+              borderRadius: '999px',
+              fontWeight: '800',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase'
             }}>
               SAVE 20%
             </span>
@@ -572,7 +600,7 @@ export default function UserPricing() {
         </div>
       </div>
 
-      {/* 4 Pricing Plan Cards - Matching Dashboard White Style */}
+      {/* 4 Pricing Plan Cards */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(265px, 1fr))',
@@ -584,6 +612,7 @@ export default function UserPricing() {
           const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
           const isPopular = plan.isPopular
           const isCheckingOut = checkoutLoadingPlan === plan.id
+          const PlanIcon = plan.id === 'go' ? Zap : plan.id === 'enterprise' ? Globe : plan.id === 'pro' ? Sparkles : Shield
 
           return (
             <div
@@ -591,217 +620,256 @@ export default function UserPricing() {
               style={{
                 background: '#ffffff',
                 border: isPopular
-                  ? '2px solid #6366f1'
+                  ? '1.5px solid #E8792F'
                   : isCurrent
-                    ? '2px solid #10b981'
-                    : '1px solid #e2e8f0',
+                    ? '1.5px solid #2A8B68'
+                    : '1px solid #D9E1DC',
                 borderRadius: '16px',
-                padding: '24px',
+                padding: '26px 24px 22px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 position: 'relative',
                 boxShadow: isPopular
-                  ? '0 10px 30px rgba(99, 102, 241, 0.12)'
-                  : '0 1px 3px rgba(0,0,0,0.04)',
+                  ? '0 16px 40px rgba(232, 121, 47, 0.12), 0 4px 18px rgba(11, 37, 34, 0.04)'
+                  : isCurrent
+                    ? '0 10px 30px rgba(42, 139, 104, 0.08)'
+                    : '0 4px 20px rgba(11, 37, 34, 0.04)',
                 transition: 'transform 0.2s, box-shadow 0.2s'
               }}
             >
-              {/* Badge */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <span style={{
-                  padding: '4px 10px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  background: isPopular ? '#eef2ff' : '#f8fafc',
-                  color: isPopular ? '#6366f1' : plan.badgeColor,
-                  border: isPopular ? '1px solid #c7d2fe' : '1px solid #e2e8f0'
-                }}>
-                  {plan.badge}
-                </span>
-
-                {isCurrent && (
-                  <span style={{
-                    padding: '3px 8px',
+              <div>
+                {/* Header Row: Icon & Badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
                     borderRadius: '10px',
-                    fontSize: '10.5px',
-                    fontWeight: '800',
-                    background: '#10b981',
-                    color: '#ffffff'
+                    background: isPopular ? '#FFF4ED' : '#E8EEE8',
+                    border: isPopular ? '1px solid #FCD3B6' : '1px solid #D9E1DC',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isPopular ? '#E8792F' : '#0B2522'
                   }}>
-                    ACTIVE PLAN
-                  </span>
-                )}
-              </div>
-
-              {/* Title & Description */}
-              <div style={{ marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 6px', color: '#0f172a' }}>
-                  {plan.name}
-                </h3>
-                <p style={{ fontSize: '12.5px', color: '#64748b', margin: 0, minHeight: '36px', lineHeight: '1.45' }}>
-                  {plan.description}
-                </p>
-              </div>
-
-              {/* Price display */}
-              <div style={{
-                marginBottom: '20px',
-                padding: '14px 0',
-                borderTop: '1px solid #f1f5f9',
-                borderBottom: '1px solid #f1f5f9'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                  <span style={{ fontSize: '32px', fontWeight: '900', color: '#0f172a' }}>
-                    ${price}
-                  </span>
-                  <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '600' }}>
-                    {plan.monthlyPrice === 0 ? 'USD / forever' : isYearly ? 'USD / year' : 'USD / month'}
-                  </span>
-                </div>
-                {isYearly && plan.monthlyPrice > 0 && (
-                  <div style={{ fontSize: '11.5px', color: '#10b981', fontWeight: '700', marginTop: '3px' }}>
-                    Equals ${(price / 12).toFixed(1)}/month (Billed annually)
+                    <PlanIcon size={19} strokeWidth={2.4} />
                   </div>
-                )}
-              </div>
 
-              {/* Clean Action Button */}
-              <button
-                type="button"
-                onClick={() => handleCheckout(plan.id)}
-                disabled={isCurrent || isCheckingOut || actionLoading}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: isCurrent ? '1px solid #e2e8f0' : 'none',
-                  fontSize: '13.5px',
-                  fontWeight: '700',
-                  cursor: isCurrent ? 'default' : isCheckingOut ? 'wait' : 'pointer',
-                  background: isCurrent
-                    ? '#f8fafc'
-                    : isPopular
-                      ? 'linear-gradient(135deg, #4f46e5, #6366f1)'
-                      : '#2563eb',
-                  color: isCurrent ? '#64748b' : '#ffffff',
-                  boxShadow: isCurrent ? 'none' : '0 2px 8px rgba(37,99,235,0.25)',
-                  marginBottom: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s'
-                }}
-              >
-                {isCheckingOut ? (
-                  <><i className="fas fa-spinner fa-spin"></i> Processing...</>
-                ) : isCurrent ? (
-                  <><i className="fas fa-check"></i> Current Plan</>
-                ) : plan.id === 'free' ? (
-                  'Downgrade to Free'
-                ) : (
-                  <><i className="fas fa-arrow-up"></i> Upgrade Plan</>
-                )}
-              </button>
-
-              {/* Feature List */}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', color: '#64748b', marginBottom: '10px' }}>
-                  Features Included:
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {isCurrent && (
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: '999px',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        background: '#E8F3EC',
+                        color: '#2A8B68',
+                        border: '1px solid #CFE2D4',
+                        letterSpacing: '0.04em'
+                      }}>
+                        ACTIVE PLAN
+                      </span>
+                    )}
+                    <span style={{
+                      padding: '3px 9px',
+                      borderRadius: '999px',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      background: isPopular ? '#E8792F' : '#E8EEE8',
+                      color: isPopular ? '#ffffff' : '#60716B',
+                      boxShadow: isPopular ? '0 2px 6px rgba(232, 121, 47, 0.3)' : 'none'
+                    }}>
+                      {plan.badge}
+                    </span>
+                  </div>
                 </div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
-                  {plan.features.map((feat, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                      <i className="fas fa-check" style={{ color: '#10b981', fontSize: '11px', flexShrink: 0 }}></i>
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                  {plan.notIncluded.map((feat, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8' }}>
-                      <i className="fas fa-xmark" style={{ color: '#cbd5e1', fontSize: '11px', flexShrink: 0 }}></i>
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
+
+                {/* Title & Description */}
+                <div style={{ marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '19px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.02em' }}>
+                    {plan.name}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#60716B', margin: 0, minHeight: '36px', lineHeight: '1.5' }}>
+                    {plan.description}
+                  </p>
+                </div>
+
+                {/* Price display */}
+                <div style={{
+                  marginBottom: '20px',
+                  padding: '14px 0',
+                  borderTop: '1px solid #D9E1DC',
+                  borderBottom: '1px solid #D9E1DC'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                    <span style={{ fontSize: '38px', fontWeight: '850', color: '#10201E', letterSpacing: '-0.04em', lineHeight: 1 }}>
+                      ${price}
+                    </span>
+                    <span style={{ fontSize: '12.5px', color: '#60716B', fontWeight: '600' }}>
+                      {plan.monthlyPrice === 0 ? 'forever' : isYearly ? '/ year' : '/ month'}
+                    </span>
+                  </div>
+                  {isYearly && plan.monthlyPrice > 0 && (
+                    <div style={{ fontSize: '11.5px', color: '#E8792F', fontWeight: '700', marginTop: '4px' }}>
+                      ${(price / 12).toFixed(2)}/mo &middot; Save ${plan.monthlyPrice * 12 - plan.yearlyPrice}/yr
+                    </div>
+                  )}
+                  {plan.monthlyPrice === 0 && (
+                    <div style={{ fontSize: '11.5px', color: '#2A8B68', fontWeight: '600', marginTop: '4px' }}>
+                      Free tier active
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Button */}
+                <button
+                  type="button"
+                  onClick={() => handleCheckout(plan.id)}
+                  disabled={isCurrent || isCheckingOut || actionLoading}
+                  style={{
+                    width: '100%',
+                    height: '46px',
+                    borderRadius: '10px',
+                    border: isCurrent ? '1px solid #D9E1DC' : 'none',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    cursor: isCurrent ? 'default' : isCheckingOut ? 'wait' : 'pointer',
+                    background: isCurrent
+                      ? '#E8EEE8'
+                      : '#0B2522',
+                    color: isCurrent ? '#60716B' : '#ffffff',
+                    boxShadow: isCurrent ? 'none' : '0 4px 14px rgba(11, 37, 34, 0.2)',
+                    marginBottom: '22px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.18s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isCurrent && !isCheckingOut) e.currentTarget.style.background = '#153B34'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isCurrent && !isCheckingOut) e.currentTarget.style.background = '#0B2522'
+                  }}
+                >
+                  {isCheckingOut ? (
+                    <><span>Launching Checkout...</span></>
+                  ) : isCurrent ? (
+                    <><Check size={15} strokeWidth={2.4} style={{ color: '#2A8B68' }} /><span>Current Active Plan</span></>
+                  ) : plan.id === 'free' ? (
+                    'Downgrade to Free'
+                  ) : (
+                    <><span>Deploy &amp; Activate Plan</span><ArrowRight size={14} strokeWidth={2.4} /></>
+                  )}
+                </button>
+
+                {/* Feature List */}
+                <div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', color: '#10201E', letterSpacing: '0.1em', marginBottom: '12px' }}>
+                    Capabilities Snapshot
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '13px' }}>
+                    {plan.features.map((feat, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10201E' }}>
+                        <Check size={14} strokeWidth={2.6} style={{ color: '#2A8B68', flexShrink: 0 }} />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                    {plan.notIncluded.map((feat, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#87948D', textDecoration: 'line-through' }}>
+                        <X size={14} strokeWidth={2} style={{ color: '#CBD8CF', flexShrink: 0 }} />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Invoices & Transaction History - Matching Dashboard White Style */}
+      {/* Invoices & Transaction History */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #e2e8f0',
-        padding: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        border: '1px solid #D9E1DC',
+        padding: '26px 28px',
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h3 style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>
-              <i className="fas fa-file-invoice" style={{ marginRight: '8px', color: '#2563eb' }}></i>
-              Billing Receipts &amp; Transactions
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={17} strokeWidth={2.4} style={{ color: '#E8792F' }} />
+              <span>Billing Receipts &amp; Transactions</span>
             </h3>
-            <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-              Official transaction receipts and payment history.
+            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
+              Official payment receipts and subscription records.
             </p>
           </div>
           <button
             type="button"
             onClick={fetchBilling}
             style={{
-              padding: '6px 14px',
+              padding: '7px 16px',
               borderRadius: '8px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              color: '#475569',
-              fontSize: '12px',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
+              color: '#10201E',
+              fontSize: '12.5px',
               fontWeight: '600',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#E8EEE8')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#FBFCFA')}
           >
-            <i className="fas fa-rotate"></i> Refresh
+            <RefreshCw size={13} strokeWidth={2.2} />
+            <span>Refresh</span>
           </button>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
             <thead>
-              <tr style={{ background: '#f8fafc', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '10px 14px' }}>Transaction ID</th>
-                <th style={{ padding: '10px 14px' }}>Date</th>
-                <th style={{ padding: '10px 14px' }}>Amount</th>
-                <th style={{ padding: '10px 14px' }}>Method</th>
-                <th style={{ padding: '10px 14px' }}>Status</th>
+              <tr style={{ background: '#FBFCFA', color: '#60716B', borderBottom: '1px solid #D9E1DC' }}>
+                <th style={{ padding: '12px 16px', fontWeight: '700' }}>Transaction ID</th>
+                <th style={{ padding: '12px 16px', fontWeight: '700' }}>Date</th>
+                <th style={{ padding: '12px 16px', fontWeight: '700' }}>Amount</th>
+                <th style={{ padding: '12px 16px', fontWeight: '700' }}>Method</th>
+                <th style={{ padding: '12px 16px', fontWeight: '700' }}>Status</th>
               </tr>
             </thead>
             <tbody>
               {paymentHistory.length > 0 ? (
                 paymentHistory.map((inv, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: '600', color: '#2563eb' }}>
+                  <tr key={idx} style={{ borderBottom: '1px solid #D9E1DC' }}>
+                    <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontWeight: '600', color: '#0B2522' }}>
                       {inv.invoice_id || inv.transaction_id || `TXN-${idx + 1}`}
                     </td>
-                    <td style={{ padding: '12px 14px', color: '#64748b' }}>
+                    <td style={{ padding: '14px 16px', color: '#60716B' }}>
                       {inv.created_at || inv.billed_at || 'Recent'}
                     </td>
-                    <td style={{ padding: '12px 14px', fontWeight: '700', color: '#0f172a' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: '750', color: '#10201E' }}>
                       ${inv.amount || 20}.00 USD
                     </td>
-                    <td style={{ padding: '12px 14px', color: '#64748b' }}>
-                      <i className="fas fa-credit-card" style={{ marginRight: '6px' }}></i> Electronic Payment
+                    <td style={{ padding: '14px 16px', color: '#60716B' }}>
+                      <CreditCard size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                      <span>Electronic Gateway</span>
                     </td>
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '14px 16px' }}>
                       <span style={{
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        background: '#ecfdf5',
-                        color: '#059669',
-                        border: '1px solid #a7f3d0',
+                        padding: '3px 9px',
+                        borderRadius: '999px',
+                        background: '#E8F3EC',
+                        color: '#28745D',
+                        border: '1px solid #CFE2D4',
                         fontSize: '11px',
                         fontWeight: '800'
                       }}>
@@ -812,8 +880,8 @@ export default function UserPricing() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: '32px 14px', textAlign: 'center', color: '#64748b' }}>
-                    <i className="fas fa-receipt" style={{ fontSize: '24px', display: 'block', marginBottom: '8px', opacity: 0.4 }}></i>
+                  <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', color: '#60716B' }}>
+                    <FileText size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
                     No prior invoices recorded. Your account is on {currentPlanId.toUpperCase()} tier.
                   </td>
                 </tr>
