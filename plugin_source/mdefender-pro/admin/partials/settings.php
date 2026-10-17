@@ -653,7 +653,7 @@ $dashboard = $logger->get_dashboard_data();
                         <div class="waf-cap-pill"><span class="dashicons dashicons-randomize"></span> Realtime Threat Sync</div>
                     </div>
 
-                    <form id="wafFwMlForm" class="waf-cloud-form">
+                    <form id="wafFwMlForm" class="waf-cloud-form" onsubmit="return false;">
                         <div class="waf-api-key-group" style="margin-bottom: 14px;">
                             <label for="wafFwMlUrl" style="font-weight:600;font-size:13px;color:#1e293b;">Cloud Server Endpoint / URL</label>
                             <div class="waf-key-input-wrapper">
@@ -684,7 +684,7 @@ $dashboard = $logger->get_dashboard_data();
                         </div>
 
                         <div class="waf-btn-row" style="display:flex;gap:10px;margin-top:16px;align-items:center;">
-                            <button type="submit" class="waf-btn-connect" id="wafSaveMlBtn">
+                            <button type="button" class="waf-btn-connect" id="wafSaveMlBtn">
                                 <span class="dashicons dashicons-cloud-saved"></span>
                                 <span id="wafConnectBtnText">Save &amp; Connect</span>
                             </button>
@@ -1352,6 +1352,11 @@ $dashboard = $logger->get_dashboard_data();
             });
         });
 
+        $('#wafSaveMlBtn').on('click', function(e) {
+            e.preventDefault();
+            $('#wafFwMlForm').trigger('submit');
+        });
+
         $('#wafFwModeForm').on('submit', function(e) {
             e.preventDefault();
             var $btn = $(this).find('button[type="submit"]');
@@ -1659,6 +1664,9 @@ $dashboard = $logger->get_dashboard_data();
                 else { alert('Error: ' + (r.data.message || 'Unknown')); }
             }).always(function() {
                 btn.text('Save').prop('disabled', false);
+            });
+        });
+
         $('#wafSaveUninstallPolicyBtn').on('click', function(e) {
             e.preventDefault();
             var $btn = $(this);
