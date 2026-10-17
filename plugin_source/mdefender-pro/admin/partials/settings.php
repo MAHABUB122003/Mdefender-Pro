@@ -711,6 +711,53 @@ $dashboard = $logger->get_dashboard_data();
                             <span>Rate Limit RPM:</span>
                             <strong><?php echo esc_html($dashboard['rate_current']); ?> / <?php echo esc_html($dashboard['rate_limit']); ?> Limit</strong>
                         </div>
+                <div class="waf-fw-card waf-span-2" style="border-left: 4px solid #ef4444;">
+                    <h3><span class="dashicons dashicons-trash" style="color:#ef4444;"></span> Data Management, Clean Slate &amp; Uninstall Policy</h3>
+                    <p class="description">Control what happens to security logs, telemetry, and database tables when uninstalling, or immediately wipe all data to start with a fresh 0-log baseline.</p>
+                    
+                    <form id="wafUninstallPolicyForm" style="margin-bottom: 20px;">
+                        <label style="font-weight:700;font-size:13px;color:#1e293b;margin-bottom:8px;display:block;">Uninstall Action (Plugin Deletion Behavior):</label>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+                            <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:600; margin-bottom:10px;">
+                                <input type="radio" name="waf_delete_data_on_uninstall" value="yes" <?php checked(get_option('waf_fw_delete_data_on_uninstall', 'yes'), 'yes'); ?> style="margin-top:2px;">
+                                <div>
+                                    <span style="color:#0f172a; font-size:13px; font-weight:700;">Complete Clean Wipe (Default &amp; Recommended)</span>
+                                    <span class="description" style="display:block; margin:2px 0 0; font-size:12px; color:#64748b; font-weight:normal;">
+                                        When you delete MDefender-Pro from WordPress Plugins, permanently drop all 13 database tables (<code>wp_waf_attacks</code>, <code>wp_waf_requests</code>, <code>wp_waf_blacklist</code>, etc.) and remove all configuration. Reinstalling will give you a 100% fresh, clean plugin with 0 logs.
+                                    </span>
+                                </div>
+                            </label>
+                            <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:600; margin-bottom:0;">
+                                <input type="radio" name="waf_delete_data_on_uninstall" value="no" <?php checked(get_option('waf_fw_delete_data_on_uninstall', 'yes'), 'no'); ?> style="margin-top:2px;">
+                                <div>
+                                    <span style="color:#0f172a; font-size:13px; font-weight:700;">Preserve Data &amp; Security Logs</span>
+                                    <span class="description" style="display:block; margin:2px 0 0; font-size:12px; color:#64748b; font-weight:normal;">
+                                        Keep historical security logs and database tables if the plugin is deleted, preserving your history for future reinstallation.
+                                    </span>
+                                </div>
+                            </label>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <button type="button" id="wafSaveUninstallPolicyBtn" class="button button-secondary" style="font-weight:600;">
+                                <span class="dashicons dashicons-saved" style="vertical-align:middle;font-size:16px;"></span> Save Uninstall Preference
+                            </button>
+                            <span id="wafUninstallPolicyNotice" style="font-size:12px;font-weight:600;color:#059669;display:none;"></span>
+                        </div>
+                    </form>
+
+                    <div style="border-top:1px solid #f1f5f9; padding-top:16px; margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <strong style="color:#b91c1c; font-size:13.5px; display:flex; align-items:center; gap:6px;">
+                                <span class="dashicons dashicons-warning" style="color:#ef4444;"></span> Factory Reset / Clean Slate Right Now
+                            </strong>
+                            <span class="description" style="display:block; margin:2px 0 0; font-size:12px; color:#64748b;">
+                                Immediately purge all ingress request logs, blocked attacks, and security events from this website right now without uninstalling.
+                            </span>
+                        </div>
+                        <button type="button" id="wafResetAllDataBtn" class="button" style="background:#dc2626; color:#fff; border-color:#b91c1c; font-weight:700; height:36px; padding:0 16px; display:inline-flex; align-items:center; gap:6px;">
+                            <span class="dashicons dashicons-trash" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span>
+                            Purge All Data &amp; Reset to 0
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1606,6 +1653,40 @@ $dashboard = $logger->get_dashboard_data();
                 else { alert('Error: ' + (r.data.message || 'Unknown')); }
             }).always(function() {
                 btn.text('Save').prop('disabled', false);
+        $('#wafSaveUninstallPolicyBtn').on('click', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var policy = $('input[name="waf_delete_data_on_uninstall"]:checked').val() || 'yes';
+            $btn.prop('disabled', true).text('Saving preference...');
+            $.post(ajaxurl + '?action=waf_fw_save_uninstall_policy&nonce=' + waf_fw_ajax.nonce, JSON.stringify({policy: policy}), function(r) {
+                if (r && r.success) {
+                    $('#wafUninstallPolicyNotice').text('✓ ' + r.data.message).fadeIn().delay(3500).fadeOut();
+                } else {
+                    alert('Error saving preference: ' + ((r && r.data && r.data.message) || 'Failed'));
+                }
+            }).always(function() {
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-saved" style="vertical-align:middle;font-size:16px;"></span> Save Uninstall Preference');
+            });
+        });
+
+        $('#wafResetAllDataBtn').on('click', function(e) {
+            e.preventDefault();
+            if (!confirm('⚠️ WARNING: FACTORY RESET!\n\nAre you sure you want to completely purge ALL security logs, ingress traffic history, and event telemetry from this website?\n\nThis will reset all counters (Blocked Attacks, Ingress Requests, Security Logs) back to 0 immediately.\n\nThis action cannot be undone. Proceed?')) {
+                return;
+            }
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Purging All Data...');
+            $.post(ajaxurl + '?action=waf_fw_reset_all_data&nonce=' + waf_fw_ajax.nonce, function(r) {
+                if (r && r.success) {
+                    alert('✓ Success!\n\n' + r.data.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + ((r && r.data && r.data.message) || 'Failed to purge data'));
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-trash" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span> Purge All Data &amp; Reset to 0');
+                }
+            }).fail(function() {
+                alert('Request failed. Please check network connection.');
+                $btn.prop('disabled', false).html('<span class="dashicons dashicons-trash" style="font-size:16px; width:16px; height:16px; line-height:16px;"></span> Purge All Data &amp; Reset to 0');
             });
         });
     });

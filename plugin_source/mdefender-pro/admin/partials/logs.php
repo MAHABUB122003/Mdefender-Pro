@@ -567,14 +567,14 @@ function wafFwActionWhitelistIp(ip) {
 }
 
 function wafFwClearLogs() {
-    if (!confirm('Are you sure you want to delete ALL logs? This cannot be undone.')) return;
+    if (!confirm('⚠️ Are you sure you want to completely purge ALL logs?\n\nThis will delete all ingress request logs, blocked attack records, and security telemetry, resetting your dashboard and security logs to 0.\n\nThis action cannot be undone.')) return;
     var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
     jQuery.post(ajaxurl, {
-        action: 'waf_fw_clear_logs',
+        action: 'waf_fw_reset_all_data',
         nonce: nonce
     }, function(r) {
         if (r && r.success) {
-            alert('All logs cleared successfully.');
+            alert('✓ All logs and traffic history have been cleared successfully! (0 logs)');
             location.reload();
         } else {
             alert('Failed to clear logs: ' + ((r && r.data && r.data.message) || 'Unknown error'));

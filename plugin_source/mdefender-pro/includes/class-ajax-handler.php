@@ -19,6 +19,8 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_change_password', [$this, 'change_password']);
         add_action('wp_ajax_waf_fw_export_logs', [$this, 'export_logs']);
         add_action('wp_ajax_waf_fw_clear_logs', [$this, 'clear_logs']);
+        add_action('wp_ajax_waf_fw_reset_all_data', [$this, 'reset_all_data']);
+        add_action('wp_ajax_waf_fw_save_uninstall_policy', [$this, 'save_uninstall_policy']);
         add_action('wp_ajax_waf_fw_block_ip', [$this, 'block_ip']);
         add_action('wp_ajax_waf_fw_whitelist_ip', [$this, 'whitelist_ip']);
         add_action('wp_ajax_waf_fw_get_live_feed', [$this, 'get_live_feed']);
@@ -351,6 +353,7 @@ class WAF_FW_Ajax_Handler {
             'turnstile_enabled' => get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')),
             'turnstile_mode' => get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'login_only')),
             'turnstile_theme' => get_option('waf_fw_turnstile_theme', get_option('waf_turnstile_theme', 'auto')),
+            'delete_data_on_uninstall' => get_option('waf_fw_delete_data_on_uninstall', 'yes'),
         ]);
     }
 
@@ -368,6 +371,7 @@ class WAF_FW_Ajax_Handler {
             'learning_mode', 'blocked_countries',
             'dashboard_url',
             'turnstile_enabled', 'turnstile_mode', 'turnstile_theme',
+            'delete_data_on_uninstall',
         ];
 
         if (isset($data['learning_mode'])) {
@@ -478,6 +482,55 @@ class WAF_FW_Ajax_Handler {
         $logger = WAF_FW_Logger::instance();
         $logger->clear_logs();
         wp_send_json_success(['message' => 'All logs cleared']);
+    }
+
+    public function reset_all_data() {
+        $this->check_access();
+        $this->verify_nonce();
+        global $wpdb;
+
+        $tables = [
+            $wpdb->prefix . 'waf_attacks',
+            $wpdb->prefix . 'waf_requests',
+            $wpdb->prefix . 'waf_security_events',
+            $wpdb->prefix . 'waf_login_attempts',
+            $wpdb->prefix . 'waf_scan_results',
+            $wpdb->prefix . 'waf_file_changes',
+            $wpdb->prefix . 'waf_scan_queue',
+            $wpdb->prefix . 'waf_scan_files_queue',
+        ];
+
+        foreach ($tables as $t) {
+            $check = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $t));
+            if ($check === $t) {
+                $wpdb->query("TRUNCATE TABLE `$t`");
+                $wpdb->query("DELETE FROM `$t`");
+            }
+        }
+
+        // Clean statistics transients
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_waf_%' OR option_name LIKE '_transient_timeout_waf_%'");
+
+        wp_send_json_success([
+            'message' => 'All security logs, traffic telemetry, and scan events have been purged. Database is 100% clean.'
+        ]);
+    }
+
+    public function save_uninstall_policy() {
+        $this->check_access();
+        $this->verify_nonce();
+        $data = $this->get_json_input();
+        $policy = sanitize_text_field($_POST['policy'] ?? $data['policy'] ?? 'yes');
+        if (!in_array($policy, ['yes', 'no'], true)) {
+            $policy = 'yes';
+        }
+        update_option('waf_fw_delete_data_on_uninstall', $policy);
+        wp_send_json_success([
+            'message' => $policy === 'yes'
+                ? 'Preference saved: When deleted, all database tables, security logs, and configurations will be permanently purged.'
+                : 'Preference saved: Security logs and tables will be preserved if the plugin is deleted.',
+            'policy' => $policy
+        ]);
     }
 
     public function block_ip() {

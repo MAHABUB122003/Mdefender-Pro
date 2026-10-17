@@ -390,11 +390,19 @@ class WAF_FW_Logger {
         $attacks_table = $this->db->get_attacks_table();
         $requests_table = $this->db->get_requests_table();
         $events_table = $wpdb->prefix . (defined('WAF_FW_TABLE_SECURITY_EVENTS') ? WAF_FW_TABLE_SECURITY_EVENTS : 'waf_security_events');
+        
+        $wpdb->query("TRUNCATE TABLE $attacks_table");
         $wpdb->query("DELETE FROM $attacks_table");
+        
+        $wpdb->query("TRUNCATE TABLE $requests_table");
         $wpdb->query("DELETE FROM $requests_table");
+        
         if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
+            $wpdb->query("TRUNCATE TABLE $events_table");
             $wpdb->query("DELETE FROM $events_table");
         }
+
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_waf_%' OR option_name LIKE '_transient_timeout_waf_%'");
     }
 
     public function clean_requests() {
