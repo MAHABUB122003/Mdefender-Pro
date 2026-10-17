@@ -41,6 +41,7 @@ class WebsiteCreate(BaseModel):
     ssl_mode: str = Field("flexible")
     bot_challenge_enabled: bool = Field(False)
     challenge_mode: str = Field("interactive_turnstile")
+    under_attack_mode: bool = Field(False)
     dns_records: list[dict] | None = None
     current_nameservers: list[str] | None = None
 
@@ -54,6 +55,7 @@ class WebsiteUpdate(BaseModel):
     ssl_mode: str | None = None
     bot_challenge_enabled: bool | None = None
     challenge_mode: str | None = None
+    under_attack_mode: bool | None = None
 
 
 class DnsDiscoverRequest(BaseModel):
@@ -130,6 +132,7 @@ def _website_out(doc):
         "verified": doc.get("verified", False),
         "bot_challenge_enabled": doc.get("bot_challenge_enabled", False),
         "challenge_mode": doc.get("challenge_mode", "interactive_turnstile"),
+        "under_attack_mode": bool(doc.get("under_attack_mode", False)),
     })
 
 
@@ -325,9 +328,32 @@ async def update_website(website_id: str, body: WebsiteUpdate, user=Depends(get_
         if body.platform not in PLATFORMS:
             raise HTTPException(status_code=400, detail="Invalid platform")
         updates["platform"] = body.platform
+    if body.under_attack_mode is not None:
+        updates["under_attack_mode"] = bool(body.under_attack_mode)
     updates["updated_at"] = datetime.now()
     db.websites.update_one({"_id": website["_id"]}, {"$set": updates})
     return success({"website": _website_out(db.websites.find_one({"_id": website["_id"]}))})
+
+
+class UnderAttackToggle(BaseModel):
+    enabled: bool = True
+
+
+@router.post("/{website_id}/under-attack")
+async def toggle_under_attack_mode(website_id: str, body: UnderAttackToggle, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    enabled = bool(body.enabled)
+    db = MongoDB()
+    db.websites.update_one(
+        {"_id": website["_id"]},
+        {"$set": {"under_attack_mode": enabled, "updated_at": datetime.now()}}
+    )
+    return success({
+        "website_id": str(website["_id"]),
+        "domain": website.get("domain") or website.get("url"),
+        "under_attack_mode": enabled,
+        "message": f"Under Attack Mode {'ACTIVATED' if enabled else 'DEACTIVATED'} for {website.get('domain') or website.get('url')}"
+    })
 
 
 @router.delete("/{website_id}")

@@ -41,6 +41,7 @@ export default function UserWebsites() {
 
   // Upgrade prompt modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [togglingAttack, setTogglingAttack] = useState({})
 
   const apiEndpoint = window.location.origin
 
@@ -156,6 +157,56 @@ export default function UserWebsites() {
       })
     } finally {
       setVerifyingDnsId(null)
+    }
+  }
+
+  const handleToggleUnderAttack = async (w) => {
+    const siteId = w.id || w._id
+    if (!siteId) return
+    const currentVal = Boolean(w.under_attack_mode)
+    const newVal = !currentVal
+
+    // Optimistic UI update
+    setData(prev => {
+      if (!prev) return prev
+      const updatedList = (prev.websites || []).map(item => {
+        if ((item.id || item._id) === siteId) {
+          return { ...item, under_attack_mode: newVal }
+        }
+        return item
+      })
+      return { ...prev, websites: updatedList }
+    })
+
+    setTogglingAttack(prev => ({ ...prev, [siteId]: true }))
+    try {
+      const res = await api.toggleWebsiteUnderAttack(siteId, newVal)
+      if (res?.status === 'success' || res?.data?.under_attack_mode !== undefined) {
+        setFeedbackMsg({
+          type: 'success',
+          text: newVal
+            ? `⚡ "I'm Under Attack" Mode ACTIVATED for ${w.domain || 'site'}! All incoming bot floods will be stopped with Proof-of-Work challenge.`
+            : `✅ "I'm Under Attack" Mode DEACTIVATED for ${w.domain || 'site'}. Standard WAF protection resumed.`
+        })
+        userStore.invalidate('websites')
+        userStore.invalidate('dashboard')
+      }
+    } catch (err) {
+      console.error('Failed to toggle under attack mode:', err)
+      // Rollback on failure
+      setData(prev => {
+        if (!prev) return prev
+        const updatedList = (prev.websites || []).map(item => {
+          if ((item.id || item._id) === siteId) {
+            return { ...item, under_attack_mode: currentVal }
+          }
+          return item
+        })
+        return { ...prev, websites: updatedList }
+      })
+      setFeedbackMsg({ type: 'error', text: 'Failed to update Under Attack Mode: ' + (err.message || 'Server error') })
+    } finally {
+      setTogglingAttack(prev => ({ ...prev, [siteId]: false }))
     }
   }
 
@@ -418,6 +469,18 @@ export default function UserWebsites() {
                     <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', borderRadius: '6px', fontWeight: '700' }}>
                       WordPress Plugin
                     </span>
+                    {w.under_attack_mode && (
+                      <span style={{
+                        fontSize: '10.5px', padding: '2px 8px',
+                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                        color: '#ffffff', borderRadius: '6px', fontWeight: '800',
+                        boxShadow: '0 0 8px rgba(239, 68, 68, 0.4)',
+                        display: 'inline-flex', alignItems: 'center', gap: '4px'
+                      }}>
+                        <i className="fas fa-bolt"></i>
+                        Under Attack Active
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
                     Added: {w.added_at ? (typeof w.added_at === 'string' ? w.added_at.split('T')[0] : 'Protected') : 'Protected'}
@@ -426,6 +489,28 @@ export default function UserWebsites() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* I'm Under Attack Mode Toggle Button */}
+                <button
+                  onClick={() => handleToggleUnderAttack(w)}
+                  disabled={togglingAttack[w.id || w._id]}
+                  title={w.under_attack_mode ? "Under Attack Mode is ACTIVE (Proof-of-Work challenge active for all bots). Click to disable." : "Click to activate 'I'm Under Attack' Mode to block aggressive DDoS & botnets"}
+                  style={{
+                    padding: '8px 14px',
+                    background: w.under_attack_mode
+                      ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
+                      : '#ffffff',
+                    color: w.under_attack_mode ? '#ffffff' : '#d97706',
+                    border: w.under_attack_mode ? '1px solid #b91c1c' : '1.5px solid #f59e0b',
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    boxShadow: w.under_attack_mode ? '0 0 12px rgba(220, 38, 38, 0.4)' : 'none',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <i className={`fas ${togglingAttack[w.id || w._id] ? 'fa-spinner fa-spin' : (w.under_attack_mode ? 'fa-bolt' : 'fa-shield-halved')}`}></i>
+                  <span>{w.under_attack_mode ? 'Under Attack: ON' : "I'm Under Attack"}</span>
+                </button>
+
                 {/* View Key & Setup Button */}
                 <button
                   onClick={() => handleOpenKeyModal(w)}

@@ -372,6 +372,7 @@ export const api = {
   },
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),
   getWebsiteInstallation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/installation`),
+  toggleWebsiteUnderAttack: (websiteId, enabled) => apiCall(`/api/v1/websites/${websiteId}/under-attack`, { method: 'POST', body: JSON.stringify({ enabled }) }),
 
   // Cloudflare-Style Domain & DNS Zone Management APIs
   discoverDns: (domain, scanSubdomains = true) =>

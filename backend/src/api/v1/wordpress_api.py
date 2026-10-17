@@ -335,6 +335,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
         "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
         "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
+        "under_attack_mode": bool(website.get("under_attack_mode", False)),
     }
 
     # Fetch active blacklisted IPs for local firewall cache (scoped to user)
@@ -591,6 +592,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
                     "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
                     "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
+                    "under_attack_mode": bool(ws_match.get("under_attack_mode", False)) if ws_match else False,
                 },
                 "synced_at": datetime.now().isoformat(),
             }

@@ -218,6 +218,15 @@ class WAF_FW_Engine {
                 return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'Access denied: Your IP address is blacklisted by security policy.', 'Blacklist Rule');
             }
 
+            // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield
+            if (class_exists('WAF_FW_Under_Attack_Shield')) {
+                $shield = WAF_FW_Under_Attack_Shield::instance();
+                if ($shield->is_active() && !$shield->has_valid_clearance($ip)) {
+                    $shield->render_challenge_screen($ip);
+                    exit;
+                }
+            }
+
             if ($this->learning_mode) {
                 return $this->do_allow($ip, $url, $method, $user_agent, 'Learning mode - allowing all');
             }
@@ -230,8 +239,12 @@ class WAF_FW_Engine {
                 }
             }
 
+            if ($this->rate_limiter && method_exists($this->rate_limiter, 'is_ddos_flooding') && $this->rate_limiter->is_ddos_flooding($ip)) {
+                return $this->do_block($ip, $url, $method, 'DDoS Flood Protection', 1.0, $user_agent, $referer, $body, 'Volumetric DDoS burst flood neutralized by Anti-DDoS Shield', 'Anti-DDoS Engine');
+            }
+
             if ($this->rate_limiter->is_rate_limited($ip)) {
-                return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, $body, 'Rate limit exceeded', 'Rate Limit Rule');
+                return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, $body, 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
             }
 
             // Whitelist legitimate WordPress login, custom login URL, and admin dashboard access

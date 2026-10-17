@@ -50,6 +50,7 @@ require_once WAF_FW_PLUGIN_DIR . 'includes/class-core-integrity.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-posthack-recovery.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-attack-blocker.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-turnstile.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/class-under-attack-shield.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-waf-engine.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-ajax-handler.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-scanner.php';
@@ -58,6 +59,11 @@ require_once WAF_FW_PLUGIN_DIR . 'admin/class-admin.php';
 // Initialize Turnstile Bot Challenge Engine
 if (class_exists('WAF_FW_Turnstile')) {
     WAF_FW_Turnstile::instance()->init();
+}
+
+// Initialize Under Attack Proof-of-Work Shield
+if (class_exists('WAF_FW_Under_Attack_Shield')) {
+    WAF_FW_Under_Attack_Shield::instance();
 }
 
 function waf_fw_activate() {
@@ -197,6 +203,9 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                     if (isset($config['ddos_enabled'])) {
                         update_option('waf_fw_ddos_protection', $config['ddos_enabled'] ? 'yes' : 'no');
                     }
+                    if (isset($config['under_attack_mode'])) {
+                        update_option('waf_fw_under_attack_mode', $config['under_attack_mode'] ? 'yes' : 'no');
+                    }
                 }
                 if (class_exists('WAF_FW_Engine')) {
                     WAF_FW_Engine::instance()->export_fast_cache();
@@ -277,6 +286,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     }
                     if (isset($config['ddos_enabled'])) {
                         update_option('waf_fw_ddos_protection', $config['ddos_enabled'] ? 'yes' : 'no');
+                    }
+                    if (isset($config['under_attack_mode'])) {
+                        update_option('waf_fw_under_attack_mode', $config['under_attack_mode'] ? 'yes' : 'no');
                     }
                 }
                 if (class_exists('WAF_FW_Engine')) {
@@ -418,6 +430,9 @@ function waf_fw_cloud_heartbeat() {
             }
             if (isset($config['ddos_enabled'])) {
                 update_option('waf_fw_ddos_protection', $config['ddos_enabled'] ? 'yes' : 'no');
+            }
+            if (isset($config['under_attack_mode'])) {
+                update_option('waf_fw_under_attack_mode', $config['under_attack_mode'] ? 'yes' : 'no');
             }
         }
 
