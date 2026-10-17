@@ -1832,6 +1832,7 @@ async def api_get_logs(request: Request):
 
 
 @app.get("/api/v1/wordpress/plugin")
+@app.get("/api/v1/wordpress/download")
 @app.get("/api/wordpress/plugin")
 @app.get("/api/download/wp-plugin")
 @app.get("/downloads/mdefender-pro.zip")
