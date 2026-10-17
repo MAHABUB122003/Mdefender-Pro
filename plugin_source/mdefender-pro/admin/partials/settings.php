@@ -1,8 +1,8 @@
 <?php
 $waf_setup_pending = get_option('waf_fw_onboarding_pending', 'no') === 'yes';
 $waf_dash_url = (string) get_option('waf_fw_dashboard_url', '');
-if (empty($waf_dash_url) || strpos($waf_dash_url, 'onrender.com') !== false) {
-    $waf_dash_url = 'http://localhost:5173';
+if (empty($waf_dash_url) || strpos($waf_dash_url, 'onrender.com') !== false || strpos($waf_dash_url, 'localhost:5173') !== false) {
+    $waf_dash_url = 'https://mdefender-pro.crafix.tech';
 }
 
 $logger = WAF_FW_Logger::instance();
@@ -657,8 +657,13 @@ $dashboard = $logger->get_dashboard_data();
                         <div class="waf-api-key-group" style="margin-bottom: 14px;">
                             <label for="wafFwMlUrl" style="font-weight:600;font-size:13px;color:#1e293b;">Cloud Server Endpoint / URL</label>
                             <div class="waf-key-input-wrapper">
-                                <span class="dashicons dashicons-admin-site-alt3 waf-key-lead-icon"></span>
-                                <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="https://mdefender-pro.crafix.tech" value="<?php echo esc_attr(get_option('waf_fw_ml_api_url', 'https://mdefender-pro.crafix.tech')); ?>" autocomplete="off">
+                                <?php
+                                $current_ml_url = get_option('waf_fw_ml_api_url', '');
+                                if (empty($current_ml_url) || strpos($current_ml_url, 'localhost:8000') !== false || strpos($current_ml_url, '217.15.170.82') !== false || strpos($current_ml_url, 'onrender.com') !== false) {
+                                    $current_ml_url = 'https://mdefender-pro.crafix.tech';
+                                }
+                                ?>
+                                <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="https://mdefender-pro.crafix.tech" value="<?php echo esc_attr($current_ml_url); ?>" autocomplete="off">
                             </div>
                             <span class="description" style="font-size:12px;color:#64748b;margin:4px 0 0;display:block;"><span class="dashicons dashicons-info" style="font-size:14px;vertical-align:middle;"></span> Your MDefender-Pro Cloud Domain (e.g. <code>https://mdefender-pro.crafix.tech</code>).</span>
                         </div>
@@ -1419,6 +1424,7 @@ $dashboard = $logger->get_dashboard_data();
                 $('#wafFwConfidence').val(d.confidence_threshold).next('output').text(d.confidence_threshold);
                 $('#wafFwRateLimit').val(d.rate_limit);
                 $('#wafFwLogRetention').val(d.log_retention_days);
+                if (d.ml_api_url) $('#wafFwMlUrl').val(d.ml_api_url);
                 $('#wafFwMlKey').val(d.ml_api_key);
                 $('#wafFwCloudScope').val(d.cloud_scope || 'signal');
                 $('#wafFwBlockMessage').val(d.block_message);

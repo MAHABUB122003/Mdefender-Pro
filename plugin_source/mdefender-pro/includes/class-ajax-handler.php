@@ -1130,10 +1130,18 @@ class WAF_FW_Ajax_Handler {
         $this->check_access();
         $ml_client = WAF_FW_ML_Api_Client::instance();
         $status = $ml_client->get_status();
-        $status['api_url'] = get_option('waf_fw_ml_api_url', '');
+        $ml_url = get_option('waf_fw_ml_api_url', '');
+        if (empty($ml_url) || strpos($ml_url, 'localhost:8000') !== false || strpos($ml_url, '217.15.170.82') !== false || strpos($ml_url, 'onrender.com') !== false) {
+            $ml_url = 'https://mdefender-pro.crafix.tech';
+        }
+        $main_api_url = get_option('waf_fw_main_waf_api_url', '');
+        if (empty($main_api_url) || strpos($main_api_url, 'localhost:8000') !== false || strpos($main_api_url, '217.15.170.82') !== false) {
+            $main_api_url = 'https://mdefender-pro.crafix.tech/api';
+        }
+        $status['api_url'] = $ml_url;
         $status['has_api_key'] = !empty(get_option('waf_fw_ml_api_key', ''));
         $status['has_website_id'] = !empty(get_option('waf_fw_website_id', ''));
-        $status['main_waf_url'] = get_option('waf_fw_main_waf_api_url', 'http://localhost:8000/api');
+        $status['main_waf_url'] = $main_api_url;
         wp_send_json_success($status);
     }
 

@@ -495,14 +495,14 @@ class WAF_FW_DB {
             'waf_fw_security_level' => 'high',
             'waf_fw_confidence_threshold' => 0.7,
             'waf_fw_rate_limit' => 100,
-            'waf_fw_ml_api_url' => 'http://localhost:8000',
+            'waf_fw_ml_api_url' => 'https://mdefender-pro.crafix.tech',
             'waf_fw_ml_api_key' => '',
             'waf_fw_website_id' => '',
             'waf_fw_site_token' => '',
             'waf_fw_connected' => 'no',
             'waf_fw_cloud_mode' => 'protect',
             'waf_fw_cloud_scope' => 'signal',
-            'waf_fw_dashboard_url' => 'http://localhost:5173',
+            'waf_fw_dashboard_url' => 'https://mdefender-pro.crafix.tech',
             'waf_fw_stats_blocked' => 0,
             'waf_fw_stats_allowed' => 0,
             'waf_fw_block_message' => 'This request has been blocked by Web Application Firewall',
@@ -519,11 +519,14 @@ class WAF_FW_DB {
             'waf_fw_attack_block_duration' => 86400,
             'waf_fw_attack_window' => 86400,
             'waf_fw_rate_limit' => 120,
-            'waf_fw_main_waf_api_url' => 'http://localhost:8000/api',
-            'waf_fw_main_waf_admin_url' => 'http://localhost:5173',
+            'waf_fw_main_waf_api_url' => 'https://mdefender-pro.crafix.tech/api',
+            'waf_fw_main_waf_admin_url' => 'https://mdefender-pro.crafix.tech',
         ];
         foreach ($defaults as $key => $value) {
-            if (get_option($key) === false) {
+            $existing = get_option($key);
+            if ($existing === false) {
+                update_option($key, $value);
+            } elseif (is_string($existing) && (strpos($existing, 'localhost:8000') !== false || strpos($existing, 'localhost:5173') !== false || strpos($existing, 'onrender.com') !== false || $existing === 'http://217.15.170.82')) {
                 update_option($key, $value);
             }
         }
