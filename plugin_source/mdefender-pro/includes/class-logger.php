@@ -387,8 +387,14 @@ class WAF_FW_Logger {
 
     public function clear_logs() {
         global $wpdb;
-        $table = $this->db->get_attacks_table();
-        $wpdb->query("DELETE FROM $table");
+        $attacks_table = $this->db->get_attacks_table();
+        $requests_table = $this->db->get_requests_table();
+        $events_table = $wpdb->prefix . (defined('WAF_FW_TABLE_SECURITY_EVENTS') ? WAF_FW_TABLE_SECURITY_EVENTS : 'waf_security_events');
+        $wpdb->query("DELETE FROM $attacks_table");
+        $wpdb->query("DELETE FROM $requests_table");
+        if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
+            $wpdb->query("DELETE FROM $events_table");
+        }
     }
 
     public function clean_requests() {
