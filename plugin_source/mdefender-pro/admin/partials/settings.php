@@ -10,31 +10,58 @@ $dashboard = $logger->get_dashboard_data();
 ?>
 
     <style>
+        :root {
+            --war-primary: #0F2C26;
+            --war-primary-dark: #183D35;
+            --war-primary-light: #E8EFEA;
+            --war-secondary: #0F2C26;
+            --war-green: #059669;
+            --war-green-light: #ECFDF5;
+            --war-orange: #DF5A38;
+            --war-orange-light: #FEF2F2;
+            --war-red: #DF5A38;
+            --war-red-light: #FEF2F2;
+            --war-gray-50: #F9FAF9;
+            --war-gray-100: #F4F8F5;
+            --war-gray-200: #E6ECE8;
+            --war-gray-300: #CBD8CF;
+            --war-gray-400: #7A928B;
+            --war-gray-500: #5B756E;
+            --war-gray-600: #475569;
+            --war-gray-700: #0F2C26;
+        }
+
         .waf-settings {
-            padding: 8px 2px 24px;
-            max-width: 1180px;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 24px 32px 60px;
+            background: #F6F8F6;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #0F2C26;
+            box-sizing: border-box;
         }
         
         /* Tab Navigation Bar */
         .waf-tabs-nav {
             display: flex;
-            background: #fff;
-            border: 1px solid var(--war-gray-200);
-            border-radius: 12px;
-            padding: 6px;
+            background: #FFFFFF;
+            border: 1px solid #E6ECE8;
+            border-radius: 14px;
+            padding: 8px;
             margin-bottom: 24px;
-            gap: 6px;
-            box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+            gap: 8px;
+            box-shadow: 0 4px 16px -2px rgba(15,44,38,0.04);
             flex-wrap: wrap;
         }
         .waf-tab-btn {
-            background: none;
+            background: transparent;
             border: none;
-            color: var(--war-gray-500);
+            color: #5B756E;
             padding: 10px 18px;
-            font-size: 13.5px;
-            font-weight: 600;
-            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 10px;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
@@ -42,13 +69,13 @@ $dashboard = $logger->get_dashboard_data();
             transition: all 0.2s ease;
         }
         .waf-tab-btn:hover {
-            color: var(--war-primary);
-            background: var(--war-gray-50);
+            color: #0F2C26;
+            background: #F4F8F5;
         }
         .waf-tab-btn.active {
-            background: var(--war-primary);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(26, 115, 232, 0.18);
+            background: #0F2C26;
+            color: #FFFFFF;
+            box-shadow: 0 2px 8px rgba(15,44,38,0.15);
         }
         .waf-tab-btn .dashicons {
             font-size: 17px;
@@ -425,7 +452,7 @@ $dashboard = $logger->get_dashboard_data();
         .waf-modal {
             position: fixed;
             inset: 0;
-            z-index: 99999;
+            z-index: 999999;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -434,81 +461,237 @@ $dashboard = $logger->get_dashboard_data();
         .waf-modal-backdrop {
             position: absolute;
             inset: 0;
-            background: rgba(15, 23, 42, 0.55);
-            backdrop-filter: blur(2px);
+            background: rgba(15, 44, 38, 0.6);
+            backdrop-filter: blur(10px);
         }
         .waf-modal-box {
             position: relative;
-            background: #fff;
-            border-radius: 14px;
-            max-width: 520px;
+            background: #FFFFFF;
+            border: 1px solid #E6ECE8;
+            border-radius: 24px;
+            max-width: 580px;
             width: 100%;
             max-height: 92vh;
-            overflow: auto;
-            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
-            animation: wafModalIn 0.22s ease-out;
+            overflow: hidden;
+            box-shadow: 0 25px 60px -10px rgba(15, 44, 38, 0.35);
+            animation: wafModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
         }
         @keyframes wafModalIn {
-            from { opacity: 0; transform: translateY(14px) scale(0.98); }
+            from { opacity: 0; transform: translateY(18px) scale(0.97); }
             to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .waf-modal-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--war-gray-200);
-            background: linear-gradient(135deg, #eff6ff, #f5f3ff);
-            font-weight: 700;
-            font-size: 15px;
-            color: var(--war-secondary);
-            border-radius: 14px 14px 0 0;
+            justify-content: space-between;
+            padding: 20px 28px;
+            border-bottom: 1px solid #E6ECE8;
+            background: #FFFFFF;
         }
-        .waf-modal-header .dashicons { color: var(--war-primary); }
+        .waf-modal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .waf-modal-icon-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: #E8EFEA;
+            color: #0F2C26;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .waf-modal-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0F2C26;
+            letter-spacing: -0.01em;
+            margin: 0;
+        }
         .waf-modal-close {
-            margin-left: auto;
-            background: none;
-            border: none;
-            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #F4F8F5;
+            border: 1px solid #E6ECE8;
+            color: #5B756E;
             font-size: 20px;
-            color: var(--war-gray-400);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
             line-height: 1;
         }
-        .waf-modal-close:hover { color: var(--war-secondary); }
-        .waf-modal-body { padding: 20px; }
-        .waf-modal-body h3 { margin: 0 0 8px; font-size: 15px; color: var(--war-secondary); }
-        .waf-modal-body p { margin: 0 0 12px; font-size: 13px; line-height: 1.6; color: var(--war-gray-600); }
-        .waf-modal-body ol {
-            margin: 4px 0 16px 18px;
-            padding: 0;
-            font-size: 13px;
-            line-height: 1.8;
-            color: var(--war-gray-700);
+        .waf-modal-close:hover {
+            background: #FEF2F2;
+            color: #DF5A38;
+            border-color: #FECACA;
         }
-        .waf-modal-body ol li strong { color: var(--war-secondary); }
-        .waf-modal-body label {
-            display: block;
-            font-weight: 600;
-            font-size: 12.5px;
-            color: var(--war-gray-700);
-            margin: 0 0 4px;
+        .waf-modal-body {
+            padding: 28px 30px;
+            overflow-y: auto;
         }
-        .waf-modal-body input { margin-bottom: 12px; }
-        .waf-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-        .waf-modal-result { margin: 6px 0 12px; display: none; }
-        .waf-modal-result.show { display: block; }
-        .waf-setup-badge {
+        .waf-setup-pill {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            background: var(--war-primary-light);
-            color: var(--war-primary);
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 11.5px;
-            font-weight: 700;
-            margin-bottom: 12px;
+            gap: 8px;
+            background: #ECFDF5;
+            color: #059669;
+            border: 1px solid #A7F3D0;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
         }
+        .waf-setup-pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #059669;
+            box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25);
+        }
+        .waf-setup-h2 {
+            font-size: 21px;
+            font-weight: 800;
+            color: #0F2C26;
+            letter-spacing: -0.02em;
+            margin: 0 0 8px 0;
+            line-height: 1.3;
+        }
+        .waf-setup-highlight {
+            color: #DF5A38;
+        }
+        .waf-setup-desc {
+            font-size: 13.5px;
+            color: #5B756E;
+            margin: 0 0 20px 0;
+            line-height: 1.55;
+        }
+        .waf-setup-steps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 0 0 24px 0;
+        }
+        .waf-setup-step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: #F9FAF9;
+            border: 1px solid #E6ECE8;
+            border-radius: 12px;
+            padding: 12px 16px;
+            transition: all 0.2s ease;
+        }
+        .waf-setup-step-item:hover {
+            background: #FFFFFF;
+            border-color: #CBD8CF;
+            transform: translateX(2px);
+        }
+        .waf-setup-step-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #0F2C26;
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .waf-setup-step-text {
+            font-size: 13px;
+            color: #0F2C26;
+            line-height: 1.45;
+        }
+        .waf-setup-step-text strong {
+            color: #0F2C26;
+            font-weight: 700;
+        }
+        .waf-modal-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .waf-modal-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #0F2C26 !important;
+            color: #FFFFFF !important;
+            font-size: 13.5px;
+            font-weight: 700;
+            padding: 11px 22px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(15,44,38,0.18);
+            transition: all 0.2s ease;
+        }
+        .waf-modal-btn-primary:hover {
+            background: #183D35 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(15,44,38,0.25);
+        }
+        .waf-modal-btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #FFFFFF !important;
+            color: #0F2C26 !important;
+            font-size: 13.5px;
+            font-weight: 700;
+            padding: 11px 20px;
+            border-radius: 12px;
+            border: 1px solid #E6ECE8 !important;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .waf-modal-btn-secondary:hover {
+            background: #F4F8F5 !important;
+            border-color: #CBD8CF !important;
+        }
+        .waf-modal-input-wrap {
+            margin: 16px 0 20px 0;
+        }
+        .waf-modal-input-label {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #0F2C26;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .waf-modal-input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #CBD8CF !important;
+            border-radius: 12px !important;
+            padding: 0 16px !important;
+            font-size: 14px !important;
+            color: #0F2C26 !important;
+            background: #FFFFFF !important;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .waf-modal-input:focus {
+            border-color: #059669 !important;
+            box-shadow: 0 0 0 3px rgba(5,150,105,0.15) !important;
+            outline: none;
+        }
+        .waf-modal-result { margin: 6px 0 14px; display: none; }
+        .waf-modal-result.show { display: block; }
         @media (max-width: 782px) {
             .waf-fw-card.waf-span-2 { grid-column: span 1; }
             .waf-settings-grid { grid-template-columns: 1fr; }
@@ -516,6 +699,29 @@ $dashboard = $logger->get_dashboard_data();
     </style>
 
     <div class="waf-settings">
+
+        <!-- TOP PLATFORM BREADCRUMB / STATUS BAR -->
+        <div class="mdf-platform-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div class="mdf-platform-left" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5B756E;">
+                <span style="color:#7A928B;">Platform</span>
+                <span style="color:#CBD8CF;">/</span>
+                <span style="color:#7A928B;">System Configuration</span>
+                <span style="color:#CBD8CF;">/</span>
+                <strong style="color:#0F2C26;font-weight:700;">Settings</strong>
+            </div>
+            <div class="mdf-platform-right">
+                <div style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #E6ECE8;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#0F2C26;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.2);"></span>
+                    <span>Configuration Engine Active</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- HERO HEADER -->
+        <div class="mdf-canvas-hero" style="margin-bottom:24px;">
+            <h1 class="mdf-canvas-title" style="font-size:28px;font-weight:800;color:#0F2C26;letter-spacing:-0.02em;margin:0 0 6px 0;">Platform <span style="color:#DF5A38;">Settings.</span></h1>
+            <p class="mdf-canvas-subtitle" style="font-size:13.5px;color:#5B756E;margin:0;">Global Threat Defense, Machine Learning Thresholds, Cloud API Keys &amp; Notification Channels.</p>
+        </div>
 
         <!-- Tabbed Navigation Bar -->
         <nav class="waf-tabs-nav">
@@ -575,39 +781,68 @@ $dashboard = $logger->get_dashboard_data();
             <div class="waf-modal-backdrop" data-waf-dismiss="1"></div>
             <div class="waf-modal-box">
                 <div class="waf-modal-header">
-                    <span class="dashicons dashicons-cloud"></span>
-                    Connect MDefender-Pro
+                    <div class="waf-modal-header-left">
+                        <div class="waf-modal-icon-badge">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                        </div>
+                        <h3 class="waf-modal-title">Connect MDefender-Pro Cloud</h3>
+                    </div>
                     <button type="button" class="waf-modal-close" data-waf-dismiss="1" title="Close">&times;</button>
                 </div>
                 <div class="waf-modal-body">
-                    <span class="waf-setup-badge"><span class="dashicons dashicons-welcome-learn-more"></span> Get started in 3 steps</span>
+                    <div class="waf-setup-pill">
+                        <span class="waf-setup-pill-dot"></span>
+                        <span>QUICK ONBOARDING &bull; 3 SIMPLE STEPS</span>
+                    </div>
 
                     <div id="wafSetupStep1">
-                        <h3>Protect this site with MDefender-Pro Cloud</h3>
-                        <p>Machine-learning WAF and malware scanning are delivered from your MDefender-Pro account. This popup appears once, right after activation.</p>
-                        <ol>
-                            <li><strong>Register / log in</strong> at the MDefender-Pro website.</li>
-                            <li><strong>Add your website</strong> and copy its API key (shown once).</li>
-                            <li><strong>Paste the API key and click Connect</strong> - your site connects automatically.</li>
-                        </ol>
+                        <h2 class="waf-setup-h2">Protect this site with <span class="waf-setup-highlight">MDefender-Pro Cloud.</span></h2>
+                        <p class="waf-setup-desc">Autonomous machine learning WAF, threat feeds, and deep malware scanning are delivered securely from your cloud account.</p>
+                        
+                        <div class="waf-setup-steps-list">
+                            <div class="waf-setup-step-item">
+                                <div class="waf-setup-step-num">1</div>
+                                <div class="waf-setup-step-text"><strong>Register or log in</strong> at the official MDefender-Pro web console.</div>
+                            </div>
+                            <div class="waf-setup-step-item">
+                                <div class="waf-setup-step-num">2</div>
+                                <div class="waf-setup-step-text"><strong>Add your website</strong> and copy your unique Website API Key.</div>
+                            </div>
+                            <div class="waf-setup-step-item">
+                                <div class="waf-setup-step-num">3</div>
+                                <div class="waf-setup-step-text"><strong>Paste the API key</strong> and click Connect &mdash; your perimeter is armed automatically.</div>
+                            </div>
+                        </div>
+
                         <div class="waf-modal-actions">
-                            <button type="button" class="button button-primary" id="wafSetupNext">I have my API key</button>
-                            <button type="button" class="button" id="wafOpenDashboard"><span class="dashicons dashicons-external"></span> Open MDefender-Pro Dashboard</button>
+                            <button type="button" class="waf-modal-btn-primary" id="wafSetupNext">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                                <span>I have my API key</span>
+                            </button>
+                            <button type="button" class="waf-modal-btn-secondary" id="wafOpenDashboard">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                <span>Open MDefender-Pro Dashboard</span>
+                            </button>
                         </div>
                     </div>
 
                     <div id="wafSetupStep2" style="display:none;">
-                        <h3>Connect your website</h3>
-                        <p>Enter the Website API key from your MDefender-Pro dashboard.</p>
-                        <p>
-                            <label for="wafSetupKey">Website API Key</label>
-                            <input type="text" id="wafSetupKey" class="widefat" placeholder="mdf_live_...">
-                            <span class="description" style="display:block;margin-top:2px;font-size:12px;color:var(--war-gray-500);">Issued per-website in your MDefender-Pro dashboard.</span>
-                        </p>
+                        <h2 class="waf-setup-h2">Connect Your <span class="waf-setup-highlight">Website.</span></h2>
+                        <p class="waf-setup-desc">Enter the Website API key issued in your MDefender-Pro dashboard.</p>
+                        
+                        <div class="waf-modal-input-wrap">
+                            <label class="waf-modal-input-label" for="wafSetupKey">Website API Key</label>
+                            <input type="text" id="wafSetupKey" class="waf-modal-input" placeholder="mdf_live_...">
+                            <span style="display:block;margin-top:6px;font-size:12px;color:#5B756E;">Issued per-website domain in your MDefender-Pro cloud console.</span>
+                        </div>
+
                         <div class="waf-modal-result" id="wafSetupResult"></div>
                         <div class="waf-modal-actions">
-                            <button type="button" class="button button-primary" id="wafSetupConnect">Connect</button>
-                            <button type="button" class="button" id="wafSetupBack">&larr; Back</button>
+                            <button type="button" class="waf-modal-btn-primary" id="wafSetupConnect">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Connect Site Now</span>
+                            </button>
+                            <button type="button" class="waf-modal-btn-secondary" id="wafSetupBack">&larr; Back</button>
                         </div>
                     </div>
                 </div>

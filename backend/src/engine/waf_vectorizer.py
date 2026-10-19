@@ -45,13 +45,15 @@ def load_params():
 def normalize_text(t):
     if not isinstance(t, str):
         t = "" if t is None else str(t)
-    t = t.replace("\r", " ").replace("\n", " ").replace("\t", " ")
-    t = re.sub(r"\s+", " ", t).strip()
-    try:
-        t = urllib.parse.unquote(t)
-        t = urllib.parse.unquote(t)
-    except Exception:
-        pass
+    t = " ".join(t.split())
+    if "%" in t:
+        try:
+            t = urllib.parse.unquote(t)
+            if "%" in t:
+                t = urllib.parse.unquote(t)
+        except Exception:
+            pass
+        t = " ".join(t.split())
     # Strip the HTTP request envelope so live requests match training format.
     m = _HTTP_METHOD_RE.match(t)
     if m:

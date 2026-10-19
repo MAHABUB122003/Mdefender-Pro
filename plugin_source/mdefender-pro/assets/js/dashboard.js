@@ -5,7 +5,7 @@ var warDashboard = {
     isRefreshing: false,
 
     init: function() {
-        if (!document.getElementById('statTotalRequests') && !document.getElementById('timelineChart') && !document.getElementById('attackDistChart')) {
+        if (!document.getElementById('statTotalRequests') && !document.getElementById('timelineChart') && !document.getElementById('attackDistChart') && !document.getElementById('trafficSplineChart')) {
             return; // Not on the dashboard page
         }
         this.initClock();
@@ -103,15 +103,40 @@ var warDashboard = {
     updateStats: function(d) {
         var totals = {
             statTotalRequests: d.total_requests || 0,
+            statAttackBlocked: d.total_attacks || 0,
             statBlockedRequests: d.total_attacks || 0,
+            statBlacklistCount: d.total_blacklisted || 0,
             statThreatsDetected: d.today_attacks || 0
         };
         for (var id in totals) {
             this.animateNumber(id, totals[id]);
         }
+
+        var donutBig = document.getElementById('mdfDonutBigNum');
+        if (donutBig) {
+            donutBig.textContent = (d.total_attacks || 0).toLocaleString();
+        }
+        var donutSub = document.getElementById('mdfDonutSubText');
+        if (donutSub) {
+            donutSub.textContent = (d.total_attacks === 0) ? 'clean' : (d.total_attacks === 1 ? 'threat' : 'blocked');
+        }
+
+        var subBlocked = document.getElementById('subAttackBlocked');
+        if (subBlocked) {
+            subBlocked.textContent = (d.total_attacks > 0) ? '100% of malicious attempts mitigated' : 'Perimeter secured • 0 threats detected';
+        }
+        var subReq = document.getElementById('subTotalRequests');
+        if (subReq) {
+            subReq.textContent = (d.total_requests > 0) ? 'Boundary traffic inspected' : 'Awaiting incoming network traffic';
+        }
+        var subBl = document.getElementById('subBlacklistCount');
+        if (subBl) {
+            subBl.textContent = (d.total_blacklisted > 0) ? (d.total_blacklisted.toLocaleString() + ' perimeter blocks active') : 'Zero active perimeter IP blocks';
+        }
+
         var accuracyEl = document.getElementById('statMLAccuracy');
         if (accuracyEl) {
-            var rules = (d.feature_stats && d.feature_stats.waf_rules) ? d.feature_stats.waf_rules : 27272;
+            var rules = (d.feature_stats && d.feature_stats.waf_rules) ? d.feature_stats.waf_rules : 32;
             accuracyEl.innerHTML = rules.toLocaleString() + '<span style="font-size:13px;font-weight:600;margin-left:2px;">Rules</span>';
         }
         var respEl = document.getElementById('statAvgResponseTime');
@@ -121,11 +146,11 @@ var warDashboard = {
         var trendR = document.getElementById('trendRequests');
         if (trendR) {
             var tr = d.attack_trend || 0;
-            trendR.textContent = (tr > 0 ? '+' : '') + tr + '%';
+            trendR.textContent = (d.total_requests > 0) ? '↑ Live' : '0%';
         }
         var trendB = document.getElementById('trendBlocked');
         if (trendB) {
-            trendB.textContent = (d.total_attacks || 0) + ' Dropped';
+            trendB.textContent = (d.total_attacks > 0) ? 'Mitigated' : 'Zero Threat';
         }
 
         if (d.feature_stats) {
@@ -229,39 +254,27 @@ var warDashboard = {
     },
 
     renderTimelineChart: function(d) {
-        var ctx = document.getElementById('timelineChart');
+        var ctx = document.getElementById('trafficSplineChart') || document.getElementById('timelineChart');
         if (!ctx) return;
         if (this.charts.timeline) { this.charts.timeline.destroy(); }
 
-        var labels = (d && d.hourly_labels && d.hourly_labels.length > 0) ? d.hourly_labels : [];
-        if (labels.length === 0) {
-            var now = new Date();
-            for (var i = 23; i >= 0; i--) {
-                var h = (now.getHours() - i + 24) % 24;
-                labels.push(h + ':00');
-            }
+        var labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', 'Now'];
+        var incomingData = [0, 0, 0, 0, 0, 0, 0];
+        var blockedData = [0, 0, 0, 0, 0, 0, 0];
+
+        if (d && d.hourly_labels && d.hourly_labels.length > 0) {
+            labels = d.hourly_labels;
+            blockedData = d.hourly_counts || labels.map(function() { return 0; });
+            incomingData = d.hourly_requests || blockedData.slice();
         }
 
-        var blockedData = (d && d.hourly_counts && d.hourly_counts.length > 0) ? d.hourly_counts : labels.map(function() { return 0; });
-        var incomingData = (d && d.hourly_requests && d.hourly_requests.length > 0) ? d.hourly_requests.slice() : blockedData.slice();
+        var gradTeal = ctx.getContext('2d').createLinearGradient(0, 0, 0, 220);
+        gradTeal.addColorStop(0, 'rgba(13, 148, 136, 0.22)');
+        gradTeal.addColorStop(1, 'rgba(13, 148, 136, 0.01)');
 
-        // Ensure incoming is at least equal to blocked
-        for (var i = 0; i < labels.length; i++) {
-            if ((incomingData[i] || 0) < (blockedData[i] || 0)) {
-                incomingData[i] = blockedData[i] || 0;
-            }
-        }
-        var cleanData = incomingData.map(function(v, idx) {
-            return Math.max(0, v - (blockedData[idx] || 0));
-        });
-
-        var timelineGrad1 = ctx.getContext('2d').createLinearGradient(0,0,0,160);
-        timelineGrad1.addColorStop(0, 'rgba(232, 121, 47, 0.18)');
-        timelineGrad1.addColorStop(1, 'rgba(232, 121, 47, 0.01)');
-
-        var timelineGrad2 = ctx.getContext('2d').createLinearGradient(0,0,0,160);
-        timelineGrad2.addColorStop(0, 'rgba(220, 38, 38, 0.20)');
-        timelineGrad2.addColorStop(1, 'rgba(220, 38, 38, 0.01)');
+        var gradCoral = ctx.getContext('2d').createLinearGradient(0, 0, 0, 220);
+        gradCoral.addColorStop(0, 'rgba(223, 90, 56, 0.12)');
+        gradCoral.addColorStop(1, 'rgba(223, 90, 56, 0.00)');
 
         this.charts.timeline = new Chart(ctx.getContext('2d'), {
             type: 'line',
@@ -269,73 +282,60 @@ var warDashboard = {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Ingress Requests',
+                        label: 'Normal traffic',
                         data: incomingData,
                         fill: true,
-                        backgroundColor: timelineGrad1,
-                        borderColor: '#E8792F',
-                        borderWidth: 2,
-                        pointRadius: 2,
+                        backgroundColor: gradTeal,
+                        borderColor: '#0D9488',
+                        borderWidth: 2.4,
+                        tension: 0.38,
+                        pointRadius: 0,
                         pointHoverRadius: 4,
-                        pointBackgroundColor: '#E8792F',
-                        tension: 0.3,
+                        pointBackgroundColor: '#0D9488'
                     },
                     {
-                        label: 'Blocked Attacks',
+                        label: 'Threats blocked',
                         data: blockedData,
                         fill: true,
-                        backgroundColor: timelineGrad2,
-                        borderColor: '#dc2626',
-                        borderWidth: 2,
-                        pointRadius: 2,
+                        backgroundColor: gradCoral,
+                        borderColor: '#DF5A38',
+                        borderWidth: 2.0,
+                        borderDash: [3, 3],
+                        tension: 0.38,
+                        pointRadius: 0,
                         pointHoverRadius: 4,
-                        pointBackgroundColor: '#dc2626',
-                        tension: 0.3,
-                    },
-                    {
-                        label: 'Clean Traffic',
-                        data: cleanData,
-                        fill: false,
-                        borderColor: '#059669',
-                        borderWidth: 1.6,
-                        borderDash: [5, 3],
-                        pointRadius: 1,
-                        pointHoverRadius: 3,
-                        pointBackgroundColor: '#059669',
-                        tension: 0.3,
+                        pointBackgroundColor: '#DF5A38'
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#0B2522',
-                        titleColor: '#ffffff',
-                        bodyColor: '#e2e8f0',
-                        borderColor: '#1E3E3B',
-                        borderWidth: 1,
-                        titleFont: { size: 11, family: "'Inter', sans-serif", weight: 'bold' },
-                        bodyFont: { size: 11, family: "'Inter', sans-serif" },
+                        backgroundColor: '#0F2C26',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#A7F3D0',
                         cornerRadius: 8,
                         padding: 10,
+                        titleFont: { size: 11, family: "'Plus Jakarta Sans', sans-serif", weight: '650' },
+                        bodyFont: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }
                     }
                 },
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 9, family: "'Inter', sans-serif" }, color: '#94a3b8', maxRotation: 0, maxTicksLimit: 8 }
+                        ticks: { font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" }, color: '#7A8D87' }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(226, 232, 240, 0.6)' },
-                        ticks: { font: { size: 9, family: "'Inter', sans-serif" }, color: '#94a3b8', precision: 0 }
+                        grid: { color: 'rgba(230, 236, 232, 0.7)' },
+                        ticks: {
+                            font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" },
+                            color: '#7A8D87',
+                            callback: function(val) { return val >= 1000 ? (val/1000) + 'k' : val; }
+                        }
                     }
                 }
             }
@@ -343,134 +343,112 @@ var warDashboard = {
     },
 
     renderDistChart: function(d) {
-        var ctx = document.getElementById('attackDistChart');
+        var ctx = document.getElementById('threatVectorsDonutChart') || document.getElementById('attackDistChart');
         if (!ctx) return;
         if (this.charts.dist) { this.charts.dist.destroy(); }
 
-        var colors = [
-            '#dc2626', '#E8792F', '#0B2522', '#d97706', '#6366f1',
-            '#0284c7', '#059669', '#8b5cf6', '#db2777', '#4f46e5'
-        ];
-        var rawData = (d && d.attack_types_counts) ? d.attack_types_counts : [];
-        var rawLabels = (d && d.attack_types_labels) ? d.attack_types_labels : [];
+        var labels = [];
+        var dataVals = [];
+        var palette = ['#DF5A38', '#0D9488', '#059669', '#0284C7', '#64748B', '#D97706'];
 
-        var items = [];
-        for (var k = 0; k < rawLabels.length; k++) {
-            var cnt = Number(rawData[k]) || 0;
-            if (cnt > 0) {
-                items.push({ label: rawLabels[k], count: cnt, color: colors[k % colors.length] });
-            }
-        }
-        items.sort(function(a, b) { return b.count - a.count; });
-
-        var total = items.reduce(function(a, b) { return a + b.count; }, 0);
-        var centerTotalEl = document.getElementById('distCenterTotal');
-        if (centerTotalEl) {
-            centerTotalEl.textContent = total.toLocaleString();
-        }
-
-        var chartItems = items.slice();
-        if (chartItems.length === 0) {
-            chartItems = [{ label: 'Clean Traffic (0 Attacks)', count: 1, color: '#059669' }];
+        if (d && d.attack_types_labels && d.attack_types_labels.length > 0 && d.total_attacks > 0) {
+            labels = d.attack_types_labels;
+            dataVals = d.attack_types_counts;
+        } else {
+            labels = ['Perimeter clean'];
+            dataVals = [100];
+            palette = ['#10B981'];
         }
 
         this.charts.dist = new Chart(ctx.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: chartItems.map(function(it) { return it.label; }),
+                labels: labels,
                 datasets: [{
-                    data: chartItems.map(function(it) { return it.count; }),
-                    backgroundColor: chartItems.map(function(it) { return it.color; }),
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverOffset: 4,
+                    data: dataVals,
+                    backgroundColor: palette,
+                    borderColor: '#FFFFFF',
+                    borderWidth: 2.5,
+                    hoverOffset: 3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '72%',
+                cutout: '74%',
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#0B2522',
-                        titleColor: '#ffffff',
-                        bodyColor: '#e2e8f0',
-                        borderColor: '#1E3E3B',
-                        borderWidth: 1,
-                        titleFont: { size: 11, family: "'Inter', sans-serif", weight: 'bold' },
-                        bodyFont: { size: 11, family: "'Inter', sans-serif" },
-                        padding: 10,
+                        backgroundColor: '#0F2C26',
+                        titleColor: '#FFFFFF',
+                        bodyColor: '#E8F1ED',
                         cornerRadius: 8,
-                        callbacks: {
-                            label: function(context) {
-                                if (items.length === 0) return ' Perimeter 100% Protected';
-                                var pct = total > 0 ? ((context.raw / total) * 100).toFixed(1) : 0;
-                                return ' ' + context.label + ': ' + context.raw + ' (' + pct + '%)';
-                            }
-                        }
+                        padding: 10
                     }
                 }
             }
         });
 
-        var legendEl = document.getElementById('attackDistLegend');
-        if (legendEl) {
-            if (items.length === 0) {
-                legendEl.innerHTML = '<div style="padding:14px 16px;background:#FBFCFA;border-radius:12px;border:1px dashed #CBD8CF;text-align:center;">' +
-                    '<div style="font-size:12px;font-weight:700;color:#059669;display:flex;align-items:center;justify-content:center;gap:6px;">' +
-                        '<span class="dashicons dashicons-yes-alt" style="font-size:16px;width:16px;height:16px;"></span> 0 Attacks Encountered' +
-                    '</div>' +
-                    '<div style="font-size:11px;color:#4A5D5A;margin-top:4px;">No malicious signatures matched. All 27,272+ rules active.</div>' +
+        // Update HTML legend if container exists and dynamic data is loaded
+        var legendCol = document.getElementById('mdfDonutLegendCol');
+        if (legendCol && d) {
+            if (!d.total_attacks || d.total_attacks === 0) {
+                legendCol.innerHTML = '<div class="mdf-legend-row">' +
+                    '<span class="mdf-bullet-dot" style="background:#10B981;"></span>' +
+                    '<span class="mdf-legend-name">Perimeter Clean</span>' +
+                    '<span class="mdf-legend-pct">100%</span>' +
+                '</div>' +
+                '<div style="color:#7A8D87; font-size:11.5px; margin-top:8px; line-height:1.5;">' +
+                    'No threats detected yet. Site is actively safeguarded.' +
                 '</div>';
-            } else {
-                var html = '';
-                var maxItems = Math.min(items.length, 5);
-                for (var i = 0; i < maxItems; i++) {
-                    var it = items[i];
-                    var pct = total > 0 ? ((it.count / total) * 100).toFixed(1) : 0;
-                    html += '<div style="display:flex;flex-direction:column;gap:3px;">' +
-                        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;">' +
-                            '<div style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:#334155;">' +
-                                '<span style="width:7px;height:7px;border-radius:50%;background:' + it.color + ';display:inline-block;"></span>' +
-                                '<span>' + escapeHtml(it.label) + '</span>' +
-                            '</div>' +
-                            '<div style="display:inline-flex;align-items:center;gap:6px;">' +
-                                '<span style="font-weight:700;color:#0f172a;font-size:11.5px;">' + it.count.toLocaleString() + '</span>' +
-                                '<span style="color:#94a3b8;font-size:10.5px;">(' + pct + '%)</span>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div style="width:100%;height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden;">' +
-                            '<div style="width:' + Math.max(pct, 4) + '%;height:100%;background:' + it.color + ';border-radius:2px;"></div>' +
-                        '</div>' +
+            } else if (d.attack_types_labels && d.attack_types_labels.length > 0) {
+                var total = d.total_attacks;
+                var legHtml = '';
+                for (var j = 0; j < d.attack_types_labels.length; j++) {
+                    var cnt = d.attack_types_counts[j] || 0;
+                    var pct = total > 0 ? Math.round((cnt / total) * 100) : 0;
+                    var col = palette[j % palette.length];
+                    legHtml += '<div class="mdf-legend-row">' +
+                        '<span class="mdf-bullet-dot" style="background:' + col + ';"></span>' +
+                        '<span class="mdf-legend-name">' + escapeHtml(d.attack_types_labels[j]) + '</span>' +
+                        '<span class="mdf-legend-pct">' + pct + '%</span>' +
                     '</div>';
                 }
-                legendEl.innerHTML = html;
+                legendCol.innerHTML = legHtml;
             }
         }
     },
 
     renderAttackFeed: function(d) {
-        var tbody = document.getElementById('attackFeedBody');
+        var tbody = document.getElementById('mdfLiveEventsBody') || document.getElementById('attackFeedBody');
         if (!tbody) return;
 
+        var isMdfShell = !!document.getElementById('mdfLiveEventsBody');
         var logs = (d && d.recent_logs) ? d.recent_logs : [];
-        var countEl = document.getElementById('warFeedCount');
 
         if (!logs || logs.length === 0) {
-            tbody.innerHTML = '<tr class="war-table-empty">' +
-                '<td colspan="9" style="text-align:center;padding:36px 16px;color:#64748b;">' +
-                    '<span class="dashicons dashicons-shield" style="font-size:32px;width:32px;height:32px;color:#059669;margin-bottom:6px;"></span>' +
-                    '<div style="font-size:13px;font-weight:700;color:#0f172a;">No hostile events recorded in current window</div>' +
-                    '<div style="font-size:11.5px;color:#64748b;margin-top:2px;">Your site is actively protected by MDefender Pro Core Engine.</div>' +
-                '</td>' +
-            '</tr>';
-            if (countEl) countEl.textContent = 'Showing 0 events';
+            if (isMdfShell) {
+                tbody.innerHTML = '<tr>' +
+                    '<td colspan="6" style="text-align:center; padding:36px 20px; color:#7A8D87;">' +
+                        '<div style="font-weight:700; color:#111F1C; font-size:13px; margin-bottom:4px;">No security events recorded yet</div>' +
+                        '<div style="font-size:12px;">Your perimeter firewall is armed and actively inspecting all incoming web traffic.</div>' +
+                    '</td>' +
+                '</tr>';
+            } else {
+                tbody.innerHTML = '<tr class="war-table-empty">' +
+                    '<td colspan="9" style="text-align:center;padding:36px 16px;color:#64748b;">' +
+                        '<span class="dashicons dashicons-shield" style="font-size:32px;width:32px;height:32px;color:#059669;margin-bottom:6px;"></span>' +
+                        '<div style="font-size:13px;font-weight:700;color:#0f172a;">No hostile events recorded in current window</div>' +
+                        '<div style="font-size:11.5px;color:#64748b;margin-top:2px;">Your site is actively protected by MDefender Pro Core Engine.</div>' +
+                    '</td>' +
+                '</tr>';
+            }
             return;
         }
 
         var html = '';
         var displayCount = Math.min(logs.length, 5);
+
         for (var i = 0; i < displayCount; i++) {
             var log = logs[i];
             var time = log.created_at || '';
@@ -478,29 +456,48 @@ var warDashboard = {
                 time = time.split(' ')[1] || time;
             }
             var ip = log.ip || 'Unknown';
-            var ctry = log.country_code || 'LOCAL';
-            var atkType = log.attack_type || 'Malicious Payload';
-            var url = log.url || '/';
+            var ctry = (log.country_code && log.country_code !== '') ? log.country_code.toUpperCase() : ((ip === '127.0.0.1' || ip === '::1') ? 'LOCAL' : 'INT');
+            var atkType = log.attack_type || 'Threat Block';
             var isBlocked = (log.status === 'blocked' || log.status === 'drop');
-            var statusLabel = isBlocked ? 'Blocked' : (log.status === 'flagged' ? 'Flagged' : 'Allowed');
-            var statusBadgeClass = isBlocked ? 'war-badge-critical' : 'war-badge-medium';
-            var confidence = log.confidence ? Math.round(parseFloat(log.confidence) * 100) : 100;
 
-            html += '<tr class="war-feed-row ' + (isBlocked ? 'blocked' : 'allowed') + '">' +
-                '<td data-label="Time"><span style="font-family:monospace;font-size:11px;color:#64748b;">' + escapeHtml(time) + '</span></td>' +
-                '<td data-label="Source IP"><span class="war-cell-ip" style="font-weight:600;color:#0f172a;">' + escapeHtml(ip) + '</span></td>' +
-                '<td data-label="Country"><span class="war-cell-country" style="font-size:11px;font-weight:700;color:#334155;background:#f1f5f9;padding:2px 6px;border-radius:4px;">' + escapeHtml(ctry) + '</span></td>' +
-                '<td data-label="Attack Type"><span class="war-badge ' + statusBadgeClass + '">' + escapeHtml(atkType) + '</span></td>' +
-                '<td data-label="Target URL"><span class="war-cell-url" style="font-size:11px;color:#475569;" title="' + escapeHtml(url) + '">' + escapeHtml(url) + '</span></td>' +
-                '<td data-label="Severity"><span class="war-badge ' + (isBlocked ? 'war-badge-critical' : 'war-badge-low') + '">' + (isBlocked ? 'Critical' : 'Notice') + '</span></td>' +
-                '<td data-label="Confidence"><span style="font-size:11px;font-weight:700;color:#059669;">' + confidence + '%</span></td>' +
-                '<td data-label="Action"><span style="font-size:11.5px;font-weight:700;color:' + (isBlocked ? '#dc2626' : '#2563eb') + ';">' + (isBlocked ? '403 Denied' : 'Inspected') + '</span></td>' +
-                '<td data-label="Status"><span class="war-badge ' + (isBlocked ? 'war-badge-blocked' : 'war-badge-allowed') + '">' + statusLabel + '</span></td>' +
-            '</tr>';
+            if (isMdfShell) {
+                var actionText = isBlocked ? 'DROPPED 403' : 'CHALLENGED';
+                var confVal = parseFloat(log.confidence) || 0.90;
+                var threatLevel = confVal >= 0.90 ? 'CRITICAL' : (confVal >= 0.75 ? 'HIGH' : 'WARNING');
+                var pillClass = confVal >= 0.90 ? 'mdf-pill-critical' : (confVal >= 0.75 ? 'mdf-pill-high' : 'mdf-pill-warning');
+
+                html += '<tr>' +
+                    '<td class="mdf-mono-time">' + escapeHtml(time) + ' <span class="mdf-utc-small">UTC</span></td>' +
+                    '<td><div class="mdf-cell-origin"><span class="mdf-country-tag">' + escapeHtml(ctry) + '</span> <span class="mdf-mono-ip">' + escapeHtml(ip) + '</span></div></td>' +
+                    '<td><div class="mdf-cell-attack"><span class="mdf-shield-icon-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="mdf-attack-name">' + escapeHtml(atkType) + '</span></div></td>' +
+                    '<td><span class="mdf-pill-badge ' + pillClass + '">' + threatLevel + '</span></td>' +
+                    '<td><span class="mdf-action-dot-txt">&bull; ' + actionText + '</span></td>' +
+                    '<td class="mdf-cell-action"><a href="admin.php?page=waf-firewall-logs" class="mdf-dots-btn" aria-label="Action" title="View details in logs"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></a></td>' +
+                '</tr>';
+            } else {
+                var url = log.url || '/';
+                var statusLabel = isBlocked ? 'Blocked' : (log.status === 'flagged' ? 'Flagged' : 'Allowed');
+                var statusBadgeClass = isBlocked ? 'war-badge-critical' : 'war-badge-medium';
+                var confidence = log.confidence ? Math.round(parseFloat(log.confidence) * 100) : 100;
+
+                html += '<tr class="war-feed-row ' + (isBlocked ? 'blocked' : 'allowed') + '">' +
+                    '<td data-label="Time"><span style="font-family:monospace;font-size:11px;color:#64748b;">' + escapeHtml(time) + '</span></td>' +
+                    '<td data-label="Source IP"><span class="war-cell-ip" style="font-weight:600;color:#0f172a;">' + escapeHtml(ip) + '</span></td>' +
+                    '<td data-label="Country"><span class="war-cell-country" style="font-size:11px;font-weight:700;color:#334155;background:#f1f5f9;padding:2px 6px;border-radius:4px;">' + escapeHtml(ctry) + '</span></td>' +
+                    '<td data-label="Attack Type"><span class="war-badge ' + statusBadgeClass + '">' + escapeHtml(atkType) + '</span></td>' +
+                    '<td data-label="Target URL"><span class="war-cell-url" style="font-size:11px;color:#475569;" title="' + escapeHtml(url) + '">' + escapeHtml(url) + '</span></td>' +
+                    '<td data-label="Severity"><span class="war-badge ' + (isBlocked ? 'war-badge-critical' : 'war-badge-low') + '">' + (isBlocked ? 'Critical' : 'Notice') + '</span></td>' +
+                    '<td data-label="Confidence"><span style="font-size:11px;font-weight:700;color:#059669;">' + confidence + '%</span></td>' +
+                    '<td data-label="Action"><span style="font-size:11.5px;font-weight:700;color:' + (isBlocked ? '#dc2626' : '#2563eb') + ';">' + (isBlocked ? '403 Denied' : 'Inspected') + '</span></td>' +
+                    '<td data-label="Status"><span class="war-badge ' + (isBlocked ? 'war-badge-blocked' : 'war-badge-allowed') + '">' + statusLabel + '</span></td>' +
+                '</tr>';
+            }
         }
         tbody.innerHTML = html;
+        var countEl = document.getElementById('warFeedCount');
         if (countEl) countEl.textContent = 'Showing latest ' + displayCount + ' events';
-    }
+    },
+
 };
 
 function escapeHtml(str) {

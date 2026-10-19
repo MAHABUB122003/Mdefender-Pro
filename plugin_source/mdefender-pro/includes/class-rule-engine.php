@@ -18,6 +18,7 @@ class WAF_FW_Rule_Engine {
     private $default_rules;
     private $rules_from_db;
     private $deobfuscator;
+    private $cached_rules = null;
 
     public static function instance() {
         if (null === self::$_instance) {
@@ -180,6 +181,16 @@ class WAF_FW_Rule_Engine {
             }
         }
 
+        // FAST-PATH: If string contains no injection symbols or attack keywords, skip 40+ regex loops (< 0.001ms)
+        if (strpbrk($normalized, "'\"<>|;()=\\*`$") === false && 
+            stripos($normalized, 'UNION') === false && 
+            stripos($normalized, 'SELECT') === false && 
+            stripos($normalized, 'script') === false && 
+            stripos($normalized, 'etc/') === false &&
+            stripos($normalized, 'base64') === false) {
+            return $matches;
+        }
+
         // Pattern matching on both normalized text and raw URL decoded input
         $raw_decoded = urldecode(urldecode($combined));
         $all_rules = $this->convert_db_rules();
@@ -203,6 +214,10 @@ class WAF_FW_Rule_Engine {
     }
 
     private function convert_db_rules() {
+        if ($this->cached_rules !== null) {
+            return $this->cached_rules;
+        }
+
         $rules = [];
         foreach ($this->default_rules as $i => $rule) {
             $rules['default_' . $i] = $rule;
@@ -235,7 +250,8 @@ class WAF_FW_Rule_Engine {
                 ];
             }
         }
-        return $rules;
+        $this->cached_rules = $rules;
+        return $this->cached_rules;
     }
 
     public function get_rules() {

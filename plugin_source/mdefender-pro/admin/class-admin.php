@@ -215,6 +215,7 @@ class WAF_FW_Admin {
     public function render_dashboard() {
         $this->render_header();
         include WAF_FW_PLUGIN_DIR . 'admin/partials/dashboard.php';
+        $this->render_footer();
     }
 
     public function render_rules() {
@@ -225,17 +226,13 @@ class WAF_FW_Admin {
             $rule['id'] = $i;
             $rules[] = $rule;
         }
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/rules.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_blocked() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/blocked-ips.php';
-        echo '</div>';
         $this->render_footer();
     }
 
@@ -243,9 +240,7 @@ class WAF_FW_Admin {
         $this->render_header();
         $filter = WAF_FW_IP_Filter::instance();
         $blacklist = $filter->get_blacklist();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/blacklist.php';
-        echo '</div>';
         $this->render_footer();
     }
 
@@ -253,65 +248,49 @@ class WAF_FW_Admin {
         $this->render_header();
         $logger = WAF_FW_Logger::instance();
         $logs = $logger->get_logs($_GET);
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/logs.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_scan() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/scan-website.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_hardening() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/hardening.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_backup() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/backup.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_settings() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/settings.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_about() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/about.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_2fa() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/2fa.php';
-        echo '</div>';
         $this->render_footer();
     }
 
     public function render_tools() {
         $this->render_header();
-        echo '<div class="war-dashboard">';
         include WAF_FW_PLUGIN_DIR . 'admin/partials/tools.php';
-        echo '</div>';
         $this->render_footer();
     }
 

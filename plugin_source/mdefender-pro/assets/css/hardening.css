@@ -3,52 +3,54 @@
    ========================================================================== */
 
 :root {
-    --war-bg-canvas: #f8fafc;
-    --war-card-bg: #ffffff;
-    --war-border: #e2e8f0;
-    --war-border-hover: #cbd5e1;
-    --war-text-heading: #0f172a;
-    --war-text-body: #334155;
-    --war-text-muted: #64748b;
-    --war-primary: #4f46e5;
-    --war-primary-hover: #4338ca;
-    --war-primary-light: #eef2ff;
-    --war-emerald: #10b981;
-    --war-emerald-hover: #059669;
-    --war-emerald-light: #ecfdf5;
-    --war-emerald-text: #047857;
-    --war-red: #ef4444;
-    --war-red-light: #fef2f2;
-    --war-amber: #f59e0b;
-    --war-amber-light: #fffbeb;
-    --war-radius-card: 8px;
-    --war-radius-sm: 5px;
-    --war-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --war-bg-canvas: #F6F8F6;
+    --war-card-bg: #FFFFFF;
+    --war-border: #E6ECE8;
+    --war-border-hover: #CBD8CF;
+    --war-text-heading: #0F2C26;
+    --war-text-body: #0F2C26;
+    --war-text-muted: #5B756E;
+    --war-primary: #0F2C26;
+    --war-primary-hover: #183D35;
+    --war-primary-light: #E8EFEA;
+    --war-emerald: #059669;
+    --war-emerald-hover: #047857;
+    --war-emerald-light: #ECFDF5;
+    --war-emerald-text: #059669;
+    --war-red: #DF5A38;
+    --war-red-light: #FEF2F2;
+    --war-amber: #D97706;
+    --war-amber-light: #FEF3C7;
+    --war-radius-card: 18px;
+    --war-radius-sm: 10px;
+    --war-shadow-sm: 0 4px 16px -2px rgba(15, 44, 38, 0.04);
 }
 
 .war-harden-container {
-    max-width: 1400px;
-    margin: 16px 0 40px 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    width: 100%;
+    margin: 0;
+    padding: 24px 32px 60px;
+    background: #F6F8F6;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--war-text-body);
     font-size: 13px;
     line-height: 1.5;
+    box-sizing: border-box;
 }
 
 /* ── 1. Header Card ── */
 .war-harden-header-card {
     background: var(--war-card-bg);
     border: 1px solid var(--war-border);
-    border-left: 4px solid var(--war-primary);
     border-radius: var(--war-radius-card);
-    padding: 18px 24px;
+    padding: 24px 28px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 20px;
     box-shadow: var(--war-shadow-sm);
-    margin-bottom: 16px;
+    margin-bottom: 24px;
 }
 
 .war-header-main {

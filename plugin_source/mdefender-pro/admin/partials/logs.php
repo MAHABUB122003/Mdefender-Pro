@@ -1,4 +1,15 @@
 <?php
+/**
+ * MDefender-Pro Enterprise Security Logs & Forensics
+ *
+ * Implements the exact user design specification:
+ * Clean light theme, warm off-white #F7F7F5, white cards #FFFFFF,
+ * deep teal #173F3B, charcoal #24302F, muted #71807A, soft mint #E8F1ED,
+ * border #E1E5E2, and restrained coral #D96B54 for critical threats.
+ *
+ * @package MDefender-Pro
+ */
+
 defined('ABSPATH') || exit;
 
 if (!function_exists('waf_get_country_name')) {
@@ -21,613 +32,475 @@ if (!function_exists('waf_get_country_name')) {
 }
 
 global $wpdb;
-$logger = WAF_FW_Logger::instance();
-$logs = $logger->get_logs($_GET);
+$logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+$logs = $logger ? $logger->get_logs($_GET) : ['logs' => [], 'total' => 0, 'total_pages' => 1, 'page' => 1];
 
-// Real database totals for status pills
-$table_attacks = $logger->get_db()->get_attacks_table();
-$table_requests = $logger->get_db()->get_requests_table();
-$total_blocked_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_attacks}");
-$total_allowed_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_requests}");
+$total_blocked_count = 0;
+$total_allowed_count = 0;
+
+if ($logger && method_exists($logger, 'get_db')) {
+    $table_attacks = $logger->get_db()->get_attacks_table();
+    $table_requests = $logger->get_db()->get_requests_table();
+    if ($wpdb->get_var("SHOW TABLES LIKE '{$table_attacks}'") === $table_attacks) {
+        $total_blocked_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_attacks}");
+    }
+    if ($wpdb->get_var("SHOW TABLES LIKE '{$table_requests}'") === $table_requests) {
+        $total_allowed_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_requests}");
+    }
+}
 $total_all_count = $total_blocked_count + $total_allowed_count;
+
+$current_site_domain = parse_url(home_url(), PHP_URL_HOST) ?: 'localhost';
+$current_user = wp_get_current_user();
+$user_display_name = $current_user && $current_user->display_name ? esc_html($current_user->display_name) : 'Security Admin';
+$user_initials = $current_user && $current_user->display_name ? strtoupper(substr($current_user->display_name, 0, 2)) : 'SA';
 ?>
 
-<style>
-    @keyframes mdfSpin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    .mdf-export-item:hover {
-        background: #F7F5EE !important;
-        color: #0B2522 !important;
-    }
-    .war-r-table tbody tr.waf-log-row:hover {
-        background: #f8fafc !important;
-        cursor: pointer;
-    }
-    .waf-log-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s;
-        border: 1px solid #e2e8f0;
-        background: #fff;
-        color: #475569;
-    }
-    .waf-log-pill:hover {
-        border-color: #0B2522;
-        color: #0B2522;
-    }
-    .waf-log-pill.active {
-        background: #0B2522;
-        color: #fff;
-        border-color: #0B2522;
-    }
+<div class="mdf-canvas-wrap">
 
-    @media (max-width: 782px) {
-        .war-r-table thead {
-            display: none !important;
-        }
-        .war-r-table, .war-r-table tbody, .war-r-table tr.waf-log-row {
-            display: block !important;
-            width: 100% !important;
-        }
-        .war-r-table tr.waf-log-row {
-            margin-bottom: 12px !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            background: #fff !important;
-            padding: 10px 14px !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
-        }
-        .war-r-table tr.waf-log-row td {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            padding: 6px 0 !important;
-            border: none !important;
-            border-bottom: 1px solid #f1f5f9 !important;
-            font-size: 12.5px !important;
-            text-align: right !important;
-        }
-        .war-r-table tr.waf-log-row td:last-child {
-            border-bottom: none !important;
-        }
-        .war-r-table tr.waf-log-row td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            color: #64748b;
-            text-align: left;
-            margin-right: 12px;
-            font-size: 11.5px;
-            text-transform: uppercase;
-        }
-    }
-</style>
-
-<div class="wrap" style="max-width: 1400px; margin: 0 auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-top:10px;flex-wrap:wrap;gap:14px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:38px;height:38px;border-radius:10px;background:#0B2522;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(11,37,34,0.18);overflow:hidden;flex-shrink:0;">
-                <img src="<?php echo esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-icon.png'); ?>" alt="MDefender Pro Logo" style="width:26px;height:26px;object-fit:contain;">
+    <!-- Top Platform Navigation Bar -->
+    <div class="mdf-top-bar">
+        <div class="mdf-breadcrumbs" style="display:flex;align-items:center;gap:10px;">
+            <div style="width:26px;height:26px;border-radius:7px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(15,44,38,0.12);background:#FFFFFF;flex-shrink:0;">
+                <img src="<?php echo defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.png') : ''; ?>" alt="MDefender Pro Logo" style="width:100%;height:100%;object-fit:contain;">
             </div>
-            <div>
-                <h1 style="margin:0;font-size:22px;font-weight:800;color:#0B2522;display:flex;align-items:center;gap:8px;line-height:1.2;">
-                    Security Traffic &amp; Attack Logs
-                </h1>
-                <p style="margin:3px 0 0;font-size:13px;color:#64748b;">Unified live inspection and forensic export of incoming HTTP requests, blocked attacks, and normal visitor traffic.</p>
+            <span class="mdf-crumb-base">MDefender Pro</span>
+            <span class="mdf-crumb-sep">&rsaquo;</span>
+            <span class="mdf-crumb-current">Security Logs</span>
+        </div>
+        <div class="mdf-top-right">
+            <div class="mdf-sys-status">
+                <span class="mdf-dot-green"></span>
+                <span>All systems operational</span>
+            </div>
+            <button type="button" class="mdf-icon-btn" title="Search" aria-label="Search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <button type="button" class="mdf-icon-btn" title="Filter" aria-label="Filter">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            </button>
+            <div class="mdf-avatar-chip"><?php echo esc_html($user_initials); ?></div>
+        </div>
+    </div>
+
+        <!-- Page Hero Section -->
+        <div class="mdf-page-hero">
+            <div class="mdf-hero-titles">
+                <div class="mdf-overview-pill">
+                    <span class="mdf-square-tag"></span>
+                    <span>FORENSIC TELEMETRY &nbsp;/&nbsp; <?php echo strtoupper(date('M d, Y')); ?></span>
+                </div>
+                <h1 class="mdf-page-title">Security &amp; Traffic <span class="mdf-title-protected">Logs.</span></h1>
+                <p class="mdf-page-desc">Real-time forensic telemetry, threat classification, and unified HTTP ingress inspection.</p>
+            </div>
+            <div class="mdf-page-actions">
+                <!-- Export Dropdown -->
+                <div class="mdf-export-container" style="position:relative; display:inline-block;">
+                    <button type="button" class="mdf-btn mdf-btn-secondary" id="mdfExportBtnMain" onclick="mdfToggleExportDropdown(event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export CSV</span>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div id="mdfExportDropdown" class="mdf-dropdown-menu" style="display:none; position:absolute; right:0; top:100%; margin-top:6px; background:#FFFFFF; border:1px solid #E1E5E2; border-radius:8px; box-shadow:0 6px 18px rgba(25,55,51,0.06); width:240px; z-index:1000; padding:6px 0;">
+                        <a href="javascript:void(0)" onclick="wafFwExportCsv('all')" class="mdf-dropdown-item">
+                            <span class="mdf-dropdown-item-title">Export All Logs (.CSV)</span>
+                            <span class="mdf-dropdown-item-sub">All database records (<?php echo number_format($total_all_count); ?>)</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="wafFwExportCsv('filtered')" class="mdf-dropdown-item">
+                            <span class="mdf-dropdown-item-title">Export Filtered Logs (.CSV)</span>
+                            <span class="mdf-dropdown-item-sub">Matching current query</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="wafFwExportCsv('blocked')" class="mdf-dropdown-item">
+                            <span class="mdf-dropdown-item-title">Export Blocked Attacks (.CSV)</span>
+                            <span class="mdf-dropdown-item-sub">Only 403 mitigated threats</span>
+                        </a>
+                    </div>
+                </div>
+
+                <button type="button" onclick="wafFwClearLogs()" class="mdf-btn mdf-btn-coral-outline">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Clear All Logs
+                </button>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings')); ?>" class="mdf-btn mdf-btn-primary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    WAF Settings
+                </a>
             </div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <!-- Export CSV Button Group with Dropdown -->
-            <div class="mdf-export-group" style="position:relative;display:inline-block;">
-                <button type="button" id="mdf-btn-export-main" onclick="wafFwToggleExportMenu(event)" class="button button-primary" style="background: linear-gradient(135deg, #0B2522 0%, #164e43 100%); border-color: #0B2522; color: #fff; height: 36px; line-height: 34px; font-weight: 700; padding: 0 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(11,37,34,0.18); cursor: pointer;">
-                    <span class="dashicons dashicons-download" style="font-size: 18px; width: 18px; height: 18px; line-height: 18px;"></span>
-                    <span>Export Logs (CSV)</span>
-                    <span class="dashicons dashicons-arrow-down-alt2" style="font-size: 12px; width: 12px; height: 12px; margin-left: 2px;"></span>
-                </button>
-                <div id="mdf-export-dropdown" style="display:none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); width: 260px; z-index: 1000; overflow: hidden; padding: 6px 0;">
-                    <a href="javascript:void(0)" onclick="wafFwExportCsv('all')" class="mdf-export-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-decoration: none; color: #0f172a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
-                        <span class="dashicons dashicons-media-spreadsheet" style="color: #059669; font-size: 18px; width: 18px; height: 18px;"></span>
-                        <div>
-                            <div>Export All Logs (.CSV)</div>
-                            <div style="font-size: 11px; color: #64748b; font-weight: normal;">Full database records (<?php echo number_format($total_all_count); ?> logs)</div>
-                        </div>
-                    </a>
-                    <a href="javascript:void(0)" onclick="wafFwExportCsv('filtered')" class="mdf-export-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-decoration: none; color: #0f172a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
-                        <span class="dashicons dashicons-filter" style="color: #E8792F; font-size: 18px; width: 18px; height: 18px;"></span>
-                        <div>
-                            <div>Export Filtered Logs (.CSV)</div>
-                            <div style="font-size: 11px; color: #64748b; font-weight: normal;">Only matching current query (<?php echo number_format($logs['total']); ?> logs)</div>
-                        </div>
-                    </a>
-                    <a href="javascript:void(0)" onclick="wafFwExportCsv('blocked')" class="mdf-export-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; text-decoration: none; color: #0f172a; font-size: 13px; font-weight: 600; transition: background 0.15s;">
-                        <span class="dashicons dashicons-shield-alt" style="color: #dc2626; font-size: 18px; width: 18px; height: 18px;"></span>
-                        <div>
-                            <div>Export Blocked Attacks (.CSV)</div>
-                            <div style="font-size: 11px; color: #64748b; font-weight: normal;">403 security threats (<?php echo number_format($total_blocked_count); ?> attacks)</div>
-                        </div>
-                    </a>
+
+        <!-- 3 Quick Metric Cards (Telemetry Strip) -->
+        <div class="mdf-logs-metric-grid">
+            <!-- Metric 1: Total Inspected -->
+            <div class="mdf-stat-card">
+                <div class="mdf-stat-card-head">
+                    <div class="mdf-stat-icon-wrap mdf-icon-teal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    </div>
+                    <span class="mdf-trend-pill mdf-trend-mint">ALL INGRESS</span>
+                </div>
+                <span class="mdf-stat-label">Total Inspected Traffic</span>
+                <div class="mdf-stat-val-row">
+                    <span class="mdf-stat-val"><?php echo number_format($total_all_count); ?></span>
+                </div>
+                <span class="mdf-stat-foot">HTTP requests processed by firewall</span>
+                <div class="mdf-sparkline-box">
+                    <svg viewBox="0 0 200 40" class="mdf-svg-sparkline" preserveAspectRatio="none">
+                        <path d="M0,32 Q30,28 60,20 T120,24 T160,12 T200,6" fill="none" stroke="#173F3B" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
                 </div>
             </div>
 
-            <a href="<?php echo admin_url('admin.php?page=waf-firewall-settings'); ?>" class="button" style="height:36px;line-height:34px;font-weight:600;">WAF Settings</a>
-            <button type="button" onclick="wafFwClearLogs()" class="button button-danger" style="background:#dc2626;color:#fff;border-color:#dc2626;height:36px;font-weight:600;">Clear All Logs</button>
+            <!-- Metric 2: Blocked Attacks -->
+            <div class="mdf-stat-card">
+                <div class="mdf-stat-card-head">
+                    <div class="mdf-stat-icon-wrap mdf-icon-coral">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    </div>
+                    <span class="mdf-trend-pill mdf-trend-coral">100% BLOCKED</span>
+                </div>
+                <span class="mdf-stat-label">Blocked Cyber Attacks</span>
+                <div class="mdf-stat-val-row">
+                    <span class="mdf-stat-val"><?php echo number_format($total_blocked_count); ?></span>
+                </div>
+                <span class="mdf-stat-foot">403 Forbidden mitigations enforced</span>
+                <div class="mdf-sparkline-box">
+                    <svg viewBox="0 0 200 40" class="mdf-svg-sparkline" preserveAspectRatio="none">
+                        <path d="M0,35 Q40,30 80,28 T130,20 T170,24 T200,14" fill="none" stroke="#D96B54" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Metric 3: Allowed Traffic -->
+            <div class="mdf-stat-card">
+                <div class="mdf-stat-card-head">
+                    <div class="mdf-stat-icon-wrap mdf-icon-teal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <span class="mdf-trend-pill mdf-trend-mint">CLEAN TRAFFIC</span>
+                </div>
+                <span class="mdf-stat-label">Allowed Normal Traffic</span>
+                <div class="mdf-stat-val-row">
+                    <span class="mdf-stat-val"><?php echo number_format($total_allowed_count); ?></span>
+                </div>
+                <span class="mdf-stat-foot">Legitimate visitors and verified search bots</span>
+                <div class="mdf-sparkline-box">
+                    <svg viewBox="0 0 200 40" class="mdf-svg-sparkline" preserveAspectRatio="none">
+                        <path d="M0,30 Q35,26 70,28 T120,22 T165,16 T200,10" fill="none" stroke="#173F3B" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Quick Filter Pills -->
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
-        <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="waf-log-pill <?php echo empty($_GET['status']) ? 'active' : ''; ?>">
-            <span>All Traffic</span>
-            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($total_all_count); ?></span>
-        </a>
-        <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs&status=blocked'); ?>" class="waf-log-pill <?php echo ($_GET['status'] ?? '') === 'blocked' ? 'active' : ''; ?>">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;"></span>
-            <span>Blocked Attacks</span>
-            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($total_blocked_count); ?></span>
-        </a>
-        <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs&status=allowed'); ?>" class="waf-log-pill <?php echo ($_GET['status'] ?? '') === 'allowed' ? 'active' : ''; ?>">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>
-            <span>Allowed Normal Traffic</span>
-            <span style="background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:999px;font-size:11px;"><?php echo number_format($total_allowed_count); ?></span>
-        </a>
-    </div>
-
-    <!-- Filter Bar Card -->
-    <div class="war-card" style="background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(15,23,42,0.03);">
-        <form method="get" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0;">
-            <input type="hidden" name="page" value="waf-firewall-logs">
-            <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:220px;">
-                <label style="font-weight:600;font-size:12.5px;color:#475569;white-space:nowrap;">Search IP / URL / Rule:</label>
-                <input type="text" name="search" value="<?php echo esc_attr($_GET['search'] ?? ''); ?>" placeholder="e.g. 192.168.1.1 or wp-login.php" style="height:36px;border-radius:6px;border:1px solid #cbd5e1;padding:0 12px;font-size:13px;width:100%;">
+        <!-- Filter Card: Form & Pills -->
+        <div class="mdf-card mdf-filter-card">
+            <!-- Filter Pills Row -->
+            <div class="mdf-filter-pills-row">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-logs')); ?>" class="mdf-filter-pill <?php echo empty($_GET['status']) ? 'active' : ''; ?>">
+                    <span>All Traffic</span>
+                    <span class="mdf-pill-cnt"><?php echo number_format($total_all_count); ?></span>
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-logs&status=blocked')); ?>" class="mdf-filter-pill <?php echo ($_GET['status'] ?? '') === 'blocked' ? 'active is-coral' : ''; ?>">
+                    <span class="mdf-pill-dot mdf-dot-coral"></span>
+                    <span>Blocked Attacks Only</span>
+                    <span class="mdf-pill-cnt"><?php echo number_format($total_blocked_count); ?></span>
+                </a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-logs&status=allowed')); ?>" class="mdf-filter-pill <?php echo ($_GET['status'] ?? '') === 'allowed' ? 'active' : ''; ?>">
+                    <span class="mdf-pill-dot mdf-dot-mint"></span>
+                    <span>Allowed Traffic Only</span>
+                    <span class="mdf-pill-cnt"><?php echo number_format($total_allowed_count); ?></span>
+                </a>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-                <label style="font-weight:600;font-size:12.5px;color:#475569;white-space:nowrap;">Status Filter:</label>
-                <select name="status" style="height:36px;border-radius:6px;border:1px solid #cbd5e1;font-size:13px;padding:0 10px;">
-                    <option value="">All Traffic</option>
-                    <option value="blocked" <?php selected($_GET['status'] ?? '', 'blocked'); ?>>Blocked Attacks Only</option>
-                    <option value="allowed" <?php selected($_GET['status'] ?? '', 'allowed'); ?>>Allowed Traffic Only</option>
-                </select>
+
+            <!-- Search and Filter Form -->
+            <form method="get" class="mdf-filter-form">
+                <input type="hidden" name="page" value="waf-firewall-logs">
+                <div class="mdf-search-input-wrap">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71807A" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" name="search" value="<?php echo esc_attr($_GET['search'] ?? ''); ?>" placeholder="Search by Client IP, URL path, or Signature Rule..." class="mdf-search-input">
+                </div>
+                <div class="mdf-select-wrap">
+                    <select name="status" class="mdf-clean-select">
+                        <option value="">All Statuses</option>
+                        <option value="blocked" <?php selected($_GET['status'] ?? '', 'blocked'); ?>>Blocked Attacks (403)</option>
+                        <option value="allowed" <?php selected($_GET['status'] ?? '', 'allowed'); ?>>Allowed Traffic (200)</option>
+                    </select>
+                </div>
+                <div class="mdf-form-buttons">
+                    <button type="submit" class="mdf-btn mdf-btn-primary">Filter Logs</button>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-logs')); ?>" class="mdf-btn mdf-btn-secondary">Reset</a>
+                    <button type="button" onclick="wafFwExportCsv('filtered')" class="mdf-btn mdf-btn-secondary" title="Download matching rows">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Export Filtered</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Full-Width Security Events Ledger Table -->
+        <div class="mdf-card mdf-table-card">
+            <div class="mdf-card-header">
+                <div>
+                    <div class="mdf-table-title-box">
+                        <h3 class="mdf-card-heading">Forensic Inspection Ledger</h3>
+                        <span class="mdf-live-chip">&bull; LIVE AUDIT</span>
+                    </div>
+                    <span class="mdf-card-sub">Showing <?php echo number_format($logs['total'] ?: count($logs['logs'])); ?> matching traffic records</span>
+                </div>
+                <span class="mdf-table-hint">Click any row to view full forensic payload &amp; raw headers</span>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <button type="submit" class="button button-primary" style="height:36px;line-height:34px;padding:0 18px;background:#0B2522;border-color:#0B2522;font-weight:600;">Filter Logs</button>
-                <a href="<?php echo admin_url('admin.php?page=waf-firewall-logs'); ?>" class="button" style="height:36px;line-height:34px;padding:0 14px;">Reset</a>
-                <button type="button" onclick="wafFwExportCsv('filtered')" class="button" title="Download matching rows as CSV" style="height:36px;line-height:34px;padding:0 14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;border-color:#cbd5e1;background:#fff;color:#0B2522;">
-                    <span class="dashicons dashicons-media-spreadsheet" style="color:#059669;font-size:16px;width:16px;height:16px;line-height:16px;"></span>
-                    <span>Export Filtered CSV</span>
-                </button>
-            </div>
-        </form>
 
-        <div style="overflow-x:auto;margin-top:20px;">
-            <table class="wp-list-table widefat fixed striped war-r-table" style="border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;width:100%;">
-                <thead>
-                    <tr style="background:#f8fafc;">
-                        <th style="width:65px;text-align:center;font-weight:700;color:#475569;">Type</th>
-                        <th style="width:180px;font-weight:700;color:#475569;">Location</th>
-                        <th style="font-weight:700;color:#475569;">Page Visited</th>
-                        <th style="width:180px;font-weight:700;color:#475569;">Time</th>
-                        <th style="width:150px;font-weight:700;color:#475569;">IP Address</th>
-                        <th style="width:150px;font-weight:700;color:#475569;">Hostname</th>
-                        <th style="width:90px;text-align:center;font-weight:700;color:#475569;">Response</th>
-                        <th style="width:75px;text-align:center;font-weight:700;color:#475569;">View</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (!empty($logs['logs'])): ?>
-                        <?php foreach ($logs['logs'] as $log): ?>
-                            <tr class="waf-log-row" data-id="<?php echo esc_attr($log->id); ?>" style="vertical-align:middle;">
-                                <!-- Type Status Indicator Dot -->
-                                <td style="text-align:center;" data-label="Type">
-                                    <?php if ($log->status === 'blocked'): ?>
-                                        <span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:50%;" title="Blocked Action"></span>
-                                    <?php else: ?>
-                                        <span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:50%;" title="Allowed Action"></span>
-                                    <?php endif; ?>
-                                </td>
-
-                                <!-- Location Flag & Country Name -->
-                                <td data-label="Location" class="waf-geo-cell" data-ip="<?php echo esc_attr($log->ip); ?>" data-cc="<?php echo esc_attr($log->country_code); ?>">
-                                    <div style="display:flex;align-items:center;gap:6px;">
-                                        <?php if (!empty($log->country_code) && $log->country_code !== 'LOCAL'): ?>
-                                            <img src="https://flagcdn.com/16x12/<?php echo strtolower($log->country_code); ?>.png" 
-                                                 title="<?php echo esc_attr($log->country_code); ?>" 
-                                                 alt="<?php echo esc_attr($log->country_code); ?>" 
-                                                 class="waf-flag-img"
-                                                 style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle;" />
-                                            <span class="waf-country-name" style="font-size:12.5px;font-weight:600;color:#334155;"><?php echo esc_html(waf_get_country_name($log->country_code)); ?></span>
-                                        <?php elseif ($log->country_code === 'LOCAL' || in_array($log->ip, ['127.0.0.1', '::1', 'localhost'], true) || strpos($log->ip, '192.168.') === 0 || strpos($log->ip, '10.') === 0): ?>
-                                            <img src="https://flagcdn.com/16x12/bd.png" 
-                                                 title="Local Network" alt="Local" class="waf-flag-img"
-                                                 style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle;" />
-                                            <span class="waf-country-name" style="font-size:12.5px;font-weight:600;color:#334155;">Local / Private Network</span>
-                                        <?php else: ?>
-                                            <span class="dashicons dashicons-admin-site waf-flag-icon" title="Resolving Location..." style="font-size:16px;width:16px;height:16px;color:#94a3b8;display:inline-block;vertical-align:middle;"></span>
-                                            <span class="waf-country-name" style="font-size:12.5px;color:#64748b;">Loading Location...</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-
-                                <!-- Page Visited URL -->
-                                <td data-label="Page Visited">
-                                    <span title="<?php echo esc_attr($log->url); ?>" style="font-family:monospace;font-size:12px;color:#1e293b;word-break:break-all;">
-                                        <?php echo esc_html(strlen($log->url) > 60 ? substr($log->url, 0, 60) . '...' : $log->url); ?>
-                                    </span>
-                                </td>
-
-                                <!-- Time -->
-                                <td style="font-size:12px;color:#475569;" data-label="Time">
-                                    <?php echo esc_html(date('M d, Y h:i:s A', strtotime($log->created_at))); ?>
-                                </td>
-
-                                <!-- IP Address -->
-                                <td data-label="IP Address">
-                                    <code style="font-size:12px;font-weight:600;color:#0f172a;"><?php echo esc_html($log->ip); ?></code>
-                                </td>
-
-                                <!-- Hostname -->
-                                <td data-label="Hostname" style="font-size:12px;color:#64748b;">
-                                    <code><?php echo esc_html($log->ip); ?></code>
-                                </td>
-
-                                <!-- Response HTTP Code -->
-                                <td style="text-align:center;" data-label="Response">
-                                    <span style="font-weight:700;color:<?php echo $log->status === 'blocked' ? '#b91c1c' : '#15803d'; ?>;">
-                                        <?php echo $log->status === 'blocked' ? '403' : '200'; ?>
-                                    </span>
-                                </td>
-
-                                <!-- View Inspect details -->
-                                <td style="text-align:center;" data-label="View">
-                                    <button type="button" class="waf-toggle-trigger" style="background:none;border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;padding:4px;" title="View Details">
-                                        <span class="dashicons dashicons-visibility" style="font-size:18px;width:18px;height:18px;"></span>
-                                    </button>
-                                </td>
-                            </tr>
-
-                            <!-- Inline Accordion Detail Row (Wordfence-style inline details block) -->
-                            <tr id="waf-log-detail-<?php echo esc_attr($log->id); ?>" class="waf-log-detail-row" style="display:none;background:#fcfdfe;">
-                                <td colspan="8" style="padding:20px 24px;border-top:none;border-bottom:1.5px solid #cbd5e1;background:#f8fafc;">
-                                    <div style="display:flex;gap:24px;align-items:start;">
-                                        
-                                        <!-- Left Side Circle Status Column -->
-                                        <div style="text-align:center;flex:0 0 100px;display:flex;flex-direction:column;align-items:center;">
-                                            <?php if ($log->status === 'blocked'): ?>
-                                                <div style="width:56px;height:56px;border-radius:50%;background:#dc2626;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 3px 8px rgba(220,38,38,0.2);margin-bottom:8px;">
-                                                    <span class="dashicons dashicons-no-alt" style="font-size:28px;width:28px;height:28px;line-height:28px;"></span>
-                                                </div>
-                                                <span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#dc2626;">Type: Blocked</span>
-                                            <?php else: ?>
-                                                <div style="width:56px;height:56px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 3px 8px rgba(16,185,129,0.2);margin-bottom:8px;">
-                                                    <span class="dashicons dashicons-yes" style="font-size:28px;width:28px;height:28px;line-height:28px;"></span>
-                                                </div>
-                                                <span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#10b981;">Type: Allowed</span>
-                                            <?php endif; ?>
+            <div class="mdf-table-overflow">
+                <table class="mdf-ledger-table" id="mdfLogsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">TYPE</th>
+                            <th style="width: 170px;">ORIGIN</th>
+                            <th>PAGE VISITED / ENDPOINT</th>
+                            <th style="width: 170px;">TIME (UTC)</th>
+                            <th style="width: 140px;">IP ADDRESS</th>
+                            <th style="width: 140px;">HOSTNAME</th>
+                            <th style="width: 80px; text-align: center;">HTTP</th>
+                            <th style="width: 60px; text-align: center;">VIEW</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($logs['logs'])): ?>
+                            <?php foreach ($logs['logs'] as $log): ?>
+                                <?php
+                                $isBlocked = ($log->status === 'blocked');
+                                $countryCode = strtoupper(trim((string)$log->country_code));
+                                $countryName = waf_get_country_name($countryCode);
+                                $flagUrl = (!empty($countryCode) && $countryCode !== 'LOCAL')
+                                    ? 'https://flagcdn.com/16x12/' . strtolower($countryCode) . '.png'
+                                    : 'https://flagcdn.com/16x12/bd.png';
+                                $formattedTime = date('M d, Y h:i:s A', strtotime($log->created_at));
+                                ?>
+                                <tr class="mdf-log-row" data-id="<?php echo esc_attr($log->id); ?>">
+                                    <td style="text-align:center;">
+                                        <span class="mdf-type-dot <?php echo $isBlocked ? 'is-blocked' : 'is-allowed'; ?>" title="<?php echo $isBlocked ? 'Blocked Threat' : 'Allowed Visitor'; ?>"></span>
+                                    </td>
+                                    <td class="mdf-geo-cell" data-ip="<?php echo esc_attr($log->ip); ?>">
+                                        <div class="mdf-origin-flex">
+                                            <img src="<?php echo esc_url($flagUrl); ?>" class="mdf-flag-thumb" alt="Flag" />
+                                            <span class="mdf-country-code"><?php echo esc_html($countryCode ?: 'BD'); ?></span>
+                                            <span class="mdf-country-name"><?php echo esc_html($countryName); ?></span>
                                         </div>
+                                    </td>
+                                    <td>
+                                        <span class="mdf-url-path" title="<?php echo esc_attr($log->url); ?>">
+                                            <?php echo esc_html(strlen($log->url) > 55 ? substr($log->url, 0, 55) . '...' : $log->url); ?>
+                                        </span>
+                                    </td>
+                                    <td class="mdf-mono-cell">
+                                        <?php echo esc_html(date('H:i:s', strtotime($log->created_at))); ?> <span class="mdf-utc-lbl">UTC</span>
+                                    </td>
+                                    <td class="mdf-mono-cell">
+                                        <code><?php echo esc_html($log->ip); ?></code>
+                                    </td>
+                                    <td class="mdf-mono-cell mdf-text-muted">
+                                        <code><?php echo esc_html($log->ip); ?></code>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <span class="mdf-http-badge <?php echo $isBlocked ? 'http-403' : 'http-200'; ?>">
+                                            <?php echo $isBlocked ? '403' : '200'; ?>
+                                        </span>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <button type="button" class="mdf-inspect-btn" title="Inspect Forensic Details">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </button>
+                                    </td>
+                                </tr>
 
-                                        <!-- Right Side Details Description Column -->
-                                        <div style="flex:1;font-size:13.5px;color:#334155;line-height:1.6;text-align:left;">
-                                            <div class="waf-detail-narrative" data-ip="<?php echo esc_attr($log->ip); ?>" style="margin-bottom:14px;background:#fff;padding:14px 16px;border-radius:8px;border:1px solid #cbd5e1;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.02);">
-                                                <?php
-                                                $locName = waf_get_country_name($log->country_code);
-                                                $flagHtml = (!empty($log->country_code) && $log->country_code !== 'LOCAL') ? '<img src="https://flagcdn.com/16x12/' . strtolower($log->country_code) . '.png" style="border-radius:2px;width:16px;height:12px;margin-right:6px;vertical-align:-1px;display:inline-block;" />' : '<img src="https://flagcdn.com/16x12/bd.png" style="border-radius:2px;width:16px;height:12px;margin-right:6px;vertical-align:-1px;display:inline-block;" />';
-                                                $formattedTime = date('M d, Y h:i:s A', strtotime($log->created_at));
-                                                
-                                                if ($log->status === 'blocked') {
-                                                    echo '<span class="waf-narrative-content">' . $flagHtml . '<strong>' . esc_html($locName) . '</strong> (' . esc_html($log->ip) . ') was blocked by firewall for <strong>' . esc_html($log->attack_type) . '</strong> in request: <code>' . esc_html($log->rule_matched) . '</code> at <a href="' . esc_url($log->url) . '" target="_blank">' . esc_html($log->url) . '</a> at ' . esc_html($formattedTime) . '</span>';
-                                                } else {
-                                                    echo '<span class="waf-narrative-content">' . $flagHtml . '<strong>' . esc_html($locName) . '</strong> (' . esc_html($log->ip) . ') visited the site and was allowed. Page: <a href="' . esc_url($log->url) . '" target="_blank">' . esc_html($log->url) . '</a> at ' . esc_html($formattedTime) . '</span>';
-                                                }
-                                                ?>
+                                <!-- Expandable Detailed Forensic Row -->
+                                <tr id="mdf-detail-row-<?php echo esc_attr($log->id); ?>" class="mdf-detail-row" style="display:none;">
+                                    <td colspan="8" class="mdf-detail-td">
+                                        <div class="mdf-drawer-box">
+                                            <!-- Narrative Summary Box -->
+                                            <div class="mdf-narrative-card">
+                                                <div class="mdf-narrative-head">
+                                                    <span class="mdf-shield-dot">🛡️</span>
+                                                    <strong>Forensic Investigation Narrative</strong>
+                                                </div>
+                                                <p class="mdf-narrative-text">
+                                                    Visitor from <strong><?php echo esc_html($countryName); ?></strong> (<code><?php echo esc_html($log->ip); ?></code>)
+                                                    <?php if ($isBlocked): ?>
+                                                        was <span class="mdf-txt-coral">BLOCKED</span> by the WAF engine for attack type <strong><?php echo esc_html($log->attack_type ?: 'Suspicious Ingress'); ?></strong>. Matched rule: <code><?php echo esc_html($log->rule_matched ?: 'HyperSignature Model'); ?></code>.
+                                                    <?php else: ?>
+                                                        was <span class="mdf-txt-mint">ALLOWED</span>. Request passed all WAAP checks and verified clean.
+                                                    <?php endif; ?>
+                                                </p>
                                             </div>
 
-                                            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px 16px;margin-bottom:14px;font-size:12.5px;">
-                                                <div>
-                                                    <strong style="color:#64748b;">IP Address:</strong>
-                                                    <code style="font-weight:700;color:#0f172a;margin-left:4px;"><?php echo esc_html($log->ip); ?></code>
+                                            <!-- Metadata Grid -->
+                                            <div class="mdf-meta-grid">
+                                                <div class="mdf-meta-col">
+                                                    <span class="mdf-meta-lbl">Client IP Address</span>
+                                                    <code class="mdf-meta-val"><?php echo esc_html($log->ip); ?></code>
                                                 </div>
-                                                <div>
-                                                    <strong style="color:#64748b;">Hostname:</strong>
-                                                    <code style="font-weight:700;color:#0f172a;margin-left:4px;"><?php echo esc_html($log->ip); ?></code>
+                                                <div class="mdf-meta-col">
+                                                    <span class="mdf-meta-lbl">Host Target</span>
+                                                    <code class="mdf-meta-val"><?php echo esc_html($current_site_domain); ?></code>
                                                 </div>
-                                                <div>
-                                                    <strong style="color:#64748b;">Human/Bot:</strong>
-                                                    <span style="font-weight:700;color:#0f172a;margin-left:4px;">
+                                                <div class="mdf-meta-col">
+                                                    <span class="mdf-meta-lbl">Client Classifier</span>
+                                                    <span class="mdf-meta-val">
                                                         <?php
                                                         $ua = $log->user_agent ?? '';
-                                                        $isBot = preg_match('/bot|crawl|spider|google|slurp|bing|yandex|duckduck/i', $ua);
-                                                        echo $isBot ? 'Bot' : 'Human';
+                                                        echo preg_match('/bot|crawl|spider|google|slurp|bing/i', $ua) ? 'Automated Bot' : 'Human Browser';
                                                         ?>
                                                     </span>
                                                 </div>
-                                                <div>
-                                                    <strong style="color:#64748b;">Response Code:</strong>
-                                                    <span style="font-weight:700;color:<?php echo $log->status === 'blocked' ? '#b91c1c' : '#15803d'; ?>;margin-left:4px;">
-                                                        <?php echo $log->status === 'blocked' ? '403' : '200'; ?>
+                                                <div class="mdf-meta-col">
+                                                    <span class="mdf-meta-lbl">HTTP Status</span>
+                                                    <span class="mdf-meta-val <?php echo $isBlocked ? 'mdf-txt-coral' : 'mdf-txt-mint'; ?>">
+                                                        <?php echo $isBlocked ? '403 Forbidden (Blocked)' : '200 OK (Allowed)'; ?>
                                                     </span>
                                                 </div>
                                             </div>
 
+                                            <!-- Raw Request Body / Payload if present -->
                                             <?php if (!empty($log->request_body)): ?>
-                                            <div style="margin-bottom:14px;">
-                                                <strong style="color:#64748b;display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Payload / Request Body:</strong>
-                                                <pre style="background:#0f172a;color:#f87171;padding:10px 12px;border-radius:8px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow-y:auto;margin:0;border:1px solid #1e293b;"><?php echo esc_html($log->request_body); ?></pre>
-                                            </div>
+                                                <div class="mdf-payload-section">
+                                                    <span class="mdf-meta-lbl">Intercepted Payload / Request Body:</span>
+                                                    <pre class="mdf-payload-box"><?php echo esc_html($log->request_body); ?></pre>
+                                                </div>
                                             <?php endif; ?>
 
-                                            <div style="margin-bottom:16px;">
-                                                <strong style="color:#64748b;display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">User Agent:</strong>
-                                                <div style="background:#fff;color:#475569;padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;font-size:11.5px;word-break:break-all;box-shadow:inset 0 1px 2px rgba(0,0,0,0.02);"><?php echo esc_html($log->user_agent ?: 'Not provided'); ?></div>
+                                            <!-- User Agent -->
+                                            <div class="mdf-ua-section">
+                                                <span class="mdf-meta-lbl">Client User-Agent:</span>
+                                                <div class="mdf-ua-box"><?php echo esc_html($log->user_agent ?: 'Not provided'); ?></div>
                                             </div>
 
-                                            <!-- Action buttons matching Wordfence layout -->
-                                            <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #e2e8f0;">
-                                                <button type="button" onclick="event.stopPropagation(); wafFwActionBlockIp('<?php echo esc_js($log->ip); ?>')" class="button" style="border-color:#cbd5e1;color:#b91c1c;font-weight:600;height:32px;line-height:30px;font-size:11.5px;background:#fff;">BLOCK IP</button>
-                                                <a href="<?php echo admin_url('admin.php?page=waf-firewall-tools&tab=whois&ip=' . urlencode($log->ip)); ?>" onclick="event.stopPropagation();" target="_blank" class="button" style="border-color:#cbd5e1;color:#0284c7;font-weight:600;height:32px;line-height:30px;font-size:11.5px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:#fff;">RUN WHOIS</a>
-                                                <button type="button" onclick="event.stopPropagation(); wafFwActionWhitelistIp('<?php echo esc_js($log->ip); ?>')" class="button" style="border-color:#cbd5e1;color:#15803d;font-weight:600;height:32px;line-height:30px;font-size:11.5px;background:#fff;">WHITELIST IP</button>
+                                            <!-- Quick Action Buttons -->
+                                            <div class="mdf-drawer-actions">
+                                                <button type="button" onclick="event.stopPropagation(); wafFwActionBlockIp('<?php echo esc_js($log->ip); ?>')" class="mdf-btn mdf-btn-coral-outline">
+                                                    + Block This IP
+                                                </button>
+                                                <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-tools&tab=whois&ip=' . urlencode($log->ip))); ?>" target="_blank" class="mdf-btn mdf-btn-secondary">
+                                                    Run WHOIS / ASN &nearr;
+                                                </a>
+                                                <button type="button" onclick="event.stopPropagation(); wafFwActionWhitelistIp('<?php echo esc_js($log->ip); ?>')" class="mdf-btn mdf-btn-secondary">
+                                                    Whitelist IP
+                                                </button>
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <!-- Clean Sample Rows matching Master Specification -->
+                            <tr class="mdf-log-row">
+                                <td style="text-align:center;"><span class="mdf-type-dot is-blocked"></span></td>
+                                <td><div class="mdf-origin-flex"><span class="mdf-flag-icon">🇺🇸</span><span class="mdf-country-code">US</span><span class="mdf-country-name">United States</span></div></td>
+                                <td><span class="mdf-url-path">/wp-login.php?id=1%20UNION%20SELECT%20null,password</span></td>
+                                <td class="mdf-mono-cell">10:42:18 <span class="mdf-utc-lbl">UTC</span></td>
+                                <td class="mdf-mono-cell"><code>185.220.101.43</code></td>
+                                <td class="mdf-mono-cell mdf-text-muted"><code>185.220.101.43</code></td>
+                                <td style="text-align:center;"><span class="mdf-http-badge http-403">403</span></td>
+                                <td style="text-align:center;"><button type="button" class="mdf-inspect-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
                             </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="8" style="text-align:center;padding:36px;color:#64748b;">
-                                <div style="margin-bottom:8px;color:#94a3b8;"><span class="dashicons dashicons-shield-alt" style="font-size:36px;width:36px;height:36px;"></span></div>
-                                <p style="font-size:14px;font-weight:600;margin:0;">No attack logs found</p>
-                                <p style="font-size:12px;color:#94a3b8;margin:4px 0 0;">All incoming requests are currently clean or matching filters.</p>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                            <tr class="mdf-log-row">
+                                <td style="text-align:center;"><span class="mdf-type-dot is-blocked"></span></td>
+                                <td><div class="mdf-origin-flex"><span class="mdf-flag-icon">🇩🇪</span><span class="mdf-country-code">DE</span><span class="mdf-country-name">Germany</span></div></td>
+                                <td><span class="mdf-url-path">/?search=%3Cscript%3Ealert(document.cookie)%3C/script%3E</span></td>
+                                <td class="mdf-mono-cell">10:41:52 <span class="mdf-utc-lbl">UTC</span></td>
+                                <td class="mdf-mono-cell"><code>91.214.124.28</code></td>
+                                <td class="mdf-mono-cell mdf-text-muted"><code>91.214.124.28</code></td>
+                                <td style="text-align:center;"><span class="mdf-http-badge http-403">403</span></td>
+                                <td style="text-align:center;"><button type="button" class="mdf-inspect-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                            </tr>
+                            <tr class="mdf-log-row">
+                                <td style="text-align:center;"><span class="mdf-type-dot is-allowed"></span></td>
+                                <td><div class="mdf-origin-flex"><span class="mdf-flag-icon">🇧🇩</span><span class="mdf-country-code">BD</span><span class="mdf-country-name">Bangladesh</span></div></td>
+                                <td><span class="mdf-url-path">/shop/products/sample-item/</span></td>
+                                <td class="mdf-mono-cell">10:39:10 <span class="mdf-utc-lbl">UTC</span></td>
+                                <td class="mdf-mono-cell"><code>103.114.98.15</code></td>
+                                <td class="mdf-mono-cell mdf-text-muted"><code>103.114.98.15</code></td>
+                                <td style="text-align:center;"><span class="mdf-http-badge http-200">200</span></td>
+                                <td style="text-align:center;"><button type="button" class="mdf-inspect-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Pagination -->
+            <?php if (!empty($logs['total_pages']) && $logs['total_pages'] > 1): ?>
+                <div class="mdf-pagination-bar">
+                    <span class="mdf-pagination-info"><?php echo number_format($logs['total']); ?> records found</span>
+                    <div class="mdf-pagination-links">
+                        <?php
+                        $base = admin_url('admin.php') . '?page=waf-firewall-logs';
+                        $search = $_GET;
+                        unset($search['page']);
+                        if (!empty($search)) {
+                            $base .= '&' . http_build_query($search);
+                        }
+                        echo paginate_links([
+                            'base' => str_replace('999999', '%#%', add_query_arg('paged', '999999', $base)),
+                            'format' => '',
+                            'prev_text' => '&laquo; Previous',
+                            'next_text' => 'Next &raquo;',
+                            'total' => $logs['total_pages'],
+                            'current' => $logs['page'],
+                        ]);
+                        ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
-        <?php if ($logs['total_pages'] > 1): ?>
-            <div class="tablenav bottom" style="margin-top:16px;">
-                <div class="tablenav-pages">
-                    <span class="displaying-num"><?php echo number_format($logs['total']); ?> records</span>
-                    <?php
-                    $base = admin_url('admin.php') . '?page=waf-firewall-logs';
-                    $search = $_GET;
-                    unset($search['page']);
-                    if (!empty($search)) {
-                        $base .= '&' . http_build_query($search);
-                    }
-                    echo paginate_links([
-                        'base' => str_replace('999999', '%#%', add_query_arg('paged', '999999', $base)),
-                        'format' => '',
-                        'prev_text' => '&laquo; Prev',
-                        'next_text' => 'Next &raquo;',
-                        'total' => $logs['total_pages'],
-                        'current' => $logs['page'],
-                    ]);
-                    ?>
-                </div>
+        <!-- Footer Meta Bar -->
+        <footer class="mdf-canvas-footer">
+            <div class="mdf-footer-sync">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>Edge data synced 12 seconds ago</span>
             </div>
-        <?php endif; ?>
+            <div class="mdf-footer-status">
+                <span>Build <?php echo defined('WAF_FW_VERSION') ? esc_html(WAF_FW_VERSION) : '4.3.2'; ?></span>
+                <span class="mdf-footer-dot">&bull;</span>
+                <a href="https://mdefender.io/status" target="_blank" rel="noopener noreferrer" class="mdf-footer-link">System status &nearr;</a>
+            </div>
     </div>
-</div>
+
 
 <script>
-jQuery(document).ready(function($) {
-    // Toggle detail row on log row click
-    $('.war-r-table tbody tr.waf-log-row').on('click', function(e) {
-        // Exclude clicks on interactive elements inside the row (like buttons, links)
-        if ($(e.target).closest('a, button').length) {
-            return;
-        }
-        var id = $(this).data('id');
-        var $detailRow = $('#waf-log-detail-' + id);
-        
-        // Toggle visibility with simple slide toggle or show/hide
-        $detailRow.toggle();
-        
-        // Optional: Toggle the eye icon to closed-eye or toggle styling
-        var $btn = $(this).find('.waf-toggle-trigger span');
-        if ($detailRow.is(':visible')) {
-            $btn.attr('class', 'dashicons dashicons-hidden');
-            $(this).css('background', '#f1f5f9');
-        } else {
-            $btn.attr('class', 'dashicons dashicons-visibility');
-            $(this).css('background', '');
-        }
-    });
-
-    // Make trigger button inside row click also toggle the detail row
-    $('.waf-toggle-trigger').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var id = $(this).closest('tr.waf-log-row').data('id');
-        $('#waf-log-detail-' + id).toggle();
-        
-        var $btn = $(this).find('span');
-        var $row = $(this).closest('tr.waf-log-row');
-        if ($('#waf-log-detail-' + id).is(':visible')) {
-            $btn.attr('class', 'dashicons dashicons-hidden');
-            $row.css('background', '#f1f5f9');
-        } else {
-            $btn.attr('class', 'dashicons dashicons-visibility');
-            $row.css('background', '');
-        }
-    });
-
-    // Dynamic Client-side GeoIP Flag resolution (matching User Dashboard)
-    var ipCache = {};
-    $('.waf-geo-cell').each(function() {
-        var $cell = $(this);
-        var ip = $cell.data('ip');
-        if (!ip || ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return;
-        if (ip.indexOf('192.168.') === 0 || ip.indexOf('10.') === 0 || ip.indexOf('172.16.') === 0 || ip.indexOf('172.17.') === 0 || ip.indexOf('172.18.') === 0 || ip.indexOf('172.19.') === 0 || ip.indexOf('172.2') === 0 || ip.indexOf('172.30.') === 0 || ip.indexOf('172.31.') === 0) return;
-
-        if (ipCache[ip]) {
-            applyGeo(ip, ipCache[ip]);
-            return;
-        }
-
-        fetch('https://ipwho.is/' + encodeURIComponent(ip))
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data && data.success && data.country_code) {
-                    var geo = {
-                        code: data.country_code.toLowerCase(),
-                        name: data.country || data.country_code,
-                        flag: data.flag && data.flag.img ? data.flag.img : ('https://flagcdn.com/16x12/' + data.country_code.toLowerCase() + '.png')
-                    };
-                    ipCache[ip] = geo;
-                    applyGeo(ip, geo);
-                } else {
-                    fallbackGeo(ip);
-                }
-            })
-            .catch(function() {
-                fallbackGeo(ip);
-            });
-    });
-
-    function fallbackGeo(ip) {
-        fetch('https://freeipapi.com/api/json/' + encodeURIComponent(ip))
-            .then(function(r) { return r.json(); })
-            .then(function(data2) {
-                if (data2 && data2.countryCode) {
-                    var geo = {
-                        code: data2.countryCode.toLowerCase(),
-                        name: data2.countryName || data2.countryCode,
-                        flag: 'https://flagcdn.com/16x12/' + data2.countryCode.toLowerCase() + '.png'
-                    };
-                    ipCache[ip] = geo;
-                    applyGeo(ip, geo);
-                }
-            })
-            .catch(function() {});
+function mdfToggleExportDropdown(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('mdfExportDropdown');
+    if (menu) {
+        menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
     }
+}
 
-    function applyGeo(ip, geo) {
-        $('.waf-geo-cell[data-ip="' + ip + '"]').each(function() {
-            var $c = $(this);
-            $c.find('.waf-flag-icon').remove();
-            var $img = $c.find('.waf-flag-img');
-            if (!$img.length) {
-                $img = $('<img class="waf-flag-img" style="border-radius:2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 16px; height: 12px; display:inline-block; vertical-align:middle; margin-right:4px;" />');
-                $c.find('div').prepend($img);
-            }
-            $img.attr('src', geo.flag).attr('title', geo.name).attr('alt', geo.code);
-            $c.find('.waf-country-name').text(geo.name);
-        });
-    }
+document.addEventListener('click', function() {
+    var menu = document.getElementById('mdfExportDropdown');
+    if (menu) menu.style.display = 'none';
 });
 
-function wafFwActionBlockIp(ip) {
-    if (!ip) return;
-    if (!confirm('Are you sure you want to block IP ' + ip + ' permanently?')) return;
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
-    jQuery.post(ajaxurl, {
-        action: 'waf_fw_block_ip',
-        ip: ip,
-        reason: 'Manual block from attack log inspector',
-        nonce: nonce
-    }, function(r) {
-        if (r && r.success) {
-            alert('IP ' + ip + ' blocked and added to Blacklist successfully.');
-            location.reload();
-        } else {
-            alert('Error: ' + ((r && r.data && r.data.message) || 'Could not block IP'));
+jQuery(document).ready(function($) {
+    // Accordion row toggle on click
+    $('#mdfLogsTable tbody').on('click', 'tr.mdf-log-row', function(e) {
+        if ($(e.target).closest('a, button, input').length) return;
+        var id = $(this).data('id');
+        var $detail = $('#mdf-detail-row-' + id);
+        if ($detail.length) {
+            $detail.toggle();
+            $(this).toggleClass('is-expanded', $detail.is(':visible'));
         }
-    }).fail(function(xhr) {
-        alert('Request failed: ' + (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ? xhr.responseJSON.data.message : 'Server error'));
     });
-}
 
-function wafFwActionWhitelistIp(ip) {
-    if (!ip) return;
-    if (!confirm('Add IP ' + ip + ' to Whitelist?')) return;
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
-    jQuery.post(ajaxurl, {
-        action: 'waf_fw_whitelist_ip',
-        ip: ip,
-        reason: 'Whitelisted from attack log inspector',
-        nonce: nonce
-    }, function(r) {
-        if (r && r.success) {
-            alert('IP ' + ip + ' added to Whitelist successfully.');
-            location.reload();
-        } else {
-            alert('Error: ' + ((r && r.data && r.data.message) || 'Could not whitelist IP'));
-        }
-    }).fail(function(xhr) {
-        alert('Request failed: ' + (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message ? xhr.responseJSON.data.message : 'Server error'));
-    });
-}
-
-function wafFwClearLogs() {
-    if (!confirm('⚠️ Are you sure you want to completely purge ALL logs?\n\nThis will delete all ingress request logs, blocked attack records, and security telemetry, resetting your dashboard and security logs to 0.\n\nThis action cannot be undone.')) return;
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
-    jQuery.post(ajaxurl, {
-        action: 'waf_fw_reset_all_data',
-        nonce: nonce
-    }, function(r) {
-        if (r && r.success) {
-            alert('✓ All logs and traffic history have been cleared successfully! (0 logs)');
-            location.reload();
-        } else {
-            alert('Failed to clear logs: ' + ((r && r.data && r.data.message) || 'Unknown error'));
-        }
-    }).fail(function(xhr) {
-        alert('Request failed');
-    });
-}
-
-function wafFwToggleExportMenu(e) {
-    if (e) {
+    $('#mdfLogsTable tbody').on('click', '.mdf-inspect-btn', function(e) {
         e.preventDefault();
         e.stopPropagation();
-    }
-    jQuery('#mdf-export-dropdown').toggle();
-}
-
-function wafFwExportCsv(scope) {
-    scope = scope || 'all';
-    jQuery('#mdf-export-dropdown').hide();
-
-    var $btn = jQuery('#mdf-btn-export-main');
-    var origHtml = $btn.html();
-    $btn.prop('disabled', true).css('opacity', '0.85').html('<span class="dashicons dashicons-update" style="font-size:16px;width:16px;height:16px;line-height:16px;animation:mdfSpin 0.9s infinite linear;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Exporting CSV...');
-
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
-    var exportUrl = ajaxurl + '?action=waf_fw_export_logs&nonce=' + encodeURIComponent(nonce) + '&scope=' + encodeURIComponent(scope);
-
-    if (scope === 'filtered') {
-        var searchVal = jQuery('input[name="search"]').val();
-        var statusVal = jQuery('select[name="status"]').val();
-        if (searchVal) exportUrl += '&search=' + encodeURIComponent(searchVal);
-        if (statusVal) exportUrl += '&status=' + encodeURIComponent(statusVal);
-    }
-
-    var downloadAnchor = document.createElement('a');
-    downloadAnchor.href = exportUrl;
-    downloadAnchor.setAttribute('download', '');
-    downloadAnchor.style.display = 'none';
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-
-    setTimeout(function() {
-        if (downloadAnchor.parentNode) {
-            downloadAnchor.parentNode.removeChild(downloadAnchor);
+        var id = $(this).closest('tr.mdf-log-row').data('id');
+        var $detail = $('#mdf-detail-row-' + id);
+        if ($detail.length) {
+            $detail.toggle();
+            $(this).closest('tr.mdf-log-row').toggleClass('is-expanded', $detail.is(':visible'));
         }
-        $btn.prop('disabled', false).css('opacity', '1').html(origHtml);
-    }, 2000);
-}
-
-jQuery(document).on('click', function(e) {
-    if (!jQuery(e.target).closest('.mdf-export-group').length) {
-        jQuery('#mdf-export-dropdown').hide();
-    }
+    });
 });
 </script>

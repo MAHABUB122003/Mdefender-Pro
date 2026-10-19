@@ -85,8 +85,8 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
   return (
     <header className="header">
       <div className="header-left">
-        <button className="menu-toggle" id="menuToggle" onClick={onToggleSidebar} aria-label="Toggle Navigation">
-          <Menu size={18} />
+        <button type="button" className="menu-toggle" id="menuToggle" onClick={onToggleSidebar} aria-label="Toggle Navigation" style={{ cursor: 'pointer', padding: '6px' }}>
+          <Menu size={20} />
         </button>
         <div className="header-title-group">
           <div className="header-page-icon" style={{ background: '#FEF3EB', color: '#E8792F', border: '1px solid #FCD8BF' }}>

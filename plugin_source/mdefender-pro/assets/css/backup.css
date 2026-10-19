@@ -3,55 +3,57 @@
    ========================================================================== */
 
 :root {
-    --mdf-bk-bg: #f8fafc;
-    --mdf-bk-card: #ffffff;
-    --mdf-bk-border: #e2e8f0;
-    --mdf-bk-border-hover: #cbd5e1;
-    --mdf-bk-text-heading: #0f172a;
-    --mdf-bk-text-body: #334155;
-    --mdf-bk-text-muted: #64748b;
-    --mdf-bk-primary: #4f46e5;
-    --mdf-bk-primary-light: #eef2ff;
-    --mdf-bk-emerald: #10b981;
-    --mdf-bk-emerald-hover: #059669;
-    --mdf-bk-emerald-light: #ecfdf5;
-    --mdf-bk-emerald-text: #047857;
-    --mdf-bk-blue: #3b82f6;
-    --mdf-bk-blue-light: #eff6ff;
-    --mdf-bk-purple: #8b5cf6;
-    --mdf-bk-purple-light: #f5f3ff;
-    --mdf-bk-danger: #ef4444;
-    --mdf-bk-danger-hover: #dc2626;
-    --mdf-bk-danger-light: #fef2f2;
-    --mdf-bk-radius: 10px;
-    --mdf-bk-radius-sm: 6px;
-    --mdf-bk-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --mdf-bk-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --mdf-bk-bg: #F6F8F6;
+    --mdf-bk-card: #FFFFFF;
+    --mdf-bk-border: #E6ECE8;
+    --mdf-bk-border-hover: #CBD8CF;
+    --mdf-bk-text-heading: #0F2C26;
+    --mdf-bk-text-body: #0F2C26;
+    --mdf-bk-text-muted: #5B756E;
+    --mdf-bk-primary: #0F2C26;
+    --mdf-bk-primary-light: #E8EFEA;
+    --mdf-bk-emerald: #059669;
+    --mdf-bk-emerald-hover: #047857;
+    --mdf-bk-emerald-light: #ECFDF5;
+    --mdf-bk-emerald-text: #059669;
+    --mdf-bk-blue: #0F2C26;
+    --mdf-bk-blue-light: #E8EFEA;
+    --mdf-bk-purple: #10B981;
+    --mdf-bk-purple-light: #EDF7F2;
+    --mdf-bk-danger: #DF5A38;
+    --mdf-bk-danger-hover: #C54425;
+    --mdf-bk-danger-light: #FEF2F2;
+    --mdf-bk-radius: 18px;
+    --mdf-bk-radius-sm: 10px;
+    --mdf-bk-shadow-sm: 0 4px 16px -2px rgba(15, 44, 38, 0.04);
+    --mdf-bk-shadow-md: 0 8px 24px -4px rgba(15, 44, 38, 0.08);
 }
 
 .mdf-backup-container {
-    max-width: 1400px;
-    margin: 16px 0 40px 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    width: 100%;
+    margin: 0;
+    padding: 24px 32px 60px;
+    background: #F6F8F6;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--mdf-bk-text-body);
     font-size: 13px;
     line-height: 1.5;
+    box-sizing: border-box;
 }
 
 /* ── 1. Hero Header ── */
 .mdf-backup-hero {
     background: var(--mdf-bk-card);
     border: 1px solid var(--mdf-bk-border);
-    border-left: 4px solid var(--mdf-bk-primary);
     border-radius: var(--mdf-bk-radius);
-    padding: 22px 28px;
+    padding: 24px 28px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 20px;
     box-shadow: var(--mdf-bk-shadow-sm);
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .mdf-backup-hero-left {

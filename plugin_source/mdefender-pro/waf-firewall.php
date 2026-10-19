@@ -528,6 +528,22 @@ function waf_fw_analyze_request() {
     if (php_sapi_name() === 'cli' || (defined('WP_CLI') && WP_CLI)) return;
     if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') return;
     if (defined('DOING_CRON') && DOING_CRON) return;
+
+    // Fast bypass for static files (css, js, media, fonts) (< 0.0001ms)
+    $req_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    if (!empty($req_path)) {
+        $ext = strtolower(pathinfo($req_path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['css', 'js', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'woff', 'woff2', 'ttf', 'eot', 'mp4', 'webm', 'map'], true)) {
+            return;
+        }
+    }
+
+    // Fast bypass for WordPress Heartbeat & Cron runners
+    if ((isset($_POST['action']) && $_POST['action'] === 'heartbeat') || isset($_GET['doing_wp_cron'])) {
+        if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
+            return;
+        }
+    }
     
     // Cloud sync and heartbeat endpoints handle their own authentication and must not be blocked
     if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {

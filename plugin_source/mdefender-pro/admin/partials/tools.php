@@ -81,35 +81,54 @@ if (isset($_POST['waf_save_custom_login_url'])) {
 }
 ?>
 
-<div style="margin-bottom:24px;">
-    <h2 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 4px;letter-spacing:-0.4px;">Security Tools & Utilities</h2>
-    <p style="margin:0;font-size:13px;color:#64748b;">Manage Two-Factor Authentication (2FA), Custom Secret Login URL (WPS Hide Login), Whois Registries, Live Admin Attack Stream, and System Diagnostics.</p>
-</div>
+<div class="mdf-canvas-wrap">
+    <!-- TOP PLATFORM BREADCRUMB / STATUS BAR -->
+    <div class="mdf-platform-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="mdf-platform-left" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5B756E;">
+            <span style="color:#7A928B;">Platform</span>
+            <span style="color:#CBD8CF;">/</span>
+            <span style="color:#7A928B;">Utilities & Response</span>
+            <span style="color:#CBD8CF;">/</span>
+            <strong style="color:#0F2C26;font-weight:700;">Security Tools</strong>
+        </div>
+        <div class="mdf-platform-right">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #E6ECE8;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#0F2C26;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.2);"></span>
+                <span>Forensic Tooling Active</span>
+            </div>
+        </div>
+    </div>
 
-<!-- Tabs Navigation -->
-<div class="war-tools-tabs" style="display:flex;gap:6px;margin-bottom:20px;background:#f1f5f9;padding:6px;border-radius:10px;flex-wrap:wrap;">
-    <button type="button" class="war-tools-tab <?php echo $active_tab === '2fa' ? 'active' : ''; ?>" data-tab="waf-tools-2fa" style="flex:1;min-width:140px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-lock" style="font-size:16px;width:16px;height:16px;"></span> 2FA Protection
-    </button>
-    <button type="button" class="war-tools-tab <?php echo $active_tab === 'login-url' ? 'active' : ''; ?>" data-tab="waf-tools-login-url" style="flex:1;min-width:140px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-key" style="font-size:16px;width:16px;height:16px;"></span> Secret Login URL
-    </button>
-    <button type="button" class="war-tools-tab <?php echo $active_tab === 'integrity' ? 'active' : ''; ?>" data-tab="waf-tools-integrity" style="flex:1;min-width:160px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-media-code" style="font-size:16px;width:16px;height:16px;"></span> Core File Integrity
-    </button>
-    <button type="button" class="war-tools-tab <?php echo $active_tab === 'posthack' ? 'active' : ''; ?>" data-tab="waf-tools-posthack" style="flex:1;min-width:160px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-sos" style="font-size:16px;width:16px;height:16px;"></span> Post-Hack Recovery
-    </button>
-    <button type="button" class="war-tools-tab <?php echo $active_tab === 'whois' ? 'active' : ''; ?>" data-tab="waf-tools-whois" style="flex:1;min-width:120px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-admin-links" style="font-size:16px;width:16px;height:16px;"></span> Whois IP
-    </button>
-    <button type="button" class="war-tools-tab <?php echo $active_tab === 'attacks' ? 'active' : ''; ?>" data-tab="waf-tools-attacks" style="flex:1;min-width:140px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-visibility" style="font-size:16px;width:16px;height:16px;"></span> Attack Stream
-    </button>
-    <button type="button" class="war-tools-tab <?php echo $active_tab === 'diagnostics' ? 'active' : ''; ?>" data-tab="waf-tools-diagnostics" style="flex:1;min-width:130px;height:40px;border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
-        <span class="dashicons dashicons-dashboard" style="font-size:16px;width:16px;height:16px;"></span> Diagnostics
-    </button>
-</div>
+    <!-- HERO HEADER -->
+    <div class="mdf-canvas-hero" style="margin-bottom:24px;">
+        <h1 class="mdf-canvas-title" style="font-size:28px;font-weight:800;color:#0F2C26;letter-spacing:-0.02em;margin:0 0 6px 0;">Security <span style="color:#DF5A38;">Tools & Utilities.</span></h1>
+        <p class="mdf-canvas-subtitle" style="font-size:13.5px;color:#5B756E;margin:0;">Manage Two-Factor Authentication (2FA), Custom Secret Login URL, Core File Integrity, Post-Hack Recovery, and System Diagnostics.</p>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="war-tools-tabs" style="display:flex;gap:8px;margin-bottom:24px;background:#FFFFFF;border:1px solid #E6ECE8;padding:8px;border-radius:14px;flex-wrap:wrap;box-shadow:0 4px 16px -2px rgba(15,44,38,0.04);">
+        <button type="button" class="war-tools-tab <?php echo $active_tab === '2fa' ? 'active' : ''; ?>" data-tab="waf-tools-2fa" style="flex:1;min-width:140px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-lock" style="font-size:16px;width:16px;height:16px;"></span> 2FA Protection
+        </button>
+        <button type="button" class="war-tools-tab <?php echo $active_tab === 'login-url' ? 'active' : ''; ?>" data-tab="waf-tools-login-url" style="flex:1;min-width:140px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-key" style="font-size:16px;width:16px;height:16px;"></span> Secret Login URL
+        </button>
+        <button type="button" class="war-tools-tab <?php echo $active_tab === 'integrity' ? 'active' : ''; ?>" data-tab="waf-tools-integrity" style="flex:1;min-width:160px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-media-code" style="font-size:16px;width:16px;height:16px;"></span> Core File Integrity
+        </button>
+        <button type="button" class="war-tools-tab <?php echo $active_tab === 'posthack' ? 'active' : ''; ?>" data-tab="waf-tools-posthack" style="flex:1;min-width:160px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-sos" style="font-size:16px;width:16px;height:16px;"></span> Post-Hack Recovery
+        </button>
+        <button type="button" class="war-tools-tab <?php echo $active_tab === 'whois' ? 'active' : ''; ?>" data-tab="waf-tools-whois" style="flex:1;min-width:120px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-admin-links" style="font-size:16px;width:16px;height:16px;"></span> Whois IP
+        </button>
+        <button type="button" class="war-tools-tab <?php echo $active_tab === 'attacks' ? 'active' : ''; ?>" data-tab="waf-tools-attacks" style="flex:1;min-width:140px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-visibility" style="font-size:16px;width:16px;height:16px;"></span> Attack Stream
+        </button>
+        <button type="button" class="war-tools-tab <?php echo $active_tab === 'diagnostics' ? 'active' : ''; ?>" data-tab="waf-tools-diagnostics" style="flex:1;min-width:130px;height:42px;border:none;border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s ease;">
+            <span class="dashicons dashicons-dashboard" style="font-size:16px;width:16px;height:16px;"></span> Diagnostics
+        </button>
+    </div>
 
 <!-- TAB 1: 2FA -->
 <div id="waf-tools-2fa" class="war-tools-section" style="<?php echo $active_tab !== '2fa' ? 'display:none;' : ''; ?>">
@@ -1144,3 +1163,31 @@ jQuery(document).ready(function($) {
     <?php endif; ?>
 });
 </script>
+
+<style>
+.war-tools-tab {
+    color: #5B756E !important;
+    background: transparent !important;
+}
+.war-tools-tab:hover {
+    color: #0F2C26 !important;
+    background: #F4F8F5 !important;
+}
+.war-tools-tab.active {
+    background: #0F2C26 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 2px 8px rgba(15,44,38,0.15) !important;
+}
+.war-card {
+    background: #FFFFFF !important;
+    border: 1px solid #E6ECE8 !important;
+    border-radius: 18px !important;
+    box-shadow: 0 4px 16px -2px rgba(15,44,38,0.04) !important;
+}
+.war-card-header {
+    background: #FFFFFF !important;
+    border-bottom: 1px solid #E6ECE8 !important;
+    padding: 20px 24px !important;
+}
+</style>
+</div><!-- .mdf-canvas-wrap -->

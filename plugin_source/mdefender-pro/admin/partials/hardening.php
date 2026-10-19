@@ -60,16 +60,28 @@ $feature_icons = [
 <link rel="stylesheet" id="war-harden-css-direct" href="<?php echo esc_url(defined('WAF_FW_PLUGIN_URL') ? WAF_FW_PLUGIN_URL . 'assets/css/hardening.css?v=' . (defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.2.2') : ''); ?>">
 
 <div class="war-harden-container">
+    <!-- TOP PLATFORM BREADCRUMB / STATUS BAR -->
+    <div class="mdf-platform-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="mdf-platform-left" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5B756E;">
+            <span style="color:#7A928B;">Platform</span>
+            <span style="color:#CBD8CF;">/</span>
+            <span style="color:#7A928B;">Posture Management</span>
+            <span style="color:#CBD8CF;">/</span>
+            <strong style="color:#0F2C26;font-weight:700;">Website Hardening</strong>
+        </div>
+        <div class="mdf-platform-right">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #E6ECE8;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#0F2C26;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.2);"></span>
+                <span>Security Boundaries Active</span>
+            </div>
+        </div>
+    </div>
+
     <!-- 1. Header -->
     <div class="war-harden-header-card">
         <div class="war-header-main">
-            <div class="war-brand-row">
-                <span class="war-brand-tag">MDEFENDER PRO</span>
-                <span class="war-brand-divider">/</span>
-                <span class="war-module-title">Website Hardening</span>
-            </div>
-            <h1 class="war-page-headline">Enterprise Security Hardening &amp; Posture Management</h1>
-            <p class="war-page-desc">Systematic WordPress core protection, access boundary enforcement, continuous drift monitoring, and atomic safety rollbacks.</p>
+            <h1 class="war-page-headline" style="font-size:28px;font-weight:800;color:#0F2C26;letter-spacing:-0.02em;margin:0 0 6px 0;">Security <span style="color:#DF5A38;">Hardening.</span></h1>
+            <p class="war-page-desc" style="font-size:13.5px;color:#5B756E;margin:0;">Systematic WordPress core protection, access boundary enforcement, continuous drift monitoring, and atomic safety rollbacks.</p>
         </div>
 
         <div class="war-header-metrics">

@@ -29,54 +29,35 @@ class WAF_FW_Rate_Limiter {
             return false;
         }
 
-        $burst_window = 5; // 5-second burst detection
-        $burst_limit = 25; // 25 requests in 5 seconds indicates automated flooding
-        $key = 'waf_fw_burst_' . md5($ip);
-        $now = time();
+        // Local loopback and private networks never burst flood (< 0.0001ms)
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0' ||
+            strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
+            return false;
+        }
 
-        // 1. High-speed APCu in-memory burst check
-        if (function_exists('apcu_fetch')) {
-            $burst_data = apcu_fetch($key);
-            if (!is_array($burst_data)) {
-                $burst_data = [];
-            }
-            $window_start = $now - $burst_window;
-            $burst_data = array_values(array_filter($burst_data, function($t) use ($window_start) {
-                return $t > $window_start;
-            }));
-            $burst_data[] = $now;
-            apcu_store($key, $burst_data, $burst_window + 2);
+        $burst_limit = 25; // 25 requests in 5 seconds
+        $slice = floor(time() / 5);
+        $key = 'waf_burst_' . md5($ip . '_' . $slice);
 
-            if (count($burst_data) >= $burst_limit) {
+        if (function_exists('apcu_inc')) {
+            $count = apcu_inc($key, 1, $success, 10);
+            if ($count >= $burst_limit) {
                 if (class_exists('WAF_FW_IP_Filter')) {
-                    WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Anti-DDoS Shield: Volumetric burst flood detected (' . count($burst_data) . ' reqs/5s)', 7200);
+                    WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Anti-DDoS Shield: Volumetric burst flood detected (' . $count . ' reqs/5s)', 7200);
                 }
                 return true;
             }
             return false;
         }
 
-        // 2. High-performance transient fallback with atomic window
-        $burst_data = get_transient($key);
-        if ($burst_data) {
-            $burst_data = json_decode($burst_data, true);
-        }
-        if (!is_array($burst_data)) {
-            $burst_data = [];
-        }
-        $window_start = $now - $burst_window;
-        $burst_data = array_values(array_filter($burst_data, function($t) use ($window_start) {
-            return $t > $window_start;
-        }));
-        $burst_data[] = $now;
-        set_transient($key, json_encode($burst_data), $burst_window + 2);
-
-        if (count($burst_data) >= $burst_limit) {
+        $count = (int) get_transient($key);
+        if ($count >= $burst_limit) {
             if (class_exists('WAF_FW_IP_Filter')) {
-                WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Anti-DDoS Shield: Volumetric burst flood detected (' . count($burst_data) . ' reqs/5s)', 7200);
+                WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Anti-DDoS Shield: Volumetric burst flood detected (' . $count . ' reqs/5s)', 7200);
             }
             return true;
         }
+        set_transient($key, $count + 1, 10);
 
         return false;
     }
@@ -86,27 +67,10 @@ class WAF_FW_Rate_Limiter {
         if (get_option('waf_fw_rate_limit_enabled', 'yes') === 'no') {
             return false;
         }
-        $max_requests = $custom_max !== null ? max(1, (int) $custom_max) : $this->get_max_requests();
-        $key = 'waf_fw_rate_' . md5($ip);
 
-        // 1. Fast-path in-memory APCu cache (< 0.001ms)
-        if (function_exists('apcu_fetch')) {
-            $data = apcu_fetch($key);
-            if (!$data) {
-                return false;
-            }
-            $now = time();
-            $window_start = $now - $this->window_seconds;
-            $data = array_values(array_filter($data, function($t) use ($window_start) {
-                return $t > $window_start;
-            }));
-            if (count($data) >= $max_requests) {
-                apcu_store($key, $data, $this->window_seconds);
-                if (class_exists('WAF_FW_IP_Filter')) {
-                    WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Rate limit exceeded (' . $max_requests . ' req/min)', 3600);
-                }
-                return true;
-            }
+        // Local loopback and private networks are never rate limited (< 0.0001ms)
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0' ||
+            strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
             return false;
         }
 

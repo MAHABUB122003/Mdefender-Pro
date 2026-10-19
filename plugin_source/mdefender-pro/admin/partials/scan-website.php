@@ -1,14 +1,14 @@
 <?php
 /**
- * MDefender Pro - Autonomous Security Radar & Website Security Scan
+ * MDefender Pro - Autonomous Security Radar & Website Security Scanner
  * 
- * Clean, modern white enterprise dashboard theme matching MDefender Pro core.
+ * Enterprise SOC Theme matching MDefender Pro core design system.
  * Features:
- * - Prominent Large Autonomous Security Radar HUD (Canvas)
+ * - Prominent Autonomous Security Radar HUD (Canvas)
  * - 18 Security Domains Telemetry Matrix
- * - Asynchronous Micro-Batch Queues (Zero heavy synchronous requests)
- * - Evidence-Driven Threat Findings Center with Safe Quarantine & Visual Diff
- * - Security Event Timeline & Historical Audits
+ * - Asynchronous Micro-Batch Forensic Queues
+ * - Evidence-Driven Threat Findings Center with Visual Diff & Quarantine
+ * - Security Event Timeline & Historical Audit Ledger
  *
  * @package MDefender_Pro
  */
@@ -20,59 +20,101 @@ $scheduled_enabled = get_option('waf_fw_scheduled_scan_enabled', 'yes');
 $scheduled_interval = get_option('waf_fw_scheduled_scan_interval', 'weekly');
 $scheduled_email = get_option('waf_fw_scheduled_scan_email', get_option('admin_email'));
 $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
+
+global $wpdb;
+$table_integrity = $wpdb->prefix . 'waf_file_integrity';
+$table_scan_results = $wpdb->prefix . 'waf_scan_results';
+$table_file_changes = $wpdb->prefix . 'waf_file_changes';
+
+$monitored_files_count = 0;
+if ($wpdb->get_var("SHOW TABLES LIKE '{$table_integrity}'") === $table_integrity) {
+    $monitored_files_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_integrity}");
+}
+
+$last_scan_record = null;
+if ($wpdb->get_var("SHOW TABLES LIKE '{$table_scan_results}'") === $table_scan_results) {
+    $last_scan_record = $wpdb->get_row("SELECT * FROM {$table_scan_results} ORDER BY id DESC LIMIT 1");
+}
+
+$active_threats_count = 0;
+if ($wpdb->get_var("SHOW TABLES LIKE '{$table_file_changes}'") === $table_file_changes) {
+    $active_threats_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$table_file_changes} WHERE status != 'resolved'");
+}
+
+$last_scan_date = get_option('waf_fw_last_scan_date', '');
+if (!$last_scan_date && $last_scan_record && !empty($last_scan_record->created_at)) {
+    $last_scan_date = $last_scan_record->created_at;
+}
+$last_scan_display = !empty($last_scan_date) ? human_time_diff(strtotime($last_scan_date), current_time('timestamp')) . ' ago' : 'Not scanned yet';
+$last_scan_duration = ($last_scan_record && !empty($last_scan_record->duration_seconds)) ? 'Duration: ' . $last_scan_record->duration_seconds . 's' : ($last_scan_date ? 'Duration: ~1m' : 'Ready to scan');
+$health_score = $last_scan_record && isset($last_scan_record->score) ? (int)$last_scan_record->score : ($active_threats_count > 0 ? 75 : 100);
+$health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 80 ? 'Good Security Posture' : 'Action Required');
 ?>
 
-<div class="mdf-radar-wrapper" id="mdfRadarWrapper">
+<div class="mdf-canvas-wrap">
 
-    <!-- TOP AUTONOMOUS RADAR HERO CARD (CLEAN WHITE ENTERPRISE HUD) -->
-    <div class="mdf-card mdf-hud-hero-card">
-        <!-- Top Row: Title, Global Status & Actions -->
-        <div class="mdf-hud-top-row">
-            <div class="mdf-hud-brand">
-                <div class="mdf-live-pill">
-                    <span class="mdf-live-dot"></span>
-                    <span class="mdf-live-label">AUTONOMOUS RADAR ACTIVE</span>
-                </div>
-                <h2 class="mdf-hud-title">MDefender Security Radar</h2>
-                <p class="mdf-hud-subtitle">Continuous Real-Time Website Monitoring, File Integrity & Cloud ML Defense</p>
+    <!-- TOP PLATFORM BREADCRUMB / STATUS BAR -->
+    <div class="mdf-platform-bar">
+        <div class="mdf-platform-left" style="display:flex;align-items:center;gap:10px;">
+            <div style="width:24px;height:24px;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(15,44,38,0.12);background:#FFFFFF;flex-shrink:0;">
+                <img src="<?php echo defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.png') : ''; ?>" alt="MDefender Pro Logo" style="width:100%;height:100%;object-fit:contain;">
             </div>
-
-            <!-- Global Status Badge & Action Buttons -->
-            <div class="mdf-hud-actions-stack">
-                <div class="mdf-status-badge mdf-status-protected" id="mdfGlobalStatusPill">
-                    <span class="mdf-status-dot" id="mdfGlobalStatusDot"></span>
-                    <span class="mdf-status-text" id="mdfGlobalStatusText">SYSTEM PROTECTED</span>
-                </div>
-
-                <div class="mdf-btn-group">
-                    <button type="button" class="button button-primary mdf-btn-primary" id="wafStartFullScan">
-                        <span class="dashicons dashicons-shield-alt"></span>
-                        <span>START FULL SCAN</span>
-                    </button>
-                    <button type="button" class="button mdf-btn-secondary" id="wafStartQuickScan">
-                        <span class="dashicons dashicons-performance"></span>
-                        <span>QUICK SCAN</span>
-                    </button>
-                    <button type="button" class="button mdf-btn-warning" id="wafPauseScan" style="display:none;">
-                        <span class="dashicons dashicons-controls-pause"></span>
-                        <span>Pause</span>
-                    </button>
-                    <button type="button" class="button mdf-btn-danger" id="wafCancelScan" style="display:none;">
-                        <span class="dashicons dashicons-no-alt"></span>
-                        <span>Cancel</span>
-                    </button>
-                </div>
+            <span class="mdf-platform-crumb">MDefender Pro</span>
+            <span class="mdf-platform-sep">/</span>
+            <span class="mdf-platform-crumb">Threat Intelligence</span>
+            <span class="mdf-platform-sep">/</span>
+            <strong class="mdf-platform-active">Website Security Scanner</strong>
+        </div>
+        <div class="mdf-platform-right">
+            <div class="mdf-shield-status-pill">
+                <span class="mdf-pulse-dot"></span>
+                <span class="mdf-shield-text">Autonomous Radar Armed</span>
             </div>
         </div>
+    </div>
 
-        <!-- Radar Main Grid: Large Radar Canvas on Left + Live Metrics on Right -->
+    <!-- HERO HEADER -->
+    <div class="mdf-canvas-hero">
+        <div class="mdf-canvas-hero-left">
+            <h1 class="mdf-canvas-title">Website Threat <span class="mdf-canvas-highlight">Scanner.</span></h1>
+            <p class="mdf-canvas-subtitle">Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics.</p>
+        </div>
+        <div class="mdf-canvas-hero-right">
+            <div class="mdf-status-badge mdf-status-protected" id="mdfGlobalStatusPill">
+                <span class="mdf-status-dot" id="mdfGlobalStatusDot"></span>
+                <span class="mdf-status-text" id="mdfGlobalStatusText">SYSTEM PROTECTED</span>
+            </div>
+            <div class="mdf-btn-group">
+                <button type="button" class="mdf-primary-action-btn" id="wafStartFullScan">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>START FULL SCAN</span>
+                </button>
+                <button type="button" class="mdf-secondary-action-btn" id="wafStartQuickScan">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>QUICK SCAN</span>
+                </button>
+                <button type="button" class="mdf-warning-action-btn" id="wafPauseScan" style="display:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    <span>Pause</span>
+                </button>
+                <button type="button" class="mdf-danger-action-btn" id="wafCancelScan" style="display:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <span>Cancel</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN RADAR HUD HERO CARD -->
+    <div class="mdf-unified-card mdf-hud-hero-card" id="mdfRadarWrapper">
         <div class="mdf-hud-main-grid">
-            <!-- Left: Large High-Resolution Autonomous Radar Display -->
+            
+            <!-- Left Column: Circular Autonomous Cyber Radar HUD -->
             <div class="mdf-radar-display-column">
                 <div class="mdf-radar-viewport">
-                    <canvas id="mdfRadarCanvas" width="360" height="360"></canvas>
+                    <canvas id="mdfRadarCanvas" width="340" height="340"></canvas>
                     <div class="mdf-radar-center-target">
-                        <span class="dashicons dashicons-shield"></span>
+                        <svg class="mdf-radar-center-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
                         <span class="mdf-radar-score-display" id="mdfRadarCenterScore">100%</span>
                         <span class="mdf-radar-target-label">SECURE</span>
                     </div>
@@ -84,112 +126,115 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
                     </div>
                     <div class="mdf-meta-block" style="text-align:right;">
                         <span class="mdf-meta-title">RADAR SWEEP</span>
-                        <strong class="mdf-meta-val mdf-text-blue" id="mdfSweepStatus">Active Continuous</strong>
+                        <strong class="mdf-meta-val mdf-text-emerald" id="mdfSweepStatus">Active Continuous</strong>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Real-Time Telemetry Metrics Grid -->
+            <!-- Right Column: Real-Time Telemetry Metrics Grid -->
             <div class="mdf-metrics-column">
                 <div class="mdf-metrics-grid">
+                    
                     <!-- Metric 1: Security Health Score -->
-                    <div class="mdf-stat-card">
-                        <div class="mdf-stat-icon-wrap mdf-icon-emerald">
-                            <span class="dashicons dashicons-shield-alt"></span>
+                    <div class="mdf-telemetry-item">
+                        <div class="mdf-telemetry-icon mdf-icon-emerald">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
                         </div>
-                        <div class="mdf-stat-body">
-                            <div class="mdf-stat-label">SECURITY HEALTH</div>
-                            <div class="mdf-stat-value" id="wafScanScore">100<span class="mdf-stat-unit">/100</span></div>
-                            <div class="mdf-stat-sub mdf-text-emerald" id="mdfHealthSub">A+ Pristine Integrity</div>
+                        <div class="mdf-telemetry-body">
+                            <div class="mdf-telemetry-label">SECURITY HEALTH</div>
+                            <div class="mdf-telemetry-val" id="wafScanScore"><?php echo esc_html($health_score); ?><span class="mdf-telemetry-unit">/100</span></div>
+                            <div class="mdf-telemetry-sub mdf-text-emerald" id="mdfHealthSub"><?php echo esc_html($health_sub); ?></div>
                         </div>
                     </div>
 
                     <!-- Metric 2: Files Monitored -->
-                    <div class="mdf-stat-card">
-                        <div class="mdf-stat-icon-wrap mdf-icon-blue">
-                            <span class="dashicons dashicons-media-document"></span>
+                    <div class="mdf-telemetry-item">
+                        <div class="mdf-telemetry-icon mdf-icon-forest">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         </div>
-                        <div class="mdf-stat-body">
-                            <div class="mdf-stat-label">FILES MONITORED</div>
-                            <div class="mdf-stat-value" id="wafSummaryFilesCount">6,120</div>
-                            <div class="mdf-stat-sub">SHA-256 Baseline Tracked</div>
+                        <div class="mdf-telemetry-body">
+                            <div class="mdf-telemetry-label">FILES MONITORED</div>
+                            <div class="mdf-telemetry-val" id="wafSummaryFilesCount"><?php echo $monitored_files_count > 0 ? number_format($monitored_files_count) : '0'; ?></div>
+                            <div class="mdf-telemetry-sub"><?php echo $monitored_files_count > 0 ? 'SHA-256 Baseline Tracked' : 'Pending Baseline Scan'; ?></div>
                         </div>
                     </div>
 
                     <!-- Metric 3: Components Audited -->
-                    <div class="mdf-stat-card">
-                        <div class="mdf-stat-icon-wrap mdf-icon-indigo">
-                            <span class="dashicons dashicons-admin-plugins"></span>
+                    <div class="mdf-telemetry-item">
+                        <div class="mdf-telemetry-icon mdf-icon-mint">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                         </div>
-                        <div class="mdf-stat-body">
-                            <div class="mdf-stat-label">COMPONENTS AUDITED</div>
-                            <div class="mdf-stat-value" id="wafSummaryThemesCount">18 Modules</div>
-                            <div class="mdf-stat-sub">Core, Plugins, Themes & DB</div>
+                        <div class="mdf-telemetry-body">
+                            <div class="mdf-telemetry-label">COMPONENTS AUDITED</div>
+                            <div class="mdf-telemetry-val" id="wafSummaryThemesCount">18 Modules</div>
+                            <div class="mdf-telemetry-sub">Core, Plugins, Themes &amp; DB</div>
                         </div>
                     </div>
 
                     <!-- Metric 4: Active Threats -->
-                    <div class="mdf-stat-card">
-                        <div class="mdf-stat-icon-wrap mdf-icon-red">
-                            <span class="dashicons dashicons-warning"></span>
+                    <div class="mdf-telemetry-item">
+                        <div class="mdf-telemetry-icon mdf-icon-coral">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         </div>
-                        <div class="mdf-stat-body">
-                            <div class="mdf-stat-label">ACTIVE THREATS</div>
-                            <div class="mdf-stat-value mdf-text-red" id="wafCriticalCount">0</div>
-                            <div class="mdf-stat-sub" id="mdfThreatSub">0 Actionable Threats</div>
+                        <div class="mdf-telemetry-body">
+                            <div class="mdf-telemetry-label">ACTIVE THREATS</div>
+                            <div class="mdf-telemetry-val <?php echo $active_threats_count > 0 ? 'mdf-text-coral' : 'mdf-text-emerald'; ?>" id="wafCriticalCount"><?php echo number_format($active_threats_count); ?></div>
+                            <div class="mdf-telemetry-sub" id="mdfThreatSub"><?php echo $active_threats_count > 0 ? number_format($active_threats_count) . ' Actionable Threats' : '0 Actionable Threats'; ?></div>
                         </div>
                     </div>
 
                     <!-- Metric 5: Last Deep Analysis -->
-                    <div class="mdf-stat-card">
-                        <div class="mdf-stat-icon-wrap mdf-icon-purple">
-                            <span class="dashicons dashicons-clock"></span>
+                    <div class="mdf-telemetry-item">
+                        <div class="mdf-telemetry-icon mdf-icon-forest">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         </div>
-                        <div class="mdf-stat-body">
-                            <div class="mdf-stat-label">LAST DEEP ANALYSIS</div>
-                            <div class="mdf-stat-value mdf-text-sm" id="wafScanDate">Just now</div>
-                            <div class="mdf-stat-sub" id="wafScanDuration">Duration: 1m 42s</div>
+                        <div class="mdf-telemetry-body">
+                            <div class="mdf-telemetry-label">LAST DEEP ANALYSIS</div>
+                            <div class="mdf-telemetry-val mdf-text-sm" id="wafScanDate"><?php echo esc_html($last_scan_display); ?></div>
+                            <div class="mdf-telemetry-sub" id="wafScanDuration"><?php echo esc_html($last_scan_duration); ?></div>
                         </div>
                     </div>
 
                     <!-- Metric 6: Monitoring Uptime -->
-                    <div class="mdf-stat-card">
-                        <div class="mdf-stat-icon-wrap mdf-icon-amber">
-                            <span class="dashicons dashicons-dashboard"></span>
+                    <div class="mdf-telemetry-item">
+                        <div class="mdf-telemetry-icon mdf-icon-emerald">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                         </div>
-                        <div class="mdf-stat-body">
-                            <div class="mdf-stat-label">AUTONOMOUS UPTIME</div>
-                            <div class="mdf-stat-value">99.98%</div>
-                            <div class="mdf-stat-sub">Micro-Batch Queue Watcher</div>
+                        <div class="mdf-telemetry-body">
+                            <div class="mdf-telemetry-label">AUTONOMOUS UPTIME</div>
+                            <div class="mdf-telemetry-val">99.98%</div>
+                            <div class="mdf-telemetry-sub">Micro-Batch Queue Watcher</div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- Bottom Quick Settings Strip -->
                 <div class="mdf-hud-control-strip">
                     <div class="mdf-switch-group">
-                        <label class="mdf-switch">
+                        <label class="mdf-canvas-toggle">
                             <input type="checkbox" id="mdfContinuousMonitoringToggle" <?php checked($continuous_monitoring, 'yes'); ?>>
-                            <span class="mdf-slider round"></span>
+                            <span class="mdf-canvas-toggle-slider"></span>
                         </label>
                         <span class="mdf-switch-label">Continuous Real-Time Monitoring</span>
                     </div>
 
                     <div class="mdf-strip-actions">
                         <a href="#" id="wafOpenScheduleBtn" class="mdf-strip-btn">
-                            <span class="dashicons dashicons-calendar-alt"></span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             <span>Scan Scheduling</span>
                         </a>
                         <a href="#" id="wafEmailReportBtn" class="mdf-strip-btn">
-                            <span class="dashicons dashicons-email"></span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                             <span>Email Report</span>
                         </a>
                     </div>
                 </div>
+
             </div>
         </div>
 
-        <!-- Live Scanning Progress Telemetry HUD (Shown when scan is active) -->
+        <!-- Live Scanning Progress Telemetry HUD (Shown dynamically when scan is active) -->
         <div id="wafScanProgress" class="mdf-scan-live-progress" style="display:none;">
             <div class="mdf-progress-top-row">
                 <div class="mdf-progress-stage-info">
@@ -235,7 +280,7 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
                     <span id="wafStreamText">Auditing file checksums and testing for webshell AST patterns...</span>
                 </div>
                 <div class="mdf-terminal-right">
-                    <span id="wafScannedFileCount">0</span> / <span id="wafTotalFileCount">6,120</span> files &bull; Elapsed: <span id="wafScanElapsed">0s</span>
+                    <span id="wafScannedFileCount">0</span> / <span id="wafTotalFileCount"><?php echo $monitored_files_count > 0 ? number_format($monitored_files_count) : '0'; ?></span> files &bull; Elapsed: <span id="wafScanElapsed">0s</span>
                 </div>
             </div>
         </div>
@@ -244,21 +289,24 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     <!-- 18 SECURITY DOMAINS RADAR MATRIX -->
     <div class="mdf-section-heading">
         <div class="mdf-heading-left">
-            <span class="dashicons dashicons-networking mdf-heading-icon"></span>
-            <h3 class="mdf-heading-title">18 Security Domains Radar Matrix</h3>
+            <svg class="mdf-heading-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <h3 class="mdf-heading-title">18 Autonomous Security Domains Matrix</h3>
         </div>
-        <span class="mdf-badge-pill">CONTINUOUS AUTONOMOUS MONITORING</span>
+        <span class="mdf-badge-pill">REAL-TIME CONTINUOUS AUDIT</span>
     </div>
 
     <div class="mdf-domains-grid" id="mdfDomainsGrid">
+        
         <!-- 1. Filesystem -->
         <div class="mdf-domain-card" data-domain="filesystem" id="domain-card-filesystem">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-blue"><span class="dashicons dashicons-portfolio"></span></div>
+                <div class="mdf-domain-icon mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-filesystem">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Filesystem Sentinel</h4>
-            <p class="mdf-domain-desc">New, modified, deleted & executable files in uploads</p>
+            <p class="mdf-domain-desc">New, modified, deleted & executable files in uploads folder</p>
             <div class="mdf-domain-foot">
                 <span>Checked: <strong class="domain-time">Just now</strong></span>
                 <span><strong class="domain-count">0</strong> findings</span>
@@ -268,7 +316,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 2. Malware -->
         <div class="mdf-domain-card" data-domain="malware" id="domain-card-malware">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-emerald"><span class="dashicons dashicons-shield"></span></div>
+                <div class="mdf-domain-icon mdf-icon-emerald">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-malware">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Malware & Trojan Scanner</h4>
@@ -282,7 +332,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 3. Backdoors / Webshells -->
         <div class="mdf-domain-card" data-domain="backdoors" id="domain-card-backdoors">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-red"><span class="dashicons dashicons-code-standards"></span></div>
+                <div class="mdf-domain-icon mdf-icon-coral">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-backdoors">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Backdoors & Webshells</h4>
@@ -296,7 +348,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 4. File Integrity -->
         <div class="mdf-domain-card" data-domain="integrity" id="domain-card-integrity">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-indigo"><span class="dashicons dashicons-yes-alt"></span></div>
+                <div class="mdf-domain-icon mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-integrity">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">File Integrity Monitor</h4>
@@ -310,7 +364,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 5. WordPress Core Integrity -->
         <div class="mdf-domain-card" data-domain="wp_core" id="domain-card-wp_core">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-blue"><span class="dashicons dashicons-wordpress"></span></div>
+                <div class="mdf-domain-icon mdf-icon-mint">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-wp_core">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">WordPress Core Integrity</h4>
@@ -324,7 +380,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 6. Plugin Integrity -->
         <div class="mdf-domain-card" data-domain="plugins" id="domain-card-plugins">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-purple"><span class="dashicons dashicons-admin-plugins"></span></div>
+                <div class="mdf-domain-icon mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-plugins">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Plugin Integrity & Health</h4>
@@ -338,7 +396,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 7. Theme Integrity -->
         <div class="mdf-domain-card" data-domain="themes" id="domain-card-themes">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-amber"><span class="dashicons dashicons-admin-appearance"></span></div>
+                <div class="mdf-domain-icon mdf-icon-mint">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-themes">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Theme Integrity</h4>
@@ -352,7 +412,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 8. Database Security -->
         <div class="mdf-domain-card" data-domain="database" id="domain-card-database">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-emerald"><span class="dashicons dashicons-database"></span></div>
+                <div class="mdf-domain-icon mdf-icon-emerald">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-database">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Database Security</h4>
@@ -366,7 +428,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 9. User Security -->
         <div class="mdf-domain-card" data-domain="users" id="domain-card-users">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-indigo"><span class="dashicons dashicons-admin-users"></span></div>
+                <div class="mdf-domain-icon mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-users">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">User & Privilege Audit</h4>
@@ -380,7 +444,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 10. Option & Config Security -->
         <div class="mdf-domain-card" data-domain="config" id="domain-card-config">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-blue"><span class="dashicons dashicons-admin-generic"></span></div>
+                <div class="mdf-domain-icon mdf-icon-mint">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-config">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Option & Config Security</h4>
@@ -394,7 +460,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 11. Public Exposure Sentinel -->
         <div class="mdf-domain-card" data-domain="exposure" id="domain-card-exposure">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-red"><span class="dashicons dashicons-hidden"></span></div>
+                <div class="mdf-domain-icon mdf-icon-coral">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-exposure">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Public Exposure Sentinel</h4>
@@ -408,7 +476,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 12. Vulnerability & CVE DB -->
         <div class="mdf-domain-card" data-domain="vulnerabilities" id="domain-card-vulnerabilities">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-amber"><span class="dashicons dashicons-warning"></span></div>
+                <div class="mdf-domain-icon mdf-icon-amber">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-vulnerabilities">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Vulnerability & CVE DB</h4>
@@ -422,7 +492,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 13. Security Headers -->
         <div class="mdf-domain-card" data-domain="headers" id="domain-card-headers">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-purple"><span class="dashicons dashicons-list-view"></span></div>
+                <div class="mdf-domain-icon mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-headers">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Security Headers Guard</h4>
@@ -436,7 +508,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 14. PHP & Server Configuration -->
         <div class="mdf-domain-card" data-domain="server" id="domain-card-server">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-blue"><span class="dashicons dashicons-desktop"></span></div>
+                <div class="mdf-domain-icon mdf-icon-mint">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-server">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">PHP & Server Config</h4>
@@ -450,7 +524,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 15. Suspicious Changes -->
         <div class="mdf-domain-card" data-domain="changes" id="domain-card-changes">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-emerald"><span class="dashicons dashicons-edit"></span></div>
+                <div class="mdf-domain-icon mdf-icon-emerald">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-changes">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Suspicious Changes</h4>
@@ -464,7 +540,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 16. Threat Intelligence & ML -->
         <div class="mdf-domain-card" data-domain="threat_intel" id="domain-card-threat_intel">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-indigo"><span class="dashicons dashicons-cloud"></span></div>
+                <div class="mdf-domain-icon mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-threat_intel">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Threat Intelligence & ML</h4>
@@ -478,7 +556,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 17. Suspicious Redirects -->
         <div class="mdf-domain-card" data-domain="redirects" id="domain-card-redirects">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-red"><span class="dashicons dashicons-external"></span></div>
+                <div class="mdf-domain-icon mdf-icon-coral">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-redirects">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">Suspicious Redirects</h4>
@@ -492,7 +572,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- 18. SEO Spam & Content Injection -->
         <div class="mdf-domain-card" data-domain="seo_spam" id="domain-card-seo_spam">
             <div class="mdf-domain-head">
-                <div class="mdf-domain-icon mdf-icon-amber"><span class="dashicons dashicons-format-aside"></span></div>
+                <div class="mdf-domain-icon mdf-icon-amber">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
                 <span class="mdf-dom-badge badge-secure" id="badge-domain-seo_spam">SECURE</span>
             </div>
             <h4 class="mdf-domain-name">SEO Spam & Injected Content</h4>
@@ -502,31 +584,32 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
                 <span><strong class="domain-count">0</strong> findings</span>
             </div>
         </div>
+
     </div>
 
     <!-- EVIDENCE-DRIVEN THREAT FINDINGS CENTER -->
-    <div class="mdf-card mdf-findings-card" id="wafScanResults">
+    <div class="mdf-unified-card mdf-findings-card" id="wafScanResults">
         <div class="mdf-findings-head-row">
             <div class="mdf-findings-head-left">
-                <h3 class="mdf-findings-title">
-                    <span class="dashicons dashicons-shield"></span>
-                    <span>Security Findings & Forensic Analysis</span>
-                </h3>
+                <div class="mdf-findings-title-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
+                    <h3 class="mdf-findings-title">Security Findings & Forensic Analysis</h3>
+                </div>
                 <span class="mdf-count-pill" id="wafResultsFoundCount">0 Issues</span>
             </div>
 
             <!-- Action Buttons -->
             <div class="mdf-findings-head-actions">
-                <button type="button" class="button" id="wafToggleAllDetailsBtn">
-                    <span class="dashicons dashicons-editor-expand"></span>
+                <button type="button" class="mdf-secondary-action-btn" id="wafToggleAllDetailsBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                     <span id="wafToggleAllText">Expand All</span>
                 </button>
-                <button type="button" class="button mdf-btn-danger-outline" id="wafBulkCleanBtn">
-                    <span class="dashicons dashicons-trash"></span>
+                <button type="button" class="mdf-outline-coral-btn" id="wafBulkCleanBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     <span>Quarantine All Threats</span>
                 </button>
-                <button type="button" class="button mdf-btn-emerald-outline" id="wafBulkRestoreBtn">
-                    <span class="dashicons dashicons-update"></span>
+                <button type="button" class="mdf-outline-emerald-btn" id="wafBulkRestoreBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     <span>Repair All Core Files</span>
                 </button>
             </div>
@@ -543,7 +626,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         <!-- Findings List -->
         <div id="wafScanDetails" class="mdf-findings-list">
             <div class="mdf-empty-state" id="mdfNoFindingsState">
-                <div class="mdf-empty-icon"><span class="dashicons dashicons-yes-alt"></span></div>
+                <div class="mdf-empty-icon">
+                    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                </div>
                 <h4>Zero Threats Detected</h4>
                 <p>Your WordPress files, core checksums, database and server configuration match pristine baseline integrity.</p>
             </div>
@@ -552,11 +637,14 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 
     <!-- SECURITY TIMELINE & SCAN HISTORY DUAL GRID -->
     <div class="mdf-dual-grid">
+        
         <!-- Security Event Timeline -->
-        <div class="mdf-card">
+        <div class="mdf-unified-card">
             <div class="mdf-card-header">
                 <div class="mdf-card-header-left">
-                    <span class="dashicons dashicons-backup mdf-card-icon mdf-text-blue"></span>
+                    <div class="mdf-card-icon-wrap mdf-icon-forest">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
                     <div>
                         <h3 class="mdf-card-title">Autonomous Security Timeline</h3>
                         <p class="mdf-card-subtitle">Real-time security events, file changes & defense actions.</p>
@@ -578,16 +666,18 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         </div>
 
         <!-- Historical Scans -->
-        <div class="mdf-card">
+        <div class="mdf-unified-card">
             <div class="mdf-card-header">
                 <div class="mdf-card-header-left">
-                    <span class="dashicons dashicons-analytics mdf-card-icon mdf-text-indigo"></span>
+                    <div class="mdf-card-icon-wrap mdf-icon-mint">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </div>
                     <div>
                         <h3 class="mdf-card-title">Scan History</h3>
                         <p class="mdf-card-subtitle">Historical audits and deep diagnostic reports.</p>
                     </div>
                 </div>
-                <button type="button" class="button button-small" id="wafClearHistory" style="color:#dc2626;">Clear History</button>
+                <button type="button" class="mdf-clear-history-btn" id="wafClearHistory">Clear History</button>
             </div>
             <div class="mdf-table-container">
                 <table class="mdf-clean-table">
@@ -611,7 +701,9 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
                 </table>
             </div>
         </div>
+
     </div>
+
 </div>
 
 <!-- ======================================================= -->
@@ -623,13 +715,15 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     <div class="mdf-modal-box mdf-modal-diff">
         <div class="mdf-modal-header">
             <div class="mdf-modal-header-left">
-                <span class="dashicons dashicons-randomize mdf-text-blue" style="font-size:20px;width:20px;height:20px;"></span>
+                <div class="mdf-modal-icon-badge mdf-icon-forest">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/><line x1="14" y1="10" x2="21" y2="3"/></svg>
+                </div>
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <strong id="wafDiffFileName" style="font-size:14px;color:#0f172a;">wp-includes/version.php</strong>
+                        <strong id="wafDiffFileName" style="font-size:14px;color:#0F2C26;">wp-includes/version.php</strong>
                         <span id="wafDiffWpVersion" class="mdf-badge-pill">WordPress Core</span>
                     </div>
-                    <div style="font-size:12px;color:#64748b;margin-top:2px;">Compare local modified file against pristine official WordPress.org release version</div>
+                    <div style="font-size:12px;color:#5B756E;margin-top:2px;">Compare local modified file against pristine official WordPress.org release version</div>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
@@ -643,11 +737,11 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 
         <div class="mdf-diff-meta-bar">
             <div style="display:flex;gap:16px;">
-                <span style="color:#475569;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:6px;"></span>Official (WordPress.org): <strong id="wafDiffOriginalMeta">Loading...</strong></span>
-                <span style="color:#475569;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:6px;"></span>Local Disk: <strong id="wafDiffLocalMeta">Loading...</strong></span>
+                <span style="color:#475569;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10B981;margin-right:6px;"></span>Official (WordPress.org): <strong id="wafDiffOriginalMeta">Loading...</strong></span>
+                <span style="color:#475569;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#DF5A38;margin-right:6px;"></span>Local Disk: <strong id="wafDiffLocalMeta">Loading...</strong></span>
             </div>
             <div id="wafDiffLineStats" style="font-weight:600;font-family:monospace;font-size:12px;">
-                <span style="color:#059669;">+0 additions</span> &bull; <span style="color:#dc2626;">-0 deletions</span>
+                <span style="color:#059669;">+0 additions</span> &bull; <span style="color:#DF5A38;">-0 deletions</span>
             </div>
         </div>
 
@@ -660,14 +754,14 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
                 <div id="wafDiffSplitView" class="mdf-diff-split-view">
                     <div class="mdf-diff-pane mdf-pane-left">
                         <div class="mdf-diff-pane-title pane-pristine">
-                            <span class="dashicons dashicons-yes-alt"></span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                             ORIGINAL WORDPRESS.ORG FILE (PRISTINE)
                         </div>
                         <table class="waf-diff-table" id="wafDiffLeftTable"></table>
                     </div>
                     <div class="mdf-diff-pane mdf-pane-right">
                         <div class="mdf-diff-pane-title pane-modified">
-                            <span class="dashicons dashicons-warning"></span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                             MODIFIED LOCAL FILE (CURRENT SERVER)
                         </div>
                         <table class="waf-diff-table" id="wafDiffRightTable"></table>
@@ -681,16 +775,16 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
         </div>
 
         <div class="mdf-modal-footer">
-            <div style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px;">
-                <span class="dashicons dashicons-shield text-blue" style="font-size:16px;width:16px;height:16px;"></span>
+            <div style="font-size:12px;color:#5B756E;display:flex;align-items:center;gap:6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 <span>Restoring will safely backup this file to <code>wp-content/mdefender-backups/</code> before restoring official code.</span>
             </div>
             <div style="display:flex;gap:8px;">
-                <button type="button" class="button" id="wafDiffCancelBtn">Close</button>
-                <button type="button" class="button" id="wafDiffIgnoreBtn">Ignore This Issue</button>
-                <button type="button" class="button button-primary" id="wafDiffRestoreBtn" style="background:#059669;border-color:#059669;">
-                    <span class="dashicons dashicons-update" style="margin-top:2px;"></span>
-                    Restore to Pristine Official Version
+                <button type="button" class="mdf-secondary-action-btn" id="wafDiffCancelBtn">Close</button>
+                <button type="button" class="mdf-secondary-action-btn" id="wafDiffIgnoreBtn">Ignore This Issue</button>
+                <button type="button" class="mdf-primary-action-btn" id="wafDiffRestoreBtn" style="background:#059669;border-color:#059669;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <span>Restore to Pristine Official Version</span>
                 </button>
             </div>
         </div>
@@ -702,8 +796,10 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     <div class="mdf-modal-box mdf-modal-code">
         <div class="mdf-modal-header">
             <div style="display:flex;align-items:center;gap:8px;">
-                <span class="dashicons dashicons-media-code mdf-text-blue"></span>
-                <strong id="wafCodeModalTitle" style="font-size:14px;color:#0f172a;">File Source Inspector</strong>
+                <div class="mdf-modal-icon-badge mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
+                <strong id="wafCodeModalTitle" style="font-size:14px;color:#0F2C26;">File Source Inspector</strong>
             </div>
             <button type="button" id="wafCloseCodeModalBtn" class="mdf-modal-close">&times;</button>
         </div>
@@ -718,22 +814,27 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 <div id="wafScheduleModal" class="mdf-modal-backdrop" style="display:none;">
     <div class="mdf-modal-box mdf-modal-form">
         <div class="mdf-modal-header">
-            <strong style="font-size:16px;color:#0f172a;">Autonomous Scan Scheduling</strong>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="mdf-modal-icon-badge mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <strong style="font-size:16px;color:#0F2C26;">Autonomous Scan Scheduling</strong>
+            </div>
             <button type="button" id="wafScheduleModalClose" class="mdf-modal-close">&times;</button>
         </div>
         <div class="mdf-modal-body">
-            <p style="font-size:13px;color:#64748b;margin:0 0 16px;">Configure periodic deep background security scans powered by WP-Cron with zero performance impact.</p>
+            <p style="font-size:13px;color:#5B756E;margin:0 0 16px;">Configure periodic deep background security scans powered by WP-Cron with zero performance impact.</p>
             
             <div style="margin-bottom:14px;">
-                <label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:#0f172a;cursor:pointer;">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:#0F2C26;cursor:pointer;">
                     <input type="checkbox" id="wafScheduledScanEnabled" value="yes" <?php checked($scheduled_enabled, 'yes'); ?>>
                     Enable Automated Background Deep Scans
                 </label>
             </div>
 
             <div style="margin-bottom:14px;">
-                <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Frequency:</label>
-                <select id="wafScheduledScanInterval" style="width:100%;height:36px;border-radius:6px;border:1px solid #cbd5e1;font-size:13px;">
+                <label style="font-size:12px;font-weight:600;color:#5B756E;display:block;margin-bottom:6px;">Frequency:</label>
+                <select id="wafScheduledScanInterval" class="mdf-input-select">
                     <option value="daily" <?php selected($scheduled_interval, 'daily'); ?>>Daily Deep Scan</option>
                     <option value="weekly" <?php selected($scheduled_interval, 'weekly'); ?>>Weekly Deep Scan (Recommended)</option>
                     <option value="monthly" <?php selected($scheduled_interval, 'monthly'); ?>>Monthly Deep Scan</option>
@@ -741,13 +842,13 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
             </div>
 
             <div style="margin-bottom:16px;">
-                <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Email Security Report to:</label>
-                <input type="email" id="wafScheduledScanEmail" value="<?php echo esc_attr($scheduled_email); ?>" style="width:100%;height:36px;border-radius:6px;border:1px solid #cbd5e1;padding:0 12px;font-size:13px;box-sizing:border-box;">
+                <label style="font-size:12px;font-weight:600;color:#5B756E;display:block;margin-bottom:6px;">Email Security Report to:</label>
+                <input type="email" id="wafScheduledScanEmail" class="mdf-input-text" value="<?php echo esc_attr($scheduled_email); ?>">
             </div>
         </div>
         <div class="mdf-modal-footer">
-            <button type="button" class="button" id="wafScheduleCancel">Cancel</button>
-            <button type="button" class="button button-primary" id="wafScheduleSave">Save Schedule</button>
+            <button type="button" class="mdf-secondary-action-btn" id="wafScheduleCancel">Cancel</button>
+            <button type="button" class="mdf-primary-action-btn" id="wafScheduleSave">Save Schedule</button>
         </div>
     </div>
 </div>
@@ -756,194 +857,257 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 <div id="wafEmailModal" class="mdf-modal-backdrop" style="display:none;">
     <div class="mdf-modal-box mdf-modal-form">
         <div class="mdf-modal-header">
-            <strong style="font-size:16px;color:#0f172a;">Email Security Assessment</strong>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="mdf-modal-icon-badge mdf-icon-forest">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <strong style="font-size:16px;color:#0F2C26;">Email Security Assessment</strong>
+            </div>
             <button type="button" id="wafEmailModalClose" class="mdf-modal-close">&times;</button>
         </div>
         <div class="mdf-modal-body">
-            <p style="font-size:13px;color:#64748b;margin:0 0 16px;">Send the full scan assessment and threat findings to your email inbox.</p>
-            <input type="email" id="wafReportEmail" value="<?php echo esc_attr(get_option('admin_email')); ?>" style="width:100%;height:36px;border-radius:6px;border:1px solid #cbd5e1;padding:0 12px;font-size:13px;box-sizing:border-box;margin-bottom:16px;">
+            <p style="font-size:13px;color:#5B756E;margin:0 0 16px;">Send the full scan assessment and threat findings to your email inbox.</p>
+            <input type="email" id="wafReportEmail" class="mdf-input-text" value="<?php echo esc_attr(get_option('admin_email')); ?>" style="margin-bottom:16px;">
         </div>
         <div class="mdf-modal-footer">
-            <button type="button" class="button" id="wafEmailCancel">Cancel</button>
-            <button type="button" class="button button-primary" id="wafEmailSend">Send Report</button>
+            <button type="button" class="mdf-secondary-action-btn" id="wafEmailCancel">Cancel</button>
+            <button type="button" class="mdf-primary-action-btn" id="wafEmailSend">Send Report</button>
         </div>
     </div>
 </div>
 
 <style>
 /* ==========================================================================
-   MDefender Pro - Autonomous Security Radar Design System (Clean White Theme)
+   MDefender Pro - Unified Enterprise Security Scanner Design System
+   Matches Command Center Dashboard Theme:
+   Base Canvas: #F6F8F6 | White Cards: #FFFFFF | Border: #E6ECE8
+   Spruce: #0F2C26 | Emerald: #059669 | Terracotta Coral: #DF5A38
    ========================================================================== */
 
-.mdf-radar-wrapper {
-    max-width: 1400px;
-    margin: 20px auto 40px 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    color: #334155;
+.mdf-canvas-wrap {
+    background: #F6F8F6;
+    padding: 24px 32px 60px;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0F2C26;
+    box-sizing: border-box;
+    width: 100%;
+    margin-left: 0;
+}
+
+.mdf-canvas-wrap *, .mdf-canvas-wrap *::before, .mdf-canvas-wrap *::after {
     box-sizing: border-box;
 }
 
-.mdf-radar-wrapper *, .mdf-radar-wrapper *::before, .mdf-radar-wrapper *::after {
-    box-sizing: border-box;
-}
-
-/* CARDS */
-.mdf-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-    margin-bottom: 24px;
-}
-
-/* HUD HERO CARD */
-.mdf-hud-hero-card {
-    border-top: 3px solid #2563eb;
-}
-
-.mdf-hud-top-row {
+/* TOP PLATFORM BAR */
+.mdf-platform-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #f1f5f9;
-    padding-bottom: 18px;
+    margin-bottom: 20px;
+}
+
+.mdf-platform-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #5B756E;
+}
+
+.mdf-platform-crumb {
+    color: #7A928B;
+}
+
+.mdf-platform-sep {
+    color: #CBD8CF;
+}
+
+.mdf-platform-active {
+    color: #0F2C26;
+    font-weight: 700;
+}
+
+.mdf-shield-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #FFFFFF;
+    border: 1px solid #E6ECE8;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0F2C26;
+    box-shadow: 0 1px 3px rgba(15,44,38,0.03);
+}
+
+.mdf-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    animation: mdfPulseEmerald 1.8s infinite ease-in-out;
+}
+
+@keyframes mdfPulseEmerald {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.85); opacity: 0.45; }
+}
+
+/* HERO HEADER */
+.mdf-canvas-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
     margin-bottom: 24px;
     flex-wrap: wrap;
     gap: 16px;
 }
 
-.mdf-hud-brand {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.mdf-live-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    padding: 3px 10px;
-    border-radius: 999px;
-    width: fit-content;
-    font-size: 11px;
-    font-weight: 700;
-    color: #1d4ed8;
-    letter-spacing: 0.04em;
-}
-
-.mdf-live-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #2563eb;
-    box-shadow: 0 0 6px #2563eb;
-    animation: mdfLivePulse 1.4s infinite ease-in-out;
-}
-
-@keyframes mdfLivePulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(0.85); opacity: 0.35; }
-}
-
-.mdf-hud-title {
-    margin: 2px 0 0 0;
-    font-size: 20px;
+.mdf-canvas-title {
+    font-size: 32px;
     font-weight: 800;
-    color: #0f172a;
+    color: #0F2C26;
+    margin: 0 0 6px 0;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
 }
 
-.mdf-hud-subtitle {
+.mdf-canvas-highlight {
+    color: #DF5A38;
+}
+
+.mdf-canvas-subtitle {
+    font-size: 14px;
+    color: #5B756E;
     margin: 0;
-    font-size: 13px;
-    color: #64748b;
+    font-weight: 500;
 }
 
-.mdf-hud-actions-stack {
+.mdf-canvas-hero-right {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
 .mdf-status-badge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
+    gap: 6px;
     padding: 6px 14px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
-    color: #065f46;
+    letter-spacing: 0.04em;
+}
+
+.mdf-status-protected {
+    background: #ECFDF5;
+    color: #059669;
+    border: 1px solid #A7F3D0;
 }
 
 .mdf-status-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    background: #059669;
 }
 
 .mdf-btn-group {
     display: flex;
-    gap: 8px;
     align-items: center;
+    gap: 8px;
 }
 
-.mdf-btn-primary {
-    font-weight: 700 !important;
-    font-size: 13.5px !important;
-    height: 40px !important;
-    line-height: 38px !important;
-    padding: 0 20px !important;
-    border-radius: 6px !important;
-    background: #2563eb !important;
-    border-color: #1d4ed8 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+.mdf-primary-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #0F2C26;
+    color: #FFFFFF !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 18px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(15,44,38,0.15);
+    transition: all 0.2s ease;
 }
 
-.mdf-btn-secondary {
-    font-weight: 700 !important;
-    font-size: 13px !important;
-    height: 40px !important;
-    line-height: 38px !important;
-    padding: 0 16px !important;
-    border-radius: 6px !important;
-    background: #f0f9ff !important;
-    border-color: #bae6fd !important;
-    color: #0284c7 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
+.mdf-primary-action-btn:hover {
+    background: #183D35;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15,44,38,0.22);
 }
 
-.mdf-btn-warning {
-    background: #f59e0b !important;
-    border-color: #f59e0b !important;
-    color: #fff !important;
-    height: 40px !important;
+.mdf-secondary-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #FFFFFF;
+    color: #0F2C26;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1px solid #E6ECE8;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.mdf-btn-danger {
-    background: #ef4444 !important;
-    border-color: #ef4444 !important;
-    color: #fff !important;
-    height: 40px !important;
+.mdf-secondary-action-btn:hover {
+    background: #F4F8F5;
+    border-color: #CBD8CF;
+    color: #0F2C26;
 }
 
-/* MAIN HUD GRID */
+.mdf-warning-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #D97706;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+}
+
+.mdf-danger-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #DC2626;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+}
+
+/* UNIFIED CARDS */
+.mdf-unified-card {
+    background: #FFFFFF;
+    border: 1px solid #E6ECE8;
+    border-radius: 20px;
+    padding: 24px 28px;
+    box-shadow: 0 4px 20px -2px rgba(15,44,38,0.04);
+    margin-bottom: 24px;
+}
+
+/* HUD MAIN GRID */
 .mdf-hud-main-grid {
     display: grid;
-    grid-template-columns: 380px 1fr;
-    gap: 28px;
+    grid-template-columns: 360px 1fr;
+    gap: 32px;
     align-items: center;
 }
 
@@ -953,32 +1117,29 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     }
 }
 
-/* RADAR CANVAS DISPLAY - HIGH-END WHITE ENTERPRISE HUD */
+/* RADAR VIEWPORT */
 .mdf-radar-display-column {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    border-radius: 14px;
-    padding: 18px 16px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+    background: #F9FAF9;
+    border: 1px solid #E6ECE8;
+    border-radius: 18px;
+    padding: 20px;
 }
 
 .mdf-radar-viewport {
     position: relative;
-    width: 330px;
-    height: 330px;
+    width: 320px;
+    height: 320px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-#mdfRadarCanvas {
-    width: 330px;
-    height: 330px;
+.mdf-radar-viewport canvas {
+    display: block;
     border-radius: 50%;
-    box-shadow: 0 0 25px rgba(14, 165, 233, 0.08);
 }
 
 .mdf-radar-center-target {
@@ -986,367 +1147,161 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 82px;
-    height: 82px;
+    width: 108px;
+    height: 108px;
     border-radius: 50%;
-    background: radial-gradient(circle, #ffffff 0%, #f0f9ff 100%);
-    border: 2px solid #0ea5e9;
-    box-shadow: 0 4px 18px rgba(14, 165, 233, 0.28);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1.5px solid #A7F3D0;
+    box-shadow: 0 4px 16px rgba(5,150,105,0.14);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #0284c7;
     pointer-events: none;
+    backdrop-filter: blur(6px);
 }
 
-.mdf-radar-center-target .dashicons {
-    font-size: 22px;
-    width: 22px;
-    height: 22px;
+.mdf-radar-center-icon {
+    color: #059669;
+    margin-bottom: 2px;
 }
 
 .mdf-radar-score-display {
-    font-size: 13px;
+    font-size: 20px;
     font-weight: 800;
-    color: #0f172a;
-    margin-top: -3px;
+    color: #0F2C26;
+    line-height: 1;
 }
 
 .mdf-radar-target-label {
-    font-size: 9px;
+    font-size: 9.5px;
     font-weight: 800;
-    color: #0284c7;
-    letter-spacing: 0.06em;
+    color: #059669;
+    letter-spacing: 0.08em;
+    margin-top: 3px;
 }
 
 .mdf-radar-footer-meta {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid #e2e8f0;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #E6ECE8;
 }
 
 .mdf-meta-block {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
 }
 
 .mdf-meta-title {
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 700;
-    color: #64748b;
+    color: #7A928B;
     letter-spacing: 0.05em;
 }
 
 .mdf-meta-val {
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #1e293b;
-}
-
-.mdf-text-blue { color: #0284c7 !important; }
-.mdf-text-emerald { color: #059669 !important; }
-.mdf-text-red { color: #dc2626 !important; }
-
-/* MODALS: Source Code Viewer, Visual Diff & Scheduler */
-.mdf-modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    box-sizing: border-box;
-}
-
-.mdf-modal-box {
-    background: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
-    width: 100%;
-    max-width: 920px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    animation: mdfModalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.mdf-modal-diff {
-    max-width: 1150px;
-}
-
-.mdf-modal-code {
-    max-width: 960px;
-}
-
-.mdf-modal-form {
-    max-width: 520px;
-}
-
-@keyframes mdfModalPop {
-    from { opacity: 0; transform: scale(0.96) translateY(8px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-.mdf-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
-}
-
-.mdf-modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    line-height: 1;
-    color: #64748b;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: all 0.15s;
-}
-
-.mdf-modal-close:hover {
-    color: #0f172a;
-    background: #e2e8f0;
-}
-
-.mdf-modal-body {
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.mdf-modal-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px;
-    border-top: 1px solid #e2e8f0;
-    background: #f8fafc;
-}
-
-.mdf-diff-meta-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
-    font-size: 12px;
-}
-
-.mdf-code-viewer {
-    margin: 0;
-    padding: 20px;
-    background: #0f172a;
-    color: #f1f5f9;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-    font-size: 13px;
-    line-height: 1.6;
-    overflow: auto;
-    max-height: 65vh;
-    white-space: pre;
-    tab-size: 4;
-}
-
-.mdf-diff-split-view {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    max-height: 65vh;
-    overflow: auto;
-}
-
-.mdf-diff-pane {
-    display: flex;
-    flex-direction: column;
-}
-
-.mdf-pane-left {
-    border-right: 1px solid #e2e8f0;
-}
-
-.mdf-diff-pane-title {
-    padding: 8px 14px;
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 700;
-    letter-spacing: 0.05em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    color: #0F2C26;
 }
 
-.pane-pristine {
-    background: #ecfdf5;
-    color: #059669;
-    border-bottom: 1px solid #a7f3d0;
-}
+.mdf-text-emerald { color: #059669 !important; }
+.mdf-text-coral { color: #DF5A38 !important; }
+.mdf-text-forest { color: #0F2C26 !important; }
 
-.pane-modified {
-    background: #fef2f2;
-    color: #dc2626;
-    border-bottom: 1px solid #fecaca;
-}
-
-.waf-diff-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: Consolas, monospace;
-    font-size: 12px;
-}
-
-.waf-diff-table td {
-    padding: 2px 8px;
-    line-height: 1.5;
-}
-
-.waf-diff-line-num {
-    width: 40px;
-    color: #94a3b8;
-    text-align: right;
-    user-select: none;
-    border-right: 1px solid #e2e8f0;
-    padding-right: 8px;
-}
-
-.waf-diff-add {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.waf-diff-del {
-    background: #fee2e2;
-    color: #991b1b;
-}
-.mdf-text-indigo { color: #4f46e5 !important; }
-
-/* METRICS GRID */
-.mdf-metrics-column {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
+/* TELEMETRY METRICS GRID */
 .mdf-metrics-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
+    margin-bottom: 20px;
 }
 
 @media (max-width: 768px) {
-    .mdf-metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 500px) {
     .mdf-metrics-grid {
         grid-template-columns: 1fr;
     }
 }
 
-.mdf-stat-card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 16px;
+.mdf-telemetry-item {
+    background: #F9FAF9;
+    border: 1px solid #E6ECE8;
+    border-radius: 14px;
+    padding: 16px 18px;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 14px;
     transition: all 0.2s ease;
 }
 
-.mdf-stat-card:hover {
-    background: #ffffff;
-    border-color: #cbd5e1;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+.mdf-telemetry-item:hover {
+    background: #FFFFFF;
+    border-color: #CBD8CF;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(15,44,38,0.05);
 }
 
-.mdf-stat-icon-wrap {
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
+.mdf-telemetry-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 
-.mdf-stat-icon-wrap .dashicons {
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+.mdf-icon-emerald { background: #ECFDF5; color: #059669; }
+.mdf-icon-forest { background: #E8EFEA; color: #0F2C26; }
+.mdf-icon-mint { background: #EDF7F2; color: #10B981; }
+.mdf-icon-coral { background: #FEF2F2; color: #DF5A38; }
+.mdf-icon-amber { background: #FEF3C7; color: #D97706; }
+
+.mdf-telemetry-body {
+    flex: 1;
 }
 
-.mdf-icon-emerald { background: #ecfdf5; color: #059669; }
-.mdf-icon-blue { background: #eff6ff; color: #2563eb; }
-.mdf-icon-indigo { background: #eef2ff; color: #4f46e5; }
-.mdf-icon-red { background: #fef2f2; color: #dc2626; }
-.mdf-icon-purple { background: #faf5ff; color: #9333ea; }
-.mdf-icon-amber { background: #fffbeb; color: #d97706; }
-
-.mdf-stat-body {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+.mdf-telemetry-label {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #7A928B;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
 }
 
-.mdf-stat-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    letter-spacing: 0.03em;
-}
-
-.mdf-stat-value {
+.mdf-telemetry-val {
     font-size: 22px;
     font-weight: 800;
-    color: #0f172a;
-    line-height: 1.2;
-    margin: 2px 0;
+    color: #0F2C26;
+    line-height: 1.1;
 }
 
-.mdf-stat-unit {
-    font-size: 13px;
-    color: #64748b;
-    font-weight: 600;
-}
-
-.mdf-text-sm {
+.mdf-telemetry-unit {
     font-size: 14px;
+    font-weight: 600;
+    color: #7A928B;
 }
 
-.mdf-stat-sub {
-    font-size: 11px;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.mdf-telemetry-sub {
+    font-size: 11.5px;
+    color: #5B756E;
+    margin-top: 4px;
+    font-weight: 500;
 }
 
-/* STRIP CONTROL */
+/* QUICK SETTINGS STRIP */
 .mdf-hud-control-strip {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 10px 14px;
+    background: #F9FAF9;
+    border: 1px solid #E6ECE8;
+    border-radius: 12px;
+    padding: 12px 18px;
     flex-wrap: wrap;
     gap: 12px;
 }
@@ -1354,109 +1309,113 @@ $continuous_monitoring = get_option('waf_fw_continuous_monitoring', 'yes');
 .mdf-switch-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
-.mdf-switch-label {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #334155;
-}
-
-/* SWITCH UI */
-.mdf-switch {
+.mdf-canvas-toggle {
     position: relative;
     display: inline-block;
-    width: 36px;
-    height: 20px;
+    width: 44px;
+    height: 24px;
+    margin: 0;
 }
 
-.mdf-switch input {
+.mdf-canvas-toggle input {
     opacity: 0;
     width: 0;
     height: 0;
 }
 
-.mdf-slider {
+.mdf-canvas-toggle-slider {
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #cbd5e1;
-    transition: .3s;
-    border-radius: 20px;
+    background-color: #CBD8CF;
+    transition: 0.3s;
+    border-radius: 999px;
 }
 
-.mdf-slider:before {
+.mdf-canvas-toggle-slider:before {
     position: absolute;
     content: "";
-    height: 14px;
-    width: 14px;
+    height: 18px;
+    width: 18px;
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .3s;
+    transition: 0.3s;
     border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-input:checked + .mdf-slider {
-    background-color: #2563eb;
+.mdf-canvas-toggle input:checked + .mdf-canvas-toggle-slider {
+    background-color: #059669;
 }
 
-input:checked + .mdf-slider:before {
-    transform: translateX(16px);
+.mdf-canvas-toggle input:checked + .mdf-canvas-toggle-slider:before {
+    transform: translateX(20px);
+}
+
+.mdf-switch-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0F2C26;
 }
 
 .mdf-strip-actions {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 12px;
 }
 
 .mdf-strip-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #475569;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0F2C26;
     text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 6px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    padding: 6px 12px;
+    background: #FFFFFF;
+    border: 1px solid #E6ECE8;
+    border-radius: 8px;
+    transition: all 0.2s ease;
 }
 
 .mdf-strip-btn:hover {
-    color: #2563eb;
-    border-color: #93c5fd;
+    background: #E8EFEA;
+    color: #0F2C26;
+    border-color: #CBD8CF;
 }
 
-/* SCAN PROGRESS */
+/* SCAN LIVE PROGRESS HUD */
 .mdf-scan-live-progress {
     margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid #e2e8f0;
+    padding-top: 24px;
+    border-top: 1px solid #E6ECE8;
 }
 
 .mdf-progress-top-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 .mdf-progress-stage-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
 }
 
 .mdf-radar-spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(37, 99, 235, 0.2);
-    border-top-color: #2563eb;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #E8EFEA;
+    border-top-color: #059669;
     border-radius: 50%;
-    animation: mdfSpin 0.7s infinite linear;
+    animation: mdfSpin 0.8s linear infinite;
     display: inline-block;
 }
 
@@ -1465,94 +1424,87 @@ input:checked + .mdf-slider:before {
 }
 
 .mdf-stage-title {
-    font-size: 14px;
-    color: #0f172a;
+    font-size: 15px;
+    font-weight: 800;
+    color: #0F2C26;
 }
 
 .mdf-stage-detail {
-    font-size: 12px;
-    color: #64748b;
+    font-size: 12.5px;
+    color: #5B756E;
+    margin-top: 2px;
 }
 
 .mdf-progress-pct-val {
-    font-size: 16px;
+    font-size: 26px;
     font-weight: 800;
-    color: #2563eb;
-    font-family: monospace;
+    color: #059669;
 }
 
 .mdf-domain-bars-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .mdf-domain-bars-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
     }
 }
 
 .mdf-domain-bar-item {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 8px 10px;
+    background: #F9FAF9;
+    border: 1px solid #E6ECE8;
+    border-radius: 10px;
+    padding: 10px 12px;
 }
 
 .mdf-domain-bar-head {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #475569;
-    font-weight: 600;
-    margin-bottom: 4px;
+    font-weight: 700;
+    color: #0F2C26;
+    margin-bottom: 6px;
 }
 
 .mdf-bar-track {
-    height: 5px;
-    background: #e2e8f0;
+    width: 100%;
+    height: 6px;
+    background: #E8EFEA;
     border-radius: 999px;
     overflow: hidden;
 }
 
 .mdf-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #2563eb, #6366f1);
-    border-radius: 999px;
+    background: linear-gradient(90deg, #059669, #10B981);
     transition: width 0.3s ease;
 }
 
 .mdf-stream-terminal {
-    background: #0f172a;
-    border-radius: 8px;
-    padding: 10px 14px;
+    background: #0A1C18;
+    color: #A7F3D0;
+    font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+    font-size: 12px;
+    border-radius: 12px;
+    padding: 12px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-family: Consolas, Monaco, monospace;
-    font-size: 12px;
-    color: #94a3b8;
-    gap: 12px;
-}
-
-.mdf-terminal-left {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #38bdf8;
+    border: 1px solid rgba(167, 243, 208, 0.15);
 }
 
 .mdf-term-prompt {
-    color: #38bdf8;
+    color: #10B981;
     font-weight: 800;
-    margin-right: 6px;
+    margin-right: 8px;
 }
 
 .mdf-terminal-right {
-    white-space: nowrap;
-    color: #64748b;
+    color: #7A928B;
     font-size: 11px;
 }
 
@@ -1561,158 +1513,143 @@ input:checked + .mdf-slider:before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 28px 0 16px 0;
+    margin: 32px 0 18px;
 }
 
 .mdf-heading-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .mdf-heading-icon {
-    color: #2563eb;
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+    color: #0F2C26;
 }
 
 .mdf-heading-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0F2C26;
     margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: #0f172a;
 }
 
 .mdf-badge-pill {
-    font-size: 10.5px;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
     font-weight: 700;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
-    padding: 3px 8px;
-    border-radius: 4px;
+    background: #E8EFEA;
+    color: #0F2C26;
+    letter-spacing: 0.04em;
 }
 
-/* 18 DOMAINS GRID */
+/* 18 SECURITY DOMAINS GRID */
 .mdf-domains-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
     margin-bottom: 28px;
 }
 
-@media (max-width: 1200px) {
-    .mdf-domains-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mdf-domains-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
     .mdf-domains-grid {
         grid-template-columns: 1fr;
     }
 }
 
 .mdf-domain-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 140px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    background: #FFFFFF;
+    border: 1px solid #E6ECE8;
+    border-radius: 16px;
+    padding: 18px 20px;
     transition: all 0.2s ease;
 }
 
 .mdf-domain-card:hover {
-    border-color: #93c5fd;
+    border-color: #CBD8CF;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-.mdf-domain-card.active-scanning {
-    border-color: #2563eb;
-    box-shadow: 0 0 10px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 4px 14px rgba(15,44,38,0.06);
 }
 
 .mdf-domain-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .mdf-domain-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.mdf-domain-icon .dashicons {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-}
-
 .mdf-dom-badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
 }
 
-.badge-secure { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
-.badge-checking { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-.badge-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-.badge-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.badge-secure {
+    background: #ECFDF5;
+    color: #059669;
+    border: 1px solid #A7F3D0;
+}
+
+.badge-threat {
+    background: #FEF2F2;
+    color: #DF5A38;
+    border: 1px solid #FECACA;
+}
 
 .mdf-domain-name {
-    margin: 0 0 4px 0;
-    font-size: 12.5px;
+    font-size: 14.5px;
     font-weight: 700;
-    color: #0f172a;
-    line-height: 1.3;
+    color: #0F2C26;
+    margin: 0 0 6px 0;
 }
 
 .mdf-domain-desc {
-    margin: 0 0 10px 0;
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.35;
-    flex-grow: 1;
+    font-size: 12px;
+    color: #5B756E;
+    margin: 0 0 14px 0;
+    line-height: 1.45;
+    min-height: 35px;
 }
 
 .mdf-domain-foot {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding-top: 8px;
-    border-top: 1px solid #f1f5f9;
-    font-size: 10px;
-    color: #64748b;
+    font-size: 11px;
+    color: #7A928B;
+    border-top: 1px solid #F0F4F2;
+    padding-top: 10px;
 }
 
-/* FINDINGS CENTER */
-.mdf-findings-card {
-    border-top: 3px solid #6366f1;
+.mdf-domain-foot strong {
+    color: #0F2C26;
 }
 
+/* FINDINGS CARD */
 .mdf-findings-head-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid #E6ECE8;
+    padding-bottom: 16px;
     margin-bottom: 16px;
     flex-wrap: wrap;
     gap: 12px;
@@ -1721,232 +1658,147 @@ input:checked + .mdf-slider:before {
 .mdf-findings-head-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+}
+
+.mdf-findings-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #0F2C26;
 }
 
 .mdf-findings-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #0F2C26;
     margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: #0f172a;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 .mdf-count-pill {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 8px;
+    background: #E8EFEA;
+    color: #0F2C26;
+    padding: 3px 10px;
     border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 800;
 }
 
 .mdf-findings-head-actions {
     display: flex;
+    align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
 }
 
-.mdf-btn-danger-outline {
-    color: #dc2626 !important;
-    border-color: #fca5a5 !important;
+.mdf-outline-coral-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FFFFFF;
+    color: #DF5A38;
+    border: 1px solid #FECACA;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.mdf-btn-emerald-outline {
-    color: #059669 !important;
-    border-color: #a7f3d0 !important;
+.mdf-outline-coral-btn:hover {
+    background: #FEF2F2;
+    border-color: #DF5A38;
+}
+
+.mdf-outline-emerald-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FFFFFF;
+    color: #059669;
+    border: 1px solid #A7F3D0;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mdf-outline-emerald-btn:hover {
+    background: #ECFDF5;
+    border-color: #059669;
 }
 
 .mdf-filter-tabs-row {
     display: flex;
-    gap: 6px;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 10px;
+    gap: 8px;
     margin-bottom: 18px;
-    flex-wrap: wrap;
+    border-bottom: 1px solid #F0F4F2;
+    padding-bottom: 10px;
 }
 
 .mdf-tab-btn {
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #5B756E;
     padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #475569;
+    border-radius: 8px;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mdf-tab-btn:hover {
+    color: #0F2C26;
+    background: #F4F8F5;
 }
 
 .mdf-tab-btn.active {
-    background: #2563eb;
-    color: #ffffff;
-    border-color: #2563eb;
+    background: #0F2C26;
+    color: #FFFFFF;
 }
 
-.mdf-tab-btn.tab-critical.active {
-    background: #dc2626;
-    border-color: #dc2626;
-}
-
-.mdf-tab-btn.tab-warning.active {
-    background: #d97706;
-    border-color: #d97706;
-}
-
-/* FINDING CARDS */
-.mdf-finding-card {
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    background: #ffffff;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.mdf-finding-card.severity-critical {
-    border-left: 4px solid #ef4444;
-}
-
-.mdf-finding-card.severity-warning {
-    border-left: 4px solid #f59e0b;
-}
-
-.mdf-finding-card.severity-info {
-    border-left: 4px solid #3b82f6;
-}
-
-.mdf-finding-header {
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f8fafc;
-    cursor: pointer;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.mdf-finding-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.mdf-sev-badge {
-    font-size: 10.5px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 4px;
-}
-
-.sev-critical { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-.sev-high { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
-.sev-warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-.sev-info { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-
-.mdf-finding-title-text {
-    font-size: 13px;
-    font-weight: 700;
-    color: #0f172a;
-}
-
-.mdf-finding-body {
-    padding: 16px;
-    border-top: 1px solid #f1f5f9;
-    background: #ffffff;
-    display: none;
-}
-
-.mdf-finding-desc {
-    font-size: 12.5px;
-    color: #334155;
-    line-height: 1.5;
-    margin-bottom: 12px;
-}
-
-.mdf-finding-evidence-box {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin-bottom: 12px;
-}
-
-.mdf-evidence-title {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: #2563eb;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.mdf-evidence-list {
-    margin: 0;
-    padding-left: 16px;
-    font-size: 12px;
-    color: #475569;
-    line-height: 1.5;
-}
-
-.mdf-finding-footer-actions {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    padding-top: 6px;
-}
-
-/* EMPTY STATE */
 .mdf-empty-state {
     text-align: center;
-    padding: 36px 20px;
-    color: #64748b;
+    padding: 44px 20px;
 }
 
 .mdf-empty-icon {
-    width: 48px;
-    height: 48px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: #ecfdf5;
-    color: #059669;
+    background: #ECFDF5;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 10px;
-}
-
-.mdf-empty-icon .dashicons {
-    font-size: 26px;
-    width: 26px;
-    height: 26px;
+    margin: 0 auto 16px;
 }
 
 .mdf-empty-state h4 {
-    margin: 0 0 4px 0;
-    font-size: 15px;
-    font-weight: 700;
-    color: #0f172a;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0F2C26;
+    margin: 0 0 6px 0;
 }
 
 .mdf-empty-state p {
-    margin: 0;
-    font-size: 12.5px;
-    color: #64748b;
+    font-size: 13.5px;
+    color: #5B756E;
+    max-width: 480px;
+    margin: 0 auto;
 }
 
 /* DUAL GRID */
 .mdf-dual-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 24px;
+    margin-top: 24px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
     .mdf-dual-grid {
         grid-template-columns: 1fr;
     }
@@ -1956,248 +1808,281 @@ input:checked + .mdf-slider:before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 18px;
 }
 
 .mdf-card-header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 
-.mdf-card-icon {
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+.mdf-card-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .mdf-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0F2C26;
     margin: 0;
-    font-size: 14.5px;
-    font-weight: 700;
-    color: #0f172a;
 }
 
 .mdf-card-subtitle {
-    margin: 0;
-    font-size: 11px;
-    color: #64748b;
+    font-size: 12px;
+    color: #5B756E;
+    margin: 2px 0 0;
+}
+
+.mdf-clear-history-btn {
+    background: transparent;
+    border: 1px solid #FECACA;
+    color: #DF5A38;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.mdf-clear-history-btn:hover {
+    background: #FEF2F2;
 }
 
 /* TIMELINE */
 .mdf-timeline-box {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    max-height: 240px;
-    overflow-y: auto;
+    gap: 14px;
 }
 
 .mdf-timeline-row {
     display: flex;
+    gap: 12px;
     align-items: flex-start;
-    gap: 10px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 8px 10px;
 }
 
 .mdf-time-dot {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    margin-top: 4px;
+    margin-top: 5px;
     flex-shrink: 0;
 }
 
-.dot-emerald { background: #10b981; }
-.dot-cyan { background: #0284c7; }
-.dot-crimson { background: #ef4444; }
+.dot-emerald {
+    background: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+}
 
 .mdf-time-body {
-    flex-grow: 1;
+    flex: 1;
+    background: #F9FAF9;
+    border: 1px solid #E6ECE8;
+    border-radius: 10px;
+    padding: 10px 14px;
 }
 
 .mdf-time-top {
     display: flex;
     justify-content: space-between;
-    font-size: 11.5px;
-    color: #0f172a;
-    margin-bottom: 2px;
+    align-items: center;
+    font-size: 13px;
+    color: #0F2C26;
+    margin-bottom: 4px;
 }
 
 .mdf-time-date {
-    font-size: 10px;
-    color: #64748b;
+    font-size: 11px;
+    color: #7A928B;
 }
 
 .mdf-time-text {
+    font-size: 12px;
+    color: #5B756E;
     margin: 0;
-    font-size: 11px;
-    color: #475569;
+    line-height: 1.4;
 }
 
-/* TABLE */
+/* CLEAN TABLE */
 .mdf-table-container {
     overflow-x: auto;
 }
 
 .mdf-clean-table {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 .mdf-clean-table th {
-    background: #f8fafc;
-    padding: 8px 10px;
     text-align: left;
-    font-weight: 600;
-    color: #475569;
-    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 800;
+    color: #7A928B;
+    letter-spacing: 0.05em;
+    padding: 8px 12px;
+    border-bottom: 1px solid #E6ECE8;
 }
 
 .mdf-clean-table td {
-    padding: 8px 10px;
-    border-bottom: 1px solid #f1f5f9;
-    color: #334155;
+    padding: 12px;
+    font-size: 12.5px;
+    color: #0F2C26;
+    border-bottom: 1px solid #F4F8F5;
 }
 
 .mdf-empty-cell {
     text-align: center;
-    padding: 24px !important;
-    color: #94a3b8;
+    color: #7A928B;
+    padding: 30px 12px !important;
 }
 
 /* MODALS */
 .mdf-modal-backdrop {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(4px);
-    z-index: 999999;
+    background: rgba(15, 44, 38, 0.45);
+    backdrop-filter: blur(8px);
+    z-index: 100000;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 24px;
 }
 
 .mdf-modal-box {
-    background: #ffffff;
-    border-radius: 12px;
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(15,44,38,0.2);
     overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
 }
 
-.mdf-modal-diff {
-    width: 95%;
-    max-width: 1200px;
-    height: 88vh;
-}
-
-.mdf-modal-code {
-    width: 90%;
-    max-width: 900px;
-    max-height: 85vh;
-}
-
-.mdf-modal-form {
-    width: 420px;
-    max-width: 95%;
-}
+.mdf-modal-diff { width: 1150px; height: 85vh; }
+.mdf-modal-code { width: 900px; height: 75vh; }
+.mdf-modal-form { width: 500px; }
 
 .mdf-modal-header {
-    background: #ffffff;
-    padding: 14px 20px;
-    border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 18px 24px;
+    border-bottom: 1px solid #E6ECE8;
 }
 
 .mdf-modal-header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+}
+
+.mdf-modal-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .mdf-modal-close {
-    background: transparent;
-    border: 1px solid #cbd5e1;
-    color: #64748b;
-    border-radius: 6px;
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
-    line-height: 22px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #7A928B;
     cursor: pointer;
+    line-height: 1;
+}
+
+.mdf-modal-close:hover {
+    color: #DF5A38;
 }
 
 .mdf-modal-body {
-    padding: 20px;
+    padding: 24px;
+    overflow-y: auto;
 }
 
 .mdf-modal-footer {
-    background: #f8fafc;
-    padding: 12px 20px;
-    border-top: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    padding: 16px 24px;
+    background: #F9FAF9;
+    border-top: 1px solid #E6ECE8;
 }
 
-/* DIFF MODAL */
+.mdf-input-text, .mdf-input-select {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #CBD8CF;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 13.5px;
+    color: #0F2C26;
+    background: #FFFFFF;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.mdf-input-text:focus, .mdf-input-select:focus {
+    border-color: #059669;
+    box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
+}
+
 .mdf-view-toggle {
-    display: flex;
-    background: #f1f5f9;
-    border-radius: 6px;
-    padding: 2px;
+    display: inline-flex;
+    background: #F4F8F5;
+    border: 1px solid #E6ECE8;
+    border-radius: 8px;
+    padding: 3px;
+    gap: 3px;
 }
 
 .waf-diff-mode-btn {
-    background: transparent;
     border: none;
-    color: #64748b;
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    border-radius: 4px;
+    background: transparent;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #5B756E;
+    padding: 4px 10px;
+    border-radius: 6px;
     cursor: pointer;
 }
 
 .waf-diff-mode-btn.active {
-    background: #2563eb;
-    color: #ffffff;
+    background: #FFFFFF;
+    color: #0F2C26;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .mdf-diff-meta-bar {
-    background: #f8fafc;
-    padding: 8px 20px;
-    border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: #F4F8F5;
+    border-bottom: 1px solid #E6ECE8;
+    padding: 10px 24px;
     font-size: 12px;
 }
 
 .mdf-diff-container {
     flex: 1;
     overflow: auto;
-    background: #0d1117;
-    position: relative;
+    background: #0D1117;
 }
 
 .mdf-diff-split-view {
     display: flex;
     min-height: 100%;
-    font-family: Consolas, Monaco, monospace;
-    font-size: 12px;
 }
 
 .mdf-diff-pane {
@@ -2206,28 +2091,28 @@ input:checked + .mdf-slider:before {
 }
 
 .mdf-pane-left {
-    border-right: 1px solid #30363d;
+    border-right: 1px solid #30363D;
 }
 
 .mdf-diff-pane-title {
-    padding: 8px 12px;
+    padding: 8px 14px;
     font-size: 11px;
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
-.pane-pristine { background: #161b22; color: #10b981; border-bottom: 1px solid #30363d; }
-.pane-modified { background: #161b22; color: #f87171; border-bottom: 1px solid #30363d; }
+.pane-pristine { background: #161B22; color: #10B981; border-bottom: 1px solid #30363D; }
+.pane-modified { background: #161B22; color: #F87171; border-bottom: 1px solid #30363D; }
 
 .waf-diff-table {
     width: 100%;
     border-collapse: collapse;
-    color: #c9d1d9;
+    color: #C9D1D9;
 }
 
 .waf-diff-table td {
@@ -2236,28 +2121,28 @@ input:checked + .mdf-slider:before {
     white-space: pre-wrap;
     word-break: break-all;
     font-size: 11.5px;
+    font-family: Consolas, Monaco, monospace;
 }
 
 .waf-diff-ln {
     width: 44px;
     min-width: 44px;
     text-align: right;
-    color: #484f58;
+    color: #484F58;
     user-select: none;
     padding-right: 10px !important;
-    border-right: 1px solid #30363d;
-    background: #0d1117;
+    border-right: 1px solid #30363D;
+    background: #090D14;
 }
 
-.waf-diff-row-added { background: rgba(46, 160, 67, 0.18) !important; color: #7ee787 !important; }
-.waf-diff-row-deleted { background: rgba(248, 81, 73, 0.18) !important; color: #ffa198 !important; }
-.waf-diff-row-modified { background: rgba(210, 153, 34, 0.18) !important; color: #e3b341 !important; }
+.waf-diff-row-added { background: rgba(46, 160, 67, 0.18) !important; color: #7EE787 !important; }
+.waf-diff-row-deleted { background: rgba(248, 81, 73, 0.18) !important; color: #FFA198 !important; }
+.waf-diff-row-modified { background: rgba(210, 153, 34, 0.18) !important; color: #E3B341 !important; }
 
-/* CODE VIEWER */
 .mdf-code-viewer {
-    background: #090d16;
-    color: #e2e8f0;
-    padding: 16px;
+    background: #0D1117;
+    color: #E2E8F0;
+    padding: 18px;
     margin: 0;
     overflow: auto;
     flex: 1;

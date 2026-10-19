@@ -3,43 +3,45 @@
    ========================================================================== */
 
 :root {
-    --mdf-about-bg: #f8fafc;
-    --mdf-about-card: #ffffff;
-    --mdf-about-border: #e2e8f0;
-    --mdf-about-border-hover: #cbd5e1;
-    --mdf-about-text-heading: #0f172a;
-    --mdf-about-text-body: #334155;
-    --mdf-about-text-muted: #64748b;
-    --mdf-about-primary: #4f46e5;
-    --mdf-about-primary-light: #eef2ff;
-    --mdf-about-emerald: #10b981;
-    --mdf-about-emerald-light: #ecfdf5;
-    --mdf-about-emerald-text: #047857;
-    --mdf-about-blue: #3b82f6;
-    --mdf-about-blue-light: #eff6ff;
-    --mdf-about-purple: #8b5cf6;
-    --mdf-about-purple-light: #f5f3ff;
-    --mdf-about-amber: #f59e0b;
-    --mdf-about-amber-light: #fffbeb;
-    --mdf-about-radius: 10px;
-    --mdf-about-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --mdf-about-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --mdf-about-bg: #F6F8F6;
+    --mdf-about-card: #FFFFFF;
+    --mdf-about-border: #E6ECE8;
+    --mdf-about-border-hover: #CBD8CF;
+    --mdf-about-text-heading: #0F2C26;
+    --mdf-about-text-body: #0F2C26;
+    --mdf-about-text-muted: #5B756E;
+    --mdf-about-primary: #0F2C26;
+    --mdf-about-primary-light: #E8EFEA;
+    --mdf-about-emerald: #059669;
+    --mdf-about-emerald-light: #ECFDF5;
+    --mdf-about-emerald-text: #059669;
+    --mdf-about-blue: #0F2C26;
+    --mdf-about-blue-light: #E8EFEA;
+    --mdf-about-purple: #10B981;
+    --mdf-about-purple-light: #EDF7F2;
+    --mdf-about-amber: #D97706;
+    --mdf-about-amber-light: #FEF3C7;
+    --mdf-about-radius: 18px;
+    --mdf-about-shadow-sm: 0 4px 16px -2px rgba(15, 44, 38, 0.04);
+    --mdf-about-shadow-md: 0 8px 24px -4px rgba(15, 44, 38, 0.08);
 }
 
 .mdf-about-container {
-    max-width: 1400px;
-    margin: 16px 0 40px 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    width: 100%;
+    margin: 0;
+    padding: 24px 32px 60px;
+    background: #F6F8F6;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--mdf-about-text-body);
     font-size: 13px;
     line-height: 1.5;
+    box-sizing: border-box;
 }
 
 /* ── 1. Enterprise Hero Header ── */
 .mdf-about-hero {
     background: var(--mdf-about-card);
     border: 1px solid var(--mdf-about-border);
-    border-left: 4px solid var(--mdf-about-primary);
     border-radius: var(--mdf-about-radius);
     padding: 28px 32px;
     display: flex;

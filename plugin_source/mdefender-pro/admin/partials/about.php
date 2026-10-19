@@ -23,15 +23,28 @@ $report = $hardening ? $hardening->generate_report() : ['score' => 100, 'grade' 
 ?>
 
 <div class="mdf-about-container">
+    <!-- TOP PLATFORM BREADCRUMB / STATUS BAR -->
+    <div class="mdf-platform-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="mdf-platform-left" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5B756E;">
+            <span style="color:#7A928B;">Platform</span>
+            <span style="color:#CBD8CF;">/</span>
+            <span style="color:#7A928B;">System Information</span>
+            <span style="color:#CBD8CF;">/</span>
+            <strong style="color:#0F2C26;font-weight:700;">About Suite</strong>
+        </div>
+        <div class="mdf-platform-right">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #E6ECE8;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#0F2C26;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.2);"></span>
+                <span>MDefender Enterprise Core</span>
+            </div>
+        </div>
+    </div>
+
     <!-- 1. Enterprise Hero Header -->
     <div class="mdf-about-hero">
         <div class="mdf-about-hero-left">
-            <div class="mdf-about-badge">
-                <span class="dashicons dashicons-shield"></span>
-                <span>ENTERPRISE WAAP &bull; AI FIREWALL &bull; SYSTEM DEFENSE</span>
-            </div>
-            <h1 class="mdf-about-title">MDefender-Pro Enterprise Security Suite</h1>
-            <p class="mdf-about-subtitle">
+            <h1 class="mdf-about-title" style="font-size:28px;font-weight:800;color:#0F2C26;letter-spacing:-0.02em;margin:0 0 6px 0;">MDefender-Pro <span style="color:#DF5A38;">Enterprise Suite.</span></h1>
+            <p class="mdf-about-subtitle" style="font-size:13.5px;color:#5B756E;margin:0 0 16px 0;">
                 High-performance Web Application &amp; API Protection (WAAP), Dual-Tier Machine Learning Threat Classification, Real-Time Heuristic Malware Hunter, and Deep WordPress Hardening Suite designed for mission-critical web infrastructure.
             </p>
             <div class="mdf-about-pills">
@@ -42,8 +55,8 @@ $report = $hardening ? $hardening->generate_report() : ['score' => 100, 'grade' 
             </div>
         </div>
         <div class="mdf-about-hero-right">
-            <div class="mdf-emblem-box">
-                <span class="dashicons dashicons-shield-alt"></span>
+            <div class="mdf-emblem-box" style="width:84px;height:84px;border-radius:20px;background:#FFFFFF;box-shadow:0 8px 24px rgba(15,44,38,0.1);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px;">
+                <img src="<?php echo defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.png') : ''; ?>" alt="MDefender Pro Logo" style="width:100%;height:100%;object-fit:contain;">
             </div>
         </div>
     </div>

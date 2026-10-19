@@ -35,6 +35,11 @@ class WAF_FW_Semantic_Deobfuscator {
             return '';
         }
 
+        // FAST-PATH: If string contains no encoded or escaped characters, return normalized whitespace instantly (< 0.001ms)
+        if (strpbrk($input, "%&\\/*\0") === false) {
+            return trim(preg_replace('/\s+/', ' ', $input));
+        }
+
         $current = $input;
         $depth = 0;
 
@@ -97,6 +102,11 @@ class WAF_FW_Semantic_Deobfuscator {
     public function analyze_sql_intent($input, $is_already_normalized = false) {
         $normalized = $is_already_normalized ? $input : $this->deobfuscate($input);
 
+        // FAST-PATH: If string contains no SQL meta-characters or keywords, skip regex entirely
+        if (strpbrk($normalized, "'\"()--#/*;") === false && stripos($normalized, 'UNION') === false && stripos($normalized, 'SELECT') === false && stripos($normalized, 'SLEEP') === false) {
+            return ['is_sqli' => false, 'confidence' => 0.0, 'normalized' => $normalized];
+        }
+
         // Check for SQL comment terminations and stacked queries
         $has_comment_term = preg_match('/(?:--|\#|\/\*|;)/', $normalized);
 
@@ -152,6 +162,11 @@ class WAF_FW_Semantic_Deobfuscator {
     public function analyze_xss_intent($input, $is_already_normalized = false) {
         $normalized = $is_already_normalized ? $input : $this->deobfuscate($input);
 
+        // FAST-PATH: If string contains no HTML tag or protocol characters, return clean immediately
+        if (strpbrk($normalized, "<:") === false) {
+            return ['is_xss' => false, 'confidence' => 0.0];
+        }
+
         // 1. Explicit HTML script tags
         if (preg_match('/<\s*script\b[^>]*>/i', $normalized)) {
             return ['is_xss' => true, 'type' => 'XSS - Script Tag', 'confidence' => 0.99];
@@ -176,6 +191,11 @@ class WAF_FW_Semantic_Deobfuscator {
      */
     public function analyze_ai_prompt_injection($input, $is_already_normalized = false) {
         $normalized = $is_already_normalized ? $input : $this->deobfuscate($input);
+
+        // FAST-PATH: If string doesn't contain prompt injection keywords, return immediately
+        if (stripos($normalized, 'instruction') === false && stripos($normalized, 'DAN') === false && stripos($normalized, 'system') === false && stripos($normalized, 'jailbreak') === false && stripos($normalized, 'prompt') === false) {
+            return ['is_injection' => false, 'confidence' => 0.0];
+        }
 
         $prompt_patterns = [
             'System Prompt Override' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now)/i',

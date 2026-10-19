@@ -42,8 +42,26 @@ if (empty($notif_items)) {
     ];
 }
 ?>
-<div class="war-wrap">
-    <!-- Clean, Sleek Enterprise Top Bar -->
+<?php
+$current_page_slug = sanitize_text_field($_GET['page'] ?? 'waf-firewall');
+$is_unified_shell = in_array($current_page_slug, [
+    'waf-firewall',
+    'waf-firewall-logs',
+    'waf-firewall-rules',
+    'waf-firewall-blacklist',
+    'waf-firewall-scan',
+    'waf-firewall-hardening',
+    'waf-firewall-backup',
+    'waf-firewall-tools',
+    'waf-firewall-settings',
+    'waf-firewall-about'
+], true);
+?>
+<div class="war-wrap mdf-enterprise-shell">
+<?php if ($is_unified_shell): ?>
+    <!-- Page uses the modern unified full-width enterprise canvas -->
+<?php else: ?>
+    <!-- Clean, Sleek Enterprise Top Bar for Other Subpages -->
     <div class="war-top-bar">
         <div class="war-top-left">
             <div class="war-logo" style="display: flex; align-items: center; gap: 10px;">
@@ -138,3 +156,4 @@ if (empty($notif_items)) {
             <span class="war-clock" id="warClock">--:--:--</span>
         </div>
     </div>
+<?php endif; ?>

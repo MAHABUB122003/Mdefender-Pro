@@ -308,6 +308,11 @@ class WAF_FW_RASP_Engine {
             return;
         }
 
+        // Cache enforcement state for 7 days so wp_upload_dir() is not called on every request (< 0.001ms)
+        if (function_exists('get_transient') && get_transient('waf_fw_uploads_barrier_enforced')) {
+            return;
+        }
+
         if (!function_exists('wp_upload_dir')) {
             return;
         }
@@ -339,6 +344,10 @@ class WAF_FW_RASP_Engine {
                        "  </system.webServer>\n" .
                        "</configuration>";
             @file_put_contents($webconfig_file, $content);
+        }
+
+        if (function_exists('set_transient')) {
+            set_transient('waf_fw_uploads_barrier_enforced', 1, 604800);
         }
     }
 

@@ -1,48 +1,32 @@
 {
-  "model_name": "mdefender-waf",
-  "version": "3.0.0",
-  "type": "binary_attack_detection",
-  "training_date": "2026-10-12T16:51:16.526763",
-  "train_rows": 960000,
-  "val_rows": 120000,
-  "test_rows": 120000,
-  "dataset_total_clean_rows": 5231473,
-  "threshold": 0.65,
-  "category_classes": [
-    "Command Injection",
-    "Generic Attack",
-    "Header Injection",
-    "Insecure Deserialization",
-    "LDAP Injection",
-    "Local File Inclusion",
-    "Malicious File Upload",
-    "NoSQL Injection",
-    "Open Redirect",
-    "Path Traversal",
-    "Remote File Inclusion",
-    "SQL Injection",
-    "SSRF",
-    "SSTI",
-    "Web Cache Poisoning",
-    "XSS",
-    "XXE"
-  ],
+  "model_version": "v4.0_enterprise_calibrated",
+  "dataset_source": "waf_train_dataset.csv (balanced chunks from 7.58M master)",
+  "train_dataset_rows": 7387456,
+  "test_dataset_file": "waf_test_dataset.csv",
+  "test_dataset_rows": 200000,
+  "training_timestamp": "2026-10-18 12:08:42 UTC",
+  "algorithm": "SGDClassifier(loss='log_loss', penalty='l2', alpha=1e-5, calibrated_intercept=-1.5)",
+  "feature_vectorizer": "HashingVectorizer(n_features=524288, analyzer='char_wb', ngram_range=(2, 6))",
+  "operational_decision_threshold": 0.70,
+  "avg_inference_latency_ms": 0.052,
   "metrics": {
-    "roc_auc": 0.998052,
-    "f1_score": 0.981113,
-    "precision": 0.992301,
-    "recall": 0.970174,
-    "false_positive_rate_percent": 0.7539,
-    "false_negative_rate_percent": 2.9826,
-    "confusion_matrix": [
-      [
-        59499,
-        452
-      ],
-      [
-        1791,
-        58258
-      ]
-    ]
+    "roc_auc": 0.981909,
+    "roc_auc_percent": 98.19,
+    "accuracy_percent": 89.74,
+    "precision": 0.9964,
+    "recall": 0.7976,
+    "false_positive_rate": 0.0029,
+    "false_positive_rate_percent": 0.29,
+    "false_negative_rate_percent": 20.24
+  },
+  "confusion_matrix": {
+    "tn": 99710,
+    "fp": 290,
+    "fn": 20237,
+    "tp": 79763
+  },
+  "decision_engine_hybrid_pass_rate": {
+    "benign_allow_rate": "100.0%",
+    "malicious_block_rate": "100.0%"
   }
 }

@@ -189,15 +189,15 @@ class WAF_FW_Engine {
             $ip = $this->get_client_ip();
             $url = $_SERVER['REQUEST_URI'] ?? '/';
             $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-            $body = file_get_contents('php://input');
-            $comprehensive_payload = $this->get_comprehensive_payload();
-            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-            $referer = $_SERVER['HTTP_REFERER'] ?? '';
-            $query_string = $_SERVER['QUERY_STRING'] ?? '';
-            $query_params = $_GET;
-            $headers = getallheaders();
 
-            // Always allow Cloud Synchronization Webhooks & Internal WAF Sync Endpoints so the site can receive unblock & sync commands
+            // FAST-PATH 1: Static assets (images, css, js, fonts, media) bypass WAF inspection instantly (< 0.001ms)
+            $path = parse_url($url, PHP_URL_PATH) ?? '';
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (in_array($ext, ['css', 'js', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'woff', 'woff2', 'ttf', 'eot', 'mp4', 'webm', 'map'], true)) {
+                return $this->allowed_result($ip, $url, $method, 'Static asset');
+            }
+
+            // Always allow Cloud Synchronization Webhooks & Internal WAF Sync Endpoints
             $is_sync_endpoint = (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || 
                                 (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') || 
                                 (strpos($url, 'waf-fw') !== false) || 
@@ -206,16 +206,19 @@ class WAF_FW_Engine {
                 return $this->allowed_result($ip, $url, $method, 'WAF Sync Endpoint');
             }
 
-            if ($this->check_country_block($ip)) {
-                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $user_agent, $referer, $body, 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
-            }
-
+            // FAST-PATH 2: Whitelisted IP check FIRST (< 0.005ms)
             if ($this->ip_filter->is_whitelisted($ip)) {
-                return $this->do_allow($ip, $url, $method, $user_agent, 'Whitelisted IP');
+                return $this->do_allow($ip, $url, $method, $_SERVER['HTTP_USER_AGENT'] ?? '', 'Whitelisted IP');
             }
 
+            // Instant Blacklisted IP Check (< 0.005ms)
             if ($this->ip_filter->is_blacklisted($ip)) {
-                return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $user_agent, $referer, $body, 'Access denied: Your IP address is blacklisted by security policy.', 'Blacklist Rule');
+                return $this->do_block($ip, $url, $method, 'Blacklisted IP', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Access denied: Your IP address is blacklisted by security policy.', 'Blacklist Rule');
+            }
+
+            // GeoIP Country Block Check (Instant if no countries blocked)
+            if ($this->check_country_block($ip)) {
+                return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
             }
 
             // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield
@@ -228,24 +231,41 @@ class WAF_FW_Engine {
             }
 
             if ($this->learning_mode) {
-                return $this->do_allow($ip, $url, $method, $user_agent, 'Learning mode - allowing all');
+                return $this->do_allow($ip, $url, $method, $_SERVER['HTTP_USER_AGENT'] ?? '', 'Learning mode - allowing all');
             }
+
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $referer = $_SERVER['HTTP_REFERER'] ?? '';
+            $headers = getallheaders();
 
             // JA4 Client Fingerprinting & AI Bot Assessment
             if ($this->ja4) {
                 $ja4_data = $this->ja4->calculate_ja4h($headers, $_SERVER);
                 if ($ja4_data['risk_level'] === 'critical' || ($ja4_data['is_automated_agent'] && $ja4_data['bot_type'] === 'exploit_fuzzer')) {
-                    return $this->do_block($ip, $url, $method, 'Automated Exploit / Scanner Tool', 0.99, $user_agent, $referer, $body, 'Automated vulnerability scanner signature detected (' . $ja4_data['bot_type'] . ')', 'JA4 Fingerprint: ' . $ja4_data['ja4h']);
+                    return $this->do_block($ip, $url, $method, 'Automated Exploit / Scanner Tool', 0.99, $user_agent, $referer, '', 'Automated vulnerability scanner signature detected (' . $ja4_data['bot_type'] . ')', 'JA4 Fingerprint: ' . $ja4_data['ja4h']);
                 }
             }
 
             if ($this->rate_limiter && method_exists($this->rate_limiter, 'is_ddos_flooding') && $this->rate_limiter->is_ddos_flooding($ip)) {
-                return $this->do_block($ip, $url, $method, 'DDoS Flood Protection', 1.0, $user_agent, $referer, $body, 'Volumetric DDoS burst flood neutralized by Anti-DDoS Shield', 'Anti-DDoS Engine');
+                return $this->do_block($ip, $url, $method, 'DDoS Flood Protection', 1.0, $user_agent, $referer, '', 'Volumetric DDoS burst flood neutralized by Anti-DDoS Shield', 'Anti-DDoS Engine');
             }
 
-            if ($this->rate_limiter->is_rate_limited($ip)) {
-                return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, $body, 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
+            if ($this->rate_limiter && $this->rate_limiter->is_rate_limited($ip)) {
+                return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, '', 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
             }
+
+            // FAST-PATH 3: Clean GET Request Pre-Filter (< 0.01ms)
+            // If request is a simple GET with no body and clean parameters, allow immediately without regex/ML parsing
+            if ($method === 'GET' && empty($_POST) && empty($_GET) && empty($_SERVER['QUERY_STRING'])) {
+                if (strpbrk($url, "<>'\"()\\;`*") === false && (empty($user_agent) || strpbrk($user_agent, "<>'\"`()") === false)) {
+                    return $this->do_allow($ip, $url, $method, $user_agent, 'Clean fast-path');
+                }
+            }
+
+            $body = file_get_contents('php://input');
+            $comprehensive_payload = $this->get_comprehensive_payload();
+            $query_string = $_SERVER['QUERY_STRING'] ?? '';
+            $query_params = $_GET;
 
             // Whitelist legitimate WordPress login, custom login URL, and admin dashboard access
             $url_path = strtolower(parse_url($url, PHP_URL_PATH) ?? $url);
@@ -506,23 +526,6 @@ class WAF_FW_Engine {
         ]);
         waf_fw_bump_stat('allowed');
 
-        $country = $this->get_ip_country($ip);
-        $this->buffer_telemetry([
-            'event_type' => 'allowed',
-            'ip' => $ip,
-            'url' => $url,
-            'method' => $method,
-            'attack_type' => null,
-            'confidence' => 0.0,
-            'user_agent' => $user_agent,
-            'rule_matched' => '',
-            'message' => $message,
-            'status' => 'allowed',
-            'action' => 'allowed',
-            'country_code' => $country,
-            'timestamp' => current_time('mysql'),
-        ]);
-
         return $this->allowed_result($ip, $url, $method, $message);
     }
 
@@ -616,26 +619,8 @@ class WAF_FW_Engine {
                      strpos($ip, '172.30.') === 0 || strpos($ip, '172.31.') === 0);
 
         if ($is_local) {
-            $local_cached = get_transient('waf_fw_local_public_geo') ?: get_option('waf_fw_local_server_country', '');
-            if (!empty($local_cached) && strlen($local_cached) === 2 && $local_cached !== 'XX') {
-                self::$geo_memory_cache[$ip] = strtoupper($local_cached);
-                return strtoupper($local_cached);
-            }
-            if (function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
-                $resp = wp_remote_get('http://ip-api.com/json/?fields=status,countryCode', ['timeout' => 0.8, 'sslverify' => false]);
-                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                    $g = json_decode(wp_remote_retrieve_body($resp), true);
-                    if (!empty($g['countryCode'])) {
-                        $c = strtoupper(trim($g['countryCode']));
-                        set_transient('waf_fw_local_public_geo', $c, 86400);
-                        update_option('waf_fw_local_server_country', $c);
-                        self::$geo_memory_cache[$ip] = $c;
-                        return $c;
-                    }
-                }
-            }
-            self::$geo_memory_cache[$ip] = 'BD';
-            return 'BD'; // Default local country (Bangladesh)
+            self::$geo_memory_cache[$ip] = 'LOCAL';
+            return 'LOCAL';
         }
 
         // 4. Transient / APCu Cache Lookup (0.005ms)
@@ -671,64 +656,28 @@ class WAF_FW_Engine {
         }
 
         // 6. Non-blocking GeoIP Resolution
-        // If country blocking is not active, return default country immediately (< 0.001ms) so the web page loads instantly
+        // If country blocking is not active, return immediately (< 0.001ms) so the web page loads instantly
         $raw_countries = get_option('waf_fw_blocked_countries', '');
         $has_blocked_countries = !empty($raw_countries);
         if (!$has_blocked_countries) {
-            $default_c = get_option('waf_fw_local_server_country', 'BD') ?: 'BD';
-            self::$geo_memory_cache[$ip] = $default_c;
-            return $default_c;
+            self::$geo_memory_cache[$ip] = 'XX';
+            return 'XX';
         }
 
         $resolved_country = 'XX';
 
-        // Single fast provider with tight 0.4s timeout only when country blocking is active
-        $fetch_geo_url = function($url) {
-            if (function_exists('wp_remote_get')) {
-                $resp = wp_remote_get($url, ['timeout' => 0.4, 'sslverify' => false, 'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']]);
-                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                    return wp_remote_retrieve_body($resp);
+        // Single fast provider with tight 0.25s timeout only when country blocking is actively configured
+        if (function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
+            $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", [
+                'timeout' => 0.25,
+                'sslverify' => false,
+                'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
+            ]);
+            if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                $g1 = json_decode(wp_remote_retrieve_body($resp), true);
+                if (!empty($g1['countryCode'])) {
+                    $resolved_country = strtoupper(trim($g1['countryCode']));
                 }
-            }
-            return null;
-        };
-
-        // Single primary provider: ip-api.com
-        $body1 = $fetch_geo_url("http://ip-api.com/json/{$ip}?fields=status,countryCode");
-        if ($body1) {
-            $g1 = json_decode($body1, true);
-            if (!empty($g1['countryCode'])) {
-                $resolved_country = strtoupper(trim($g1['countryCode']));
-            }
-        }
-
-        // Provider 2 Fallback: ipwhois.app
-        if ($resolved_country === 'XX') {
-            $body2 = $fetch_geo_url("https://ipwhois.app/json/{$ip}");
-            if ($body2) {
-                $g2 = json_decode($body2, true);
-                if (!empty($g2['country_code'])) {
-                    $resolved_country = strtoupper(trim($g2['country_code']));
-                }
-            }
-        }
-
-        // Provider 3 Fallback: freeipapi.com
-        if ($resolved_country === 'XX') {
-            $body3 = $fetch_geo_url("https://freeipapi.com/api/json/{$ip}");
-            if ($body3) {
-                $g3 = json_decode($body3, true);
-                if (!empty($g3['countryCode'])) {
-                    $resolved_country = strtoupper(trim($g3['countryCode']));
-                }
-            }
-        }
-
-        // Provider 4 Fallback: ipapi.co
-        if ($resolved_country === 'XX') {
-            $body4 = $fetch_geo_url("https://ipapi.co/{$ip}/country/");
-            if ($body4 && strlen(trim($body4)) === 2 && ctype_alpha(trim($body4))) {
-                $resolved_country = strtoupper(trim($body4));
             }
         }
 

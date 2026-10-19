@@ -22,15 +22,28 @@ $download_nonce = wp_create_nonce('waf_fw_download_backup');
 ?>
 
 <div class="mdf-backup-container">
+    <!-- TOP PLATFORM BREADCRUMB / STATUS BAR -->
+    <div class="mdf-platform-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="mdf-platform-left" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5B756E;">
+            <span style="color:#7A928B;">Platform</span>
+            <span style="color:#CBD8CF;">/</span>
+            <span style="color:#7A928B;">Disaster Recovery</span>
+            <span style="color:#CBD8CF;">/</span>
+            <strong style="color:#0F2C26;font-weight:700;">Backup & Restore</strong>
+        </div>
+        <div class="mdf-platform-right">
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;border:1px solid #E6ECE8;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;color:#0F2C26;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.2);"></span>
+                <span>Snapshot Engine Ready</span>
+            </div>
+        </div>
+    </div>
+
     <!-- 1. Hero Header -->
     <div class="mdf-backup-hero">
         <div class="mdf-backup-hero-left">
-            <div class="mdf-backup-badge">
-                <span class="dashicons dashicons-shield"></span>
-                <span>DISASTER RECOVERY &bull; ENTERPRISE BACKUP</span>
-            </div>
-            <h1 class="mdf-backup-title">Site Backup &amp; 1-Click Disaster Recovery</h1>
-            <p class="mdf-backup-subtitle">
+            <h1 class="mdf-backup-title" style="font-size:28px;font-weight:800;color:#0F2C26;letter-spacing:-0.02em;margin:0 0 6px 0;">Backup &amp; <span style="color:#DF5A38;">Disaster Recovery.</span></h1>
+            <p class="mdf-backup-subtitle" style="font-size:13.5px;color:#5B756E;margin:0;">
                 Create complete snapshots of your WordPress database and files. In the event of a security breach, plugin conflict, or broken update, restore your website to a healthy state in 1-click.
             </p>
         </div>

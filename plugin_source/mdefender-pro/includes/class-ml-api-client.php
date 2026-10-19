@@ -48,11 +48,9 @@ class WAF_FW_ML_Api_Client {
 
     public function refresh_config() {
         $url = (string) get_option('waf_fw_ml_api_url', '');
-        $site_host = parse_url(home_url(), PHP_URL_HOST);
-        $is_local_site = ($site_host === 'localhost' || $site_host === '127.0.0.1' || strpos(home_url(), 'localhost') !== false || strpos(home_url(), '127.0.0.1') !== false);
 
-        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false || $url === 'http://217.15.170.82' || ($is_local_site && $url === 'https://mdefender-pro.crafix.tech')) {
-            $url = $is_local_site ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
+        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false || $url === 'http://217.15.170.82') {
+            $url = 'https://mdefender-pro.crafix.tech';
             update_option('waf_fw_ml_api_url', $url);
         }
         $this->base_url   = untrailingslashit($url);
@@ -127,6 +125,18 @@ class WAF_FW_ML_Api_Client {
             if (!empty($args['sslverify'])) {
                 $args['sslverify'] = false;
                 $response = wp_remote_request($url, $args);
+            }
+        }
+        if (is_wp_error($response) && strpos($this->base_url, '127.0.0.1') !== false) {
+            // Failover to production cloud if local server is down
+            $cloud_url = 'https://mdefender-pro.crafix.tech' . $path;
+            if ($method === 'GET' && $body !== null) {
+                $cloud_url = add_query_arg($body, $cloud_url);
+            }
+            $args['sslverify'] = false;
+            $cloud_response = wp_remote_request($cloud_url, $args);
+            if (!is_wp_error($cloud_response)) {
+                $response = $cloud_response;
             }
         }
         if (is_wp_error($response)) {
@@ -255,7 +265,7 @@ class WAF_FW_ML_Api_Client {
             'domain'  => $domain,
             'mode'    => get_option('waf_fw_cloud_mode', 'protect'),
             'request' => is_array($request_data) ? $request_data : ['url' => '/', 'method' => 'GET', 'body' => '', 'headers' => [], 'ip' => ''],
-        ], 2.5);
+        ], 0.8);
     }
 
     /**
