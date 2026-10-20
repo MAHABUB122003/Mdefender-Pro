@@ -87,11 +87,20 @@ class AuthoritativeDNSResolver:
                 if d:
                     domain_set.add(d)
 
+            # Also check domains collection
+            distinct_domains = self.db.domains.distinct("domain")
+            for d in distinct_domains:
+                if d:
+                    domain_set.add(d.lower().strip())
+
             # Also check dns_records directly
             distinct_dns_domains = self.db.dns_records.distinct("domain")
             for d in distinct_dns_domains:
                 if d:
                     domain_set.add(d.lower().strip())
+
+            # Always treat the base nameserver domain as a managed authoritative zone
+            domain_set.add("mdefender-pro.crafix.tech")
 
             self._known_domains_cache = (now, domain_set)
             return domain_set
@@ -163,6 +172,25 @@ class AuthoritativeDNSResolver:
         response = dns.message.make_response(query)
         response.flags |= dns.flags.AA  # Authoritative Answer
         response.flags |= dns.flags.QR  # Query Response
+
+        # Base nameserver hostnames resolution (ns1, ns2, or root management domain)
+        base_domain = "mdefender-pro.crafix.tech"
+        if qname_str in ("ns1." + base_domain, "ns2." + base_domain) and qtype_str in ("A", "ANY"):
+            rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "A", self.edge_ip)
+            response.answer.append(rr)
+            return response.to_wire()
+
+        if qname_str == base_domain:
+            if qtype_str in ("NS", "ANY"):
+                for ns in DEFAULT_NAMESERVERS:
+                    clean_ns = ns.strip() if ns.strip().endswith(".") else f"{ns.strip()}."
+                    ns_rr = dns.rrset.from_text(f"{base_domain}.", 86400, "IN", "NS", clean_ns)
+                    response.answer.append(ns_rr)
+            if qtype_str in ("A", "ANY"):
+                rr = dns.rrset.from_text(f"{base_domain}.", 300, "IN", "A", self.edge_ip)
+                response.answer.append(rr)
+            if response.answer:
+                return response.to_wire()
 
         # Find which zone this query belongs to
         zone_info = self._find_zone_for_qname(qname_str)
