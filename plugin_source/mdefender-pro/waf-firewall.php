@@ -528,7 +528,7 @@ function waf_fw_cloud_heartbeat() {
 
                 // Report findings back to MDefender Cloud Backend
                 $api_key = get_option('waf_fw_api_key', '');
-                $endpoint = get_option('waf_fw_ml_api_endpoint', 'http://localhost:8000/api');
+                $endpoint = get_option('waf_fw_ml_api_endpoint', 'https://mdefender-pro.crafix.tech/api');
                 if (!empty($api_key)) {
                     $base_url = rtrim(str_replace('/api', '', $endpoint), '/');
                     $report_endpoint = $base_url . '/api/v1/malware/scans/' . urlencode($scan_id ?: 'auto') . '/report';

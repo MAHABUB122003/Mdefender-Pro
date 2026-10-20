@@ -58,7 +58,7 @@ def _plugin_info():
         with zipfile.ZipFile(PLUGIN_ZIP_PATH) as zf:
             names = zf.namelist()
             info["files"] = len(names)
-            main = next((n for n in names if n.endswith("waf-firewall.php")), None)
+            main = next((n for n in names if n.endswith("mdefender-pro.php") or n.endswith("waf-firewall.php")), None)
             if main:
                 header = zf.read(main).decode("utf-8", errors="replace")[:2000]
                 m = re.search(r"Version:\s*([0-9][^\s]*)", header)
