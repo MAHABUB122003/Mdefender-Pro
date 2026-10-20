@@ -487,6 +487,33 @@ class WAFAPI:
         user_rate_limit = u_cfg.get('rate_limit_per_minute', 120)
 
         is_whitelisted = self.ip_filter.is_whitelisted(ip)
+        if is_whitelisted:
+            decision = {
+                'decision': 'ALLOW',
+                'action': 'allow',
+                'confidence': 0.0,
+                'reason': 'Whitelisted IP (Instant Edge Bypass)',
+                'attack_type': None,
+                'risk_score': 0,
+                'risk_level': 'low',
+                'status': 'allowed',
+                'reference_id': 'WL-PASS',
+            }
+            log_entry = {
+                'ip': ip, 'url': url, 'attack_type': 'Normal', 'status': 'allowed',
+                'confidence': 0.0, 'timestamp': datetime.now(),
+                'details': {'reason': 'Whitelisted IP'},
+                'user_id': user_id or '', 'domain': domain or '', 'website_id': website_id or ''
+            }
+            event = {
+                'user_id': user_id or '', 'website_id': website_id or '',
+                'timestamp': datetime.now(), 'source_ip': ip, 'method': method,
+                'endpoint': url, 'attack_type': None, 'detection_source': 'whitelist',
+                'risk_score': 0, 'action': 'allow', 'status': 'allowed',
+                'reference_id': 'WL-PASS', 'user_agent': user_agent
+            }
+            return decision, log_entry, event, False, ip
+
         is_blacklisted = self.attack_blocker.is_blacklisted(ip, user_id=user_id)
         is_rate_limited = self.rate_limiter.is_rate_limited(ip, max_requests=user_rate_limit)
 

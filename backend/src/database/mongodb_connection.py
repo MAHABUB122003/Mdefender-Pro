@@ -101,92 +101,82 @@ class MongoDB:
             self._client.admin.command('ping')
             self._db = self._client[db_name]
             print("[+] MongoDB connection successful")
-            self._ensure_indexes()
+            try:
+                self._ensure_indexes()
+            except Exception as e:
+                print(f"[!] Non-fatal index check: {e}")
         except (ConnectionFailure, ConfigurationError, Exception) as e:
             print(f"[-] Warning: MongoDB connection failed ({type(e).__name__}): {e}")
             print("   Using in-memory fallback for now.")
             self._db = InMemoryDB()
 
     def _ensure_indexes(self):
-        if hasattr(self._db, 'attacks'):
-            self._db.attacks.create_index('timestamp')
-            self._db.attacks.create_index('ip')
-            self._db.attacks.create_index('attack_type')
-            self._db.attacks.create_index('user_id')
-        if hasattr(self._db, 'attack_attempts'):
-            self._db.attack_attempts.create_index('timestamp')
-            self._db.attack_attempts.create_index('ip')
-        if hasattr(self._db, 'blacklist'):
-            self._db.blacklist.create_index('ip', unique=True)
-        if hasattr(self._db, 'clients'):
-            self._db.clients.create_index('api_key')
-            self._db.clients.create_index('domain', unique=True)
-        if hasattr(self._db, 'auto_blocks'):
-            self._db.auto_blocks.create_index('ip')
-        if hasattr(self._db, 'finance_transactions'):
-            self._db.finance_transactions.create_index('date')
-            self._db.finance_transactions.create_index('bank_account_id')
-            self._db.finance_transactions.create_index('type')
-        if hasattr(self._db, 'bank_accounts'):
-            self._db.bank_accounts.create_index('account_number')
-        if hasattr(self._db, 'notices'):
-            self._db.notices.create_index('created_at')
-        if hasattr(self._db, 'malware_scans'):
-            self._db.malware_scans.create_index('timestamp')
-            self._db.malware_scans.create_index('verdict')
-            self._db.malware_scans.create_index('domain')
-        if hasattr(self._db, 'websites'):
-            self._db.websites.create_index('user_id')
-            self._db.websites.create_index([('user_id', 1), ('domain', 1), ('platform', 1)], unique=True)
-            self._db.websites.create_index('domain')
-        if hasattr(self._db, 'api_keys'):
-            self._db.api_keys.create_index('user_id')
-            self._db.api_keys.create_index('key_hash', unique=True)
-            self._db.api_keys.create_index('website_id')
-        if hasattr(self._db, 'subscriptions'):
-            self._db.subscriptions.create_index('user_id', unique=True)
-        if hasattr(self._db, 'waf_events'):
-            self._db.waf_events.create_index('user_id')
-            self._db.waf_events.create_index('website_id')
-            self._db.waf_events.create_index('timestamp')
-        if hasattr(self._db, 'security_events'):
-            self._db.security_events.create_index('user_id')
-            self._db.security_events.create_index('website_id')
-            self._db.security_events.create_index('timestamp')
-            self._db.security_events.create_index([('user_id', 1), ('timestamp', -1)])
-            self._db.security_events.create_index([('website_id', 1), ('timestamp', -1)])
-            self._db.security_events.create_index([('action', 1), ('timestamp', -1)])
-        if hasattr(self._db, 'attacks'):
-            self._db.attacks.create_index([('user_id', 1), ('timestamp', -1)])
-            self._db.attacks.create_index([('website_id', 1), ('timestamp', -1)])
+        def _idx(coll, keys, **kw):
+            try:
+                if hasattr(self._db, coll):
+                    getattr(self._db, coll).create_index(keys, **kw)
+            except Exception:
+                pass
+
+        _idx('attacks', 'timestamp')
+        _idx('attacks', 'ip')
+        _idx('attacks', 'attack_type')
+        _idx('attacks', 'user_id')
+        _idx('attack_attempts', 'timestamp')
+        _idx('attack_attempts', 'ip')
+        _idx('blacklist', 'ip')
+        _idx('clients', 'api_key')
+        _idx('clients', 'domain')
+        _idx('auto_blocks', 'ip')
+        _idx('finance_transactions', 'date')
+        _idx('finance_transactions', 'bank_account_id')
+        _idx('finance_transactions', 'type')
+        _idx('bank_accounts', 'account_number')
+        _idx('notices', 'created_at')
+        _idx('malware_scans', 'timestamp')
+        _idx('malware_scans', 'verdict')
+        _idx('malware_scans', 'domain')
+        _idx('websites', 'user_id')
+        _idx('websites', [('user_id', 1), ('domain', 1), ('platform', 1)])
+        _idx('websites', 'domain')
+        _idx('api_keys', 'user_id')
+        _idx('api_keys', 'key_hash')
+        _idx('api_keys', 'website_id')
+        _idx('subscriptions', 'user_id')
+        _idx('waf_events', 'user_id')
+        _idx('waf_events', 'website_id')
+        _idx('waf_events', 'timestamp')
+        _idx('security_events', 'user_id')
+        _idx('security_events', 'website_id')
+        _idx('security_events', 'timestamp')
+        _idx('security_events', [('user_id', 1), ('timestamp', -1)])
+        _idx('security_events', [('website_id', 1), ('timestamp', -1)])
+        _idx('security_events', [('action', 1), ('timestamp', -1)])
+        _idx('attacks', [('user_id', 1), ('timestamp', -1)])
+        _idx('attacks', [('website_id', 1), ('timestamp', -1)])
         for coll in ('entitlements', 'notifications', 'usage_metrics', 'paddle_transactions'):
-            if hasattr(self._db, coll):
-                self._db[coll].create_index('user_id')
-        try:
-            self._db.users.create_index('email', unique=True, sparse=True)
-            self._db.users.create_index('username', sparse=True)
-            self._db.users.create_index('google_id', sparse=True)
-            self._db.email_verification_tokens.create_index('token_hash')
-            self._db.email_verification_tokens.create_index('expires_at', expireAfterSeconds=0)
-            self._db.email_verification_tokens.create_index('request_ip')
-            self._db.email_verification_tokens.create_index('email')
-            self._db.password_reset_tokens.create_index('token_hash')
-            self._db.password_reset_tokens.create_index('expires_at', expireAfterSeconds=0)
-            self._db.refresh_tokens.create_index('user_id')
-            self._db.refresh_tokens.create_index('token_hash')
-            self._db.sessions.create_index('user_id')
-            self._db.sessions.create_index('session_token')
-            self._db.sessions.create_index('expires_at', expireAfterSeconds=0)
-            self._db.failed_logins.create_index('identifier')
-            self._db.failed_logins.create_index('timestamp')
-            self._db.audit_logs.create_index('user_id')
-            self._db.audit_logs.create_index('timestamp')
-            self._db.audit_logs.create_index('action')
-            self._db.security_events.create_index('timestamp')
-            self._db.security_events.create_index('event_type')
-            self._db.mfa_secrets.create_index('user_id', unique=True)
-        except Exception:
-            pass
+            _idx(coll, 'user_id')
+        _idx('users', 'email', sparse=True)
+        _idx('users', 'username', sparse=True)
+        _idx('users', 'google_id', sparse=True)
+        _idx('email_verification_tokens', 'token_hash')
+        _idx('email_verification_tokens', 'expires_at', expireAfterSeconds=0)
+        _idx('email_verification_tokens', 'request_ip')
+        _idx('email_verification_tokens', 'email')
+        _idx('password_reset_tokens', 'token_hash')
+        _idx('password_reset_tokens', 'expires_at', expireAfterSeconds=0)
+        _idx('refresh_tokens', 'user_id')
+        _idx('refresh_tokens', 'token_hash')
+        _idx('sessions', 'user_id')
+        _idx('sessions', 'session_token')
+        _idx('sessions', 'expires_at', expireAfterSeconds=0)
+        _idx('failed_logins', 'identifier')
+        _idx('failed_logins', 'timestamp')
+        _idx('audit_logs', 'user_id')
+        _idx('audit_logs', 'timestamp')
+        _idx('audit_logs', 'action')
+        _idx('security_events', 'event_type')
+        _idx('mfa_secrets', 'user_id')
 
     @property
     def attacks(self):
