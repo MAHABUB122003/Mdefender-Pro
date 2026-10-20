@@ -506,9 +506,29 @@ class WAFAPI:
                 'status': 'blocked',
                 'reference_id': 'GEO-BLOCK',
             }
+        # Static Asset Fast-Path: CSS, JS, Images, Fonts with clean queries pass in 0.001ms
+        is_static_asset = False
+        if method == 'GET':
+            lower_url = url.lower().split('?')[0]
+            if lower_url.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map')):
+                q_raw = request_data.get('query_string') or ''
+                if not any(token in q_raw.lower() for token in ('<script', 'select ', 'union ', '../', '--', "' or", '" or')):
+                    is_static_asset = True
+
+        if is_static_asset:
+            decision = {
+                'decision': 'ALLOW',
+                'action': 'allow',
+                'confidence': 0.0,
+                'reason': 'Static asset fast-path',
+                'attack_type': None,
+                'risk_score': 0,
+                'risk_level': 'low',
+                'status': 'allowed',
+                'reference_id': 'FAST-ALLOW',
+            }
         else:
-            decision_engine = DecisionEngine(ml_detector=self.ml_detector)
-            decision = decision_engine.evaluate(
+            decision = self.decision_engine.evaluate(
                 request_data,
                 ip=ip,
                 is_blacklisted=is_blacklisted,

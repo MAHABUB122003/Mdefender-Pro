@@ -157,7 +157,7 @@ class IPFilter:
         # Provider 1: ip-api.com
         try:
             import requests
-            r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,countryCode", timeout=1.5)
+            r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,countryCode", timeout=0.5)
             if r.status_code == 200:
                 data = r.json()
                 if data.get('status') == 'success' and data.get('countryCode'):
@@ -173,7 +173,7 @@ class IPFilter:
         # Provider 2: ipwhois.app
         try:
             import requests
-            r2 = requests.get(f"https://ipwhois.app/json/{ip}", timeout=1.5)
+            r2 = requests.get(f"https://ipwhois.app/json/{ip}", timeout=0.5)
             if r2.status_code == 200:
                 data2 = r2.json()
                 if data2.get('success') and data2.get('country_code'):
@@ -189,7 +189,7 @@ class IPFilter:
         # Provider 3: ipapi.co
         try:
             import requests
-            r3 = requests.get(f"https://ipapi.co/{ip}/json/", timeout=1.5)
+            r3 = requests.get(f"https://ipapi.co/{ip}/json/", timeout=0.5)
             if r3.status_code == 200:
                 data3 = r3.json()
                 if data3.get('country_code'):
@@ -204,7 +204,42 @@ class IPFilter:
 
         return {'country_code': 'UNKNOWN', 'country_name': 'Unknown'}
 
+    def has_active_country_blocks(self, user_id=None):
+        """Ultra-fast check if any country block rules exist in the database (cached for 15s)."""
+        now_ts = time.time()
+        cache_key = str(user_id) if user_id else "global"
+        if not hasattr(self, '_cb_has_cache'):
+            self._cb_has_cache = {}
+        cached, exp = self._cb_has_cache.get(cache_key, (None, 0))
+        if now_ts < exp and cached is not None:
+            return cached
+
+        from bson import ObjectId
+        query = {}
+        if user_id:
+            u_str = str(user_id)
+            conds = [{'user_id': u_str}, {'added_by_user_id': u_str}, {'is_global': True}]
+            if ObjectId.is_valid(u_str):
+                conds.append({'user_id': ObjectId(u_str)})
+                conds.append({'added_by_user_id': ObjectId(u_str)})
+            query['$or'] = conds
+        else:
+            query['is_global'] = True
+        
+        try:
+            count = self.db.country_blocks.count_documents(query, limit=1)
+            has_blocks = (count > 0)
+        except Exception:
+            has_blocks = False
+            
+        self._cb_has_cache[cache_key] = (has_blocks, now_ts + 15.0)
+        return has_blocks
+
     def is_country_blocked(self, ip, user_id=None, headers=None, country_code=None):
+        # FAST PATH: If no country blocking rules exist, skip GeoIP resolution entirely (0.05ms)
+        if not country_code and not self.has_active_country_blocks(user_id):
+            return False, {'country_code': 'UNKNOWN', 'country_name': 'Unknown'}
+
         geo = self.get_ip_country(ip, headers=headers, override_country=country_code)
         cc = (country_code or geo.get('country_code', '')).upper().strip()
         if not cc or cc in ('UNKNOWN',):

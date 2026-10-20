@@ -159,6 +159,33 @@ async def security_headers_middleware(request: Request, call_next):
     return response
 
 
+# ============================================================================
+# High-Speed Anycast Cloud Proxy Engine (Connection Pool & RAM Routing Cache)
+# ============================================================================
+_site_lookup_cache = {}    # {clean_host: (registered_site, origin_ip, expire_time)}
+_origin_schemes = {}       # {origin_ip: "https" or "http"}
+_proxy_http_client = None
+
+def get_proxy_http_client():
+    global _proxy_http_client
+    if _proxy_http_client is None:
+        import httpx
+        # Keep-Alive pool with high concurrency limits to handle CSS/JS/Image parallel requests instantly
+        limits = httpx.Limits(max_keepalive_connections=200, max_connections=600, keepalive_expiry=60.0)
+        timeout = httpx.Timeout(connect=3.0, read=30.0, write=15.0, pool=5.0)
+        _proxy_http_client = httpx.AsyncClient(limits=limits, timeout=timeout, verify=False, follow_redirects=False)
+    return _proxy_http_client
+
+async def _bg_increment_stats(site_id, is_blocked=False):
+    """Background non-blocking task for updating domain traffic analytics without delaying visitor."""
+    try:
+        loop = asyncio.get_running_loop()
+        inc_data = {"blocked_today": 1, "total_blocked": 1} if is_blocked else {"requests_today": 1, "total_requests": 1}
+        await loop.run_in_executor(None, lambda: db.websites.update_one({"_id": site_id}, {"$inc": inc_data}))
+    except Exception:
+        pass
+
+
 @app.middleware("http")
 async def waf_self_protection_middleware(request: Request, call_next):
     path = request.url.path
@@ -180,23 +207,38 @@ async def waf_self_protection_middleware(request: Request, call_next):
     raw_host = request.headers.get("host", "").split(":")[0].strip().lower()
     clean_host = raw_host[4:] if raw_host.startswith("www.") else raw_host
 
-    # Check if host is a registered Cloud WAF domain
-    registered_site = None
-    if clean_host and clean_host not in ("localhost", "127.0.0.1", "0.0.0.0"):
-        host_variants = [
-            clean_host,
-            f"http://{clean_host}",
-            f"https://{clean_host}",
-            f"http://{clean_host}/",
-            f"https://{clean_host}/"
-        ]
-        registered_site = db.websites.find_one({
-            "$or": [
-                {"domain": {"$in": host_variants}},
-                {"url": {"$in": host_variants}},
-                {"name": {"$in": host_variants}}
+    # Fast in-memory lookup for registered site & origin configuration (30s TTL, 0.001ms RAM lookup)
+    now_ts = datetime.now().timestamp()
+    cached = _site_lookup_cache.get(clean_host)
+    if cached and now_ts < cached[2]:
+        registered_site, origin_ip = cached[0], cached[1]
+    else:
+        registered_site = None
+        origin_ip = None
+        if clean_host and clean_host not in ("localhost", "127.0.0.1", "0.0.0.0"):
+            host_variants = [
+                clean_host,
+                f"http://{clean_host}",
+                f"https://{clean_host}",
+                f"http://{clean_host}/",
+                f"https://{clean_host}/"
             ]
-        })
+            registered_site = db.websites.find_one({
+                "$or": [
+                    {"domain": {"$in": host_variants}},
+                    {"url": {"$in": host_variants}},
+                    {"name": {"$in": host_variants}}
+                ]
+            })
+            if registered_site:
+                t_site_id = str(registered_site.get("_id"))
+                origin_record = db.dns_records.find_one({
+                    "$or": [{"domain": clean_host}, {"website_id": t_site_id}],
+                    "type": "A",
+                    "proxied": True
+                })
+                origin_ip = (origin_record or {}).get("content") or registered_site.get("origin_server")
+        _site_lookup_cache[clean_host] = (registered_site, origin_ip, now_ts + 30.0)
 
     target_domain = clean_host if registered_site else "localhost"
     target_user_id = str(registered_site.get("user_id")) if registered_site else None
@@ -260,7 +302,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
         try:
             waf_api.async_save_logs(decision, log_entry, event, is_blocked, ip, user_id=target_user_id, website_id=target_site_id)
             if registered_site:
-                db.websites.update_one({"_id": registered_site["_id"]}, {"$inc": {"blocked_today": 1, "total_blocked": 1}})
+                asyncio.create_task(_bg_increment_stats(registered_site["_id"], is_blocked=True))
         except Exception:
             pass
             
@@ -276,25 +318,14 @@ async def waf_self_protection_middleware(request: Request, call_next):
     # Cloud WAF: If this is a registered domain and request is clean, proxy to origin server
     if registered_site:
         try:
-            db.websites.update_one({"_id": registered_site["_id"]}, {"$inc": {"requests_today": 1, "total_requests": 1}})
+            asyncio.create_task(_bg_increment_stats(registered_site["_id"], is_blocked=False))
         except Exception:
             pass
 
-        # Look up origin server from DNS records or website document
-        origin_record = db.dns_records.find_one({
-            "$or": [{"domain": clean_host}, {"website_id": target_site_id}],
-            "type": "A",
-            "proxied": True
-        })
-        origin_ip = (origin_record or {}).get("content") or registered_site.get("origin_server")
-        
         # If valid external origin IP is configured
         if origin_ip and origin_ip not in ("localhost", "127.0.0.1", "217.15.170.82", "203.0.113.10", "192.0.2.1"):
             try:
-                import httpx
-                target_url_https = f"https://{origin_ip}{path}"
-                if request.url.query:
-                    target_url_https = f"{target_url_https}?{request.url.query}"
+                client = get_proxy_http_client()
 
                 fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
                 fwd_headers["Host"] = raw_host
@@ -304,31 +335,33 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
 
                 body = req_body_bytes
-                async with httpx.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
-                    try:
-                        origin_resp = await client.request(
-                            method=request.method,
-                            url=target_url_https,
-                            headers=fwd_headers,
-                            content=body
-                        )
-                    except Exception:
-                        # Fallback to plain HTTP if origin does not support HTTPS
-                        target_url_http = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
-                        origin_resp = await client.request(
-                            method=request.method,
-                            url=target_url_http,
-                            headers=fwd_headers,
-                            content=body
-                        )
+                origin_resp = None
+                known_scheme = _origin_schemes.get(origin_ip)
 
-                    resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection")}
-                    resp_headers["X-MDefender-Protected"] = "true"
-                    return Response(
-                        content=origin_resp.content,
-                        status_code=origin_resp.status_code,
-                        headers=resp_headers
-                    )
+                if known_scheme == "http":
+                    target_url = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                    origin_resp = await client.request(method=request.method, url=target_url, headers=fwd_headers, content=body)
+                elif known_scheme == "https":
+                    target_url = f"https://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                    origin_resp = await client.request(method=request.method, url=target_url, headers=fwd_headers, content=body)
+                else:
+                    # Smart scheme discovery with fallback (cached forever per origin_ip)
+                    try:
+                        target_url_https = f"https://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                        origin_resp = await client.request(method=request.method, url=target_url_https, headers=fwd_headers, content=body)
+                        _origin_schemes[origin_ip] = "https"
+                    except Exception:
+                        target_url_http = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                        origin_resp = await client.request(method=request.method, url=target_url_http, headers=fwd_headers, content=body)
+                        _origin_schemes[origin_ip] = "http"
+
+                resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection")}
+                resp_headers["X-MDefender-Protected"] = "true"
+                return Response(
+                    content=origin_resp.content,
+                    status_code=origin_resp.status_code,
+                    headers=resp_headers
+                )
             except Exception as e:
                 return HTMLResponse(content=f"<h1>502 Bad Gateway</h1><p>MDefender Pro could not reach origin server ({origin_ip}): {e}</p>", status_code=502)
 
