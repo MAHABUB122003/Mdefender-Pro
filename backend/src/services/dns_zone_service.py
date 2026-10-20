@@ -580,33 +580,25 @@ class DNSZoneService:
                     pass
 
             # Tier 2: Direct Parent TLD authoritative referral check (direct from registry)
-            if not current_ns and HAS_DNSPYTHON:
+            if (not any("mdefender" in ns for ns in current_ns)) and HAS_DNSPYTHON:
                 try:
                     parts = domain.rstrip(".").split(".")
                     tld = parts[-1]
-                    root_server = "198.41.0.4"  # a.root-servers.net
-                    msg = dns.message.make_query(tld, "NS")
-                    resp = dns.query.udp(msg, root_server, timeout=2.0)
-                    tld_servers = []
-                    for rrset in resp.additional:
-                        if rrset.rdtype == dns.rdatatype.A:
-                            for item in rrset:
-                                tld_servers.append(str(item))
-                    if not tld_servers:
-                        for rrset in resp.authority:
-                            if rrset.rdtype == dns.rdatatype.NS:
-                                for item in rrset:
-                                    tld_servers.append(str(item))
-                    for s in tld_servers[:3]:
+                    resolver = dns.resolver.Resolver()
+                    resolver.timeout = 2.0
+                    tld_ns_list = [str(x).rstrip(".") for x in resolver.resolve(tld, "NS")]
+                    for tld_host in tld_ns_list[:4]:
                         try:
-                            tld_ip = s if s.replace(".", "").isdigit() else str(dns.resolver.resolve(s, "A", lifetime=2.0)[0])
-                            q = dns.message.make_query(domain, "NS")
-                            r = dns.query.udp(q, tld_ip, timeout=2.0)
-                            for rrset in r.authority:
+                            tld_ip = str(resolver.resolve(tld_host, "A")[0])
+                            msg = dns.message.make_query(domain, "NS")
+                            resp = dns.query.udp(msg, tld_ip, timeout=3.0)
+                            tld_ref_ns = []
+                            for rrset in resp.authority:
                                 if rrset.rdtype == dns.rdatatype.NS:
                                     for item in rrset:
-                                        current_ns.append(str(item).rstrip(".").lower())
-                            if current_ns:
+                                        tld_ref_ns.append(str(item).rstrip(".").lower())
+                            if any("mdefender" in ns for ns in tld_ref_ns):
+                                current_ns = tld_ref_ns
                                 break
                         except Exception:
                             continue
