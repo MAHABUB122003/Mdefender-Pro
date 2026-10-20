@@ -300,7 +300,12 @@ async def waf_self_protection_middleware(request: Request, call_next):
         claimed_ip = get_claimed_ip_from_headers(forwarded_headers) or client_ip
         
         try:
-            waf_api.async_save_logs(decision, log_entry, event, is_blocked, ip, user_id=target_user_id, website_id=target_site_id)
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(
+                None,
+                waf_api.async_save_logs,
+                decision, log_entry, event, is_blocked, ip, target_user_id, target_site_id
+            )
             if registered_site:
                 asyncio.create_task(_bg_increment_stats(registered_site["_id"], is_blocked=True))
         except Exception:
