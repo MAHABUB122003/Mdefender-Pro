@@ -3,532 +3,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>403 &mdash; Security Action Required</title>
+    <title>403 Forbidden &mdash; Access Denied | MDefender-Pro AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-1: #4f46e5;
-            --brand-2: #6366f1;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --text-muted: #94a3b8;
-            --border-color: #cbd5e1;
-            --font-main: 'Outfit', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --bg-color: #ffffff;
+            --text-main: #1e293b;
+            --text-heading: #0f172a;
+            --text-sub: #475569;
+            --text-muted: #64748b;
+            --border-light: #e2e8f0;
+            --border-dark: #cbd5e1;
+            --orange-alert: #ea580c;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', Consolas, monospace;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: var(--font-main);
+            font-family: var(--font-family);
             background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.03) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.03) 0%, transparent 40%);
-            color: var(--text-primary);
+            color: var(--text-main);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px 14px;
+            padding: 50px 24px;
+            -webkit-font-smoothing: antialiased;
         }
-        .container {
+
+        .block-wrapper {
             width: 100%;
-            max-width: 660px;
-            background: var(--card-bg);
-            border: 1px solid rgba(226, 232, 240, 0.95);
-            border-radius: 12px;
-            box-shadow: 0 8px 25px -4px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-            padding: 24px 28px;
+            max-width: 960px;
+            margin: 0 auto;
             text-align: center;
-            animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .logo-wrap {
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
+
+        /* Header / Brand Logo */
+        .brand-header {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-        }
-        .logo-svg {
-            width: 48px;
-            height: 48px;
-        }
-        .logo-text {
-            font-size: 13.5px;
-            font-weight: 800;
-            color: #1e293b;
-            letter-spacing: 0.5px;
-            margin-top: 4px;
-            text-transform: uppercase;
-        }
-        .fw-badge {
-            font-size: 9.5px;
-            font-weight: 700;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 2px;
-        }
-        .fw-owner {
-            font-size: 12px;
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-        }
-        .main-title {
-            font-size: 19px;
-            font-weight: 800;
-            color: #0f172a;
-            letter-spacing: -0.3px;
-            margin-bottom: 3px;
-        }
-        .sub-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 3px;
-        }
-        .desc-text {
-            font-size: 11.5px;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-        
-        .table-container {
-            border: 1px solid var(--border-color);
-            border-radius: 7px;
-            overflow: hidden;
-            background: #ffffff;
-            margin-bottom: 12px;
+            gap: 18px;
+            margin-bottom: 32px;
             text-align: left;
         }
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .details-table tr {
-            border-bottom: 1px solid var(--border-color);
-        }
-        .details-table tr:last-child {
-            border-bottom: none;
-        }
-        .details-table th {
-            background-color: #f8fafc;
-            color: #475569;
-            font-weight: 700;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            width: 190px;
-            padding: 7px 12px;
-            border-right: 1px solid var(--border-color);
-            vertical-align: middle;
-        }
-        .details-table td {
-            color: #334155;
-            font-weight: 500;
-            font-size: 11.5px;
-            padding: 7px 12px;
-            vertical-align: middle;
-        }
-        
-        .threat-row td {
-            background-color: #fff5f5 !important;
-            color: #991b1b !important;
-        }
-        .threat-cell-content {
+
+        .brand-logo-wrap {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            gap: 8px;
+            justify-content: center;
+            flex-shrink: 0;
         }
-        .threat-text {
+
+        .brand-logo-img {
+            width: 58px;
+            height: 58px;
+            border-radius: 14px;
+            object-fit: contain;
+            box-shadow: 0 6px 18px rgba(11, 37, 34, 0.16);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .brand-logo-img:hover {
+            transform: scale(1.06);
+            box-shadow: 0 8px 24px rgba(232, 121, 47, 0.28);
+        }
+
+        .brand-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-title {
+            font-size: 18px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 0.8px;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
             font-weight: 700;
-            color: #dc2626;
+            color: #64748b;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .brand-owner {
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        /* Main Headlines */
+        .headline-403 {
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--text-heading);
+            letter-spacing: -0.6px;
+            line-height: 1.15;
+            margin-bottom: 6px;
+        }
+
+        .headline-denied {
+            font-size: 25px;
+            font-weight: 800;
+            color: var(--text-heading);
+            margin-bottom: 10px;
+        }
+
+        .headline-restricted {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--orange-alert);
+            margin-bottom: 42px;
+        }
+
+        /* Two Columns Explanation */
+        .info-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            text-align: left;
+            margin-bottom: 42px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .info-box-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-heading);
+            margin-bottom: 12px;
+        }
+
+        .info-box-text {
+            font-size: 15px;
+            line-height: 1.65;
+            color: var(--text-sub);
+        }
+
+        .info-box-text p + p {
+            margin-top: 12px;
+        }
+
+        /* Technical Details Grid */
+        .tech-details-container {
+            border-top: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            padding: 30px 0;
+            margin-bottom: 34px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px 32px;
+            text-align: left;
+        }
+
+        .tech-item-label {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .tech-item-value {
+            font-size: 14.5px;
+            color: #334155;
+            line-height: 1.5;
             word-break: break-word;
         }
-        .info-tag {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #cbd5e1;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 7px;
-            border-radius: 4px;
-            text-decoration: none;
-            white-space: nowrap;
+
+        .tech-item-value-bold {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            font-family: var(--font-mono);
         }
-        
-        .ip-wrap {
-            display: flex;
+
+        .ip-flag-wrap {
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
-        .flag-img {
-            border: 1px solid rgba(0, 0, 0, 0.08);
+
+        .flag-icon {
+            width: 18px;
+            height: 13px;
             border-radius: 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            display: inline-block;
+            border: 1px solid rgba(0, 0, 0, 0.08);
             vertical-align: middle;
         }
-        
-        .why-header {
-            font-size: 12.5px;
-            font-weight: 700;
-            color: #0f172a;
-            margin-top: 10px;
-            margin-bottom: 3px;
-        }
-        .why-desc {
-            font-size: 10.5px;
-            color: var(--text-secondary);
-            line-height: 1.45;
-            max-width: 560px;
-            margin: 0 auto 10px;
-        }
-        
-        .ref-box {
-            background: #f8fafc;
-            border: 1px dashed var(--border-color);
-            border-radius: 5px;
-            padding: 6px 14px;
-            font-family: var(--font-mono);
-            font-size: 11.5px;
-            font-weight: 700;
-            color: #0f172a;
+
+        /* Attack Classification Badge */
+        .attack-badge {
             display: inline-block;
-            margin-bottom: 12px;
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            background-color: #ffedd5;
+            color: #9a3412;
+            border: 1px solid #fed7aa;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 5px;
+            margin-top: 2px;
         }
-        .ref-box:hover {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-            transform: scale(1.01);
-        }
-        
-        .actions {
+
+        /* Actions / Buttons */
+        .actions-row {
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 12px;
+            margin-bottom: 24px;
             flex-wrap: wrap;
         }
+
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 7px 16px;
-            border-radius: 6px;
-            font-size: 11.5px;
+            font-family: var(--font-family);
+            font-size: 12px;
             font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
             text-decoration: none;
             cursor: pointer;
-            transition: all 0.2s ease;
-            gap: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-            border: none;
+            transition: all 0.15s ease;
         }
+
         .btn-primary {
-            background-color: #1e3a8a;
+            background-color: #0f172a;
             color: #ffffff;
+            border: 1px solid #0f172a;
         }
+
         .btn-primary:hover {
-            background-color: #172554;
-            transform: translateY(-1px);
-            box-shadow: 0 3px 5px rgba(0,0,0,0.06);
-            color: #ffffff;
+            background-color: #1e293b;
+            border-color: #1e293b;
         }
+
         .btn-secondary {
             background-color: #ffffff;
-            color: #475569;
-            border: 1px solid var(--border-color);
+            color: #334155;
+            border: 1px solid var(--border-dark);
         }
+
         .btn-secondary:hover {
             background-color: #f8fafc;
-            color: #0f172a;
             border-color: #94a3b8;
-            transform: translateY(-1px);
-            box-shadow: 0 3px 5px rgba(0,0,0,0.04);
+            color: #0f172a;
         }
-        
-        .footer {
-            font-size: 10.5px;
+
+        /* Footer */
+        .footer-note {
+            font-size: 11px;
             color: var(--text-muted);
-            border-top: 1px solid var(--border-color);
-            padding-top: 12px;
-            margin-top: 10px;
+            line-height: 1.5;
         }
-        
-        @media (max-width: 768px) {
-            .container { padding: 24px; }
-            .details-table th, .details-table td {
-                display: block;
-                width: 100%;
-                border-right: none;
+
+        @media (max-width: 720px) {
+            .info-columns {
+                grid-template-columns: 1fr;
+                gap: 20px;
             }
-            .details-table th {
-                background-color: #f8fafc;
-                padding-bottom: 6px;
+            .tech-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
             }
-            .details-table td {
-                padding-top: 6px;
-                border-bottom: none;
-            }
-            .details-table tr {
-                border-bottom: 1px solid var(--border-color);
-                display: block;
-            }
-            .threat-cell-content {
+            .brand-header {
                 flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
+                text-align: center;
+                gap: 10px;
             }
-            .actions {
-                flex-direction: column;
-                width: 100%;
-                max-width: 400px;
-                margin: 0 auto 12px;
-            }
-            .btn {
-                width: 100%;
+            .brand-info {
+                align-items: center;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Logo Header -->
-        <div class="logo-wrap">
-            <svg class="logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#f8fafc" />
-                        <stop offset="30%" stop-color="#cbd5e1" />
-                        <stop offset="70%" stop-color="#94a3b8" />
-                        <stop offset="100%" stop-color="#475569" />
-                    </linearGradient>
-                    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#94a3b8" />
-                        <stop offset="50%" stop-color="#f1f5f9" />
-                        <stop offset="100%" stop-color="#475569" />
-                    </linearGradient>
-                    <linearGradient id="dragonColor" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#1e293b" />
-                        <stop offset="100%" stop-color="#0f172a" />
-                    </linearGradient>
-                    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
-                        <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.15" />
-                    </filter>
-                </defs>
-                <path d="M60 10 C85 22 98 25 98 48 C98 75 75 98 60 108 C45 98 22 75 22 48 C22 25 35 22 60 10 Z" fill="url(#shieldBg)" stroke="url(#shieldBorder)" stroke-width="3" filter="url(#dropShadow)" />
-                <path d="M60 18 C80 28 90 30 90 48 C90 70 70 90 60 98 C50 90 30 70 30 48 C30 30 40 28 60 18 Z" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="3 2" />
-                <path d="M60 28 C58 35 52 38 48 38 C44 38 43 42 45 44 C47 46 51 44 51 48 C51 52 46 55 42 53 C38 51 36 54 38 58 C40 62 45 60 48 64 C50 66 48 70 44 72 C48 74 54 75 58 72 C58 68 55 65 57 62 C59 59 63 61 65 58 C67 55 66 52 62 50 C64 45 68 46 70 42 C72 38 67 36 65 32 C63 28 61 25 60 28 Z" fill="url(#dragonColor)" />
-            </svg>
-            <div class="logo-text">MDefender-Pro AI</div>
+    <div class="block-wrapper">
+        <!-- Top Logo & Brand Header -->
+        <div class="brand-header">
+            <div class="brand-logo-wrap">
+                <img class="brand-logo-img" src="data:image/png;base64,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" alt="MDefender Pro Logo">
+            </div>
+            <div class="brand-info">
+                <div class="brand-title">MDEFENDER-PRO AI</div>
+                <div class="brand-subtitle">A.S.A.P. SECURITY FIREWALL</div>
+                <div class="brand-owner">MAHABUB</div>
+            </div>
         </div>
-        
-        <div class="fw-badge">A.S.A.P. Security Firewall</div>
-        <div class="fw-owner">Mahabub</div>
-        
-        <h1 class="main-title">403 — SECURITY ACTION REQUIRED</h1>
-        <h2 class="sub-title">Access Denied by Corporate WAF</h2>
-        
-        <div class="desc-text" id="desc-msg">Access to [{{ website_name }}] restricted.</div>
-        
-        <!-- Table Section -->
-        <div class="table-container">
-            <table class="details-table">
-                <tr class="threat-row">
-                    <th>Attack Classification</th>
-                    <td>
-                        <div class="threat-cell-content">
-                            <span class="threat-text">{{ attack_type }}</span>
-                            <span class="info-tag">Detailed info tag</span>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th>Origin Client IP</th>
-                    <td>
-                        <div class="ip-wrap">
-                            <img id="flag-img" src="https://flagcdn.com/w40/bd.png" srcset="https://flagcdn.com/w80/bd.png 2x" width="20" height="15" alt="Flag" class="flag-img" style="display: inline-block;">
-                            <span><span id="client-ip-display" style="font-family: var(--font-mono); font-weight: 700;">{{ client_ip }}</span><span id="geo-text" style="color: #64748b;"> (GeoIP: Dhaka, Bangladesh)</span></span>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th>Event Timestamp</th>
-                    <td><span id="utc-time">{{ timestamp }}</span> (Ref: <span id="unix-ref"></span>)</td>
-                </tr>
-                <tr>
-                    <th>Violation Reason</th>
-                    <td><span id="rule-desc">{{ reason }}</span> (Rule Ref: <span id="rule-id-val">90001</span>)</td>
-                </tr>
-                <tr>
-                    <th>Protocol Details</th>
-                    <td>HTTP/1.1 (WAF_VER: 4.1.0)</td>
-                </tr>
-                <tr>
-                    <th>Server Host</th>
-                    <td><span id="server-host">app-srv-01-prod-us-east.net</span></td>
-                </tr>
-            </table>
+
+        <!-- Headline -->
+        <h1 class="headline-403">403 Forbidden</h1>
+        <h2 class="headline-denied">Access Denied</h2>
+        <div class="headline-restricted">Access to {{ website_name }} is restricted</div>
+
+        <!-- 2 Columns: What happened? & What can I do? -->
+        <div class="info-columns">
+            <div class="info-box">
+                <div class="info-box-title">What happened?</div>
+                <div class="info-box-text">
+                    <p>This website is using a security service (MDefender-Pro AI) to protect itself from online attacks. The action you tried to perform has been blocked by corporate WAF.</p>
+                </div>
+            </div>
+            <div class="info-box">
+                <div class="info-box-title">What can I do?</div>
+                <div class="info-box-text">
+                    <p>If you are a visitor, please contact the site owner or support operations with the details below.</p>
+                    <p>If you believe this is a valid corporate action, please share the Reference ID below.</p>
+                </div>
+            </div>
         </div>
-        
-        <!-- Bottom Explanatory Section -->
-        <h3 class="why-header">Why did this happen?</h3>
-        <p class="why-desc">
-            To maintain system integrity, suspicious requests are automatically analyzed and filtered. If you believe this is a valid corporate action, please share the Reference ID below with your local IT/Security operations. Regular users should clear cache or contact support.
-        </p>
-        
-        <div class="ref-box" id="ref-id-box" title="Click to copy Reference ID" onclick="copyRef()">
-            REFERENCE ID: {{ reference_id }}
+
+        <!-- Technical Details (3 Columns x 2 Rows) -->
+        <div class="tech-details-container">
+            <div class="tech-grid">
+                <!-- Column 1, Row 1 -->
+                <div>
+                    <div class="tech-item-label">Your IP</div>
+                    <div class="tech-item-value">
+                        <span class="ip-flag-wrap">
+                            <span id="ipDisplay">{{ client_ip }}</span>
+                            <span id="geoText" style="color:#64748b;"> (GeoIP: BD)</span>
+                            <img id="flagImg" src="https://flagcdn.com/w40/bd.png" 
+                                 srcset="https://flagcdn.com/w80/bd.png 2x" 
+                                 alt="BD" 
+                                 class="flag-icon">
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Column 2, Row 1 -->
+                <div>
+                    <div class="tech-item-label">Reference ID</div>
+                    <div class="tech-item-value-bold" id="refIdText">{{ reference_id }}</div>
+                </div>
+
+                <!-- Column 3, Row 1 -->
+                <div>
+                    <div class="tech-item-label">Timestamp</div>
+                    <div class="tech-item-value"><span id="utcTime">{{ timestamp }} UTC</span> (Ref: <span id="unixRef">{{ unix_ref }}</span>)</div>
+                </div>
+
+                <!-- Column 1, Row 2 -->
+                <div>
+                    <div class="tech-item-label">Violation Reason</div>
+                    <div class="tech-item-value">Request blocked by rule ID: <span id="ruleIdVal">{{ rule_id }}</span> (Ref: {{ reason }})</div>
+                </div>
+
+                <!-- Column 2, Row 2 -->
+                <div>
+                    <div class="tech-item-label">Attack Classification</div>
+                    <div class="tech-item-value">
+                        <span class="attack-badge" id="attackBadgeText">{{ attack_type }}</span>
+                    </div>
+                </div>
+
+                <!-- Column 3, Row 2 -->
+                <div>
+                    <div class="tech-item-label">Protocol Details</div>
+                    <div class="tech-item-value">
+                        HTTP/1.1 (WAF_VER: 4.1.0)<br>
+                        <span id="serverHostDisplay">{{ website_name }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <!-- Actions Button Section -->
-        <div class="actions">
-            <a href="/" class="btn btn-primary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-                Return to Homepage
-            </a>
-            <button type="button" class="btn btn-secondary" onclick="copyRef()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                Copy Reference ID
-            </button>
-            <a id="email-link" href="#" class="btn btn-secondary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 2px;">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
+
+        <!-- Buttons -->
+        <div class="actions-row">
+            <a id="contactBtn" href="mailto:security@{{ website_name }}?subject=WAF Block Reference: {{ reference_id }}&body=Security Support,%0D%0A%0D%0AMy request was restricted by MDefender-Pro AI Firewall.%0D%0A%0D%0ADetails:%0D%0A- Reference ID: {{ reference_id }}%0D%0A- Client IP: {{ client_ip }}%0D%0A- Host: {{ website_name }}" 
+               class="btn btn-primary">
                 Contact Security Operations
             </a>
+            <a href="/" class="btn btn-secondary">
+                Return to Homepage
+            </a>
+            <button type="button" class="btn btn-secondary" id="copyBtn" onclick="copyReferenceId()">
+                Copy Reference ID
+            </button>
         </div>
-        
-        <div class="footer">
-            Secured by MDefender-Pro AI Firewall. All critical system events are logged and audited.
+
+        <!-- Footer -->
+        <div class="footer-note">
+            Performance & security by MDefender-Pro AI Firewall. All critical system events are logged and audited.
         </div>
     </div>
 
     <script>
-        // Fetch GeoIP and real IP details
-        const serverDetectedIp = "{{ client_ip }}";
-        const ipSpan = document.getElementById('client-ip-display');
-        const flagImg = document.getElementById('flag-img');
-        const geoText = document.getElementById('geo-text');
+        const refId = "{{ reference_id }}";
+        const clientIp = "{{ client_ip }}";
 
-        function updateGeoDisplay(ip, countryCode, city, country) {
-            if (ipSpan && ip) {
-                ipSpan.innerText = ip;
-            }
-            if (flagImg && countryCode) {
-                const cc = countryCode.toLowerCase();
-                flagImg.src = `https://flagcdn.com/w40/${cc}.png`;
-                flagImg.srcset = `https://flagcdn.com/w80/${cc}.png 2x`;
-                flagImg.alt = countryCode.toUpperCase();
-                flagImg.style.display = 'inline-block';
-            }
-            if (geoText) {
-                let geoInfo = '';
-                if (city && country) geoInfo = ` (GeoIP: ${city}, ${country})`;
-                else if (country) geoInfo = ` (GeoIP: ${country})`;
-                geoText.innerText = geoInfo;
-            }
+        function copyReferenceId() {
+            navigator.clipboard.writeText(refId).then(() => {
+                const btn = document.getElementById('copyBtn');
+                if (btn) {
+                    const original = btn.innerText;
+                    btn.innerText = 'Copied!';
+                    btn.style.borderColor = '#10b981';
+                    btn.style.color = '#10b981';
+                    setTimeout(() => {
+                        btn.innerText = original;
+                        btn.style.borderColor = '';
+                        btn.style.color = '';
+                    }, 2000);
+                }
+            }).catch(() => {
+                prompt('Copy Reference ID:', refId);
+            });
         }
 
-        if (serverDetectedIp && serverDetectedIp !== '127.0.0.1' && serverDetectedIp !== '::1' && serverDetectedIp !== 'localhost' && serverDetectedIp !== 'unknown') {
-            // Real public IP forwarded by server
-            fetch(`https://ipwho.is/${serverDetectedIp}`)
+        // Dynamic Client GeoIP update
+        if (clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1' && clientIp !== 'localhost') {
+            fetch('https://ipwho.is/' + clientIp, { signal: AbortSignal.timeout ? AbortSignal.timeout(2000) : undefined })
                 .then(r => r.json())
                 .then(data => {
                     if (data && data.success && data.country_code) {
-                        updateGeoDisplay(data.ip || serverDetectedIp, data.country_code, data.city || '', data.country);
-                    } else {
-                        updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
-                    }
-                }).catch(err => {
-                    updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
-                });
-        } else {
-            // Local / private IP - discover visitor's public GeoIP from browser client
-            fetch('https://ipwho.is/')
-                .then(r => r.json())
-                .then(data => {
-                    if (data && data.success && data.country_code) {
-                        updateGeoDisplay(data.ip || serverDetectedIp, data.country_code, data.city || '', data.country);
-                    } else {
-                        updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
+                        const cc = data.country_code.toLowerCase();
+                        const flag = document.getElementById('flagImg');
+                        if (flag) {
+                            flag.src = 'https://flagcdn.com/w40/' + cc + '.png';
+                            flag.srcset = 'https://flagcdn.com/w80/' + cc + '.png 2x';
+                            flag.alt = data.country_code.toUpperCase();
+                        }
+                        const geo = document.getElementById('geoText');
+                        if (geo) {
+                            geo.innerText = ' (GeoIP: ' + data.country_code.toUpperCase() + ')';
+                        }
                     }
                 })
-                .catch(() => {
-                    updateGeoDisplay(serverDetectedIp, 'BD', 'Dhaka', 'Bangladesh');
-                });
-        }
-
-        // Convert Timestamp to UTC format
-        const timestampStr = "{{ timestamp }}";
-        try {
-            const dt = new Date(timestampStr.replace(' ', 'T'));
-            document.getElementById('utc-time').innerText = dt.toUTCString();
-            document.getElementById('unix-ref').innerText = Math.floor(dt.getTime() / 1000);
-        } catch (e) {
-            document.getElementById('utc-time').innerText = timestampStr;
-            document.getElementById('unix-ref').innerText = Math.floor(Date.now() / 1000);
-        }
-
-        // Dynamically compute rule ID from attack type
-        const attackType = "{{ attack_type }}";
-        let hash = 0;
-        for (let i = 0; i < attackType.length; i++) {
-            hash = attackType.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const ruleId = Math.abs(hash % 10000) + 90000;
-        document.getElementById('rule-id-val').innerText = ruleId;
-
-        // Server host lookup
-        document.getElementById('server-host').innerText = window.location.hostname || "app-srv-01-prod-us-east.net";
-
-        // Setup email operations mailto link
-        const refId = "{{ reference_id }}";
-        const emailLink = document.getElementById('email-link');
-        if (emailLink) {
-            emailLink.href = `mailto:admin@mdefender-pro.io?subject=WAF Block Reference: ${refId}&body=Hello,%0D%0A%0D%0AMy request was blocked by the security WAF. Details below:%0D%0A- Reference ID: ${refId}%0D%0A- IP: ${clientIp}%0D%0A- Domain: ${window.location.host}`;
-        }
-
-        function copyRef() {
-            navigator.clipboard.writeText(refId).then(() => {
-                const refBox = document.getElementById('ref-id-box');
-                const originalHtml = refBox.innerHTML;
-                refBox.innerHTML = 'COPIED TO CLIPBOARD';
-                refBox.style.color = '#10b981';
-                refBox.style.borderColor = '#10b981';
-                refBox.style.background = '#ecfdf5';
-                setTimeout(() => {
-                    refBox.innerHTML = originalHtml;
-                    refBox.style.color = '';
-                    refBox.style.borderColor = '';
-                    refBox.style.background = '';
-                }, 2000);
-            }).catch(err => {
-                console.error('Could not copy Reference ID: ', err);
-            });
+                .catch(() => {});
         }
     </script>
 </body>
