@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
+import WordPressProductSuite from '../components/WordPressProductSuite';
+import PaymentModal from '../components/PaymentModal';
 import {
   Shield,
   ShieldCheck,
@@ -758,6 +760,10 @@ export default function ProductDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
 
+  // Payment Checkout Modal State
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState('pro');
+
   // WAF Simulator State
   const [wafPayload, setWafPayload] = useState("admin' UNION SELECT 1,password,3 FROM users--");
   const [wafVerdict, setWafVerdict] = useState({
@@ -1174,7 +1180,7 @@ export default function ProductDetail() {
       minHeight: '100vh',
       background: '#F7F6F1',
       color: '#10201E',
-      fontFamily: "'Inter', system-ui, sans-serif",
+      fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       overflowX: 'hidden'
     }}>
       <style>{`
@@ -1278,8 +1284,9 @@ export default function ProductDetail() {
         </section>
 
         {/* ========================================================================= */}
-        {/* HERO SECTION                                                               */}
+        {/* HERO SECTION (NON-WORDPRESS MODULES)                                      */}
         {/* ========================================================================= */}
+        {!isWordpress && (
         <section style={{ padding: '0 24px 40px', maxWidth: 1240, margin: '0 auto', position: 'relative' }}>
         <div style={{
           display: 'grid',
@@ -1665,6 +1672,19 @@ export default function ProductDetail() {
           </div>
         </div>
       </section>
+      )}
+
+      {/* WORDPRESS PRODUCT SUITE: 4 EDITIONS + FULL 26-ROW COMPARISON MATRIX */}
+      {isWordpress && (
+        <section style={{ maxWidth: 1280, margin: '0 auto 60px', padding: '0 20px' }}>
+          <WordPressProductSuite
+            onOpenPaymentModal={(planId) => {
+              setCheckoutPlan(planId);
+              setCheckoutModalOpen(true);
+            }}
+          />
+        </section>
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION 1: THE REAL-WORLD ATTACK REALITY VS MDEFENDER SHIELD              */}
@@ -2655,6 +2675,18 @@ export default function ProductDetail() {
         </div>
       </section>
     </main>
+
+      {/* Payment Checkout Modal for Logged-in / Upgrading Users */}
+      <PaymentModal
+        isOpen={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        plan={checkoutPlan}
+        billingCycle="yearly"
+        onSuccess={() => {
+          setCheckoutModalOpen(false);
+          navigate('/user/dashboard');
+        }}
+      />
 
       {/* Footer */}
       <footer style={{

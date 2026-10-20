@@ -112,14 +112,14 @@ class TestStep3SecurityHardening(unittest.TestCase):
             ws_module.get_owned_website = lambda u, wid: mock_wp_site
             wp_res = asyncio.run(installation_instructions("w1", user=user))
             self.assertIn("data", wp_res)
-            self.assertEqual(wp_res["data"]["nameservers"], ["ns1.mdefender.pro", "ns2.mdefender.pro"])
+            self.assertEqual(wp_res["data"]["nameservers"], ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"])
             self.assertIn("mdefender-pro.zip", str(wp_res["data"]))
 
             # Test Other/Node site instructions (Must be Cloudflare-style Anycast DNS, NOT npm)
             ws_module.get_owned_website = lambda u, wid: mock_node_site
             node_res = asyncio.run(installation_instructions("w2", user=user))
             self.assertIn("data", node_res)
-            self.assertEqual(node_res["data"]["nameservers"], ["ns1.mdefender.pro", "ns2.mdefender.pro"])
+            self.assertEqual(node_res["data"]["nameservers"], ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"])
             # Ensure npm package is NOT mentioned
             self.assertNotIn("npm install", str(node_res["data"]))
         finally:

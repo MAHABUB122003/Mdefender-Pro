@@ -853,20 +853,20 @@ export default function UserConnect() {
                 </Link>
 
                 <a
-                  href={pluginDownloadUrl}
+                  href="/downloads/mdefender-pro.zip"
                   download="mdefender-pro.zip"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
                     padding: '9px 20px',
-                    background: '#4F46E5',
+                    background: '#0B2522',
                     color: '#FFFFFF',
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontWeight: '700',
                     textDecoration: 'none',
-                    boxShadow: '0 1px 3px rgba(79, 70, 229, 0.25)'
+                    boxShadow: '0 1px 3px rgba(11, 37, 34, 0.25)'
                   }}
                 >
                   <Download size={15} />

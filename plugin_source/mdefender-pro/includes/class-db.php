@@ -268,8 +268,8 @@ class WAF_FW_DB {
             ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b)/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical'],
-            ['name' => 'Command Injection - Pipe', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical'],
-            ['name' => 'Command Injection - System Commands', 'pattern' => '/(?:;\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i', 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Command Injection - Pipe', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical'],
+            ['name' => 'Command Injection - System Commands', 'pattern' => '/(?:(?:;|&&)\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b(?!\=))/i', 'action' => 'block', 'severity' => 'critical'],
             ['name' => 'CSRF - Form Spoofing', 'pattern' => '/(?:<form[^>]*>.*?<\/form>)/i', 'action' => 'alert', 'severity' => 'medium'],
             ['name' => 'Path Traversal', 'pattern' => '/(?:\/proc\/self\/)/i', 'action' => 'block', 'severity' => 'high'],
             ['name' => 'SSTI - Jinja2 Template', 'pattern' => '/(?:\{\{\s*\d+.*?\}\})/', 'action' => 'block', 'severity' => 'critical'],
@@ -409,11 +409,15 @@ class WAF_FW_DB {
                 'name' => 'Null Byte Injection',
                 'new' => '/(?:%00[^a-zA-Z])/',
             ],
-            // command injection system commands: remove trailing .* capture
+            // command injection system commands: remove trailing .* capture and require safe delimiter
             [
-                'old' => ["/(;\s*(ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell))/i"],
+                'old' => [
+                    "/(;\s*(ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell))/i",
+                    '/(?:;\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i',
+                    '/(?:[;&]\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i',
+                ],
                 'name' => 'Command Injection - System Commands',
-                'new' => '/(?:;\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i',
+                'new' => '/(?:(?:;|&&)\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b(?!\=))/i',
             ],
             // csrf form spoofing: no .* capture group needed
             [

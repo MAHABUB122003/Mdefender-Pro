@@ -325,13 +325,15 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     config = {
         "waf_mode": website.get("waf_mode", "protect"),
         "learning_mode": website.get("learning_mode", False),
-        "confidence_threshold": website.get("confidence_threshold", 0.7),
-        "disable_xmlrpc": website.get("disable_xmlrpc", False),
-        "disable_directory_listing": website.get("disable_directory_listing", False),
-        "prevent_user_enumeration": website.get("prevent_user_enumeration", False),
-        "disable_file_editing": website.get("disable_file_editing", False),
-        "rate_limit": u_cfg.get("rate_limit_per_minute", 120),
-        "auto_block_enabled": u_cfg.get("auto_block_enabled", True),
+        "confidence_threshold": float(website.get("confidence_threshold") or 0.7),
+        "disable_xmlrpc": bool(website.get("disable_xmlrpc", True)),
+        "block_uploads_php": bool(website.get("block_uploads_php", True)),
+        "disable_directory_listing": bool(website.get("disable_directory_listing", True)),
+        "prevent_user_enumeration": bool(website.get("prevent_user_enumeration", True)),
+        "disable_file_editing": bool(website.get("disable_file_editing", True)),
+        "hide_wp_version": bool(website.get("hide_wp_version", True)),
+        "rate_limit": int(website.get("rate_limit_per_minute") or u_cfg.get("rate_limit_per_minute", 120)),
+        "auto_block_enabled": bool(website.get("auto_block_enabled", u_cfg.get("auto_block_enabled", True))),
         "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
         "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
         "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
@@ -400,6 +402,10 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         is_global = item.get("is_global", False)
         if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
             country_set.add(c_code)
+    # Merge website-specific blocked countries
+    for site_cc in website.get("blocked_countries", []):
+        if site_cc and len(str(site_cc).strip()) == 2:
+            country_set.add(str(site_cc).strip().upper())
     blocked_countries = list(country_set)
 
     # Fetch custom firewall rules (scoped to user)

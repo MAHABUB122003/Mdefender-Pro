@@ -13,6 +13,10 @@ class WAF_FW_Attack_Blocker {
 
     public function track_attack($ip) {
         if (empty($ip)) return;
+        // Never auto-block loopback / localhost IPs
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0') {
+            return;
+        }
         $this->increment_attempts($ip);
 
         $enabled = get_option('waf_fw_attack_blocker_enabled', 'yes');
@@ -76,7 +80,7 @@ class WAF_FW_Attack_Blocker {
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         $row = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $table WHERE ip = %s AND reason LIKE 'Auto-blocked after % attack payload attempts%' AND (block_expires_at IS NULL OR block_expires_at > NOW())",
+            "SELECT COUNT(*) FROM $table WHERE ip = %s AND (block_expires_at IS NULL OR block_expires_at > NOW())",
             $ip
         ));
         return intval($row) > 0;

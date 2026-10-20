@@ -235,6 +235,9 @@ class WAF_FW_RASP_Engine {
 
         // High-risk SQL patterns that should never originate from untrusted frontend requests
         $is_admin = function_exists('is_admin') && is_admin();
+        if (defined('DOING_CRON') && DOING_CRON) {
+            return $query;
+        }
         $is_frontend = !$is_admin || (defined('DOING_AJAX') && DOING_AJAX) || (defined('REST_REQUEST') && REST_REQUEST);
 
         if ($is_frontend) {

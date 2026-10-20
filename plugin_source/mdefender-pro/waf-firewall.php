@@ -290,6 +290,35 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (isset($config['under_attack_mode'])) {
                         update_option('waf_fw_under_attack_mode', $config['under_attack_mode'] ? 'yes' : 'no');
                     }
+                    if (isset($config['waf_mode'])) {
+                        update_option('waf_fw_mode', sanitize_text_field($config['waf_mode']));
+                    }
+                    if (isset($config['disable_xmlrpc'])) {
+                        $x_val = $config['disable_xmlrpc'] ? 'yes' : 'no';
+                        update_option('waf_fw_disable_xmlrpc', $x_val);
+                        update_option('waf_harden_xmlrpc_mode', $config['disable_xmlrpc'] ? 'complete' : 'off');
+                    }
+                    if (isset($config['disable_file_editing'])) {
+                        $fe_val = $config['disable_file_editing'] ? 'yes' : 'no';
+                        update_option('waf_fw_disable_file_editing', $fe_val);
+                        update_option('waf_harden_disable_file_editor', $fe_val);
+                    }
+                    if (isset($config['prevent_user_enumeration'])) {
+                        $ue_val = $config['prevent_user_enumeration'] ? 'yes' : 'no';
+                        update_option('waf_fw_prevent_user_enumeration', $ue_val);
+                        update_option('waf_harden_user_enumeration', $config['prevent_user_enumeration'] ? 'enabled' : 'disabled');
+                    }
+                    if (isset($config['hide_wp_version'])) {
+                        $hv_val = $config['hide_wp_version'] ? 'yes' : 'no';
+                        update_option('waf_harden_hide_wp_version', $hv_val);
+                        update_option('waf_harden_version_hiding', $config['hide_wp_version'] ? 'enabled' : 'disabled');
+                    }
+                    if (isset($config['disable_directory_listing'])) {
+                        update_option('waf_fw_disable_directory_listing', $config['disable_directory_listing'] ? 'yes' : 'no');
+                    }
+                    if (isset($config['block_uploads_php'])) {
+                        update_option('waf_harden_block_uploads_php', $config['block_uploads_php'] ? 'yes' : 'no');
+                    }
                 }
                 if (class_exists('WAF_FW_Engine')) {
                     WAF_FW_Engine::instance()->export_fast_cache();
@@ -434,6 +463,35 @@ function waf_fw_cloud_heartbeat() {
             if (isset($config['under_attack_mode'])) {
                 update_option('waf_fw_under_attack_mode', $config['under_attack_mode'] ? 'yes' : 'no');
             }
+            if (isset($config['waf_mode'])) {
+                update_option('waf_fw_mode', sanitize_text_field($config['waf_mode']));
+            }
+            if (isset($config['disable_xmlrpc'])) {
+                $x_val = $config['disable_xmlrpc'] ? 'yes' : 'no';
+                update_option('waf_fw_disable_xmlrpc', $x_val);
+                update_option('waf_harden_xmlrpc_mode', $config['disable_xmlrpc'] ? 'complete' : 'off');
+            }
+            if (isset($config['disable_file_editing'])) {
+                $fe_val = $config['disable_file_editing'] ? 'yes' : 'no';
+                update_option('waf_fw_disable_file_editing', $fe_val);
+                update_option('waf_harden_disable_file_editor', $fe_val);
+            }
+            if (isset($config['prevent_user_enumeration'])) {
+                $ue_val = $config['prevent_user_enumeration'] ? 'yes' : 'no';
+                update_option('waf_fw_prevent_user_enumeration', $ue_val);
+                update_option('waf_harden_user_enumeration', $config['prevent_user_enumeration'] ? 'enabled' : 'disabled');
+            }
+            if (isset($config['hide_wp_version'])) {
+                $hv_val = $config['hide_wp_version'] ? 'yes' : 'no';
+                update_option('waf_harden_hide_wp_version', $hv_val);
+                update_option('waf_harden_version_hiding', $config['hide_wp_version'] ? 'enabled' : 'disabled');
+            }
+            if (isset($config['disable_directory_listing'])) {
+                update_option('waf_fw_disable_directory_listing', $config['disable_directory_listing'] ? 'yes' : 'no');
+            }
+            if (isset($config['block_uploads_php'])) {
+                update_option('waf_harden_block_uploads_php', $config['block_uploads_php'] ? 'yes' : 'no');
+            }
         }
 
         // Sync local IP blacklist cache
@@ -465,7 +523,33 @@ function waf_fw_cloud_heartbeat() {
                 @set_time_limit(300);
                 $scanner = WAF_FW_Scanner::instance();
                 $scan_type = $cmd['scan_type'] ?? 'full';
-                $scanner->scan_website($scan_type);
+                $scan_id = $cmd['scan_id'] ?? null;
+                $scan_res = $scanner->scan_website($scan_type);
+
+                // Report findings back to MDefender Cloud Backend
+                $api_key = get_option('waf_fw_api_key', '');
+                $endpoint = get_option('waf_fw_ml_api_endpoint', 'http://localhost:8000/api');
+                if (!empty($api_key)) {
+                    $base_url = rtrim(str_replace('/api', '', $endpoint), '/');
+                    $report_endpoint = $base_url . '/api/v1/malware/scans/' . urlencode($scan_id ?: 'auto') . '/report';
+                    wp_remote_post($report_endpoint, [
+                        'headers' => [
+                            'Content-Type' => 'application/json',
+                            'Authorization' => 'Bearer ' . $api_key,
+                        ],
+                        'body' => json_encode([
+                            'scan_id' => $scan_id,
+                            'domain' => home_url(),
+                            'scan_type' => $scan_type,
+                            'score' => $scan_res['score'] ?? 100,
+                            'issues_found' => $scan_res['issues_found'] ?? 0,
+                            'duration' => $scan_res['duration'] ?? 0,
+                            'summary' => $scan_res['summary'] ?? [],
+                            'results' => $scan_res['results'] ?? [],
+                        ]),
+                        'timeout' => 15,
+                    ]);
+                }
             }
         }
     }

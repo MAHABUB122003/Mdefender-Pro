@@ -74,6 +74,28 @@ class WAF_FW_Rate_Limiter {
             return false;
         }
 
+        $key = 'waf_fw_rate_' . md5($ip);
+        $max_requests = $custom_max ?: $this->get_max_requests();
+        $now = time();
+        $window_start = $now - $this->window_seconds;
+
+        // 1. In-memory APCu fast path
+        if (function_exists('apcu_fetch')) {
+            $data = apcu_fetch($key);
+            if (is_array($data)) {
+                $data = array_values(array_filter($data, function($t) use ($window_start) {
+                    return $t > $window_start;
+                }));
+                if (count($data) >= $max_requests) {
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->add_temporary_block($ip, 'Rate limit exceeded (' . $max_requests . ' req/min)', 3600);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // 2. Standard WordPress Transient fallback
         $data = get_transient($key);
         if (!$data) {
@@ -83,8 +105,6 @@ class WAF_FW_Rate_Limiter {
         if (!is_array($data)) {
             return false;
         }
-        $now = time();
-        $window_start = $now - $this->window_seconds;
         $data = array_values(array_filter($data, function($t) use ($window_start) {
             return $t > $window_start;
         }));

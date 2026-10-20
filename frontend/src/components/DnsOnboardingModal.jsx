@@ -358,6 +358,21 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded, us
     const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//i, '').replace(/\/+$/, '').split('/')[0].split(':')[0]
 
     try {
+      // 1. Register domain in the dedicated Domains Engine
+      const rootARec = records.find(r => (r.name === '@' || r.name === cleanDomain) && r.type === 'A')
+      try {
+        await api.createDomain({
+          domain: cleanDomain,
+          origin_address: rootARec?.content || '',
+          origin_port: 443,
+          ssl_mode: sslMode,
+          plan: selectedPlan
+        })
+      } catch (domErr) {
+        console.warn('api.createDomain notice (non-fatal):', domErr.message)
+      }
+
+      // 2. Sync to websites collection
       const payload = {
         domain: cleanDomain,
         name: cleanDomain,

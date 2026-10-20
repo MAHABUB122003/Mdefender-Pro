@@ -99,6 +99,7 @@ export default function UserDomains() {
   const [websites, setWebsites] = useState([])
   const [totalWebsitesCount, setTotalWebsitesCount] = useState(0)
   const [wordpressSitesCount, setWordpressSitesCount] = useState(0)
+  const [overview, setOverview] = useState(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [feedbackMsg, setFeedbackMsg] = useState(null)
@@ -120,9 +121,9 @@ export default function UserDomains() {
     try {
       setLoading(true)
 
-      // Fetch websites quickly
+      // Fetch websites and real backend overview metrics in parallel
       const sitesPromise = api.getUserWebsites()
-      // Profile or plan in parallel
+      const overviewPromise = api.getDomainsOverview().catch(() => null)
       const profilePromise = api.getUserProfile().catch(() => null)
 
       // Safety timeout to ensure loading never gets stuck
@@ -144,6 +145,12 @@ export default function UserDomains() {
       setWebsites(domainList)
       setTotalWebsitesCount(list.length)
       setWordpressSitesCount(wpList.length)
+
+      // Resolve overview
+      const ov = await overviewPromise
+      if (ov?.data || ov?.total_domains !== undefined) {
+        setOverview(ov?.data || ov)
+      }
 
       // Update plan if profile returned
       const prof = await profilePromise
@@ -301,10 +308,10 @@ export default function UserDomains() {
   }
 
   // Quota & Plan calculations (Unified: WordPress + Custom Domains)
-  const normalizedPlan = (userPlan === 'premium' ? 'pro' : userPlan || 'free').toLowerCase()
+  const normalizedPlan = (overview?.plan_name || (userPlan === 'premium' ? 'pro' : userPlan || 'free')).toLowerCase()
   const currentPlanObj = DOMAIN_PLANS.find(p => p.id === normalizedPlan) || DOMAIN_PLANS[0]
-  const domainLimit = currentPlanObj.limit
-  const quotaUsed = totalWebsitesCount || websites.length
+  const domainLimit = overview?.website_limit ?? currentPlanObj.limit
+  const quotaUsed = overview?.total_protected_websites ?? (totalWebsitesCount || websites.length)
   const isLimitReached = quotaUsed >= domainLimit
   const quotaPercent = Math.min(100, Math.round((quotaUsed / domainLimit) * 100))
 
@@ -521,7 +528,9 @@ export default function UserDomains() {
           borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
         }}>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Domains</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>{stats.total}</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
+            {overview?.total_domains ?? stats.total}
+          </div>
           <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>Configured in MDefender</div>
         </div>
 
@@ -530,7 +539,9 @@ export default function UserDomains() {
           borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
         }}>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#059669', textTransform: 'uppercase' }}>Edge WAF Armed</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#059669', marginTop: '6px' }}>{stats.active}</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#059669', marginTop: '6px' }}>
+            {overview?.active_protected_domains ?? stats.active}
+          </div>
           <div style={{ fontSize: '11.5px', color: '#10b981', marginTop: '4px' }}>Traffic proxied through edge</div>
         </div>
 
@@ -539,7 +550,9 @@ export default function UserDomains() {
           borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
         }}>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#d97706', textTransform: 'uppercase' }}>Pending Delegation</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#d97706', marginTop: '6px' }}>{stats.pending}</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#d97706', marginTop: '6px' }}>
+            {overview?.pending_delegation ?? stats.pending}
+          </div>
           <div style={{ fontSize: '11.5px', color: '#b45309', marginTop: '4px' }}>Awaiting registrar update</div>
         </div>
 
@@ -547,9 +560,15 @@ export default function UserDomains() {
           background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)',
           borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
         }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#2563eb', textTransform: 'uppercase' }}>Anycast Latency</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>0.35ms</div>
-          <div style={{ fontSize: '11.5px', color: '#60a5fa', marginTop: '4px' }}>Sub-millisecond Edge core</div>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#2563eb', textTransform: 'uppercase' }}>
+            {overview?.measured_latency_ms ? 'Anycast Latency' : 'Edge Latency'}
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>
+            {overview?.latency_display || (overview?.measured_latency_ms ? `${overview.measured_latency_ms}ms` : 'Awaiting Traffic')}
+          </div>
+          <div style={{ fontSize: '11.5px', color: '#60a5fa', marginTop: '4px' }}>
+            {overview?.measured_latency_ms ? 'Measured 1h Telemetry' : 'Live latency measurement'}
+          </div>
         </div>
       </div>
 

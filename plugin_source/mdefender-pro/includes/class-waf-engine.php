@@ -170,11 +170,10 @@ class WAF_FW_Engine {
         if ($depth > 8 || !is_array($arr)) return is_scalar($arr) ? (string)$arr : '';
         $out = [];
         foreach ($arr as $k => $v) {
-            if (is_string($k)) $out[] = $k;
             if (is_array($v)) {
                 $out[] = $this->flatten_array_data($v, $depth + 1);
             } elseif (is_scalar($v)) {
-                $out[] = (string)$v;
+                $out[] = is_string($k) ? "{$k}={$v}" : (string)$v;
             }
         }
         return implode(' ', $out);
@@ -377,12 +376,12 @@ class WAF_FW_Engine {
 
     private function feature_based_block($features) {
         $threshold = (float) get_option('waf_fw_confidence_threshold', 0.5);
-        if (($features['sql_score'] ?? 0) >= 0.2) return true;
-        if (($features['xss_score'] ?? 0) >= 0.2) return true;
-        if (($features['lfi_score'] ?? 0) >= 0.2) return true;
-        if (($features['rce_score'] ?? 0) >= 0.2) return true;
-        if (($features['ssti_score'] ?? 0) >= 0.2) return true;
-        if (($features['ssrf_score'] ?? 0) >= 0.2) return true;
+        if (($features['sql_score'] ?? 0) >= 0.4) return true;
+        if (($features['xss_score'] ?? 0) >= 0.4) return true;
+        if (($features['lfi_score'] ?? 0) >= 0.4) return true;
+        if (($features['rce_score'] ?? 0) >= 0.4) return true;
+        if (($features['ssti_score'] ?? 0) >= 0.4) return true;
+        if (($features['ssrf_score'] ?? 0) >= 0.4) return true;
         if (($features['total_attack_score'] ?? 0) >= $threshold) return true;
         return false;
     }

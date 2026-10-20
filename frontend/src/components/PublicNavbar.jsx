@@ -60,8 +60,8 @@ export default function PublicNavbar() {
       to: '/products/waf',
     },
     {
-      title: 'WordPress Security',
-      desc: 'Live plugin telemetry, scanner & auto-quarantine',
+      title: 'WordPress Product',
+      desc: '4 Editions: Free, Developer Go, Premium & Dedicated',
       to: '/products/wordpress',
     },
     {

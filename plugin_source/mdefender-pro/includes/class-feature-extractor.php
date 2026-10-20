@@ -5,38 +5,38 @@ class WAF_FW_Feature_Extractor {
     private static $_instance = null;
 
     private $sql_patterns = [
-        '/select\s+.*\s+from/i', '/insert\s+into/i', '/update\s+.*\s+set/i',
-        '/delete\s+from/i', '/drop\s+table/i', '/union\s+select/i',
-        '/order\s+by/i', '/group\s+by/i', '/having/i', "/like\s+['\"%]/i",
-        '/\/\*.*\*\//', '/--/', '/#/', '/information_schema/i',
-        '/pg_sleep/i', '/benchmark/i', '/load_file/i', '/into\s+outfile/i',
+        '/\bselect\b\s+.*?\bfrom\b/i', '/\binsert\b\s+\binto\b/i', '/\bupdate\b\s+.*?\bset\b/i',
+        '/\bdelete\b\s+\bfrom\b/i', '/\bdrop\b\s+\btable\b/i', '/\bunion\b(?:\s+all)?\s+\bselect\b/i',
+        '/\border\b\s+\bby\b\s+\d+/i', '/\bgroup\b\s+\bby\b/i', '/\bhaving\b\s+\d+/i', "/\blike\b\s+['\"%]/i",
+        '/\/\*.*?\*\//', '/(?:\'|\"|%27)\s*--/', '/(?:\'|\"|%27)\s*#/', '/\binformation_schema\b/i',
+        '/\bpg_sleep\s*\(/i', '/\bbenchmark\s*\(/i', '/\bload_file\s*\(/i', '/\binto\s+outfile\b/i',
     ];
     private $xss_patterns = [
-        '/<script/i', '/<\/script>/i', '/javascript:/i', '/onerror=/i',
-        '/onload=/i', '/onclick=/i', '/onmouseover=/i', '/alert\(/i',
-        '/prompt\(/i', '/confirm\(/i', '/document\./i', '/window\./i',
-        '/\.cookie/i', '/localStorage/i', '/eval\(/i', '/setTimeout\(/i',
-        '/<iframe/i', '/<object/i', '/<embed/i', '/<svg/i', '/<img/i',
+        '/<script\b/i', '/<\/script>/i', '/javascript\s*:/i', '/\bonerror\s*=/i',
+        '/\bonload\s*=/i', '/\bonclick\s*=/i', '/\bonmouseover\s*=/i', '/\balert\s*\(/i',
+        '/\bprompt\s*\(/i', '/\bconfirm\s*\(/i', '/document\.(?:cookie|location|domain)/i', '/window\.location/i',
+        '/\.cookie\b/i', '/localStorage\b/i', '/\beval\s*\(/i', '/\bsetTimeout\s*\(/i',
+        '/<iframe\b/i', '/<object\b/i', '/<embed\b/i', '/<svg\b[^>]*onload/i', '/<img\b[^>]*onerror/i',
     ];
     private $lfi_patterns = [
-        '/\.\.\//', '/\.\.\\\\\\\\/', '/\/etc\/passwd/i', '/\/etc\/shadow/i',
-        '/\/etc\/hosts/i', '/c:\\\\windows/i', '/boot\.ini/i',
-        '/web\.config/i', '/\.htaccess/i', '/php:\/\//i', '/file:\/\//i',
+        '/\.\.\//', '/\.\.\\\\/', '/\/etc\/(?:passwd|shadow|hosts|group)/i', '/c:\\\\windows/i', '/boot\.ini/i',
+        '/\bweb\.config\b/i', '/\.htaccess\b/i', '/php:\/\/(?:filter|input|data)/i', '/file:\/\//i',
     ];
     private $ssti_patterns = [
-        '/\{\{.*\}\}/', '/\$\{.*\}/', '/#\{.*\}/', '/\*\{.*\}/',
+        '/\{\{.*?\}\}/', '/\$\{.*?\}/', '/#\{.*?\}/', '/\*\{.*?\}/',
         '/__class__/', '/__mro__/', '/__subclasses__/',
-        '/__builtins__/', '/__import__/', '/eval\(/',
+        '/__builtins__/', '/__import__/',
     ];
     private $rce_patterns = [
-        '/;.*\s+/', '/\|.*\s+/',
-        '/`.*`/', '/\$\(.*\)/', '/bash\s+-c/i', '/sh\s+-c/i',
-        '/whoami/i', '/id\s+/i', '/uname/i', '/cat\s+/i', '/ls\s+/i',
-        '/wget\s+/i', '/curl\s+/i',
+        '/(?:;|&&|\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)/i',
+        '/`[^`]+`/', '/\$\([^\)]+\)/', '/\b(?:bash|sh|cmd|powershell)\s+-[a-zA-Z]/i',
+        '/\b(?:system|exec|shell_exec|passthru|popen|proc_open)\s*\(/i',
+        '/\/bin\/(?:bash|sh|cat|ls|id|chmod)/i',
+        '/\b(?:wget|curl)\s+https?:\/\//i',
     ];
     private $ssrf_patterns = [
-        '/169\.254\.169\.254/', '/127\.0\.0\.1/', '/localhost/i',
-        '/metadata/i', '/instance-data/i', '/0\.0\.0\.0/',
+        '/(?:https?|ftp|gopher):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|metadata\.google)/i',
+        '/(?:latest\/meta-data|computeMetadata\/v1|instance-data)/i',
     ];
 
     public static function instance() {
@@ -172,10 +172,23 @@ class WAF_FW_Feature_Extractor {
     }
 
     public function get_attack_type($features) {
-        if (($features['sql_score'] ?? 0) > 0) return 'SQL Injection';
-        if (($features['xss_score'] ?? 0) > 0) return 'XSS';
-        if (($features['lfi_score'] ?? 0) > 0) return 'LFI';
-        if (($features['rce_score'] ?? 0) > 0) return 'Command Injection';
-        return 'Suspicious';
+        $max_score = 0;
+        $max_type = 'Suspicious';
+        $mapping = [
+            'sql_score' => 'SQL Injection',
+            'xss_score' => 'XSS',
+            'lfi_score' => 'LFI',
+            'rce_score' => 'Command Injection',
+            'ssti_score' => 'Template Injection',
+            'ssrf_score' => 'SSRF',
+        ];
+        foreach ($mapping as $key => $type) {
+            $score = $features[$key] ?? 0;
+            if ($score > $max_score) {
+                $max_score = $score;
+                $max_type = $type;
+            }
+        }
+        return $max_score > 0 ? $max_type : 'Suspicious';
     }
 }

@@ -111,6 +111,21 @@ def _generate_raw_key():
     return generate_api_key()
 
 
+class SecuritySettingsUpdate(BaseModel):
+    waf_mode: str | None = None
+    disable_xmlrpc: bool | None = None
+    block_uploads_php: bool | None = None
+    disable_file_editing: bool | None = None
+    disable_directory_listing: bool | None = None
+    prevent_user_enumeration: bool | None = None
+    hide_wp_version: bool | None = None
+    rate_limit_per_minute: int | None = None
+    auto_block_enabled: bool | None = None
+    confidence_threshold: float | None = None
+    under_attack_mode: bool | None = None
+    blocked_countries: list[str] | None = None
+
+
 def _website_out(doc):
     raw_id = str(doc["_id"])
     return serialize({
@@ -133,6 +148,17 @@ def _website_out(doc):
         "bot_challenge_enabled": doc.get("bot_challenge_enabled", False),
         "challenge_mode": doc.get("challenge_mode", "interactive_turnstile"),
         "under_attack_mode": bool(doc.get("under_attack_mode", False)),
+        # Remote Security & Hardening Controls
+        "disable_xmlrpc": bool(doc.get("disable_xmlrpc", True)),
+        "block_uploads_php": bool(doc.get("block_uploads_php", True)),
+        "disable_file_editing": bool(doc.get("disable_file_editing", True)),
+        "disable_directory_listing": bool(doc.get("disable_directory_listing", True)),
+        "prevent_user_enumeration": bool(doc.get("prevent_user_enumeration", True)),
+        "hide_wp_version": bool(doc.get("hide_wp_version", True)),
+        "rate_limit_per_minute": int(doc.get("rate_limit_per_minute") or 120),
+        "auto_block_enabled": bool(doc.get("auto_block_enabled", True)),
+        "confidence_threshold": float(doc.get("confidence_threshold") or 0.7),
+        "blocked_countries": doc.get("blocked_countries", []),
     })
 
 
@@ -353,6 +379,170 @@ async def toggle_under_attack_mode(website_id: str, body: UnderAttackToggle, use
         "domain": website.get("domain") or website.get("url"),
         "under_attack_mode": enabled,
         "message": f"Under Attack Mode {'ACTIVATED' if enabled else 'DEACTIVATED'} for {website.get('domain') or website.get('url')}"
+    })
+
+
+@router.get("/{website_id}/security-settings")
+async def get_security_settings(website_id: str, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    return success({
+        "website_id": str(website["_id"]),
+        "domain": website.get("domain") or website.get("url"),
+        "platform": website.get("platform", "wordpress"),
+        "settings": {
+            "waf_mode": website.get("waf_mode", "protect"),
+            "disable_xmlrpc": bool(website.get("disable_xmlrpc", True)),
+            "block_uploads_php": bool(website.get("block_uploads_php", True)),
+            "disable_file_editing": bool(website.get("disable_file_editing", True)),
+            "disable_directory_listing": bool(website.get("disable_directory_listing", True)),
+            "prevent_user_enumeration": bool(website.get("prevent_user_enumeration", True)),
+            "hide_wp_version": bool(website.get("hide_wp_version", True)),
+            "rate_limit_per_minute": int(website.get("rate_limit_per_minute") or 120),
+            "auto_block_enabled": bool(website.get("auto_block_enabled", True)),
+            "confidence_threshold": float(website.get("confidence_threshold") or 0.7),
+            "under_attack_mode": bool(website.get("under_attack_mode", False)),
+            "blocked_countries": website.get("blocked_countries", []),
+        }
+    })
+
+
+@router.patch("/{website_id}/security-settings")
+async def update_security_settings(website_id: str, body: SecuritySettingsUpdate, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    db = MongoDB()
+    updates = {}
+    if body.waf_mode is not None:
+        if body.waf_mode not in ("protect", "monitor", "learning", "off"):
+            raise HTTPException(status_code=400, detail="Invalid waf_mode. Must be protect, monitor, learning, or off.")
+        updates["waf_mode"] = body.waf_mode
+    if body.disable_xmlrpc is not None:
+        updates["disable_xmlrpc"] = bool(body.disable_xmlrpc)
+    if body.block_uploads_php is not None:
+        updates["block_uploads_php"] = bool(body.block_uploads_php)
+    if body.disable_file_editing is not None:
+        updates["disable_file_editing"] = bool(body.disable_file_editing)
+    if body.disable_directory_listing is not None:
+        updates["disable_directory_listing"] = bool(body.disable_directory_listing)
+    if body.prevent_user_enumeration is not None:
+        updates["prevent_user_enumeration"] = bool(body.prevent_user_enumeration)
+    if body.hide_wp_version is not None:
+        updates["hide_wp_version"] = bool(body.hide_wp_version)
+    if body.rate_limit_per_minute is not None:
+        updates["rate_limit_per_minute"] = max(10, min(10000, int(body.rate_limit_per_minute)))
+    if body.auto_block_enabled is not None:
+        updates["auto_block_enabled"] = bool(body.auto_block_enabled)
+    if body.confidence_threshold is not None:
+        updates["confidence_threshold"] = max(0.1, min(0.99, float(body.confidence_threshold)))
+    if body.under_attack_mode is not None:
+        updates["under_attack_mode"] = bool(body.under_attack_mode)
+    if body.blocked_countries is not None:
+        updates["blocked_countries"] = [str(c).upper().strip() for c in body.blocked_countries if len(str(c).strip()) == 2]
+
+    updates["updated_at"] = datetime.now()
+    db.websites.update_one({"_id": website["_id"]}, {"$set": updates})
+
+    from src.auth.audit_service import AuditService
+    try:
+        AuditService().log(
+            user_id=str(user["id"]),
+            action="website_security_updated",
+            ip_address="system",
+            details={"website_id": str(website["_id"]), "updates": list(updates.keys())}
+        )
+    except Exception:
+        pass
+
+    updated_doc = db.websites.find_one({"_id": website["_id"]})
+    return success({
+        "website": _website_out(updated_doc),
+        "settings": {
+            "waf_mode": updated_doc.get("waf_mode", "protect"),
+            "disable_xmlrpc": bool(updated_doc.get("disable_xmlrpc", True)),
+            "block_uploads_php": bool(updated_doc.get("block_uploads_php", True)),
+            "disable_file_editing": bool(updated_doc.get("disable_file_editing", True)),
+            "disable_directory_listing": bool(updated_doc.get("disable_directory_listing", True)),
+            "prevent_user_enumeration": bool(updated_doc.get("prevent_user_enumeration", True)),
+            "hide_wp_version": bool(updated_doc.get("hide_wp_version", True)),
+            "rate_limit_per_minute": int(updated_doc.get("rate_limit_per_minute") or 120),
+            "auto_block_enabled": bool(updated_doc.get("auto_block_enabled", True)),
+            "confidence_threshold": float(updated_doc.get("confidence_threshold") or 0.7),
+            "under_attack_mode": bool(updated_doc.get("under_attack_mode", False)),
+            "blocked_countries": updated_doc.get("blocked_countries", []),
+        },
+        "message": "Security and hardening settings updated successfully"
+    })
+
+
+class WebsiteScanTriggerRequest(BaseModel):
+    scan_type: str = "full"
+
+
+@router.post("/{website_id}/scan")
+async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest = None, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    db = MongoDB()
+    scan_type = (body.scan_type if body else "full") or "full"
+
+    # Check for existing queued scan
+    existing = db.malware_scans.find_one({
+        "website_id": str(website["_id"]),
+        "status": "queued"
+    })
+    if existing:
+        return success({
+            "scan_id": str(existing["_id"]),
+            "status": "queued",
+            "message": "A security scan is already queued for this website and will run on the next heartbeat."
+        })
+
+    scan_id = str(uuid.uuid4())
+    now = datetime.now()
+    record = {
+        "_id": scan_id,
+        "user_id": str(user["id"]),
+        "website_id": str(website["_id"]),
+        "domain": website.get("domain") or website.get("url"),
+        "scan_type": scan_type,
+        "status": "queued",
+        "started_at": now,
+        "summary": {
+            "checks_performed": 0,
+            "issues_found": 0,
+            "score": 100,
+            "security_status": "Scan Queued"
+        },
+        "findings": [],
+        "results": {}
+    }
+    db.malware_scans.insert_one(record)
+
+    db.websites.update_one(
+        {"_id": website["_id"]},
+        {"$set": {"last_scan_status": "queued", "last_scan_id": scan_id, "updated_at": now}}
+    )
+
+    return success({
+        "scan_id": scan_id,
+        "status": "queued",
+        "message": f"Deep {scan_type.upper()} security scan queued. The WordPress plugin will execute the scan on the next heartbeat and stream findings."
+    })
+
+
+@router.get("/{website_id}/scans")
+async def get_website_scans(website_id: str, limit: int = 10, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    db = MongoDB()
+    w_id = str(website["_id"])
+    cursor = db.malware_scans.find({"$or": [{"website_id": w_id}, {"domain": website.get("domain")}]}).sort("started_at", -1).limit(min(limit, 50))
+    scans = [serialize(s) for s in cursor]
+    return success({
+        "website_id": w_id,
+        "domain": website.get("domain") or website.get("url"),
+        "security_score": website.get("security_score", 98),
+        "threat_level": website.get("threat_level", "LOW"),
+        "last_scan": website.get("last_scan"),
+        "last_scan_status": website.get("last_scan_status", "clean"),
+        "scans": scans
     })
 
 

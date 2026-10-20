@@ -63,8 +63,8 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Remote Code Execution - PHP Functions', 'pattern' => '/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode|gzinflate|create_function)\s*[\(\[])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Backticks and Subshells', 'pattern' => '/(?:`[^`]+`|\$\([^\)]+\))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Reverse Shells & Netcat', 'pattern' => '/(?:\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c|ep)|curl\s+[^\s|]+\s*\|\s*(?:bash|sh))\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:[;&]\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:(?:;|&&)\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b(?!\=))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'PHP Deserialization Object Injection', 'pattern' => '/(?:\bO:\d+:"[^"]+":\d+:\{)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             
             // Server-Side Request Forgery & Template Injection
@@ -334,11 +334,10 @@ class WAF_FW_Rule_Engine {
         if ($depth > 8 || !is_array($arr)) return is_scalar($arr) ? (string)$arr : '';
         $out = [];
         foreach ($arr as $k => $v) {
-            if (is_string($k)) $out[] = $k;
             if (is_array($v)) {
                 $out[] = $this->flatten_values($v, $depth + 1);
             } elseif (is_scalar($v)) {
-                $out[] = (string)$v;
+                $out[] = is_string($k) ? "{$k}={$v}" : (string)$v;
             }
         }
         return implode(' ', $out);

@@ -44,10 +44,14 @@
 - **Branding Tokens:** MDefender Cyber Blue (`#2563eb`), Dark Navy Indigo (`#0f172a`, `#1e293b`), Emerald Active (`#10b981`)
 - **API Base:** `VITE_API_BASE` (লোকালে `http://localhost:8000/api/v1` অথবা প্রোডাকশনে `/api/v1`)
 
-### ওয়ার্ডপ্রেস প্লাগইন (`plugin_source/mdefender-pro`)
-- **Language:** PHP 8.0+
-- **Security Hooks:** `plugins_loaded` প্রায়োরিটি 1-এ ট্রাফিক ইন্টারসেপ্ট করে, ব্লকিং পেজ রেন্ডার করে।
-- **বিল্ড আর্টফ্যাক্ট:** `plugin_source/mdefender-pro.zip` (ড্যাশবোর্ড থেকে ডাউনলোডযোগ্য)
+### ওয়ার্ডপ্রেস প্লাগইন ইকোসিস্টেম (`plugin_source/`)
+MDefender Pro-এর ওয়ার্ডপ্রেস সিকিউরিটি আর্কিটেকচার ৪টি স্বাধীন প্লাগইনে বিভক্ত (বিস্তারিত দেখুন: `PLUGIN_ARCHITECTURE.md`):
+1. **Plugin 01 — `mdefender-pro-security` (Protect):** WAF, Brute Force, Login Security, Rate Limiter, IP Rules, Live Request Blocking।
+2. **Plugin 02 — `mdefender-pro-scanner` (Detect):** Malware Scanning, Core Integrity, Vulnerability Assessment, Obfuscated PHP Analysis।
+3. **Plugin 03 — `mdefender-pro-response` (Remediate):** Quarantine Vault, Cleanup Workflow, Rollback & Backups, Incident Timeline, Recovery Verification।
+4. **Plugin 04 — `mdefender-pro-threat-intelligence` (Understand):** Threat Feeds, IP Reputation Lookups, IOC Matching, Campaign Intelligence।
+- **৪টি এডিশন:** Free (WordPress.org), Developer Go, Enterprise Pro, Dedicated Enterprise।
+- **বিল্ড ও প্যাকেজিং:** `scripts/build_all_plugins.py` দিয়ে ৪টি প্লাগইনের ZIP তৈরি হয় (`downloads/`)।
 
 ---
 

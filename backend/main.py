@@ -1833,22 +1833,26 @@ async def api_get_logs(request: Request):
 
 @app.get("/api/v1/wordpress/plugin")
 @app.get("/api/v1/wordpress/download")
+@app.get("/api/v1/wordpress/download/{edition}")
 @app.get("/api/wordpress/plugin")
 @app.get("/api/download/wp-plugin")
-@app.get("/downloads/mdefender-pro.zip")
-async def download_wp_plugin_alias():
+@app.get("/downloads/{filename}")
+async def download_wp_plugin_edition(edition: str = None, filename: str = None):
     from fastapi.responses import FileResponse
     from pathlib import Path
-    zip_path = Path(os.getenv(
-        "WAF_PLUGIN_ZIP_PATH",
-        str(Path(__file__).resolve().parent / "downloads" / "mdefender-pro.zip")
-    )).resolve()
+
+    downloads_dir = (Path(__file__).resolve().parent / "downloads").resolve()
+
+    # Single Unified MDefender Pro WordPress Plugin Package
+    target_file = "mdefender-pro.zip"
+    zip_path = (downloads_dir / "mdefender-pro.zip").resolve()
     if not zip_path.is_file():
-        raise HTTPException(status_code=404, detail="Plugin package not built yet")
+        raise HTTPException(status_code=404, detail="Plugin package mdefender-pro.zip not found")
+
     return FileResponse(
         zip_path,
         media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="mdefender-pro.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="{target_file}"'},
     )
 
 

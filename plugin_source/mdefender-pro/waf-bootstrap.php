@@ -137,8 +137,9 @@ foreach ($candidates as $cand) {
     }
 }
 
-// 2. Fast Country Block Check
-if (!$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
+// 2. Fast Country Block Check (Available in Go, Premium, Dedicated; bypassed in Free)
+$is_country_block_enabled = !defined('MDEFENDER_BUILD_EDITION') || MDEFENDER_BUILD_EDITION !== 'free';
+if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['blocked_countries'])) {
     $geo_country = '';
     // Query param simulation for testing & development
     foreach (['country_test', 'test_country', 'country', 'geo_country'] as $p_key) {

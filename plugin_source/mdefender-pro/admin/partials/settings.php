@@ -1045,16 +1045,41 @@ $dashboard = $logger->get_dashboard_data();
                     </form>
                 </div>
 
-                <div class="waf-fw-card">
-                    <h3><span class="dashicons dashicons-admin-site-alt"></span> Country Blocking</h3>
-                    <p class="description">Block visitors from selected countries (uses ip-api.com for geo lookup).</p>
+                <?php 
+                $can_country_block = !defined('MDEFENDER_BUILD_EDITION') || MDEFENDER_BUILD_EDITION !== 'free';
+                ?>
+                <div class="waf-fw-card" style="position:relative; <?php echo !$can_country_block ? 'border-top:3px solid #64748b;' : 'border-top:3px solid #2563eb;'; ?>">
+                    <?php if (!$can_country_block): ?>
+                        <div style="background:linear-gradient(135deg, #1e293b, #0f172a); border-radius:8px; padding:16px; margin-bottom:16px; color:#fff; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border:1px solid #334155;">
+                            <div>
+                                <strong style="font-size:14px; color:#38bdf8; display:flex; align-items:center; gap:6px;">
+                                    <span class="dashicons dashicons-lock"></span> Country Blocking Requires Pro / Premium
+                                </strong>
+                                <p style="margin:4px 0 0; font-size:12px; color:#94a3b8; max-width:480px;">
+                                    Country-level GeoIP firewalling is available in MD Defender Pro Go, Premium, and Dedicated editions. Prevent attacks by blocking entire foreign territories.
+                                </p>
+                            </div>
+                            <a href="https://mdefender-pro.io/pricing" target="_blank" class="button button-primary" style="background:#2563eb; border-color:#2563eb; font-weight:700; border-radius:6px;">
+                                Upgrade to Pro &rarr;
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                    <h3>
+                        <span class="dashicons dashicons-admin-site-alt"></span> Country / GeoIP Blocking
+                        <?php if ($can_country_block): ?>
+                            <span class="waf-badge-pro" style="background:#2563eb; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px;">ACTIVE (PRO)</span>
+                        <?php else: ?>
+                            <span class="waf-badge-pro" style="background:#64748b; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px;">PRO FEATURE</span>
+                        <?php endif; ?>
+                    </h3>
+                    <p class="description">Block visitors, scrapers, and automated attacks from selected countries before they reach your WordPress site.</p>
                     <form id="wafFwModeForm">
                         <p>
-                            <label>Blocked Countries (comma-separated ISO codes)</label>
-                            <input type="text" id="wafFwBlockedCountries" class="widefat" placeholder="CN, RU, KP, IR">
-                            <span class="description">e.g. CN, RU, KP, IR. Leave empty for no country blocking.</span>
+                            <label>Blocked Countries (comma-separated 2-letter ISO codes)</label>
+                            <input type="text" id="wafFwBlockedCountries" class="widefat" placeholder="e.g. CN, RU, KP, IR" <?php echo !$can_country_block ? 'disabled' : ''; ?>>
+                            <span class="description">Popular threat origin filters: <code>RU</code> (Russia), <code>CN</code> (China), <code>KP</code> (North Korea), <code>IR</code> (Iran). Leave empty for no country blocking.</span>
                         </p>
-                        <p><button type="submit" class="button button-primary">Save Country Settings</button></p>
+                        <p><button type="submit" class="button button-primary" <?php echo !$can_country_block ? 'disabled' : ''; ?>>Save Country Settings</button></p>
                     </form>
                 </div>
             </div>

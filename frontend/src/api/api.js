@@ -373,8 +373,32 @@ export const api = {
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),
   getWebsiteInstallation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/installation`),
   toggleWebsiteUnderAttack: (websiteId, enabled) => apiCall(`/api/v1/websites/${websiteId}/under-attack`, { method: 'POST', body: JSON.stringify({ enabled }) }),
+  getWebsiteSecuritySettings: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/security-settings`),
+  updateWebsiteSecuritySettings: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/security-settings`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  }),
+  triggerWebsiteScan: (websiteId, scanType = 'full') =>
+    apiCall(`/api/v1/websites/${websiteId}/scan`, {
+      method: 'POST',
+      body: JSON.stringify({ scan_type: scanType })
+    }),
+  getWebsiteScans: (websiteId) =>
+    apiCall(`/api/v1/websites/${websiteId}/scans`),
 
   // Cloudflare-Style Domain & DNS Zone Management APIs
+  getDomainsOverview: () => apiCall('/api/v1/domains/overview'),
+  getDomains: () => apiCall('/api/v1/domains'),
+  createDomain: (data) => apiCall('/api/v1/domains', { method: 'POST', body: JSON.stringify(data) }),
+  getDomainDetails: (id) => apiCall(`/api/v1/domains/${id}`),
+  deleteDomain: (id) => apiCall(`/api/v1/domains/${id}`, { method: 'DELETE' }),
+  verifyDomainOwnership: (id) => apiCall(`/api/v1/domains/${id}/ownership/verify`, { method: 'POST' }),
+  checkDomainDelegation: (id) => apiCall(`/api/v1/domains/${id}/delegation/check`, { method: 'POST' }),
+  updateDomainOrigin: (id, data) => apiCall(`/api/v1/domains/${id}/origin`, { method: 'PUT', body: JSON.stringify(data) }),
+  checkDomainOrigin: (id) => apiCall(`/api/v1/domains/${id}/origin/check`, { method: 'POST' }),
+  activateDomainProtection: (id) => apiCall(`/api/v1/domains/${id}/activate`, { method: 'POST' }),
+  pauseDomainProtection: (id) => apiCall(`/api/v1/domains/${id}/pause`, { method: 'POST' }),
+
   discoverDns: (domain, scanSubdomains = true) =>
     apiCall('/api/v1/websites/dns/discover', { method: 'POST', body: JSON.stringify({ domain, scan_subdomains: scanSubdomains }) }),
   getWebsiteZone: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/zone`),

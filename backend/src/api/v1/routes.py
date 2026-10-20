@@ -15,10 +15,12 @@ from src.api.v1 import (
     wordpress_api,
     learning_api,
     turnstile_api,
+    domains_api,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
 
+v1_router.include_router(domains_api.router)
 v1_router.include_router(websites_api.router)
 v1_router.include_router(waf_api.router)
 v1_router.include_router(malware_api.router)
