@@ -269,12 +269,24 @@ class AuthoritativeDNSResolver:
                 if (r.get("name") or "").lower().strip() in ("@", zone_domain):
                     matching_records.append(r)
 
+        # Fallback for root (@) and www if domain is registered in MDefender but has no explicit A record
+        if not matching_records and target_sub in ("@", "www"):
+            matching_records.append({
+                "domain": zone_domain,
+                "name": target_sub,
+                "type": "A",
+                "content": self.edge_ip,
+                "proxied": True
+            })
+
         # Process matching records
         has_answers = False
         for rec in matching_records:
             rtype = rec.get("type", "").upper()
             content = (rec.get("content") or "").strip()
             proxied = bool(rec.get("proxied", True))
+            if content in self.edge_ips or content == self.edge_ip:
+                proxied = True
 
             if not content:
                 continue
