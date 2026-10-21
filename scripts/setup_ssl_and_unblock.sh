@@ -51,8 +51,7 @@ fi
 
 echo "[5/6] Ensuring Certbot & Issuing SSL for mdefender-pro.crafix.tech..."
 apt-get update -y
-apt-get install -y certbot python3-certbot-nginx python3-pip python3-pymongo || true
-pip3 install pymongo || true
+apt-get install -y certbot python3-certbot-nginx python3-pip python3-pymongo python3-dotenv || true
 
 certbot certonly --webroot -w /var/www/certbot \
     -d mdefender-pro.crafix.tech \

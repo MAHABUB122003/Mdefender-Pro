@@ -14,25 +14,55 @@ import urllib.error
 import xml.etree.ElementTree as ET
 import logging
 from typing import List, Set
-from dotenv import load_dotenv
 
-load_dotenv()
+# Native .env loader (zero external pip dependencies)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+possible_env_paths = [
+    os.path.join(project_root, "backend", ".env"),
+    "/var/www/Mdefender-Pro/backend/.env",
+    os.path.join(project_root, ".env")
+]
+for env_path in possible_env_paths:
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend")))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [Cache-Warmer] %(message)s")
 logger = logging.getLogger("CacheWarmer")
 
-try:
-    from src.database.mongodb_connection import MongoDB
-except Exception:
-    MongoDB = None
+def get_mongodb_connection():
+    try:
+        from src.database.mongodb_connection import MongoDB
+        return MongoDB()
+    except Exception:
+        try:
+            from pymongo import MongoClient
+            uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+            db_name = os.getenv("MONGODB_DATABASE") or os.getenv("MONGO_DB") or "mdefender_pro"
+            client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+            return client[db_name]
+        except Exception:
+            return None
 
 def get_active_domains() -> List[str]:
     """Retrieve active protected domains from database."""
-    if not MongoDB:
+    db = get_mongodb_connection()
+    if db is None:
         return ["mahabubur.shop"]
     try:
-        db = MongoDB()
         domains = set()
         for w in db.websites.find({"status": {"$in": ["active", "verified", "connected"]}}):
             d = (w.get("domain") or w.get("url") or "").strip().lower()
