@@ -38,8 +38,8 @@ logger = logging.getLogger("mdefender.dns_server")
 logging.basicConfig(level=logging.INFO)
 
 DEFAULT_EDGE_IP = os.getenv("WAF_EDGE_IP", "217.15.170.82")
-DEFAULT_EDGE_IPS = [p.strip() for p in os.getenv("WAF_EDGE_IPS", "217.15.170.82,104.21.80.158").split(",") if p.strip()]
-DEFAULT_EDGE_IPV6 = [p.strip() for p in os.getenv("WAF_EDGE_IPV6", "2606:4700:3033::ac43:9759,2606:4700:3037::6815:509d").split(",") if p.strip()]
+DEFAULT_EDGE_IPS = [p.strip() for p in os.getenv("WAF_EDGE_IPS", "217.15.170.82").split(",") if p.strip()]
+DEFAULT_EDGE_IPV6_SUBNET = os.getenv("WAF_EDGE_IPV6_SUBNET", "2a02:4780:2d:5552::")
 DEFAULT_DNS_PORT = int(os.getenv("DNS_SERVER_PORT", "53"))
 DEFAULT_NAMESERVERS = os.getenv(
     "MDEFENDER_NAMESERVERS",
@@ -52,13 +52,44 @@ ZONE_CACHE_TTL = 30.0  # seconds
 class AuthoritativeDNSResolver:
     """Core logic to resolve DNS queries against MongoDB dns_records with in-memory caching."""
 
-    def __init__(self, edge_ip: str = DEFAULT_EDGE_IP, edge_ips: Optional[List[str]] = None, edge_ipv6: Optional[List[str]] = None):
+    def __init__(self, edge_ip: str = DEFAULT_EDGE_IP, edge_ips: Optional[List[str]] = None, edge_ipv6_subnet: str = DEFAULT_EDGE_IPV6_SUBNET):
         self.edge_ip = edge_ip
         self.edge_ips = edge_ips or DEFAULT_EDGE_IPS
-        self.edge_ipv6 = edge_ipv6 or DEFAULT_EDGE_IPV6
+        self.edge_ipv6_subnet = edge_ipv6_subnet
         self.db = MongoDB()
         self._cache: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
         self._known_domains_cache: Tuple[float, set] = (0.0, set())
+
+    def get_edge_ips_for_domain(self, domain: str) -> List[str]:
+        """Return deterministic IPv4 addresses from the routable IP pool."""
+        pool = self.edge_ips or [self.edge_ip]
+        if len(pool) <= 1:
+            return pool
+        import hashlib
+        h = hashlib.sha256(domain.lower().strip().encode()).digest()
+        idx1 = h[0] % len(pool)
+        idx2 = (h[1] % (len(pool) - 1)) if len(pool) > 1 else 0
+        if idx2 >= idx1:
+            idx2 = (idx2 + 1) % len(pool)
+        return [pool[idx1], pool[idx2]]
+
+    def get_edge_ipv6_for_domain(self, domain: str) -> List[str]:
+        """
+        Generate deterministic, globally routable dual IPv6 addresses from the server's allocated subnet.
+        Every domain gets its own unique, consistent pair of IPv6 addresses.
+        """
+        import hashlib
+        clean_d = (domain or "edge").lower().strip()
+        h = hashlib.sha256(clean_d.encode()).hexdigest()
+        p1 = h[0:4]
+        p2 = h[4:8]
+        p3 = h[8:12]
+        p4 = h[12:16]
+        base = self.edge_ipv6_subnet.rstrip(":")
+        return [
+            f"{base}::{p1}:{p2}",
+            f"{base}::{p3}:{p4}"
+        ]
 
     def invalidate_cache(self, domain: Optional[str] = None):
         """Invalidate zone cache when records are updated in admin or user dashboard."""
@@ -203,12 +234,12 @@ class AuthoritativeDNSResolver:
                     except Exception:
                         pass
             if qtype_str in ("AAAA", "ANY"):
-                for e_v6 in self.edge_ipv6:
-                    try:
-                        rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "AAAA", e_v6)
-                        response.answer.append(rr)
-                    except Exception:
-                        pass
+                base_v6 = f"{self.edge_ipv6_subnet.rstrip(':')}::1"
+                try:
+                    rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "AAAA", base_v6)
+                    response.answer.append(rr)
+                except Exception:
+                    pass
             if response.answer:
                 return response.to_wire()
 
@@ -307,8 +338,9 @@ class AuthoritativeDNSResolver:
             # A Record Resolution
             if (qtype_str in ("A", "ANY")) and rtype == "A":
                 if proxied:
-                    # Cloudflare-style: Return dual Anycast Edge IPv4 addresses
-                    for e_ip in self.edge_ips:
+                    # Cloudflare-style: Return deterministic Anycast Edge IPv4 addresses from routable pool
+                    edge_ips = self.get_edge_ips_for_domain(zone_domain)
+                    for e_ip in edge_ips:
                         try:
                             socket.inet_aton(e_ip)
                             rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", e_ip)
@@ -328,8 +360,9 @@ class AuthoritativeDNSResolver:
             # AAAA Record Resolution (IPv6)
             elif (qtype_str in ("AAAA", "ANY")) and (rtype in ("AAAA", "A")):
                 if proxied and (qtype_str in ("AAAA", "ANY")):
-                    # Cloudflare-style: Return dual Anycast Edge IPv6 addresses
-                    for e_v6 in self.edge_ipv6:
+                    # Cloudflare-style: Return deterministic, globally routable dual IPv6 addresses from server subnet
+                    edge_ipv6s = self.get_edge_ipv6_for_domain(zone_domain)
+                    for e_v6 in edge_ipv6s:
                         try:
                             socket.inet_pton(socket.AF_INET6, e_v6)
                             rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "AAAA", e_v6)
@@ -351,7 +384,8 @@ class AuthoritativeDNSResolver:
                 if proxied:
                     # Flatten CNAME to dual Edge IPv4 and dual Edge IPv6 (Cloudflare CNAME flattening)
                     if qtype_str in ("A", "ANY"):
-                        for e_ip in self.edge_ips:
+                        edge_ips = self.get_edge_ips_for_domain(zone_domain)
+                        for e_ip in edge_ips:
                             try:
                                 rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", e_ip)
                                 response.answer.append(rr)
@@ -359,7 +393,8 @@ class AuthoritativeDNSResolver:
                             except Exception:
                                 pass
                     if qtype_str in ("AAAA", "ANY"):
-                        for e_v6 in self.edge_ipv6:
+                        edge_ipv6s = self.get_edge_ipv6_for_domain(zone_domain)
+                        for e_v6 in edge_ipv6s:
                             try:
                                 rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "AAAA", e_v6)
                                 response.answer.append(rr)
