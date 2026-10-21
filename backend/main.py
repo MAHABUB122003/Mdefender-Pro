@@ -372,26 +372,30 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
                 fwd_headers["Accept-Encoding"] = "identity"
 
+                # Super-Fast Edge Scheme Selection: flexible -> http, full/strict -> https
                 body = req_body_bytes
                 origin_resp = None
                 known_scheme = _origin_schemes.get(origin_ip)
 
-                if known_scheme == "http":
-                    target_url = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                if not known_scheme:
+                    site_ssl = (registered_site.get("ssl_mode") or "flexible").lower()
+                    if site_ssl == "flexible":
+                        known_scheme = "http"
+                    elif site_ssl in ("full", "strict"):
+                        known_scheme = "https"
+                    else:
+                        known_scheme = "http"
+                    _origin_schemes[origin_ip] = known_scheme
+
+                target_url = f"{known_scheme}://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                try:
                     origin_resp = await client.request(method=request.method, url=target_url, headers=fwd_headers, content=body)
-                elif known_scheme == "https":
-                    target_url = f"https://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
-                    origin_resp = await client.request(method=request.method, url=target_url, headers=fwd_headers, content=body)
-                else:
-                    # Smart scheme discovery with fallback (cached forever per origin_ip)
-                    try:
-                        target_url_https = f"https://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
-                        origin_resp = await client.request(method=request.method, url=target_url_https, headers=fwd_headers, content=body, timeout=2.0)
-                        _origin_schemes[origin_ip] = "https"
-                    except Exception:
-                        target_url_http = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
-                        origin_resp = await client.request(method=request.method, url=target_url_http, headers=fwd_headers, content=body)
-                        _origin_schemes[origin_ip] = "http"
+                except Exception:
+                    # Instant fallback to alternative scheme if initial scheme failed
+                    alt_scheme = "http" if known_scheme == "https" else "https"
+                    alt_url = f"{alt_scheme}://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
+                    origin_resp = await client.request(method=request.method, url=alt_url, headers=fwd_headers, content=body, timeout=10.0)
+                    _origin_schemes[origin_ip] = alt_scheme
 
                 resp_content = origin_resp.content
                 # If origin returned raw gzipped bytes despite identity, decompress to avoid double-compression mojibake in browser

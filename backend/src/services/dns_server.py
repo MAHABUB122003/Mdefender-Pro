@@ -38,6 +38,8 @@ logger = logging.getLogger("mdefender.dns_server")
 logging.basicConfig(level=logging.INFO)
 
 DEFAULT_EDGE_IP = os.getenv("WAF_EDGE_IP", "217.15.170.82")
+DEFAULT_EDGE_IPS = [p.strip() for p in os.getenv("WAF_EDGE_IPS", "217.15.170.82,104.21.80.158").split(",") if p.strip()]
+DEFAULT_EDGE_IPV6 = [p.strip() for p in os.getenv("WAF_EDGE_IPV6", "2606:4700:3033::ac43:9759,2606:4700:3037::6815:509d").split(",") if p.strip()]
 DEFAULT_DNS_PORT = int(os.getenv("DNS_SERVER_PORT", "53"))
 DEFAULT_NAMESERVERS = os.getenv(
     "MDEFENDER_NAMESERVERS",
@@ -50,8 +52,10 @@ ZONE_CACHE_TTL = 30.0  # seconds
 class AuthoritativeDNSResolver:
     """Core logic to resolve DNS queries against MongoDB dns_records with in-memory caching."""
 
-    def __init__(self, edge_ip: str = DEFAULT_EDGE_IP):
+    def __init__(self, edge_ip: str = DEFAULT_EDGE_IP, edge_ips: Optional[List[str]] = None, edge_ipv6: Optional[List[str]] = None):
         self.edge_ip = edge_ip
+        self.edge_ips = edge_ips or DEFAULT_EDGE_IPS
+        self.edge_ipv6 = edge_ipv6 or DEFAULT_EDGE_IPV6
         self.db = MongoDB()
         self._cache: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
         self._known_domains_cache: Tuple[float, set] = (0.0, set())
@@ -277,19 +281,38 @@ class AuthoritativeDNSResolver:
 
             # A Record Resolution
             if (qtype_str in ("A", "ANY")) and rtype == "A":
-                # Origin Shielding: Proxied records always return MDefender Edge IP
-                ip_to_return = self.edge_ip if proxied else content
-                try:
-                    socket.inet_aton(ip_to_return)
-                    rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", ip_to_return)
-                    response.answer.append(rr)
-                    has_answers = True
-                except Exception:
-                    pass
+                if proxied:
+                    # Cloudflare-style: Return dual Anycast Edge IPv4 addresses
+                    for e_ip in self.edge_ips:
+                        try:
+                            socket.inet_aton(e_ip)
+                            rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", e_ip)
+                            response.answer.append(rr)
+                            has_answers = True
+                        except Exception:
+                            pass
+                else:
+                    try:
+                        socket.inet_aton(content)
+                        rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", content)
+                        response.answer.append(rr)
+                        has_answers = True
+                    except Exception:
+                        pass
 
-            # AAAA Record Resolution
-            elif (qtype_str in ("AAAA", "ANY")) and rtype == "AAAA":
-                if not proxied:
+            # AAAA Record Resolution (IPv6)
+            elif (qtype_str in ("AAAA", "ANY")) and (rtype in ("AAAA", "A")):
+                if proxied and (qtype_str in ("AAAA", "ANY")):
+                    # Cloudflare-style: Return dual Anycast Edge IPv6 addresses
+                    for e_v6 in self.edge_ipv6:
+                        try:
+                            socket.inet_pton(socket.AF_INET6, e_v6)
+                            rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "AAAA", e_v6)
+                            response.answer.append(rr)
+                            has_answers = True
+                        except Exception:
+                            pass
+                elif (not proxied) and rtype == "AAAA":
                     try:
                         socket.inet_pton(socket.AF_INET6, content)
                         rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "AAAA", content)
@@ -299,12 +322,25 @@ class AuthoritativeDNSResolver:
                         pass
 
             # CNAME Record Resolution
-            elif (qtype_str in ("CNAME", "A", "ANY")) and rtype == "CNAME":
+            elif (qtype_str in ("CNAME", "A", "AAAA", "ANY")) and rtype == "CNAME":
                 if proxied:
-                    # If CNAME is proxied with Cloud WAF, flatten to Edge A record
-                    rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", self.edge_ip)
-                    response.answer.append(rr)
-                    has_answers = True
+                    # Flatten CNAME to dual Edge IPv4 and dual Edge IPv6 (Cloudflare CNAME flattening)
+                    if qtype_str in ("A", "ANY"):
+                        for e_ip in self.edge_ips:
+                            try:
+                                rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "A", e_ip)
+                                response.answer.append(rr)
+                                has_answers = True
+                            except Exception:
+                                pass
+                    if qtype_str in ("AAAA", "ANY"):
+                        for e_v6 in self.edge_ipv6:
+                            try:
+                                rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "AAAA", e_v6)
+                                response.answer.append(rr)
+                                has_answers = True
+                            except Exception:
+                                pass
                 else:
                     target_cname = content if content.endswith(".") else f"{content}."
                     rr = dns.rrset.from_text(f"{qname_str}.", default_ttl, "IN", "CNAME", target_cname)

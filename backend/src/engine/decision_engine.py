@@ -306,9 +306,10 @@ class DecisionEngine:
                 }
 
         # Check for attack-relevant anomaly symbols before running expensive regex sets
-        has_anomalies = any(c in text_to_analyze for c in ("'", '"', '<', '>', ';', '--', '/*', '..', '`', '$', '{', '}', '%00', '\\', '|', '(', ')'))
+        user_input_text = f"{parsed.get('path', '')} {parsed.get('query_string', '')} {parsed.get('body', '')}"
+        has_anomalies = any(c in user_input_text for c in ("'", '"', '<', '>', ';', '--', '/*', '..', '`', '$', '{', '}', '%00', '\\', '|'))
 
-        # Fast Allow Bypass: if zero hyper signature and zero anomaly characters, allow immediately (< 0.1ms)
+        # Fast Allow Bypass: if zero hyper signature and zero anomaly characters in input, allow immediately (< 0.05ms)
         if not has_anomalies and not is_rate_limited:
             return {
                 "decision": "ALLOW",

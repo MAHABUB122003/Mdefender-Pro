@@ -72,8 +72,8 @@ class MDefenderSSLAutomation:
             }
             domains = list(self.db.domains.find(query))
 
-            # Also check legacy websites
-            sites = list(self.db.websites.find({"verified": True, "ssl_active": {"$ne": True}}))
+            # Also check registered websites (any custom domain)
+            sites = list(self.db.websites.find({"ssl_active": {"$ne": True}}))
             site_domains = {s.get("domain", "").lower().strip() for s in sites if s.get("domain")}
 
             known_domain_names = {d.get("domain", "").lower().strip() for d in domains}
@@ -230,6 +230,8 @@ server {{
         proxy_cache mdef_cache;
         proxy_cache_valid 200 302 7d;
         proxy_cache_valid 404 1m;
+        proxy_ignore_headers Set-Cookie Cache-Control Expires;
+        proxy_hide_header Set-Cookie;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         proxy_cache_lock on;
         add_header X-MDefender-Cache $upstream_cache_status;
