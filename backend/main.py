@@ -232,12 +232,23 @@ async def waf_self_protection_middleware(request: Request, call_next):
             })
             if registered_site:
                 t_site_id = str(registered_site.get("_id"))
+                # Look up root A record or any proxied A record for origin IP
                 origin_record = db.dns_records.find_one({
                     "$or": [{"domain": clean_host}, {"website_id": t_site_id}],
-                    "type": "A",
-                    "proxied": True
+                    "name": {"$in": ["@", clean_host, ""]},
+                    "type": "A"
                 })
-                origin_ip = (origin_record or {}).get("content") or registered_site.get("origin_server")
+                if not origin_record:
+                    origin_record = db.dns_records.find_one({
+                        "$or": [{"domain": clean_host}, {"website_id": t_site_id}],
+                        "type": "A",
+                        "proxied": True
+                    })
+                candidate_ip = (origin_record or {}).get("content")
+                if candidate_ip and candidate_ip not in ("217.15.170.82", "127.0.0.1", "localhost"):
+                    origin_ip = candidate_ip
+                else:
+                    origin_ip = registered_site.get("origin_server") or registered_site.get("origin_address") or candidate_ip
             elif "." in clean_host:
                 # Subdomain lookup (e.g. api.mahabubur.shop -> mahabubur.shop)
                 parts = clean_host.split(".")
