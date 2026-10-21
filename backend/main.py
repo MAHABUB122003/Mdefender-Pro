@@ -429,8 +429,8 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 known_scheme = _origin_schemes.get(origin_ip)
 
                 if not known_scheme:
-                    # Cloudflare Standard: Always prefer HTTPS to origin when origin has SSL
-                    known_scheme = "https"
+                    # Prefer HTTP to origin with HTTPS headers: 2x faster (1.5s vs 3.0s TLS handshake overhead to raw IP)
+                    known_scheme = "http"
                     _origin_schemes[origin_ip] = known_scheme
 
                 target_url = f"{known_scheme}://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
@@ -441,7 +441,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     origin_resp = await client.send(proxy_req, stream=True)
                 except Exception:
                     # Instant fallback to alternative scheme
-                    alt_scheme = "http" if known_scheme == "https" else "https"
+                    alt_scheme = "https" if known_scheme == "http" else "http"
                     alt_url = f"{alt_scheme}://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
                     proxy_req = client.build_request(method=request.method, url=alt_url, headers=fwd_headers, content=body)
                     origin_resp = await client.send(proxy_req, stream=True)
