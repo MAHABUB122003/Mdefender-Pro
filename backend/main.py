@@ -418,6 +418,8 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 fwd_headers["X-Real-IP"] = client_ip
                 fwd_headers["X-Forwarded-Proto"] = "https"
                 fwd_headers["X-Forwarded-Port"] = "443"
+                fwd_headers["X-Forwarded-Ssl"] = "on"
+                fwd_headers["X-Url-Scheme"] = "https"
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
                 # Keep compression enabled: 4x faster data transfer from origin
                 fwd_headers["Accept-Encoding"] = request.headers.get("accept-encoding", "gzip, deflate")
@@ -427,13 +429,8 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 known_scheme = _origin_schemes.get(origin_ip)
 
                 if not known_scheme:
-                    site_ssl = (registered_site.get("ssl_mode") or "flexible").lower()
-                    if site_ssl == "flexible":
-                        known_scheme = "http"
-                    elif site_ssl in ("full", "strict"):
-                        known_scheme = "https"
-                    else:
-                        known_scheme = "http"
+                    # Cloudflare Standard: Always prefer HTTPS to origin when origin has SSL
+                    known_scheme = "https"
                     _origin_schemes[origin_ip] = known_scheme
 
                 target_url = f"{known_scheme}://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
