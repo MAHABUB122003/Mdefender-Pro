@@ -20,7 +20,7 @@ import socket
 import secrets
 import logging
 import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 
 try:
@@ -35,7 +35,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger("mdefender.ssl_daemon")
 
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://127.0.0.1:27017")
+# Auto-discover backend/.env file
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+possible_env_paths = [
+    os.path.join(project_root, "backend", ".env"),
+    "/var/www/Mdefender-Pro/backend/.env",
+    os.path.join(project_root, ".env")
+]
+
+for env_path in possible_env_paths:
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception as e:
+            logger.warning(f"Failed to read {env_path}: {e}")
+        break
+
+MONGODB_URL = os.getenv("MONGO_URI") or os.getenv("MONGODB_URL", "mongodb://127.0.0.1:27017")
+MONGODB_DB_NAME = os.getenv("MONGO_DB", "mdefender_pro")
 WEBROOT_DIR = os.getenv("CERTBOT_WEBROOT_PATH", "/var/www/certbot")
 NGINX_DOMAINS_DIR = os.getenv("NGINX_DOMAINS_CONF_DIR", "/etc/nginx/conf.d/domains")
 SERVER_EDGE_IP = os.getenv("WAF_EDGE_IP", "217.15.170.82")
@@ -43,8 +69,18 @@ SERVER_EDGE_IP = os.getenv("WAF_EDGE_IP", "217.15.170.82")
 
 class MDefenderSSLAutomation:
     def __init__(self):
-        self.client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=4000)
-        self.db = self.client.get_database("mdefender")
+        connect_kwargs = {"serverSelectionTimeoutMS": 6000}
+        if "mongodb+srv://" in MONGODB_URL or "ssl=true" in MONGODB_URL.lower():
+            connect_kwargs["tls"] = True
+            try:
+                import certifi
+                connect_kwargs["tlsCAFile"] = certifi.where()
+            except ImportError:
+                connect_kwargs["tlsAllowInvalidCertificates"] = True
+
+        self.client = MongoClient(MONGODB_URL, **connect_kwargs)
+        self.db = self.client.get_database(MONGODB_DB_NAME)
+        logger.info(f"Initialized MDefender SSL Automation (Database: '{MONGODB_DB_NAME}').")
         self._ensure_prerequisites()
 
     def _ensure_prerequisites(self):
@@ -139,9 +175,8 @@ class MDefenderSSLAutomation:
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True
             )
             date_str = res.stdout.strip().replace("notAfter=", "")
-            # e.g., 'notAfter=May 15 12:00:00 2026 GMT'
-            exp_date = datetime.strptime(date_str, "%b %d %H:%M:%S %Y %Z")
-            remaining = (exp_date - datetime.utcnow()).days
+            exp_date = datetime.strptime(date_str, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+            remaining = (exp_date - datetime.now(timezone.utc)).days
             return remaining >= min_days
         except Exception:
             return True  # If verification fails but files exist, assume valid for now
