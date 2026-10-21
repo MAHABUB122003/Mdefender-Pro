@@ -334,9 +334,11 @@ async def waf_self_protection_middleware(request: Request, call_next):
 
                 fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "accept-encoding")}
                 fwd_headers["Host"] = raw_host
+                fwd_headers["X-Forwarded-Host"] = raw_host
                 fwd_headers["X-Forwarded-For"] = client_ip
                 fwd_headers["X-Real-IP"] = client_ip
                 fwd_headers["X-Forwarded-Proto"] = "https"
+                fwd_headers["X-Forwarded-Port"] = "443"
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
                 fwd_headers["Accept-Encoding"] = "identity"
 
@@ -354,7 +356,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     # Smart scheme discovery with fallback (cached forever per origin_ip)
                     try:
                         target_url_https = f"https://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
-                        origin_resp = await client.request(method=request.method, url=target_url_https, headers=fwd_headers, content=body)
+                        origin_resp = await client.request(method=request.method, url=target_url_https, headers=fwd_headers, content=body, timeout=2.0)
                         _origin_schemes[origin_ip] = "https"
                     except Exception:
                         target_url_http = f"http://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
@@ -376,13 +378,21 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     except Exception:
                         pass
 
-                resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection", "content-length")}
-                resp_headers["X-MDefender-Protected"] = "true"
-                return Response(
+                # Preserve individual Set-Cookie headers in raw_headers so browser sets each cookie distinctly
+                raw_response_headers = []
+                for k, v in origin_resp.headers.raw:
+                    k_lower = k.lower()
+                    if k_lower in (b"content-encoding", b"transfer-encoding", b"connection", b"content-length"):
+                        continue
+                    raw_response_headers.append((k, v))
+                raw_response_headers.append((b"x-mdefender-protected", b"true"))
+
+                response = Response(
                     content=resp_content,
                     status_code=origin_resp.status_code,
-                    headers=resp_headers
                 )
+                response.raw_headers = raw_response_headers
+                return response
             except Exception as e:
                 return HTMLResponse(content=f"<h1>502 Bad Gateway</h1><p>MDefender Pro could not reach origin server ({origin_ip}): {e}</p>", status_code=502)
 
