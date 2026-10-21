@@ -187,7 +187,11 @@ class MDefenderSSLAutomation:
 
     def issue_certificate_for_domain(self, domain: str) -> bool:
         """Request or renew certificate via Certbot webroot mode and configure Nginx."""
-        clean_d = domain.lower().strip()
+        clean_d = (domain or "").lower().strip().replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
+        if not clean_d or "." not in clean_d or clean_d in ("localhost", "127.0.0.1") or clean_d.endswith(".local") or clean_d.endswith(".test"):
+            logger.info(f"Skipping non-public domain for SSL issuance: '{clean_d}'")
+            return False
+
         logger.info(f"Initiating automated SSL issuance for: {clean_d}")
 
         hosts = self.get_proxied_hosts(clean_d)
@@ -204,7 +208,7 @@ class MDefenderSSLAutomation:
         try:
             resolved_ip = socket.gethostbyname(clean_d)
             logger.info(f"Resolved {clean_d} -> {resolved_ip}")
-            if resolved_ip != SERVER_EDGE_IP and resolved_ip not in ("127.0.0.1", "localhost"):
+            if resolved_ip != SERVER_EDGE_IP:
                 logger.warning(f"Domain {clean_d} points to {resolved_ip}, awaiting propagation to MDefender edge ({SERVER_EDGE_IP}).")
                 return False
         except Exception as dns_err:
@@ -214,12 +218,15 @@ class MDefenderSSLAutomation:
         # 3. Filter hosts: only request SANs that actually resolve to this server
         valid_hosts = []
         for h in hosts:
+            h_clean = h.lower().strip().replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
+            if not h_clean or "." not in h_clean or h_clean in ("localhost", "127.0.0.1") or h_clean.endswith(".local"):
+                continue
             try:
-                ip = socket.gethostbyname(h)
-                if ip == SERVER_EDGE_IP or ip in ("127.0.0.1", "localhost"):
-                    valid_hosts.append(h)
+                ip = socket.gethostbyname(h_clean)
+                if ip == SERVER_EDGE_IP:
+                    valid_hosts.append(h_clean)
             except Exception:
-                logger.debug(f"Subdomain {h} does not resolve publicly; skipping from SAN.")
+                logger.debug(f"Subdomain {h_clean} does not resolve publicly; skipping from SAN.")
 
         if not valid_hosts:
             valid_hosts = [clean_d]
