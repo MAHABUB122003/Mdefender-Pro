@@ -252,6 +252,13 @@ class AuthoritativeDNSResolver:
             if qtype_str in ("A", "ANY"):
                 rr = dns.rrset.from_text(f"{base_domain}.", 300, "IN", "A", self.edge_ip)
                 response.answer.append(rr)
+            if qtype_str in ("AAAA", "ANY"):
+                base_v6 = f"{self.edge_ipv6_subnet.rstrip(':')}::1"
+                try:
+                    rr = dns.rrset.from_text(f"{base_domain}.", 300, "IN", "AAAA", base_v6)
+                    response.answer.append(rr)
+                except Exception:
+                    pass
             if response.answer:
                 return response.to_wire()
 
