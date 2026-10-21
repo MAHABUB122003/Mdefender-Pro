@@ -293,6 +293,8 @@ server {{
     tcp_nodelay on;
     tcp_nopush on;
     sendfile on;
+    keepalive_timeout 65;
+    keepalive_requests 10000;
 
     # Edge Static Asset Cache (Images, CSS, JS, Fonts serve in < 2ms)
     location ~* \\.(?:jpg|jpeg|gif|png|ico|webp|svg|css|js|woff|woff2|ttf|eot)$ {{
@@ -306,12 +308,14 @@ server {{
         proxy_set_header Connection "";
 
         proxy_cache mdef_cache;
+        proxy_cache_key "$scheme$host$request_uri";
         proxy_cache_valid 200 302 7d;
         proxy_cache_valid 404 1m;
         proxy_ignore_headers Set-Cookie Cache-Control Expires;
         proxy_hide_header Set-Cookie;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         proxy_cache_lock on;
+        proxy_cache_revalidate on;
         add_header X-MDefender-Cache $upstream_cache_status;
         add_header X-Edge-Protected "MDefender-Pro AI";
         expires 7d;
