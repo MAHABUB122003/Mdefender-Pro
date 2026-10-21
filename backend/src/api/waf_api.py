@@ -483,6 +483,38 @@ class WAFAPI:
         headers = request_data.get("headers") or {}
         user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
 
+        # Static Asset Fast-Path: CSS, JS, Images, Fonts with clean queries pass in 0.0001ms (Zero DB queries)
+        if method == 'GET':
+            lower_url = url.lower().split('?')[0]
+            if lower_url.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map', '.mp4', '.webm')):
+                q_raw = request_data.get('query_string') or ''
+                if not any(token in q_raw.lower() for token in ('<script', 'select', 'union', '../', '--', "' or", '" or', ";")):
+                    decision = {
+                        'decision': 'ALLOW',
+                        'action': 'allow',
+                        'confidence': 0.0,
+                        'reason': 'Static asset fast-path (CDN bypass)',
+                        'attack_type': None,
+                        'risk_score': 0,
+                        'risk_level': 'low',
+                        'status': 'allowed',
+                        'reference_id': 'FAST-ASSET',
+                    }
+                    log_entry = {
+                        'ip': ip, 'url': url, 'attack_type': 'Normal', 'status': 'allowed',
+                        'confidence': 0.0, 'timestamp': datetime.now(),
+                        'details': {'reason': 'Static Asset'},
+                        'user_id': user_id or '', 'domain': domain or '', 'website_id': website_id or ''
+                    }
+                    event = {
+                        'user_id': user_id or '', 'website_id': website_id or '',
+                        'timestamp': datetime.now(), 'source_ip': ip, 'method': method,
+                        'endpoint': url, 'attack_type': None, 'detection_source': 'static_fast_path',
+                        'risk_score': 0, 'action': 'allow', 'status': 'allowed',
+                        'reference_id': 'FAST-ASSET', 'user_agent': user_agent
+                    }
+                    return decision, log_entry, event, False, ip
+
         u_cfg = self.attack_blocker.get_user_settings(user_id) if user_id else {}
         user_rate_limit = u_cfg.get('rate_limit_per_minute', 120)
 
@@ -532,27 +564,6 @@ class WAFAPI:
                 'risk_level': 'critical',
                 'status': 'blocked',
                 'reference_id': 'GEO-BLOCK',
-            }
-        # Static Asset Fast-Path: CSS, JS, Images, Fonts with clean queries pass in 0.001ms
-        is_static_asset = False
-        if method == 'GET':
-            lower_url = url.lower().split('?')[0]
-            if lower_url.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.map')):
-                q_raw = request_data.get('query_string') or ''
-                if not any(token in q_raw.lower() for token in ('<script', 'select ', 'union ', '../', '--', "' or", '" or')):
-                    is_static_asset = True
-
-        if is_static_asset:
-            decision = {
-                'decision': 'ALLOW',
-                'action': 'allow',
-                'confidence': 0.0,
-                'reason': 'Static asset fast-path',
-                'attack_type': None,
-                'risk_score': 0,
-                'risk_level': 'low',
-                'status': 'allowed',
-                'reference_id': 'FAST-ALLOW',
             }
         else:
             decision = self.decision_engine.evaluate(

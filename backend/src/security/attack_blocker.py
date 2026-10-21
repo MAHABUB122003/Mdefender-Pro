@@ -114,6 +114,17 @@ class AttackBlocker:
         return False
 
     def is_blacklisted(self, ip, user_id=None):
+        if not ip:
+            return False
+        import time
+        now_ts = time.time()
+        if not hasattr(self, '_bl_cache'):
+            self._bl_cache = {}
+        c_key = f"{ip}:{user_id or ''}"
+        cached, exp = self._bl_cache.get(c_key, (None, 0))
+        if now_ts < exp:
+            return cached
+
         try:
             query = {'ip': ip}
             if user_id:
@@ -121,11 +132,14 @@ class AttackBlocker:
                 query['$or'] = [{'user_id': u_str}, {'added_by_user_id': u_str}, {'is_global': True}, {'added_by_user_id': {'$exists': False}}]
             entry = self.db.blacklist.find_one(query)
             if not entry:
+                self._bl_cache[c_key] = (False, now_ts + 30.0)
                 return False
             expires_at = entry.get('expires_at')
             if expires_at is not None and expires_at < datetime.now():
                 self.db.blacklist.delete_one({'_id': entry['_id']})
+                self._bl_cache[c_key] = (False, now_ts + 30.0)
                 return False
+            self._bl_cache[c_key] = (True, now_ts + 30.0)
             return True
         except Exception as e:
             logger.error("Failed to check blacklist for %s: %s", ip, e)
@@ -181,12 +195,20 @@ class AttackBlocker:
 
     def get_user_settings(self, user_id=None):
         u_str = str(user_id) if user_id else ""
+        import time
+        now_ts = time.time()
+        if not hasattr(self, '_settings_cache'):
+            self._settings_cache = {}
+        cached, exp = self._settings_cache.get(u_str, (None, 0))
+        if now_ts < exp and cached is not None:
+            return cached
+
         doc = None
         if u_str:
             doc = self.db.settings.find_one({'_type': 'user_security_config', 'user_id': u_str})
         if not doc:
             doc = self.db.settings.find_one({'_type': 'waf_settings'}) or {}
-        return {
+        res = {
             'auto_block_enabled': doc.get('auto_block_enabled', True),
             'auto_block_threshold': int(doc.get('auto_block_threshold', 10)),
             'auto_block_window_hours': int(doc.get('auto_block_window_hours', 24)),
@@ -196,6 +218,8 @@ class AttackBlocker:
             'admin_bruteforce_protection': doc.get('admin_bruteforce_protection', True),
             'auto_block_permanent': doc.get('auto_block_permanent', False),
         }
+        self._settings_cache[u_str] = (res, now_ts + 60.0)
+        return res
 
     def save_user_settings(self, user_id, data):
         u_str = str(user_id)

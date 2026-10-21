@@ -238,7 +238,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     "proxied": True
                 })
                 origin_ip = (origin_record or {}).get("content") or registered_site.get("origin_server")
-        _site_lookup_cache[clean_host] = (registered_site, origin_ip, now_ts + 30.0)
+        _site_lookup_cache[clean_host] = (registered_site, origin_ip, now_ts + 180.0)
 
     target_domain = clean_host if registered_site else "localhost"
     target_user_id = str(registered_site.get("user_id")) if registered_site else None

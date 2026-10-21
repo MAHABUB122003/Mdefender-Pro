@@ -11,8 +11,15 @@ class IPFilter:
         if not ip:
             return False
         ip = str(ip).strip()
+        now_ts = time.time()
+        if not hasattr(self, '_bl_cache'):
+            self._bl_cache = {}
+        c_key = f"{ip}:{user_id or ''}"
+        cached, exp = self._bl_cache.get(c_key, (None, 0))
+        if now_ts < exp:
+            return cached
+
         from bson import ObjectId
-        
         candidates = [ip]
         if ip in ('127.0.0.1', '::1', '0.0.0.0', 'localhost'):
             candidates = ['127.0.0.1', '::1', '0.0.0.0', 'localhost']
@@ -48,11 +55,14 @@ class IPFilter:
             }
         entry = self.db.blacklist.find_one(query)
         if not entry:
+            self._bl_cache[c_key] = (False, now_ts + 30.0)
             return False
         expires_at = entry.get('expires_at')
         if expires_at is not None and hasattr(expires_at, '__gt__') and expires_at < datetime.now():
             self.db.blacklist.delete_one({'_id': entry['_id']})
+            self._bl_cache[c_key] = (False, now_ts + 30.0)
             return False
+        self._bl_cache[c_key] = (True, now_ts + 30.0)
         return True
 
     def add_to_blacklist(self, ip, duration_hours=None):
@@ -82,12 +92,20 @@ class IPFilter:
         self._whitelist.add(ip)
 
     def is_whitelisted(self, ip):
+        if not ip:
+            return False
         if ip in self._whitelist:
             return True
+        now_ts = time.time()
+        if not hasattr(self, '_wl_cache'):
+            self._wl_cache = {}
+        cached, exp = self._wl_cache.get(ip, (None, 0))
+        if now_ts < exp:
+            return cached
         entry = self.db.whitelist.find_one({'ip': ip})
-        if entry:
-            return True
-        return False
+        res = bool(entry)
+        self._wl_cache[ip] = (res, now_ts + 60.0)
+        return res
 
     def get_blacklist(self):
         return list(self.db.blacklist.find().sort('blocked_at', -1))

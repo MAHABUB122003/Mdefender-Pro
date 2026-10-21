@@ -277,22 +277,32 @@ class DecisionEngine:
         if hyper_match:
             cat = hyper_match.get("category", "Cyber Attack")
             r_name = hyper_match.get("rule_name") or f"HyperSignature: {cat}"
-            return {
-                "decision": "BLOCK",
-                "action": "block",
-                "risk_score": 98,
-                "risk_level": "critical",
-                "confidence": 0.99,
-                "reason": r_name,
-                "reference_id": reference_id,
-                "components": {
-                    "semantic_score": 95, "rule_score": 100, "ml_score": 95,
-                    "reputation_score": 0, "rate_limit_score": int(rate_limit_score * 100), "behavior_score": 50
-                },
-                "signals": {"hyper_match": hyper_match, "fast_path": "tier2_hyper_signature"},
-                "attack_type": cat,
-                "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
-            }
+
+            # Smart False-Positive Guard for Legitimate CMS / Login Credentials
+            url_path_lower = parsed.get("path", "").lower()
+            is_login_flow = any(x in url_path_lower for x in ["wp-login.php", "/login", "/signin", "/auth", "admin-ajax.php"])
+            if is_login_flow and cat in ("Remote Code Execution", "SQL Injection"):
+                tok = str(hyper_match.get("token") or "")
+                if tok in ("pwd", "id", "log", "user") or tok.startswith("&"):
+                    hyper_match = None
+
+            if hyper_match:
+                return {
+                    "decision": "BLOCK",
+                    "action": "block",
+                    "risk_score": 98,
+                    "risk_level": "critical",
+                    "confidence": 0.99,
+                    "reason": r_name,
+                    "reference_id": reference_id,
+                    "components": {
+                        "semantic_score": 95, "rule_score": 100, "ml_score": 95,
+                        "reputation_score": 0, "rate_limit_score": int(rate_limit_score * 100), "behavior_score": 50
+                    },
+                    "signals": {"hyper_match": hyper_match, "fast_path": "tier2_hyper_signature"},
+                    "attack_type": cat,
+                    "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
+                }
 
         # Check for attack-relevant anomaly symbols before running expensive regex sets
         has_anomalies = any(c in text_to_analyze for c in ("'", '"', '<', '>', ';', '--', '/*', '..', '`', '$', '{', '}', '%00', '\\', '|', '(', ')'))
