@@ -102,10 +102,14 @@ class MDefenderSSLAutomation:
             candidates = []
             seen = set()
 
+            def _clean(raw: str) -> str:
+                h = (raw or "").lower().strip()
+                return h.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
+
             # 1. Fetch from db.domains
             for d in self.db.domains.find({}):
-                dom_name = (d.get("domain") or "").lower().strip()
-                if not dom_name or dom_name in seen:
+                dom_name = _clean(d.get("domain"))
+                if not dom_name or "." not in dom_name or dom_name in ("localhost", "127.0.0.1") or dom_name.endswith(".local") or dom_name in seen:
                     continue
                 conf_file = f"{NGINX_DOMAINS_DIR}/{dom_name}.conf"
                 needs_ssl = (
@@ -119,8 +123,8 @@ class MDefenderSSLAutomation:
 
             # 2. Fetch from db.websites
             for s in self.db.websites.find({}):
-                dom_name = (s.get("domain") or "").lower().strip()
-                if not dom_name or dom_name in seen:
+                dom_name = _clean(s.get("domain") or s.get("url") or s.get("name"))
+                if not dom_name or "." not in dom_name or dom_name in ("localhost", "127.0.0.1") or dom_name.endswith(".local") or dom_name in seen:
                     continue
                 conf_file = f"{NGINX_DOMAINS_DIR}/{dom_name}.conf"
                 needs_ssl = (
@@ -287,6 +291,17 @@ server {{
     ssl_certificate_key {live_dir}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets on;
+
+    # Edge Gzip Compression (reduces payload by 75%)
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/rss+xml font/woff2 image/svg+xml;
 
     # High-Performance TCP Socket Tuning
     client_max_body_size 100M;
