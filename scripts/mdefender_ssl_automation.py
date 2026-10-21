@@ -81,6 +81,10 @@ class MDefenderSSLAutomation:
                 if sd and sd not in known_domain_names:
                     domains.append({"domain": sd, "status": "delegation_verified", "ssl": {"status": "pending_issuance"}})
 
+            # Always ensure core SaaS Dashboard domain has valid trusted SSL
+            if not self.is_cert_valid("mdefender-pro.crafix.tech", min_days=20):
+                domains.insert(0, {"domain": "mdefender-pro.crafix.tech", "status": "active", "ssl": {"status": "pending_issuance"}})
+
             return domains
         except Exception as e:
             logger.error(f"Error querying candidate domains: {e}")
@@ -194,6 +198,10 @@ class MDefenderSSLAutomation:
 
     def _write_nginx_vhost(self, domain: str, hosts: List[str]):
         """Write isolated, high-performance HTTPS reverse proxy configuration for domain."""
+        if domain == "mdefender-pro.crafix.tech":
+            self._reload_nginx()
+            return
+
         live_dir = f"/etc/letsencrypt/live/{domain}"
         conf_path = f"{NGINX_DOMAINS_DIR}/{domain}.conf"
 

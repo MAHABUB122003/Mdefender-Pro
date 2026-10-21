@@ -49,7 +49,24 @@ if command -v ufw &> /dev/null; then
     echo "-> UFW firewall rules updated."
 fi
 
-echo "[5/6] Syncing Nginx configuration..."
+echo "[5/6] Ensuring Certbot & Issuing SSL for mdefender-pro.crafix.tech..."
+apt-get update -y
+apt-get install -y certbot python3-certbot-nginx python3-pip python3-pymongo || true
+pip3 install pymongo || true
+
+certbot certonly --webroot -w /var/www/certbot \
+    -d mdefender-pro.crafix.tech \
+    --non-interactive --agree-tos \
+    --register-unsafely-without-email \
+    --keep-until-expiring || true
+
+if [ ! -f /etc/letsencrypt/live/mdefender-pro.crafix.tech/fullchain.pem ]; then
+    mkdir -p /etc/letsencrypt/live/mdefender-pro.crafix.tech
+    cp /etc/ssl/certs/mdefender-edge.crt /etc/letsencrypt/live/mdefender-pro.crafix.tech/fullchain.pem
+    cp /etc/ssl/private/mdefender-edge.key /etc/letsencrypt/live/mdefender-pro.crafix.tech/privkey.pem
+fi
+
+echo "[6/6] Syncing Nginx configuration..."
 mkdir -p /var/cache/nginx/mdefender
 rm -f /etc/nginx/sites-enabled/default
 if [ -f "$APP_DIR/nginx/mdefender-pro.conf" ]; then
@@ -59,11 +76,6 @@ fi
 nginx -t
 systemctl reload nginx
 echo "-> Nginx reloaded successfully."
-
-echo "[6/6] Ensuring Certbot & Python tools for Zero-Touch SSL Automation Daemon..."
-apt-get update -y
-apt-get install -y certbot python3-certbot-nginx python3-pip python3-pymongo || true
-pip3 install pymongo || true
 
 # Install systemd service for 24/7 background SSL automation
 cat << 'EOF' > /etc/systemd/system/mdefender-ssl.service
