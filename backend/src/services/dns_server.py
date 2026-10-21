@@ -149,6 +149,21 @@ class AuthoritativeDNSResolver:
             logger.warning(f"[DNS] Error loading zone records for {zone_domain}: {e}")
             return []
 
+    def _get_zone_assigned_nameservers(self, zone_domain: str) -> List[str]:
+        """Fetch assigned nameserver pair for a zone, falling back to deterministic pair."""
+        try:
+            dom = self.db.domains.find_one({"domain": zone_domain})
+            if dom and dom.get("nameservers", {}).get("assigned"):
+                return dom["nameservers"]["assigned"]
+            site = self.db.websites.find_one({"domain": zone_domain})
+            if site and site.get("assigned_nameservers"):
+                return site["assigned_nameservers"]
+            from src.services.domain_service import get_assigned_nameservers_for_domain
+            assigned, _ = get_assigned_nameservers_for_domain(zone_domain)
+            return assigned
+        except Exception:
+            return DEFAULT_NAMESERVERS
+
     def handle_query(self, wire_data: bytes) -> Optional[bytes]:
         """Parse DNS wire query, build authoritative answer, and return response bytes."""
         if not HAS_DNSPYTHON:
@@ -173,9 +188,9 @@ class AuthoritativeDNSResolver:
         response.flags |= dns.flags.AA  # Authoritative Answer
         response.flags |= dns.flags.QR  # Query Response
 
-        # Base nameserver hostnames resolution (ns1, ns2, or root management domain)
+        # Base nameserver hostnames resolution (ns1, ns2, or wildcard *.ns.mdefender-pro.crafix.tech)
         base_domain = "mdefender-pro.crafix.tech"
-        if qname_str in ("ns1." + base_domain, "ns2." + base_domain) and qtype_str in ("A", "ANY"):
+        if (qname_str.endswith(".ns." + base_domain) or qname_str in ("ns1." + base_domain, "ns2." + base_domain, "ns." + base_domain)) and qtype_str in ("A", "ANY"):
             rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "A", self.edge_ip)
             response.answer.append(rr)
             return response.to_wire()
@@ -206,12 +221,15 @@ class AuthoritativeDNSResolver:
         soa_ttl = 3600
         default_ttl = 300
 
+        # Fetch assigned nameservers for this specific zone
+        zone_ns_list = self._get_zone_assigned_nameservers(zone_domain)
+        primary_ns = zone_ns_list[0] if zone_ns_list else DEFAULT_NAMESERVERS[0]
+        if not primary_ns.endswith("."):
+            primary_ns += "."
+
         # Handle Query Types
         if qtype_str in ("SOA", "ANY"):
             serial = int(time.strftime("%Y%m%d%H"))
-            primary_ns = DEFAULT_NAMESERVERS[0]
-            if not primary_ns.endswith("."):
-                primary_ns += "."
             hostmaster = HOSTMASTER_EMAIL
             if not hostmaster.endswith("."):
                 hostmaster += "."
@@ -220,7 +238,7 @@ class AuthoritativeDNSResolver:
             response.answer.append(soa_rr)
 
         if qtype_str in ("NS", "ANY") and subdomain == "@":
-            for ns in DEFAULT_NAMESERVERS:
+            for ns in zone_ns_list:
                 clean_ns = ns.strip()
                 if not clean_ns.endswith("."):
                     clean_ns += "."

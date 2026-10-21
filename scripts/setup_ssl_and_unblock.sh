@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MDefender Pro - Edge SSL Setup & Admin IP Unblock Script
+# MDefender Pro - Enterprise Edge SSL Setup & Zero-Touch Automation Daemon
 # ==============================================================================
 set -e
 
 ADMIN_IPS=("103.120.45.240" "103.120.45.241")
 DOMAIN="mahabubur.shop"
+APP_DIR="/var/www/Mdefender-Pro"
 
-echo "[1/5] Unblocking and whitelisting Admin IPs in MongoDB..."
+echo "[1/6] Unblocking and whitelisting Admin IPs in MongoDB..."
 for ip in "${ADMIN_IPS[@]}"; do
     docker compose exec -T mongodb mongosh mdefender --quiet --eval "
     db.blacklist.deleteMany({ip: '$ip'});
@@ -18,7 +19,7 @@ for ip in "${ADMIN_IPS[@]}"; do
     " || true
 done
 
-echo "[2/5] Ensuring fallback SSL certificate exists for Nginx..."
+echo "[2/6] Ensuring fallback SSL certificate exists for Nginx..."
 mkdir -p /etc/ssl/certs /etc/ssl/private
 if [ ! -f /etc/ssl/certs/mdefender-edge.crt ]; then
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
@@ -31,7 +32,13 @@ else
     echo "-> Fallback SSL certificate already exists."
 fi
 
-echo "[3/5] Configuring firewall for Port 443 (HTTPS) & Port 80..."
+echo "[3/6] Setting up webroot and Nginx dynamic domains directories..."
+mkdir -p /var/www/certbot/.well-known/acme-challenge
+mkdir -p /etc/nginx/conf.d/domains
+touch /etc/nginx/conf.d/domains/.empty
+chmod -R 755 /var/www/certbot
+
+echo "[4/6] Configuring firewall for Ports 80, 443, 53..."
 if command -v ufw &> /dev/null; then
     ufw allow 80/tcp || true
     ufw allow 443/tcp || true
@@ -40,23 +47,49 @@ if command -v ufw &> /dev/null; then
     echo "-> UFW firewall rules updated."
 fi
 
-echo "[4/5] Testing Nginx configuration & reloading..."
+echo "[5/6] Syncing Nginx configuration..."
+if [ -f "$APP_DIR/nginx/mdefender-pro.conf" ]; then
+    cp "$APP_DIR/nginx/mdefender-pro.conf" /etc/nginx/sites-available/mdefender-pro.conf || true
+    ln -sf /etc/nginx/sites-available/mdefender-pro.conf /etc/nginx/sites-enabled/ || true
+fi
 nginx -t
 systemctl reload nginx
-echo "-> Nginx reloaded successfully on ports 80 and 443."
+echo "-> Nginx reloaded successfully."
 
-echo "[5/5] Checking Certbot for trusted Let's Encrypt SSL on $DOMAIN..."
-if ! command -v certbot &> /dev/null; then
-    echo "-> Installing certbot python3-certbot-nginx..."
-    apt-get update -y && apt-get install -y certbot python3-certbot-nginx
-fi
+echo "[6/6] Ensuring Certbot & Python tools for Zero-Touch SSL Automation Daemon..."
+apt-get update -y
+apt-get install -y certbot python3-certbot-nginx python3-pip python3-pymongo || true
+pip3 install pymongo || true
 
-echo "-> Requesting / renewing trusted Let's Encrypt SSL certificate for $DOMAIN..."
-certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect || {
-    echo "Notice: Certbot automatic issuance encountered a notice, fallback self-signed SSL is active."
-}
+# Install systemd service for 24/7 background SSL automation
+cat << 'EOF' > /etc/systemd/system/mdefender-ssl.service
+[Unit]
+Description=MDefender Pro Zero-Touch Universal SSL Background Worker
+After=network.target docker.service
+Wants=docker.service
 
-systemctl reload nginx
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/Mdefender-Pro
+ExecStart=/usr/bin/python3 /var/www/Mdefender-Pro/scripts/mdefender_ssl_automation.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable mdefender-ssl.service
+systemctl restart mdefender-ssl.service
+
+echo "-> Triggering immediate one-shot SSL run for existing domains..."
+python3 "$APP_DIR/scripts/mdefender_ssl_automation.py" --once || true
+
 echo "=============================================================================="
-echo "ALL DONE! $DOMAIN is fully active with MDefender Cloud WAF & SSL protection!"
+echo "ALL DONE! MDefender Pro SaaS Edge & Universal SSL Automation is 100% ACTIVE!"
+echo "Systemd service 'mdefender-ssl.service' is running 24/7 in the background."
 echo "=============================================================================="

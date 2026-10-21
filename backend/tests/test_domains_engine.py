@@ -89,7 +89,8 @@ class TestDomainLifecycleAndTenancy:
         assert domain["status"] == "ownership_pending"
         assert domain["ownership"]["verified"] is False
         assert domain["ownership"]["token"].startswith("mdefender-verify=")
-        assert domain["nameservers"]["assigned"][0] == "ns1.mdefender-pro.crafix.tech"
+        assert len(domain["nameservers"]["assigned"]) == 2
+        assert "mdefender-pro.crafix.tech" in domain["nameservers"]["assigned"][0]
 
     def test_tenant_isolation_idor_protection(self, db):
         svc = DomainService(db)

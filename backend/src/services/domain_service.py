@@ -31,10 +31,63 @@ from src.services.dns_zone_service import DNSZoneService
 
 logger = logging.getLogger("mdefender.domain_service")
 
+import hashlib
+
 MDEFENDER_NAMESERVERS = os.getenv(
     "MDEFENDER_NAMESERVERS",
     "ns1.mdefender-pro.crafix.tech,ns2.mdefender-pro.crafix.tech"
 ).split(",")
+
+# Cloudflare-style pool of 25 pairs (50 distinctive first names)
+NAMESERVER_POOLS = [
+    ("alex", "bella"),
+    ("cameron", "cecelia"),
+    ("damon", "elena"),
+    ("felix", "grace"),
+    ("harper", "isaac"),
+    ("jasper", "kai"),
+    ("leo", "matias"),
+    ("noah", "olivia"),
+    ("piper", "quinn"),
+    ("riley", "samuel"),
+    ("theo", "uma"),
+    ("val", "wyatt"),
+    ("xander", "yara"),
+    ("zane", "atlas"),
+    ("blake", "cora"),
+    ("dante", "elias"),
+    ("finn", "gemma"),
+    ("hugo", "iris"),
+    ("jude", "kira"),
+    ("luca", "milo"),
+    ("nora", "otis"),
+    ("phoebe", "reed"),
+    ("sloan", "tate"),
+    ("uriel", "vance"),
+    ("wren", "zion")
+]
+BASE_NS_DOMAIN = os.getenv("MDEFENDER_BASE_NS_DOMAIN", "ns.mdefender-pro.crafix.tech")
+
+
+def get_assigned_nameservers_for_domain(clean_domain: str) -> Tuple[List[str], str]:
+    """Deterministically assign a unique pair of nameservers (Cloudflare-style) for a given domain."""
+    if not clean_domain:
+        return (["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"], "pair-edge-default")
+
+    # Check if custom override exists in env
+    env_ns = os.getenv("MDEFENDER_NAMESERVERS")
+    if env_ns and "ns1." not in env_ns:
+        parts = [p.strip() for p in env_ns.split(",") if p.strip()]
+        if len(parts) >= 2:
+            return (parts[:2], "custom-env")
+
+    # Hash domain deterministically for a stable, unique pair
+    h = int(hashlib.sha256(clean_domain.lower().encode("utf-8")).hexdigest(), 16)
+    idx = h % len(NAMESERVER_POOLS)
+    pair = NAMESERVER_POOLS[idx]
+    pair_name = f"{pair[0]}-{pair[1]}"
+    assigned = [f"{pair[0]}.{BASE_NS_DOMAIN}", f"{pair[1]}.{BASE_NS_DOMAIN}"]
+    return (assigned, pair_name)
 
 # Plan limits for protected websites (WordPress + Domains)
 PLAN_LIMITS = {
@@ -172,6 +225,7 @@ class DomainService:
         domain_id = f"dom_{secrets.token_hex(8)}"
         now = datetime.now()
 
+        assigned_ns, pair_name = get_assigned_nameservers_for_domain(clean_domain)
         doc = {
             "_id": domain_id,
             "domain_id": domain_id,
@@ -188,8 +242,8 @@ class DomainService:
                 "expires_at": token_expires_at
             },
             "nameservers": {
-                "assigned": MDEFENDER_NAMESERVERS,
-                "pair_name": "pair-edge-01",
+                "assigned": assigned_ns,
+                "pair_name": pair_name,
                 "delegation_status": "pending",
                 "verified": False,
                 "last_checked_at": None,
@@ -234,6 +288,8 @@ class DomainService:
             "verified": False,
             "bot_challenge_enabled": False,
             "origin_server": origin_address or "",
+            "assigned_nameservers": assigned_ns,
+            "nameserver_pair": pair_name,
             "added_at": now,
             "connected_at": now,
             "updated_at": now
@@ -418,8 +474,9 @@ class DomainService:
         """Phase 5: Check whether registrar has delegated nameservers to MDefender."""
         domain = self.get_owned_domain(domain_id, user_id)
         clean_domain = domain.get("domain")
+        assigned_ns = domain.get("nameservers", {}).get("assigned") or get_assigned_nameservers_for_domain(clean_domain)[0]
 
-        res = self.dns_zone_svc.verify_nameservers(clean_domain, user_id)
+        res = self.dns_zone_svc.verify_nameservers(clean_domain, user_id, expected_ns=assigned_ns)
         is_delegated = res.get("verified", False)
         detected_ns = res.get("current_nameservers", [])
 
@@ -431,9 +488,10 @@ class DomainService:
             "nameservers.verified": is_delegated,
             "updated_at": now
         }
-        if is_delegated and domain.get("status") in ("verified", "nameservers_assigned", "waiting_delegation"):
+        if is_delegated and domain.get("status") in ("verified", "nameservers_assigned", "waiting_delegation", "ownership_pending", "pending"):
             updates["status"] = "delegation_verified"
             updates["lifecycle_step"] = 7
+            updates["ssl.status"] = "pending_issuance"
 
         self.db.domains.update_one({"_id": domain_id}, {"$set": updates})
 
@@ -443,10 +501,16 @@ class DomainService:
                 {"_id": domain_id},
                 {"$set": {"verified": True, "updated_at": now}}
             )
+            # Auto-trigger Universal SSL generation for the newly verified domain
+            try:
+                from src.services.ssl_service import UniversalSSLService
+                UniversalSSLService().trigger_automated_ssl_provisioning(clean_domain)
+            except Exception as ssl_err:
+                logger.warning(f"Auto-SSL trigger warning for {clean_domain}: {ssl_err}")
 
         return {
             "delegated": is_delegated,
-            "assigned_nameservers": MDEFENDER_NAMESERVERS,
+            "assigned_nameservers": assigned_ns,
             "detected_nameservers": detected_ns,
             "status": "delegation_verified" if is_delegated else "waiting_delegation",
             "message": res.get("message")

@@ -389,6 +389,19 @@ class DNSZoneService:
             except Exception:
                 pass
 
+        # Resolve domain-assigned nameservers
+        assigned_ns = website.get("assigned_nameservers")
+        if not assigned_ns:
+            dom_doc = self.db.domains.find_one({"$or": [{"_id": actual_site_id}, {"domain": domain}]})
+            if dom_doc and dom_doc.get("nameservers", {}).get("assigned"):
+                assigned_ns = dom_doc["nameservers"]["assigned"]
+        if not assigned_ns:
+            try:
+                from src.services.domain_service import get_assigned_nameservers_for_domain
+                assigned_ns, _ = get_assigned_nameservers_for_domain(domain)
+            except Exception:
+                assigned_ns = MDEFENDER_NAMESERVERS
+
         return {
             "website_id": actual_site_id,
             "domain": domain,
@@ -396,7 +409,7 @@ class DNSZoneService:
             "verified": bool(website.get("verified", False)),
             "ssl_mode": website.get("ssl_mode", "flexible"),
             "plan": plan_meta,
-            "nameservers": MDEFENDER_NAMESERVERS,
+            "nameservers": assigned_ns,
             "current_nameservers": current_ns,
             "cname_target": MDEFENDER_CNAME_PROXY,
             "records": formatted_records,
@@ -548,7 +561,7 @@ class DNSZoneService:
         self._invalidate_dns_daemon_cache(rec.get("domain"))
         return {"id": record_id, "proxied": new_status}
 
-    def verify_nameservers(self, website_id: str, user_id: str) -> Dict[str, Any]:
+    def verify_nameservers(self, website_id: str, user_id: str, expected_ns: Optional[List[str]] = None) -> Dict[str, Any]:
         """Verify if the domain is correctly pointing its Nameservers to MDefender Anycast nodes."""
         clean_d = self.normalize_domain(website_id)
         website = self.db.websites.find_one({"$or": [{"_id": website_id}, {"domain": clean_d}, {"url": clean_d}]})
@@ -557,6 +570,21 @@ class DNSZoneService:
 
         domain = self.normalize_domain(website.get("domain") or "")
         actual_site_id = str(website.get("_id") or website_id)
+
+        # Resolve expected nameservers if not provided
+        if not expected_ns:
+            expected_ns = website.get("assigned_nameservers")
+            if not expected_ns:
+                dom_doc = self.db.domains.find_one({"$or": [{"_id": actual_site_id}, {"domain": domain}]})
+                if dom_doc and dom_doc.get("nameservers", {}).get("assigned"):
+                    expected_ns = dom_doc["nameservers"]["assigned"]
+            if not expected_ns:
+                try:
+                    from src.services.domain_service import get_assigned_nameservers_for_domain
+                    expected_ns, _ = get_assigned_nameservers_for_domain(domain)
+                except Exception:
+                    expected_ns = MDEFENDER_NAMESERVERS
+
         is_verified = False
         message = ""
         current_ns: List[str] = []
@@ -623,13 +651,20 @@ class DNSZoneService:
                 except Exception:
                     pass
 
-            # Check if MDefender nameservers are present in returned NS set
-            matching = [ns for ns in current_ns if "mdefender" in ns]
+            # Check if assigned or MDefender nameservers are present in returned NS set
+            matching = []
+            exp_lowers = [exp.lower().rstrip(".") for exp in (expected_ns or [])]
+            for ns in current_ns:
+                ns_clean = ns.lower().rstrip(".")
+                if any(exp in ns_clean or ns_clean in exp for exp in exp_lowers) or "mdefender" in ns_clean:
+                    matching.append(ns)
+
             if matching:
                 is_verified = True
                 message = f"Nameservers verified: {', '.join(matching)}. Cloud WAF Anycast edge is active!"
             elif current_ns:
-                message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to {MDEFENDER_NAMESERVERS[0]} and {MDEFENDER_NAMESERVERS[1]}."
+                target_prompt = f"{expected_ns[0]} and {expected_ns[1]}" if len(expected_ns) >= 2 else f"{MDEFENDER_NAMESERVERS[0]} and {MDEFENDER_NAMESERVERS[1]}"
+                message = f"Current Nameservers are {', '.join(current_ns)}. Please switch them to {target_prompt}."
             else:
                 # Tier 4: IP match check
                 try:

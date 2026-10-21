@@ -238,6 +238,36 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     "proxied": True
                 })
                 origin_ip = (origin_record or {}).get("content") or registered_site.get("origin_server")
+            elif "." in clean_host:
+                # Subdomain lookup (e.g. api.mahabubur.shop -> mahabubur.shop)
+                parts = clean_host.split(".")
+                for i in range(1, len(parts)):
+                    parent_domain = ".".join(parts[i:])
+                    parent_variants = [
+                        parent_domain,
+                        f"http://{parent_domain}",
+                        f"https://{parent_domain}",
+                    ]
+                    registered_site = db.websites.find_one({
+                        "$or": [
+                            {"domain": {"$in": parent_variants}},
+                            {"url": {"$in": parent_variants}},
+                            {"name": {"$in": parent_variants}}
+                        ]
+                    })
+                    if registered_site:
+                        sub_name = ".".join(parts[:i])
+                        origin_record = db.dns_records.find_one({
+                            "domain": parent_domain,
+                            "name": sub_name,
+                            "type": "A"
+                        })
+                        if origin_record and origin_record.get("proxied"):
+                            origin_ip = origin_record.get("content")
+                        elif not origin_record:
+                            origin_ip = registered_site.get("origin_server")
+                        break
+
         _site_lookup_cache[clean_host] = (registered_site, origin_ip, now_ts + 180.0)
 
     target_domain = clean_host if registered_site else "localhost"
