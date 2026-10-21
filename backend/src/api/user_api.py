@@ -328,8 +328,6 @@ class UserAPI:
                 platform_filter
             ]
         })
-        if existing_site:
-            return {'status': 'error', 'message': f'{platform_label} "{domain}" is already connected to your account.'}
 
         orphan_site = self.db.websites.find_one({
             '$and': [
@@ -377,6 +375,54 @@ class UserAPI:
             'malware_scanner': 'active',
             'threat_level': 'LOW',
         }
+
+        # If already added, re-connect and update records seamlessly instead of throwing blocking error
+        if existing_site:
+            website_id = str(existing_site['_id'])
+            try:
+                self.db.websites.update_one({'_id': existing_site['_id']}, {'$set': update_fields})
+            except Exception:
+                pass
+            try:
+                self.db.users.update_one({'_id': user_id_obj}, {'$addToSet': {'websites': domain}})
+            except Exception:
+                pass
+
+            # Sync DNS records if provided
+            records_in = data.get('dns_records')
+            if records_in and isinstance(records_in, list):
+                self.db.dns_records.delete_many({'$or': [{'website_id': website_id}, {'domain': domain}]})
+                for rec in records_in:
+                    self.db.dns_records.insert_one({
+                        '_id': str(uuid.uuid4()),
+                        'website_id': website_id,
+                        'user_id': user_id_str,
+                        'domain': domain,
+                        'type': rec.get('type', 'A').upper(),
+                        'name': rec.get('name', '@'),
+                        'content': rec.get('content', ''),
+                        'ttl': rec.get('ttl', 'Auto'),
+                        'proxied': bool(rec.get('proxied', False)),
+                        'priority': rec.get('priority'),
+                        'purpose': rec.get('purpose', ''),
+                        'created_at': now_dt,
+                        'updated_at': now_dt,
+                    })
+
+            self._stats_cache.clear()
+            return {
+                'status': 'success',
+                'website_id': website_id,
+                'website': {
+                    'id': website_id,
+                    'domain': domain,
+                    'name': domain,
+                    'status': 'active',
+                    'assigned_nameservers': assigned_ns
+                },
+                'api_key': raw_key,
+                'message': f'{domain} connected successfully'
+            }
 
         if orphan_site:
             website_id = str(orphan_site['_id'])
