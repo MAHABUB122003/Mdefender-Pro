@@ -131,7 +131,7 @@ class MDefenderSSLAutomation:
         try:
             with open(conf_file, "r", encoding="utf-8") as f:
                 content = f.read()
-                return "mdef_skip_cache" in content and "mdefender_backend" in content
+                return "mdef_skip_cache" in content and "mdefender_backend" in content and "proxy_ignore_headers Set-Cookie" in content
         except Exception:
             return False
 
@@ -419,7 +419,8 @@ server {{
         proxy_cache_valid 404 1m;
         proxy_cache_bypass $mdef_skip_cache;
         proxy_no_cache $mdef_skip_cache;
-        proxy_ignore_headers Cache-Control Expires;
+        proxy_ignore_headers Set-Cookie Cache-Control Expires;
+        proxy_hide_header Set-Cookie;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         proxy_cache_lock on;
         proxy_cache_revalidate on;

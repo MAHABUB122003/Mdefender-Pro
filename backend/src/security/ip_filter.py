@@ -228,11 +228,11 @@ class IPFilter:
         except Exception:
             has_blocks = False
             
-        self._cb_has_cache[cache_key] = (has_blocks, now_ts + 15.0)
+        self._cb_has_cache[cache_key] = (has_blocks, now_ts + 3600.0)
         return has_blocks
 
     def is_country_blocked(self, ip, user_id=None, headers=None, country_code=None):
-        # FAST PATH: If no country blocking rules exist, skip GeoIP resolution entirely (0.05ms)
+        # FAST PATH: If no country blocking rules exist, skip GeoIP resolution entirely (0.001ms)
         if not country_code and not self.has_active_country_blocks(user_id):
             return False, {'country_code': 'UNKNOWN', 'country_name': 'Unknown'}
 
@@ -240,6 +240,14 @@ class IPFilter:
         cc = (country_code or geo.get('country_code', '')).upper().strip()
         if not cc or cc in ('UNKNOWN',):
             return False, geo
+
+        now_ts = time.time()
+        cache_key_block = f"{user_id or ''}:{cc}"
+        if not hasattr(self, '_cb_res_cache'):
+            self._cb_res_cache = {}
+        c_res, exp_res = self._cb_res_cache.get(cache_key_block, (None, 0))
+        if now_ts < exp_res and c_res is not None:
+            return c_res, geo
         
         from bson import ObjectId
         # Support case-insensitive / regex or direct upper/lower match
@@ -262,9 +270,11 @@ class IPFilter:
             
         entry = self.db.country_blocks.find_one(query)
         if entry:
+            self._cb_res_cache[cache_key_block] = (True, now_ts + 3600.0)
             return True, {
                 'country_code': cc,
                 'country_name': entry.get('country_name') or geo.get('country_name', cc),
                 'reason': entry.get('reason', f'Country {cc} restricted by policy')
             }
+        self._cb_res_cache[cache_key_block] = (False, now_ts + 3600.0)
         return False, geo
