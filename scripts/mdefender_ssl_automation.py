@@ -102,7 +102,8 @@ class MDefenderSSLAutomation:
             return False
         try:
             with open(conf_file, "r", encoding="utf-8") as f:
-                return "mdef_skip_cache" in f.read()
+                content = f.read()
+                return "mdef_skip_cache" in content and "mdefender_backend" in content
         except Exception:
             return False
 
@@ -345,7 +346,7 @@ server {{
 
     # 1. Edge Static Asset Cache (Images, CSS, JS, Fonts serve in < 1ms)
     location ~* \\.(?:jpg|jpeg|gif|png|ico|webp|svg|css|js|woff|woff2|ttf|eot)$ {{
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://mdefender_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -363,14 +364,16 @@ server {{
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         proxy_cache_lock on;
         proxy_cache_revalidate on;
-        add_header X-MDefender-Cache $upstream_cache_status;
-        add_header X-Edge-Protected "MDefender-Pro AI";
+        add_header X-MDefender-Cache $upstream_cache_status always;
+        add_header X-Edge-Protected "MDefender-Pro AI" always;
+        add_header X-Edge-Upstream-Time $upstream_response_time always;
+        add_header X-Edge-Request-Time $request_time always;
         expires 7d;
     }}
 
     # 2. Dynamic HTML Pages - Cloudflare APO Style Edge Micro-Cache (< 5ms response)
     location / {{
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://mdefender_backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -393,8 +396,10 @@ server {{
         proxy_cache_lock on;
         proxy_cache_revalidate on;
 
-        add_header X-MDefender-Cache $upstream_cache_status;
-        add_header X-Edge-Protected "MDefender-Pro AI";
+        add_header X-MDefender-Cache $upstream_cache_status always;
+        add_header X-Edge-Protected "MDefender-Pro AI" always;
+        add_header X-Edge-Upstream-Time $upstream_response_time always;
+        add_header X-Edge-Request-Time $request_time always;
 
         proxy_buffering on;
         proxy_buffer_size 16k;

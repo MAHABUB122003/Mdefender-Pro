@@ -177,56 +177,28 @@ class IPFilter:
             if now_ts < exp:
                 return entry
 
-        # 4. Multi-provider GeoIP Resolution
-        # Provider 1: ip-api.com
-        try:
-            import requests
-            r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,countryCode", timeout=0.5)
-            if r.status_code == 200:
-                data = r.json()
-                if data.get('status') == 'success' and data.get('countryCode'):
-                    val = {
-                        'country_code': (data.get('countryCode') or '').upper(),
-                        'country_name': data.get('country') or ''
-                    }
-                    self._geo_cache[ip] = (val, now_ts + 86400)
-                    return val
-        except Exception:
-            pass
+        # 4. Non-blocking asynchronous GeoIP resolution (never stalls active WAF request)
+        def _resolve_bg(target_ip):
+            try:
+                import requests
+                r = requests.get(f"http://ip-api.com/json/{target_ip}?fields=status,country,countryCode", timeout=1.0)
+                if r.status_code == 200:
+                    data = r.json()
+                    if data.get('status') == 'success' and data.get('countryCode'):
+                        val = {
+                            'country_code': (data.get('countryCode') or '').upper(),
+                            'country_name': data.get('country') or ''
+                        }
+                        self._geo_cache[target_ip] = (val, time.time() + 86400)
+            except Exception:
+                pass
 
-        # Provider 2: ipwhois.app
-        try:
-            import requests
-            r2 = requests.get(f"https://ipwhois.app/json/{ip}", timeout=0.5)
-            if r2.status_code == 200:
-                data2 = r2.json()
-                if data2.get('success') and data2.get('country_code'):
-                    val2 = {
-                        'country_code': (data2.get('country_code') or '').upper(),
-                        'country_name': data2.get('country') or ''
-                    }
-                    self._geo_cache[ip] = (val2, now_ts + 86400)
-                    return val2
-        except Exception:
-            pass
-
-        # Provider 3: ipapi.co
-        try:
-            import requests
-            r3 = requests.get(f"https://ipapi.co/{ip}/json/", timeout=0.5)
-            if r3.status_code == 200:
-                data3 = r3.json()
-                if data3.get('country_code'):
-                    val3 = {
-                        'country_code': (data3.get('country_code') or '').upper(),
-                        'country_name': data3.get('country_name') or ''
-                    }
-                    self._geo_cache[ip] = (val3, now_ts + 86400)
-                    return val3
-        except Exception:
-            pass
-
-        return {'country_code': 'UNKNOWN', 'country_name': 'Unknown'}
+        import threading
+        threading.Thread(target=_resolve_bg, args=(ip,), daemon=True).start()
+        # Immediately return placeholder so request latency is 0.001ms
+        placeholder = {'country_code': 'UNKNOWN', 'country_name': 'Unknown'}
+        self._geo_cache[ip] = (placeholder, now_ts + 5.0)
+        return placeholder
 
     def has_active_country_blocks(self, user_id=None):
         """Ultra-fast check if any country block rules exist in the database (cached for 15s)."""

@@ -116,7 +116,7 @@ logger = Logger()
 cookie_svc = CookieService()
 jwt_svc = JWTService()
 audit_svc = AuditService()
-ml_detector = MLDetector()
+ml_detector = waf_api.ml_detector
 malware_detector = MalwareDetector()
 
 _templates_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
@@ -370,9 +370,12 @@ async def waf_self_protection_middleware(request: Request, call_next):
         'body': req_body_str,
     }
     
+    import time
+    t_req_start = time.perf_counter()
     decision, log_entry, event, is_blocked, ip = waf_api.evaluate_request_fast(
         req_payload, user_id=target_user_id, domain=target_domain, website_id=target_site_id
     )
+    waf_eval_ms = (time.perf_counter() - t_req_start) * 1000
     
     if is_blocked:
         forwarded_headers = dict(request.headers)
@@ -397,7 +400,14 @@ async def waf_self_protection_middleware(request: Request, call_next):
             reason=f"Request blocked by MDefender Pro WAF (confidence: {decision.get('confidence', 0):.2f})",
             website_name=target_domain
         )
-        return HTMLResponse(content=block_html, status_code=403)
+        return HTMLResponse(
+            content=block_html,
+            status_code=403,
+            headers={
+                "X-WAF-Eval-Time": f"{waf_eval_ms:.2f}ms",
+                "X-WAF-Status": "BLOCKED"
+            }
+        )
 
     # Cloud WAF: If this is a registered domain and request is clean, proxy to origin server
     if registered_site:
@@ -436,6 +446,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
                 target_url = f"{known_scheme}://{origin_ip}{path}" + (f"?{request.url.query}" if request.url.query else "")
 
                 # Sub-millisecond Streaming Pipeline: streams response directly as chunks arrive (Cloudflare-style)
+                origin_t0 = time.perf_counter()
                 try:
                     proxy_req = client.build_request(method=request.method, url=target_url, headers=fwd_headers, content=body)
                     origin_resp = await client.send(proxy_req, stream=True)
@@ -446,6 +457,8 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     proxy_req = client.build_request(method=request.method, url=alt_url, headers=fwd_headers, content=body)
                     origin_resp = await client.send(proxy_req, stream=True)
                     _origin_schemes[origin_ip] = alt_scheme
+                origin_ms = (time.perf_counter() - origin_t0) * 1000
+                total_fastapi_ms = (time.perf_counter() - t_req_start) * 1000
 
                 # Clean hop-by-hop headers
                 raw_response_headers = []
@@ -455,6 +468,9 @@ async def waf_self_protection_middleware(request: Request, call_next):
                         continue
                     raw_response_headers.append((k, v))
                 raw_response_headers.append((b"x-mdefender-protected", b"true"))
+                raw_response_headers.append((b"x-waf-eval-time", f"{waf_eval_ms:.2f}ms".encode()))
+                raw_response_headers.append((b"x-origin-time", f"{origin_ms:.2f}ms".encode()))
+                raw_response_headers.append((b"x-fastapi-time", f"{total_fastapi_ms:.2f}ms".encode()))
 
                 async def stream_generator():
                     try:
