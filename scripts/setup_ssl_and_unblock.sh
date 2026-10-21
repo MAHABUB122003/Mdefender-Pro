@@ -98,14 +98,37 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
+# Install systemd service for Edge Cache Pre-Warmer (eliminates origin latency)
+cat << 'EOF' > /etc/systemd/system/mdefender-warmer.service
+[Unit]
+Description=MDefender Pro Edge Cache Pre-Warmer & Predictive Crawler
+After=network.target nginx.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/Mdefender-Pro
+ExecStart=/usr/bin/python3 /var/www/Mdefender-Pro/scripts/mdefender_cache_warmer.py --daemon
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
-systemctl enable mdefender-ssl.service
-systemctl restart mdefender-ssl.service
+systemctl enable mdefender-ssl.service mdefender-warmer.service
+systemctl restart mdefender-ssl.service mdefender-warmer.service
 
 echo "-> Triggering immediate one-shot SSL run for existing domains..."
 python3 "$APP_DIR/scripts/mdefender_ssl_automation.py" --once || true
 
+echo "-> Triggering immediate one-shot Edge Cache Pre-Warmer..."
+python3 "$APP_DIR/scripts/mdefender_cache_warmer.py" || true
+
 echo "=============================================================================="
 echo "ALL DONE! MDefender Pro SaaS Edge & Universal SSL Automation is 100% ACTIVE!"
-echo "Systemd service 'mdefender-ssl.service' is running 24/7 in the background."
+echo "Systemd services 'mdefender-ssl.service' & 'mdefender-warmer.service' are ACTIVE!"
 echo "=============================================================================="

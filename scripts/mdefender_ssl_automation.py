@@ -298,6 +298,11 @@ class MDefenderSSLAutomation:
         self._write_nginx_vhost(clean_d, valid_hosts)
         self._update_db_success(clean_d, valid_hosts)
         logger.info(f"SUCCESS: Trusted Universal SSL is now LIVE for {clean_d}!")
+        try:
+            from mdefender_cache_warmer import warm_domain
+            warm_domain(clean_d)
+        except Exception:
+            pass
         return True
 
     def _write_nginx_vhost(self, domain: str, hosts: List[str]):

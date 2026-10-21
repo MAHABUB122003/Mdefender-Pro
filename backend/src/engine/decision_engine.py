@@ -112,8 +112,8 @@ class DecisionEngine:
 
     def _check_whitelists(self, parsed):
         now = time.time()
-        # In-memory cached whitelists with 30s TTL
-        if self._whitelist_cache is None or (now - self._whitelist_cache_time) > 30.0:
+        # In-memory cached whitelists with 3600s TTL (Zero DB overhead on request path)
+        if self._whitelist_cache is None or (now - self._whitelist_cache_time) > 3600.0:
             try:
                 db = self._get_db()
                 if db is not None:

@@ -116,39 +116,10 @@ class AttackBlocker:
     def is_blacklisted(self, ip, user_id=None):
         if not ip:
             return False
-        import time
-        now_ts = time.time()
-        if not hasattr(self, '_bl_cache'):
-            self._bl_cache = {}
-        c_key = f"{ip}:{user_id or ''}"
-        cached, exp = self._bl_cache.get(c_key, (None, 0))
-        if now_ts < exp:
-            return cached
-
-        # Whitelist has absolute precedence over any blacklist
-        if self.db.whitelist.find_one({'ip': ip}):
-            self._bl_cache[c_key] = (False, now_ts + 60.0)
-            return False
-
-        try:
-            query = {'ip': ip}
-            if user_id:
-                u_str = str(user_id)
-                query['$or'] = [{'user_id': u_str}, {'added_by_user_id': u_str}, {'is_global': True}, {'added_by_user_id': {'$exists': False}}]
-            entry = self.db.blacklist.find_one(query)
-            if not entry:
-                self._bl_cache[c_key] = (False, now_ts + 30.0)
-                return False
-            expires_at = entry.get('expires_at')
-            if expires_at is not None and expires_at < datetime.now():
-                self.db.blacklist.delete_one({'_id': entry['_id']})
-                self._bl_cache[c_key] = (False, now_ts + 30.0)
-                return False
-            self._bl_cache[c_key] = (True, now_ts + 30.0)
-            return True
-        except Exception as e:
-            logger.error("Failed to check blacklist for %s: %s", ip, e)
-            return False
+        from src.security.ip_filter import IPFilter
+        if not hasattr(self, '_ip_filter'):
+            self._ip_filter = IPFilter()
+        return self._ip_filter.is_blacklisted(ip, user_id=user_id)
 
     def unblock_ip(self, ip, user_id=None):
         try:

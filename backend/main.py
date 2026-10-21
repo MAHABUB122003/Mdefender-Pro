@@ -69,6 +69,14 @@ async def startup_event():
     # Start background traffic metric batch flusher (eliminates DB overhead per request)
     asyncio.create_task(_stats_flush_loop())
 
+    # Pre-load in-memory IP filter sets (eliminates first-hit DB delay)
+    try:
+        from src.security.ip_filter import IPFilter
+        IPFilter._refresh_ip_sets(db)
+        print(f"[WAF] In-memory IP sets preloaded ({len(IPFilter._global_whitelist_set or set())} whitelist, {len(IPFilter._global_blacklist_set or set())} blacklist)")
+    except Exception as e:
+        print(f"[WAF] IP set preloading: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_event():
     try:
