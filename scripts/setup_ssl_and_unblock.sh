@@ -4,17 +4,19 @@
 # ==============================================================================
 set -e
 
-ADMIN_IP="103.120.45.240"
+ADMIN_IPS=("103.120.45.240" "103.120.45.241")
 DOMAIN="mahabubur.shop"
 
-echo "[1/5] Unblocking and whitelisting IP: $ADMIN_IP in MongoDB..."
-docker compose exec -T mongodb mongosh mdefender --quiet --eval "
-db.blacklist.deleteMany({ip: '$ADMIN_IP'});
-db.auto_blocks.deleteMany({ip: '$ADMIN_IP'});
-db.attack_attempts.deleteMany({ip: '$ADMIN_IP'});
-db.whitelist.updateOne({ip: '$ADMIN_IP'}, {\$set: {ip: '$ADMIN_IP', description: 'Admin Public IP', added_at: new Date()}}, {upsert: true});
-print('-> Successfully unblocked and whitelisted $ADMIN_IP');
-"
+echo "[1/5] Unblocking and whitelisting Admin IPs in MongoDB..."
+for ip in "${ADMIN_IPS[@]}"; do
+    docker compose exec -T mongodb mongosh mdefender --quiet --eval "
+    db.blacklist.deleteMany({ip: '$ip'});
+    db.auto_blocks.deleteMany({ip: '$ip'});
+    db.attack_attempts.deleteMany({ip: '$ip'});
+    db.whitelist.updateOne({ip: '$ip'}, {\$set: {ip: '$ip', description: 'Admin Public IP', added_at: new Date()}}, {upsert: true});
+    print('-> Successfully unblocked and whitelisted $ip');
+    " || true
+done
 
 echo "[2/5] Ensuring fallback SSL certificate exists for Nginx..."
 mkdir -p /etc/ssl/certs /etc/ssl/private

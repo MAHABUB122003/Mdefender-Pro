@@ -332,12 +332,13 @@ async def waf_self_protection_middleware(request: Request, call_next):
             try:
                 client = get_proxy_http_client()
 
-                fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
+                fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length", "accept-encoding")}
                 fwd_headers["Host"] = raw_host
                 fwd_headers["X-Forwarded-For"] = client_ip
                 fwd_headers["X-Real-IP"] = client_ip
                 fwd_headers["X-Forwarded-Proto"] = "https"
                 fwd_headers["X-MDefender-Cloud-WAF"] = "active"
+                fwd_headers["Accept-Encoding"] = "identity"
 
                 body = req_body_bytes
                 origin_resp = None
@@ -360,10 +361,25 @@ async def waf_self_protection_middleware(request: Request, call_next):
                         origin_resp = await client.request(method=request.method, url=target_url_http, headers=fwd_headers, content=body)
                         _origin_schemes[origin_ip] = "http"
 
-                resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection")}
+                resp_content = origin_resp.content
+                # If origin returned raw gzipped bytes despite identity, decompress to avoid double-compression mojibake in browser
+                if resp_content.startswith(b"\x1f\x8b"):
+                    try:
+                        import gzip
+                        resp_content = gzip.decompress(resp_content)
+                    except Exception:
+                        pass
+                elif origin_resp.headers.get("content-encoding") == "deflate":
+                    try:
+                        import zlib
+                        resp_content = zlib.decompress(resp_content)
+                    except Exception:
+                        pass
+
+                resp_headers = {k: v for k, v in origin_resp.headers.items() if k.lower() not in ("content-encoding", "transfer-encoding", "connection", "content-length")}
                 resp_headers["X-MDefender-Protected"] = "true"
                 return Response(
-                    content=origin_resp.content,
+                    content=resp_content,
                     status_code=origin_resp.status_code,
                     headers=resp_headers
                 )
