@@ -61,31 +61,46 @@ class MDefenderSSLAutomation:
             logger.warning(f"Could not create prerequisite directories: {e}")
 
     def get_candidate_domains(self) -> List[Dict[str, Any]]:
-        """Fetch domains eligible for automated SSL issuance or renewal."""
+        """Fetch domains eligible for automated SSL issuance, missing config healing, or auto-renewal."""
         try:
-            query = {
-                "$or": [
-                    {"ssl.status": "pending_issuance"},
-                    {"status": "delegation_verified", "ssl.status": {"$ne": "active"}},
-                    {"status": "active", "ssl.status": {"$ne": "active"}},
-                ]
-            }
-            domains = list(self.db.domains.find(query))
+            candidates = []
+            seen = set()
 
-            # Also check registered websites (any custom domain)
-            sites = list(self.db.websites.find({"ssl_active": {"$ne": True}}))
-            site_domains = {s.get("domain", "").lower().strip() for s in sites if s.get("domain")}
+            # 1. Fetch from db.domains
+            for d in self.db.domains.find({}):
+                dom_name = (d.get("domain") or "").lower().strip()
+                if not dom_name or dom_name in seen:
+                    continue
+                conf_file = f"{NGINX_DOMAINS_DIR}/{dom_name}.conf"
+                needs_ssl = (
+                    d.get("ssl", {}).get("status") != "active"
+                    or not self.is_cert_valid(dom_name, min_days=25)
+                    or not os.path.exists(conf_file)
+                )
+                if needs_ssl:
+                    candidates.append({"domain": dom_name, "status": d.get("status", "active")})
+                    seen.add(dom_name)
 
-            known_domain_names = {d.get("domain", "").lower().strip() for d in domains}
-            for sd in site_domains:
-                if sd and sd not in known_domain_names:
-                    domains.append({"domain": sd, "status": "delegation_verified", "ssl": {"status": "pending_issuance"}})
+            # 2. Fetch from db.websites
+            for s in self.db.websites.find({}):
+                dom_name = (s.get("domain") or "").lower().strip()
+                if not dom_name or dom_name in seen:
+                    continue
+                conf_file = f"{NGINX_DOMAINS_DIR}/{dom_name}.conf"
+                needs_ssl = (
+                    not s.get("ssl_active")
+                    or not self.is_cert_valid(dom_name, min_days=25)
+                    or not os.path.exists(conf_file)
+                )
+                if needs_ssl:
+                    candidates.append({"domain": dom_name, "status": s.get("status", "active")})
+                    seen.add(dom_name)
 
-            # Always ensure core SaaS Dashboard domain has valid trusted SSL
-            if not self.is_cert_valid("mdefender-pro.crafix.tech", min_days=20):
-                domains.insert(0, {"domain": "mdefender-pro.crafix.tech", "status": "active", "ssl": {"status": "pending_issuance"}})
+            # 3. Always ensure SaaS Dashboard domain is valid
+            if "mdefender-pro.crafix.tech" not in seen and not self.is_cert_valid("mdefender-pro.crafix.tech", min_days=25):
+                candidates.insert(0, {"domain": "mdefender-pro.crafix.tech", "status": "active"})
 
-            return domains
+            return candidates
         except Exception as e:
             logger.error(f"Error querying candidate domains: {e}")
             return []
@@ -146,20 +161,24 @@ class MDefenderSSLAutomation:
             self._update_db_success(clean_d, hosts)
             return True
 
-        # 2. Verify that at least root resolves before attempting Let's Encrypt to avoid ACME rate-limits
+        # 2. Verify that at least root resolves to MDefender before attempting Let's Encrypt to avoid ACME rate-limits
         try:
             resolved_ip = socket.gethostbyname(clean_d)
             logger.info(f"Resolved {clean_d} -> {resolved_ip}")
+            if resolved_ip != SERVER_EDGE_IP and resolved_ip not in ("127.0.0.1", "localhost"):
+                logger.warning(f"Domain {clean_d} points to {resolved_ip}, awaiting propagation to MDefender edge ({SERVER_EDGE_IP}).")
+                return False
         except Exception as dns_err:
             logger.warning(f"Domain {clean_d} DNS does not resolve yet: {dns_err}. Postponing SSL.")
             return False
 
-        # 3. Filter hosts: only request SANs that actually resolve to avoid Let's Encrypt validation errors
+        # 3. Filter hosts: only request SANs that actually resolve to this server
         valid_hosts = []
         for h in hosts:
             try:
                 ip = socket.gethostbyname(h)
-                valid_hosts.append(h)
+                if ip == SERVER_EDGE_IP or ip in ("127.0.0.1", "localhost"):
+                    valid_hosts.append(h)
             except Exception:
                 logger.debug(f"Subdomain {h} does not resolve publicly; skipping from SAN.")
 
@@ -368,5 +387,5 @@ if __name__ == "__main__":
     if "--once" in sys.argv:
         daemon.run_cycle()
     else:
-        interval_secs = int(os.getenv("SSL_DAEMON_INTERVAL", "30"))
+        interval_secs = int(os.getenv("SSL_DAEMON_INTERVAL", "15"))
         daemon.run_daemon(interval_secs)
