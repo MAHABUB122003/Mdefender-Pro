@@ -48,6 +48,8 @@ if command -v ufw &> /dev/null; then
 fi
 
 echo "[5/6] Syncing Nginx configuration..."
+mkdir -p /var/cache/nginx/mdefender
+rm -f /etc/nginx/sites-enabled/default
 if [ -f "$APP_DIR/nginx/mdefender-pro.conf" ]; then
     cp "$APP_DIR/nginx/mdefender-pro.conf" /etc/nginx/sites-available/mdefender-pro.conf || true
     ln -sf /etc/nginx/sites-available/mdefender-pro.conf /etc/nginx/sites-enabled/ || true
