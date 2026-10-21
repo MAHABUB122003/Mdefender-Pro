@@ -84,7 +84,7 @@ class MDefenderSSLAutomation:
         self._ensure_prerequisites()
 
     def _ensure_prerequisites(self):
-        """Ensure necessary host directories exist."""
+        """Ensure necessary host directories and upstream pool exist."""
         try:
             os.makedirs(f"{WEBROOT_DIR}/.well-known/acme-challenge", exist_ok=True)
             os.makedirs(NGINX_DOMAINS_DIR, exist_ok=True)
@@ -93,8 +93,36 @@ class MDefenderSSLAutomation:
             if not os.path.exists(placeholder):
                 with open(placeholder, "w", encoding="utf-8") as f:
                     f.write("# MDefender automated custom domain configs placeholder\n")
+
+            # High-Performance Keep-Alive Upstream Connection Pool (00- prefix ensures it loads first)
+            upstream_conf_path = "/etc/nginx/conf.d/00-mdefender-upstream.conf"
+            with open(upstream_conf_path, "w", encoding="utf-8") as f:
+                f.write(
+                    "# ==============================================================================\n"
+                    "# High-Performance Keep-Alive Upstream Connection Pool to FastAPI Backend\n"
+                    "# Loaded first (00-) so all virtual hosts have access to mdefender_backend\n"
+                    "# ==============================================================================\n"
+                    "upstream mdefender_backend {\n"
+                    "    server 127.0.0.1:8000;\n"
+                    "    keepalive 64;\n"
+                    "}\n"
+                )
+
+            # Prevent duplicate upstream error in mdefender-pro.conf if present
+            mdef_main_conf = "/etc/nginx/conf.d/mdefender-pro.conf"
+            if os.path.exists(mdef_main_conf):
+                try:
+                    with open(mdef_main_conf, "r", encoding="utf-8") as f:
+                        c = f.read()
+                    if "upstream mdefender_backend {" in c:
+                        import re
+                        cleaned = re.sub(r'upstream\s+mdefender_backend\s*\{[^}]*\}', '', c)
+                        with open(mdef_main_conf, "w", encoding="utf-8") as f:
+                            f.write(cleaned)
+                except Exception:
+                    pass
         except Exception as e:
-            logger.warning(f"Could not create prerequisite directories: {e}")
+            logger.warning(f"Could not create prerequisite directories or upstream config: {e}")
 
     def _is_vhost_up_to_date(self, conf_file: str) -> bool:
         """Check if existing Nginx vhost config has the latest edge caching directives."""
