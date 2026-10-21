@@ -202,6 +202,7 @@ class DecisionEngine:
         reputation_source = None
         if allowlist:
             reputation_score = 0.0
+            is_blacklisted = False
         elif is_blacklisted:
             reputation_score = 1.0
             reputation_source = "blacklist"

@@ -125,6 +125,11 @@ class AttackBlocker:
         if now_ts < exp:
             return cached
 
+        # Whitelist has absolute precedence over any blacklist
+        if self.db.whitelist.find_one({'ip': ip}):
+            self._bl_cache[c_key] = (False, now_ts + 60.0)
+            return False
+
         try:
             query = {'ip': ip}
             if user_id:

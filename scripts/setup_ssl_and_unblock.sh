@@ -18,6 +18,8 @@ for ip in "${ADMIN_IPS[@]}"; do
     print('-> Successfully unblocked and whitelisted $ip');
     " || true
 done
+echo "-> Restarting WAF application & DNS containers to flush in-memory caches..."
+docker compose restart mdefender-app mdefender-dns || true
 
 echo "[2/6] Ensuring fallback SSL certificate exists for Nginx..."
 mkdir -p /etc/ssl/certs /etc/ssl/private

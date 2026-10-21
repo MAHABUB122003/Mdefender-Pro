@@ -19,6 +19,11 @@ class IPFilter:
         if now_ts < exp:
             return cached
 
+        # Whitelist has absolute precedence over any blacklist
+        if self.is_whitelisted(ip):
+            self._bl_cache[c_key] = (False, now_ts + 60.0)
+            return False
+
         from bson import ObjectId
         candidates = [ip]
         if ip in ('127.0.0.1', '::1', '0.0.0.0', 'localhost'):
