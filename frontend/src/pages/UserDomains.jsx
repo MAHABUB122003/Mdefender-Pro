@@ -286,20 +286,32 @@ export default function UserDomains() {
     }
 
     const previousWebsites = [...websites]
+    const previousOverview = overview
     // Optimistically remove from state immediately
     setWebsites(prev => prev.filter(w => (w.id || w._id) !== siteId && w.domain !== domainName))
     setTotalWebsitesCount(prev => Math.max(0, prev - 1))
+    setOverview(prev => prev ? {
+      ...prev,
+      total_domains: Math.max(0, (prev.total_domains || 1) - 1),
+      pending_delegation: Math.max(0, (prev.pending_delegation || 1) - 1),
+      total_protected_websites: Math.max(0, (prev.total_protected_websites || 1) - 1)
+    } : null)
     setDeletingId(siteId)
     setFeedbackMsg(null)
 
     try {
+      try {
+        await api.deleteDomain(siteId || domainName).catch(() => null)
+      } catch (_) {}
       const res = await api.removeUserWebsite(siteId || domainName)
       setFeedbackMsg({ type: 'success', text: `Domain "${domainName}" removed successfully.` })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
+      fetchDomains()
     } catch (err) {
       // Revert if deletion failed
       setWebsites(previousWebsites)
+      setOverview(previousOverview)
       setTotalWebsitesCount(previousWebsites.length + wordpressSitesCount)
       setFeedbackMsg({ type: 'error', text: err.message || `Failed to remove ${domainName}` })
     } finally {
@@ -311,7 +323,7 @@ export default function UserDomains() {
   const normalizedPlan = (overview?.plan_name || (userPlan === 'premium' ? 'pro' : userPlan || 'free')).toLowerCase()
   const currentPlanObj = DOMAIN_PLANS.find(p => p.id === normalizedPlan) || DOMAIN_PLANS[0]
   const domainLimit = overview?.website_limit ?? currentPlanObj.limit
-  const quotaUsed = overview?.total_protected_websites ?? (totalWebsitesCount || websites.length)
+  const quotaUsed = (wordpressSitesCount || 0) + (websites.length || 0)
   const isLimitReached = quotaUsed >= domainLimit
   const quotaPercent = Math.min(100, Math.round((quotaUsed / domainLimit) * 100))
 
@@ -529,7 +541,7 @@ export default function UserDomains() {
         }}>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Domains</div>
           <div style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
-            {overview?.total_domains ?? stats.total}
+            {websites.length === 0 ? 0 : (overview?.total_domains ?? stats.total)}
           </div>
           <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>Configured in MDefender</div>
         </div>
@@ -540,7 +552,7 @@ export default function UserDomains() {
         }}>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#059669', textTransform: 'uppercase' }}>Edge WAF Armed</div>
           <div style={{ fontSize: '26px', fontWeight: '800', color: '#059669', marginTop: '6px' }}>
-            {overview?.active_protected_domains ?? stats.active}
+            {websites.length === 0 ? 0 : (overview?.active_protected_domains ?? stats.active)}
           </div>
           <div style={{ fontSize: '11.5px', color: '#10b981', marginTop: '4px' }}>Traffic proxied through edge</div>
         </div>
@@ -551,7 +563,7 @@ export default function UserDomains() {
         }}>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#d97706', textTransform: 'uppercase' }}>Pending Delegation</div>
           <div style={{ fontSize: '26px', fontWeight: '800', color: '#d97706', marginTop: '6px' }}>
-            {overview?.pending_delegation ?? stats.pending}
+            {websites.length === 0 ? 0 : (overview?.pending_delegation ?? stats.pending)}
           </div>
           <div style={{ fontSize: '11.5px', color: '#b45309', marginTop: '4px' }}>Awaiting registrar update</div>
         </div>

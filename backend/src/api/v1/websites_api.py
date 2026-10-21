@@ -564,8 +564,14 @@ async def remove_website(website_id: str, user=Depends(get_current_user)):
     # Delete website document
     db.websites.delete_one({"_id": actual_id})
 
-    # Delete DNS records associated with this website
-    db.dns_records.delete_many({"$or": [{"website_id": str(actual_id)}, {"website_id": actual_id}]})
+    # Delete domain document if present in domains collection
+    db.domains.delete_many({"$or": [{"_id": actual_id}, {"_id": str(actual_id)}, {"_id": website_id}, {"domain": domain}]})
+
+    # Delete DNS records associated with this website / domain
+    db.dns_records.delete_many({"$or": [
+        {"website_id": str(actual_id)}, {"website_id": actual_id},
+        {"domain_id": str(actual_id)}, {"domain": domain}
+    ]})
 
     # Delete API keys associated with this website
     db.api_keys.delete_many({"$or": [{"website_id": str(actual_id)}, {"website_id": actual_id}]})

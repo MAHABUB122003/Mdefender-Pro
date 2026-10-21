@@ -149,17 +149,11 @@ class DomainService:
             "user_id": user_id,
             "platform": "wordpress"
         })
-        domains_count = self.db.domains.count_documents({
-            "user_id": user_id,
-            "status": {"$ne": "deleted"}
-        })
-        # Also count any legacy custom domains in db.websites that aren't yet in db.domains
-        legacy_domain_count = self.db.websites.count_documents({
+        domains_count = self.db.websites.count_documents({
             "user_id": user_id,
             "platform": {"$ne": "wordpress"}
         })
-        effective_domains = max(domains_count, legacy_domain_count)
-        return wp_count + effective_domains, wp_count, effective_domains
+        return wp_count + domains_count, wp_count, domains_count
 
     def create_domain(
         self,
@@ -665,6 +659,15 @@ class DomainService:
         plan_name, plan_limit = self.get_user_plan_limit(user_id)
         total_used, wp_count, dom_count = self.get_tenant_website_count(user_id)
 
+        # Reconcile orphan domains: purge any db.domains records whose website was deleted
+        active_domains_in_websites = set(
+            w.get("domain") for w in self.db.websites.find({"user_id": user_id}) if w.get("domain")
+        )
+        self.db.domains.delete_many({
+            "user_id": user_id,
+            "domain": {"$nin": list(active_domains_in_websites)}
+        })
+
         all_domains = list(self.db.domains.find({"user_id": user_id, "status": {"$ne": "deleted"}}))
 
         active_count = sum(1 for d in all_domains if d.get("status") == "active" or d.get("waf", {}).get("enabled"))
@@ -717,6 +720,13 @@ class DomainService:
 
     def list_user_domains(self, user_id: str) -> List[Dict[str, Any]]:
         """List all domains belonging to a specific tenant."""
+        active_domains_in_websites = set(
+            w.get("domain") for w in self.db.websites.find({"user_id": user_id}) if w.get("domain")
+        )
+        self.db.domains.delete_many({
+            "user_id": user_id,
+            "domain": {"$nin": list(active_domains_in_websites)}
+        })
         docs = list(self.db.domains.find({"user_id": user_id, "status": {"$ne": "deleted"}}))
         return [self.serialize_domain(d) for d in docs]
 

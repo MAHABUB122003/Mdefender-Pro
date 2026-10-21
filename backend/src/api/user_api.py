@@ -532,9 +532,15 @@ class UserAPI:
             # Delete the website document
             self.db.websites.delete_one({'_id': actual_id})
 
+            # Clean up domains collection for this specific website / domain
+            dom_del_query = {'$or': [{'_id': actual_id}, {'_id': str(actual_id)}, {'domain': domain}]}
+            if not is_admin:
+                dom_del_query = {'$and': [user_cond, dom_del_query]}
+            self.db.domains.delete_many(dom_del_query)
+
             # Clean up DNS records for this specific website
             self.db.dns_records.delete_many({
-                '$or': [{'website_id': str(actual_id)}, {'website_id': actual_id}]
+                '$or': [{'website_id': str(actual_id)}, {'website_id': actual_id}, {'domain_id': str(actual_id)}, {'domain': domain}]
             })
 
             # Clean up API keys for this specific website
@@ -612,6 +618,31 @@ class UserAPI:
 
             self._stats_cache.clear()
             return {'status': 'success', 'message': f'WordPress site "{domain or website_id}" removed successfully'}
+
+        # 3. Fallback: Look up in domains collection (if domain was created in Cloud WAF)
+        if is_admin:
+            dom_doc = self.db.domains.find_one({
+                '$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}]
+            })
+        else:
+            dom_doc = self.db.domains.find_one({
+                '$and': [
+                    user_cond,
+                    {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}]}
+                ]
+            })
+
+        if dom_doc:
+            domain = dom_doc.get('domain')
+            actual_id = dom_doc['_id']
+            dom_del = {'_id': actual_id}
+            if not is_admin:
+                dom_del = {'$and': [user_cond, dom_del]}
+            self.db.domains.delete_many(dom_del)
+            self.db.websites.delete_many({'$or': [{'_id': actual_id}, {'domain': domain}]})
+            self.db.dns_records.delete_many({'$or': [{'domain_id': str(actual_id)}, {'domain': domain}]})
+            self._stats_cache.clear()
+            return {'status': 'success', 'message': f'Domain "{domain or website_id}" removed successfully'}
 
         return {'status': 'error', 'message': 'Website not found or unauthorized'}
 
