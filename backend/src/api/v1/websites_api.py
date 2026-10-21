@@ -159,6 +159,8 @@ def _website_out(doc):
         "auto_block_enabled": bool(doc.get("auto_block_enabled", True)),
         "confidence_threshold": float(doc.get("confidence_threshold") or 0.7),
         "blocked_countries": doc.get("blocked_countries", []),
+        "assigned_nameservers": doc.get("assigned_nameservers") or ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"],
+        "nameservers": doc.get("assigned_nameservers") or ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"],
     })
 
 
@@ -230,6 +232,9 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
     website_id = str(uuid.uuid4())
     now = datetime.now()
     raw_key = _generate_raw_key()
+    from src.services.domain_service import get_assigned_nameservers_for_domain
+    assigned_ns, _ = get_assigned_nameservers_for_domain(clean_domain)
+
     website = {
         "_id": website_id,
         "user_id": str(user["id"]),
@@ -240,6 +245,7 @@ async def add_website(body: WebsiteCreate, user=Depends(get_current_user)):
         "platform": platform,
         "plan": selected_plan,
         "ssl_mode": ssl_mode,
+        "assigned_nameservers": assigned_ns,
         "status": "active",
         "protection_enabled": True,
         "waf_mode": "protect",

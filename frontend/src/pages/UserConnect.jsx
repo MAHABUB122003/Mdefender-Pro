@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { getAssignedNameservers } from '../utils/nameservers'
 import {
   Link2,
   ShieldCheck,
@@ -78,6 +79,8 @@ export default function UserConnect() {
   }, [customDomains, selectedCustomDomain])
 
   const activeDomain = selectedCustomDomain || customDomains[0]?.domain || ''
+  const activeSite = customDomains.find(w => w.domain === activeDomain)
+  const assignedNs = activeSite?.assigned_nameservers || activeSite?.nameservers || getAssignedNameservers(activeDomain)
   const apiKey = data?.user?.api_key || data?.api_key || 'mdf_live_sec_key_sample'
 
   const copyCode = async (id, textToCopy) => {
@@ -592,12 +595,12 @@ export default function UserConnect() {
                     Primary Anycast Nameserver
                   </div>
                   <code style={{ fontSize: '14px', fontWeight: '800', color: '#0284C7', fontFamily: 'monospace' }}>
-                    ns1.mdefender-pro.crafix.tech
+                    {assignedNs[0]}
                   </code>
                 </div>
                 <button
                   type="button"
-                  onClick={() => copyCode('ns1', 'ns1.mdefender-pro.crafix.tech')}
+                  onClick={() => copyCode('ns1', assignedNs[0])}
                   style={{
                     background: '#FFFFFF',
                     border: '1px solid #CBD5E1',
@@ -632,12 +635,12 @@ export default function UserConnect() {
                     Secondary Anycast Nameserver
                   </div>
                   <code style={{ fontSize: '14px', fontWeight: '800', color: '#0284C7', fontFamily: 'monospace' }}>
-                    ns2.mdefender-pro.crafix.tech
+                    {assignedNs[1]}
                   </code>
                 </div>
                 <button
                   type="button"
-                  onClick={() => copyCode('ns2', 'ns2.mdefender-pro.crafix.tech')}
+                  onClick={() => copyCode('ns2', assignedNs[1])}
                   style={{
                     background: '#FFFFFF',
                     border: '1px solid #CBD5E1',

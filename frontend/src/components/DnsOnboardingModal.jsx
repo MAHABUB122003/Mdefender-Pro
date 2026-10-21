@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '../api/api'
 import copyToClipboard from '../utils/clipboard'
+import { getAssignedNameservers } from '../utils/nameservers'
 
 const PLANS = [
   {
@@ -949,7 +950,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded, us
                     <span>Step 2: Add MDefender Pro Anycast nameservers:</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                    {['ns1.mdefender-pro.crafix.tech', 'ns2.mdefender-pro.crafix.tech'].map((ns, i) => (
+                    {(createdWebsite?.assigned_nameservers || createdWebsite?.nameservers || getAssignedNameservers(domain)).map((ns, i) => (
                       <div key={ns} style={{
                         background: '#ffffff', border: '1.5px solid #86efac', borderRadius: '10px',
                         padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'

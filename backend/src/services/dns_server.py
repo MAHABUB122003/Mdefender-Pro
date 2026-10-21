@@ -194,10 +194,23 @@ class AuthoritativeDNSResolver:
 
         # Base nameserver hostnames resolution (ns1, ns2, or wildcard *.ns.mdefender-pro.crafix.tech)
         base_domain = "mdefender-pro.crafix.tech"
-        if (qname_str.endswith(".ns." + base_domain) or qname_str in ("ns1." + base_domain, "ns2." + base_domain, "ns." + base_domain)) and qtype_str in ("A", "ANY"):
-            rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "A", self.edge_ip)
-            response.answer.append(rr)
-            return response.to_wire()
+        if (qname_str.endswith(".ns." + base_domain) or qname_str in ("ns1." + base_domain, "ns2." + base_domain, "ns." + base_domain)):
+            if qtype_str in ("A", "ANY"):
+                for e_ip in self.edge_ips:
+                    try:
+                        rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "A", e_ip)
+                        response.answer.append(rr)
+                    except Exception:
+                        pass
+            if qtype_str in ("AAAA", "ANY"):
+                for e_v6 in self.edge_ipv6:
+                    try:
+                        rr = dns.rrset.from_text(f"{qname_str}.", 300, "IN", "AAAA", e_v6)
+                        response.answer.append(rr)
+                    except Exception:
+                        pass
+            if response.answer:
+                return response.to_wire()
 
         if qname_str == base_domain:
             if qtype_str in ("NS", "ANY"):

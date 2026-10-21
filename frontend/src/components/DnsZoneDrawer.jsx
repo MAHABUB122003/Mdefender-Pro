@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api/api'
 import copyToClipboard from '../utils/clipboard'
+import { getAssignedNameservers } from '../utils/nameservers'
 
 const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV']
 
@@ -1231,7 +1232,7 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
                         <span>Step 2: Add MDefender Pro Anycast nameservers:</span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-                        {['ns1.mdefender-pro.crafix.tech', 'ns2.mdefender-pro.crafix.tech'].map((ns, i) => (
+                        {(zone?.nameservers?.length ? zone.nameservers : (website?.assigned_nameservers || website?.nameservers || getAssignedNameservers(domain))).map((ns, i) => (
                           <div key={ns} style={{
                             background: '#ffffff', border: '1.5px solid #86efac', borderRadius: '10px',
                             padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'

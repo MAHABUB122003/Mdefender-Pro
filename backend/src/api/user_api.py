@@ -350,6 +350,9 @@ class UserAPI:
         ssl_mode = (data.get('ssl_mode') or 'flexible').lower()
         current_ns = data.get('current_nameservers') or []
 
+        from src.services.domain_service import get_assigned_nameservers_for_domain
+        assigned_ns, _ = get_assigned_nameservers_for_domain(domain)
+
         update_fields = {
             'user_id': user_id_str,
             'domain': domain,
@@ -362,6 +365,7 @@ class UserAPI:
             'verified': False,
             'status': 'active',
             'api_key': raw_key,
+            'assigned_nameservers': assigned_ns,
             'current_nameservers': current_ns,
             'added_at': now_dt,
             'connected_at': now_dt,
@@ -473,6 +477,8 @@ class UserAPI:
             'verified': False,
             'status': 'active',
             'api_key': raw_key,
+            'assigned_nameservers': assigned_ns,
+            'nameservers': assigned_ns,
             'added_at': now_str,
             'waf_mode': 'protect',
             'threat_level': 'LOW'

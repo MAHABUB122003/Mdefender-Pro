@@ -870,7 +870,7 @@ export default function UserDomains() {
             fetchDomains()
             setFeedbackMsg({
               type: 'success',
-              text: `Domain "${newSite.domain || newSite.name}" connected! Please point your registrar nameservers to ns1.mdefender-pro.crafix.tech and ns2.mdefender-pro.crafix.tech.`
+              text: `Domain "${newSite.domain || newSite.name}" connected! Please point your registrar nameservers to ${(newSite.assigned_nameservers || newSite.nameservers || ['ns1.mdefender-pro.crafix.tech', 'ns2.mdefender-pro.crafix.tech']).join(' and ')}.`
             })
           }}
         />
