@@ -33,33 +33,62 @@ class AuthEmailService:
         print(f"[SECURITY OTP] Purpose:   {purpose}")
         print(f"[SECURITY OTP] =========================================\n")
 
-        if not config.SMTP_SERVER or not config.SMTP_USERNAME or not config.SMTP_PASSWORD:
-            print(f"[AUTH EMAIL] SMTP server/credentials not fully configured. Using console OTP delivery.")
+        smtp_server = (config.SMTP_SERVER or '').strip()
+        smtp_user = (config.SMTP_USERNAME or '').strip()
+        smtp_pass = (config.SMTP_PASSWORD or '').strip().replace(' ', '').replace('"', '').replace("'", "")
+        smtp_port = int(config.SMTP_PORT or 587)
+
+        if not smtp_server or not smtp_user or not smtp_pass:
+            print(f"[AUTH EMAIL] SMTP server/credentials not fully configured (SERVER={bool(smtp_server)}, USER={bool(smtp_user)}, PASS={bool(smtp_pass)}). Using console OTP delivery.")
             return True
 
-        from email.mime.text import MIMEText
         import smtplib
 
-        # Try Port 587 STARTTLS
-        try:
-            with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT, timeout=8) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD.replace(' ', ''))
-                server.send_message(msg)
-            print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP (Port {config.SMTP_PORT})")
-            return True
-        except Exception as e587:
-            print(f"[AUTH EMAIL] Port {config.SMTP_PORT} delivery error: {e587}. Trying SSL Port 465 fallback...")
+        # Mode A: If port is 465 or contains SSL preference, connect directly with SMTP_SSL
+        if smtp_port == 465:
             try:
-                with smtplib.SMTP_SSL(config.SMTP_SERVER, 465, timeout=8) as ssl_server:
-                    ssl_server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD.replace(' ', ''))
+                print(f"[AUTH EMAIL] Connecting to {smtp_server}:465 via direct SSL...")
+                with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as ssl_server:
+                    ssl_server.login(smtp_user, smtp_pass)
                     ssl_server.send_message(msg)
                 print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP_SSL (Port 465)")
                 return True
             except Exception as e465:
-                print(f"[AUTH EMAIL] SMTP delivery failed ({e465}). OTP was printed to console for development/fallback.")
+                print(f"[AUTH EMAIL] Port 465 SSL delivery error: {e465}. Trying STARTTLS Port 587 fallback...")
+                try:
+                    with smtplib.SMTP(smtp_server, 587, timeout=10) as server:
+                        server.ehlo()
+                        server.starttls()
+                        server.ehlo()
+                        server.login(smtp_user, smtp_pass)
+                        server.send_message(msg)
+                    print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP (Port 587 fallback)")
+                    return True
+                except Exception as e587:
+                    print(f"[AUTH EMAIL] SMTP delivery failed on both ports 465 ({e465}) and 587 ({e587}).")
+                    return False
+
+        # Mode B: Default Port 587 (or custom port) STARTTLS, with Port 465 SSL fallback
+        try:
+            print(f"[AUTH EMAIL] Connecting to {smtp_server}:{smtp_port} via STARTTLS...")
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+            print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP (Port {smtp_port})")
+            return True
+        except Exception as e_primary:
+            print(f"[AUTH EMAIL] Port {smtp_port} delivery error: {e_primary}. Trying SSL Port 465 fallback...")
+            try:
+                with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as ssl_server:
+                    ssl_server.login(smtp_user, smtp_pass)
+                    ssl_server.send_message(msg)
+                print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP_SSL (Port 465 fallback)")
+                return True
+            except Exception as e465:
+                print(f"[AUTH EMAIL] SMTP delivery failed on both Port {smtp_port} ({e_primary}) and Port 465 ({e465}). OTP was printed to console.")
                 return False
 
     def send_verification_email(self, to_email: str, verification_token: str,
