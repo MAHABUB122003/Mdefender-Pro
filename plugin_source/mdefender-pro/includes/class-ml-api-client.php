@@ -122,12 +122,22 @@ class WAF_FW_ML_Api_Client {
             unset($args['body']);
         }
 
+        $curl_hook = function($handle) {
+            if (is_resource($handle) || (is_object($handle) && get_class($handle) === 'CurlHandle')) {
+                curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 15);
+                curl_setopt($handle, CURLOPT_CONNECTTIMEOUT_MS, 15000);
+            }
+        };
+        add_action('http_api_curl', $curl_hook);
         $response = wp_remote_request($url, $args);
+        remove_action('http_api_curl', $curl_hook);
         if (is_wp_error($response)) {
             // If SSL verification failed on a shared host with outdated root CAs, retry once with sslverify=false
             if (!empty($args['sslverify'])) {
                 $args['sslverify'] = false;
+                add_action('http_api_curl', $curl_hook);
                 $response = wp_remote_request($url, $args);
+                remove_action('http_api_curl', $curl_hook);
             }
         }
         if (is_wp_error($response)) {
