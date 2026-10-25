@@ -1,8 +1,15 @@
 import os
+from pathlib import Path
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
-load_dotenv()
+# Explicitly search for .env in backend directory, current working directory, and parent directory
+_this_dir = Path(__file__).resolve().parent
+_backend_dir = _this_dir.parent.parent
+for _env_candidate in [_backend_dir / '.env', Path.cwd() / '.env', Path.cwd() / 'backend' / '.env', _backend_dir.parent / '.env']:
+    if _env_candidate.is_file():
+        load_dotenv(_env_candidate, override=True)
+        break
 
 
 @dataclass

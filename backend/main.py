@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, Response, HTTPException, Depends, Backgrou
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
+from pathlib import Path
 from dotenv import load_dotenv
 
 try:
@@ -19,7 +20,13 @@ try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 except Exception:
     pass
-load_dotenv()
+
+# Explicitly search for .env in backend directory, current working directory, and parent directory
+_backend_dir = Path(__file__).resolve().parent
+for _env_candidate in [_backend_dir / '.env', Path.cwd() / '.env', Path.cwd() / 'backend' / '.env', _backend_dir.parent / '.env']:
+    if _env_candidate.is_file():
+        load_dotenv(_env_candidate, override=True)
+        break
 
 from src.database.mongodb_connection import MongoDB
 from src.api.waf_api import WAFAPI
