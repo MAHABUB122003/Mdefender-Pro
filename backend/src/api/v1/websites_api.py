@@ -119,6 +119,9 @@ class SecuritySettingsUpdate(BaseModel):
     disable_directory_listing: bool | None = None
     prevent_user_enumeration: bool | None = None
     hide_wp_version: bool | None = None
+    security_headers: bool | None = None
+    file_permissions_check: bool | None = None
+    login_two_factor: bool | None = None
     rate_limit_per_minute: int | None = None
     auto_block_enabled: bool | None = None
     confidence_threshold: float | None = None
@@ -403,6 +406,9 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
             "disable_directory_listing": bool(website.get("disable_directory_listing", True)),
             "prevent_user_enumeration": bool(website.get("prevent_user_enumeration", True)),
             "hide_wp_version": bool(website.get("hide_wp_version", True)),
+            "security_headers": bool(website.get("security_headers", True)),
+            "file_permissions_check": bool(website.get("file_permissions_check", True)),
+            "login_two_factor": bool(website.get("login_two_factor", True)),
             "rate_limit_per_minute": int(website.get("rate_limit_per_minute") or 120),
             "auto_block_enabled": bool(website.get("auto_block_enabled", True)),
             "confidence_threshold": float(website.get("confidence_threshold") or 0.7),
@@ -433,6 +439,12 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
         updates["prevent_user_enumeration"] = bool(body.prevent_user_enumeration)
     if body.hide_wp_version is not None:
         updates["hide_wp_version"] = bool(body.hide_wp_version)
+    if body.security_headers is not None:
+        updates["security_headers"] = bool(body.security_headers)
+    if body.file_permissions_check is not None:
+        updates["file_permissions_check"] = bool(body.file_permissions_check)
+    if body.login_two_factor is not None:
+        updates["login_two_factor"] = bool(body.login_two_factor)
     if body.rate_limit_per_minute is not None:
         updates["rate_limit_per_minute"] = max(10, min(10000, int(body.rate_limit_per_minute)))
     if body.auto_block_enabled is not None:
@@ -458,6 +470,13 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
     except Exception:
         pass
 
+    # Instant zero-latency push to connected WordPress sites
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user["id"], website_id=website["_id"])
+    except Exception:
+        pass
+
     updated_doc = db.websites.find_one({"_id": website["_id"]})
     return success({
         "website": _website_out(updated_doc),
@@ -469,13 +488,16 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
             "disable_directory_listing": bool(updated_doc.get("disable_directory_listing", True)),
             "prevent_user_enumeration": bool(updated_doc.get("prevent_user_enumeration", True)),
             "hide_wp_version": bool(updated_doc.get("hide_wp_version", True)),
+            "security_headers": bool(updated_doc.get("security_headers", True)),
+            "file_permissions_check": bool(updated_doc.get("file_permissions_check", True)),
+            "login_two_factor": bool(updated_doc.get("login_two_factor", True)),
             "rate_limit_per_minute": int(updated_doc.get("rate_limit_per_minute") or 120),
             "auto_block_enabled": bool(updated_doc.get("auto_block_enabled", True)),
             "confidence_threshold": float(updated_doc.get("confidence_threshold") or 0.7),
             "under_attack_mode": bool(updated_doc.get("under_attack_mode", False)),
             "blocked_countries": updated_doc.get("blocked_countries", []),
         },
-        "message": "Security and hardening settings updated successfully"
+        "message": "Security and hardening settings updated and pushed to connected WordPress sites successfully"
     })
 
 

@@ -333,6 +333,9 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "prevent_user_enumeration": bool(website.get("prevent_user_enumeration", True)),
         "disable_file_editing": bool(website.get("disable_file_editing", True)),
         "hide_wp_version": bool(website.get("hide_wp_version", True)),
+        "security_headers": bool(website.get("security_headers", True)),
+        "file_permissions_check": bool(website.get("file_permissions_check", True)),
+        "login_two_factor": bool(website.get("login_two_factor", True)),
         "rate_limit": int(website.get("rate_limit_per_minute") or u_cfg.get("rate_limit_per_minute", 120)),
         "auto_block_enabled": bool(website.get("auto_block_enabled", u_cfg.get("auto_block_enabled", True))),
         "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
@@ -588,19 +591,32 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             from src.security.attack_blocker import AttackBlocker
             u_cfg = AttackBlocker(db).get_user_settings(u_str)
 
+            ref_ws = w_sites[0] if w_sites else (ws_match or {})
             sync_payload = {
                 "status": "ok",
                 "blacklist": blacklist,
                 "blocked_countries": blocked_countries,
                 "user_rules": user_rules,
                 "config": {
-                    "rate_limit": u_cfg.get("rate_limit_per_minute", 120),
-                    "auto_block_enabled": u_cfg.get("auto_block_enabled", True),
+                    "waf_mode": ref_ws.get("waf_mode", "protect"),
+                    "learning_mode": bool(ref_ws.get("learning_mode", False)),
+                    "confidence_threshold": float(ref_ws.get("confidence_threshold") or 0.7),
+                    "disable_xmlrpc": bool(ref_ws.get("disable_xmlrpc", True)),
+                    "block_uploads_php": bool(ref_ws.get("block_uploads_php", True)),
+                    "disable_directory_listing": bool(ref_ws.get("disable_directory_listing", True)),
+                    "prevent_user_enumeration": bool(ref_ws.get("prevent_user_enumeration", True)),
+                    "disable_file_editing": bool(ref_ws.get("disable_file_editing", True)),
+                    "hide_wp_version": bool(ref_ws.get("hide_wp_version", True)),
+                    "security_headers": bool(ref_ws.get("security_headers", True)),
+                    "file_permissions_check": bool(ref_ws.get("file_permissions_check", True)),
+                    "login_two_factor": bool(ref_ws.get("login_two_factor", True)),
+                    "rate_limit": int(ref_ws.get("rate_limit_per_minute") or u_cfg.get("rate_limit_per_minute", 120)),
+                    "auto_block_enabled": bool(ref_ws.get("auto_block_enabled", u_cfg.get("auto_block_enabled", True))),
                     "auto_block_threshold": u_cfg.get("auto_block_threshold", 10),
                     "auto_block_window": u_cfg.get("auto_block_window_hours", 24) * 3600,
                     "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
                     "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
-                    "under_attack_mode": bool(ws_match.get("under_attack_mode", False)) if ws_match else False,
+                    "under_attack_mode": bool(ref_ws.get("under_attack_mode", False)),
                 },
                 "synced_at": datetime.now().isoformat(),
             }

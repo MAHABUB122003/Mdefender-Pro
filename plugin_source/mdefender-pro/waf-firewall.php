@@ -319,6 +319,14 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (isset($config['block_uploads_php'])) {
                         update_option('waf_harden_block_uploads_php', $config['block_uploads_php'] ? 'yes' : 'no');
                     }
+                    if (isset($config['security_headers'])) {
+                        $sh_enabled = $config['security_headers'] ? 'enabled' : 'disabled';
+                        update_option('waf_harden_security_headers', $sh_enabled);
+                    }
+                    if (isset($config['login_two_factor'])) {
+                        $l2f_val = $config['login_two_factor'] ? 'enabled' : 'disabled';
+                        update_option('waf_harden_login_guard', $l2f_val);
+                    }
                 }
                 if (class_exists('WAF_FW_Engine')) {
                     WAF_FW_Engine::instance()->export_fast_cache();
