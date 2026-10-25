@@ -95,6 +95,8 @@ DEFAULT_PLANS = {
     },
 }
 
+PLAN_LIMITS = DEFAULT_PLANS
+
 PLAN_KEYS = [
     "name",
     "display_name",

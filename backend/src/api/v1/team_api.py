@@ -13,7 +13,15 @@ from pydantic import BaseModel, EmailStr
 
 from src.auth.dependencies import get_current_user
 from src.database.mongodb_connection import MongoDB
-from src.services.plan_service import PLAN_LIMITS
+try:
+    from src.services.plan_service import DEFAULT_PLANS as PLAN_LIMITS
+except Exception:
+    PLAN_LIMITS = {
+        "free": {"team_seats": 1},
+        "go": {"team_seats": 3},
+        "pro": {"team_seats": 10},
+        "enterprise": {"team_seats": 100},
+    }
 from src.utils.api_response import success
 
 router = APIRouter(prefix="/team", tags=["Team"])
