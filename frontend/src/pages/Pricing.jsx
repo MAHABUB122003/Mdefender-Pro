@@ -27,23 +27,25 @@ const PLAN_ICONS = {
 const DEFAULT_PLANS = [
   {
     id: 'free',
-    name: 'Starter Free',
-    badge: 'Free Forever',
+    name: '14-Day Free Trial',
+    badge: '14 Days Full Access',
     monthly: 0,
     yearly: 0,
-    desc: 'Essential cybersecurity for personal websites, staging environments, and developer test sites.',
+    desc: 'Experience full-featured enterprise edge security and WordPress protection. No credit card required, instant activation.',
     features: [
-      { text: '1 Protected Domain & Origin', included: true },
-      { text: '10,000 requests / month', included: true },
-      { text: 'Core WAF Rule Engine (500+ Signatures)', included: true },
-      { text: 'Basic Anomaly & Rate Limiting', included: true },
-      { text: 'Real-Time Edge Security Block Page', included: true },
-      { text: '6.5M+ Threat Neural Classifier', included: false },
-      { text: '639K+ AI Prompt Injection Shield', included: false },
+      { text: '1 Protected Website & Origin', included: true },
+      { text: '10,000 Clean Requests / Trial Period', included: true },
+      { text: 'Core WAF Engine (OWASP Top 10 Mitigation)', included: true },
+      { text: 'Global IP Blacklist & Whitelist Management', included: true },
+      { text: 'Country Blocking & Geo-Fencing Preview', included: true },
+      { text: 'Unmetered Layer 3/4 DDoS Mitigation', included: true },
+      { text: 'Basic Bot Scraper & Scanner Shield', included: true },
+      { text: 'Autonomous Machine Learning Threat Engine', included: false },
+      { text: 'WordPress Multi-Site Fleet Management', included: false },
       { text: 'Layer 7 Volumetric DDoS Mitigation', included: false },
-      { text: '24/7 Priority SLA Response', included: false },
+      { text: '24/7 Priority Dedicated SLA', included: false },
     ],
-    btnText: 'Start Free Forever',
+    btnText: 'Start 14-Day Free Trial',
     highlight: false,
   },
   {
@@ -52,17 +54,18 @@ const DEFAULT_PLANS = [
     badge: 'Fast-Growing Apps',
     monthly: 9,
     yearly: 90,
-    desc: 'Active machine learning protection for small businesses, API services, and e-commerce stores.',
+    desc: 'Active machine learning protection and centralized fleet control for growing businesses, API services, and e-commerce stores.',
     features: [
-      { text: '5 Protected Websites & APIs', included: true },
-      { text: '100,000 requests / month', included: true },
-      { text: 'Core WAF + Heuristic Vectorizer', included: true },
-      { text: '6.5M+ Threat Neural Classifier', included: true },
-      { text: '50,000+ Threat Signatures & Hashes', included: true },
-      { text: '20 Custom Regex Rules Builder', included: true },
-      { text: 'Real-Time Security Threat Alerts', included: true },
-      { text: 'Priority Email Technical Support', included: true },
-      { text: 'Layer 7 Volumetric DDoS Mitigation', included: false },
+      { text: '5 Protected Websites & WordPress Sites', included: true },
+      { text: '100,000 Clean Requests / Month', included: true },
+      { text: 'Autonomous Machine Learning Threat Engine', included: true },
+      { text: 'Centralized Multi-Site WordPress Fleet Console (5 Sites)', included: true },
+      { text: 'Country Blocking & Geographic Geo-Fencing', included: true },
+      { text: 'Global IP Blacklist & Whitelist Management', included: true },
+      { text: 'Token-Bucket Rate Limiter & Scraper Ban', included: true },
+      { text: 'OWASP Top 10 + AI Prompt Injection Guard', included: true },
+      { text: 'Remote 1-Click Integrity & Malware Scanner', included: true },
+      { text: 'Priority Email Support (4-hour SLA)', included: true },
     ],
     btnText: 'Start Developer Plan',
     highlight: false,
@@ -73,67 +76,73 @@ const DEFAULT_PLANS = [
     badge: 'Most Popular',
     monthly: 20,
     yearly: 190,
-    desc: 'Maximum cyber defense for mission-critical production clusters, SaaS platforms, and high-traffic stores.',
+    desc: 'Maximum cyber defense for mission-critical production clusters, multi-site agencies, and high-traffic e-commerce.',
     features: [
-      { text: '10 Protected Domains & APIs', included: true },
-      { text: '1,000,000 Requests / Month', included: true },
-      { text: 'Full 2,000,000+ Hyper-Scale Signatures', included: true },
-      { text: '6,501,208+ Dataset Deep ML Core', included: true },
-      { text: '639K+ Generative AI Prompt Shield', included: true },
-      { text: 'Unlimited Custom Regex Policies', included: true },
-      { text: 'Layer 7 Volumetric DDoS Mitigation', included: true },
-      { text: 'Sub-Millisecond (0.12ms) Edge Inspection', included: true },
-      { text: 'WordPress RASP Auto-Quarantine', included: true },
-      { text: '24/7 Priority Dedicated SLA', included: true },
+      { text: '10 Protected Websites & WordPress Fleets', included: true },
+      { text: '1,000,000 Clean Requests / Month', included: true },
+      { text: 'Sub-Millisecond (<0.12ms) Line-Rate DFA Inspection', included: true },
+      { text: '10-Site WordPress Fleet Safe-Updates & Rollback', included: true },
+      { text: 'Deep 5.2M+ Checksum Malware & Backdoor Hunter', included: true },
+      { text: 'Granular Country Blocking & ASN Geo-Fencing', included: true },
+      { text: 'Unlimited IP Blacklist & Whitelist Management', included: true },
+      { text: 'Advanced WordPress RASP Host Memory Shield', included: true },
+      { text: 'Adaptive Bot & Scalper Mitigation (Token-Bucket)', included: true },
+      { text: 'Layer 7 Volumetric DDoS Mitigation Scrubber', included: true },
+      { text: '24/7 Priority Dedicated SLA (1-hour response)', included: true },
     ],
     btnText: 'Get Started with Pro',
     highlight: true,
   },
   {
     id: 'enterprise',
-    name: 'Dedicated Enterprise',
-    badge: 'Maximum Scale',
+    name: 'Business & Agency',
+    badge: 'Agency & Scale',
     monthly: 49,
     yearly: 470,
-    desc: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute guaranteed SLA response.',
+    desc: 'Dedicated security infrastructure, multi-site agency management, and guaranteed enterprise incident response.',
     features: [
-      { text: '15 Protected Domains & APIs', included: true },
-      { text: '10,000,000+ Requests / Month', included: true },
-      { text: 'Dedicated ML Neural Vectorizer Node', included: true },
-      { text: 'Full 2,000,000+ Hyper-Scale Signatures', included: true },
-      { text: '639K+ AI Gateway & LLM Jailbreak Guard', included: true },
-      { text: 'Automated Layer 7 DDoS Scrubber', included: true },
-      { text: 'Unlimited Custom Zero-Day Rules', included: true },
-      { text: 'Dedicated Account Security Architect', included: true },
-      { text: 'Custom Webhook & SOC SIEM Export', included: true },
-      { text: '15-Minute Guaranteed SLA Response', included: true },
+      { text: '20 Protected Websites & WordPress Fleets', included: true },
+      { text: '5,000,000+ Clean Requests / Month', included: true },
+      { text: 'Full Centralized WordPress Fleet Command (20 Sites)', included: true },
+      { text: 'Granular Country & Regional Geo-Fencing', included: true },
+      { text: 'Unlimited Global IP Blacklist & Whitelisting', included: true },
+      { text: 'Custom Zero-Day Virtual Patching Engine', included: true },
+      { text: 'White-Label Automated Client Security PDF Reports', included: true },
+      { text: 'Custom SIEM Log Export (Splunk, Datadog, Syslog)', included: true },
+      { text: 'Multi-Tenant RBAC & Team Collaboration', included: true },
+      { text: '15-Minute Guaranteed Critical Response SLA', included: true },
     ],
-    btnText: 'Deploy Dedicated Plan',
+    btnText: 'Deploy Business Plan',
     highlight: false,
   },
 ];
 
 const COMPARISON_FEATURES = [
-  { name: 'Protected Domains & APIs', free: '1 Domain', go: '5 Domains', pro: '10 Domains', enterprise: '15 Domains' },
-  { name: 'Threat Training Dataset', free: '500 Signatures', go: '6.5M Model', pro: '6,501,208+ Neural Core', enterprise: 'Dedicated ML Node' },
-  { name: 'Generative AI Prompt Injection Shield', free: '—', go: 'Standard Guard', pro: '639K+ Jailbreak Filter', enterprise: 'Full AI Gateway' },
-  { name: 'Active Attack Signatures', free: '500 Signatures', go: '50,000+ Signatures', pro: '2,000,000+ Hyper-Scale', enterprise: 'Full Mesh 2M+' },
-  { name: 'Edge Inspection Latency', free: 'Standard (15ms)', go: 'Accelerated (3ms)', pro: 'Single-Pass (0.12ms)', enterprise: 'Ultra-Low (<0.10ms)' },
-  { name: 'Layer 7 Volumetric DDoS Shield', free: '—', go: 'Basic Rate Limiter', pro: 'Adaptive Token Bucket', enterprise: '180+ Anycast Mesh' },
-  { name: 'Automated Bot & Scanner Ban', free: 'Basic Scrapers', go: 'Known Scanners', pro: 'Zero-Day Fingerprinting', enterprise: 'Behavioral AI Engine' },
-  { name: 'WordPress 1-Click Runtime Sync', free: 'Basic Telemetry', go: 'Telemetry & Rules', pro: 'Deep RASP + Auto-Patch', enterprise: 'Multi-Site Fleet Sync' },
-  { name: 'Multi-Tenant Centralized SOC Console', free: 'Single User', go: 'Single User', pro: 'Multi-Tenant Workspace', enterprise: 'Role-Based RBAC + SSO' },
+  { name: 'Protected Websites & WordPress Sites', free: '1 Website (Trial)', go: '5 Websites', pro: '10 Websites', enterprise: '20 Websites (50+ Custom)' },
+  { name: 'OWASP Top 10 & Zero-Day Mitigation', free: 'Basic Signatures', go: 'Full OWASP Suite', pro: 'AST Syntactic Engine', enterprise: 'Zero-Day Virtual Patching' },
+  { name: 'Autonomous ML Threat Engine', free: '—', go: 'Standard Scoring', pro: 'Adaptive Neural Core', enterprise: 'Dedicated Machine Learning Node' },
+  { name: 'WordPress Multi-Site Fleet SaaS', free: 'Single Telemetry', go: '5-Site Bulk Management', pro: '10-Site Safe Updates & Rollback', enterprise: '20-Site Full Fleet Command & RBAC' },
+  { name: 'Country Blocking & Geo-Fencing', free: 'Preview Mode', go: 'Standard Geo-Blocking', pro: 'Granular Country + ASN Fencing', enterprise: 'Sovereign Regional Traffic Fencing' },
+  { name: 'IP Blacklist & Whitelist Rules', free: '10 Rules', go: '100 Active Rules', pro: 'Unlimited Dynamic Rules', enterprise: 'Unlimited + Automated ASN Clustering' },
+  { name: 'Deep Malware & Checksum Hunter', free: 'Basic Scanner', go: 'Standard Heuristics', pro: '5.2M+ Official Checksums', enterprise: 'Continuous Real-Time Telemetry' },
+  { name: 'Edge Inspection Latency', free: 'Standard (15ms)', go: 'Accelerated (3ms)', pro: 'Single-Pass (<0.12ms)', enterprise: 'Line-Rate Ultra-Low (<0.10ms)' },
+  { name: 'Layer 7 Volumetric DDoS Shield', free: '—', go: 'Basic Rate Limiting', pro: 'Adaptive Token Bucket', enterprise: '240+ Anycast Global Mesh' },
+  { name: 'Bot & Scalper Mitigation', free: 'Known Scrapers', go: 'Automated Scanners', pro: 'Zero-Day Fingerprinting', enterprise: 'Behavioral PoW Turnstile' },
   { name: 'Customer Support & SLA Response', free: 'Community', go: 'Priority Email (4h)', pro: '24/7 Dedicated (1h)', enterprise: '15-Minute Critical SLA' },
 ];
 
 const FAQS = [
   {
-    q: 'How does MDefender Pro differ from standard cloud proxies?',
-    a: 'MDefender Pro operates a single-pass hybrid inspection engine that unifies deterministic Layer 7 regex rules with an active neural vectorizer trained on over 6,501,208 verified attack payloads. This achieves sub-millisecond (0.12ms) execution without adding latency to your legitimate users.',
+    q: 'How does MDefender Pro compare to traditional cloud proxies and firewalls?',
+    a: 'MDefender Pro operates a single-pass hybrid inspection engine that unifies deterministic Layer 7 DFA rules with an autonomous machine learning classifier and abstract syntax tree (AST) normalization. Malicious traffic is intercepted and neutralized at the global edge in under 0.12ms with zero performance penalty on origin servers.',
+  },
+  {
+    q: 'Can I manage multiple WordPress websites from a single account?',
+    a: 'Yes! MDefender Pro features a centralized Multi-Site WordPress Fleet Command SaaS. You can connect 5, 15, or 50+ remote WordPress sites via our secure REST API key, run bulk plugin/theme/core updates with automated snapshot safety rollback, execute malware scans, and enforce host hardening all from one unified cloud console.',
   },
   {
     q: 'Can I start for free and upgrade as my traffic grows?',
-    a: 'Yes! The Starter Free tier provides genuine, permanent protection for 1 domain with 10,000 monthly requests. When your traffic accelerates or when you need real-time DDoS mitigation, you can upgrade in one click with zero downtime.',
+    a: 'Yes! The Starter Free tier provides permanent protection for 1 domain with 10,000 monthly clean requests. When your traffic expands or when you need automated multi-site safe updates and volumetric DDoS scrubbing, you can upgrade instantly with zero downtime.',
   },
   {
     q: 'How does billing work between monthly and annual plans?',
@@ -141,7 +150,7 @@ const FAQS = [
   },
   {
     q: 'Which payment methods are supported?',
-    a: 'We support all major Credit/Debit Cards (Visa, Mastercard, American Express) via paddle/stripe encryption, digital bank transfers, and automated invoice billing for enterprise accounts.',
+    a: 'We support all major Credit/Debit Cards (Visa, Mastercard, American Express) via secure encryption, digital bank transfers, and automated invoice billing for enterprise accounts.',
   },
   {
     q: 'Is there a setup fee or long-term lock-in contract?',
@@ -306,7 +315,7 @@ export default function Pricing() {
                 margin: '0 auto 34px',
               }}
             >
-              Scale from a single domain to mission-critical multi-cluster infrastructure. Every plan includes our 6.5M+ attack payload neural core with sub-millisecond edge inspection.
+              Scale from a single website to multi-site agency portfolios and cloud infrastructure. Every plan includes autonomous line-rate DFA threat inspection, country blocking, and real-time defense.
             </p>
 
             {/* Billing Cycle Toggle */}
@@ -543,7 +552,7 @@ export default function Pricing() {
                           ${priceVal}
                         </span>
                         <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>
-                          {p.id === 'free' ? 'forever' : isYearly ? '/ year' : '/ month'}
+                          {p.id === 'free' ? '/ 14-day trial' : isYearly ? '/ year' : '/ month'}
                         </span>
                       </div>
 
@@ -1058,7 +1067,7 @@ export default function Pricing() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <span>Start free forever</span>
+                  <span>Start 14-Day Free Trial</span>
                   <ArrowRight size={14} strokeWidth={2.4} />
                 </Link>
 

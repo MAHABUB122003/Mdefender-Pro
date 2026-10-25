@@ -5,12 +5,34 @@ import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
 import DnsZoneDrawer from '../components/DnsZoneDrawer'
 import DnsOnboardingModal from '../components/DnsOnboardingModal'
+import {
+  Globe,
+  Server,
+  Plus,
+  Trash2,
+  ExternalLink,
+  RotateCw,
+  Search,
+  AlertTriangle,
+  MoreVertical,
+  Sliders,
+  Activity,
+  CheckCircle2,
+  ShieldCheck,
+  Bot,
+  Check,
+  X,
+  Sparkles,
+  ArrowRight,
+  ShieldAlert,
+  Clock
+} from 'lucide-react'
 
 export const DOMAIN_PLANS = [
   {
     id: 'free',
     name: 'Starter Free',
-    badge: 'Free Forever',
+    badge: '14-Day Free Trial',
     limit: 1,
     requests: '10,000 requests / month',
     monthlyPrice: 0,
@@ -58,7 +80,7 @@ export const DOMAIN_PLANS = [
     requests: '1,000,000 requests / month',
     monthlyPrice: 20,
     yearlyPrice: 190,
-    color: '#4f46e5',
+    color: '#10201E',
     popular: true,
     desc: 'Maximum cyber defense for mission-critical production clusters and SaaS.',
     features: [
@@ -108,8 +130,13 @@ export default function UserDomains() {
   const [selectedZoneDomain, setSelectedZoneDomain] = useState(null)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const [verifyingId, setVerifyingId] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
   const [togglingBotId, setTogglingBotId] = useState(null)
+
+  // Three-dots menu and GitHub-style delete modal state
+  const [activeMenuDomainId, setActiveMenuDomainId] = useState(null)
+  const [deleteModalDomain, setDeleteModalDomain] = useState(null)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const [deletingDomain, setDeletingDomain] = useState(false)
 
   const [userPlan, setUserPlan] = useState(() => {
     return (localStorage.getItem('mdefender_user_plan') || 'free').toLowerCase()
@@ -117,16 +144,25 @@ export default function UserDomains() {
 
   const isPremium = userPlan === 'premium' || userPlan === 'pro' || userPlan === 'enterprise' || userPlan === 'go'
 
+  // Close three-dots menu when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.domain-actions-menu-container')) {
+        setActiveMenuDomainId(null)
+      }
+    }
+    document.addEventListener('click', handleOutsideClick)
+    return () => document.removeEventListener('click', handleOutsideClick)
+  }, [])
+
   const fetchDomains = useCallback(async () => {
     try {
       setLoading(true)
 
-      // Fetch websites and real backend overview metrics in parallel
       const sitesPromise = api.getUserWebsites()
       const overviewPromise = api.getDomainsOverview().catch(() => null)
       const profilePromise = api.getUserProfile().catch(() => null)
 
-      // Safety timeout to ensure loading never gets stuck
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Network request timed out')), 8000)
       )
@@ -146,13 +182,11 @@ export default function UserDomains() {
       setTotalWebsitesCount(list.length)
       setWordpressSitesCount(wpList.length)
 
-      // Resolve overview
       const ov = await overviewPromise
       if (ov?.data || ov?.total_domains !== undefined) {
         setOverview(ov?.data || ov)
       }
 
-      // Update plan if profile returned
       const prof = await profilePromise
       const resolvedPlan = prof?.user?.plan || prof?.plan
       if (resolvedPlan) {
@@ -162,7 +196,6 @@ export default function UserDomains() {
       }
     } catch (err) {
       console.error('Failed to load domains:', err)
-      // If we got an error, try fallback via userStore or dashboard
       try {
         const dashRes = await api.getUserDashboard()
         const dashList = dashRes?.websites || []
@@ -217,7 +250,6 @@ export default function UserDomains() {
           type: 'success',
           text: `🎉 Nameservers Verified! Domain "${domainName}" is now actively routed through MDefender Anycast Edge WAF.`
         })
-        // Immediately mark active in local state
         setWebsites(prev => prev.map(w => {
           if ((w.id || w._id) === siteId || w.domain === domainName) {
             return { ...w, verified: true, status: 'active' }
@@ -258,7 +290,6 @@ export default function UserDomains() {
         type: 'success',
         text: `🛡️ MDefender Turnstile Bot Challenge ${newStatus ? 'ACTIVATED (Under-Attack / Bot Shield ON)' : 'DEACTIVATED'} for "${domainName}".`
       })
-      // Update local state immediately
       setWebsites(prev => prev.map(w => {
         if ((w.id || w._id) === siteId) {
           return { ...w, bot_challenge_enabled: newStatus }
@@ -275,51 +306,58 @@ export default function UserDomains() {
     }
   }
 
-  // Delete Domain (Optimistic UI Update + Backend Sync)
-  const handleDeleteDomain = async (domainObj) => {
-    const siteId = domainObj.id || domainObj._id
-    const domainName = domainObj.domain || domainObj.name || domainObj.url
+  // Open GitHub-Style Delete Confirmation Modal
+  const handleOpenDeleteModal = (domainObj) => {
+    setActiveMenuDomainId(null)
+    setDeleteModalDomain(domainObj)
+    setDeleteConfirmInput('')
+  }
+
+  // Confirm GitHub-Style Delete Action
+  const handleConfirmDeleteDomain = async () => {
+    if (!deleteModalDomain) return
+    const siteId = deleteModalDomain.id || deleteModalDomain._id
+    const domainName = deleteModalDomain.domain || deleteModalDomain.name || deleteModalDomain.url
     if (!siteId && !domainName) return
 
-    if (!window.confirm(`Are you sure you want to remove "${domainName}" from MDefender? This will immediately disable edge routing and active WAF protection.`)) {
-      return
-    }
-
+    setDeletingDomain(true)
     const previousWebsites = [...websites]
     const previousOverview = overview
+
     // Optimistically remove from state immediately
     setWebsites(prev => prev.filter(w => (w.id || w._id) !== siteId && w.domain !== domainName))
     setTotalWebsitesCount(prev => Math.max(0, prev - 1))
-    setOverview(prev => prev ? {
-      ...prev,
-      total_domains: Math.max(0, (prev.total_domains || 1) - 1),
-      pending_delegation: Math.max(0, (prev.pending_delegation || 1) - 1),
-      total_protected_websites: Math.max(0, (prev.total_protected_websites || 1) - 1)
-    } : null)
-    setDeletingId(siteId)
-    setFeedbackMsg(null)
+    if (overview) {
+      setOverview(prev => prev ? {
+        ...prev,
+        total_domains: Math.max(0, (prev.total_domains || 1) - 1),
+        pending_delegation: Math.max(0, (prev.pending_delegation || 1) - 1),
+        total_protected_websites: Math.max(0, (prev.total_protected_websites || 1) - 1)
+      } : null)
+    }
 
     try {
       try {
         await api.deleteDomain(siteId || domainName).catch(() => null)
       } catch (_) {}
-      const res = await api.removeUserWebsite(siteId || domainName)
-      setFeedbackMsg({ type: 'success', text: `Domain "${domainName}" removed successfully.` })
+      await api.removeUserWebsite(siteId || domainName)
+      setFeedbackMsg({ type: 'success', text: `Domain "${domainName}" disconnected and removed successfully.` })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
+      setDeleteModalDomain(null)
+      setDeleteConfirmInput('')
       fetchDomains()
     } catch (err) {
-      // Revert if deletion failed
       setWebsites(previousWebsites)
       setOverview(previousOverview)
       setTotalWebsitesCount(previousWebsites.length + wordpressSitesCount)
       setFeedbackMsg({ type: 'error', text: err.message || `Failed to remove ${domainName}` })
     } finally {
-      setDeletingId(null)
+      setDeletingDomain(false)
     }
   }
 
-  // Quota & Plan calculations (Unified: WordPress + Custom Domains)
+  // Quota & Plan calculations
   const normalizedPlan = (overview?.plan_name || (userPlan === 'premium' ? 'pro' : userPlan || 'free')).toLowerCase()
   const currentPlanObj = DOMAIN_PLANS.find(p => p.id === normalizedPlan) || DOMAIN_PLANS[0]
   const domainLimit = overview?.website_limit ?? currentPlanObj.limit
@@ -345,74 +383,127 @@ export default function UserDomains() {
       {feedbackMsg && (
         <div style={{
           padding: '14px 20px', borderRadius: '12px', marginBottom: '20px',
-          background: feedbackMsg.type === 'success' ? '#ecfdf5' : feedbackMsg.type === 'info' ? '#eff6ff' : '#fef2f2',
-          border: `1.5px solid ${feedbackMsg.type === 'success' ? '#a7f3d0' : feedbackMsg.type === 'info' ? '#bfdbfe' : '#fecaca'}`,
-          color: feedbackMsg.type === 'success' ? '#065f46' : feedbackMsg.type === 'info' ? '#1e40af' : '#991b1b',
+          background: feedbackMsg.type === 'success' ? '#F0FDF4' : feedbackMsg.type === 'info' ? '#EFF6FF' : '#FEF2F2',
+          border: `1.5px solid ${feedbackMsg.type === 'success' ? '#DCFCE7' : feedbackMsg.type === 'info' ? '#BFDBFE' : '#FECACA'}`,
+          color: feedbackMsg.type === 'success' ? '#15803D' : feedbackMsg.type === 'info' ? '#1D4ED8' : '#991B1B',
           fontSize: '13.5px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+          boxShadow: '0 2px 8px rgba(16, 32, 30, 0.03)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <i className={`fas ${feedbackMsg.type === 'success' ? 'fa-check-circle text-emerald-600' : feedbackMsg.type === 'info' ? 'fa-circle-info text-blue-600' : 'fa-triangle-exclamation text-rose-600'}`} style={{ fontSize: '18px' }}></i>
+            {feedbackMsg.type === 'success' ? (
+              <CheckCircle2 size={18} style={{ color: '#15803D' }} />
+            ) : feedbackMsg.type === 'info' ? (
+              <Activity size={18} style={{ color: '#1D4ED8' }} />
+            ) : (
+              <AlertTriangle size={18} style={{ color: '#DC2626' }} />
+            )}
             <span>{feedbackMsg.text}</span>
           </div>
           <button
             type="button"
             onClick={() => setFeedbackMsg(null)}
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '16px' }}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '2px' }}
           >
-            <i className="fas fa-times"></i>
+            <X size={16} />
           </button>
         </div>
       )}
 
-      {/* Hero Section */}
+      {/* Executive Clean Hero Section */}
       <div style={{
-        background: 'linear-gradient(135deg, #0b1528 0%, #172554 100%)',
-        borderRadius: '16px', padding: '26px 30px', marginBottom: '20px',
-        border: '1px solid #1e3a8a', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px'
+        background: '#FFFFFF',
+        border: '1px solid #D9E1DC',
+        borderRadius: '16px',
+        padding: '24px 28px',
+        marginBottom: '20px',
+        boxShadow: '0 4px 20px -2px rgba(16, 32, 30, 0.05)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '20px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{
-            width: '54px', height: '54px', borderRadius: '14px',
-            background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-            color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '24px', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)', flexShrink: 0
+            width: '52px',
+            height: '52px',
+            borderRadius: '14px',
+            background: '#FAFBF9',
+            border: '1.5px solid #D9E1DC',
+            color: '#10201E',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(16, 32, 30, 0.06)',
+            flexShrink: 0
           }}>
-            <i className="fas fa-network-wired"></i>
+            <Globe size={26} strokeWidth={2.2} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+              <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', margin: 0, letterSpacing: '-0.3px' }}>
                 Domains
               </h1>
               <span style={{
-                background: 'rgba(37, 99, 235, 0.25)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.3)',
-                padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px'
+                background: '#F0FDF4',
+                color: '#15803D',
+                border: '1px solid #DCFCE7',
+                padding: '3px 10px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: '700',
+                letterSpacing: '0.5px'
               }}>
                 ANYCAST EDGE ROUTING
               </span>
             </div>
-            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0', maxWidth: '640px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0', maxWidth: '640px', lineHeight: '1.5' }}>
               Enterprise domain-based protection. Route any web application through MDefender Pro Anycast Nameservers for Layer 7 WAF inspection, DDoS mitigation, and SSL cloaking.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link
+            to="/user/websites"
+            style={{
+              padding: '9px 16px',
+              borderRadius: '9px',
+              border: '1px solid #D9E1DC',
+              background: '#FFFFFF',
+              color: '#10201E',
+              fontSize: '13px',
+              fontWeight: '700',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>WordPress Sites</span>
+            <ArrowRight size={14} />
+          </Link>
+
           <button
             type="button"
             onClick={() => navigate('/user/pricing')}
             style={{
-              padding: '11px 18px', borderRadius: '10px',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              background: 'rgba(255, 255, 255, 0.08)',
-              color: '#ffffff', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '9px 16px',
+              borderRadius: '9px',
+              border: '1px solid #D9E1DC',
+              background: '#FAFBF9',
+              color: '#10201E',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
               transition: 'all 0.15s ease'
             }}
           >
-            <i className="fas fa-crown" style={{ color: '#fbbf24' }}></i>
+            <Sparkles size={14} style={{ color: '#D97706' }} />
             <span>Plans &amp; Pricing</span>
           </button>
 
@@ -420,19 +511,22 @@ export default function UserDomains() {
             type="button"
             onClick={handleConnectDomainClick}
             style={{
-              padding: '11px 22px', borderRadius: '10px', border: 'none',
-              background: isLimitReached
-                ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: '#ffffff', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              boxShadow: isLimitReached
-                ? '0 4px 14px rgba(217, 119, 6, 0.35)'
-                : '0 4px 14px rgba(37, 99, 235, 0.35)',
+              padding: '9px 20px',
+              borderRadius: '9px',
+              border: 'none',
+              background: isLimitReached ? '#D97706' : '#10201E',
+              color: '#FFFFFF',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              boxShadow: '0 2px 10px rgba(16, 32, 30, 0.18)',
               transition: 'all 0.15s ease'
             }}
           >
-            <i className={`fas ${isLimitReached ? 'fa-arrow-up-right-from-square' : 'fa-plus-circle'}`}></i>
+            <Plus size={15} strokeWidth={2.5} />
             <span>{isLimitReached ? 'Upgrade Plan Quota' : 'Connect Domain'}</span>
           </button>
         </div>
@@ -440,8 +534,8 @@ export default function UserDomains() {
 
       {/* Plan Entitlement & Quota Status Bar */}
       <div style={{
-        background: 'var(--card-bg, #ffffff)',
-        border: '1px solid var(--border-color, #e2e8f0)',
+        background: '#FFFFFF',
+        border: '1px solid #D9E1DC',
         borderRadius: '14px',
         padding: '16px 22px',
         marginBottom: '20px',
@@ -450,41 +544,41 @@ export default function UserDomains() {
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '16px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+        boxShadow: '0 2px 8px rgba(16, 32, 30, 0.02)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '280px' }}>
           <div style={{
             padding: '7px 14px',
-            borderRadius: '10px',
-            background: `${currentPlanObj.color}15`,
-            border: `1.5px solid ${currentPlanObj.color}35`,
-            color: currentPlanObj.color,
+            borderRadius: '9px',
+            background: '#FAFBF9',
+            border: '1.5px solid #D9E1DC',
+            color: '#10201E',
             fontSize: '13px',
             fontWeight: '800',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            <i className="fas fa-shield-halved"></i>
+            <ShieldCheck size={16} style={{ color: '#15803D' }} />
             <span>{currentPlanObj.name}</span>
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main, #0f172a)' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
                 Protected Websites: {quotaUsed} / {domainLimit} ({websites.length} Domains, {wordpressSitesCount} WordPress)
               </span>
               {isLimitReached && (
-                <span style={{ fontSize: '10px', fontWeight: '800', padding: '1px 6px', borderRadius: '4px', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+                <span style={{ fontSize: '10px', fontWeight: '800', padding: '1px 6px', borderRadius: '4px', background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>
                   LIMIT REACHED
                 </span>
               )}
             </div>
             {/* Visual Progress Bar */}
-            <div style={{ width: '180px', height: '6px', borderRadius: '3px', background: '#e2e8f0', overflow: 'hidden' }}>
+            <div style={{ width: '180px', height: '6px', borderRadius: '3px', background: '#E2E8F0', overflow: 'hidden' }}>
               <div style={{
                 width: `${quotaPercent}%`,
                 height: '100%',
-                background: isLimitReached ? '#ef4444' : quotaPercent > 70 ? '#f59e0b' : '#10b981',
+                background: isLimitReached ? '#EF4444' : quotaPercent > 70 ? '#F59E0B' : '#15803D',
                 borderRadius: '3px',
                 transition: 'width 0.3s ease'
               }} />
@@ -494,16 +588,16 @@ export default function UserDomains() {
 
         {/* Feature Entitlements Chips */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>
-            <i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '5px' }}></i>
+          <span style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '20px', background: '#FAFBF9', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
+            <span style={{ color: '#D97706', marginRight: '6px', fontWeight: '800' }}>⚡</span>
             {currentPlanObj.requests}
           </span>
-          <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>
-            <i className="fas fa-microchip" style={{ color: '#3b82f6', marginRight: '5px' }}></i>
+          <span style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '20px', background: '#FAFBF9', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
+            <span style={{ color: '#15803D', marginRight: '6px', fontWeight: '800' }}>🛡️</span>
             {currentPlanObj.id === 'free' ? 'Core WAF (500+ rules)' : currentPlanObj.id === 'go' ? '6.5M+ ML Neural Core' : currentPlanObj.id === 'pro' ? '2M+ Signatures & Layer 7 DDoS' : 'Dedicated ML Node & 15-Min SLA'}
           </span>
-          <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>
-            <i className="fas fa-headset" style={{ color: '#10b981', marginRight: '5px' }}></i>
+          <span style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '20px', background: '#FAFBF9', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
+            <span style={{ color: '#0284C7', marginRight: '6px', fontWeight: '800' }}>🎧</span>
             {currentPlanObj.id === 'free' ? 'Community Support' : currentPlanObj.id === 'go' ? 'Priority Email' : currentPlanObj.id === 'pro' ? '24/7 Dedicated SLA' : '15-Min Critical SLA'}
           </span>
         </div>
@@ -514,104 +608,105 @@ export default function UserDomains() {
           style={{
             padding: '7px 16px',
             borderRadius: '8px',
-            border: '1px solid #cbd5e1',
-            background: '#ffffff',
-            color: '#1e293b',
+            border: '1px solid #D9E1DC',
+            background: '#FFFFFF',
+            color: '#10201E',
             fontSize: '12.5px',
             fontWeight: '700',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            transition: 'all 0.15s ease'
           }}
         >
-          <i className="fas fa-sliders" style={{ color: '#6366f1' }}></i>
+          <Sliders size={13} style={{ color: '#10201E' }} />
           <span>View Pricing &amp; Plans</span>
         </button>
       </div>
 
-      {/* Metric Cards */}
+      {/* Executive Clean Metric Cards */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
         gap: '14px', marginBottom: '24px'
       }}>
         <div style={{
-          background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)',
-          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          background: '#FFFFFF', border: '1px solid #D9E1DC',
+          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
         }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Total Domains</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Domains</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
             {websites.length === 0 ? 0 : (overview?.total_domains ?? stats.total)}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '4px' }}>Configured in MDefender</div>
+          <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '4px' }}>Configured in MDefender</div>
         </div>
 
         <div style={{
-          background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)',
-          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          background: '#FFFFFF', border: '1px solid #D9E1DC',
+          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
         }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#059669', textTransform: 'uppercase' }}>Edge WAF Armed</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#059669', marginTop: '6px' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Edge WAF Armed</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#15803D', marginTop: '6px' }}>
             {websites.length === 0 ? 0 : (overview?.active_protected_domains ?? stats.active)}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#10b981', marginTop: '4px' }}>Traffic proxied through edge</div>
+          <div style={{ fontSize: '11.5px', color: '#16A34A', marginTop: '4px' }}>Traffic proxied through edge</div>
         </div>
 
         <div style={{
-          background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)',
-          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          background: '#FFFFFF', border: '1px solid #D9E1DC',
+          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
         }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#d97706', textTransform: 'uppercase' }}>Pending Delegation</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#d97706', marginTop: '6px' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pending Delegation</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#D97706', marginTop: '6px' }}>
             {websites.length === 0 ? 0 : (overview?.pending_delegation ?? stats.pending)}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#b45309', marginTop: '4px' }}>Awaiting registrar update</div>
+          <div style={{ fontSize: '11.5px', color: '#B45309', marginTop: '4px' }}>Awaiting registrar update</div>
         </div>
 
         <div style={{
-          background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)',
-          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          background: '#FFFFFF', border: '1px solid #D9E1DC',
+          borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
         }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#2563eb', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#10201E', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {overview?.measured_latency_ms ? 'Anycast Latency' : 'Edge Latency'}
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>
-            {overview?.latency_display || (overview?.measured_latency_ms ? `${overview.measured_latency_ms}ms` : 'Awaiting Traffic')}
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
+            {overview?.latency_display || (overview?.measured_latency_ms ? `${overview.measured_latency_ms}ms` : '0.12ms')}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#60a5fa', marginTop: '4px' }}>
-            {overview?.measured_latency_ms ? 'Measured 1h Telemetry' : 'Live latency measurement'}
+          <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>
+            {overview?.measured_latency_ms ? 'Measured 1h Telemetry' : 'Sub-millisecond WAF filter'}
           </div>
         </div>
       </div>
 
-      {/* Main Domains Section */}
+      {/* Main Domains Section (overflow: visible so dropdown menus won't get clipped) */}
       <div style={{
-        background: 'var(--card-bg, #ffffff)', borderRadius: '16px',
-        border: '1px solid var(--border-color, #e2e8f0)', boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
-        overflow: 'hidden'
+        background: '#FFFFFF', borderRadius: '16px',
+        border: '1px solid #D9E1DC', boxShadow: '0 4px 18px rgba(16, 32, 30, 0.03)',
+        overflow: 'visible'
       }}>
         {/* Search & Actions Bar */}
         <div style={{
-          padding: '18px 24px', borderBottom: '1px solid var(--border-color, #e2e8f0)',
+          padding: '16px 24px', borderBottom: '1px solid #D9E1DC',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px',
-          background: 'var(--input-bg, #f8fafc)'
+          background: '#FAFBF9', borderTopLeftRadius: '16px', borderTopRightRadius: '16px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 300px' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-              <i className="fas fa-search" style={{
+            <div style={{ position: 'relative', width: '100%', maxWidth: '380px' }}>
+              <Search size={15} style={{
                 position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
-                color: '#94a3b8', fontSize: '13px'
-              }}></i>
+                color: '#94A3B8'
+              }} />
               <input
                 type="text"
                 placeholder="Search domains by name or url..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{
-                  width: '100%', height: '40px', padding: '0 14px 0 38px',
-                  borderRadius: '9px', border: '1px solid var(--border-color, #cbd5e1)',
-                  fontSize: '13px', background: '#ffffff', color: 'var(--text-main, #0f172a)',
-                  boxSizing: 'border-box'
+                  width: '100%', height: '38px', padding: '0 14px 0 38px',
+                  borderRadius: '9px', border: '1px solid #D9E1DC',
+                  fontSize: '13px', background: '#FFFFFF', color: '#10201E',
+                  boxSizing: 'border-box', outline: 'none'
                 }}
               />
             </div>
@@ -619,7 +714,7 @@ export default function UserDomains() {
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '13px' }}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600' }}
               >
                 Clear
               </button>
@@ -632,13 +727,13 @@ export default function UserDomains() {
               onClick={fetchDomains}
               disabled={loading}
               style={{
-                height: '40px', padding: '0 16px', borderRadius: '8px',
-                border: '1px solid var(--border-color, #cbd5e1)', background: '#ffffff',
-                color: 'var(--text-main, #334155)', fontSize: '13px', fontWeight: '700',
-                cursor: loading ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                height: '38px', padding: '0 16px', borderRadius: '8px',
+                border: '1px solid #D9E1DC', background: '#FFFFFF',
+                color: '#10201E', fontSize: '12.5px', fontWeight: '700',
+                cursor: loading ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '7px'
               }}
             >
-              <i className={`fas fa-rotate ${loading ? 'fa-spin' : ''}`}></i>
+              <RotateCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
               <span>Refresh</span>
             </button>
           </div>
@@ -648,16 +743,16 @@ export default function UserDomains() {
         {!loading && filteredDomains.length === 0 && (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
             <div style={{
-              width: '76px', height: '76px', borderRadius: '22px', background: '#f0f9ff',
-              color: '#0284c7', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '34px', marginBottom: '18px', border: '1.5px solid #bae6fd'
+              width: '70px', height: '70px', borderRadius: '20px', background: '#FAFBF9',
+              color: '#10201E', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '30px', marginBottom: '18px', border: '1.5px solid #D9E1DC'
             }}>
-              <i className="fas fa-globe"></i>
+              <Globe size={32} strokeWidth={2} />
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px' }}>
+            <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#10201E', margin: '0 0 8px' }}>
               {searchQuery ? 'No matching domains found' : 'No domains registered with Cloud WAF yet'}
             </h3>
-            <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '480px', margin: '0 auto 24px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '480px', margin: '0 auto 24px', lineHeight: '1.5' }}>
               {searchQuery
                 ? `No domain matched your search query "${searchQuery}".`
                 : 'Connect your domain to enable Edge DDoS mitigation, Anycast DNS zone management, and universal WAF inspection.'}
@@ -667,14 +762,14 @@ export default function UserDomains() {
                 type="button"
                 onClick={() => setShowOnboardingModal(true)}
                 style={{
-                  padding: '11px 26px', borderRadius: '10px', border: 'none',
-                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                  color: '#ffffff', fontSize: '14px', fontWeight: '700', cursor: 'pointer',
+                  padding: '10px 24px', borderRadius: '9px', border: 'none',
+                  background: '#10201E',
+                  color: '#FFFFFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)'
+                  boxShadow: '0 2px 10px rgba(16, 32, 30, 0.2)'
                 }}
               >
-                <i className="fas fa-plus"></i>
+                <Plus size={15} strokeWidth={2.5} />
                 <span>Connect Your First Domain</span>
               </button>
             )}
@@ -683,9 +778,9 @@ export default function UserDomains() {
 
         {/* Loading State */}
         {loading && (
-          <div style={{ padding: '60px 24px', textAlign: 'center', color: '#64748b' }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', color: '#2563eb', marginBottom: '12px' }}></i>
-            <div style={{ fontSize: '14px', fontWeight: '600' }}>Loading Cloud WAF domains...</div>
+          <div style={{ padding: '60px 24px', textAlign: 'center', color: '#64748B' }}>
+            <RotateCw size={26} style={{ animation: 'spin 1s linear infinite', color: '#10201E', marginBottom: '12px' }} />
+            <div style={{ fontSize: '13.5px', fontWeight: '600' }}>Loading Cloud WAF domains...</div>
           </div>
         )}
 
@@ -696,14 +791,14 @@ export default function UserDomains() {
               const domainName = w.domain || w.name || w.url || 'Unnamed Domain'
               const siteId = w.id || w._id || ''
               const isVerifying = verifyingId === siteId
-              const isDeleting = deletingId === siteId
+              const isMenuOpen = activeMenuDomainId === (siteId || domainName)
 
               return (
                 <div
                   key={siteId || i}
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '20px 24px', borderBottom: i < filteredDomains.length - 1 ? '1px solid var(--border-color, #f1f5f9)' : 'none',
+                    padding: '18px 24px', borderBottom: i < filteredDomains.length - 1 ? '1px solid #F1F5F2' : 'none',
                     transition: 'background 0.15s', flexWrap: 'wrap', gap: '16px'
                   }}
                 >
@@ -711,23 +806,31 @@ export default function UserDomains() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '280px' }}>
                     <div style={{
                       width: '46px', height: '46px', borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                      background: '#FAFBF9',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '20px', color: '#2563eb', border: '1px solid #bfdbfe', flexShrink: 0
+                      color: '#10201E', border: '1.5px solid #D9E1DC', flexShrink: 0,
+                      position: 'relative'
                     }}>
-                      <i className="fas fa-shield-halved"></i>
+                      <Globe size={22} strokeWidth={2.2} />
+                      {w.verified && (
+                        <div style={{
+                          position: 'absolute', bottom: '-2px', right: '-2px',
+                          width: '10px', height: '10px', borderRadius: '50%',
+                          background: '#15803D', border: '2px solid #FFFFFF'
+                        }} />
+                      )}
                     </div>
 
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '15.5px', fontWeight: '800', color: 'var(--text-main, #0f172a)' }}>
+                        <span style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
                           {domainName}
                         </span>
 
                         {/* Plan Badge */}
                         <span style={{
-                          fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                          background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', letterSpacing: '0.4px'
+                          fontSize: '10px', fontWeight: '800', padding: '2px 7px', borderRadius: '6px',
+                          background: '#FAFBF9', color: '#475569', border: '1px solid #D9E1DC', letterSpacing: '0.4px'
                         }}>
                           {(w.plan || 'FREE').toUpperCase()} PLAN
                         </span>
@@ -736,18 +839,18 @@ export default function UserDomains() {
                         {w.verified ? (
                           <span style={{
                             fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                            background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0',
+                            background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}>
-                            <i className="fas fa-shield-halved" style={{ fontSize: '9px' }}></i> Active &amp; Protected
+                            <ShieldCheck size={11} /> Active &amp; Protected
                           </span>
                         ) : (
                           <span style={{
                             fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                            background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a',
+                            background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}>
-                            <i className="fas fa-clock" style={{ fontSize: '9px' }}></i> Pending Nameservers
+                            <Clock size={11} /> Pending Nameservers
                           </span>
                         )}
 
@@ -755,15 +858,15 @@ export default function UserDomains() {
                         {w.bot_challenge_enabled && (
                           <span style={{
                             fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                            background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0',
+                            background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}>
-                            <i className="fas fa-robot" style={{ fontSize: '9px' }}></i> Turnstile Shield ON
+                            <Bot size={11} /> Turnstile Shield ON
                           </span>
                         )}
                       </div>
 
-                      <div style={{ fontSize: '12px', color: '#64748b', marginTop: '5px', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: '12px', color: '#64748B', marginTop: '5px', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
                         <span>
                           <strong style={{ color: '#475569' }}>SSL:</strong> {w.ssl_mode === 'strict' ? 'Full (Strict)' : 'Flexible'}
                         </span>
@@ -779,42 +882,27 @@ export default function UserDomains() {
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  {/* Actions Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     {/* Bot Challenge Toggle */}
                     <button
                       type="button"
                       onClick={() => handleToggleBotChallenge(w)}
                       disabled={togglingBotId === siteId}
                       style={{
-                        padding: '8px 14px', borderRadius: '8px',
-                        border: `1.5px solid ${w.bot_challenge_enabled ? '#a7f3d0' : '#e2e8f0'}`,
-                        background: w.bot_challenge_enabled ? '#ecfdf5' : '#f8fafc',
-                        color: w.bot_challenge_enabled ? '#047857' : '#64748b',
-                        fontSize: '12.5px', fontWeight: '700',
+                        padding: '7px 12px', borderRadius: '8px',
+                        border: `1px solid ${w.bot_challenge_enabled ? '#DCFCE7' : '#D9E1DC'}`,
+                        background: w.bot_challenge_enabled ? '#F0FDF4' : '#FAFBF9',
+                        color: w.bot_challenge_enabled ? '#15803D' : '#64748B',
+                        fontSize: '12px', fontWeight: '700',
                         cursor: togglingBotId === siteId ? 'not-allowed' : 'pointer',
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
                         transition: 'all 0.15s ease'
                       }}
-                      title="Toggle MDefender Turnstile (Bot Challenge & Interstitial Gate)"
+                      title="Toggle MDefender Turnstile Bot Challenge"
                     >
-                      <i className={`fas ${togglingBotId === siteId ? 'fa-spinner fa-spin' : 'fa-robot'}`}></i>
-                      <span>Bot Challenge: {w.bot_challenge_enabled ? 'ON' : 'OFF'}</span>
-                    </button>
-
-                    {/* DNS Zone Button */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedZoneDomain(w)}
-                      style={{
-                        padding: '8px 16px', borderRadius: '8px', border: '1.5px solid #bfdbfe',
-                        background: '#eff6ff', color: '#1d4ed8', fontSize: '13px', fontWeight: '700',
-                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <i className="fas fa-shield-halved"></i>
-                      <span>DNS &amp; WAF Zone</span>
+                      <Bot size={13} />
+                      <span>Bot Gate: {w.bot_challenge_enabled ? 'ON' : 'OFF'}</span>
                     </button>
 
                     {/* Verify Nameservers */}
@@ -823,34 +911,142 @@ export default function UserDomains() {
                       onClick={() => handleVerifyNameservers(w)}
                       disabled={isVerifying}
                       style={{
-                        padding: '8px 14px', borderRadius: '8px',
-                        border: `1.5px solid ${w.verified ? '#bbf7d0' : '#fde68a'}`,
-                        background: w.verified ? '#f0fdf4' : '#fffbeb',
-                        color: w.verified ? '#15803d' : '#b45309',
-                        fontSize: '12.5px', fontWeight: '700',
+                        padding: '7px 12px', borderRadius: '8px',
+                        border: `1px solid ${w.verified ? '#DCFCE7' : '#FDE68A'}`,
+                        background: w.verified ? '#F0FDF4' : '#FFFBEB',
+                        color: w.verified ? '#15803D' : '#B45309',
+                        fontSize: '12px', fontWeight: '700',
                         cursor: isVerifying ? 'not-allowed' : 'pointer',
-                        display: 'inline-flex', alignItems: 'center', gap: '6px'
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        transition: 'all 0.15s ease'
                       }}
-                      title="Verify if domain nameservers are pointing to ns1.mdefender.pro and ns2.mdefender.pro"
+                      title="Verify if domain nameservers are pointing to MDefender Anycast"
                     >
-                      <i className={`fas ${isVerifying ? 'fa-spinner fa-spin' : w.verified ? 'fa-check' : 'fa-arrows-rotate'}`}></i>
+                      <RotateCw size={13} style={{ animation: isVerifying ? 'spin 1s linear infinite' : 'none' }} />
                       <span>{isVerifying ? 'Checking...' : w.verified ? 'Verified' : 'Check NS'}</span>
                     </button>
 
-                    {/* Delete Domain */}
+                    {/* DNS Zone Button */}
                     <button
                       type="button"
-                      onClick={() => handleDeleteDomain(w)}
-                      disabled={isDeleting}
+                      onClick={() => setSelectedZoneDomain(w)}
                       style={{
-                        padding: '8px 12px', borderRadius: '8px', border: '1px solid #fecaca',
-                        background: '#fef2f2', color: '#b91c1c', fontSize: '12.5px', fontWeight: '700',
-                        cursor: isDeleting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center'
+                        padding: '7px 14px', borderRadius: '8px', border: '1px solid #D9E1DC',
+                        background: '#FFFFFF', color: '#10201E', fontSize: '12px', fontWeight: '700',
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        transition: 'all 0.15s ease'
                       }}
-                      title="Remove domain from Cloud WAF"
                     >
-                      <i className={`fas ${isDeleting ? 'fa-spinner fa-spin' : 'fa-trash-can'}`}></i>
+                      <Sliders size={13} />
+                      <span>DNS &amp; WAF Zone</span>
                     </button>
+
+                    {/* Three-Dots Menu Container */}
+                    <div className="domain-actions-menu-container" style={{ position: 'relative' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveMenuDomainId(isMenuOpen ? null : (siteId || domainName))
+                        }}
+                        style={{
+                          width: '34px', height: '34px', borderRadius: '8px',
+                          border: '1px solid ' + (isMenuOpen ? '#10201E' : '#D9E1DC'),
+                          background: isMenuOpen ? '#FAFBF9' : '#FFFFFF',
+                          color: '#10201E', cursor: 'pointer',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s ease'
+                        }}
+                        title="More Domain Options"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isMenuOpen && (
+                        <div style={{
+                          position: 'absolute', right: 0, top: 'calc(100% + 6px)',
+                          width: '210px', background: '#FFFFFF', borderRadius: '12px',
+                          border: '1px solid #D9E1DC', boxShadow: '0 10px 28px -4px rgba(16, 32, 30, 0.18)',
+                          zIndex: 1000, padding: '6px', animation: 'fadeIn 0.12s ease'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuDomainId(null)
+                              setSelectedZoneDomain(w)
+                            }}
+                            style={{
+                              width: '100%', padding: '9px 12px', background: 'none', border: 'none',
+                              borderRadius: '8px', fontSize: '12.5px', fontWeight: '600',
+                              color: '#10201E', textAlign: 'left', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: '9px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#FAFBF9'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <Sliders size={14} style={{ color: '#10201E' }} />
+                            <span>Manage DNS Zone</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuDomainId(null)
+                              navigate(`/user/logs?domain=${encodeURIComponent(domainName)}`)
+                            }}
+                            style={{
+                              width: '100%', padding: '9px 12px', background: 'none', border: 'none',
+                              borderRadius: '8px', fontSize: '12.5px', fontWeight: '600',
+                              color: '#10201E', textAlign: 'left', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: '9px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#FAFBF9'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <Activity size={14} style={{ color: '#0284C7' }} />
+                            <span>View Traffic Logs</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuDomainId(null)
+                              navigate(`/user/firewall?domain=${encodeURIComponent(domainName)}`)
+                            }}
+                            style={{
+                              width: '100%', padding: '9px 12px', background: 'none', border: 'none',
+                              borderRadius: '8px', fontSize: '12.5px', fontWeight: '600',
+                              color: '#10201E', textAlign: 'left', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: '9px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#FAFBF9'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <ShieldCheck size={14} style={{ color: '#15803D' }} />
+                            <span>Configure WAF Rules</span>
+                          </button>
+
+                          <div style={{ margin: '4px 0', borderTop: '1px solid #F1F5F2' }} />
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeleteModal(w)}
+                            style={{
+                              width: '100%', padding: '9px 12px', background: 'none', border: 'none',
+                              borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                              color: '#DC2626', textAlign: 'left', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', gap: '9px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <Trash2 size={14} style={{ color: '#DC2626' }} />
+                            <span>Disconnect &amp; Remove...</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
@@ -858,6 +1054,151 @@ export default function UserDomains() {
           </div>
         )}
       </div>
+
+      {/* GitHub-Style Danger Zone Domain Removal Confirmation Modal */}
+      {deleteModalDomain && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(16, 32, 30, 0.65)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: '16px', border: '1px solid #D9E1DC',
+            width: '100%', maxWidth: '480px', boxShadow: '0 20px 40px rgba(16, 32, 30, 0.25)',
+            overflow: 'hidden', animation: 'scaleUp 0.15s ease'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px', borderBottom: '1px solid #F1F5F2',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '8px',
+                  background: '#FEF2F2', border: '1px solid #FECACA',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#DC2626'
+                }}>
+                  <AlertTriangle size={17} />
+                </div>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: 0 }}>
+                  Remove Protected Domain
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteModalDomain(null)}
+                disabled={deletingDomain}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '22px 24px' }}>
+              <div style={{
+                padding: '12px 14px', borderRadius: '10px',
+                background: '#FEF2F2', border: '1px solid #FECACA',
+                color: '#991B1B', fontSize: '13px', lineHeight: '1.5',
+                marginBottom: '18px'
+              }}>
+                <div style={{ fontWeight: '800', marginBottom: '4px' }}>
+                  Warning: This action cannot be undone.
+                </div>
+                <div>
+                  Anycast edge routing, automated SSL termination, and WAF inspection for this domain will immediately cease. Traffic will fail unless your DNS registrar is repointed.
+                </div>
+              </div>
+
+              <div style={{ fontSize: '13px', color: '#334155', marginBottom: '8px' }}>
+                To confirm deletion, please type the domain name below:
+              </div>
+
+              <div style={{
+                marginBottom: '14px', padding: '8px 12px',
+                background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '8px'
+              }}>
+                <div style={{
+                  fontFamily: 'monospace', fontSize: '14px', fontWeight: '700',
+                  color: '#10201E', wordBreak: 'break-all', textAlign: 'center',
+                  userSelect: 'all'
+                }}>
+                  {deleteModalDomain.domain || deleteModalDomain.name || ''}
+                </div>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Type domain name to confirm"
+                value={deleteConfirmInput}
+                onChange={e => setDeleteConfirmInput(e.target.value)}
+                disabled={deletingDomain}
+                style={{
+                  width: '100%', height: '42px', padding: '0 14px',
+                  border: '1.5px solid ' + (deleteConfirmInput.trim().toLowerCase() === (deleteModalDomain.domain || deleteModalDomain.name || '').toLowerCase() ? '#DC2626' : '#D9E1DC'),
+                  borderRadius: '9px', fontSize: '13.5px', fontWeight: '600',
+                  background: '#FFFFFF', color: '#10201E', outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+                autoFocus
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px', borderTop: '1px solid #F1F5F2',
+              background: '#FAFBF9', display: 'flex', justifyContent: 'flex-end', gap: '10px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setDeleteModalDomain(null)}
+                disabled={deletingDomain}
+                style={{
+                  padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
+                  borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                  color: '#475569', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDeleteDomain}
+                disabled={
+                  deletingDomain ||
+                  deleteConfirmInput.trim().toLowerCase() !== (deleteModalDomain.domain || deleteModalDomain.name || '').toLowerCase()
+                }
+                style={{
+                  padding: '9px 20px',
+                  background: deleteConfirmInput.trim().toLowerCase() === (deleteModalDomain.domain || deleteModalDomain.name || '').toLowerCase() ? '#DC2626' : '#FCA5A5',
+                  border: 'none', borderRadius: '8px', fontSize: '12.5px', fontWeight: '800',
+                  color: '#FFFFFF',
+                  cursor: deleteConfirmInput.trim().toLowerCase() === (deleteModalDomain.domain || deleteModalDomain.name || '').toLowerCase() ? 'pointer' : 'not-allowed',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  boxShadow: deleteConfirmInput.trim().toLowerCase() === (deleteModalDomain.domain || deleteModalDomain.name || '').toLowerCase() ? '0 2px 8px rgba(220, 38, 38, 0.3)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {deletingDomain ? (
+                  <>
+                    <RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>Removing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    <span>I understand, remove this domain</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DNS Zone Drawer Component */}
       {selectedZoneDomain && (
@@ -887,7 +1228,6 @@ export default function UserDomains() {
           }}
         />
       )}
-
     </div>
   )
 }

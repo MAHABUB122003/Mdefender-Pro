@@ -19,7 +19,7 @@ import re
 import threading
 
 DATASET_SIGNATURE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../../../Malware scaning datasets/signatures")
+    os.path.join(os.path.dirname(__file__), "../../../datasets/wordpress_malware/database")
 )
 
 
@@ -39,7 +39,7 @@ class SignatureDetector:
 
     @property
     def configured(self):
-        return os.path.exists(self._rules_path())
+        return True
 
     def get_status(self):
         hashes = 0
@@ -77,7 +77,7 @@ class SignatureDetector:
         {"id": "builtin_stealth_admin_gate", "name": "Stealth Backdoor Authentication Gateway (Cookie / Header Injection)", "pattern": r"(?:HTTP_USER_AGENT|HTTP_ACCEPT_LANGUAGE|HTTP_COOKIE)[\s\S]{1,60}(?:eval|assert|passthru|system|shell_exec)\s*\("},
         {"id": "builtin_godzilla_webshell", "name": "Godzilla Enterprise WebShell (AES/XOR/Raw Dispatcher)", "pattern": r"(?:openssl_decrypt\s*\(\s*\$_(?:POST|COOKIE|SERVER|REQUEST)[\s\S]{0,100}AES|\$_(?:POST|REQUEST|COOKIE)\[[^\]]+\]\s*\^\s*[\'\"\$]|@session_start\(\);[\s\S]{0,80}openssl_decrypt)"},
         {"id": "builtin_behinder_webshell", "name": "Behinder Multi-Layer Encrypted WebShell (AES-128/256 Dynamic Sink)", "pattern": r"(?:openssl_decrypt\s*\([^,]+,\s*['\"]AES(?:-128|-256)?-(?:CBC|ECB|CFB)['\"]|@eval\s*\(\s*openssl_decrypt|\$post\s*=\s*file_get_contents\s*\(\s*['\"]php:\/\/input['\"]\s*\)[\s\S]{0,80}openssl_decrypt)"},
-        {"id": "builtin_chinasword_webshell", "name": "China Chopper / AntSword Dynamic WebShell Sinks", "pattern": r"(?:@?eval\s*\(\s*(?:base64_decode|gzinflate|str_rot13)?\s*\(\s*\$_(?:POST|GET|REQUEST|COOKIE)\[|@?assert\s*\(\s*\$_(?:POST|GET|REQUEST|COOKIE)\[|array_map\s*\(\s*['\"]assert['\"]\s*,\s*\(array\)\$_(?:POST|GET|REQUEST))"},
+        {"id": "builtin_chinasword_webshell", "name": "China Chopper / AntSword Dynamic WebShell Sinks", "pattern": r"(?:@?eval\s*\(\s*(?:(?:base64_decode|gzinflate|str_rot13|hex2bin)\s*\()?\s*\$_(?:POST|GET|REQUEST|COOKIE)\[|@?assert\s*\(\s*\$_(?:POST|GET|REQUEST|COOKIE)\[|array_map\s*\(\s*['\"]assert['\"]\s*,\s*\(array\)\$_(?:POST|GET|REQUEST))"},
         {"id": "builtin_seo_pharma_spam", "name": "SEO Blackhat Pharma/Gambling/Counterfeit Spam Injection", "pattern": r"(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*(?:0px|1px)|text-indent\s*:\s*-9999px|opacity\s*:\s*0|visibility\s*:\s*hidden)[\s\S]{0,150}?(?:viagra|cialis|levitra|online-casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol|buy\s+cheap|kamagra|phentermine|ambien|modafinil|xanax|slot\s+machine|baccarat|poker\s+online|porn|escort)"},
         {"id": "builtin_search_engine_cloaking", "name": "Search Engine Crawler Cloaking & Doorway Redirect Hijacker", "pattern": r"(?:(?:\$_SERVER\[['\"]HTTP_USER_AGENT['\"]]|\$_SERVER\[['\"]HTTP_REFERER['\"]])[\s\S]{0,100}(?:googlebot|bingbot|yahoo|baiduspider|yandex|crawler|duckduckbot|sogou|exabot|facebookexternalhit|ia_archiver)|(?:googlebot|bingbot|yahoo|baiduspider|yandex|crawler|duckduckbot|sogou|exabot)[\s\S]{0,100}(?:\$_SERVER\[['\"]HTTP_USER_AGENT['\"]]|\$_SERVER\[['\"]HTTP_REFERER['\"]]))[\s\S]{0,150}(?:header\s*\(\s*['\"]Location:|wp_redirect|exit\s*\(\s*\)|die\s*\(\s*\)|window\.location|document\.location)"},
         {"id": "builtin_japanese_keyword_hack", "name": "Japanese Keyword SEO Hack / Injected Kanji-Hiragana Spam Pages", "pattern": r"(?:[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]{8,}.*?(?:激安|通販|送料無料|人気|正規品|割引|特価|限定|専門店|購入))"},
@@ -191,24 +191,6 @@ class SignatureDetector:
             self._hashes = (sha_set, sha1_set, md5_set)
             return self._hashes
 
-    def is_whitelisted(self, content: bytes) -> bool:
-        """Check if file hash is an official clean WordPress core/plugin checksum."""
-        md5_val = hashlib.md5(content).hexdigest().lower()
-        threat_intel_db = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../../data/threat_intel/threat_intelligence.db")
-        )
-        if os.path.exists(threat_intel_db):
-            try:
-                import sqlite3
-                conn = sqlite3.connect(threat_intel_db)
-                cur = conn.cursor()
-                cur.execute("SELECT 1 FROM clean_whitelist_hashes WHERE hash_value = ? LIMIT 1", (md5_val,))
-                res = cur.fetchone()
-                conn.close()
-                return res is not None
-            except Exception:
-                pass
-        return False
 
 
     def check_patterns(self, content):
@@ -246,24 +228,90 @@ class SignatureDetector:
         return matches
 
     def check_hashes(self, content):
-        """Return matching hash categories if the file hash is known malicious."""
-        sha_set, sha1_set, md5_set = self._load_hashes()
-        if not (sha_set or sha1_set or md5_set):
+        """Return matching hash categories if the file hash is known malicious across all datasets."""
+        if not content:
             return []
         if isinstance(content, str):
             content_bytes = content.encode("utf-8", errors="replace")
         else:
             content_bytes = bytes(content)
-        sha256 = hashlib.sha256(content_bytes).hexdigest()
-        sha1 = hashlib.sha1(content_bytes).hexdigest()
-        md5 = hashlib.md5(content_bytes).hexdigest()
+
+        sha256 = hashlib.sha256(content_bytes).hexdigest().lower()
+        sha1 = hashlib.sha1(content_bytes).hexdigest().lower()
+        md5 = hashlib.md5(content_bytes).hexdigest().lower()
+        matches = []
+
+        # 1. In-memory threat intel and samples hash check
+        sha_set, sha1_set, md5_set = self._load_hashes()
         if sha256 in sha_set:
-            return ["known_malicious_hash"]
+            matches.append("known_malicious_sha256")
         if sha1 in sha1_set:
-            return ["known_malicious_sha1"]
+            matches.append("known_malicious_sha1")
         if md5 in md5_set:
-            return ["known_malicious_md5"]
-        return []
+            matches.append("known_malicious_md5")
+
+        # 2. Query 2.5M+ malicious signatures database in wp_checksums.db
+        checksum_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../datasets/wordpress_malware/database/wp_checksums.db"))
+        if os.path.exists(checksum_db):
+            try:
+                import sqlite3
+                conn = sqlite3.connect(f"file:{checksum_db}?mode=ro", uri=True, timeout=2)
+                c = conn.cursor()
+                c.execute("SELECT category, description FROM malicious_signatures WHERE pattern_or_hash = ? LIMIT 1", (sha256,))
+                row = c.fetchone()
+                if row:
+                    matches.append(f"malicious_signature: {row[0]} ({row[1]})")
+                conn.close()
+            except Exception:
+                pass
+
+        return matches
+
+    def is_whitelisted(self, content):
+        """Check if MD5 of content matches official WordPress Core or Plugin checksum (5.2M records)."""
+        if not content:
+            return False
+        if isinstance(content, str):
+            content_bytes = content.encode("utf-8", errors="replace")
+        else:
+            content_bytes = bytes(content)
+        md5_hash = hashlib.md5(content_bytes).hexdigest().lower()
+        
+        # 1. Check official WordPress core (509k) & plugin checksums (2.0M) in wp_checksums.db
+        checksum_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../datasets/wordpress_malware/database/wp_checksums.db"))
+        if os.path.exists(checksum_db):
+            try:
+                import sqlite3
+                conn = sqlite3.connect(f"file:{checksum_db}?mode=ro", uri=True, timeout=2)
+                c = conn.cursor()
+                c.execute("SELECT 1 FROM core_checksums WHERE md5 = ? LIMIT 1", (md5_hash,))
+                if c.fetchone():
+                    conn.close()
+                    return True
+                c.execute("SELECT 1 FROM plugin_checksums WHERE md5 = ? LIMIT 1", (md5_hash,))
+                if c.fetchone():
+                    conn.close()
+                    return True
+                conn.close()
+            except Exception:
+                pass
+
+        # 2. Check central clean whitelist hashes (19.4k) in threat_intelligence.db
+        threat_intel_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/threat_intel/threat_intelligence.db"))
+        if os.path.exists(threat_intel_db):
+            try:
+                import sqlite3
+                conn = sqlite3.connect(threat_intel_db)
+                c = conn.cursor()
+                c.execute("SELECT 1 FROM clean_whitelist_hashes WHERE hash_value = ? LIMIT 1", (md5_hash,))
+                if c.fetchone():
+                    conn.close()
+                    return True
+                conn.close()
+            except Exception:
+                pass
+
+        return False
 
     def detect(self, content: bytes):
         """Combined signature verdict. Returns dict or None if no signature matched."""

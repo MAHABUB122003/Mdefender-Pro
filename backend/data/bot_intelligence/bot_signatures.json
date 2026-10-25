@@ -1,0 +1,53 @@
+{
+  "verified_good_bots": [
+    { "name": "Googlebot", "token": "googlebot", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Google Inspection Tool", "token": "google-inspectiontool", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Google StoreBot", "token": "storebot-google", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Bingbot", "token": "bingbot", "category": "search_engine", "action": "ALLOW" },
+    { "name": "BingPreview", "token": "bingpreview", "category": "search_engine", "action": "ALLOW" },
+    { "name": "DuckDuckBot", "token": "duckduckbot", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Applebot", "token": "applebot", "category": "search_engine", "action": "ALLOW" },
+    { "name": "YandexBot", "token": "yandexbot", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Baiduspider", "token": "baiduspider", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Yahoo Slurp", "token": "slurp", "category": "search_engine", "action": "ALLOW" },
+    { "name": "Facebook External Hit", "token": "facebookexternalhit", "category": "social", "action": "ALLOW" },
+    { "name": "Meta External Agent", "token": "meta-externalagent", "category": "social", "action": "ALLOW" },
+    { "name": "Twitterbot", "token": "twitterbot", "category": "social", "action": "ALLOW" },
+    { "name": "LinkedInBot", "token": "linkedinbot", "category": "social", "action": "ALLOW" },
+    { "name": "WhatsApp", "token": "whatsapp", "category": "social", "action": "ALLOW" },
+    { "name": "TelegramBot", "token": "telegrambot", "category": "social", "action": "ALLOW" },
+    { "name": "Discordbot", "token": "discordbot", "category": "social", "action": "ALLOW" },
+    { "name": "Slackbot", "token": "slackbot", "category": "social", "action": "ALLOW" },
+    { "name": "Pinterestbot", "token": "pinterest", "category": "social", "action": "ALLOW" },
+    { "name": "UptimeRobot", "token": "uptimerobot", "category": "monitoring", "action": "ALLOW" },
+    { "name": "Pingdom", "token": "pingdom", "category": "monitoring", "action": "ALLOW" },
+    { "name": "StatusCake", "token": "statuscake", "category": "monitoring", "action": "ALLOW" },
+    { "name": "Let's Encrypt / Certbot", "token": "certbot", "category": "ssl_validation", "action": "ALLOW" },
+    { "name": "Let's Encrypt Validator", "token": "letsencrypt", "category": "ssl_validation", "action": "ALLOW" }
+  ],
+  "ai_scrapers": [
+    { "name": "OpenAI GPTBot", "token": "gptbot", "vendor": "OpenAI" },
+    { "name": "ChatGPT User", "token": "chatgpt-user", "vendor": "OpenAI" },
+    { "name": "OpenAI SearchBot", "token": "oai-searchbot", "vendor": "OpenAI" },
+    { "name": "Anthropic ClaudeBot", "token": "claudebot", "vendor": "Anthropic" },
+    { "name": "Anthropic Claude-Web", "token": "claude-web", "vendor": "Anthropic" },
+    { "name": "Anthropic AI", "token": "anthropic-ai", "vendor": "Anthropic" },
+    { "name": "ByteDance Bytespider", "token": "bytespider", "vendor": "ByteDance" },
+    { "name": "Common Crawl CCBot", "token": "ccbot", "vendor": "Common Crawl" },
+    { "name": "PerplexityBot", "token": "perplexitybot", "vendor": "Perplexity AI" },
+    { "name": "Cohere AI", "token": "cohere-ai", "vendor": "Cohere" },
+    { "name": "Diffbot", "token": "diffbot", "vendor": "Diffbot" },
+    { "name": "FacebookBot Meta AI", "token": "facebookbot", "vendor": "Meta" },
+    { "name": "Amazonbot", "token": "amazonbot", "vendor": "Amazon" },
+    { "name": "Applebot Extended", "token": "applebot-extended", "vendor": "Apple" },
+    { "name": "Google Extended", "token": "google-extended", "vendor": "Google" }
+  ],
+  "malicious_attack_tools": [
+    "sqlmap", "nikto", "wpscan", "masscan", "nuclei", "acunetix", "dirbuster",
+    "gobuster", "ffuf", "havij", "burpsuite", "burpcollaboration", "openvas",
+    "nessus", "hydra", "medusa", "metasploit", "zmeu", "arachni", "whatweb",
+    "wapiti", "qualys", "skipfish", "webinspect", "pangolin", "commix",
+    "sublist3r", "amass", "censys", "shodan", "zgrab", "netsparker",
+    "webshag", "fimap", "sqlninja", "bsqlbf", "sqldumper"
+  ]
+}

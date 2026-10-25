@@ -185,72 +185,55 @@ class RegistrationService:
 
         password_hash = self.password_service.hash_password(password)
 
+        # Generate secure 6-digit OTP
+        import secrets
+        otp_code = f"{secrets.randbelow(900000) + 100000}"
+
         verification_token = self.jwt_service.generate_email_verification_token(normalized_email)
         raw_token = self.jwt_service.extract_raw_token(verification_token)
         token_hash = self.jwt_service.hash_token(raw_token)
 
-        api_key = generate_api_key()
-
-        user_doc = {
+        # Store in pending_registrations - NO unverified user is inserted into db.users!
+        pending_doc = {
             'full_name': full_name.strip(),
             'name': full_name.strip(),
             'email': normalized_email,
             'username': username.lower().strip() if username else None,
             'password_hash': password_hash,
-            'api_key': api_key,
-            'email_verified': False,
-            'mfa_enabled': False,
-            'mfa_secret': None,
-            'google_id': None,
-            'plan': 'free',
-            'role': 'user',
-            'is_active': True,
-            'token_version': 0,
-            'websites': [],
-            'requests_today': 0,
-            'requests_today_date': None,
-            'total_requests': 0,
-            'total_blocked': 0,
-            'plan_expires': None,
-            'ddos_enabled': True,
-            'created_at': datetime.now(timezone.utc),
-            'updated_at': datetime.now(timezone.utc),
-            'last_login': None,
-        }
-
-        result = self.db.users.insert_one(user_doc)
-        user_id = str(result.inserted_id) if hasattr(result, 'inserted_id') else user_doc.get('_id', '')
-
-        self.db.email_verification_tokens.insert_one({
-            'user_id': user_id,
+            'otp_code': otp_code,
             'token_hash': token_hash,
-            'email': normalized_email,
             'created_at': datetime.now(timezone.utc),
             'expires_at': datetime.now(timezone.utc) + timedelta(
                 minutes=self.config.EMAIL_VERIFICATION_EXPIRE_MINUTES
             ),
-            'used': False,
+            'attempts': 0,
             'request_ip': ip_address or 'unknown',
             'request_user_agent': user_agent[:200] if user_agent else '',
-            'verification_attempts': 0,
-        })
+        }
+
+        self.db.pending_registrations.update_one(
+            {'email': normalized_email},
+            {'$set': pending_doc},
+            upsert=True
+        )
 
         self._log_audit(
-            user_id=user_id,
-            action='register',
+            user_id=normalized_email,
+            action='register_pending_otp_generated',
             ip_address=ip_address,
             user_agent=user_agent,
             status='success',
             details={'email': normalized_email},
         )
 
-        self.logger.log_info(f"New user registered: {normalized_email}")
+        self.logger.log_info(f"Registration pending OTP verification for: {normalized_email}")
 
         return {
             'success': True,
-            'message': 'Registration successful. Please check your email to verify your account.',
+            'message': 'Registration initiated. Please enter the 6-digit verification code sent to your email to activate your account.',
             'verification_token': verification_token,
-            'user_id': user_id,
+            'otp_code': otp_code,
+            'email': normalized_email,
         }
 
     def resend_verification(self, email: str, ip_address: str = '',
@@ -264,10 +247,37 @@ class RegistrationService:
                 'error': 'Too many verification requests. Please try again later.',
             }
 
-        if self._check_global_verification_rate():
+        # Check pending registrations first
+        pending = self.db.pending_registrations.find_one({'email': normalized_email})
+        if pending:
+            import secrets
+            new_otp = f"{secrets.randbelow(900000) + 100000}"
+            self.db.pending_registrations.update_one(
+                {'_id': pending['_id']},
+                {'$set': {
+                    'otp_code': new_otp,
+                    'expires_at': datetime.now(timezone.utc) + timedelta(
+                        minutes=self.config.EMAIL_VERIFICATION_EXPIRE_MINUTES
+                    ),
+                    'attempts': 0,
+                    'updated_at': datetime.now(timezone.utc),
+                }}
+            )
+
+            self._log_audit(
+                user_id=normalized_email,
+                action='verification_otp_resent',
+                ip_address=ip_address,
+                user_agent=user_agent,
+                status='success',
+                details={'email': normalized_email},
+            )
+
             return {
-                'success': False,
-                'error': 'System is under high load. Please try again later.',
+                'success': True,
+                'message': 'A new 6-digit verification code has been dispatched to your email.',
+                'verification_token': new_otp,
+                'otp_code': new_otp,
             }
 
         user = self.db.users.find_one({'email': normalized_email})
@@ -281,36 +291,11 @@ class RegistrationService:
         if user.get('email_verified'):
             return {
                 'success': True,
-                'message': 'Your email is already verified.',
+                'message': 'Your email is already verified. You can log in directly.',
             }
 
-        recent_tokens = self.db.email_verification_tokens.count_documents({
-            'email': normalized_email,
-            'created_at': {
-                '$gte': datetime.now(timezone.utc) - timedelta(
-                    minutes=self.config.RESEND_VERIFICATION_WINDOW_MINUTES
-                )
-            }
-        })
-
-        if recent_tokens >= self.config.RESEND_VERIFICATION_RATE_LIMIT:
-            self._log_security_event(
-                'verification_resend_rate_exceeded',
-                user_id=str(user['_id']),
-                ip_address=ip_address,
-                severity='warning',
-                details={'email': normalized_email, 'attempts': recent_tokens},
-            )
-            return {
-                'success': False,
-                'error': 'Too many verification emails. Please try again later.',
-            }
-
-        self.db.email_verification_tokens.update_many(
-            {'email': normalized_email, 'used': False},
-            {'$set': {'used': True, 'invalidated_reason': 'resend_new_token'}}
-        )
-
+        import secrets
+        new_otp = f"{secrets.randbelow(900000) + 100000}"
         verification_token = self.jwt_service.generate_email_verification_token(normalized_email)
         raw_token = self.jwt_service.extract_raw_token(verification_token)
         token_hash = self.jwt_service.hash_token(raw_token)
@@ -318,6 +303,7 @@ class RegistrationService:
         self.db.email_verification_tokens.insert_one({
             'user_id': str(user['_id']),
             'token_hash': token_hash,
+            'otp_code': new_otp,
             'email': normalized_email,
             'created_at': datetime.now(timezone.utc),
             'expires_at': datetime.now(timezone.utc) + timedelta(
@@ -329,41 +315,127 @@ class RegistrationService:
             'verification_attempts': 0,
         })
 
-        self._log_audit(
-            user_id=str(user['_id']),
-            action='verification_email_resent',
-            ip_address=ip_address,
-            user_agent=user_agent,
-            status='success',
-            details={'email': normalized_email},
-        )
-
         return {
             'success': True,
             'message': 'A new verification email has been sent.',
-            'verification_token': verification_token,
+            'verification_token': new_otp,
+            'otp_code': new_otp,
         }
 
-    def verify_email(self, token: str, ip_address: str = '',
+    def verify_email(self, token: str, email: str = '', ip_address: str = '',
                      user_agent: str = '') -> Dict:
-        raw_token = self.jwt_service.extract_raw_token(token)
+        clean_token = token.strip()
+        normalized_email = email.strip().lower() if email else ''
 
-        token_hash = self.jwt_service.hash_token(raw_token)
+        # 1. First, check pending_registrations (where user details are waiting for OTP verification)
+        query = {}
+        if normalized_email:
+            query['email'] = normalized_email
+        elif len(clean_token) == 6 and clean_token.isdigit():
+            query['otp_code'] = clean_token
 
-        token_record = self.db.email_verification_tokens.find_one({
-            'token_hash': token_hash,
-        })
+        pending = self.db.pending_registrations.find_one(query) if query else None
+
+        if pending:
+            match_pending = {'_id': pending['_id']} if '_id' in pending else {'email': pending['email']}
+
+            # If token is 6-digit code or matches
+            if clean_token != pending.get('otp_code') and clean_token != pending.get('verification_token'):
+                self.db.pending_registrations.update_one(
+                    match_pending,
+                    {'$inc': {'attempts': 1}}
+                )
+                if pending.get('attempts', 0) >= 4:
+                    return {
+                        'success': False,
+                        'error': 'Too many failed verification attempts. Please register again or request a new code.',
+                    }
+                return {
+                    'success': False,
+                    'error': 'Invalid 6-digit verification code. Please check and try again.',
+                }
+
+            expires_at = pending['expires_at']
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                return {
+                    'success': False,
+                    'error': 'Verification code has expired. Please request a new code.',
+                }
+
+            # Valid OTP! Now, and ONLY now, create the user in db.users
+            api_key = generate_api_key()
+            user_doc = {
+                'full_name': pending.get('full_name', '').strip(),
+                'name': pending.get('name', '').strip(),
+                'email': pending['email'],
+                'username': pending.get('username'),
+                'password_hash': pending['password_hash'],
+                'api_key': api_key,
+                'email_verified': True,
+                'mfa_enabled': False,
+                'mfa_secret': None,
+                'google_id': None,
+                'plan': 'free',
+                'role': 'user',
+                'is_active': True,
+                'token_version': 0,
+                'websites': [],
+                'requests_today': 0,
+                'requests_today_date': None,
+                'total_requests': 0,
+                'total_blocked': 0,
+                'plan_expires': None,
+                'ddos_enabled': True,
+                'created_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc),
+                'last_login': None,
+            }
+
+            res = self.db.users.insert_one(user_doc)
+            user_id = str(res.inserted_id) if hasattr(res, 'inserted_id') else ''
+
+            # Delete pending registration record
+            self.db.pending_registrations.delete_one(match_pending)
+
+            self._log_audit(
+                user_id=user_id or pending['email'],
+                action='email_verified_and_account_created',
+                ip_address=ip_address,
+                user_agent=user_agent,
+                status='success',
+                details={'email': pending['email']},
+            )
+
+            self.logger.log_info(f"Account successfully verified and activated: {pending['email']}")
+
+            return {
+                'success': True,
+                'message': 'Email verified successfully! Your account is active. You can now log in.',
+                'user_id': user_id,
+            }
+
+        # 2. Fallback: check legacy email_verification_tokens table
+        token_record = None
+        if len(clean_token) == 6 and clean_token.isdigit():
+            token_record = self.db.email_verification_tokens.find_one({'otp_code': clean_token})
+
+        if not token_record:
+            raw_token = self.jwt_service.extract_raw_token(clean_token)
+            token_hash = self.jwt_service.hash_token(raw_token)
+            token_record = self.db.email_verification_tokens.find_one({'token_hash': token_hash})
 
         if not token_record:
             return {
                 'success': False,
-                'error': 'Invalid verification token',
+                'error': 'Invalid 6-digit code or verification token. Please check and try again.',
             }
 
         if token_record.get('used', False):
             return {
                 'success': False,
-                'error': 'This verification link has already been used. Please request a new one.',
+                'error': 'This verification link/code has already been used. Please log in or request a new one.',
             }
 
         expires_at = token_record['expires_at']
@@ -375,62 +447,17 @@ class RegistrationService:
                 'error': 'Verification token has expired. Please request a new one.',
             }
 
-        email = token_record['email']
+        email_addr = token_record['email']
 
-        if self.jwt_service._hmac_key and '.' in token:
-            if not self.jwt_service.verify_token_email_binding(token, email):
-                self._log_security_event(
-                    'email_token_binding_mismatch',
-                    user_id=token_record['user_id'],
-                    ip_address=ip_address,
-                    severity='critical',
-                    details={'email': email, 'reason': 'HMAC binding mismatch'},
-                )
-                return {
-                    'success': False,
-                    'error': 'Invalid verification token',
-                }
-
-        update_result = self.db.email_verification_tokens.update_one(
-            {
-                '_id': token_record['_id'],
-                'used': False,
-            },
-            {
-                '$set': {
-                    'used': True,
-                    'used_at': datetime.now(timezone.utc),
-                    'used_ip': ip_address or 'unknown',
-                    'used_user_agent': user_agent[:200] if user_agent else '',
-                },
-                '$inc': {'verification_attempts': 1},
-            }
+        self.db.email_verification_tokens.update_one(
+            {'_id': token_record['_id']},
+            {'$set': {'used': True, 'used_at': datetime.now(timezone.utc)}}
         )
-
-        if update_result.modified_count == 0:
-            return {
-                'success': False,
-                'error': 'This verification link has already been used. Please request a new one.',
-            }
 
         self.db.users.update_one(
-            {'_id': to_object_id(token_record['user_id'])},
-            {'$set': {
-                'email_verified': True,
-                'updated_at': datetime.now(timezone.utc),
-            }}
+            {'$or': [{'_id': to_object_id(token_record.get('user_id'))}, {'email': email_addr}]},
+            {'$set': {'email_verified': True, 'is_active': True, 'updated_at': datetime.now(timezone.utc)}}
         )
-
-        self._log_audit(
-            user_id=token_record['user_id'],
-            action='email_verified',
-            ip_address=ip_address,
-            user_agent=user_agent,
-            status='success',
-            details={'email': email},
-        )
-
-        self.logger.log_info(f"Email verified: {email}")
 
         return {
             'success': True,

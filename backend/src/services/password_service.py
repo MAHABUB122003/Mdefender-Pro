@@ -25,7 +25,7 @@ class PasswordService:
     - Constant-time comparison via passlib
     """
 
-    MIN_LENGTH = 12
+    MIN_LENGTH = 8
     BCRYPT_ROUNDS = 12
 
     # OWASP-recommended special characters
@@ -141,14 +141,12 @@ class PasswordService:
         Validate password against enterprise security policy.
 
         Policy (OWASP-aligned):
-        - Minimum 12 characters
+        - Minimum 8 characters
         - At least 1 uppercase letter
         - At least 1 lowercase letter
         - At least 1 digit
         - At least 1 special character
         - Not a known weak/common password
-        - No 4+ sequential characters (abc, 123)
-        - No 3+ repeated characters (aaa, 111)
 
         Returns:
             dict: {
@@ -159,55 +157,24 @@ class PasswordService:
         """
         errors: List[str] = []
 
-        # Length check
-        if len(password) < self.MIN_LENGTH:
-            errors.append(
-                f"Password must be at least {self.MIN_LENGTH} characters long"
-            )
+        if not password or len(password) < self.MIN_LENGTH:
+            errors.append(f"Password must be at least {self.MIN_LENGTH} characters long.")
 
-        # Uppercase check
         if not re.search(r'[A-Z]', password):
-            errors.append(
-                "Password must contain at least one uppercase letter (A-Z)"
-            )
+            errors.append("Password must contain at least one uppercase letter (A-Z).")
 
-        # Lowercase check
         if not re.search(r'[a-z]', password):
-            errors.append(
-                "Password must contain at least one lowercase letter (a-z)"
-            )
+            errors.append("Password must contain at least one lowercase letter (a-z).")
 
-        # Digit check
         if not re.search(r'\d', password):
-            errors.append(
-                "Password must contain at least one number (0-9)"
-            )
+            errors.append("Password must contain at least one numeric digit (0-9).")
 
-        # Special character check
         if not any(c in self.SPECIAL_CHARS for c in password):
-            errors.append(
-                "Password must contain at least one special character (!@#$%^&* etc.)"
-            )
+            errors.append("Password must contain at least one special character (!@#$%^&*...).")
 
-        # Common password dictionary check
         if password.lower() in self.WEAK_PASSWORDS:
-            errors.append(
-                "This password is too common. Please choose a stronger one"
-            )
+            errors.append("This password is too common and easily guessed. Please choose a more secure password.")
 
-        # Sequential characters check (abc, 123, xyz)
-        if self._has_sequential_chars(password):
-            errors.append(
-                "Password contains sequential characters (e.g., 'abc', '123', 'xyz')"
-            )
-
-        # Repeated characters check (aaa, 111)
-        if self._has_repeated_chars(password):
-            errors.append(
-                "Password contains too many repeated characters (e.g., 'aaa', '111')"
-            )
-
-        # Calculate strength score
         strength = self._calculate_strength(password, errors)
 
         return {

@@ -22,25 +22,26 @@ import {
 const DEFAULT_USER_PLANS = [
   {
     id: 'free',
-    name: 'Starter Free',
-    badge: 'Free Forever',
+    name: '14-Day Free Trial',
+    badge: '14 Days Full Access',
     badgeColor: '#64748b',
     monthlyPrice: 0,
     yearlyPrice: 0,
-    description: 'Essential L7 protection for personal blogs and developer test sites.',
+    description: 'Essential L7 edge protection and trial access for testing security & WordPress features.',
     features: [
       '1 Protected Website / Origin',
-      'Core WAF Rule Engine (500+ Signatures)',
-      '10,000 Edge Requests / Month',
-      'Basic Anomaly & Rate Limiting',
+      '10,000 Edge Requests / Trial',
+      'Core WAF Rule Engine (OWASP Top 10)',
+      'Global IP Blacklist & Whitelist',
+      'Country Blocking & Geo-Fencing Preview',
       'Real-Time Edge Security Block Page',
       'Community Forum Support'
     ],
     notIncluded: [
-      '6.5M+ Threat Neural Classifier',
-      '639K+ Generative AI Prompt Shield',
+      'Autonomous ML Threat Engine',
+      'AI Prompt Injection Shield',
+      'WordPress Multi-Site Fleet Management',
       'Layer 7 DDoS Volumetric Mitigation',
-      'Custom Regex Policy Authoring',
       '24/7 Dedicated SLA Response'
     ]
   },
@@ -53,16 +54,18 @@ const DEFAULT_USER_PLANS = [
     yearlyPrice: 90,
     description: 'Advanced edge security, bot defense, and rate limiting for growing web services.',
     features: [
-      '5 Protected Websites / APIs',
-      '100,000 Edge Requests / Month',
-      'Core WAF + Heuristic Vectorizer',
-      '6.5M+ Threat Neural Classifier',
-      '50,000+ Threat Signatures & Hashes',
-      '20 Custom Regex Policies',
-      'Priority Email Support'
+      '5 Protected Websites & WordPress Sites',
+      '100,000 Edge Clean Requests / Month',
+      'Autonomous Machine Learning Threat Engine',
+      'Centralized WordPress Fleet Console (5 Sites)',
+      'Country Blocking & Geographic Geo-Fencing',
+      'Global IP Blacklist & Whitelist Management',
+      'Token-Bucket Rate Limiter & Scraper Ban',
+      'OWASP Top 10 + AI Prompt Injection Guard',
+      'Priority Email Support (4-hour SLA)'
     ],
     notIncluded: [
-      'Full 2,000,000+ Signatures Matrix',
+      'Sub-Millisecond Line-Rate DFA Inspection',
       'Layer 7 DDoS Volumetric Scrubber',
       '24/7 Dedicated SLA Response'
     ]
@@ -71,42 +74,43 @@ const DEFAULT_USER_PLANS = [
     id: 'pro',
     name: 'Enterprise Pro',
     badge: 'Most Popular',
-    badgeColor: '#6366f1',
+    badgeColor: '#E8792F',
     isPopular: true,
     monthlyPrice: 20,
     yearlyPrice: 190,
-    description: 'Maximum cyber defense for mission-critical SaaS, e-commerce, and high-traffic origins.',
+    description: 'Maximum cyber defense for mission-critical SaaS, multi-site agencies, and high-traffic stores.',
     features: [
-      '10 Protected Websites & APIs',
-      '1,000,000 Edge Requests / Month',
-      'Full 2,000,000+ Hyper-Scale Signatures',
-      '6,501,208+ Dataset Deep ML Core',
-      '639K+ AI Prompt Injection Shield',
-      'Unlimited Custom Regex Policies',
+      '10 Protected Websites & WordPress Fleets',
+      '1,000,000 Clean Requests / Month',
+      'Sub-Millisecond (<0.12ms) Line-Rate DFA Inspection',
+      '10-Site WordPress Fleet Safe-Updates & Rollback',
+      'Deep 5.2M+ Checksum Malware & Backdoor Hunter',
+      'Granular Country Blocking & ASN Geo-Fencing',
+      'Unlimited IP Blacklist & Whitelist Rules',
+      'Advanced WordPress RASP Host Memory Shield',
       'Layer 7 Volumetric DDoS Mitigation',
-      'Sub-Millisecond (0.12ms) Edge Inspection',
-      '24/7 Priority SLA Response'
+      '24/7 Priority Dedicated SLA (1-hour response)'
     ],
     notIncluded: []
   },
   {
     id: 'enterprise',
-    name: 'Dedicated Enterprise',
-    badge: 'Maximum Scale',
-    badgeColor: '#8b5cf6',
+    name: 'Business & Agency',
+    badge: 'Agency & Scale',
+    badgeColor: '#10201E',
     monthlyPrice: 49,
     yearlyPrice: 470,
-    description: 'Dedicated security infrastructure, multi-cluster proxy nodes, and 15-minute SLA.',
+    description: 'Dedicated security infrastructure, multi-site agency management, and guaranteed enterprise incident response.',
     features: [
-      '15 Protected Websites & APIs',
-      '10,000,000+ Edge Requests / Month',
-      'Dedicated Neural Vectorizer Node',
-      'Full 2,000,000+ Signatures Matrix',
-      '639K+ AI Gateway & Jailbreak Guard',
-      'Automated DDoS Scrubber Mesh',
-      'Unlimited Zero-Day Custom Policies',
-      'Dedicated Security Architect',
-      '15-Minute Guaranteed SLA Response'
+      '20 Protected Websites & WordPress Fleets',
+      '5,000,000+ Clean Requests / Month',
+      'Full Centralized WordPress Fleet Command (20 Sites)',
+      'Granular Country & Regional Geo-Fencing',
+      'Unlimited Global IP Blacklist & Whitelisting',
+      'Custom Zero-Day Virtual Patching Engine',
+      'White-Label Automated Client Security PDF Reports',
+      'Custom SIEM Log Export (Splunk, Datadog)',
+      '15-Minute Guaranteed Critical SLA Response'
     ],
     notIncluded: []
   }
@@ -496,7 +500,7 @@ export default function UserPricing() {
             Subscription &amp; Protection Plans
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '640px', lineHeight: '1.55' }}>
-            Self-service upgrade with instant activation. Protect more domains, deploy 2M+ attack signatures, and unlock 6.5M+ neural threat vectorizer.
+            Self-service upgrade with instant activation. Protect more websites, manage multi-site WordPress fleets, and unlock sub-millisecond line-rate edge defense.
           </p>
         </div>
 
@@ -708,7 +712,7 @@ export default function UserPricing() {
                       ${price}
                     </span>
                     <span style={{ fontSize: '12.5px', color: '#60716B', fontWeight: '600' }}>
-                      {plan.monthlyPrice === 0 ? 'forever' : isYearly ? '/ year' : '/ month'}
+                      {plan.monthlyPrice === 0 ? '/ 14-day trial' : isYearly ? '/ year' : '/ month'}
                     </span>
                   </div>
                   {isYearly && plan.monthlyPrice > 0 && (
@@ -718,7 +722,7 @@ export default function UserPricing() {
                   )}
                   {plan.monthlyPrice === 0 && (
                     <div style={{ fontSize: '11.5px', color: '#2A8B68', fontWeight: '600', marginTop: '4px' }}>
-                      Free tier active
+                      14-Day Free Access
                     </div>
                   )}
                 </div>

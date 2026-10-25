@@ -3,7 +3,7 @@ Contributors: mdefenderpro
 Tags: firewall, security, waf, web application firewall, ml, machine learning, ai, wordpress security, malware, scanner, protection
 Requires at least: 5.0
 Tested up to: 6.4
-Stable tag: 3.5.0
+Stable tag: 4.3.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html

@@ -244,7 +244,7 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
   }
 
   // Filter records
-  const records = zone?.records || []
+  const records = (zone?.records && zone.records.length > 0) ? zone.records : (website?.dns_records || [])
   const filteredRecords = records.filter(r => {
     const matchesSearch = !search ||
       r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -283,17 +283,9 @@ export default function DnsZoneDrawer({ isOpen, onClose, website, onRecordUpdate
           background: '#ffffff', position: 'sticky', top: 0, zIndex: 10
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '42px', height: '42px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-              color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-            }}>
-              <i className="fas fa-shield-halved"></i>
-            </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#0f172a' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#10201E' }}>
                   {domain}
                 </h2>
                 <span style={{

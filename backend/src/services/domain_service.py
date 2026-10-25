@@ -94,7 +94,7 @@ PLAN_LIMITS = {
     "free": 1,
     "go": 5,
     "pro": 10,
-    "enterprise": 15,
+    "enterprise": 20,
     "premium": 10,
     "ultra": 9999
 }
@@ -145,13 +145,21 @@ class DomainService:
 
     def get_tenant_website_count(self, user_id: str) -> Tuple[int, int, int]:
         """Returns (total_websites, wordpress_count, custom_domains_count) for the tenant."""
+        user_ids = [str(user_id)]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(str(user_id)):
+                user_ids.append(ObjectId(str(user_id)))
+        except Exception:
+            pass
+
         wp_count = self.db.websites.count_documents({
-            "user_id": user_id,
-            "platform": "wordpress"
+            "user_id": {"$in": user_ids},
+            "platform": {"$regex": "^wordpress", "$options": "i"}
         })
         domains_count = self.db.websites.count_documents({
-            "user_id": user_id,
-            "platform": {"$ne": "wordpress"}
+            "user_id": {"$in": user_ids},
+            "platform": {"$not": {"$regex": "^wordpress", "$options": "i"}}
         })
         return wp_count + domains_count, wp_count, domains_count
 

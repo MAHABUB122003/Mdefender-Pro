@@ -68,5 +68,12 @@ def normalize_text(t):
 
 
 def get_vectorizer():
+    vec_file = os.path.join(os.path.dirname(__file__), "../../models/waf_vectorizer.pkl")
+    if os.path.exists(vec_file):
+        try:
+            import joblib
+            return joblib.load(vec_file)
+        except Exception:
+            pass
     params = load_params()
     return HashingVectorizer(**params)

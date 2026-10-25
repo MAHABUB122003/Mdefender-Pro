@@ -4,6 +4,35 @@ import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
 import DnsZoneDrawer from '../components/DnsZoneDrawer'
+import WordPressLogo from '../components/WordPressLogo'
+import {
+  ShieldCheck,
+  ShieldAlert,
+  Globe,
+  Key,
+  RotateCw,
+  Plus,
+  Trash2,
+  ExternalLink,
+  Flame,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  Download,
+  Server,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  X,
+  Zap,
+  ArrowRight,
+  Lock,
+  MoreVertical,
+  Sliders,
+  Activity,
+  FileText
+} from 'lucide-react'
 
 export default function UserWebsites() {
   const cachedData = userStore.get('websites') || userStore.get('dashboard')
@@ -43,6 +72,25 @@ export default function UserWebsites() {
   // Upgrade prompt modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [togglingAttack, setTogglingAttack] = useState({})
+
+  // Three-dots dropdown menu state
+  const [activeMenuSiteId, setActiveMenuSiteId] = useState(null)
+
+  // GitHub-Style Delete Confirmation Modal State
+  const [deleteModalSite, setDeleteModalSite] = useState(null)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const [deletingSite, setDeletingSite] = useState(false)
+
+  // Close 3-dots dropdown menu when clicking anywhere outside
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest('.site-actions-menu-container')) {
+        setActiveMenuSiteId(null)
+      }
+    }
+    window.addEventListener('click', handleGlobalClick)
+    return () => window.removeEventListener('click', handleGlobalClick)
+  }, [])
 
   const apiEndpoint = window.location.origin
 
@@ -232,19 +280,32 @@ export default function UserWebsites() {
     }
   }
 
-  const handleRemoveWebsite = async (w) => {
-    const targetId = (typeof w === 'object') ? (w.id || w._id || w.website_id || w.domain || w.name) : w
-    const domainName = (typeof w === 'object') ? (w.domain || w.name || w.url || 'this website') : w
-    if (!confirm(`Are you sure you want to remove ${domainName}? This will disconnect all protection.`)) return
+  const handleInitiateDelete = (w) => {
+    setActiveMenuSiteId(null)
+    setDeleteModalSite(w)
+    setDeleteConfirmInput('')
+  }
+
+  const handleConfirmDeleteWebsite = async () => {
+    if (!deleteModalSite) return
+    const domainName = deleteModalSite.domain || deleteModalSite.name || deleteModalSite.url || ''
+    if (deleteConfirmInput.trim().toLowerCase() !== domainName.toLowerCase()) return
+
+    const targetId = deleteModalSite.id || deleteModalSite._id || deleteModalSite.website_id || domainName
+    setDeletingSite(true)
     try {
       await api.removeUserWebsite(targetId)
-      setFeedbackMsg({ type: 'success', text: `Website "${domainName}" removed successfully.` })
+      setFeedbackMsg({ type: 'success', text: `Website "${domainName}" disconnected and removed successfully.` })
       userStore.clear()
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
+      setDeleteModalSite(null)
+      setDeleteConfirmInput('')
       await fetchData()
     } catch (err) {
       setFeedbackMsg({ type: 'error', text: err.message || 'Failed to remove website' })
+    } finally {
+      setDeletingSite(false)
     }
   }
 
@@ -328,225 +389,637 @@ export default function UserWebsites() {
         </div>
       )}
 
-      {/* WordPress Plugin Integration Card */}
-      <div className="card" style={{
-        background: 'var(--card-bg, #ffffff)', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.03)', padding: '24px', marginBottom: '24px',
+      {/* ========================================================================= */}
+      {/* 1. WORDPRESS SECURITY & CONNECT FLEET HERO CARD                           */}
+      {/* ========================================================================= */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '16px',
+        border: '1px solid #D9E1DC',
+        boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)',
+        padding: '24px 26px',
+        marginBottom: '24px',
+        position: 'relative'
       }}>
-        {/* WordPress Hero Banner */}
+        {/* Top Integration Summary Banner */}
         <div style={{
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-          borderRadius: '12px', border: '1px solid #bae6fd',
-          padding: '18px 22px', marginBottom: '20px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px'
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBF9 60%, #F5F9F6 100%)',
+          borderRadius: '12px',
+          border: '1px solid #D9E1DC',
+          padding: '18px 22px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '46px', height: '46px', borderRadius: '12px',
-              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-              color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '22px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: '#FAFBF9',
+              border: '1.5px solid #D9E1DC',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 6px rgba(16, 32, 30, 0.04)',
+              position: 'relative',
+              flexShrink: 0
             }}>
-              <i className="fab fa-wordpress"></i>
+              <WordPressLogo size={28} color="#10201E" />
+              <span style={{
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: '#10B981',
+                border: '2px solid #FFFFFF'
+              }} />
             </div>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: '800', color: '#0369a1' }}>
-                MDefender Pro WordPress Security
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: 0 }}>
+                  Official MDefender Pro WordPress Security
+                </h3>
+                <span style={{
+                  fontSize: '10.5px',
+                  fontWeight: '800',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  background: '#F0FDF4',
+                  color: '#15803D',
+                  border: '1px solid #DCFCE7'
+                }}>
+                  v2.0 ACTIVE
+                </span>
               </div>
-              <div style={{ fontSize: '12.5px', color: '#0284c7', marginTop: '2px' }}>
-                Official security plugin v2.0. Real-time Layer 7 WAF, auto-malware scanner &amp; instant API key connect.
+              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
+                Kernel-level PHP AST engine, real-time Layer 7 WAF, and autonomous malware quarantine.
               </div>
             </div>
           </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <a
               href="/api/v1/wordpress/download"
               download="mdefender-pro.zip"
               style={{
-                padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#ffffff', borderRadius: '9px', fontSize: '13px', fontWeight: '700',
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                padding: '9px 18px',
+                background: '#15803D',
+                color: '#FFFFFF',
+                borderRadius: '9px',
+                fontSize: '12.5px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 8px rgba(21, 128, 61, 0.25)',
+                transition: 'all 0.15s ease'
               }}
             >
-              <i className="fas fa-download"></i>
+              <Download size={14} />
               <span>Download Plugin (.ZIP)</span>
             </a>
-            <a
-              href="/user/domains"
+
+            <Link
+              to="/user/domains"
               style={{
-                padding: '9px 16px', background: '#ffffff', border: '1.5px solid #0284c7',
-                color: '#0284c7', borderRadius: '9px', fontSize: '13px', fontWeight: '700',
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                padding: '9px 16px',
+                background: '#FAFBF9',
+                border: '1px solid #D9E1DC',
+                color: '#10201E',
+                borderRadius: '9px',
+                fontSize: '12.5px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
-              <i className="fas fa-network-wired"></i>
+              <Globe size={14} color="#2A8B68" />
               <span>Cloud WAF Domains &rarr;</span>
-            </a>
+            </Link>
           </div>
         </div>
 
-        <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#64748b', marginBottom: '12px' }}>
+        {/* Connect Form */}
+        <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', marginBottom: '10px' }}>
           Connect a WordPress website to generate a dedicated Site API Key:
         </div>
 
         <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Domain input */}
           <div style={{ flex: '1 1 320px', position: 'relative' }}>
+            <Globe size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#87948D' }} />
             <input
               type="text"
-              placeholder="e.g. mywordpresssite.com or blog.company.com"
+              placeholder="e.g. mahabub.shop or blog.company.com"
               value={newWebsite}
               onChange={e => setNewWebsite(e.target.value)}
               style={{
-                width: '100%', height: '46px', padding: '0 16px', border: '1.5px solid var(--border-color, #cbd5e1)', borderRadius: '10px',
-                fontSize: '14px', fontFamily: 'inherit', background: 'var(--input-bg, #f8fafc)', color: 'var(--text-main, #0f172a)', fontWeight: '600',
-                boxSizing: 'border-box'
+                width: '100%',
+                height: '44px',
+                padding: '0 16px 0 40px',
+                border: '1.5px solid #D9E1DC',
+                borderRadius: '10px',
+                fontSize: '13.5px',
+                fontFamily: 'inherit',
+                background: '#FAFBF9',
+                color: '#10201E',
+                fontWeight: '600',
+                boxSizing: 'border-box',
+                outline: 'none',
+                transition: 'border-color 0.15s ease'
               }}
               required
             />
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={adding}
-            className="btn-primary"
             style={{
-              height: '46px', padding: '0 26px', borderRadius: '10px', fontSize: '14px', fontWeight: '700',
-              display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: adding ? 'not-allowed' : 'pointer',
-              background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff', border: 'none',
-              boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', flexShrink: 0
+              height: '44px',
+              padding: '0 24px',
+              borderRadius: '10px',
+              fontSize: '13px',
+              fontWeight: '700',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: adding ? 'not-allowed' : 'pointer',
+              background: '#10201E',
+              color: '#FFFFFF',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)',
+              flexShrink: 0,
+              transition: 'all 0.15s ease'
             }}
           >
-            <i className={`fas ${adding ? 'fa-spinner fa-spin' : 'fab fa-wordpress'}`}></i>
-            <span>{adding ? 'Connecting...' : 'Connect WordPress Site'}</span>
+            {adding ? (
+              <>
+                <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Connecting...</span>
+              </>
+            ) : (
+              <>
+                <WordPressLogo size={18} variant="stencil" color="#FFFFFF" />
+                <span>Connect WordPress Site</span>
+              </>
+            )}
           </button>
         </form>
       </div>
 
-      {/* Protected Websites List */}
-      <div className="card" style={{
-        background: 'var(--card-bg, #ffffff)', borderRadius: '14px', border: '1px solid var(--border-color, #e2e8f0)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden'
+      {/* ========================================================================= */}
+      {/* 2. PROTECTED WORDPRESS WEBSITES LIST                                      */}
+      {/* ========================================================================= */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '16px',
+        border: '1px solid #D9E1DC',
+        boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)',
+        overflow: 'visible'
       }}>
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{
+          padding: '18px 24px',
+          borderBottom: '1px solid #F1F5F2',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
           <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-main, #0f172a)', margin: '0 0 2px' }}>
-              My Protected WordPress Websites ({wpWebsites.length})
+            <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Protected WordPress Websites</span>
+              <span style={{
+                fontSize: '11px',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                background: '#F1F5F3',
+                color: '#10201E',
+                fontWeight: '800',
+                border: '1px solid #D9E1DC'
+              }}>
+                {wpWebsites.length}
+              </span>
             </h3>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b' }}>
-              Manage WordPress website API keys, protection status, and integration settings.
+            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B' }}>
+              Manage WordPress site API keys, edge security status, and Under Attack enforcement.
             </p>
           </div>
-          <button onClick={fetchData} className="btn-small" style={{ background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #cbd5e1)', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <i className="fas fa-rotate"></i>
+
+          <button
+            onClick={fetchData}
+            style={{
+              background: '#FAFBF9',
+              border: '1px solid #D9E1DC',
+              padding: '6px 14px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#10201E'
+            }}
+          >
+            <RotateCw size={13} />
             <span>Refresh</span>
           </button>
         </div>
 
         <div>
-          {wpWebsites.length ? wpWebsites.map((w, i) => (
-            <div key={w.id || w._id || i} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '18px 24px', borderBottom: i < wpWebsites.length - 1 ? '1px solid var(--border-color, #f1f5f9)' : 'none',
-              transition: 'background 0.15s', flexWrap: 'wrap', gap: '14px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{
-                  width: '44px', height: '44px', borderRadius: '12px', background: '#f0f9ff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', color: '#0284c7',
-                  border: '1.5px solid #bae6fd'
-                }}>
-                  <i className="fab fa-wordpress"></i>
-                </div>
-                <div>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>{w.domain || w.url || w.name || w}</span>
-                    <span className="badge success" style={{ fontSize: '10.5px', padding: '2px 8px' }}>
-                      <i className="fas fa-circle" style={{ fontSize: '6px', marginRight: '4px' }}></i>
-                      {w.status || 'Active'}
-                    </span>
-                    <span style={{ fontSize: '10.5px', padding: '2px 8px', background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', borderRadius: '6px', fontWeight: '700' }}>
-                      WordPress Plugin
-                    </span>
-                    {w.under_attack_mode && (
+          {wpWebsites.length ? wpWebsites.map((w, i) => {
+            const domainName = w.domain || w.url || w.name || w
+            const isAttacked = !!w.under_attack_mode
+
+            return (
+              <div
+                key={w.id || w._id || i}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '18px 24px',
+                  borderBottom: i < wpWebsites.length - 1 ? '1px solid #F1F5F2' : 'none',
+                  transition: 'background 0.15s ease',
+                  flexWrap: 'wrap',
+                  gap: '16px'
+                }}
+              >
+                {/* Left: Authentic Vector WordPress Logo + Domain Telemetry */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '260px' }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: '#FAFBF9',
+                    border: '1.5px solid #D9E1DC',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 1px 3px rgba(16, 32, 30, 0.04)',
+                    position: 'relative',
+                    flexShrink: 0
+                  }}>
+                    <WordPressLogo size={28} color="#10201E" />
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '-2px',
+                      right: '-2px',
+                      width: '9px',
+                      height: '9px',
+                      borderRadius: '50%',
+                      background: '#10B981',
+                      border: '2px solid #FFFFFF'
+                    }} />
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '14.5px', fontWeight: '700', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <a
+                        href={`https://${domainName}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          color: '#10201E',
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <span>{domainName}</span>
+                        <ExternalLink size={12} color="#87948D" />
+                      </a>
+
                       <span style={{
-                        fontSize: '10.5px', padding: '2px 8px',
-                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                        color: '#ffffff', borderRadius: '6px', fontWeight: '800',
-                        boxShadow: '0 0 8px rgba(239, 68, 68, 0.4)',
-                        display: 'inline-flex', alignItems: 'center', gap: '4px'
+                        fontSize: '10.5px',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        background: '#F0FDF4',
+                        color: '#15803D',
+                        border: '1px solid #DCFCE7',
+                        fontWeight: '700',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}>
-                        <i className="fas fa-bolt"></i>
-                        Under Attack Active
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
+                        <span>{w.status || 'Active'}</span>
                       </span>
+
+                      <span style={{
+                        fontSize: '10.5px',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: '#F1F5F3',
+                        color: '#1E293B',
+                        border: '1px solid #D9E1DC',
+                        fontWeight: '700',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}>
+                        <WordPressLogo size={12} color="#10201E" />
+                        <span>WordPress Plugin</span>
+                      </span>
+
+                      {isAttacked && (
+                        <span style={{
+                          fontSize: '10.5px',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: '#FEF2F2',
+                          color: '#DC2626',
+                          border: '1px solid #FECACA',
+                          fontWeight: '800',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <Flame size={12} />
+                          <span>Under Attack Mode Active</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                      Connected: {w.added_at ? (typeof w.added_at === 'string' ? w.added_at.split('T')[0] : 'Protected') : 'Protected'} &bull; Real-time Edge WAF Synced
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Quick Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {/* Under Attack Toggle */}
+                  <button
+                    onClick={() => handleToggleUnderAttack(w)}
+                    disabled={togglingAttack[w.id || w._id]}
+                    title={isAttacked ? "Under Attack Mode is ACTIVE (Proof-of-Work challenge active for all bots). Click to disable." : "Click to activate 'I'm Under Attack' Mode to block aggressive DDoS & botnets"}
+                    style={{
+                      padding: '7px 14px',
+                      background: isAttacked ? '#FEF2F2' : '#FFFFFF',
+                      color: isAttacked ? '#DC2626' : '#475569',
+                      border: isAttacked ? '1px solid #FECACA' : '1px solid #D9E1DC',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Flame size={13} color={isAttacked ? '#DC2626' : '#87948D'} />
+                    <span>{isAttacked ? 'Under Attack: ON' : "I'm Under Attack"}</span>
+                  </button>
+
+                  {/* Setup Guide & Key */}
+                  <button
+                    onClick={() => handleOpenKeyModal(w)}
+                    style={{
+                      padding: '7px 16px',
+                      background: '#10201E',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 6px rgba(16, 32, 30, 0.15)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Key size={13} />
+                    <span>Setup Guide &amp; Key</span>
+                  </button>
+
+                  {/* Three-Dots Actions Dropdown Menu */}
+                  <div className="site-actions-menu-container" style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const sId = w.id || w._id || i
+                        setActiveMenuSiteId(activeMenuSiteId === sId ? null : sId)
+                      }}
+                      title="More Options"
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '8px',
+                        border: '1px solid #D9E1DC',
+                        background: activeMenuSiteId === (w.id || w._id || i) ? '#F1F5F3' : '#FFFFFF',
+                        color: '#10201E',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3' }}
+                      onMouseLeave={e => {
+                        if (activeMenuSiteId !== (w.id || w._id || i)) e.currentTarget.style.background = '#FFFFFF'
+                      }}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+
+                    {/* Dropdown Menu Popup */}
+                    {activeMenuSiteId === (w.id || w._id || i) && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          top: 'calc(100% + 6px)',
+                          background: '#FFFFFF',
+                          border: '1px solid #D9E1DC',
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px -5px rgba(16, 32, 30, 0.12), 0 0 1px rgba(0,0,0,0.1)',
+                          width: '210px',
+                          zIndex: 1000,
+                          padding: '6px',
+                          animation: 'fadeIn 0.15s ease'
+                        }}
+                      >
+                        <a
+                          href={`https://${domainName}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#10201E',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textAlign: 'left',
+                            boxSizing: 'border-box',
+                            transition: 'background 0.12s ease'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        >
+                          <ExternalLink size={14} color="#15803D" />
+                          <span>Visit Website</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveMenuSiteId(null)
+                            handleOpenKeyModal(w)
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#10201E',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textAlign: 'left',
+                            transition: 'background 0.12s ease'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        >
+                          <Key size={14} color="#D97706" />
+                          <span>Setup Guide &amp; Key</span>
+                        </button>
+
+                        <a
+                          href={`/user/logs?domain=${encodeURIComponent(domainName)}`}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#10201E',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textAlign: 'left',
+                            boxSizing: 'border-box',
+                            transition: 'background 0.12s ease'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        >
+                          <Activity size={14} color="#2563EB" />
+                          <span>View Traffic Logs</span>
+                        </a>
+
+                        <a
+                          href="/user/rules"
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#10201E',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textAlign: 'left',
+                            boxSizing: 'border-box',
+                            transition: 'background 0.12s ease'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        >
+                          <Sliders size={14} color="#6366F1" />
+                          <span>Configure WAF Rules</span>
+                        </a>
+
+                        <div style={{ height: '1px', background: '#F1F5F2', margin: '4px 0' }} />
+
+                        <button
+                          type="button"
+                          onClick={() => handleInitiateDelete(w)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: '#DC2626',
+                            fontSize: '12.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textAlign: 'left',
+                            transition: 'background 0.12s ease'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                        >
+                          <Trash2 size={14} />
+                          <span>Disconnect &amp; Remove</span>
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
-                    Added: {w.added_at ? (typeof w.added_at === 'string' ? w.added_at.split('T')[0] : 'Protected') : 'Protected'}
-                  </div>
                 </div>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {/* I'm Under Attack Mode Toggle Button */}
-                <button
-                  onClick={() => handleToggleUnderAttack(w)}
-                  disabled={togglingAttack[w.id || w._id]}
-                  title={w.under_attack_mode ? "Under Attack Mode is ACTIVE (Proof-of-Work challenge active for all bots). Click to disable." : "Click to activate 'I'm Under Attack' Mode to block aggressive DDoS & botnets"}
-                  style={{
-                    padding: '8px 14px',
-                    background: w.under_attack_mode
-                      ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
-                      : '#ffffff',
-                    color: w.under_attack_mode ? '#ffffff' : '#d97706',
-                    border: w.under_attack_mode ? '1px solid #b91c1c' : '1.5px solid #f59e0b',
-                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    boxShadow: w.under_attack_mode ? '0 0 12px rgba(220, 38, 38, 0.4)' : 'none',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  <i className={`fas ${togglingAttack[w.id || w._id] ? 'fa-spinner fa-spin' : (w.under_attack_mode ? 'fa-bolt' : 'fa-shield-halved')}`}></i>
-                  <span>{w.under_attack_mode ? 'Under Attack: ON' : "I'm Under Attack"}</span>
-                </button>
-
-                {/* View Key & Setup Button */}
-                <button
-                  onClick={() => handleOpenKeyModal(w)}
-                  style={{
-                    padding: '8px 16px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff',
-                    border: 'none', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  <i className="fas fa-key"></i>
-                  <span>Setup Guide &amp; Key</span>
-                </button>
-
-
-
-                {/* Remove Website Button */}
-                <button
-                  onClick={() => handleRemoveWebsite(w)}
-                  style={{
-                    padding: '8px 14px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s'
-                  }}
-                >
-                  <i className="fas fa-trash-can"></i>
-                  <span>Remove</span>
-                </button>
+            )
+          }) : (
+            <div style={{ textAlign: 'center', padding: '56px 20px', color: '#64748B' }}>
+              <div style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '14px',
+                background: '#FAFBF9',
+                border: '1px solid #D9E1DC',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px',
+                boxShadow: '0 2px 8px rgba(16, 32, 30, 0.04)'
+              }}>
+                <WordPressLogo size={34} color="#10201E" />
               </div>
-            </div>
-          )) : (
-            <div style={{ textAlign: 'center', padding: '56px 20px', color: '#94a3b8' }}>
-              <i className="fas fa-shield-halved" style={{ fontSize: '40px', display: 'block', marginBottom: '14px', color: '#cbd5e1' }}></i>
-              <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '700', color: 'var(--text-main, #0f172a)' }}>No Websites Connected Yet</h4>
-              <p style={{ margin: 0, fontSize: '13px' }}>Add your first website above to generate your API key and activate real-time WAF protection.</p>
+              <h4 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
+                No WordPress Sites Connected Yet
+              </h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#87948D' }}>
+                Enter your website domain above to generate your dedicated API key and activate real-time WAF protection.
+              </p>
             </div>
           )}
         </div>
@@ -580,40 +1053,46 @@ export default function UserWebsites() {
           >
             {/* Modal Header */}
             <div style={{
-              padding: '22px 28px 20px',
-              borderBottom: '1px solid #f1f5f9',
+              padding: '20px 26px',
+              borderBottom: '1px solid #D9E1DC',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              background: '#ffffff'
+              background: '#FFFFFF'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-                  boxShadow: '0 8px 16px -4px rgba(2, 132, 199, 0.35)',
+                  background: '#FAFBF9',
+                  border: '1.5px solid #D9E1DC',
+                  boxShadow: '0 2px 6px rgba(16, 32, 30, 0.04)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '19px', color: '#ffffff'
+                  position: 'relative'
                 }}>
-                  <i className="fas fa-key"></i>
+                  <WordPressLogo size={28} color="#10201E" />
+                  <span style={{
+                    position: 'absolute', bottom: '-2px', right: '-2px',
+                    width: '9px', height: '9px', borderRadius: '50%',
+                    background: '#10B981', border: '2px solid #FFFFFF'
+                  }} />
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.2px' }}>
-                      API Key &amp; Integration Hub
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E', letterSpacing: '-0.2px' }}>
+                      WordPress Security &amp; API Integration Hub
                     </h3>
                     <span style={{
-                      fontSize: '11px', fontWeight: '700', color: '#059669',
-                      background: '#ecfdf5', border: '1px solid #a7f3d0',
+                      fontSize: '10.5px', fontWeight: '800', color: '#15803D',
+                      background: '#F0FDF4', border: '1px solid #DCFCE7',
                       padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px'
                     }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
                       Active WAF
                     </span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>Target Host:</span>
                     <strong style={{
-                      color: '#0284c7', background: '#f0f9ff', padding: '1px 8px',
-                      borderRadius: '6px', border: '1px solid #bae6fd', fontFamily: 'Consolas, Monaco, monospace'
+                      color: '#10201E', background: '#FAFBF9', padding: '1px 8px',
+                      borderRadius: '6px', border: '1px solid #D9E1DC', fontFamily: 'Consolas, Monaco, monospace'
                     }}>
                       {modalDomain}
                     </strong>
@@ -626,37 +1105,37 @@ export default function UserWebsites() {
                 onClick={() => setShowKeyModal(false)}
                 aria-label="Close modal"
                 style={{
-                  background: '#f8fafc', border: '1px solid #e2e8f0',
-                  color: '#64748b', width: '36px', height: '36px', borderRadius: '10px',
-                  cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: '#FAFBF9', border: '1px solid #D9E1DC',
+                  color: '#64748B', width: '34px', height: '34px', borderRadius: '10px',
+                  cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s ease'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3'; e.currentTarget.style.color = '#10201E'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FAFBF9'; e.currentTarget.style.color = '#64748B'; }}
               >
                 <i className="fas fa-xmark"></i>
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '24px 28px' }}>
+            <div style={{ padding: '22px 26px' }}>
               
               {/* API Key Vault Card */}
               <div style={{
-                background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-                border: '1px solid #e2e8f0',
-                borderRadius: '16px', padding: '18px 20px', marginBottom: '24px',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)'
+                background: '#FAFBF9',
+                border: '1px solid #D9E1DC',
+                borderRadius: '14px', padding: '16px 18px', marginBottom: '20px',
+                boxShadow: '0 1px 3px rgba(16, 32, 30, 0.02)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <i className="fas fa-lock" style={{ fontSize: '12px', color: '#0284c7' }}></i>
-                    <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#475569' }}>
-                      Secret API Key
+                    <i className="fas fa-lock" style={{ fontSize: '12px', color: '#10201E' }}></i>
+                    <span style={{ fontSize: '11.5px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#10201E' }}>
+                      Dedicated WordPress API Key
                     </span>
                     <span style={{
-                      fontSize: '10px', fontWeight: '700', color: '#475569',
-                      background: '#e2e8f0', padding: '1px 6px', borderRadius: '4px',
+                      fontSize: '10px', fontWeight: '800', color: '#15803D',
+                      background: '#F0FDF4', border: '1px solid #DCFCE7', padding: '1px 6px', borderRadius: '4px',
                       marginLeft: '4px'
                     }}>
                       PRODUCTION
@@ -667,14 +1146,14 @@ export default function UserWebsites() {
                     type="button"
                     onClick={() => setIsMasked(!isMasked)}
                     style={{
-                      background: '#ffffff', border: '1px solid #cbd5e1',
-                      color: '#0284c7', padding: '4px 10px', borderRadius: '6px',
+                      background: '#FFFFFF', border: '1px solid #D9E1DC',
+                      color: '#475569', padding: '4px 10px', borderRadius: '6px',
                       fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '5px',
-                      transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                      transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#f0f9ff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3'; e.currentTarget.style.color = '#10201E'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#475569'; }}
                   >
                     <i className={`fas ${isMasked ? 'fa-eye' : 'fa-eye-slash'}`}></i>
                     <span>{isMasked ? 'Reveal Key' : 'Hide Key'}</span>
@@ -684,13 +1163,13 @@ export default function UserWebsites() {
                 {/* Key Display & One-Click Copy */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '10px',
-                  background: '#ffffff', border: '1.5px solid #cbd5e1',
-                  borderRadius: '12px', padding: '6px 6px 6px 14px',
-                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)'
+                  background: '#FFFFFF', border: '1.5px solid #D9E1DC',
+                  borderRadius: '10px', padding: '6px 6px 6px 14px',
+                  boxShadow: 'inset 0 1px 2px rgba(16, 32, 30, 0.02)'
                 }}>
                   <div style={{
                     flex: 1, fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                    fontSize: '13.5px', color: isMasked ? '#94a3b8' : '#0f172a',
+                    fontSize: '13px', color: isMasked ? '#87948D' : '#10201E',
                     letterSpacing: isMasked ? '2px' : '0.4px', wordBreak: 'break-all',
                     fontWeight: '700', userSelect: isMasked ? 'none' : 'all'
                   }}>
@@ -703,13 +1182,13 @@ export default function UserWebsites() {
                     type="button"
                     onClick={handleCopyKey}
                     style={{
-                      padding: '10px 18px',
-                      background: copiedKey ? '#10b981' : 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-                      color: '#ffffff', border: 'none', borderRadius: '8px',
-                      cursor: 'pointer', fontWeight: '700', fontSize: '12.5px',
+                      padding: '8px 16px',
+                      background: copiedKey ? '#15803D' : '#10201E',
+                      color: '#FFFFFF', border: 'none', borderRadius: '8px',
+                      cursor: 'pointer', fontWeight: '700', fontSize: '12px',
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
-                      boxShadow: copiedKey ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(2, 132, 199, 0.25)',
-                      transition: 'all 0.2s ease', whiteSpace: 'nowrap', flexShrink: 0
+                      boxShadow: '0 2px 6px rgba(16, 32, 30, 0.15)',
+                      transition: 'all 0.15s ease', whiteSpace: 'nowrap', flexShrink: 0
                     }}
                   >
                     <i className={`fas ${copiedKey ? 'fa-check' : 'fa-copy'}`}></i>
@@ -718,10 +1197,10 @@ export default function UserWebsites() {
                 </div>
 
                 {/* Security footer under key */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <i className="fas fa-shield-halved" style={{ color: '#10b981' }}></i>
-                    <span>Store this secret key securely in your environment variables.</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontSize: '11.5px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fas fa-shield-halved" style={{ color: '#15803D' }}></i>
+                    <span>Enter this key inside MDefender Pro WordPress plugin settings.</span>
                   </div>
 
                   <button
@@ -729,7 +1208,7 @@ export default function UserWebsites() {
                     onClick={handleRegenerateKey}
                     disabled={regenerating}
                     style={{
-                      background: 'none', border: 'none', color: '#e11d48',
+                      background: 'none', border: 'none', color: '#DC2626',
                       fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '4px',
                       opacity: regenerating ? 0.6 : 1
@@ -742,46 +1221,47 @@ export default function UserWebsites() {
               </div>
 
               {/* Integration Guides Hub */}
-              <div style={{ marginTop: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <i className="fab fa-wordpress" style={{ color: '#0284c7' }}></i>
-                      <span>WordPress Plugin Setup (1-Minute Activation)</span>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <WordPressLogo size={18} color="#10201E" />
+                      <span>WordPress Plugin Setup (3 Easy Steps)</span>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                      Follow these 3 simple steps to connect and arm MDefender Pro on your WordPress site.
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                      Follow these simple steps to connect and arm MDefender Pro on your WordPress site.
                     </div>
                   </div>
                 </div>
 
                 {/* WordPress Setup Guide Card */}
                 <div style={{
-                  background: '#ffffff', border: '1px solid #e2e8f0',
-                  borderRadius: '14px', padding: '20px', color: '#334155',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                  background: '#FFFFFF', border: '1px solid #D9E1DC',
+                  borderRadius: '14px', padding: '18px', color: '#334155'
                 }}>
                   {/* WordPress Download Card */}
                   <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                    border: '1px solid #bae6fd', borderRadius: '12px',
-                    padding: '16px 18px', marginBottom: '18px', flexWrap: 'wrap', gap: '12px'
+                    background: '#FAFBF9',
+                    border: '1px solid #D9E1DC', borderRadius: '12px',
+                    padding: '14px 16px', marginBottom: '16px', flexWrap: 'wrap', gap: '12px'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{
                         width: '42px', height: '42px', borderRadius: '10px',
-                        background: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', fontSize: '22px', boxShadow: '0 4px 10px rgba(2, 132, 199, 0.25)'
+                        background: '#FAFBF9',
+                        border: '1px solid #D9E1DC',
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', flexShrink: 0
                       }}>
-                        <i className="fab fa-wordpress"></i>
+                        <WordPressLogo size={30} color="#10201E" />
                       </div>
                       <div>
-                        <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0369a1' }}>
+                        <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E' }}>
                           MDefender Pro WordPress Security Plugin
                         </div>
-                        <div style={{ fontSize: '11.5px', color: '#0284c7', marginTop: '2px' }}>
-                          Official release v2.0 &bull; Real-time WAF &amp; Malware scanner
+                        <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                          Official release v2.0 &bull; Real-time Layer 7 WAF &amp; Malware scanner
                         </div>
                       </div>
                     </div>
@@ -790,53 +1270,54 @@ export default function UserWebsites() {
                       href="/api/v1/wordpress/download"
                       download="mdefender-pro.zip"
                       style={{
-                        padding: '9px 18px', background: 'linear-gradient(135deg, #10b981, #059669)',
-                        color: '#ffffff', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                        padding: '8px 16px', background: '#15803D',
+                        color: '#FFFFFF', borderRadius: '8px', fontSize: '12px', fontWeight: '700',
                         textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                        boxShadow: '0 2px 6px rgba(21, 128, 61, 0.25)',
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      <i className="fas fa-download"></i>
-                      <span>Download .ZIP</span>
+                      <Download size={14} />
+                      <span>Download Plugin (.ZIP)</span>
                     </a>
                   </div>
 
                   {/* Step-by-Step Setup */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <span style={{
-                        width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
-                        color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                        width: '22px', height: '22px', borderRadius: '50%', background: '#F1F5F3',
+                        color: '#10201E', border: '1px solid #D9E1DC', fontSize: '11px', fontWeight: '800', display: 'inline-flex',
                         alignItems: 'center', justifyContent: 'center', flexShrink: 0
                       }}>1</span>
                       <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155' }}>
-                        Upload the plugin in your WP Dashboard under <strong>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</strong> and click <strong>Activate</strong>.
+                        Upload the plugin in your WordPress Dashboard under <strong>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</strong> and click <strong>Activate</strong>.
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <span style={{
-                        width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
-                        color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                        width: '22px', height: '22px', borderRadius: '50%', background: '#F1F5F3',
+                        color: '#10201E', border: '1px solid #D9E1DC', fontSize: '11px', fontWeight: '800', display: 'inline-flex',
                         alignItems: 'center', justifyContent: 'center', flexShrink: 0
                       }}>2</span>
                       <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
                         In WP Admin &rarr; <strong>MDefender Pro &rarr; Settings</strong>, paste your <strong>Site Secret API Key</strong>:
                         <div style={{
-                          marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0',
+                          marginTop: '6px', background: '#FAFBF9', border: '1px solid #D9E1DC',
                           borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
                           alignItems: 'center', gap: '8px'
                         }}>
-                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#0284c7', wordBreak: 'break-all', fontWeight: '700' }}>
+                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#10201E', wordBreak: 'break-all', fontWeight: '700' }}>
                             {modalKey || 'API_KEY_HERE'}
                           </span>
                           <button
                             type="button"
                             onClick={handleCopyKey}
                             style={{
-                              background: '#ffffff', border: '1px solid #cbd5e1', color: '#334155',
-                              padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                              background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E',
+                              padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                             }}
                           >
                             <i className={`fas ${copiedKey ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
@@ -848,27 +1329,27 @@ export default function UserWebsites() {
 
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <span style={{
-                        width: '24px', height: '24px', borderRadius: '50%', background: '#e0f2fe',
-                        color: '#0284c7', fontSize: '11.5px', fontWeight: '800', display: 'inline-flex',
+                        width: '22px', height: '22px', borderRadius: '50%', background: '#F1F5F3',
+                        color: '#10201E', border: '1px solid #D9E1DC', fontSize: '11px', fontWeight: '800', display: 'inline-flex',
                         alignItems: 'center', justifyContent: 'center', flexShrink: 0
                       }}>3</span>
                       <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
                         Set <strong>API Endpoint URL</strong> to:
                         <div style={{
-                          marginTop: '6px', background: '#f8fafc', border: '1px solid #e2e8f0',
+                          marginTop: '6px', background: '#FAFBF9', border: '1px solid #D9E1DC',
                           borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
                           alignItems: 'center', gap: '8px'
                         }}>
-                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#4f46e5', fontWeight: '700' }}>
+                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#10201E', fontWeight: '700' }}>
                             {apiEndpoint}
                           </span>
                           <button
                             type="button"
                             onClick={handleCopyEndpoint}
                             style={{
-                              background: '#ffffff', border: '1px solid #cbd5e1', color: '#334155',
-                              padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                              background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E',
+                              padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
+                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                             }}
                           >
                             <i className={`fas ${copiedEndpoint ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
@@ -884,24 +1365,24 @@ export default function UserWebsites() {
 
             {/* Modal Footer */}
             <div style={{
-              padding: '16px 28px',
-              borderTop: '1px solid #e2e8f0',
-              background: '#f8fafc',
+              padding: '14px 26px',
+              borderTop: '1px solid #D9E1DC',
+              background: '#FAFBF9',
               borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-              <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fas fa-book-open" style={{ color: '#0284c7' }}></i>
-                <span>Need more setup help? Check the <a href="/docs" target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'none', fontWeight: '700' }}>WAF Documentation &rarr;</a></span>
+              <div style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-book-open" style={{ color: '#10201E' }}></i>
+                <span>Need setup help? Check the <a href="/docs" target="_blank" rel="noreferrer" style={{ color: '#15803D', textDecoration: 'none', fontWeight: '700' }}>WAF Documentation &rarr;</a></span>
               </div>
 
               <button
                 onClick={() => setShowKeyModal(false)}
-                className="btn-primary"
                 style={{
-                  height: '38px', padding: '0 24px', borderRadius: '10px', fontSize: '13px', fontWeight: '800',
-                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)', color: '#ffffff',
-                  border: 'none', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)', cursor: 'pointer'
+                  height: '38px', padding: '0 24px', borderRadius: '9px', fontSize: '13px', fontWeight: '800',
+                  background: '#10201E', color: '#FFFFFF',
+                  border: 'none', boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)', cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 Done &amp; Activated
@@ -969,10 +1450,158 @@ export default function UserWebsites() {
           </div>
         </div>
       )}
+      {/* ========================================================================= */}
+      {/* GITHUB-STYLE DELETE / DISCONNECT CONFIRMATION MODAL                       */}
+      {/* ========================================================================= */}
+      {deleteModalSite && (
+        <div
+          onClick={() => !deletingSite && setDeleteModalSite(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(16, 32, 30, 0.65)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000,
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#FFFFFF', borderRadius: '18px',
+              border: '1.5px solid #FECACA',
+              boxShadow: '0 25px 60px -15px rgba(220, 38, 38, 0.25)',
+              width: '100%', maxWidth: '480px',
+              overflow: 'hidden', color: '#10201E'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid #FEE2E2',
+              background: '#FEF2F2',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px', height: '38px', borderRadius: '10px',
+                  background: '#FFFFFF', border: '1px solid #FECACA',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#DC2626'
+                }}>
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#991B1B' }}>
+                    Disconnect &amp; Delete Website
+                  </h3>
+                  <div style={{ fontSize: '11.5px', color: '#B91C1C', marginTop: '1px' }}>
+                    Irreversible destructive action
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => !deletingSite && setDeleteModalSite(null)}
+                style={{
+                  background: 'none', border: 'none', color: '#991B1B',
+                  cursor: 'pointer', fontSize: '20px', lineHeight: 1, padding: '4px'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '22px 24px' }}>
+              <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                This will permanently disconnect <strong>{deleteModalSite.domain || deleteModalSite.name || 'this website'}</strong> from MDefender Pro. All active Layer 7 edge filtering, malware quarantining, and dedicated API keys will be immediately revoked.
+              </p>
+
+              <div style={{
+                background: '#FAFBF9', border: '1px solid #D9E1DC',
+                borderRadius: '10px', padding: '12px 14px', marginBottom: '16px',
+                fontSize: '12.5px', color: '#10201E'
+              }}>
+                <div>To confirm, type the exact domain name below:</div>
+                <div style={{
+                  marginTop: '6px', fontFamily: 'Consolas, Monaco, monospace',
+                  fontWeight: '800', color: '#DC2626', background: '#FFFFFF',
+                  padding: '6px 10px', borderRadius: '6px', border: '1px dashed #FECACA',
+                  userSelect: 'all'
+                }}>
+                  {deleteModalSite.domain || deleteModalSite.name || ''}
+                </div>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Type domain name to confirm"
+                value={deleteConfirmInput}
+                onChange={e => setDeleteConfirmInput(e.target.value)}
+                disabled={deletingSite}
+                style={{
+                  width: '100%', height: '42px', padding: '0 14px',
+                  border: '1.5px solid ' + (deleteConfirmInput.trim().toLowerCase() === (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase() ? '#DC2626' : '#D9E1DC'),
+                  borderRadius: '9px', fontSize: '13.5px', fontWeight: '600',
+                  background: '#FFFFFF', color: '#10201E', outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+                autoFocus
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px', borderTop: '1px solid #F1F5F2',
+              background: '#FAFBF9', display: 'flex', justifyContent: 'flex-end', gap: '10px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setDeleteModalSite(null)}
+                disabled={deletingSite}
+                style={{
+                  padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
+                  borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                  color: '#475569', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDeleteWebsite}
+                disabled={
+                  deletingSite ||
+                  deleteConfirmInput.trim().toLowerCase() !== (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase()
+                }
+                style={{
+                  padding: '9px 20px',
+                  background: deleteConfirmInput.trim().toLowerCase() === (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase() ? '#DC2626' : '#FCA5A5',
+                  border: 'none', borderRadius: '8px', fontSize: '12.5px', fontWeight: '800',
+                  color: '#FFFFFF',
+                  cursor: deleteConfirmInput.trim().toLowerCase() === (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase() ? 'pointer' : 'not-allowed',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  boxShadow: deleteConfirmInput.trim().toLowerCase() === (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase() ? '0 2px 8px rgba(220, 38, 38, 0.3)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {deletingSite ? (
+                  <>
+                    <RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    <span>I understand, delete this website</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
-
-      {/* Cloudflare-Style DNS Zone & Subdomain Management Drawer */}
       <DnsZoneDrawer
         isOpen={!!selectedZoneWebsite}
         website={selectedZoneWebsite}

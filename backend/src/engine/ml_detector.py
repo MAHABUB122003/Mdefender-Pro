@@ -73,7 +73,7 @@ class MLDetector:
                 self.load_error = f"meta: {e}"
 
         self.loaded = self.model is not None
-        self.model_version = self.meta.get("version", "unknown")
+        self.model_version = self.meta.get("model_version", self.meta.get("version", "unknown"))
 
     def is_loaded(self):
         return self.loaded
@@ -85,11 +85,18 @@ class MLDetector:
             "threshold": self.threshold,
             "n_category_classes": len(self.category_classes),
             "load_error": self.load_error,
-            "training_date": self.meta.get("training_date"),
+            "training_date": self.meta.get("training_timestamp", self.meta.get("training_date")),
         }
 
     def _predict_proba(self, normalized):
         X = self.vectorizer.transform([normalized])
+        # Ultra-fast microsecond BLAS dot product
+        if hasattr(self.model, "coef_") and hasattr(self.model, "intercept_"):
+            try:
+                raw_s = float(X.dot(self.model.coef_.T)[0, 0]) + float(self.model.intercept_[0])
+                return float(1.0 / (1.0 + np.exp(-raw_s)))
+            except Exception:
+                pass
         if hasattr(self.model, "predict_proba"):
             return float(self.model.predict_proba(X)[0][1])
         return float(self.model.predict(X)[0])

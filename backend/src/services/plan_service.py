@@ -11,7 +11,7 @@ DEFAULT_PLANS = {
     "free": {
         "name": "Starter Free",
         "display_name": "Starter",
-        "badge": "Free Forever",
+        "badge": "14-Day Free Trial",
         "price_id": "",
         "price_id_monthly": "",
         "price_id_yearly": "",
@@ -73,15 +73,15 @@ DEFAULT_PLANS = {
     },
 
     "enterprise": {
-        "name": "Dedicated Enterprise",
-        "display_name": "Enterprise Ultimate",
-        "badge": "Maximum Scale",
+        "name": "Business & Agency",
+        "display_name": "Business & Agency",
+        "badge": "Agency & Scale",
         "price_id": "",
         "price_id_monthly": "",
         "price_id_yearly": "",
         "monthly_price": 49,
         "yearly_price": 470,
-        "website_limit": 15,
+        "website_limit": 20,
         "requests_per_day": 10000000,
         "scans_per_day": 10000,
         "max_scan_size_mb": 100,

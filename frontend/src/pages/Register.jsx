@@ -54,8 +54,14 @@ export default function Register() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must contain at least 8 characters.');
+    const hasMin = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password);
+
+    if (!hasMin || !hasUpper || !hasLower || !hasDigit || !hasSpecial) {
+      setError('High Security Policy: Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.');
       return;
     }
 
@@ -79,12 +85,10 @@ export default function Register() {
       });
 
       if (data.status === 'success' || data.success) {
-        // Transition to OTP verification screen
-        const verificationToken = data.verification_token || '';
+        // Transition to OTP verification screen - strictly require user to check inbox
         const verifyQuery = new URLSearchParams({
           email: email.trim().toLowerCase(),
           name: fullName.trim(),
-          ...(verificationToken ? { token: verificationToken } : {}),
           ...(planParam ? { plan: planParam, cycle: cycleParam } : {}),
         }).toString();
 
@@ -97,7 +101,7 @@ export default function Register() {
       if (msg.toLowerCase().includes('already exists')) {
         setError('An account with this email address already exists. Please sign in instead.');
       } else {
-        setError('Too many attempts or registration unavailable. Please wait a moment.');
+        setError(msg || 'Too many attempts or registration unavailable. Please wait a moment.');
       }
     } finally {
       setLoading(false);
@@ -107,20 +111,25 @@ export default function Register() {
   return (
     <AuthSplitLayout>
       {/* Security icon box: 38 × 38px, radius 10px, background #E8EEE8, color #10201E */}
+      {/* Brand logo container */}
       <div style={{ marginBottom: '18px' }}>
         <div
           style={{
-            width: '38px',
-            height: '38px',
+            width: '42px',
+            height: '42px',
             borderRadius: '10px',
-            background: '#E8EEE8',
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#10201E',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }}
         >
-          <Shield size={17} strokeWidth={2.2} />
+          <img
+            src="/assets/mdefender_logo.png"
+            alt="MDefender Pro Logo"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
         </div>
       </div>
 
@@ -323,9 +332,42 @@ export default function Register() {
               {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
-          <div style={{ fontSize: '11px', color: '#60716B', marginTop: '5px' }}>
-            Use at least 8 characters.
-          </div>
+          {/* Real-time Strong Password Checklist */}
+          {password.length > 0 ? (
+            <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {[
+                { label: '8+ chars', valid: password.length >= 8 },
+                { label: 'Uppercase (A-Z)', valid: /[A-Z]/.test(password) },
+                { label: 'Lowercase (a-z)', valid: /[a-z]/.test(password) },
+                { label: 'Number (0-9)', valid: /\d/.test(password) },
+                { label: 'Special symbol (!@#$)', valid: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password) },
+              ].map((req, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    background: req.valid ? '#E8F3EC' : '#FFF4ED',
+                    border: `1px solid ${req.valid ? '#CFE2D4' : '#F2C7A7'}`,
+                    color: req.valid ? '#28745D' : '#A34F22',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <span>{req.valid ? '✓' : '•'}</span>
+                  <span>{req.label}</span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', color: '#60716B', marginTop: '5px' }}>
+              Requires 8+ characters, uppercase, lowercase, number, and special character.
+            </div>
+          )}
         </div>
 
         {/* Re-enter Password with Inline Mismatch Detection */}

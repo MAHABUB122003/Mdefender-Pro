@@ -157,7 +157,7 @@ async function apiCall(endpoint, options = {}) {
 export const api = {
   register: (data) => apiCall('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
 
-  verifyEmail: (token) => apiCall('/api/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+  verifyEmail: (token, email) => apiCall('/api/auth/verify-email', { method: 'POST', body: JSON.stringify({ token, email }) }),
 
   resendVerification: (email) => apiCall('/api/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }),
 
@@ -222,11 +222,29 @@ export const api = {
 
   forgotPassword: (email) => apiCall('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
 
-  resetPassword: (token, password, confirmPassword) =>
-    apiCall('/api/auth/reset-password', {
+  verifyResetOtp: (email, otp) => apiCall('/api/auth/verify-reset-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+  }),
+
+  resetPassword: (tokenOrObj, password, confirmPassword) => {
+    if (typeof tokenOrObj === 'object' && tokenOrObj !== null) {
+      return apiCall('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          token: tokenOrObj.token || tokenOrObj.otp,
+          otp: tokenOrObj.otp,
+          email: tokenOrObj.email,
+          password: tokenOrObj.password,
+          confirm_password: tokenOrObj.confirmPassword || tokenOrObj.confirm_password,
+        }),
+      });
+    }
+    return apiCall('/api/auth/reset-password', {
       method: 'POST',
-      body: JSON.stringify({ token, password, confirm_password: confirmPassword }),
-    }),
+      body: JSON.stringify({ token: tokenOrObj, password, confirm_password: confirmPassword }),
+    });
+  },
 
   getGoogleAuthUrl: () => apiCall('/api/auth/google/url'),
 

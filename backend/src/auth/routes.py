@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from src.auth.config import AuthConfig
 from src.auth.models import (
     RegisterRequest, LoginRequest, AdminLoginRequest, VerifyEmailRequest,
-    ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
+    ResendVerificationRequest, ForgotPasswordRequest, VerifyResetOtpRequest, ResetPasswordRequest,
     ChangePasswordRequest, ChangeEmailRequest, VerifyMFASetupRequest,
     DisableMFARequest, MFAChallengeRequest, GoogleCallbackRequest,
 )
@@ -80,27 +80,24 @@ async def register(data: RegisterRequest, request: Request):
         raise HTTPException(status_code=400, detail=result['error'])
 
     verification_token = result.get('verification_token', '')
+    otp_code = result.get('otp_code', '')
     frontend_url = config.FRONTEND_URL
-    smtp_configured = bool(config.SMTP_SERVER and config.SMTP_USERNAME)
 
     anti_phishing_code = jwt_service.generate_anti_phishing_code()
+    reg_username = data.username or data.full_name or ''
     asyncio.create_task(
         asyncio.to_thread(
             email_sender.send_verification_email,
-            data.email, verification_token, frontend_url, anti_phishing_code
+            data.email, verification_token, frontend_url, anti_phishing_code, otp_code, reg_username
         )
     )
 
     response_data = {
         'status': 'success',
-        'message': result.get('message', 'Account created successfully! Please check your email to activate your account.'),
+        'message': result.get('message', 'Please check your email and enter the 6-digit verification code to activate your account.'),
         'email': data.email,
         'verification_required': True,
     }
-    if not smtp_configured:
-        response_data['verification_token'] = verification_token
-        response_data['verification_url'] = f'{frontend_url}/auth/verify-email?token={verification_token}&email={data.email}'
-        response_data['dev_mode'] = True
 
     return response_data
 
@@ -113,11 +110,11 @@ async def verify_email(data: VerifyEmailRequest, request: Request):
     ua = get_user_agent(request)
 
     result = registration_service.verify_email(
-        data.token, ip_address=ip, user_agent=ua
+        token=data.token, email=data.email or '', ip_address=ip, user_agent=ua
     )
     if not result['success']:
         raise HTTPException(status_code=400, detail=result['error'])
-    return {'status': 'success', 'message': result['message']}
+    return {'status': 'success', 'message': result['message'], 'user_id': result.get('user_id')}
 
 
 @auth_router.post('/resend-verification')
@@ -129,20 +126,25 @@ async def resend_verification(data: ResendVerificationRequest, request: Request)
         data.email, ip_address=ip, user_agent=ua
     )
     if not result['success']:
-        raise HTTPException(status_code=429, detail=result['error'])
+        raise HTTPException(status_code=400, detail=result['error'])
 
-    if result.get('verification_token'):
-        verification_token = result['verification_token']
-        frontend_url = config.FRONTEND_URL
-        anti_phishing_code = jwt_service.generate_anti_phishing_code()
-        asyncio.create_task(
-            asyncio.to_thread(
-                email_sender.send_verification_email,
-                data.email, verification_token, frontend_url, anti_phishing_code
-            )
+    otp_code = result.get('otp_code', '')
+    verification_token = result.get('verification_token', '')
+    frontend_url = config.FRONTEND_URL
+    anti_phishing_code = jwt_service.generate_anti_phishing_code()
+    resend_username = result.get('username') or result.get('full_name') or ''
+    asyncio.create_task(
+        asyncio.to_thread(
+            email_sender.send_verification_email,
+            data.email, verification_token, frontend_url, anti_phishing_code, otp_code, resend_username
         )
+    )
 
-    return {'status': 'success', 'message': result['message']}
+    return {
+        'status': 'success',
+        'message': result['message'],
+        'email': data.email,
+    }
 
 
 # ─── Login ───
@@ -385,18 +387,41 @@ async def get_me(user: dict = Depends(get_current_user)):
 @auth_router.post('/forgot-password')
 async def forgot_password(data: ForgotPasswordRequest, request: Request):
     result = password_reset_service.forgot_password(data.email)
+    if not result.get('success'):
+        raise HTTPException(status_code=400, detail=result.get('error', 'No registered account found with this email address.'))
 
-    if result.get('reset_token'):
-        reset_token = result['reset_token']
-        frontend_url = config.FRONTEND_URL
+    otp_code = result.get('otp_code', '')
+    reset_token = result.get('reset_token', '')
+    frontend_url = config.FRONTEND_URL
+
+    if reset_token or otp_code:
+        user_name = result.get('user_name', '')
         asyncio.create_task(
             asyncio.to_thread(
                 email_sender.send_password_reset_email,
-                data.email, reset_token, frontend_url
+                data.email, reset_token, frontend_url, otp_code, user_name
             )
         )
 
-    return {'status': 'success', 'message': result['message']}
+    return {
+        'status': 'success',
+        'message': result['message'],
+        'email': data.email,
+    }
+
+
+# ─── Verify Reset OTP (Step 2 of Recovery) ───
+
+@auth_router.post('/verify-reset-otp')
+async def verify_reset_otp(data: VerifyResetOtpRequest):
+    result = password_reset_service.verify_otp(data.email, data.otp)
+    if not result['success']:
+        raise HTTPException(status_code=400, detail=result['error'])
+    return {
+        'status': 'success',
+        'message': result['message'],
+        'reset_token': result.get('reset_token'),
+    }
 
 
 # ─── Reset Password ───
@@ -406,7 +431,12 @@ async def reset_password(data: ResetPasswordRequest):
     if data.password != data.confirm_password:
         raise HTTPException(status_code=400, detail='Passwords do not match')
 
-    result = password_reset_service.reset_password(data.token, data.password)
+    result = password_reset_service.reset_password(
+        token=data.token,
+        new_password=data.password,
+        email=data.email or '',
+        otp=data.otp or '',
+    )
     if not result['success']:
         raise HTTPException(status_code=400, detail=result['error'])
 

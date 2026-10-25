@@ -43,31 +43,40 @@ const DOC_SECTIONS = [
   {
     group: 'Getting Started',
     items: [
-      { id: 'intro', label: 'What is MDefender Pro', icon: Shield, readTime: '4 min' },
-      { id: 'hybrid-architecture', label: 'Hybrid WAF + ML Engine', icon: Layers, readTime: '5 min' },
+      { id: 'intro', label: 'Platform Overview & Mission', icon: Shield, readTime: '4 min' },
+      { id: 'hybrid-architecture', label: 'Dual-Engine Architecture', icon: Layers, readTime: '5 min' },
       { id: 'quickstart', label: '5-Minute Quickstart', icon: Zap, readTime: '5 min' },
-      { id: 'website-connect', label: 'Connect Website Guide', icon: Globe, readTime: '6 min' },
+      { id: 'website-connect', label: 'Connect Website & API Key', icon: Globe, readTime: '6 min' },
     ],
   },
   {
-    group: '6,501,208+ Dataset ML Core',
+    group: 'WordPress Fleet SaaS',
     items: [
-      { id: 'ml-overview', label: 'Machine Learning Model', icon: Cpu, readTime: '7 min' },
+      { id: 'fleet-overview', label: 'Multi-Site Central Console', icon: Layers, readTime: '5 min' },
+      { id: 'fleet-safe-updates', label: 'Safe Updates & Auto-Rollback', icon: Zap, readTime: '6 min' },
+      { id: 'fleet-scanner', label: '5.2M+ Integrity Scanner', icon: Database, readTime: '6 min' },
+      { id: 'fleet-hardening', label: 'Remote Hardening & Barriers', icon: Lock, readTime: '5 min' },
+    ],
+  },
+  {
+    group: 'Autonomous ML Threat Engine',
+    items: [
+      { id: 'ml-overview', label: 'Machine Learning Neural Core', icon: Cpu, readTime: '7 min' },
       { id: 'ml-vectorizer', label: 'Character N-Gram Vectorizer', icon: Code, readTime: '6 min' },
-      { id: 'ml-classification', label: 'Risk Scoring & Categories', icon: Activity, readTime: '5 min' },
+      { id: 'ml-classification', label: 'Risk Scoring & 18 Threat Classes', icon: Activity, readTime: '5 min' },
     ],
   },
   {
-    group: '2,000,000+ Hyper-Scale Signatures',
+    group: 'Global Threat Signatures',
     items: [
-      { id: 'rules-overview', label: 'Signatures Overview', icon: FileText, readTime: '5 min' },
-      { id: 'sqli-defense', label: 'SQL Injection (400k+ Vectors)', icon: Database, readTime: '6 min' },
-      { id: 'xss-defense', label: 'Cross-Site Scripting (350k+)', icon: Code, readTime: '5 min' },
-      { id: 'rce-webshells', label: 'RCE & WebShells (300k+)', icon: Terminal, readTime: '6 min' },
-      { id: 'lfi-traversal', label: 'LFI & Traversal (200k+)', icon: FolderOpen, readTime: '4 min' },
-      { id: 'cms-vulnerabilities', label: 'CMS Exploits (250k+)', icon: Shield, readTime: '5 min' },
-      { id: 'bots-scanners', label: 'Bots & Scanners (150k+)', icon: Radio, readTime: '4 min' },
-      { id: 'ssrf-xxe', label: 'SSRF & Cloud IMDS (150k+)', icon: Globe, readTime: '5 min' },
+      { id: 'rules-overview', label: 'Signatures & DFA Fast-Path', icon: FileText, readTime: '5 min' },
+      { id: 'sqli-defense', label: 'SQL Injection AST Normalization', icon: Database, readTime: '6 min' },
+      { id: 'xss-defense', label: 'Cross-Site Scripting Mitigation', icon: Code, readTime: '5 min' },
+      { id: 'rce-webshells', label: 'RCE & WebShell Detection', icon: Terminal, readTime: '6 min' },
+      { id: 'lfi-traversal', label: 'LFI & Path Traversal Shield', icon: FolderOpen, readTime: '4 min' },
+      { id: 'cms-vulnerabilities', label: 'CMS & Zero-Day Virtual Patches', icon: Shield, readTime: '5 min' },
+      { id: 'bots-scanners', label: 'Adaptive Bot & Scalper Guard', icon: Radio, readTime: '4 min' },
+      { id: 'ssrf-xxe', label: 'SSRF & Cloud IMDS Protection', icon: Globe, readTime: '5 min' },
     ],
   },
   {
@@ -1087,11 +1096,120 @@ curl -X GET "https://api.mdefender.io/api/v1/auth/status" \\
                   { name: 'CNAME Record', type: 'FQDN', required: true, desc: 'Point www to edge.mdefender-proxy.net' },
                   { name: 'TXT Record', type: 'String', required: false, desc: 'Ownership verification token: mdefender-verify=WORKSPACE_ID' },
                 ]}
-              />
-
-              <CalloutBox title="Zero Downtime Propagation" icon={CheckCircle2}>
+              />              <CalloutBox title="Zero Downtime Propagation" icon={CheckCircle2}>
                 DNS changes typically take 2 to 5 minutes to propagate globally. During propagation, origin traffic continues flowing smoothly while edge certificates are generated automatically.
               </CalloutBox>
+            </div>
+          )}
+
+          {/* FLEET 1: MULTI-SITE FLEET OVERVIEW */}
+          {activeSection === 'fleet-overview' && (
+            <div>
+              <p style={{ fontSize: '16px', lineHeight: 1.7, color: '#53615D', marginBottom: '20px' }}>
+                MDefender Pro empowers agencies, DevOps teams, and multi-brand enterprises to unify <strong>10, 50, or 100+ remote WordPress installations</strong> under a single sovereign cloud console. Bidirectional communication is established using cryptographically secured REST API heartbeats.
+              </p>
+
+              <h3 style={{ fontSize: '18px', fontWeight: 750, color: '#10221F', margin: '28px 0 12px' }}>
+                Centralized Fleet Capabilities
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', margin: '20px 0' }}>
+                {[
+                  { label: 'Bulk Plugin Management', val: '1-Click Fleet Deploy', note: 'Activate, update, or quarantine across all sites' },
+                  { label: 'Safe Updates Engine', val: 'Zero-Downtime Rollback', note: 'Pre-update snapshots with automated recovery' },
+                  { label: 'Remote Malware Hunter', val: '5.2M+ Integrity DB', note: 'Scan core, plugins, and themes concurrently' },
+                  { label: 'Fleet-Wide Hardening', val: 'Zero-Touch Security', note: 'Lock wp-config, XML-RPC & disable file editing' },
+                ].map((stat, sIdx) => (
+                  <div key={sIdx} style={{ background: '#FFFFFF', border: '1px solid #D9DFD9', borderRadius: '10px', padding: '16px' }}>
+                    <div style={{ fontSize: '11px', color: '#87948D', fontWeight: 700, textTransform: 'uppercase' }}>{stat.label}</div>
+                    <div style={{ fontSize: '17px', fontWeight: 800, color: '#10221F', margin: '6px 0 2px' }}>{stat.val}</div>
+                    <div style={{ fontSize: '12px', color: '#53615D' }}>{stat.note}</div>
+                  </div>
+                ))}
+              </div>
+
+              <CodeSnippet
+                language="bash"
+                code={`# Dispatch a fleet-wide policy push via MDefender CLI or REST API
+curl -X POST "https://mdefender-pro.crafix.tech/api/user/bulk/sync" \\
+  -H "Authorization: Bearer $MDEFENDER_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "action": "enforce_waf_policies",
+    "target": "all_connected_sites",
+    "policies": {
+      "country_block": ["RU", "CN", "KP"],
+      "rate_limit_per_min": 120,
+      "xmlrpc_protection": true
+    }
+  }'`}
+              />
+            </div>
+          )}
+
+          {/* FLEET 2: SAFE UPDATES & AUTO-ROLLBACK */}
+          {activeSection === 'fleet-safe-updates' && (
+            <div>
+              <p style={{ fontSize: '16px', lineHeight: 1.7, color: '#53615D', marginBottom: '20px' }}>
+                Updating WordPress plugins or core across multiple client sites traditionally carries significant risk of PHP fatal errors or white-screen-of-death (WSOD). MDefender Pro introduces <strong>Autonomous Safe Updates with Instant Rollback</strong>.
+              </p>
+
+              <h3 style={{ fontSize: '18px', fontWeight: 750, color: '#10221F', margin: '24px 0 12px' }}>
+                How Safe Updates Work
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', margin: '16px 0' }}>
+                {[
+                  { step: '1', title: 'Pre-Update Integrity Snapshot', desc: 'MDefender Pro creates an atomic backup of target plugin folders and options table state.' },
+                  { step: '2', title: 'Targeted In-Place Update', desc: 'The update payload is downloaded from WordPress.org and unpacked under file integrity monitors.' },
+                  { step: '3', title: 'Synthetic Origin Health Check', desc: 'The edge engine performs an automated HTTP probe to verify that wp-admin, home, and checkout pages return HTTP 200.' },
+                  { step: '4', title: 'Autonomous Rollback on Failure', desc: 'If a 500 error or fatal exception is detected, the snapshot is restored in under 800ms, preserving 100% uptime.' },
+                ].map((s, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '14px', background: '#FFFFFF', border: '1px solid #D9DFD9', borderRadius: '10px', padding: '14px 18px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#E8792F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>
+                      {s.step}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 750, color: '#10221F' }}>{s.title}</div>
+                      <div style={{ fontSize: '13px', color: '#53615D', marginTop: '2px' }}>{s.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* FLEET 3: INTEGRITY & MALWARE SCANNER */}
+          {activeSection === 'fleet-scanner' && (
+            <div>
+              <p style={{ fontSize: '16px', lineHeight: 1.7, color: '#53615D', marginBottom: '20px' }}>
+                The MDefender Pro Malware &amp; Integrity Scanner connects directly to our centralized cloud knowledge base containing <strong>5,218,246 verified official WordPress checksums</strong> and over 2.5 million malicious signatures.
+              </p>
+
+              <ParamTable
+                rows={[
+                  { name: 'Core Checksums', type: 'SHA-256 DB', required: true, desc: 'Covers WordPress 4.0 through 6.7 core files against WordPress.org official releases' },
+                  { name: 'Plugin & Theme Hashes', type: '2M+ Signatures', required: true, desc: 'Verifies official releases from the WordPress repository' },
+                  { name: 'WebShell Detector', type: 'YARA + Heuristics', required: true, desc: 'Identifies c99, r57, WSO, b374k, and base64 polymorphic obfuscations' },
+                  { name: 'Family Classifier', type: 'Static ML Model', required: true, desc: '82 content features classifying backdoors, infections, and rogue plugins' },
+                ]}
+              />
+            </div>
+          )}
+
+          {/* FLEET 4: HOST HARDENING & BARRIERS */}
+          {activeSection === 'fleet-hardening' && (
+            <div>
+              <p style={{ fontSize: '16px', lineHeight: 1.7, color: '#53615D', marginBottom: '20px' }}>
+                Apply enterprise-grade host hardening across your entire WordPress fleet with a single toggle. MDefender Pro modifies Apache/Nginx rewrite rules and WordPress security constants directly:
+              </p>
+
+              <ul style={{ paddingLeft: '20px', fontSize: '14px', lineHeight: 1.8, color: '#53615D', margin: '16px 0' }}>
+                <li><strong>Disable File Editing:</strong> Enforces <code>DISALLOW_FILE_EDIT</code> in <code>wp-config.php</code>.</li>
+                <li><strong>XML-RPC Shield:</strong> Blocks brute-force amplification attacks targeting <code>xmlrpc.php</code>.</li>
+                <li><strong>Upload Directory Execution Barrier:</strong> Prevents direct PHP execution within <code>wp-content/uploads/</code>.</li>
+                <li><strong>User Enumeration Defense:</strong> Intercepts <code>/?author=N</code> queries commonly used by automated scanners.</li>
+              </ul>
             </div>
           )}
 
@@ -1099,19 +1217,19 @@ curl -X GET "https://api.mdefender.io/api/v1/auth/status" \\
           {activeSection === 'ml-overview' && (
             <div>
               <p style={{ fontSize: '16px', lineHeight: 1.7, color: '#53615D', marginBottom: '20px' }}>
-                MDefender Pro incorporates an advanced machine learning neural classifier trained on <strong>6,501,208+ verified cyber attack payloads</strong> sourced from international research corpora, honeypot captures, and live telemetry feeds.
+                MDefender Pro incorporates an autonomous machine learning neural classifier operating alongside a deterministic DFA pattern ring. The model evaluates incoming HTTP payloads across <strong>18 specialized threat categories</strong> with sub-millisecond line-rate inference.
               </p>
 
               <h3 style={{ fontSize: '18px', fontWeight: 750, color: '#10221F', margin: '28px 0 12px' }}>
-                Training Corpus Breakdown
+                Threat Detection Architecture &amp; Classes
               </h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', margin: '20px 0' }}>
                 {[
-                  { label: 'CSIC HTTP Dataset', val: '4,100,000+ Requests', note: 'Standard web traffic & injection attacks' },
-                  { label: 'CICIDS & CTU Corpus', val: '1,400,000+ Vectors', note: 'Botnets, volumetric scans, and brute-force' },
-                  { label: 'Generative AI Jailbreaks', val: '639,000+ Prompts', note: 'LLM prompt injection & bypass mutations' },
-                  { label: 'Zero-Day Honeypot Feeds', val: '362,208+ Payloads', note: 'Unseen polymorphic RCE & AST variations' },
+                  { label: 'OWASP Top 10 Coverage', val: '100% Comprehensive', note: 'SQLi, XSS, RCE, SSRF, Deserialization, XXE' },
+                  { label: 'Generative AI Shield', val: 'Prompt Injection Guard', note: 'Detects LLM jailbreaks & instruction evasion' },
+                  { label: 'Inference Latency', val: '< 0.12ms Edge Speed', note: 'Linear SGD classifier with character n-grams' },
+                  { label: 'Precision SLA', val: '99.75% Accuracy', note: '0.17% verified false-positive rate' },
                 ].map((stat, sIdx) => (
                   <div key={sIdx} style={{ background: '#FFFFFF', border: '1px solid #D9DFD9', borderRadius: '10px', padding: '16px' }}>
                     <div style={{ fontSize: '11px', color: '#87948D', fontWeight: 700, textTransform: 'uppercase' }}>{stat.label}</div>

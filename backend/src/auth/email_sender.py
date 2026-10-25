@@ -1,8 +1,21 @@
+import os
+import base64
+from html import escape as html_escape
 import hashlib
 import hmac
 import secrets
 from datetime import datetime, timezone
 from src.services.email_service import EmailService
+
+# Load official MDefender Pro logo for inline email embedding
+_LOGO_PATH = os.path.join(os.path.dirname(__file__), 'mdefender_logo.png')
+_LOGO_B64 = ""
+if os.path.exists(_LOGO_PATH):
+    try:
+        with open(_LOGO_PATH, 'rb') as _f:
+            _LOGO_B64 = base64.b64encode(_f.read()).decode('utf-8')
+    except Exception:
+        pass
 
 
 class AuthEmailService:
@@ -12,180 +25,326 @@ class AuthEmailService:
     def _generate_link_fingerprint(self, url: str, token: str) -> str:
         return hashlib.sha256(f"{url}:{token}".encode()).hexdigest()[:8]
 
+    def _send_smtp_message(self, config, msg, to_email: str, otp_code: str = '', purpose: str = 'auth') -> bool:
+        print(f"\n[SECURITY OTP] =========================================")
+        print(f"[SECURITY OTP] Recipient: {to_email}")
+        if otp_code:
+            print(f"[SECURITY OTP] 6-DIGIT CODE: >>> {otp_code} <<<")
+        print(f"[SECURITY OTP] Purpose:   {purpose}")
+        print(f"[SECURITY OTP] =========================================\n")
+
+        if not config.SMTP_SERVER or not config.SMTP_USERNAME or not config.SMTP_PASSWORD:
+            print(f"[AUTH EMAIL] SMTP server/credentials not fully configured. Using console OTP delivery.")
+            return True
+
+        from email.mime.text import MIMEText
+        import smtplib
+
+        # Try Port 587 STARTTLS
+        try:
+            with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT, timeout=8) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD.replace(' ', ''))
+                server.send_message(msg)
+            print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP (Port {config.SMTP_PORT})")
+            return True
+        except Exception as e587:
+            print(f"[AUTH EMAIL] Port {config.SMTP_PORT} delivery error: {e587}. Trying SSL Port 465 fallback...")
+            try:
+                with smtplib.SMTP_SSL(config.SMTP_SERVER, 465, timeout=8) as ssl_server:
+                    ssl_server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD.replace(' ', ''))
+                    ssl_server.send_message(msg)
+                print(f"[AUTH EMAIL] Email successfully sent to {to_email} via SMTP_SSL (Port 465)")
+                return True
+            except Exception as e465:
+                print(f"[AUTH EMAIL] SMTP delivery failed ({e465}). OTP was printed to console for development/fallback.")
+                return False
+
     def send_verification_email(self, to_email: str, verification_token: str,
-                                frontend_url: str, anti_phishing_code: str = '') -> bool:
+                                frontend_url: str, anti_phishing_code: str = '',
+                                otp_code: str = '', username: str = '') -> bool:
         try:
             from src.auth.config import AuthConfig
             config = AuthConfig()
-            if not config.SMTP_SERVER or not config.SMTP_USERNAME:
-                print(f"[AUTH EMAIL] Verification link: {frontend_url}/auth/verify-email?token={verification_token}&email={to_email}")
-                return True
+
+            display_otp = otp_code or (verification_token if len(verification_token) == 6 and verification_token.isdigit() else '')
+            display_code = anti_phishing_code or secrets.token_hex(4).upper()
+            now_utc = datetime.now(timezone.utc).strftime('%b %d, %Y • %H:%M UTC')
+
+            clean_user = (username or '').strip().lstrip('@')
+            safe_user = html_escape(clean_user)
+            safe_email = html_escape(to_email)
+            safe_otp = html_escape(display_otp or verification_token)
+            user_greeting = f"Hi @{safe_user}," if safe_user else "Hi there,"
 
             from email.mime.text import MIMEText
             from email.mime.multipart import MIMEMultipart
-            import smtplib
-
-            verify_url = f"{frontend_url}/auth/verify-email?token={verification_token}&email={to_email}"
-            link_fingerprint = self._generate_link_fingerprint(verify_url, verification_token)
-            display_code = anti_phishing_code or secrets.token_hex(4).upper()
 
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = 'Verify Your Email - MDefender Pro'
-            msg['From'] = f'{config.SMTP_FROM_NAME} <{config.SMTP_FROM_EMAIL}>'
+            if display_otp:
+                msg['Subject'] = f'{display_otp} is your MDefender Pro verification code'
+            else:
+                msg['Subject'] = 'Verify your email address - MDefender Pro'
+
+            from_addr = config.SMTP_FROM_EMAIL or config.SMTP_USERNAME or "noreply@mdefender-pro.io"
+            msg['From'] = f'{config.SMTP_FROM_NAME} <{from_addr}>'
             msg['To'] = to_email
-            msg['X-Mailer'] = 'MDefender-Pro-Mailer/2.0'
-            msg['List-Unsubscribe'] = f'<mailto:{config.SMTP_FROM_EMAIL}?subject=unsubscribe>'
+            msg['X-Mailer'] = 'MDefender-Pro-Security-Mailer/3.0'
+            msg['List-Unsubscribe'] = f'<mailto:{from_addr}?subject=unsubscribe>'
             msg['Precedence'] = 'bulk'
             msg['Auto-Submitted'] = 'auto-replied'
             msg['X-Auto-Response-Suppress'] = 'All'
 
-            html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-                    <h1 style="color: #00d4ff; margin: 0; font-size: 24px; letter-spacing: -0.5px;">MDefender Pro</h1>
-                    <p style="color: #94a3b8; margin: 4px 0 0; font-size: 12px;">Enterprise Web Application Firewall</p>
-                </div>
-                <div style="padding: 36px 32px; background: #ffffff; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none;">
-                    <h2 style="color: #1e293b; margin: 0 0 16px; font-size: 20px; font-weight: 700;">Verify Your Email Address</h2>
-                    <p style="color: #64748b; line-height: 1.7; margin: 0 0 24px; font-size: 14px;">
-                        Thank you for registering with MDefender Pro. Click the button below to verify your email and activate your account.
-                    </p>
+            html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email - MDefender Pro</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #24292f; -webkit-font-smoothing: antialiased; line-height: 1.5;">
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 28px 16px;">
+        <tr>
+            <td align="center">
+                <!-- Main Container (GitHub style: clean, natural, max-width 540px) -->
+                <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 540px; text-align: left;">
+                    
+                    <!-- Brand Header with Shield Logo -->
+                    <tr>
+                        <td style="padding-bottom: 24px;">
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="width: 36px; height: 36px; vertical-align: middle;">
+                                        <img src="data:image/png;base64,{_LOGO_B64}" width="36" height="36" alt="MDefender Pro Logo" style="display: block; width: 36px; height: 36px; border-radius: 8px; object-fit: contain;" />
+                                    </td>
+                                    <td style="padding-left: 12px; vertical-align: middle;">
+                                        <span style="font-size: 19px; font-weight: 800; color: #1f2328; letter-spacing: -0.3px;">MDefender <span style="color: #e8792f;">Pro</span></span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
 
-                    <div style="text-align: center; margin: 32px 0;">
-                        <a href="{verify_url}"
-                           style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; padding: 16px 48px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 14px rgba(99,102,241,0.35);">
-                            Verify Email Address
-                        </a>
-                    </div>
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="font-size: 14px; color: #24292f;">
+                            <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #1f2328;">
+                                {user_greeting}
+                            </p>
 
-                    <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; margin: 24px 0;">
-                        <p style="color: #64748b; font-size: 12px; margin: 0; line-height: 1.6;">
-                            <strong style="color: #334155;">Security Notice:</strong> This link expires in <strong>{config.EMAIL_VERIFICATION_EXPIRE_MINUTES} minutes</strong>.
-                            If you did not create an account, please ignore this email. No account has been created without your confirmation.
-                        </p>
-                    </div>
+                            <p style="margin: 0 0 16px 0; line-height: 1.6; color: #57606a;">
+                                Please verify your email address to complete your registration for your MDefender Pro security workspace.
+                            </p>
 
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 24px;">
-                        <p style="color: #94a3b8; font-size: 11px; margin: 0; line-height: 1.6;">
-                            For your security, this verification email was sent to {to_email}.<br>
-                            Link ID: {link_fingerprint} | Ref: MDP-{display_code}
-                        </p>
-                    </div>
-                </div>
+                            <p style="margin: 20px 0 8px 0; font-size: 13px; font-weight: 600; color: #57606a;">
+                                Here is your 6-digit verification code:
+                            </p>
 
-                <div style="text-align: center; padding: 20px 0;">
-                    <p style="color: #94a3b8; font-size: 10px; margin: 0;">
-                        MDefender Pro - Enterprise Security Solutions<br>
-                        This is an automated security email. Please do not reply.
-                    </p>
-                </div>
-            </body>
-            </html>
-            """
+                            <!-- Clean Monospace OTP Box with Copy Tag -->
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 10px 0 20px 0;">
+                                <tr>
+                                    <td style="background-color: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 10px 22px; vertical-align: middle;">
+                                        <span style="font-family: ui-monospace, SFMono-Regular, 'SF Pro Display', Menlo, Consolas, monospace; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #1f2328; user-select: all;">{display_otp or verification_token}</span>
+                                    </td>
+                                    <td style="padding-left: 12px; vertical-align: middle;">
+                                        <span style="display: inline-block; background-color: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: #24292f;">
+                                            📋 Select & Copy
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.6; color: #57606a;">
+                                This code will expire in <strong>1 minute</strong>. Enter this code on your verification screen to activate your account.
+                            </p>
+
+                            <p style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.6; color: #57606a;">
+                                If you did not request this verification code, you can safely ignore this email. Someone may have entered your email address by mistake.
+                            </p>
+
+                            <p style="margin: 0 0 32px 0; font-size: 14px; line-height: 1.6; color: #24292f;">
+                                Thanks,<br>
+                                <strong>The MDefender Pro Team</strong>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Minimalist Footer -->
+                    <tr>
+                        <td style="border-top: 1px solid #d0d7de; padding-top: 20px; font-size: 11px; line-height: 1.6; color: #57606a;">
+                            MDefender Pro Inc. • Autonomous Cloud WAF & Global Edge Network<br>
+                            Sent to {to_email} • Security ref: MDP-{display_code} • {now_utc}
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
 
             text_body = (
-                f"MDefender Pro - Email Verification\n\n"
-                f"Click the link below to verify your email:\n{verify_url}\n\n"
-                f"This link expires in {config.EMAIL_VERIFICATION_EXPIRE_MINUTES} minutes.\n"
-                f"If you did not create an account, please ignore this email.\n\n"
-                f"Link ID: {link_fingerprint} | Ref: MDP-{display_code}"
+                f"{user_greeting}\n\n"
+                f"Please verify your email address to complete your registration for MDefender Pro.\n\n"
+                f"Here is your 6-digit verification code:\n"
+                f"{display_otp or verification_token}\n\n"
+                f"This code will expire in 1 minute. Enter this code on your verification screen to proceed.\n\n"
+                f"If you did not request this verification code, you can safely ignore this email.\n\n"
+                f"Thanks,\n"
+                f"The MDefender Pro Team\n\n"
+                f"Ref: MDP-{display_code} • {now_utc}"
             )
 
             msg.attach(MIMEText(text_body, 'plain'))
-            msg.attach(MIMEText(html, 'html'))
+            msg.attach(MIMEText(html_body, 'html'))
 
-            with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
-                server.send_message(msg)
-
-            return True
+            return self._send_smtp_message(config, msg, to_email, otp_code=display_otp or verification_token, purpose='email_verification')
         except Exception as e:
             print(f"[AUTH EMAIL] Failed to send verification email: {e}")
             return False
 
     def send_password_reset_email(self, to_email: str, reset_token: str,
-                                  frontend_url: str) -> bool:
+                                  frontend_url: str, otp_code: str = '',
+                                  username: str = '') -> bool:
         try:
             from src.auth.config import AuthConfig
             config = AuthConfig()
-            if not config.SMTP_SERVER or not config.SMTP_USERNAME:
-                print(f"[AUTH EMAIL] Password reset link: {frontend_url}/auth/reset-password?token={reset_token}")
-                return True
+
+            display_otp = otp_code or (reset_token if len(reset_token) == 6 and reset_token.isdigit() else '')
+            display_code = secrets.token_hex(4).upper()
+            now_utc = datetime.now(timezone.utc).strftime('%b %d, %Y • %H:%M UTC')
+
+            clean_user = (username or '').strip().lstrip('@')
+            safe_user = html_escape(clean_user)
+            safe_email = html_escape(to_email)
+            safe_otp = html_escape(display_otp or reset_token)
+            user_greeting = f"Hi @{safe_user}," if safe_user else "Hi there,"
 
             from email.mime.text import MIMEText
             from email.mime.multipart import MIMEMultipart
-            import smtplib
-
-            reset_url = f"{frontend_url}/auth/reset-password?token={reset_token}"
 
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = 'Reset Your Password - MDefender Pro'
-            msg['From'] = f'{config.SMTP_FROM_NAME} <{config.SMTP_FROM_EMAIL}>'
+            if display_otp:
+                msg['Subject'] = f'{display_otp} is your MDefender Pro password reset code'
+            else:
+                msg['Subject'] = 'Reset your password - MDefender Pro'
+
+            from_addr = config.SMTP_FROM_EMAIL or config.SMTP_USERNAME or "noreply@mdefender-pro.io"
+            msg['From'] = f'{config.SMTP_FROM_NAME} <{from_addr}>'
             msg['To'] = to_email
-            msg['X-Mailer'] = 'MDefender-Pro-Mailer/2.0'
+            msg['X-Mailer'] = 'MDefender-Pro-Security-Mailer/3.0'
+            msg['Precedence'] = 'bulk'
             msg['Auto-Submitted'] = 'auto-replied'
             msg['X-Auto-Response-Suppress'] = 'All'
 
-            html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head><meta charset="utf-8"></head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
-                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-                    <h1 style="color: #00d4ff; margin: 0; font-size: 24px;">MDefender Pro</h1>
-                </div>
-                <div style="padding: 36px 32px; background: #ffffff; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none;">
-                    <h2 style="color: #1e293b; margin: 0 0 16px; font-size: 20px; font-weight: 700;">Reset Your Password</h2>
-                    <p style="color: #64748b; line-height: 1.7; margin: 0 0 24px; font-size: 14px;">
-                        We received a password reset request for your account. Click the button below to create a new password.
-                    </p>
-                    <div style="text-align: center; margin: 32px 0;">
-                        <a href="{reset_url}"
-                           style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 16px 48px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 14px rgba(239,68,68,0.35);">
-                            Reset Password
-                        </a>
-                    </div>
-                    <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin: 24px 0; border: 1px solid #fecaca;">
-                        <p style="color: #991b1b; font-size: 12px; margin: 0; line-height: 1.6;">
-                            <strong>Security Notice:</strong> This link expires in <strong>{config.PASSWORD_RESET_EXPIRE_MINUTES} minutes</strong>.
-                            If you did not request a password reset, secure your account immediately and contact support.
-                        </p>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 20px 0;">
-                    <p style="color: #94a3b8; font-size: 10px; margin: 0;">
-                        MDefender Pro - Enterprise Security Solutions<br>
-                        This is an automated security email. Please do not reply.
-                    </p>
-                </div>
-            </body>
-            </html>
-            """
+            html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset Request - MDefender Pro</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #24292f; -webkit-font-smoothing: antialiased; line-height: 1.5;">
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 28px 16px;">
+        <tr>
+            <td align="center">
+                <!-- Main Container (GitHub style: clean, natural, max-width 540px) -->
+                <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 540px; text-align: left;">
+                    
+                    <!-- Brand Header with Shield Logo -->
+                    <tr>
+                        <td style="padding-bottom: 24px;">
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="width: 36px; height: 36px; vertical-align: middle;">
+                                        <img src="data:image/png;base64,{_LOGO_B64}" width="36" height="36" alt="MDefender Pro Logo" style="display: block; width: 36px; height: 36px; border-radius: 8px; object-fit: contain;" />
+                                    </td>
+                                    <td style="padding-left: 12px; vertical-align: middle;">
+                                        <span style="font-size: 19px; font-weight: 800; color: #1f2328; letter-spacing: -0.3px;">MDefender <span style="color: #e8792f;">Pro</span></span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td style="font-size: 14px; color: #24292f;">
+                            <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #1f2328;">
+                                {user_greeting}
+                            </p>
+
+                            <p style="margin: 0 0 16px 0; line-height: 1.6; color: #57606a;">
+                                We heard that you requested a password reset for your MDefender Pro account.
+                            </p>
+
+                            <p style="margin: 20px 0 8px 0; font-size: 13px; font-weight: 600; color: #57606a;">
+                                Here is your 6-digit password reset code:
+                            </p>
+
+                            <!-- Clean Monospace OTP Box with Copy Tag (No Harsh Red Box) -->
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 10px 0 20px 0;">
+                                <tr>
+                                    <td style="background-color: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 10px 22px; vertical-align: middle;">
+                                        <span style="font-family: ui-monospace, SFMono-Regular, 'SF Pro Display', Menlo, Consolas, monospace; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #1f2328; user-select: all;">{display_otp or reset_token}</span>
+                                    </td>
+                                    <td style="padding-left: 12px; vertical-align: middle;">
+                                        <span style="display: inline-block; background-color: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; color: #24292f;">
+                                            📋 Select & Copy
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.6; color: #57606a;">
+                                This code will expire in <strong>1 minute</strong>. Enter this code on your password reset screen to set a new password.
+                            </p>
+
+                            <p style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.6; color: #57606a;">
+                                If you did not request a password reset, you can safely ignore this email. Your account password will remain unchanged.
+                            </p>
+
+                            <p style="margin: 0 0 32px 0; font-size: 14px; line-height: 1.6; color: #24292f;">
+                                Thanks,<br>
+                                <strong>The MDefender Pro Team</strong>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Minimalist Footer -->
+                    <tr>
+                        <td style="border-top: 1px solid #d0d7de; padding-top: 20px; font-size: 11px; line-height: 1.6; color: #57606a;">
+                            MDefender Pro Inc. • Autonomous Cloud WAF & Global Edge Network<br>
+                            Sent to {to_email} • Security ref: MDP-{display_code} • {now_utc}
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
 
             text_body = (
-                f"MDefender Pro - Password Reset\n\n"
-                f"Click the link below to reset your password:\n{reset_url}\n\n"
-                f"This link expires in {config.PASSWORD_RESET_EXPIRE_MINUTES} minutes.\n"
-                f"If you did not request a password reset, secure your account immediately."
+                f"{user_greeting}\n\n"
+                f"We heard that you requested a password reset for your MDefender Pro account.\n\n"
+                f"Here is your 6-digit password reset code:\n"
+                f"{display_otp or reset_token}\n\n"
+                f"This code will expire in 1 minute. Enter this code on your password reset screen to set a new password.\n\n"
+                f"If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.\n\n"
+                f"Thanks,\n"
+                f"The MDefender Pro Team\n\n"
+                f"Ref: MDP-{display_code} • {now_utc}"
             )
 
             msg.attach(MIMEText(text_body, 'plain'))
-            msg.attach(MIMEText(html, 'html'))
+            msg.attach(MIMEText(html_body, 'html'))
 
-            with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
-                server.send_message(msg)
-
-            return True
+            return self._send_smtp_message(config, msg, to_email, otp_code=display_otp or reset_token, purpose='password_reset')
         except Exception as e:
             print(f"[AUTH EMAIL] Failed to send password reset email: {e}")
             return False

@@ -20,6 +20,7 @@ const Layout = lazy(() => import('./components/Layout'))
 const UserLayout = lazy(() => import('./components/UserLayout'))
 const About = lazy(() => import('./pages/About'))
 const Solutions = lazy(() => import('./pages/Solutions'))
+const SolutionDetail = lazy(() => import('./pages/SolutionDetail'))
 const ProductDetail = lazy(() => import('./pages/ProductDetail'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Blog = lazy(() => import('./pages/Blog'))
@@ -34,6 +35,19 @@ const UserSettings = lazy(() => import('./pages/UserSettings'))
 const UserPricing = lazy(() => import('./pages/UserPricing'))
 const UserConnect = lazy(() => import('./pages/UserConnect'))
 const UserBlacklist = lazy(() => import('./pages/UserBlacklist'))
+const UserBulkManagement = lazy(() => import('./pages/UserBulkManagement'))
+const BulkMonitoring = lazy(() => import('./pages/bulk/BulkMonitoring'))
+const BulkPlugins = lazy(() => import('./pages/bulk/BulkPlugins'))
+const BulkThemes = lazy(() => import('./pages/bulk/BulkThemes'))
+const BulkCore = lazy(() => import('./pages/bulk/BulkCore'))
+const BulkBackup = lazy(() => import('./pages/bulk/BulkBackup'))
+const BulkScanner = lazy(() => import('./pages/bulk/BulkScanner'))
+const BulkHardening = lazy(() => import('./pages/bulk/BulkHardening'))
+const BulkSafeUpdates = lazy(() => import('./pages/bulk/BulkSafeUpdates'))
+const BulkSiteHealth = lazy(() => import('./pages/bulk/BulkSiteHealth'))
+const BulkActivity = lazy(() => import('./pages/bulk/BulkActivity'))
+const UserTeam = lazy(() => import('./pages/UserTeam'))
+const UserAlerts = lazy(() => import('./pages/UserAlerts'))
 const UserTools = lazy(() => import('./pages/UserTools'))
 const DDoSDashboard = lazy(() => import('./pages/DDoSDashboard'))
 const AttackLearning = lazy(() => import('./pages/AttackLearning'))
@@ -141,6 +155,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/solutions" element={<Solutions />} />
+        <Route path="/solutions/:slug" element={<SolutionDetail />} />
         <Route path="/products" element={<ProductDetail />} />
         <Route path="/products/:slug" element={<ProductDetail />} />
         <Route path="/about" element={<Solutions />} />
@@ -181,7 +196,22 @@ function App() {
           <Route path="rules" element={<UserRules />} />
           <Route path="domains" element={<UserDomains />} />
           <Route path="websites" element={<UserWebsites />} />
-          <Route path="tools" element={<UserTools />} />
+          <Route path="bulk-management" element={<Navigate to="/user/bulk/monitoring" replace />} />
+          <Route path="bulk" element={<Navigate to="/user/bulk/monitoring" replace />} />
+          <Route path="bulk/monitoring" element={<BulkMonitoring />} />
+          <Route path="bulk/plugins" element={<BulkPlugins />} />
+          <Route path="bulk/themes" element={<BulkThemes />} />
+          <Route path="bulk/core" element={<BulkCore />} />
+          <Route path="bulk/backup" element={<BulkBackup />} />
+          <Route path="bulk/scanner" element={<BulkScanner />} />
+          <Route path="bulk/hardening" element={<BulkHardening />} />
+          <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />
+          <Route path="bulk/site-health" element={<BulkSiteHealth />} />
+          <Route path="bulk/activity" element={<BulkActivity />} />
+          <Route path="bulk/tools" element={<UserTools isBulk={true} />} />
+          <Route path="team" element={<UserTeam />} />
+          <Route path="alerts" element={<UserAlerts />} />
+          <Route path="tools" element={<Navigate to="/user/bulk/tools" replace />} />
           <Route path="connect" element={<UserConnect />} />
           <Route path="pricing" element={<UserPricing />} />
           <Route path="plans" element={<Navigate to="/user/pricing" replace />} />

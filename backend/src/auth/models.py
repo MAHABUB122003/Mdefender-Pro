@@ -7,8 +7,8 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     username: Optional[str] = Field(None, min_length=3, max_length=30)
     email: EmailStr
-    password: str = Field(..., min_length=12, max_length=128)
-    confirm_password: str = Field(..., min_length=12, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
 
     @field_validator('username')
     @classmethod
@@ -41,7 +41,8 @@ class AdminLoginRequest(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str = Field(..., min_length=64, max_length=256)
+    token: str = Field(..., min_length=4, max_length=256)
+    email: Optional[str] = None
 
 
 class ResendVerificationRequest(BaseModel):
@@ -52,16 +53,23 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
+class VerifyResetOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=4, max_length=20)
+
+
 class ResetPasswordRequest(BaseModel):
-    token: str = Field(..., min_length=64, max_length=128)
-    password: str = Field(..., min_length=12, max_length=128)
-    confirm_password: str = Field(..., min_length=12, max_length=128)
+    token: Optional[str] = Field(None, max_length=256)
+    otp: Optional[str] = Field(None, max_length=20)
+    email: Optional[str] = None
+    password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
 
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1, max_length=128)
-    new_password: str = Field(..., min_length=12, max_length=128)
-    confirm_password: str = Field(..., min_length=12, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_password: str = Field(..., min_length=8, max_length=128)
 
 
 class ChangeEmailRequest(BaseModel):

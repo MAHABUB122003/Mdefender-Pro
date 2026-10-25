@@ -263,13 +263,20 @@ class SubscriptionService:
         config = self.plan_service.get_plan(plan_id)
         limit = config.get("website_limit", 1)
         user_id = self._user_id(user)
-        current = self.db.websites.count_documents({"user_id": user_id})
+        user_ids = [str(user_id)]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(str(user_id)):
+                user_ids.append(ObjectId(str(user_id)))
+        except Exception:
+            pass
+        current = self.db.websites.count_documents({"user_id": {"$in": user_ids}})
         return {
             "allowed": current < limit,
             "limit": limit,
             "current": current,
             "plan": plan_id,
-            "message": f"Your {config.get('name', plan_id)} plan allows up to {limit} website(s)."
+            "message": f"Your {config.get('name', plan_id)} plan allows up to {limit} website(s). You currently have {current}/{limit}."
             if current >= limit else None,
         }
 
@@ -355,15 +362,19 @@ class SubscriptionService:
         user_id = self._user_id(user)
         from bson import ObjectId
         now = datetime.now()
+        u_cond = [{"_id": str(user_id)}, {"email": str(user_id)}]
         try:
-            oid = ObjectId(user_id)
-            result = self.db.users.update_one(
-                {"_id": oid}, {"$set": {"plan": plan, "updated_at": now}}
-            )
+            if ObjectId.is_valid(str(user_id)):
+                u_cond.append({"_id": ObjectId(str(user_id))})
         except Exception:
-            result = self.db.users.update_one(
-                {"email": user_id}, {"$set": {"plan": plan, "updated_at": now}}
-            )
+            pass
+        result = self.db.users.update_one(
+            {"$or": u_cond}, {"$set": {"plan": plan, "updated_at": now}}
+        )
+        self.db.entitlements.update_one(
+            {"user_id": str(user_id)},
+            {"$set": {"plan": plan, "status": "active", "updated_at": now}}
+        )
         changed = result.modified_count > 0
         sub = self.get_active_subscription(user)
         scheduled = None

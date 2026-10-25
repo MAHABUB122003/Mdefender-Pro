@@ -108,18 +108,21 @@ export default function Login({ onLoginSuccess }) {
         >
           <div
             style={{
-              width: '32px',
-              height: '32px',
+              width: '34px',
+              height: '34px',
               borderRadius: '8px',
-              background: '#0f172a',
+              overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
               boxShadow: '0 2px 6px rgba(15, 23, 42, 0.15)',
             }}
           >
-            <Shield size={17} strokeWidth={2.4} />
+            <img
+              src="/assets/mdefender_logo.png"
+              alt="MDefender Pro Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
           <span style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
             M Defender <span style={{ color: '#ea580c', fontWeight: 800 }}>Pro</span>

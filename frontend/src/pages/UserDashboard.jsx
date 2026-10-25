@@ -66,11 +66,11 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointE
 const securityPalette = [
   '#DC2626', // Critical Threats (SQLi / RCE)
   '#E8792F', // High Severity (XSS / Prompt Injection)
-  '#6366F1', // Machine Learning Heuristic Anomalies
-  '#0284C7', // Bot Scanners & Web Crawlers
-  '#8B5CF6', // Path Traversal & LFI Exploits
-  '#059669', // Clean Passed Traffic
-  '#64748B'  // Neutral Origin Edge
+  '#28745D', // Machine Learning Heuristic Anomalies (Forest Emerald)
+  '#475569', // Bot Scanners & Web Crawlers (Slate)
+  '#64748B', // Path Traversal & Secondary Probes (Muted Slate)
+  '#10201E', // Ingress Edge Deep Neutral
+  '#D97735'  // Brand Warm Accent
 ];
 
 const severityConfig = {
@@ -78,14 +78,14 @@ const severityConfig = {
   sql: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
   rce: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
   command: { label: 'CRITICAL', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  xss: { label: 'HIGH', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  lfi: { label: 'HIGH', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
-  path: { label: 'HIGH', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
-  traversal: { label: 'HIGH', color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
-  bot: { label: 'BLOCKED', color: '#0284C7', bg: '#F0F9FF', border: '#BAE6FD' },
-  scanner: { label: 'BLOCKED', color: '#0284C7', bg: '#F0F9FF', border: '#BAE6FD' },
-  probe: { label: 'DETECTED', color: '#6366F1', bg: '#EEF2FF', border: '#C7D2FE' },
-  clean: { label: 'PASSED', color: '#059669', bg: '#ECFDF5', border: '#A7F3D0' },
+  xss: { label: 'HIGH', color: '#D97735', bg: '#FEF3EB', border: '#FCD8BF' },
+  lfi: { label: 'HIGH', color: '#D97735', bg: '#FEF3EB', border: '#FCD8BF' },
+  path: { label: 'HIGH', color: '#D97735', bg: '#FEF3EB', border: '#FCD8BF' },
+  traversal: { label: 'HIGH', color: '#D97735', bg: '#FEF3EB', border: '#FCD8BF' },
+  bot: { label: 'BLOCKED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
+  scanner: { label: 'BLOCKED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
+  probe: { label: 'DETECTED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
+  clean: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
   default: { label: 'MITIGATED', color: '#E8792F', bg: '#FEF3EB', border: '#FCD8BF' }
 };
 
@@ -853,14 +853,13 @@ function StatCard({
   const [isHovered, setIsHovered] = useState(false);
 
   const badgeStyles = {
-    sky: { bg: '#F0F9FF', color: '#0284C7', border: '#BAE6FD' },
-    crimson: { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
-    indigo: { bg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE' },
-    emerald: { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' },
-    orange: { bg: '#FEF3EB', color: '#D97735', border: '#FCD8BF' },
-    violet: { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
+    sky: { bg: '#F0FDF4', color: '#15803D', border: '#DCFCE7' },
+    crimson: { bg: '#FEF2F2', color: '#B91C1C', border: '#FECACA' },
+    indigo: { bg: '#FFFBEB', color: '#B45309', border: '#FEF3C7' },
+    emerald: { bg: '#F0FDF4', color: '#15803D', border: '#DCFCE7' },
+    orange: { bg: '#FFFBEB', color: '#B45309', border: '#FEF3C7' },
     slate: { bg: '#F8FAFC', color: '#475569', border: '#E2E8F0' }
-  }[badgeType] || { bg: '#F0F9FF', color: '#0284C7', border: '#BAE6FD' };
+  }[badgeType] || { bg: '#F8FAFC', color: '#475569', border: '#E2E8F0' };
 
   return (
     <div
@@ -868,50 +867,34 @@ function StatCard({
       onMouseLeave={() => setIsHovered(false)}
       style={{
         background: '#FFFFFF',
-        borderRadius: '16px',
-        border: isHovered && borderColor ? `1px solid ${borderColor}` : isHovered ? '1px solid #CBD8CF' : '1px solid #D9E1DC',
-        padding: '22px 24px',
+        borderRadius: '14px',
+        border: '1px solid #D9E1DC',
+        padding: '20px 22px',
         boxShadow: isHovered
-          ? `0 14px 30px -6px ${glowColor || 'rgba(16, 32, 30, 0.08)'}, 0 4px 10px rgba(16, 32, 30, 0.03)`
-          : '0 1px 3px rgba(16, 32, 30, 0.04)',
-        transition: 'all 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
-        transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
+          ? '0 8px 20px -4px rgba(16, 32, 30, 0.06)'
+          : '0 1px 3px rgba(16, 32, 30, 0.03)',
+        transition: 'all 0.2s ease',
+        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         position: 'relative',
-        minHeight: '154px',
-        overflow: 'hidden'
+        minHeight: '145px'
       }}
     >
-      {/* Top 3px Colored Accent Line */}
-      {accentGradient && (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
         <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: accentGradient
-        }} />
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          borderRadius: '12px',
-          background: bg || '#F0F9FF',
-          border: borderColor ? `1px solid ${borderColor}` : '1px solid transparent',
+          width: '40px',
+          height: '40px',
+          borderRadius: '10px',
+          background: bg || '#F1F5F3',
+          border: borderColor ? `1px solid ${borderColor}` : '1px solid #D9E1DC',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: color || '#0284C7',
-          transition: 'transform 0.2s ease',
-          transform: isHovered ? 'scale(1.06)' : 'scale(1)',
-          boxShadow: isHovered ? `0 4px 12px ${glowColor || 'rgba(0,0,0,0.06)'}` : 'none'
+          color: color || '#10201E'
         }}>
-          <Icon size={22} strokeWidth={2.2} />
+          <Icon size={20} strokeWidth={2} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -932,39 +915,38 @@ function StatCard({
                 border: '1px solid #E2E8F0',
                 color: '#64748B',
                 cursor: cleaning ? 'not-allowed' : 'pointer',
-                padding: '4px 8px',
-                borderRadius: '8px',
+                padding: '3px 7px',
+                borderRadius: '6px',
                 fontSize: '11px',
-                fontWeight: '700',
+                fontWeight: '600',
                 opacity: isHovered || cleaning ? 1 : 0,
-                transition: 'opacity 0.2s ease, background 0.15s ease'
+                transition: 'opacity 0.2s ease'
               }}
             >
-              <Trash2 size={12} color={cleaning ? '#DC2626' : '#64748B'} />
+              <Trash2 size={11} color={cleaning ? '#DC2626' : '#64748B'} />
               <span>{cleaning ? 'Clearing...' : 'Clear'}</span>
             </button>
           )}
 
           {badgeText && (
             <span style={{
-              fontSize: '11px',
-              fontWeight: '800',
-              padding: '3px 10px',
-              borderRadius: '20px',
+              fontSize: '10.5px',
+              fontWeight: '700',
+              padding: '2px 8px',
+              borderRadius: '5px',
               background: badgeStyles.bg,
               color: badgeStyles.color,
               border: `1px solid ${badgeStyles.border}`,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '5px',
-              letterSpacing: '0.2px'
+              letterSpacing: '0.02em'
             }}>
               <span style={{
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
-                background: badgeStyles.color,
-                boxShadow: `0 0 6px ${badgeStyles.color}`
+                background: badgeStyles.color
               }} />
               <span>{badgeText}</span>
             </span>
@@ -974,11 +956,11 @@ function StatCard({
 
       <div>
         <div style={{
-          fontSize: '32px',
-          fontWeight: '900',
+          fontSize: '24px',
+          fontWeight: '700',
           color: '#10201E',
-          lineHeight: '1.05',
-          letterSpacing: '-0.8px'
+          lineHeight: '1.1',
+          letterSpacing: '-0.02em'
         }}>
           {animated}
         </div>
@@ -1410,9 +1392,9 @@ export default function UserDashboard() {
                   fontWeight: '800',
                   padding: '3px 10px',
                   borderRadius: '20px',
-                  background: userPlan === 'enterprise' ? '#F5F3FF' : userPlan === 'pro' ? '#EEF2FF' : userPlan === 'go' ? '#F0F9FF' : '#F8FAFC',
-                  color: userPlan === 'enterprise' ? '#7C3AED' : userPlan === 'pro' ? '#4F46E5' : userPlan === 'go' ? '#0284C7' : '#475569',
-                  border: `1px solid ${userPlan === 'enterprise' ? '#DDD6FE' : userPlan === 'pro' ? '#C7D2FE' : userPlan === 'go' ? '#BAE6FD' : '#E2E8F0'}`
+                  background: isPremium ? '#FEF3EB' : '#F1F5F9',
+                  color: isPremium ? '#D97735' : '#475569',
+                  border: `1px solid ${isPremium ? '#FCD8BF' : '#CBD5E1'}`
                 }}>
                   {userPlan === 'go' ? 'Developer Go' : (userPlan === 'pro' || userPlan === 'premium') ? 'Enterprise Pro' : (userPlan === 'enterprise' || userPlan === 'ultra') ? 'Dedicated Enterprise' : 'Starter Free Tier'}
                 </span>
@@ -1585,37 +1567,33 @@ export default function UserDashboard() {
         gap: '18px',
         marginBottom: '24px'
       }}>
-        {/* Card 1: Sky Blue / Cyan (Speed & Real-Time Velocity) */}
+        {/* Card 1: Slate/Dark (Speed & Ingress Traffic) */}
         <StatCard
           icon={Zap}
-          color="#0284C7"
-          bg="#F0F9FF"
-          borderColor="#BAE6FD"
-          glowColor="rgba(2, 132, 199, 0.14)"
-          accentGradient="linear-gradient(90deg, #0284C7 0%, #38BDF8 100%)"
+          color="#10201E"
+          bg="#F1F5F3"
+          borderColor="#D9E1DC"
           value={data?.requests_today || 0}
           label="24h Ingress Requests"
           sublabel="Real-Time Traffic Velocity"
           badgeText="LIVE INGRESS"
-          badgeType="sky"
+          badgeType="emerald"
           onClean={() => handleCleanCategory('requests_today', '24h Ingress')}
           cleaning={cleaningCategory === 'requests_today'}
           actionText="Inspect Ingress Traffic"
           actionLink="/user/logs"
-          actionColor="#0284C7"
+          actionColor="#10201E"
         />
 
-        {/* Card 2: Threat Crimson Red (WAF & Attacks Quarantined) */}
+        {/* Card 2: Security Crimson (Attacks Blocked & Quarantined) */}
         <StatCard
           icon={ShieldAlert}
           color="#DC2626"
           bg="#FEF2F2"
           borderColor="#FECACA"
-          glowColor="rgba(220, 38, 38, 0.14)"
-          accentGradient="linear-gradient(90deg, #DC2626 0%, #F87171 100%)"
           value={data?.total_blocked || 0}
           label="Attacks Quarantined"
-          sublabel="403 Forbidden Dropped"
+          sublabel="403 Forbidden Intercepted"
           badgeText="QUARANTINED"
           badgeType="crimson"
           onClean={() => handleCleanCategory('total_blocked', 'Attacks Blocked')}
@@ -1625,42 +1603,38 @@ export default function UserDashboard() {
           actionColor="#DC2626"
         />
 
-        {/* Card 3: Electric Indigo / Sparkle (AI Threat Engine & Lifetime Scrubbing) */}
+        {/* Card 3: Brand Amber / Orange (Neural Engine & Heuristic Inspection) */}
         <StatCard
           icon={Sparkles}
-          color="#6366F1"
-          bg="#EEF2FF"
-          borderColor="#C7D2FE"
-          glowColor="rgba(99, 102, 241, 0.14)"
-          accentGradient="linear-gradient(90deg, #6366F1 0%, #818CF8 100%)"
+          color="#E8792F"
+          bg="#FFF4ED"
+          borderColor="#FCD3B6"
           value={data?.total_requests || 0}
           label="Lifetime Scrubbed Edge"
           sublabel="6.5M+ Neural Model Heuristics"
-          badgeText="DEEP ML ACTIVE"
-          badgeType="indigo"
+          badgeText="NEURAL ENGINE"
+          badgeType="orange"
           onClean={() => handleCleanCategory('total_requests', 'Lifetime Traffic')}
           cleaning={cleaningCategory === 'total_requests'}
           actionText="View AI Threat Model"
           actionLink="/user/rules"
-          actionColor="#6366F1"
+          actionColor="#E8792F"
         />
 
-        {/* Card 4: Vibrant Emerald / Mint (100% Online Fleet & Health) */}
+        {/* Card 4: Forest Emerald (100% Online Fleet & Health) */}
         <StatCard
           icon={Globe}
-          color="#059669"
-          bg="#ECFDF5"
-          borderColor="#A7F3D0"
-          glowColor="rgba(5, 150, 105, 0.14)"
-          accentGradient="linear-gradient(90deg, #059669 0%, #34D399 100%)"
+          color="#2A8B68"
+          bg="#E8F3EC"
+          borderColor="#CFE2D4"
           value={websitesList.length || data?.active_websites || 0}
           label="Protected Web Fleet"
           sublabel="WordPress & Domains Online"
-          badgeText="100% ONLINE"
+          badgeText="FLEET ONLINE"
           badgeType="emerald"
           actionText="+ Connect New Website"
           actionLink="/user/connect"
-          actionColor="#059669"
+          actionColor="#2A8B68"
         />
       </div>
 
@@ -3048,8 +3022,8 @@ export default function UserDashboard() {
               width: '7px',
               height: '7px',
               borderRadius: '50%',
-              background: '#6366F1',
-              boxShadow: '0 0 8px rgba(99, 102, 241, 0.7)'
+              background: '#10B981',
+              boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)'
             }} />
             <span style={{ color: '#64748B' }}>ML Threat Model:</span>
             <strong style={{ color: '#10201E' }}>
@@ -3058,13 +3032,13 @@ export default function UserDashboard() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#0284C7', boxShadow: '0 0 8px rgba(2, 132, 199, 0.7)' }} />
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
             <span style={{ color: '#64748B' }}>Rate Limiting Layer:</span>
             <strong style={{ color: '#10201E' }}>Enforcing</strong>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.7)' }} />
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
             <span style={{ color: '#64748B' }}>Edge SSL/TLS:</span>
             <strong style={{ color: '#10201E' }}>TLS 1.3 Certified</strong>
           </div>
@@ -3083,7 +3057,7 @@ export default function UserDashboard() {
               fontSize: '12.5px'
             }}
           >
-            <Globe size={15} color="#0284C7" />
+            <Globe size={15} color="#2A8B68" />
             <span>Manage Domains</span>
           </Link>
 

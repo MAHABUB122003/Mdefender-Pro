@@ -118,9 +118,9 @@ export default function ResetPassword() {
 
       <div className="rp-card">
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginBottom: 20 }}>
-            <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #4f46e5, #6366f1)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="fas fa-shield-halved" style={{ fontSize: 16, color: '#fff' }}></i>
+          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 20 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src="/assets/mdefender_logo.png" alt="MDefender Pro Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <span style={{ fontSize: 16, fontWeight: 700, color: s.text, letterSpacing: '-0.3px' }}>MDefender Pro</span>
           </Link>

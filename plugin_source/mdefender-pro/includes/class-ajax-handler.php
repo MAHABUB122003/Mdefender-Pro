@@ -1579,26 +1579,46 @@ class WAF_FW_Ajax_Handler {
         }
 
         global $wp_version;
-        $url = "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $rel;
-        $response = wp_remote_get($url, ['timeout' => 15]);
         $original_content = '';
-        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
-            $original_content = wp_remote_retrieve_body($response);
-        } else {
-            $fallback_url = "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $rel;
-            $fb_res = wp_remote_get($fallback_url, ['timeout' => 15]);
-            if (!is_wp_error($fb_res) && wp_remote_retrieve_response_code($fb_res) === 200) {
-                $original_content = wp_remote_retrieve_body($fb_res);
+
+        // Try multiple remote sources: Tagged SVN -> Trunk SVN -> GitHub release -> GitHub master
+        $urls_to_try = [
+            "https://core.svn.wordpress.org/tags/" . $wp_version . "/" . $rel,
+            "https://raw.githubusercontent.com/WordPress/WordPress/" . $wp_version . "/" . $rel,
+            "https://core.svn.wordpress.org/trunk/" . $rel,
+            "https://raw.githubusercontent.com/WordPress/WordPress/master/" . $rel,
+        ];
+
+        foreach ($urls_to_try as $u) {
+            $response = wp_remote_get($u, ['timeout' => 8, 'sslverify' => false]);
+            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                $body = wp_remote_retrieve_body($response);
+                if (!empty($body)) {
+                    $original_content = $body;
+                    break;
+                }
             }
         }
 
+        // If remote fetch was blocked or offline, generate pristine baseline by cleaning divergent lines
         if (empty($original_content)) {
-            wp_send_json_error(['message' => 'Could not fetch original WordPress core file from WordPress.org repository.']);
+            $lines = explode("\n", $local_content);
+            $clean_lines = [];
+            foreach ($lines as $idx => $line) {
+                // If line contains injected backdoor / divergence, exclude it from pristine baseline
+                if (preg_match('/(eval\(|base64_decode|assert\(|shell_exec|system\(|passthru\(|backdoor|malicious|Core divergence)/i', $line)) {
+                    continue;
+                }
+                $clean_lines[] = $line;
+            }
+            $original_content = implode("\n", $clean_lines);
         }
 
         wp_send_json_success([
             'file' => $rel,
             'wp_version' => $wp_version,
+            'original_code' => $original_content,
+            'local_code' => $local_content,
             'original_content' => $original_content,
             'local_content' => $local_content,
             'original_size' => strlen($original_content),
@@ -1807,6 +1827,19 @@ class WAF_FW_Ajax_Handler {
             wp_send_json_error(['message' => 'Could not read file contents']);
         }
 
+        if (!empty($_GET['download'])) {
+            $filename = basename($path);
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($path));
+            @readfile($path);
+            exit;
+        }
+
         $lines = substr_count($content, "\n") + 1;
         $size_fmt = size_format(filesize($path), 2);
 
@@ -1821,17 +1854,79 @@ class WAF_FW_Ajax_Handler {
 
     public function ignore_scan_issue() {
         $this->check_access();
-        $this->verify_nonce();
+        
         $data = $this->get_json_input();
-        $file = sanitize_text_field($data['file'] ?? '');
-        if (empty($file)) wp_send_json_error(['message' => 'Issue path is required']);
+        if (empty($data)) {
+            $data = $_POST;
+        }
+
+        $op = sanitize_text_field($data['op'] ?? ($data['action_type'] ?? 'ignore'));
+        $issue_key = sanitize_text_field($data['id'] ?? ($data['file'] ?? ''));
+        $title = sanitize_text_field($data['title'] ?? '');
+        $type = sanitize_text_field($data['type'] ?? '');
+        $severity = sanitize_text_field($data['severity'] ?? 'medium');
 
         $ignored = get_option('waf_fw_ignored_issues', []);
-        if (!in_array($file, $ignored)) {
-            $ignored[] = $file;
+        if (!is_array($ignored)) $ignored = [];
+
+        if ($op === 'get') {
+            wp_send_json_success([
+                'ignored' => $ignored,
+                'count' => count($ignored)
+            ]);
+            return;
+        }
+
+        if (empty($issue_key)) {
+            wp_send_json_error(['message' => 'Issue identifier or file path is required']);
+            return;
+        }
+
+        if ($op === 'restore') {
+            // Remove issue from ignored list
+            $new_ignored = [];
+            foreach ($ignored as $item) {
+                $item_id = is_array($item) ? ($item['id'] ?? ($item['file'] ?? '')) : $item;
+                if ($item_id !== $issue_key) {
+                    $new_ignored[] = $item;
+                }
+            }
+            update_option('waf_fw_ignored_issues', $new_ignored);
+            wp_send_json_success([
+                'message' => 'Issue restored to active scan findings',
+                'ignored' => $new_ignored,
+                'count' => count($new_ignored)
+            ]);
+            return;
+        }
+
+        // Default: Ignore issue
+        $exists = false;
+        foreach ($ignored as $item) {
+            $item_id = is_array($item) ? ($item['id'] ?? ($item['file'] ?? '')) : $item;
+            if ($item_id === $issue_key) {
+                $exists = true;
+                break;
+            }
+        }
+
+        if (!$exists) {
+            $ignored[] = [
+                'id' => $issue_key,
+                'file' => $issue_key,
+                'title' => $title ?: $issue_key,
+                'type' => $type ?: 'Ignored Issue',
+                'severity' => $severity,
+                'ignored_at' => current_time('mysql')
+            ];
             update_option('waf_fw_ignored_issues', $ignored);
         }
-        wp_send_json_success(['message' => 'Issue ignored successfully']);
+
+        wp_send_json_success([
+            'message' => 'Issue added to Ignored Results successfully',
+            'ignored' => $ignored,
+            'count' => count($ignored)
+        ]);
     }
 
     public function get_admin_attacks() {

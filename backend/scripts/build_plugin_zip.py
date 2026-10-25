@@ -77,7 +77,7 @@ def build(src_dir: str | None = None) -> str:
 
     size = os.path.getsize(OUT_FILE)
     footer = (
-        f"mdefender-pro plugin bundle (v4.1.0)\n"
+        f"mdefender-pro plugin bundle (v4.3.0)\n"
         f"Built: {datetime.now().isoformat(timespec='seconds')}\n"
         f"Files: {count}\n"
     )

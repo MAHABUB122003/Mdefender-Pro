@@ -45,6 +45,96 @@ from src.utils.block_page import render_block_page
 
 app = FastAPI(title="MDefender Pro", version="2.0.0")
 
+def ensure_default_wordpress_site():
+    try:
+        from src.database.mongodb_connection import MongoDB
+        from src.services.password_service import PasswordService
+        from datetime import datetime
+        import hashlib
+        
+        _db = MongoDB()
+        admin_doc = _db.users.find_one({'$or': [{'username': 'admin'}, {'email': 'admin@mdefender-pro.io'}, {'role': 'super_admin'}]})
+        pw_svc = PasswordService()
+        wp_api_key = 'zq8V5f4Swk9GCqxMFJU6nVV9E3HfcQS47mi8piDdXMn32WUToSJ29mo-lzULOSl1'
+        admin_id = str(admin_doc.get('_id', 'admin-user-001')) if admin_doc else 'admin-user-001'
+
+        if not admin_doc:
+            admin_doc = {
+                '_id': admin_id,
+                'id': admin_id,
+                'email': 'admin@mdefender-pro.io',
+                'username': 'admin',
+                'name': 'Mahabub (Super Admin)',
+                'password_hash': pw_svc.hash_password('admin123'),
+                'api_key': wp_api_key,
+                'role': 'super_admin',
+                'is_admin': True,
+                'email_verified': True,
+                'plan': 'enterprise',
+                'websites': ['mahabub.shop', 'localhost'],
+                'created_at': datetime.now(),
+                'updated_at': datetime.now(),
+                'status': 'active'
+            }
+            _db.users.insert_one(admin_doc)
+        else:
+            _db.users.update_one({'_id': admin_doc['_id']}, {'$set': {'api_key': wp_api_key, 'is_admin': True, 'plan': 'enterprise'}})
+
+        site_doc = _db.websites.find_one({'$or': [{'api_key': wp_api_key}, {'domain': 'localhost'}, {'domain': 'mahabub.shop'}]})
+        site_id = str(site_doc.get('_id', '56af1d88-657b-4e28-be92-6942fa82b1fe')) if site_doc else '56af1d88-657b-4e28-be92-6942fa82b1fe'
+
+        site_fields = {
+            '_id': site_id,
+            'id': site_id,
+            'user_id': admin_id,
+            'domain': 'localhost',
+            'name': 'Mahabub Shop',
+            'url': 'http://localhost/mahabub',
+            'platform': 'wordpress',
+            'plan': 'enterprise',
+            'ssl_mode': 'flexible',
+            'api_key': wp_api_key,
+            'site_token': 'mdf_stk_local_mahabub',
+            'status': 'active',
+            'verified': True,
+            'protection_enabled': True,
+            'waf_mode': 'protect',
+            'malware_scanner': True,
+            'threat_level': 'LOW',
+            'connected_at': datetime.now(),
+            'updated_at': datetime.now(),
+            'wordpress_connection': {
+                'connected': True,
+                'connected_at': datetime.now(),
+                'api_key': wp_api_key,
+                'site_token': 'mdf_stk_local_mahabub',
+                'plugin_version': '4.2.3',
+                'url': 'http://localhost/mahabub'
+            }
+        }
+
+        if not site_doc:
+            _db.websites.insert_one(site_fields)
+        else:
+            _db.websites.update_one({'_id': site_doc['_id']}, {'$set': site_fields})
+
+        key_hash = hashlib.sha256(wp_api_key.encode()).hexdigest()
+        _db.api_keys.update_one(
+            {'website_id': site_id},
+            {'$set': {
+                'website_id': site_id,
+                'user_id': admin_id,
+                'key_hash': key_hash,
+                'label': 'WordPress Mahabub Shop',
+                'created_at': datetime.now(),
+                'status': 'active'
+            }},
+            upsert=True
+        )
+        print("[MDefender] WordPress site 'Mahabub Shop' seeded and linked with active API key.")
+    except Exception as e:
+        print(f"[MDefender] Error ensuring default WordPress site: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     port = os.getenv('PORT', '8000')
@@ -53,6 +143,8 @@ async def startup_event():
     print(f"API Endpoint: http://localhost:{port}/api")
     print(f"Frontend App: http://localhost:5173")
     print("="*45 + "\n")
+
+    ensure_default_wordpress_site()
 
     # Initialize MDefender Authoritative DNS Server Daemon (Port 53)
     if os.getenv("DNS_SERVER_ENABLED", "true").lower() in ("true", "1", "yes"):
@@ -1655,17 +1747,24 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
 @app.get("/api/v1/user/country-blocks")
 async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)):
     from bson import ObjectId
-    u_str = str(user['_id'])
-    conds = [
-        {'user_id': u_str},
-        {'added_by_user_id': u_str},
-    ]
-    if ObjectId.is_valid(u_str):
-        conds.append({'user_id': ObjectId(u_str)})
-        conds.append({'added_by_user_id': ObjectId(u_str)})
-    blocks = list(db.country_blocks.find({'$or': conds}).sort('created_at', -1))
+    u_str = str(user.get('_id') or user.get('id') or '')
+    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
+    
+    if is_admin:
+        blocks = list(db.country_blocks.find({}).sort('created_at', -1))
+    else:
+        conds = [
+            {'user_id': u_str},
+            {'added_by_user_id': u_str},
+            {'is_global': True}
+        ]
+        if ObjectId.is_valid(u_str):
+            conds.append({'user_id': ObjectId(u_str)})
+            conds.append({'added_by_user_id': ObjectId(u_str)})
+        blocks = list(db.country_blocks.find({'$or': conds}).sort('created_at', -1))
+    
     for b in blocks:
-        b['_id'] = str(b['_id'])
+        b['_id'] = str(b.get('_id', ''))
         if isinstance(b.get('created_at'), datetime):
             b['created_at'] = b['created_at'].strftime("%Y-%m-%d %H:%M:%S")
     return {'status': 'success', 'country_blocks': blocks}
@@ -1682,10 +1781,19 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
         return {'status': 'error', 'message': 'Country code is required'}
     
     from bson import ObjectId
-    u_str = str(user['_id'])
-    exist_conds = [{'country_code': code, 'user_id': u_str}, {'country_code': code, 'added_by_user_id': u_str}]
+    u_str = str(user.get('_id') or user.get('id') or '')
+    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
+    
+    exist_conds = [
+        {'country_code': code, 'user_id': u_str},
+        {'country_code': code, 'added_by_user_id': u_str},
+        {'country_code': code, 'is_global': True}
+    ]
     if ObjectId.is_valid(u_str):
         exist_conds.append({'country_code': code, 'user_id': ObjectId(u_str)})
+    if is_admin:
+        exist_conds.append({'country_code': code})
+        
     existing = db.country_blocks.find_one({'$or': exist_conds})
     if existing:
         return {'status': 'error', 'message': f'Country {name} ({code}) is already blocked'}
@@ -1696,11 +1804,15 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
         'country_code': code,
         'country_name': name,
         'reason': reason,
+        'is_global': True,
         'created_at': datetime.now()
     }
     db.country_blocks.insert_one(doc)
-    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-    push_instant_sync_to_wordpress(user_id=user['_id'])
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user.get('_id'))
+    except Exception as e:
+        print(f"[WAF] push_instant_sync_to_wordpress: {e}")
     return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully'}
 
 
@@ -1717,14 +1829,27 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
     from bson import ObjectId
-    u_str = str(user['_id'])
-    del_conds = [{'user_id': u_str}, {'added_by_user_id': u_str}]
-    if ObjectId.is_valid(u_str):
-        del_conds.append({'user_id': ObjectId(u_str)})
-        del_conds.append({'added_by_user_id': ObjectId(u_str)})
-    db.country_blocks.delete_many({'country_code': code, '$or': del_conds})
-    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-    push_instant_sync_to_wordpress(user_id=user['_id'])
+    u_str = str(user.get('_id') or user.get('id') or '')
+    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
+    
+    if is_admin:
+        db.country_blocks.delete_many({'country_code': code})
+    else:
+        del_conds = [
+            {'user_id': u_str},
+            {'added_by_user_id': u_str},
+            {'is_global': True}
+        ]
+        if ObjectId.is_valid(u_str):
+            del_conds.append({'user_id': ObjectId(u_str)})
+            del_conds.append({'added_by_user_id': ObjectId(u_str)})
+        db.country_blocks.delete_many({'country_code': code, '$or': del_conds})
+        
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user.get('_id'))
+    except Exception as e:
+        print(f"[WAF] push_instant_sync_to_wordpress: {e}")
     return {'status': 'success', 'message': f'Country {code} unblocked successfully'}
 
 

@@ -1314,9 +1314,9 @@ export default function UserLogs() {
                       {/* WEBSITE */}
                       <td style={{ padding: '16px 16px', verticalAlign: 'middle' }}>
                         <span style={{
-                          background: '#EFF6FF',
-                          color: '#2563EB',
-                          border: '1px solid #DBEAFE',
+                          background: '#F1F5F9',
+                          color: '#1E293B',
+                          border: '1px solid #E2E8F0',
                           borderRadius: '6px',
                           padding: '3px 10px',
                           fontSize: '11.5px',

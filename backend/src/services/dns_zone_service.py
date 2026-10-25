@@ -338,6 +338,42 @@ class DNSZoneService:
                 "created_at": r.get("created_at"),
             })
 
+        # Also check if website document has embedded dns_records from onboarding
+        if not formatted_records and website.get("dns_records") and isinstance(website.get("dns_records"), list):
+            for rec in website["dns_records"]:
+                rec_id = str(rec.get("id") or uuid.uuid4())
+                doc = {
+                    "_id": rec_id,
+                    "website_id": actual_site_id,
+                    "user_id": user_id,
+                    "domain": domain,
+                    "type": rec.get("type", "A").upper(),
+                    "name": rec.get("name", "@"),
+                    "content": rec.get("content", ""),
+                    "ttl": rec.get("ttl", "Auto"),
+                    "proxied": bool(rec.get("proxied", True)),
+                    "priority": rec.get("priority"),
+                    "purpose": rec.get("purpose", ""),
+                    "created_at": datetime.now(),
+                    "updated_at": datetime.now(),
+                }
+                try:
+                    self.db.dns_records.insert_one(doc)
+                    rec["id"] = rec_id
+                    formatted_records.append({
+                        "id": rec_id,
+                        "type": doc["type"],
+                        "name": doc["name"],
+                        "content": doc["content"],
+                        "ttl": doc["ttl"],
+                        "proxied": doc["proxied"],
+                        "priority": doc["priority"],
+                        "purpose": doc["purpose"],
+                        "created_at": doc["created_at"]
+                    })
+                except Exception:
+                    pass
+
         # If no records exist in DB yet, populate with initial discovery or baseline defaults
         if not formatted_records:
             discovery = self.discover_public_dns(domain, scan_subdomains=True)

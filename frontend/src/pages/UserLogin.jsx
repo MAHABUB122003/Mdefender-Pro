@@ -116,21 +116,31 @@ export default function UserLogin({ onLoginSuccess }) {
 
   return (
     <AuthSplitLayout>
-      {/* Security icon box: 38 × 38px, radius 10px, background #E8EEE8, color #10201E */}
+      {/* Brand logo container */}
       <div style={{ marginBottom: '18px' }}>
         <div
           style={{
-            width: '38px',
-            height: '38px',
+            width: '42px',
+            height: '42px',
             borderRadius: '10px',
-            background: '#E8EEE8',
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#10201E',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }}
         >
-          {mfaRequired ? <KeyRound size={17} strokeWidth={2.2} /> : <Lock size={17} strokeWidth={2.2} />}
+          {mfaRequired ? (
+            <div style={{ width: '100%', height: '100%', background: '#E8EEE8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <KeyRound size={20} strokeWidth={2.2} style={{ color: '#10201E' }} />
+            </div>
+          ) : (
+            <img
+              src="/assets/mdefender_logo.png"
+              alt="MDefender Pro Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          )}
         </div>
       </div>
 

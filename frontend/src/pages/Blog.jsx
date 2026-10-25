@@ -869,18 +869,19 @@ export default function Blog() {
               </div>
             </header>
 
-            {/* Visual Technical Cover Image */}
+            {/* Visual Technical Cover Image with Large Expansive Frame */}
             <div
               style={{
-                maxWidth: '1000px',
-                margin: '0 auto 36px',
-                borderRadius: '16px',
+                maxWidth: '1240px',
+                margin: '0 auto 40px',
+                borderRadius: '20px',
                 overflow: 'hidden',
                 border: '1.5px solid #CBD8CF',
-                boxShadow: '0 18px 42px rgba(16, 34, 31, 0.07)',
-                background: '#F7F5EE',
-                aspectRatio: '16/9',
-                maxHeight: '480px',
+                boxShadow: '0 24px 56px rgba(16, 34, 31, 0.09)',
+                background: '#F7F6F1',
+                aspectRatio: '16/8',
+                maxHeight: '520px',
+                position: 'relative',
               }}
             >
               <img
@@ -891,35 +892,87 @@ export default function Blog() {
                   e.currentTarget.style.display = 'none';
                 }}
               />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  left: '24px',
+                  background: 'rgba(255, 255, 255, 0.94)',
+                  backdropFilter: 'blur(12px)',
+                  padding: '6px 14px 6px 10px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #CBD8CF',
+                  boxShadow: '0 8px 24px rgba(16, 34, 31, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  zIndex: 10,
+                }}
+              >
+                <img
+                  src="/mdefender_shield_logo.png"
+                  alt="MDefender Pro"
+                  style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'block' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#10221F', letterSpacing: '0.04em', lineHeight: 1.2 }}>
+                    MDefender Pro
+                  </span>
+                  <span style={{ fontSize: '9px', fontWeight: 700, color: '#53615D', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Threat Intelligence Lab
+                  </span>
+                </div>
+              </div>
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '20px',
+                  right: '24px',
+                  background: 'rgba(16, 34, 31, 0.85)',
+                  backdropFilter: 'blur(10px)',
+                  color: '#ffffff',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <Shield size={14} style={{ color: '#E8792F' }} />
+                <span>MDefender Threat Intelligence Lab &bull; {activeArticle.advisoryId}</span>
+              </div>
             </div>
 
             {/* Forensic Threat Dossier Matrix HUD */}
             <div
               style={{
-                maxWidth: '1000px',
+                maxWidth: '1240px',
                 margin: '0 auto 46px',
                 background: '#FFFFFF',
-                borderRadius: '14px',
+                borderRadius: '16px',
                 border: '1.5px solid #CBD8CF',
-                padding: '20px 24px',
-                boxShadow: '0 8px 24px rgba(16, 34, 31, 0.04)',
+                padding: '24px 30px',
+                boxShadow: '0 10px 30px rgba(16, 34, 31, 0.05)',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: '20px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+                gap: '24px',
               }}
             >
               <div>
-                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '6px' }}>
                   Advisory &amp; CVE Reference
                 </div>
-                <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#10221F', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#10221F', fontFamily: 'monospace' }}>
                   {activeArticle.cve || activeArticle.advisoryId}
                 </div>
-                <div style={{ fontSize: '11px', color: '#53615D', marginTop: '2px' }}>{activeArticle.advisoryId}</div>
+                <div style={{ fontSize: '11.5px', color: '#53615D', marginTop: '2px' }}>{activeArticle.advisoryId}</div>
               </div>
 
               <div>
-                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '6px' }}>
                   CVSS v3.1 Severity Rating
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -928,8 +981,8 @@ export default function Blog() {
                       background: activeArticle.severity === 'Critical' ? '#FEE2E2' : '#FEF3C7',
                       color: activeArticle.severity === 'Critical' ? '#991B1B' : '#92400E',
                       fontWeight: 800,
-                      fontSize: '11.5px',
-                      padding: '3px 8px',
+                      fontSize: '12px',
+                      padding: '4px 10px',
                       borderRadius: '6px',
                       border: `1px solid ${activeArticle.severity === 'Critical' ? '#FECACA' : '#FDE68A'}`,
                     }}
@@ -937,73 +990,73 @@ export default function Blog() {
                     CVSS {activeArticle.cvss || '9.8'} {activeArticle.severity}
                   </span>
                 </div>
-                <div style={{ fontSize: '10px', color: '#87948D', marginTop: '4px', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '10.5px', color: '#87948D', marginTop: '4px', fontFamily: 'monospace' }}>
                   {activeArticle.vector || 'Network / Low Complexity'}
                 </div>
               </div>
 
               <div>
-                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '6px' }}>
                   MDefender Pro Virtual Patch
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: '#28745D', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ShieldCheck size={14} />
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#28745D', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShieldCheck size={16} />
                   <span>{activeArticle.mitigationRule || 'Rule Active'}</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#10B981', fontWeight: 600, marginTop: '2px' }}>
+                <div style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 600, marginTop: '2px' }}>
                   Edge Latency: {activeArticle.mitigationLatency || '<0.12ms'}
                 </div>
               </div>
 
               <div>
-                <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 800, textTransform: 'uppercase', color: '#87948D', letterSpacing: '0.08em', marginBottom: '6px' }}>
                   Campaign Telemetry Status
                 </div>
-                <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#E8792F', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8792F' }} />
+                <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#E8792F', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E8792F' }} />
                   <span>{activeArticle.status || 'Active Wild Exploitation'}</span>
                 </div>
-                <div style={{ fontSize: '10.5px', color: '#53615D', marginTop: '3px' }}>
+                <div style={{ fontSize: '11px', color: '#53615D', marginTop: '3px' }}>
                   {activeArticle.affectedSoftware || 'Multi-Platform'}
                 </div>
               </div>
             </div>
 
-            {/* Callout Box: Sage Background, 3px Orange Left Border, 8px Right Radius, 18px Padding */}
+            {/* Callout Box: Sage Background */}
             <aside
               style={{
-                maxWidth: '890px',
+                maxWidth: '1240px',
                 margin: '0 auto 46px',
                 background: '#E9EEE8',
-                borderLeft: '3px solid #D97735',
-                borderTopRightRadius: '8px',
-                borderBottomRightRadius: '8px',
-                padding: '18px 22px',
+                borderLeft: '4px solid #D97735',
+                borderTopRightRadius: '12px',
+                borderBottomRightRadius: '12px',
+                padding: '20px 26px',
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '14px',
+                gap: '16px',
               }}
             >
-              <Shield size={20} strokeWidth={2.4} style={{ color: '#D97735', flexShrink: 0, marginTop: '2px' }} />
+              <Shield size={22} strokeWidth={2.4} style={{ color: '#D97735', flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 800, color: '#10221F', marginBottom: '4px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#10221F', marginBottom: '4px' }}>
                   MDefender Security Lab Technical Directive
                 </div>
-                <div style={{ fontSize: '14px', lineHeight: 1.6, color: '#53615D' }}>
-                  This research report documents real-world attack vectors observed by MDefender Pro edge inspection telemetry across 180+ global anycast POPs. Countermeasure signatures are active in the core ruleset.
+                <div style={{ fontSize: '14.5px', lineHeight: 1.6, color: '#53615D' }}>
+                  This research report documents real-world attack vectors observed by MDefender Pro edge inspection telemetry across 240+ global Anycast POPs. Countermeasure signatures are active in the core ruleset.
                 </div>
               </div>
             </aside>
 
-            {/* Two-Column Content Layout: 190px Table of Contents + 680px Article Body */}
+            {/* Two-Column Content Layout: 260px Sticky Nav + Expansive Article Body */}
             <div
               className="article-detail-grid"
               style={{
-                maxWidth: '890px',
+                maxWidth: '1240px',
                 margin: '0 auto 64px',
                 display: 'grid',
-                gridTemplateColumns: '190px 1fr',
-                gap: '40px',
+                gridTemplateColumns: '260px 1fr',
+                gap: '48px',
                 alignItems: 'start',
               }}
             >
@@ -1065,8 +1118,8 @@ export default function Blog() {
                 </ul>
               </nav>
 
-              {/* Main Article Body (680px content width) */}
-              <section style={{ maxWidth: '680px' }}>
+              {/* Main Article Body (Expansive 920px width) */}
+              <section style={{ width: '100%', maxWidth: '920px' }}>
                 <ArticleBodyRenderer content={activeArticle.content} />
 
                 {/* Indicators of Compromise Forensic Matrix */}
@@ -1183,7 +1236,7 @@ export default function Blog() {
 
             {/* Related Research Articles (3 Columns Desktop, 1 Column Mobile) */}
             {relatedArticles.length > 0 && (
-              <section style={{ maxWidth: '1000px', margin: '0 auto', paddingTop: '42px', borderTop: '1px solid #D9DFD9' }}>
+              <section style={{ maxWidth: '1240px', margin: '0 auto', paddingTop: '42px', borderTop: '1px solid #D9DFD9' }}>
                 <h3
                   style={{
                     fontSize: '24px',
@@ -1513,6 +1566,25 @@ export default function Blog() {
                     >
                       Featured Advisory &bull; CVSS {featuredPost.cvss || '9.8'}
                     </div>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '18px',
+                        right: '18px',
+                        background: 'rgba(255, 255, 255, 0.94)',
+                        backdropFilter: 'blur(8px)',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        border: '1px solid #CBD8CF',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      <img src="/mdefender_shield_logo.png" alt="MDefender Pro" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#10221F', letterSpacing: '0.04em' }}>MDefender Pro</span>
+                    </div>
                   </div>
 
                   {/* Text Side: Padding 42px */}
@@ -1767,6 +1839,25 @@ export default function Blog() {
                               e.currentTarget.style.display = 'none';
                             }}
                           />
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              background: 'rgba(255, 255, 255, 0.92)',
+                              backdropFilter: 'blur(6px)',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              border: '1px solid rgba(16, 34, 31, 0.12)',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                            }}
+                          >
+                            <img src="/mdefender_shield_logo.png" alt="MDefender Pro" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
+                            <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#10221F', letterSpacing: '0.04em' }}>MDefender Pro</span>
+                          </div>
                         </div>
 
                         {/* Card Body Padding: 20px */}

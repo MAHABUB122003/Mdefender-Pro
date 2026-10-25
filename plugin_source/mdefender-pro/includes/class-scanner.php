@@ -68,7 +68,7 @@ class WAF_FW_Scanner {
             'root'    => ABSPATH,
         ];
         
-        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/'];
+        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'md-defender-pro-dedicated/', 'md-defender-pro-go/', 'md-defender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/'];
         $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp'];
         
         $bulk_inserts = [];
@@ -94,6 +94,11 @@ class WAF_FW_Scanner {
                     }
                 }
                 
+                // Exclude security scanner plugins and own source code from self-flagging
+                if (preg_match('#wp-content/plugins/(mdefender|md-defender|wp-waf|wordfence)#i', $rel_path)) {
+                    continue;
+                }
+
                 $skip = false;
                 foreach ($excluded_dirs as $ex) {
                     if (strpos($fp, 'wp-content/plugins/' . $ex) !== false || strpos($rel_path, 'wp-content/plugins/' . $ex) === 0) {
@@ -645,31 +650,44 @@ class WAF_FW_Scanner {
                     ));
 
                     if ($has_ml_init == 0 && $has_ml_skipped == 0) {
-                        $all_queued = $wpdb->get_results($wpdb->prepare(
-                            "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d",
+                        // High-speed bulk classification to avoid thousands of individual SQL queries
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE $files_table SET status = 'skipped_ml' WHERE scan_id = %d AND file_type IN ('admin', 'includes', 'root')",
+                            $queue_id
+                        ));
+                        
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE $files_table SET status = 'pending_ml' WHERE scan_id = %d AND file_type = 'uploads'",
                             $queue_id
                         ));
 
-                        foreach ($all_queued as $f_row) {
-                            $is_candidate = false;
-                            $rel_path = $f_row->file_path;
-                            $cat = $f_row->file_type;
+                        // Pre-filter plugin/theme files with suspicious extensions only (php, phtml)
+                        $candidates = $wpdb->get_results($wpdb->prepare(
+                            "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d AND file_type IN ('plugins', 'themes') AND (file_path LIKE '%.php' OR file_path LIKE '%.phtml') LIMIT 200",
+                            $queue_id
+                        ));
 
-                            if ($cat === 'uploads') {
-                                $is_candidate = true;
-                            } else {
-                                $full_path = ABSPATH . $rel_path;
-                                if (file_exists($full_path)) {
-                                    $local = $this->scan_file_multi_signal($full_path, $cat);
-                                    if ($local && $local['score'] >= 25) {
-                                        $is_candidate = true;
-                                    }
+                        $pending_ids = [];
+                        foreach ($candidates as $f_row) {
+                            $full_path = ABSPATH . $f_row->file_path;
+                            if (file_exists($full_path) && filesize($full_path) < 500000) {
+                                $content_sample = @file_get_contents($full_path, false, null, 0, 4096);
+                                if ($content_sample && (strpos($content_sample, 'eval') !== false || strpos($content_sample, 'base64_decode') !== false || strpos($content_sample, 'shell_exec') !== false || strpos($content_sample, 'assert') !== false)) {
+                                    $pending_ids[] = (int) $f_row->id;
                                 }
                             }
-
-                            $new_status = $is_candidate ? 'pending_ml' : 'skipped_ml';
-                            $wpdb->update($files_table, ['status' => $new_status], ['id' => $f_row->id]);
                         }
+
+                        if (!empty($pending_ids)) {
+                            $id_list = implode(',', $pending_ids);
+                            $wpdb->query("UPDATE $files_table SET status = 'pending_ml' WHERE id IN ($id_list)");
+                        }
+                        
+                        // Mark remaining unclassified files as skipped
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE $files_table SET status = 'skipped_ml' WHERE scan_id = %d AND status = 'pending'",
+                            $queue_id
+                        ));
                     }
 
                     $ml_batch = $wpdb->get_results($wpdb->prepare(
@@ -1556,6 +1574,11 @@ class WAF_FW_Scanner {
         // 6. Signature Checks (Crypto miners & Backdoors)
         $patterns = $this->get_malware_patterns();
         foreach ($patterns as $cat_key => $data) {
+            // PHP backdoors only apply to executable PHP scripts, not client-side JS or CSS
+            if (($cat_key === 'backdoor' || $cat_key === 'webshell') && !$is_php) {
+                continue;
+            }
+
             $matches = $this->check_malware_patterns($content, $data['patterns']);
             if (!empty($matches)) {
                 $total_score = max($total_score, $data['weight']);
@@ -1611,6 +1634,21 @@ class WAF_FW_Scanner {
                 $severity = 'info';
             }
 
+            // Extract exact line number and code snippet for accurate forensic analysis
+            $matched_line = 1;
+            $matched_snippet = '';
+            $lines = explode("\n", $content);
+            foreach ($lines as $l_idx => $l_text) {
+                if (preg_match('/(eval\s*\(|base64_decode|assert\s*\(|shell_exec|system\s*\(|passthru\s*\(|gzinflate|create_function|file_put_contents\s*\(|curl_exec|c99|r57|wso|alfa|b374k|wp_create_user|set_role|wp_insert_user|admin_user|auto_prepend_file)/i', $l_text)) {
+                    $matched_line = $l_idx + 1;
+                    $matched_snippet = trim(substr($l_text, 0, 240));
+                    break;
+                }
+            }
+            if (empty($matched_snippet) && isset($lines[0])) {
+                $matched_snippet = trim(substr($lines[0], 0, 160));
+            }
+
             return [
                 'file' => $rel_path,
                 'score' => min(100, $total_score),
@@ -1618,6 +1656,8 @@ class WAF_FW_Scanner {
                 'confidence' => $confidence,
                 'classification' => $classification,
                 'findings' => array_slice(array_unique($findings), 0, 15),
+                'line_number' => $matched_line,
+                'snippet' => $matched_snippet,
                 'size' => $size,
             ];
         }

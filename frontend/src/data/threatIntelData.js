@@ -26,7 +26,7 @@ export const BLOG_POSTS = [
     affectedSoftware: 'Enterprise Web Applications, REST APIs, GraphQL, SQL Relational Engines',
     mitigationRule: 'Rule #SQLI-AI-4091 & Neural Vectorizer #AST-902',
     mitigationLatency: '0.11ms',
-    excerpt: 'Threat actors are weaponizing generative AI to synthesize evasive SQL injection and RCE mutations that bypass static regex signatures. Discover how MDefender Pro’s 6,501,208+ payload-trained neural vectorizer inspects AST syntactic intent in <0.12ms.',
+    excerpt: 'Threat actors are weaponizing generative AI to synthesize evasive SQL injection and RCE mutations that bypass static regex signatures. Discover how MDefender Pro’s autonomous neural vectorizer inspects AST syntactic intent in <0.12ms.',
     category: 'Threat Intelligence',
     date: 'Sep 24, 2026',
     readTime: '8 min read',
@@ -84,7 +84,7 @@ Content-Type: application/json
 To neutralize polymorphic attacks without inducing false positives or latency, MDefender Pro implements a **Two-Phase Hybrid Evaluation Pipeline**:
 
 1. **Pre-Ingress Deterministic Ring (0.05ms):** Evaluates protocol compliance, known CVE signatures, and bad bot user-agents using compiled Radix DFA state machines.
-2. **Neural AST Vectorizer (6,501,208+ Vector Dataset):** Instead of static regex, MDefender tokenizes the input stream into Abstract Syntax Tree (AST) branches and evaluates Shannon entropy and character N-gram vectors:
+2. **Autonomous Neural AST Vectorizer:** Instead of static regex, MDefender tokenizes the input stream into Abstract Syntax Tree (AST) branches and evaluates Shannon entropy and character N-gram vectors:
 
 \`\`\`
 [Incoming Request] ──> [Deterministic DFA Gate] ──> [Neural Token Vectorizer] ──> [Confidence: 94.1%] ──> [403 CYBER BLOCK (0.11ms)]
@@ -373,7 +373,7 @@ At MDefender Pro, our core architectural directive was: **Speed is a Critical Se
     featured: false,
     tags: ['Machine Learning', 'Threat Hunting', 'Automation', 'Adaptive Security'],
     iocs: [
-      { type: 'Learning Dataset', value: '6,501,208+ Verified Attack Payloads', notes: 'Continuously updated from live blocked traffic' },
+      { type: 'Threat Telemetry Grid', value: 'Continuous Live Honeypot & Fleet Feeds', notes: 'Continuously updated from live blocked traffic' },
       { type: 'Immunity Propagation', value: '<45 Seconds Globally', notes: 'Synthesized rules deployed to all Anycast nodes' }
     ],
     content: `

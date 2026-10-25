@@ -18,26 +18,59 @@ class PasswordResetService:
         self.logger = Logger()
 
     def forgot_password(self, email: str) -> Dict:
+        import secrets
         normalized_email = email.strip().lower()
         user = self.db.users.find_one({'email': normalized_email})
 
         if not user:
+            pending = self.db.pending_registrations.find_one({'email': normalized_email})
+            if pending:
+                return {
+                    'success': False,
+                    'error': 'This email has a pending registration that has not been verified yet. Please verify your email first.',
+                }
             return {
-                'success': True,
-                'message': 'If an account exists with this email, a password reset link has been sent.',
+                'success': False,
+                'error': 'No registered account found with this email address. Please check your email or register.',
             }
 
-        self.db.password_reset_tokens.update_many(
+        if not user.get('email_verified', False):
+            return {
+                'success': False,
+                'error': 'Your account has not been activated yet. Please complete your registration verification first.',
+            }
+
+        otp_code = f"{secrets.randbelow(900000) + 100000}"
+        reset_token = self.jwt_service.generate_password_reset_token()
+        token_hash = self.jwt_service.hash_token(reset_token)
+
+        self.db.password_reset_otps.update_many(
             {'user_id': str(user['_id']), 'used': False},
             {'$set': {'used': True}}
         )
 
-        reset_token = self.jwt_service.generate_password_reset_token()
-        token_hash = self.jwt_service.hash_token(reset_token)
+        self.db.password_reset_otps.update_one(
+            {'email': normalized_email},
+            {'$set': {
+                'user_id': str(user['_id']),
+                'email': normalized_email,
+                'otp_code': otp_code,
+                'reset_token': reset_token,
+                'token_hash': token_hash,
+                'created_at': datetime.now(timezone.utc),
+                'expires_at': datetime.now(timezone.utc) + timedelta(
+                    minutes=self.config.PASSWORD_RESET_EXPIRE_MINUTES
+                ),
+                'used': False,
+                'attempts': 0,
+            }},
+            upsert=True
+        )
 
         self.db.password_reset_tokens.insert_one({
             'user_id': str(user['_id']),
             'token_hash': token_hash,
+            'otp_code': otp_code,
             'email': normalized_email,
             'created_at': datetime.now(timezone.utc),
             'expires_at': datetime.now(timezone.utc) + timedelta(
@@ -46,44 +79,171 @@ class PasswordResetService:
             'used': False,
         })
 
-        self.logger.log_info(f"Password reset requested for: {normalized_email}")
+        user_name = user.get('username') or user.get('full_name') or user.get('name') or ''
+
+        self.logger.log_info(f"Password reset OTP generated for: {normalized_email}")
 
         return {
             'success': True,
-            'message': 'If an account exists with this email, a password reset link has been sent.',
+            'message': 'If an account exists with this email, a 6-digit verification code has been sent.',
             'reset_token': reset_token,
+            'otp_code': otp_code,
+            'email': normalized_email,
+            'user_name': user_name,
         }
 
-    def reset_password(self, token: str, new_password: str) -> Dict:
-        token_hash = self.jwt_service.hash_token(token)
+    def verify_otp(self, email: str, otp: str) -> Dict:
+        code = otp.strip()
+        normalized_email = email.strip().lower()
 
-        update_result = self.db.password_reset_tokens.update_one(
-            {
-                'token_hash': token_hash,
-                'used': False,
-            },
-            {
-                '$set': {
-                    'used': True,
-                    'used_at': datetime.now(timezone.utc),
-                }
-            }
-        )
-
-        if update_result.modified_count == 0:
+        record = self.db.password_reset_otps.find_one({'email': normalized_email, 'used': False})
+        if not record:
             return {
                 'success': False,
-                'error': 'Invalid or already used reset token',
+                'error': 'No active password reset request found for this email.',
             }
 
+        expires_at = record['expires_at']
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            return {
+                'success': False,
+                'error': 'The verification code has expired. Please click Resend Code.',
+            }
+
+        match_record = {'_id': record['_id']} if '_id' in record else {'email': record['email']}
+
+        if code != record.get('otp_code') and code != record.get('reset_token'):
+            self.db.password_reset_otps.update_one(
+                match_record,
+                {'$inc': {'attempts': 1}}
+            )
+            if record.get('attempts', 0) >= 4:
+                return {
+                    'success': False,
+                    'error': 'Too many failed verification attempts. Please request a new reset code.',
+                }
+            return {
+                'success': False,
+                'error': 'Invalid 6-digit code. Please check your email and try again.',
+            }
+
+        return {
+            'success': True,
+            'message': 'Verification code verified successfully. Please enter your new password.',
+            'reset_token': record.get('reset_token'),
+        }
+
+    def reset_password(self, token: str = None, new_password: str = '',
+                       email: str = '', otp: str = '') -> Dict:
+        code = (otp or token or '').strip()
+        normalized_email = email.strip().lower() if email else ''
+
+        # 1. Check password_reset_otps
+        record = None
+        if normalized_email:
+            record = self.db.password_reset_otps.find_one({'email': normalized_email, 'used': False})
+        elif len(code) == 6 and code.isdigit():
+            record = self.db.password_reset_otps.find_one({'otp_code': code, 'used': False})
+
+        # Check if code was already used
+        if not record:
+            already_used = self.db.password_reset_otps.find_one({
+                '$or': [{'otp_code': code}, {'reset_token': code}],
+                'used': True
+            })
+            if already_used:
+                return {
+                    'success': False,
+                    'error': 'This verification code has already been used. Please request a new code.',
+                }
+
+        if record:
+            match_record = {'_id': record['_id']} if '_id' in record else {'email': record['email']}
+
+            if code != record.get('otp_code') and code != record.get('reset_token'):
+                self.db.password_reset_otps.update_one(
+                    match_record,
+                    {'$inc': {'attempts': 1}}
+                )
+                if record.get('attempts', 0) >= 4:
+                    return {
+                        'success': False,
+                        'error': 'Too many failed verification attempts. Please request a new reset code.',
+                    }
+                return {
+                    'success': False,
+                    'error': 'Invalid 6-digit reset code. Please check and try again.',
+                }
+
+            expires_at = record['expires_at']
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                return {
+                    'success': False,
+                    'error': 'Reset code has expired. Please request a new one.',
+                }
+
+            password_validation = self.password_service.validate_strength(new_password)
+            if not password_validation['valid']:
+                return {
+                    'success': False,
+                    'error': 'Password does not meet security requirements',
+                    'details': password_validation['errors'],
+                }
+
+            password_hash = self.password_service.hash_password(new_password)
+            user_id = record['user_id']
+
+            self.db.users.update_one(
+                {'$or': [{'_id': to_object_id(user_id)}, {'email': record.get('email')}]},
+                {'$set': {
+                    'password_hash': password_hash,
+                    'updated_at': datetime.now(timezone.utc),
+                },
+                '$inc': {'token_version': 1}}
+            )
+
+            # Invalidate in both password_reset_otps and password_reset_tokens
+            self.db.password_reset_otps.update_many(
+                {'$or': [{'email': record.get('email')}, {'user_id': user_id}]},
+                {'$set': {'used': True, 'used_at': datetime.now(timezone.utc)}}
+            )
+            self.db.password_reset_tokens.update_many(
+                {'$or': [{'email': record.get('email')}, {'user_id': user_id}]},
+                {'$set': {'used': True, 'used_at': datetime.now(timezone.utc)}}
+            )
+
+            self.db.refresh_tokens.update_many(
+                {'user_id': user_id},
+                {'$set': {'revoked': True}}
+            )
+
+            self.db.sessions.update_many(
+                {'user_id': user_id, 'is_active': True},
+                {'$set': {'is_active': False, 'invalidated_at': datetime.now(timezone.utc)}}
+            )
+
+            self.logger.log_info(f"Password reset successfully for user: {user_id}")
+
+            return {
+                'success': True,
+                'message': 'Password reset successful! You can now log in with your new password.',
+            }
+
+        # 2. Fallback: check legacy password_reset_tokens
+        token_hash = self.jwt_service.hash_token(code)
         token_record = self.db.password_reset_tokens.find_one({
-            'token_hash': token_hash,
+            '$or': [{'token_hash': token_hash}, {'otp_code': code}],
+            'used': False,
         })
 
         if not token_record:
             return {
                 'success': False,
-                'error': 'Invalid reset token',
+                'error': 'Invalid or expired password reset code/token. Please request a new one.',
             }
 
         expires_at = token_record['expires_at']
@@ -115,17 +275,10 @@ class PasswordResetService:
             '$inc': {'token_version': 1}}
         )
 
-        self.db.refresh_tokens.update_many(
-            {'user_id': user_id},
-            {'$set': {'revoked': True}}
+        self.db.password_reset_tokens.update_one(
+            {'_id': token_record['_id']},
+            {'$set': {'used': True, 'used_at': datetime.now(timezone.utc)}}
         )
-
-        self.db.sessions.update_many(
-            {'user_id': user_id, 'is_active': True},
-            {'$set': {'is_active': False, 'invalidated_at': datetime.now(timezone.utc)}}
-        )
-
-        self.logger.log_info(f"Password reset completed for user: {user_id}")
 
         return {
             'success': True,

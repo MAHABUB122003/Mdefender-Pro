@@ -8,7 +8,7 @@ const PLANS = [
     id: 'free',
     name: 'Starter Free',
     price: '$0',
-    billing: 'Forever Free',
+    billing: '14-Day Free Trial',
     badge: 'Community',
     color: '#64748b',
     features: [
@@ -455,22 +455,12 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded, us
           background: '#ffffff', position: 'sticky', top: 0, zIndex: 10
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '10px',
-                background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)', fontSize: '16px'
-              }}>
-                <i className="fas fa-shield-halved"></i>
-              </div>
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#0f172a' }}>
-                  Connect your domain to MDefender WAF
-                </h2>
-                <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
-                  Enterprise domain-based DDoS &amp; Layer 7 Web Application Firewall
-                </div>
+            <div>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#10201E' }}>
+                Connect your domain to MDefender WAF
+              </h2>
+              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+                Enterprise domain-based DDoS &amp; Layer 7 Web Application Firewall
               </div>
             </div>
           </div>
@@ -614,18 +604,11 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded, us
                 marginBottom: '26px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                    color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
-                  }}>
-                    <i className="fas fa-shield-halved"></i>
-                  </div>
                   <div>
-                    <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
-                      Active Plan: <span style={{ color: '#2563eb' }}>{activePlanName}</span>
+                    <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E' }}>
+                      Active Plan: <span style={{ color: '#15803D' }}>{activePlanName}</span>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                       Protected under your account's unified quota ({totalWebsites} of {websiteLimit} website slots used).
                     </div>
                   </div>
@@ -1087,7 +1070,7 @@ export default function DnsOnboardingModal({ isOpen, onClose, onWebsiteAdded, us
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 margin: '0 auto 18px', border: '2px solid #a7f3d0'
               }}>
-                <i className="fas fa-shield-halved"></i>
+                <i className="fas fa-check"></i>
               </div>
               <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px' }}>
                 Cloud WAF Protection Active!

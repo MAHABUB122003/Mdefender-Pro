@@ -1147,15 +1147,17 @@ class UserAPI:
             if w_id and w_id not in user_site_ids:
                 user_site_ids.append(w_id)
 
-        # Base strict user scope across user_id, owned website_ids and domains
-        user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
-        if user_site_ids:
-            user_scope.append({'website_id': {'$in': user_site_ids}})
-            user_scope.append({'website_id': {'$in': [self._resolve_id(sid) for sid in user_site_ids if sid]}})
-        if user_domains:
-            user_scope.append({'domain': {'$in': user_domains}})
-        
-        conditions = [{'$or': user_scope}]
+        is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
+        conditions = []
+        if not is_admin:
+            # Base strict user scope across user_id, owned website_ids and domains
+            user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
+            if user_site_ids:
+                user_scope.append({'website_id': {'$in': user_site_ids}})
+                user_scope.append({'website_id': {'$in': [self._resolve_id(sid) for sid in user_site_ids if sid]}})
+            if user_domains:
+                user_scope.append({'domain': {'$in': user_domains}})
+            conditions.append({'$or': user_scope})
 
         if website_id and website_id != 'all':
             target_ids = [website_id]

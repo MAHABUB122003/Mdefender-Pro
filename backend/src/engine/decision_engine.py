@@ -53,6 +53,8 @@ class DecisionEngine:
         self.feature_extractor = FeatureExtractor()
         self.request_parser = RequestParser()
         self.semantic_analyzer = SemanticAnalyzer()
+        from src.engine.bot_engine import BotEngine
+        self.bot_engine = BotEngine()
         self._whitelist_cache = None
         self._whitelist_cache_time = 0.0
         self._threat_ips_cache = None
@@ -194,6 +196,44 @@ class DecisionEngine:
                 },
                 "signals": {"fast_path": "anti_dos_payload_limit"},
                 "attack_type": "Denial of Service (DoS)",
+                "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
+            }
+
+        # --- 0.1 Bot Management & Attack Tool Drop (< 0.01ms) ---
+        user_agent_val = request_data.get("headers", {}).get("User-Agent", "") or request_data.get("headers", {}).get("user-agent", "")
+        bot_eval = self.bot_engine.evaluate_user_agent(user_agent_val)
+        if bot_eval.get("action") == "BLOCK":
+            return {
+                "decision": "BLOCK",
+                "action": "block",
+                "risk_score": 100,
+                "risk_level": "critical",
+                "confidence": 1.0,
+                "reason": bot_eval.get("reason", "Malicious Attack Tool Blocked"),
+                "reference_id": reference_id,
+                "components": {
+                    "semantic_score": 0, "rule_score": 100, "ml_score": 0,
+                    "reputation_score": 100, "rate_limit_score": 0, "behavior_score": 100
+                },
+                "signals": {"bot_eval": bot_eval, "fast_path": "tier0_malicious_bot"},
+                "attack_type": "Malicious Bot & Scanner",
+                "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
+            }
+        elif bot_eval.get("type") == "good_bot" and not is_blacklisted:
+            return {
+                "decision": "ALLOW",
+                "action": "allow",
+                "risk_score": 0,
+                "risk_level": "low",
+                "confidence": 1.0,
+                "reason": bot_eval.get("reason", "Verified Search Engine Bot"),
+                "reference_id": reference_id,
+                "components": {
+                    "semantic_score": 0, "rule_score": 0, "ml_score": 0,
+                    "reputation_score": 0, "rate_limit_score": 0, "behavior_score": 0
+                },
+                "signals": {"bot_eval": bot_eval, "fast_path": "tier0_verified_good_bot"},
+                "attack_type": None,
                 "ml_model_version": getattr(self.ml_detector, "model_version", "unknown"),
             }
 

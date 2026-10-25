@@ -81,9 +81,9 @@ class MongoDB:
                 pass
 
             connect_kwargs = {
-                'serverSelectionTimeoutMS': 30000,
-                'connectTimeoutMS': 30000,
-                'socketTimeoutMS': 30000,
+                'serverSelectionTimeoutMS': 5000,
+                'connectTimeoutMS': 5000,
+                'socketTimeoutMS': 5000,
                 'retryWrites': True,
                 'retryReads': True,
                 'maxIdleTimeMS': 15000,
@@ -91,11 +91,7 @@ class MongoDB:
 
             if 'mongodb+srv://' in mongo_uri or 'ssl=true' in mongo_uri.lower():
                 connect_kwargs['tls'] = True
-                if tls_ca_file:
-                    connect_kwargs['tlsCAFile'] = tls_ca_file
-                else:
-                    # Fallback: allow invalid certificates if certifi is not available
-                    connect_kwargs['tlsAllowInvalidCertificates'] = True
+                connect_kwargs['tlsAllowInvalidCertificates'] = True
 
             self._client = MongoClient(mongo_uri, **connect_kwargs)
             self._client.admin.command('ping')
@@ -315,8 +311,16 @@ class MongoDB:
         return self._db['usage_metrics'] if self._db is not None else None
 
     @property
-    def paddle_transactions(self):
-        return self._db['paddle_transactions'] if self._db is not None else None
+    def dns_records(self):
+        return self._db['dns_records'] if self._db is not None else None
+
+    @property
+    def domains(self):
+        return self._db['domains'] if self._db is not None else None
+
+    @property
+    def country_blocks(self):
+        return self._db['country_blocks'] if self._db is not None else None
 
     def __getitem__(self, key):
         return getattr(self, key, None)
@@ -360,9 +364,19 @@ class InMemoryDB:
         self.usage_metrics = InMemoryCollection()
         self.paddle_transactions = InMemoryCollection()
         self.payments = InMemoryCollection()
+        self.dns_records = InMemoryCollection()
+        self.domains = InMemoryCollection()
+        self.country_blocks = InMemoryCollection()
+
+    def __getattr__(self, key):
+        if key not in self.__dict__:
+            self.__dict__[key] = InMemoryCollection()
+        return self.__dict__[key]
 
     def __getitem__(self, key):
-        return getattr(self, key, None)
+        if not hasattr(self, key):
+            setattr(self, key, InMemoryCollection())
+        return getattr(self, key)
 
     def __contains__(self, key):
         return hasattr(self, key)
@@ -388,7 +402,9 @@ class InMemoryCollection:
                 results.append(doc)
         return InMemoryCursor(results)
 
-    def find_one(self, query):
+    def find_one(self, query=None):
+        if query is None:
+            return self._data[0] if self._data else None
         for doc in self._data:
             if self._matches(doc, query):
                 return doc
@@ -561,7 +577,7 @@ class InMemoryCollection:
         pass
 
     def sort(self, key, direction=-1):
-        self._data.sort(key=lambda x: x.get(key, ''), reverse=(direction == -1))
+        self._data.sort(key=lambda x: str(x.get(key, '') or ''), reverse=(direction == -1))
         return self
 
 
@@ -570,7 +586,7 @@ class InMemoryCursor:
         self._data = data
 
     def sort(self, key, direction=-1):
-        self._data.sort(key=lambda x: x.get(key, ''), reverse=(direction == -1))
+        self._data.sort(key=lambda x: str(x.get(key, '') or ''), reverse=(direction == -1))
         return self
 
     def skip(self, n):

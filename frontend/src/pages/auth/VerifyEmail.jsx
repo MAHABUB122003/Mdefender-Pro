@@ -15,12 +15,12 @@ export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const tokenParam = searchParams.get('token') || searchParams.get('dev_token') || '';
+  const tokenParam = searchParams.get('token') || '';
   const emailParam = searchParams.get('email') || '';
   const planParam = searchParams.get('plan') || '';
   const cycleParam = searchParams.get('cycle') || 'monthly';
 
-  // 6 Individual Boxes State
+  // 6 Individual Boxes State - strictly empty boxes for genuine verification
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
 
@@ -32,9 +32,9 @@ export default function VerifyEmail() {
   const [loading, setLoading] = useState(false);
   const hasAutoAttemptedRef = useRef(false);
 
-  // Auto-verification if token is passed via magic link
+  // Auto-verification if 64-char magic token is passed via magic link
   useEffect(() => {
-    if (tokenParam && !hasAutoAttemptedRef.current) {
+    if (tokenParam && tokenParam.length >= 20 && !hasAutoAttemptedRef.current) {
       hasAutoAttemptedRef.current = true;
       handleTokenVerification(tokenParam);
     }
@@ -53,7 +53,7 @@ export default function VerifyEmail() {
     setStatus('verifying');
     setLoading(true);
     try {
-      const data = await api.verifyEmail(verifyToken);
+      const data = await api.verifyEmail(verifyToken, targetEmail);
       setStatus('success');
       setMessage(data.message || 'Email successfully verified! Your security workspace is ready.');
     } catch (err) {
@@ -126,8 +126,8 @@ export default function VerifyEmail() {
     setMessage('');
 
     try {
-      const targetToken = tokenParam || fullCode;
-      const data = await api.verifyEmail(targetToken);
+      const targetToken = fullCode.length === 6 ? fullCode : (tokenParam || fullCode);
+      const data = await api.verifyEmail(targetToken, targetEmail);
       setStatus('success');
       setMessage(data.message || 'Verification complete! Your account is now fully active.');
     } catch (err) {
@@ -144,6 +144,7 @@ export default function VerifyEmail() {
     try {
       const data = await api.resendVerification(targetEmail.trim().toLowerCase());
       setMessage(data.message || 'A fresh 6-digit verification code has been dispatched to your email.');
+      setDigits(['', '', '', '', '', '']);
       setStatus('idle');
       setCountdown(60);
     } catch (err) {
@@ -158,22 +159,31 @@ export default function VerifyEmail() {
 
   return (
     <AuthSplitLayout>
-      {/* Security icon box: 38 × 38px, radius 10px, background #E8EEE8, color #10201E */}
+      {/* Brand logo container */}
       <div style={{ marginBottom: '18px' }}>
         <div
           style={{
-            width: '38px',
-            height: '38px',
+            width: '42px',
+            height: '42px',
             borderRadius: '10px',
-            background: status === 'success' ? '#E8F3EC' : '#E8EEE8',
-            border: `1px solid ${status === 'success' ? '#CFE2D4' : '#D4E1D6'}`,
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: status === 'success' ? '#28745D' : '#10201E',
+            background: status === 'success' ? '#E8F3EC' : 'transparent',
+            border: status === 'success' ? '1px solid #CFE2D4' : 'none',
+            boxShadow: status === 'success' ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
           }}
         >
-          <ShieldCheck size={18} strokeWidth={2.4} />
+          {status === 'success' ? (
+            <ShieldCheck size={22} strokeWidth={2.4} style={{ color: '#28745D' }} />
+          ) : (
+            <img
+              src="/assets/mdefender_logo.png"
+              alt="MDefender Pro Logo"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          )}
         </div>
       </div>
 
@@ -305,7 +315,11 @@ export default function VerifyEmail() {
                 Check your inbox
               </div>
               <div style={{ fontSize: '11px', color: '#60716B', marginTop: '1px' }}>
-                The code expires in 10 minutes.
+                {countdown > 0 ? (
+                  <span>Code valid for <strong>{formattedCountdown}</strong></span>
+                ) : (
+                  <span style={{ color: '#E8792F', fontWeight: 600 }}>Code expired. Please click resend below.</span>
+                )}
               </div>
             </div>
           </div>
