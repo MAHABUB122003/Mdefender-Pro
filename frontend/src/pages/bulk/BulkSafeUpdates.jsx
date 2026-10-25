@@ -13,8 +13,11 @@ import {
   Clock
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
+import EmptyFleetState from './EmptyFleetState'
+import useBulkFleet from './useBulkFleet'
 
 export default function BulkSafeUpdates() {
+  const { wpWebsites, hasWebsites } = useBulkFleet()
   const [testingRun, setTestingRun] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
@@ -62,7 +65,14 @@ export default function BulkSafeUpdates() {
         activeBadge="Safe Update Guard"
       />
 
-      <div style={contentCardStyle}>
+      {!hasWebsites ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your safe updates regression guard is standing by. Connect your WordPress site using the MDefender-Pro plugin to enable pre-update snapshot checkpoints and automatic instant crash rollback."
+          featureName="Safe Updates"
+        />
+      ) : (
+        <div style={contentCardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
           <div>
             <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
@@ -133,6 +143,7 @@ export default function BulkSafeUpdates() {
           <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>PROTECTION ENABLED</span>
         </div>
       </div>
+      )}
     </div>
   )
 }

@@ -1558,6 +1558,87 @@ export default function UserDashboard() {
         </div>
       </div>
 
+      {/* Zero Sites Connected Onboarding Banner */}
+      {!loading && websitesList.length === 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #FAFBF9 0%, #FFFFFF 100%)',
+          borderRadius: '16px',
+          border: '1.5px dashed #2A8B68',
+          padding: '20px 24px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: '#E6F4EE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#2A8B68',
+              flexShrink: 0
+            }}>
+              <Globe size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
+                No WordPress Sites Connected Yet
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+                Your telemetry and bulk security management are in clean stand-by mode. Connect your WordPress site to activate real-time telemetry.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <a
+              href="/mdefender-pro.zip"
+              download="mdefender-pro.zip"
+              style={{
+                padding: '9px 16px',
+                borderRadius: '10px',
+                background: '#F1F5F3',
+                color: '#10201E',
+                textDecoration: 'none',
+                fontSize: '12.5px',
+                fontWeight: '700',
+                border: '1px solid #D9E1DC',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              Download Plugin v4.3.0
+            </a>
+            <Link
+              to="/user/websites"
+              style={{
+                padding: '9px 18px',
+                borderRadius: '10px',
+                background: '#2A8B68',
+                color: '#FFFFFF',
+                textDecoration: 'none',
+                fontSize: '12.5px',
+                fontWeight: '800',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 8px rgba(42, 139, 104, 0.25)'
+              }}
+            >
+              <span>+ Connect First Site</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 2. CORE TELEMETRY KPI STAT CARDS (4 DISTINCT CYBERSECURITY PILLARS)        */}
       {/* ========================================================================= */}

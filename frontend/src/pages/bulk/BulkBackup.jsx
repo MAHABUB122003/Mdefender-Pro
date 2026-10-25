@@ -16,51 +16,22 @@ import {
   ShieldCheck,
   Zap,
   Globe,
-  X,
-  Server
+  X
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
+import EmptyFleetState from './EmptyFleetState'
+import useBulkFleet from './useBulkFleet'
 
 export default function BulkBackup() {
-  const [backups, setBackups] = useState([
-    {
-      id: 'bk-1',
-      name: 'Emergency Pre-Crash Disaster Recovery Snapshot',
-      siteDomain: 'mahabub.shop',
-      size: '148.6 MB',
-      type: 'Full (DB + Files + Core)',
-      date: 'Today, 01:15 AM',
-      status: 'verified',
-      encrypted: 'AES-256-GCM'
-    },
-    {
-      id: 'bk-2',
-      name: 'Automated Nightly Cloud Checkpoint',
-      siteDomain: 'mahabub.shop',
-      size: '42.1 MB',
-      type: 'Database (SQL Dump)',
-      date: 'Yesterday, 11:59 PM',
-      status: 'verified',
-      encrypted: 'AES-256-GCM'
-    },
-    {
-      id: 'bk-3',
-      name: 'Safe-Update Automated Pre-Flight Checkpoint',
-      siteDomain: 'mahabub.shop',
-      size: '144.2 MB',
-      type: 'Full (DB + wp-content)',
-      date: 'Oct 22, 2026',
-      status: 'verified',
-      encrypted: 'AES-256-GCM'
-    }
-  ])
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
+  const [backups, setBackups] = useState([])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [restoreModalData, setRestoreModalData] = useState(null)
   const [restoringStep, setRestoringStep] = useState(0) // 0: idle, 1: restoring, 2: success
 
   // Form states
-  const [targetSite, setTargetSite] = useState('mahabub.shop')
+  const [targetSite, setTargetSite] = useState(() => wpWebsites[0]?.domain || 'fleet-global')
   const [backupName, setBackupName] = useState('')
   const [backupType, setBackupType] = useState('full')
   const [creating, setCreating] = useState(false)
@@ -149,96 +120,137 @@ export default function BulkBackup() {
         activeBadge="Vault Protection"
       />
 
-      {/* CLEAN HARMONIZED DISASTER RECOVERY CARD */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '14px',
-        padding: '20px 24px',
-        marginBottom: '22px',
-        border: '1px solid #D9E1DC',
-        borderLeft: '4px solid #2A8B68',
-        boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '280px' }}>
+      {!hasWebsites ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your fleet backup and disaster recovery dashboard is empty because no WordPress sites are connected. Connect your site using the MDefender-Pro plugin to enable independent cloud snapshots and 1-click crash recovery."
+          featureName="Disaster Recovery & Vault"
+        />
+      ) : (
+        <>
+          {/* CLEAN HARMONIZED DISASTER RECOVERY CARD */}
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            background: '#E8F3EC',
-            color: '#2A8B68',
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '20px 24px',
+            marginBottom: '22px',
+            border: '1px solid #D9E1DC',
+            borderLeft: '4px solid #2A8B68',
+            boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
+            flexWrap: 'wrap',
+            gap: '16px'
           }}>
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '700', color: '#10201E' }}>
-                Disaster Recovery &amp; WP-Admin Bypass
-              </h3>
-              <span style={{
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '280px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
                 background: '#E8F3EC',
                 color: '#2A8B68',
-                border: '1px solid #CFE2D4',
-                padding: '2px 7px',
-                borderRadius: '4px',
-                fontSize: '10px',
-                fontWeight: '700',
-                letterSpacing: '0.04em'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
-                INDEPENDENT CLOUD RESTORE
-              </span>
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '700', color: '#10201E' }}>
+                    Disaster Recovery &amp; WP-Admin Bypass
+                  </h3>
+                  <span style={{
+                    background: '#E8F3EC',
+                    color: '#2A8B68',
+                    border: '1px solid #CFE2D4',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    letterSpacing: '0.04em'
+                  }}>
+                    INDEPENDENT CLOUD RESTORE
+                  </span>
+                </div>
+                <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
+                  If your website is broken, crashing with fatal errors, or WP-Admin is unreachable, click <strong>1-Click Restore</strong> to revert files and database directly from edge storage.
+                </p>
+              </div>
             </div>
-            <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
-              If your website is broken, crashing with fatal errors, or WP-Admin is unreachable, click <strong>1-Click Restore</strong> to revert files and database directly from edge storage.
-            </p>
+
+            <button
+              onClick={() => setShowCreateModal(true)}
+              style={primaryButtonStyle}
+            >
+              <Plus size={15} />
+              <span>Create New Snapshot</span>
+            </button>
           </div>
-        </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          style={primaryButtonStyle}
-        >
-          <Plus size={15} />
-          <span>Create New Snapshot</span>
-        </button>
-      </div>
+          {/* SNAPSHOTS TABLE */}
+          <div style={contentCardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  Available Restore Points ({backups.length})
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
+                  Encrypted snapshots stored across distributed cloud edge vaults
+                </p>
+              </div>
+            </div>
 
-      {/* SNAPSHOTS TABLE */}
-      <div style={contentCardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
-          <div>
-            <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-              Available Restore Points ({backups.length})
-            </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-              Encrypted snapshots stored across distributed cloud edge vaults
-            </p>
-          </div>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                <th style={{ padding: '12px 14px' }}>Snapshot Name</th>
-                <th style={{ padding: '12px 14px' }}>Target Site</th>
-                <th style={{ padding: '12px 14px' }}>Archive Size</th>
-                <th style={{ padding: '12px 14px' }}>Scope</th>
-                <th style={{ padding: '12px 14px' }}>Encryption</th>
-                <th style={{ padding: '12px 14px' }}>Created Date</th>
-                <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {backups.map(bk => (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <th style={{ padding: '12px 14px' }}>Snapshot Name</th>
+                    <th style={{ padding: '12px 14px' }}>Target Site</th>
+                    <th style={{ padding: '12px 14px' }}>Archive Size</th>
+                    <th style={{ padding: '12px 14px' }}>Scope</th>
+                    <th style={{ padding: '12px 14px' }}>Encryption</th>
+                    <th style={{ padding: '12px 14px' }}>Created Date</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backups.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '48px 20px', color: '#60716B' }}>
+                        <div style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '12px',
+                          background: '#FAFBF9',
+                          border: '1px solid #D9E1DC',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto 12px',
+                          color: '#2A8B68'
+                        }}>
+                          <HardDrive size={22} />
+                        </div>
+                        <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+                          No Snapshots Created Yet
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#60716B', maxWidth: '420px', margin: '0 auto 18px' }}>
+                          Create an encrypted cloud restore point before running updates or configuration changes across your fleet.
+                        </div>
+                        <button
+                          onClick={() => setShowCreateModal(true)}
+                          style={primaryButtonStyle}
+                        >
+                          <Plus size={14} />
+                          <span>Create First Snapshot</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ) :
+                    backups.map(bk => (
                 <tr key={bk.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
                   <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -362,8 +374,12 @@ export default function BulkBackup() {
                     color: '#10201E'
                   }}
                 >
-                  <option value="mahabub.shop">mahabub.shop (Active Site)</option>
                   <option value="fleet-global">All Fleet Sites (Global Backup)</option>
+                  {wpWebsites.map(w => (
+                    <option key={w.id || w._id} value={w.domain || w.name}>
+                      {w.domain || w.name} (WordPress Site)
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -555,6 +571,8 @@ export default function BulkBackup() {
             )}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )

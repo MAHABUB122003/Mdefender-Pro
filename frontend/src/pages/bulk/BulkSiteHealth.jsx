@@ -12,8 +12,11 @@ import {
   RefreshCw
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
+import EmptyFleetState from './EmptyFleetState'
+import useBulkFleet from './useBulkFleet'
 
 export default function BulkSiteHealth() {
+  const { wpWebsites, hasWebsites } = useBulkFleet()
   const [runningAudit, setRunningAudit] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
@@ -61,8 +64,16 @@ export default function BulkSiteHealth() {
         activeBadge="Health Diagnostics"
       />
 
-      {/* 3 Metric Summary Boxes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '24px' }}>
+      {!hasWebsites ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your fleet site health and vulnerability matrix is empty. Connect your WordPress site using the MDefender-Pro plugin to audit PHP runtime, check memory limits, and detect plugin vulnerability CVEs."
+          featureName="Site Health Matrix"
+        />
+      ) : (
+        <>
+          {/* 3 Metric Summary Boxes */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '24px' }}>
         <div style={statCardStyle}>
           <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             PHP Compatibility
@@ -170,6 +181,8 @@ export default function BulkSiteHealth() {
           ))}
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

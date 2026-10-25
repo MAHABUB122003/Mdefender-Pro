@@ -23,6 +23,9 @@ import {
 } from 'lucide-react'
 import userStore from '../../utils/userStore'
 import api from '../../api/api'
+import EmptyFleetState from './EmptyFleetState'
+
+export { EmptyFleetState }
 
 export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 'Fleet Operations' }) {
   const location = useLocation()
@@ -165,11 +168,11 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
                 fontWeight: '800',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                background: '#E8F3EC',
-                color: '#2A8B68',
-                border: '1px solid #CFE2D4'
+                background: wpWebsites.length > 0 ? '#E8F3EC' : '#FEF3EB',
+                color: wpWebsites.length > 0 ? '#2A8B68' : '#D97706',
+                border: wpWebsites.length > 0 ? '1px solid #CFE2D4' : '1px solid #FCD8BF'
               }}>
-                {wpWebsites.length} WordPress Site(s) Active
+                {wpWebsites.length > 0 ? `${wpWebsites.length} WordPress Site(s) Active` : '0 WordPress Sites Connected'}
               </span>
             </div>
 
@@ -217,30 +220,37 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
             <select
               value={selectedSiteId}
               onChange={handleDomainChange}
+              disabled={wpWebsites.length === 0}
               style={{
                 width: '100%',
                 padding: '7px 10px',
                 borderRadius: '6px',
                 border: '1px solid #D9E1DC',
-                background: '#FAFAFA',
-                color: '#10201E',
+                background: wpWebsites.length === 0 ? '#F1F5F3' : '#FAFAFA',
+                color: wpWebsites.length === 0 ? '#87948D' : '#10201E',
                 fontSize: '12.5px',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: wpWebsites.length === 0 ? 'not-allowed' : 'pointer',
                 outline: 'none'
               }}
             >
-              <option value="all">All Connected Domains ({wpWebsites.length} Sites)</option>
-              {wpWebsites.map(w => (
-                <option key={w.id || w._id} value={w.id || w._id}>
-                  {w.domain || w.name || w.url}
-                </option>
-              ))}
+              {wpWebsites.length === 0 ? (
+                <option value="none">No Connected Domains (0 Sites)</option>
+              ) : (
+                <>
+                  <option value="all">All Connected Domains ({wpWebsites.length} Sites)</option>
+                  {wpWebsites.map(w => (
+                    <option key={w.id || w._id} value={w.id || w._id}>
+                      {w.domain || w.name || w.url}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
 
-            <div style={{ fontSize: '11px', color: '#059669', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
-              <span>Edge Telemetry Synchronized</span>
+            <div style={{ fontSize: '11px', color: wpWebsites.length > 0 ? '#059669' : '#D97706', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: wpWebsites.length > 0 ? '#10B981' : '#F59E0B' }} />
+              <span>{wpWebsites.length > 0 ? 'Edge Telemetry Synchronized' : 'Awaiting WordPress Site Connection'}</span>
             </div>
           </div>
         </div>

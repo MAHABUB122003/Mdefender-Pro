@@ -19,41 +19,15 @@ import {
   Database
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
+import EmptyFleetState from './EmptyFleetState'
+import useBulkFleet from './useBulkFleet'
 
 export default function BulkScanner() {
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
   const [scanning, setScanning] = useState(false)
   const [scanStep, setScanStep] = useState(0) // 0: idle, 1: core, 2: uploads, 3: database, 4: complete
   const [activeHelpTab, setActiveHelpTab] = useState('how-it-works') // 'how-it-works' | 'signatures' | 'licenses'
-
-  const [findings, setFindings] = useState([
-    {
-      id: 'f-1',
-      file: 'wp-content/uploads/2026/03/hidden_wso_shell.php',
-      severity: 'CRITICAL',
-      threat: 'PHP.Backdoor.WSO.v4.2.5 (High Entropy Eval Obfuscation)',
-      line: 38,
-      status: 'quarantined',
-      detectedAt: 'Today, 00:45 AM'
-    },
-    {
-      id: 'f-2',
-      file: 'wp-includes/class-wp-user.php',
-      severity: 'CLEAN',
-      threat: 'Core Integrity Verified (WordPress Official SVN Match)',
-      line: 1,
-      status: 'clean',
-      detectedAt: 'Verified Clean'
-    },
-    {
-      id: 'f-3',
-      file: 'wp-content/themes/astra/functions.php',
-      severity: 'CLEAN',
-      threat: 'Theme Code Integrity Verified',
-      line: 1,
-      status: 'clean',
-      detectedAt: 'Verified Clean'
-    }
-  ])
+  const [findings, setFindings] = useState([])
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (text, isError = false) => {
@@ -121,83 +95,112 @@ export default function BulkScanner() {
         activeBadge="Neural Antivirus Engine"
       />
 
-      {/* SCANNING PROGRESS CARD */}
-      {scanning && (
-        <div style={{
-          background: '#0B2522',
-          borderRadius: '16px',
-          padding: '24px 28px',
-          marginBottom: '24px',
-          color: '#FFFFFF',
-          border: '1px solid #1C4D46',
-          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'rgba(232, 121, 47, 0.2)',
-                color: '#E8792F',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <RefreshCw size={16} style={{ animation: 'spin 1.2s linear infinite' }} />
-              </div>
-              <div>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#FFFFFF' }}>
-                  {scanStep === 1 && 'Step 1/3: Verifying WordPress Official SVN Checksums...'}
-                  {scanStep === 2 && 'Step 2/3: Analyzing Uploads & Media (PHP Shell Heuristics)...'}
-                  {scanStep === 3 && 'Step 3/3: Scanning Database Options & Posts for SQL Injections...'}
-                  {scanStep === 4 && 'Scan Finalized: Fleet Clean!'}
-                </h4>
-                <span style={{ fontSize: '12px', color: '#A3BFB8' }}>
-                  Scanning 1,480 active files across protected website origin...
+      {!hasWebsites ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your malware scanner dashboard is empty because no WordPress sites are connected. Connect your site using the MDefender-Pro plugin to execute deep neural file inspections, verify core checksums, and detect backdoors."
+          featureName="Malware Scanner"
+        />
+      ) : (
+        <>
+          {/* SCANNING PROGRESS CARD */}
+          {scanning && (
+            <div style={{
+              background: '#0B2522',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              marginBottom: '24px',
+              color: '#FFFFFF',
+              border: '1px solid #1C4D46',
+              boxShadow: '0 8px 24px rgba(11, 37, 34, 0.2)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(232, 121, 47, 0.2)',
+                    color: '#E8792F',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <RefreshCw size={16} style={{ animation: 'spin 1.2s linear infinite' }} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#FFFFFF' }}>
+                      {scanStep === 1 && 'Step 1/3: Verifying WordPress Official SVN Checksums...'}
+                      {scanStep === 2 && 'Step 2/3: Analyzing Uploads & Media (PHP Shell Heuristics)...'}
+                      {scanStep === 3 && 'Step 3/3: Scanning Database Options & Posts for SQL Injections...'}
+                      {scanStep === 4 && 'Scan Finalized: Fleet Clean!'}
+                    </h4>
+                    <span style={{ fontSize: '12px', color: '#A3BFB8' }}>
+                      Scanning active files across {wpWebsites.length} protected website origin(s)...
+                    </span>
+                  </div>
+                </div>
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#E8792F' }}>
+                  {scanStep === 1 ? '33%' : scanStep === 2 ? '66%' : '100%'}
                 </span>
               </div>
+
+              <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: scanStep === 1 ? '33%' : scanStep === 2 ? '66%' : '100%',
+                  background: 'linear-gradient(90deg, #2A8B68 0%, #E8792F 100%)',
+                  transition: 'width 0.4s ease'
+                }} />
+              </div>
             </div>
-            <span style={{ fontSize: '14px', fontWeight: '800', color: '#E8792F' }}>
-              {scanStep === 1 ? '33%' : scanStep === 2 ? '66%' : '100%'}
-            </span>
-          </div>
+          )}
 
-          <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '999px', overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              width: scanStep === 1 ? '33%' : scanStep === 2 ? '66%' : '100%',
-              background: 'linear-gradient(90deg, #2A8B68 0%, #E8792F 100%)',
-              transition: 'width 0.4s ease'
-            }} />
-          </div>
-        </div>
-      )}
+          {/* INSPECTION FINDINGS TABLE */}
+          <div style={{ ...contentCardStyle, marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
+                  Filesystem Inspection Findings ({findings.length})
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
+                  {criticalCount > 0 ? `${criticalCount} threat quarantined and contained safely` : 'All sites clean and verified across connected fleet'}
+                </p>
+              </div>
 
-      {/* INSPECTION FINDINGS TABLE */}
-      <div style={{ ...contentCardStyle, marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '14px' }}>
-          <div>
-            <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
-              Filesystem Inspection Findings ({findings.length})
-            </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-              {criticalCount > 0 ? `${criticalCount} threat quarantined and contained safely` : 'All sites clean and verified'}
-            </p>
-          </div>
+              <button
+                onClick={handleRunScan}
+                disabled={scanning}
+                style={primaryButtonStyle}
+              >
+                <RefreshCw size={14} style={{ animation: scanning ? 'spin 1s linear infinite' : 'none' }} />
+                <span>{scanning ? 'Scanning Filesystem...' : 'Scan WordPress Sites'}</span>
+              </button>
+            </div>
 
-          <button
-            onClick={handleRunScan}
-            disabled={scanning}
-            style={primaryButtonStyle}
-          >
-            <RefreshCw size={14} style={{ animation: scanning ? 'spin 1s linear infinite' : 'none' }} />
-            <span>{scanning ? 'Scanning Filesystem...' : 'Scan WordPress Sites'}</span>
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {findings.map(finding => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {findings.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#60716B' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#E8F3EC', color: '#2A8B68', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div style={{ fontSize: '15.5px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+                    No Malware Threats Detected
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#60716B', maxWidth: '440px', margin: '0 auto 18px', lineHeight: '1.5' }}>
+                    All PHP files, uploads, and core checksums across your connected WordPress fleet match clean, verified hashes.
+                  </div>
+                  <button
+                    onClick={handleRunScan}
+                    disabled={scanning}
+                    style={primaryButtonStyle}
+                  >
+                    <Bug size={14} />
+                    <span>{scanning ? 'Running Neural Scan...' : 'Run Fleet Deep Scan'}</span>
+                  </button>
+                </div>
+              ) :
+                findings.map(finding => (
             <div
               key={finding.id}
               style={{
@@ -326,6 +329,8 @@ export default function BulkScanner() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

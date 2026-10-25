@@ -42,6 +42,7 @@ import {
 import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
+import EmptyFleetState from './bulk/EmptyFleetState'
 
 export default function UserBulkManagement() {
   const cachedDashboard = userStore.get('dashboard') || userStore.get('websites')
@@ -95,34 +96,19 @@ export default function UserBulkManagement() {
   // ==========================================
   // STATE: PLUGINS FLEET
   // ==========================================
-  const [pluginsList, setPluginsList] = useState([
-    { id: 'mdefender-pro', name: 'MDefender Pro Enterprise WAF', currentVersion: '4.2.2', latestVersion: '4.2.2', updateAvailable: false, status: 'active', siteCount: 3, vulnerable: false },
-    { id: 'woocommerce', name: 'WooCommerce Core', currentVersion: '8.4.0', latestVersion: '8.5.2', updateAvailable: true, status: 'active', siteCount: 2, vulnerable: false },
-    { id: 'elementor', name: 'Elementor Website Builder', currentVersion: '3.18.3', latestVersion: '3.19.1', updateAvailable: true, status: 'active', siteCount: 3, vulnerable: false },
-    { id: 'contact-form-7', name: 'Contact Form 7', currentVersion: '5.8.5', latestVersion: '5.9.0', updateAvailable: true, status: 'active', siteCount: 1, vulnerable: false },
-    { id: 'wp-super-cache', name: 'WP Super Cache', currentVersion: '1.9.4', latestVersion: '1.9.4', updateAvailable: false, status: 'active', siteCount: 2, vulnerable: false },
-    { id: 'yoast-seo', name: 'Yoast SEO', currentVersion: '21.7', latestVersion: '21.8', updateAvailable: true, status: 'inactive', siteCount: 1, vulnerable: false }
-  ])
+  const [pluginsList, setPluginsList] = useState([])
   const [selectedPluginIds, setSelectedPluginIds] = useState([])
   const [updatingPlugins, setUpdatingPlugins] = useState(false)
 
   // ==========================================
   // STATE: THEMES FLEET
   // ==========================================
-  const [themesList, setThemesList] = useState([
-    { id: 'twentytwentyfour', name: 'Twenty Twenty-Four', currentVersion: '1.0', latestVersion: '1.2', updateAvailable: true, activeSites: 1, isChild: false },
-    { id: 'astra', name: 'Astra Pro Theme', currentVersion: '4.6.0', latestVersion: '4.6.4', updateAvailable: true, activeSites: 2, isChild: false },
-    { id: 'hello-elementor', name: 'Hello Elementor', currentVersion: '3.0.1', latestVersion: '3.0.1', updateAvailable: false, activeSites: 0, isChild: false }
-  ])
+  const [themesList, setThemesList] = useState([])
 
   // ==========================================
   // STATE: BACKUPS FLEET
   // ==========================================
-  const [backups, setBackups] = useState([
-    { id: 'bk-01', name: 'Automated Fleet Snapshot (Pre-WAF Hardening)', siteDomain: 'mahabub.shop', size: '142.6 MB', type: 'Full (DB + Files)', date: 'Oct 24, 2026, 11:30 PM', status: 'verified' },
-    { id: 'bk-02', name: 'Weekly System Checkpoint', siteDomain: 'demo-store.crafix.tech', size: '98.2 MB', type: 'Database Only', date: 'Oct 23, 2026, 04:00 AM', status: 'verified' },
-    { id: 'bk-03', name: 'Manual Restore Point #3', siteDomain: 'mahabub.shop', size: '139.1 MB', type: 'Full (DB + Files)', date: 'Oct 20, 2026, 02:15 PM', status: 'verified' }
-  ])
+  const [backups, setBackups] = useState([])
   const [creatingBackup, setCreatingBackup] = useState(false)
 
   // ==========================================
@@ -144,11 +130,7 @@ export default function UserBulkManagement() {
   // STATE: MALWARE SCANNER
   // ==========================================
   const [scannerRunning, setScannerRunning] = useState(false)
-  const [scanFindings, setScanFindings] = useState([
-    { file: 'wp-content/uploads/create_backdoor_admin.php', severity: 'CRITICAL', threat: 'Backdoor:PHP/AdminCreator.gen', line: 8, status: 'quarantined' },
-    { file: 'wp-admin/update-core.php', severity: 'WARNING', threat: 'File Modified (Core Checksum Mismatch)', line: 12, status: 'repaired' },
-    { file: 'wp-content/themes/astra/functions.php', severity: 'CLEAN', threat: 'Integrity Verified', line: 1, status: 'clean' }
-  ])
+  const [scanFindings, setScanFindings] = useState([])
 
   // Bulk Actions
   const handleBulkUpdatePlugins = () => {
@@ -387,6 +369,14 @@ export default function UserBulkManagement() {
         })}
       </div>
 
+      {wpWebsites.length === 0 ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your fleet management dashboard is empty because no WordPress sites are connected to your account. Connect your site using the MDefender-Pro plugin to start managing plugins, themes, backups, and security scans."
+          featureName="Bulk Fleet Management"
+        />
+      ) : (
+        <>
       {/* ========================================================================= */}
       {/* TAB 1: MONITORING                                                         */}
       {/* ========================================================================= */}
@@ -969,6 +959,8 @@ export default function UserBulkManagement() {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   )

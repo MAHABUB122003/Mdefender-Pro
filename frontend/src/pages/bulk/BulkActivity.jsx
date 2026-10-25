@@ -13,20 +13,14 @@ import {
   Sliders
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
+import EmptyFleetState from './EmptyFleetState'
+import useBulkFleet from './useBulkFleet'
 
 export default function BulkActivity() {
+  const { wpWebsites, hasWebsites } = useBulkFleet()
   const [filterType, setFilterType] = useState('all') // 'all' | 'config' | 'backup' | 'update' | 'security'
   const [toastMsg, setToastMsg] = useState(null)
-
-  const logs = [
-    { id: 1, action: 'Edge WAF Rule Synchronization Dispatched', user: 'Mahabub (Owner)', target: 'mahabub.shop', time: '10 minutes ago', badge: 'CONFIG', type: 'config' },
-    { id: 2, action: 'Automated Snapshot Created (Pre-Update Checkpoint)', user: 'System Vault Runner', target: 'fleet-global', time: '1 hour ago', badge: 'BACKUP', type: 'backup' },
-    { id: 3, action: 'Bulk Plugin Update: WooCommerce updated to v8.5.2', user: 'Mahabub', target: 'mahabub.shop', time: '3 hours ago', badge: 'UPDATE', type: 'update' },
-    { id: 4, action: 'Malware Threat Quarantined & Blocked', user: 'MDefender Neural Core', target: 'mahabub.shop', time: 'Yesterday, 11:20 PM', badge: 'SECURITY', type: 'security' },
-    { id: 5, action: 'Hardening Policy: Restrict XML-RPC enabled', user: 'Mahabub', target: 'mahabub.shop', time: 'Oct 23, 2026', badge: 'CONFIG', type: 'config' },
-    { id: 6, action: 'Theme Activated: Astra Pro v4.6.4', user: 'Mahabub', target: 'mahabub.shop', time: 'Oct 22, 2026', badge: 'UPDATE', type: 'update' },
-    { id: 7, action: 'Snapshot Checkpoint Restored: Oct 15 Point', user: 'Mahabub', target: 'mahabub.shop', time: 'Oct 16, 2026', badge: 'BACKUP', type: 'backup' }
-  ]
+  const [logs, setLogs] = useState([])
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -36,6 +30,10 @@ export default function BulkActivity() {
   const filteredLogs = filterType === 'all' ? logs : logs.filter(l => l.type === filterType)
 
   const handleExportLogs = () => {
+    if (logs.length === 0) {
+      showToast('No activity logs to export yet.', true)
+      return
+    }
     showToast('Exporting immutable audit trail log (CSV)... Download started!')
   }
 
@@ -64,94 +62,116 @@ export default function BulkActivity() {
       )}
 
       <BulkHeader
-        title="Admin Activity History &amp; Fleet Operations Audit"
-        subtitle="Complete tamper-evident audit trail of administrative actions, plugin/theme updates, snapshot events, and security dispatches."
+        title="Fleet Administrative Activity &amp; Audit Trail"
+        subtitle="Immutable timestamped log of all plugin updates, theme modifications, policy dispatches, and emergency restore actions."
         icon={FileText}
-        activeBadge="Audit Log Engine"
+        activeBadge="Audit Ledger"
       />
 
-      <div style={contentCardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '14px' }}>
-          <div>
-            <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
-              Fleet Operations Timeline
-            </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-              Showing {filteredLogs.length} logged operations across fleet sites
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Filter pills */}
-            <div style={{ display: 'flex', gap: '6px', background: '#F1F5F3', padding: '4px', borderRadius: '10px' }}>
+      {!hasWebsites ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your activity log is empty because no WordPress sites are connected. Connect your site using the MDefender-Pro plugin to start tracking administrative updates, hardening dispatches, and security events."
+          featureName="Activity & Audit Trail"
+        />
+      ) : (
+        <div style={contentCardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {[
-                { id: 'all', label: 'All Events' },
-                { id: 'config', label: 'Config' },
-                { id: 'update', label: 'Updates' },
+                { id: 'all', label: 'All Operations' },
+                { id: 'config', label: 'WAF & Config' },
                 { id: 'backup', label: 'Backups' },
-                { id: 'security', label: 'Security' }
-              ].map(f => (
+                { id: 'update', label: 'Plugin/Theme Updates' },
+                { id: 'security', label: 'Threat Mitigation' }
+              ].map(tab => (
                 <button
-                  key={f.id}
-                  onClick={() => setFilterType(f.id)}
+                  key={tab.id}
+                  onClick={() => setFilterType(tab.id)}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: '7px',
-                    border: 'none',
+                    borderRadius: '8px',
                     fontSize: '12px',
                     fontWeight: '700',
                     cursor: 'pointer',
-                    background: filterType === f.id ? '#ffffff' : 'transparent',
-                    color: filterType === f.id ? '#10201E' : '#60716B',
-                    boxShadow: filterType === f.id ? '0 1px 4px rgba(0,0,0,0.06)' : 'none'
+                    border: '1px solid #D9E1DC',
+                    background: filterType === tab.id ? '#10201E' : '#FAFBF9',
+                    color: filterType === tab.id ? '#FFFFFF' : '#10201E',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  {f.label}
+                  {tab.label}
                 </button>
               ))}
             </div>
 
             <button
               onClick={handleExportLogs}
-              style={secondaryButtonStyle}
+              disabled={logs.length === 0}
+              style={{ ...secondaryButtonStyle, opacity: logs.length === 0 ? 0.6 : 1, cursor: logs.length === 0 ? 'not-allowed' : 'pointer' }}
             >
               <Download size={13} />
-              <span>Export CSV</span>
+              <span>Export Audit Trail (CSV)</span>
             </button>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filteredLogs.map(log => (
-            <div
-              key={log.id}
-              style={{
-                border: '1px solid #D9E1DC',
-                borderRadius: '12px',
-                padding: '16px 20px',
-                background: '#FBFCFA',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px'
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>{log.action}</div>
-                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px' }}>
-                  Operator: <strong>{log.user}</strong> • Target: <strong>{log.target}</strong>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 20px', color: '#60716B' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: '#FAFBF9',
+                  border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  color: '#2A8B68'
+                }}>
+                  <FileText size={22} />
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+                  No Activity Recorded Yet
+                </div>
+                <div style={{ fontSize: '13px', color: '#60716B', maxWidth: '420px', margin: '0 auto' }}>
+                  Administrative operations, plugin updates, snapshots, and security policy dispatches across your connected fleet will appear here in the audit log.
                 </div>
               </div>
+            ) : (
+              filteredLogs.map(log => (
+                <div
+                  key={log.id}
+                  style={{
+                    border: '1px solid #D9E1DC',
+                    borderRadius: '12px',
+                    padding: '16px 20px',
+                    background: '#FBFCFA',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>{log.action}</div>
+                    <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px' }}>
+                      Operator: <strong>{log.user}</strong> • Target: <strong>{log.target}</strong>
+                    </div>
+                  </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>{log.badge}</span>
-                <span style={{ fontSize: '12px', color: '#889895', minWidth: '100px', textAlign: 'right' }}>{log.time}</span>
-              </div>
-            </div>
-          ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>{log.badge}</span>
+                    <span style={{ fontSize: '12px', color: '#889895', minWidth: '100px', textAlign: 'right' }}>{log.time}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

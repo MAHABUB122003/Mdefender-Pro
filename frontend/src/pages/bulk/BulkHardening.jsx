@@ -13,8 +13,11 @@ import {
   Sparkles
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
+import EmptyFleetState from './EmptyFleetState'
+import useBulkFleet from './useBulkFleet'
 
 export default function BulkHardening() {
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
   const [hardening, setHardening] = useState({
     disableFileEdit: true,
     restrictXmlRpc: true,
@@ -103,7 +106,14 @@ export default function BulkHardening() {
         activeBadge="Hardening Engine"
       />
 
-      <div style={contentCardStyle}>
+      {!hasWebsites ? (
+        <EmptyFleetState
+          title="No WordPress Websites Connected Yet"
+          description="Your security hardening dashboard is empty because no WordPress sites are connected. Connect your site using the MDefender-Pro plugin to enforce zero-trust hardening, disable file editing, and restrict XML-RPC."
+          featureName="Hardening Engine"
+        />
+      ) : (
+        <div style={contentCardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -183,6 +193,7 @@ export default function BulkHardening() {
           ))}
         </div>
       </div>
+      )}
     </div>
   )
 }
