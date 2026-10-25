@@ -49,11 +49,8 @@ class WAF_FW_ML_Api_Client {
     public function refresh_config() {
         $url = (string) get_option('waf_fw_ml_api_url', '');
 
-        $is_local = (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false))
-            || (function_exists('get_site_url') && (strpos(get_site_url(), 'localhost') !== false || strpos(get_site_url(), '127.0.0.1') !== false));
-
-        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false) {
-            $url = $is_local ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
+        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false || $url === 'http://127.0.0.1:8000') {
+            $url = 'https://mdefender-pro.crafix.tech';
             update_option('waf_fw_ml_api_url', $url);
         }
         $this->base_url   = untrailingslashit($url);
