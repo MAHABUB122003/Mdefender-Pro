@@ -34,8 +34,24 @@ if not os.path.exists(env_file):
     print("=" * 60)
     sys.exit(1)
 
-from dotenv import load_dotenv
-load_dotenv(env_file)
+# Pure Python standard-library .env loader (zero external dependencies required)
+def load_simple_env(filepath):
+    if not os.path.exists(filepath):
+        return
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                k, v = line.split('=', 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                os.environ[k] = v
+    except Exception as e:
+        print(f"[WARN] Error reading .env: {e}")
+
+load_simple_env(env_file)
 
 smtp_server = os.getenv('SMTP_SERVER', '').strip()
 smtp_port_raw = os.getenv('SMTP_PORT', '587').strip()
