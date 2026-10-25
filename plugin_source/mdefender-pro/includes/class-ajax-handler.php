@@ -406,9 +406,9 @@ class WAF_FW_Ajax_Handler {
             }
         }
 
-        // Ensure default cloud API URL is set
+        // Ensure default cloud API URL is set if empty
         $ml_url = get_option('waf_fw_ml_api_url', '');
-        if (empty($ml_url) || strpos($ml_url, 'onrender.com') !== false || strpos($ml_url, 'mdefender-pro.io') !== false || $ml_url === 'http://217.15.170.82') {
+        if (empty($ml_url) || strpos($ml_url, 'onrender.com') !== false || strpos($ml_url, 'mdefender-pro.io') !== false) {
             update_option('waf_fw_ml_api_url', 'https://mdefender-pro.crafix.tech');
         }
 

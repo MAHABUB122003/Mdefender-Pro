@@ -145,11 +145,11 @@ class WAF_FW_ML_Api_Client {
             // try the alternate endpoints (e.g. direct backend port 8000 or localhost loopback).
             $fallback_targets = [];
             if (strpos($this->base_url, 'mdefender-pro.crafix.tech') !== false) {
-                $fallback_targets = ['http://217.15.170.82:8000', 'http://127.0.0.1:8000'];
+                $fallback_targets = ['http://217.15.170.82', 'http://217.15.170.82:8000', 'http://127.0.0.1:8000'];
             } elseif (strpos($this->base_url, '127.0.0.1') !== false || strpos($this->base_url, 'localhost') !== false) {
-                $fallback_targets = ['https://mdefender-pro.crafix.tech', 'http://217.15.170.82:8000'];
+                $fallback_targets = ['https://mdefender-pro.crafix.tech', 'http://217.15.170.82', 'http://217.15.170.82:8000'];
             } elseif (strpos($this->base_url, '217.15.170.82') !== false) {
-                $fallback_targets = ['https://mdefender-pro.crafix.tech', 'http://127.0.0.1:8000'];
+                $fallback_targets = ['http://217.15.170.82', 'https://mdefender-pro.crafix.tech', 'http://127.0.0.1:8000'];
             }
 
             foreach ($fallback_targets as $fb_base) {
