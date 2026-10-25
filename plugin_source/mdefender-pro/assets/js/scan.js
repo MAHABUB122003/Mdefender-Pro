@@ -674,7 +674,7 @@
                     title: item.title || k,
                     type: item.type || 'Ignored Issue',
                     severity: item.severity || 'medium',
-                    date: item.ignored_at || 'Aug 27, 2026',
+                    date: item.ignored_at || formatScanDate(new Date()),
                     details: 'This issue was previously reviewed and marked as ignored by the administrator.',
                     is_ignored: true
                 });
@@ -760,7 +760,7 @@
             var isTheme = (filePath.indexOf('wp-content/themes/') !== -1);
             var isPlugin = (filePath.indexOf('wp-content/plugins/') !== -1);
             var isUploads = (filePath.indexOf('wp-content/uploads/') !== -1 || filePath.indexOf('wp-content/cache/') !== -1);
-            var dateFound = f.date || 'Aug 27, 2026 6:12 PM';
+            var dateFound = f.date || formatScanDate(new Date());
 
             // SAFETY CLASSIFICATION:
             // 1. Core files: CAN NEVER BE DELETED! They are ONLY REPAIRABLE.
@@ -941,21 +941,9 @@
         var findings = [];
         if (!scanData || typeof scanData !== 'object') return findings;
 
-        // 1. User Security & Insecure Passwords (Verified True Positive)
-        findings.push({
-            id: 'user_insecure_root',
-            title: 'User "root" with "administrator" access has an easy password.',
-            type: 'Insecure Password',
-            severity: 'critical',
-            severityLabel: 'Critical',
-            date: 'Aug 27, 2026 6:12 PM',
-            details: 'A user with the role of \'administrator\' has a password that is easy to guess. Please change this password yourself or ask the user to change it.<br><br><strong>Login Name:</strong> root<br><strong>User Email:</strong> mahabub@gmail.com',
-            evidence: ['Weak administrative credentials detected on active administrator account.'],
-            file: '',
-            actions: []
-        });
+        var scanDateText = formatScanDate((scanData.completed_at || scanData.created_at || (scanData.summary && scanData.summary.timestamp)) || new Date());
 
-        // 2. WordPress Core Checksum Mismatches (Verified True Positive - update-core.php)
+        // 1. Real WordPress Core Checksum Mismatches (Only if actual modified core files found)
         var checksums = null;
         if (scanData.wordpress_checks && scanData.wordpress_checks.wp_checksums) {
             checksums = scanData.wordpress_checks.wp_checksums;
@@ -965,66 +953,98 @@
             checksums = scanData.wp_checksums;
         }
 
-        var coreModifiedFile = 'wp-admin/includes/update-core.php';
-        if (checksums && checksums.modified_files && checksums.modified_files.length > 0) {
-            var foundSpecific = checksums.modified_files.filter(function(mf) {
-                return mf.file.indexOf('update-core.php') !== -1;
+        if (checksums && Array.isArray(checksums.modified_files) && checksums.modified_files.length > 0) {
+            checksums.modified_files.forEach(function(mf, idx) {
+                var filePath = (typeof mf === 'string') ? mf : (mf.file || mf.path || '');
+                if (!filePath) return;
+                findings.push({
+                    id: 'core_mismatch_' + idx,
+                    title: 'WordPress core file modified: ' + filePath,
+                    type: 'Core Integrity',
+                    severity: 'high',
+                    severityLabel: 'High',
+                    date: scanDateText,
+                    details: 'This WordPress core file has been modified and differs from the official release distributed by WordPress.org.',
+                    evidence: [
+                        'Official SHA-256 baseline hash mismatch against WordPress.org repository.',
+                        'Divergence detected in official core system file.'
+                    ],
+                    file: filePath,
+                    line_number: mf.line_number || '',
+                    code_snippet: mf.code_snippet || ('Core divergence detected on server disk: ' + filePath),
+                    actions: [
+                        { label: 'Visual Diff', class: 'waf-btn-view-diff', file: filePath },
+                        { label: 'Repair File', class: 'waf-btn-open-repair-modal', file: filePath }
+                    ]
+                });
             });
-            if (foundSpecific.length > 0) {
-                coreModifiedFile = foundSpecific[0].file;
+        }
+
+        // 2. Real Insecure Password & User Audit (Only if real weak admins detected)
+        if (scanData.password_audit && Array.isArray(scanData.password_audit.admin_with_weak) && scanData.password_audit.admin_with_weak.length > 0) {
+            scanData.password_audit.admin_with_weak.forEach(function(u, idx) {
+                var loginName = escapeHtml(u.user_login || 'administrator');
+                var userEmail = escapeHtml(u.user_email || '');
+                findings.push({
+                    id: 'user_insecure_' + idx,
+                    title: 'User "' + loginName + '" with "administrator" access has an easy password.',
+                    type: 'Insecure Password',
+                    severity: 'critical',
+                    severityLabel: 'Critical',
+                    date: scanDateText,
+                    details: 'A user with the role of \'administrator\' has a password that is easy to guess. Please change this password yourself or ask the user to change it.' + (userEmail ? '<br><br><strong>Login Name:</strong> ' + loginName + '<br><strong>User Email:</strong> ' + userEmail : ''),
+                    evidence: ['Weak administrative credentials detected on active administrator account.'],
+                    file: '',
+                    actions: []
+                });
+            });
+        }
+
+        // 3. Real Vulnerable or Outdated Themes / Plugins (Only if WordPress reports updates available)
+        if (scanData.vulnerability_scan) {
+            if (Array.isArray(scanData.vulnerability_scan.outdated_themes) && scanData.vulnerability_scan.outdated_themes.length > 0) {
+                scanData.vulnerability_scan.outdated_themes.forEach(function(t, idx) {
+                    var tName = escapeHtml(t.name || t.theme || 'Theme');
+                    var oldV = escapeHtml(t.current_version || '');
+                    var newV = escapeHtml(t.new_version || '');
+                    findings.push({
+                        id: 'theme_upgrade_' + idx,
+                        title: 'The Theme "' + tName + '" needs an upgrade' + (oldV && newV ? ' (' + oldV + ' -> ' + newV + ')' : '') + '.',
+                        type: 'Theme Upgrade',
+                        severity: 'medium',
+                        severityLabel: 'Medium',
+                        date: scanDateText,
+                        details: 'An updated version of the theme "' + tName + '" is available. To keep your site secure against published vulnerabilities, upgrade in WordPress Updates.',
+                        evidence: ['Installed theme version has an upgrade available on WordPress.org.'],
+                        file: 'wp-content/themes/' + (t.slug || t.theme || ''),
+                        actions: []
+                    });
+                });
+            }
+
+            if (Array.isArray(scanData.vulnerability_scan.outdated_plugins) && scanData.vulnerability_scan.outdated_plugins.length > 0) {
+                scanData.vulnerability_scan.outdated_plugins.forEach(function(p, idx) {
+                    var pName = escapeHtml(p.name || p.plugin || 'Plugin');
+                    var oldV = escapeHtml(p.current_version || '');
+                    var newV = escapeHtml(p.new_version || '');
+                    findings.push({
+                        id: 'plugin_upgrade_' + idx,
+                        title: 'The Plugin "' + pName + '" needs an upgrade' + (oldV && newV ? ' (' + oldV + ' -> ' + newV + ')' : '') + '.',
+                        type: 'Plugin Upgrade',
+                        severity: 'medium',
+                        severityLabel: 'Medium',
+                        date: scanDateText,
+                        details: 'An updated version of the plugin "' + pName + '" is available. Upgrading ensures compliance with security patches.',
+                        evidence: ['Installed plugin version has an upgrade available on WordPress.org.'],
+                        file: 'wp-content/plugins/' + (p.slug || p.plugin || ''),
+                        actions: []
+                    });
+                });
             }
         }
 
-        findings.push({
-            id: 'checksum_mismatch_update_core',
-            title: 'WordPress core file modified: ' + coreModifiedFile,
-            type: 'File',
-            severity: 'high',
-            severityLabel: 'High',
-            date: 'Aug 27, 2026 6:09 PM',
-            details: 'This WordPress core file has been modified and differs from the original file distributed with this version of WordPress.',
-            evidence: [
-                'Official SHA-256 baseline hash mismatch against WordPress.org repository.',
-                'Line 12: core divergence or unauthorized modification detected.'
-            ],
-            file: coreModifiedFile,
-            line_number: '12',
-            code_snippet: 'Line 12: // Core divergence or injected modification detected on server disk',
-            actions: [
-                { label: 'Visual Diff', class: 'waf-btn-view-diff', file: coreModifiedFile },
-                { label: 'Repair File', class: 'waf-btn-open-repair-modal', file: coreModifiedFile }
-            ]
-        });
-
-        // 3. Theme & Plugin Upgrade Checks (Verified True Positives matching Wordfence)
-        findings.push({
-            id: 'theme_upgrade_25',
-            title: 'The Theme "Twenty Twenty-Five" needs an upgrade (1.4 -> 1.5).',
-            type: 'Theme Upgrade',
-            severity: 'medium',
-            severityLabel: 'Medium',
-            date: 'Aug 27, 2026 6:12 PM',
-            details: 'An updated version of the theme "Twenty Twenty-Five" is available. To keep your site secure, upgrade to version 1.5 in WordPress Updates.',
-            evidence: ['Installed theme version 1.4 has an upgrade available (1.5) on WordPress.org.'],
-            file: 'wp-content/themes/twentytwentyfive',
-            actions: []
-        });
-
-        findings.push({
-            id: 'theme_upgrade_23',
-            title: 'The Theme "Twenty Twenty-Three" needs an upgrade (1.6 -> 1.7).',
-            type: 'Theme Upgrade',
-            severity: 'medium',
-            severityLabel: 'Medium',
-            date: 'Aug 27, 2026 6:12 PM',
-            details: 'An updated version of the theme "Twenty Twenty-Three" is available. Upgrading ensures compliance with security patches.',
-            evidence: ['Installed theme version 1.6 has an upgrade available (1.7) on WordPress.org.'],
-            file: 'wp-content/themes/twentytwentythree',
-            actions: []
-        });
-
-        // 4. Standalone Rogue Malware Files (if genuine webshell found)
-        if (scanData.malware_scan && scanData.malware_scan.suspicious_files) {
+        // 4. Standalone Rogue Malware Files & Genuine Webshells
+        if (scanData.malware_scan && Array.isArray(scanData.malware_scan.suspicious_files)) {
             scanData.malware_scan.suspicious_files.forEach(function(f, idx) {
                 var p = (f.file || '').replace(/\\/g, '/');
                 
@@ -1033,7 +1053,7 @@
                     return;
                 }
 
-                // Exclude official WooCommerce minified client scripts from false positive webshell alarms
+                // Exclude known official plugin assets from false positives
                 if (p.indexOf('wp-content/plugins/woocommerce/assets/') !== -1) {
                     return;
                 }
@@ -1071,12 +1091,12 @@
                     id: 'malware_file_' + idx,
                     title: (f.threat || 'Malicious Payload / Webshell Detected') + ': ' + f.file,
                     type: (isTheme ? 'Theme Backdoor Injection' : (isPlugin ? 'Plugin Backdoor Injection' : 'Rogue Standalone Malware')),
-                    severity: 'critical',
-                    severityLabel: 'Critical',
-                    date: 'Aug 27, 2026 6:10 PM',
+                    severity: f.severity || 'critical',
+                    severityLabel: (f.severity === 'warning') ? 'Warning' : 'Critical',
+                    date: scanDateText,
                     details: (isTheme || isPlugin) ?
-                        'Forensic static analysis detected suspicious backdoor pattern inside an installed ' + (isTheme ? 'theme' : 'plugin') + ' component: <code>' + f.file + '</code>.<br><strong>Safety Notice:</strong> To protect your WordPress site from breaking, this file cannot be automatically deleted. Use "VIEW FILE" to inspect the code lines and safely clean the backdoor.' :
-                        'Forensic static analysis identified rogue malware/webshell in <code>' + f.file + '</code>.',
+                        'Forensic static analysis detected suspicious backdoor pattern inside an installed ' + (isTheme ? 'theme' : 'plugin') + ' component: <code>' + escapeHtml(f.file) + '</code>.<br><strong>Safety Notice:</strong> To protect your WordPress site from breaking, this file cannot be automatically deleted. Use "VIEW FILE" to inspect the code lines and safely clean the backdoor.' :
+                        'Forensic static analysis identified rogue malware/webshell in <code>' + escapeHtml(f.file) + '</code>.',
                     evidence: f.findings || [f.threat || 'Dynamic payload signature identified.'],
                     line_number: lineNo,
                     code_snippet: snippet,
@@ -1084,6 +1104,27 @@
                     is_deletable: isUploads, // ONLY standalone rogue files in uploads/cache can be deleted!
                     actions: [
                         { label: 'View File Source', class: 'waf-btn-view-file', file: f.file }
+                    ]
+                });
+            });
+        }
+
+        // 5. Sensitive Data / Config Exposures
+        if (scanData.malware_scan && Array.isArray(scanData.malware_scan.secrets_found)) {
+            scanData.malware_scan.secrets_found.forEach(function(s, idx) {
+                var sFile = s.file || '';
+                findings.push({
+                    id: 'secret_file_' + idx,
+                    title: 'Sensitive Configuration / Credentials File Exposed: ' + sFile,
+                    type: 'Config Exposure',
+                    severity: 'warning',
+                    severityLabel: 'Warning',
+                    date: scanDateText,
+                    details: 'A configuration or sensitive credentials file was identified on server: <code>' + escapeHtml(sFile) + '</code>.',
+                    evidence: s.findings || ['Sensitive configuration file exposed in webroot.'],
+                    file: sFile,
+                    actions: [
+                        { label: 'View File Source', class: 'waf-btn-view-file', file: sFile }
                     ]
                 });
             });

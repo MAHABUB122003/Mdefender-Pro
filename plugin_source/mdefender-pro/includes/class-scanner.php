@@ -956,8 +956,8 @@ class WAF_FW_Scanner {
         }
 
         $untrusted_sources = [
-            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_FILES', '$_ENV',
-            '$HTTP_RAW_POST_DATA', '$_SERVER'
+            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_FILES',
+            '$HTTP_RAW_POST_DATA'
         ];
 
         $dangerous_sinks = [
@@ -1464,13 +1464,31 @@ class WAF_FW_Scanner {
         $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
         $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
 
-        // Self-exclusion: Never scan or flag MDefender-Pro / WAF plugin files (they contain malware signatures/heuristics by design)
+        // Self-exclusion & Known Safe Security/Management Plugins:
         if (
             strpos($rel_path, 'wp-content/plugins/mdefender-pro/') === 0 ||
             strpos($rel_path, 'wp-content/plugins/mdefender/') === 0 ||
             strpos($rel_path, 'wp-content/plugins/wp-waf-firewall') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/wordfence/') === 0
+            strpos($rel_path, 'wp-content/plugins/wordfence/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/wpremote/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/wp-health/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/patchstack/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/woocommerce/') === 0 ||
+            strpos($rel_path, 'wp-content/plugins/akismet/') === 0
         ) {
+            $known_bad = self::lookup_known_bad_hash($path);
+            if (!empty($known_bad)) {
+                return [
+                    'file'     => $rel_path,
+                    'score'    => 100,
+                    'severity' => 'critical',
+                    'confidence' => 'HIGH',
+                    'classification' => 'CONFIRMED_MALWARE',
+                    'findings' => ['Known-bad hash match: CONFIRMED_MALWARE (family: ' . $known_bad['family'] . ')'],
+                    'size'     => $size,
+                    'hash'     => $known_bad['hash'],
+                ];
+            }
             return null;
         }
 
@@ -1538,7 +1556,7 @@ class WAF_FW_Scanner {
                 $confidence = 'HIGH';
                 $classification = 'CONFIRMED_MALWARE';
                 $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
-            } elseif (in_array($ext, ['env', 'sql', 'bak', 'backup', 'conf', 'config', 'key', 'pem']) || strpos($name, '.env') === 0) {
+            } elseif ($name !== 'web.config' && $name !== '.htaccess' && (in_array($ext, ['env', 'sql', 'bak', 'backup', 'key', 'pem']) || strpos($name, '.env') === 0)) {
                 $total_score = max($total_score, 85);
                 $confidence = 'HIGH';
                 $classification = 'CONFIRMED_MALWARE';
