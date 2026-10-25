@@ -126,6 +126,12 @@ class WAF_FW_ML_Api_Client {
             if (is_resource($handle) || (is_object($handle) && get_class($handle) === 'CurlHandle')) {
                 curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 15);
                 curl_setopt($handle, CURLOPT_CONNECTTIMEOUT_MS, 15000);
+                if (defined('CURLOPT_RESOLVE')) {
+                    curl_setopt($handle, CURLOPT_RESOLVE, [
+                        'mdefender-pro.crafix.tech:443:217.15.170.82',
+                        'mdefender-pro.crafix.tech:80:217.15.170.82'
+                    ]);
+                }
             }
         };
         add_action('http_api_curl', $curl_hook);
