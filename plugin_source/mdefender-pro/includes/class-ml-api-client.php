@@ -52,7 +52,7 @@ class WAF_FW_ML_Api_Client {
         $is_local = (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false))
             || (function_exists('get_site_url') && (strpos(get_site_url(), 'localhost') !== false || strpos(get_site_url(), '127.0.0.1') !== false));
 
-        if (empty($url) || (!$is_local && (strpos($url, 'localhost') !== false || strpos($url, '127.0.0.1') !== false || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false || strpos($url, '217.15.170.82') !== false))) {
+        if (empty($url) || strpos($url, 'onrender.com') !== false || strpos($url, 'mdefender-pro.io') !== false) {
             $url = $is_local ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
             update_option('waf_fw_ml_api_url', $url);
         }
@@ -130,16 +130,32 @@ class WAF_FW_ML_Api_Client {
                 $response = wp_remote_request($url, $args);
             }
         }
-        if (is_wp_error($response) && strpos($this->base_url, '127.0.0.1') !== false) {
-            // Failover to production cloud if local server is down
-            $cloud_url = 'https://mdefender-pro.crafix.tech' . $path;
-            if ($method === 'GET' && $body !== null) {
-                $cloud_url = add_query_arg($body, $cloud_url);
+        if (is_wp_error($response)) {
+            // Auto-failover: if primary endpoint is blocked by hairpin NAT, firewall or cURL error,
+            // try the alternate endpoints (e.g. direct backend port 8000 or localhost loopback).
+            $fallback_targets = [];
+            if (strpos($this->base_url, 'mdefender-pro.crafix.tech') !== false) {
+                $fallback_targets = ['http://217.15.170.82:8000', 'http://127.0.0.1:8000'];
+            } elseif (strpos($this->base_url, '127.0.0.1') !== false || strpos($this->base_url, 'localhost') !== false) {
+                $fallback_targets = ['https://mdefender-pro.crafix.tech', 'http://217.15.170.82:8000'];
+            } elseif (strpos($this->base_url, '217.15.170.82') !== false) {
+                $fallback_targets = ['https://mdefender-pro.crafix.tech', 'http://127.0.0.1:8000'];
             }
-            $args['sslverify'] = false;
-            $cloud_response = wp_remote_request($cloud_url, $args);
-            if (!is_wp_error($cloud_response)) {
-                $response = $cloud_response;
+
+            foreach ($fallback_targets as $fb_base) {
+                $fb_url = $fb_base . $path;
+                if ($method === 'GET' && $body !== null) {
+                    $fb_url = add_query_arg($body, $fb_url);
+                }
+                $fb_args = $args;
+                $fb_args['sslverify'] = false;
+                $fb_res = wp_remote_request($fb_url, $fb_args);
+                if (!is_wp_error($fb_res) && (int) wp_remote_retrieve_response_code($fb_res) > 0 && (int) wp_remote_retrieve_response_code($fb_res) < 500) {
+                    $response = $fb_res;
+                    update_option('waf_fw_ml_api_url', $fb_base);
+                    $this->base_url = $fb_base;
+                    break;
+                }
             }
         }
         if (is_wp_error($response)) {
