@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Users,
   UserPlus,
@@ -25,8 +25,10 @@ import {
   FileText,
   Activity,
   CheckCircle2,
-  UserCheck
+  UserCheck,
+  RefreshCw
 } from 'lucide-react'
+import api from '../api/api'
 import userStore from '../utils/userStore'
 
 export const TEAM_ROLES = [
@@ -55,7 +57,7 @@ export const TEAM_ROLES = [
     title: 'DevOps & Infrastructure Engineer',
     badge: 'INFRASTRUCTURE',
     color: '#0284C7',
-    bg: '#F0F9FF',
+    bg: '#F0FDF4',
     border: '#BAE6FD',
     desc: 'Controls Anycast DNS zone management, origin server routing, SSL certificates, and edge caching.',
     permissions: ['DNS Zone Records (A/CNAME/MX)', 'SSL/TLS Mode Settings', 'Edge Routing & Health Checks', 'Origin Server Config', 'View Operational Logs']
@@ -76,83 +78,19 @@ export default function UserTeam() {
   const cachedDashboard = userStore.get('dashboard') || userStore.get('websites')
   const rawWebsites = useMemo(() => cachedDashboard?.websites || [], [cachedDashboard])
 
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('members') // 'members' | 'invites' | 'matrix' | 'audit'
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
 
-  const [members, setMembers] = useState([
-    {
-      id: 'usr-01',
-      name: 'Mahabub (You)',
-      email: 'mahabub@crafix.tech',
-      roleId: 'owner',
-      roleTitle: 'Super Admin (Owner)',
-      scope: 'Global (All Domains & Sites)',
-      twoFactor: true,
-      lastActive: 'Active Now',
-      isOwner: true,
-      joinedAt: '2026-01-10'
-    },
-    {
-      id: 'usr-02',
-      name: 'Tanvir Hossain',
-      email: 'tanvir.sec@crafix.tech',
-      roleId: 'secops',
-      roleTitle: 'Security Operations (SecOps)',
-      scope: 'Global (All Domains & Sites)',
-      twoFactor: true,
-      lastActive: '24 mins ago',
-      isOwner: false,
-      joinedAt: '2026-04-18'
-    },
-    {
-      id: 'usr-03',
-      name: 'Sarah Jenkins',
-      email: 'sarah.j@enterprise.com',
-      roleId: 'devops',
-      roleTitle: 'DevOps & Infrastructure Engineer',
-      scope: 'mahabub.shop, api.crafix.tech',
-      twoFactor: true,
-      lastActive: '3 hours ago',
-      isOwner: false,
-      joinedAt: '2026-07-22'
-    },
-    {
-      id: 'usr-04',
-      name: 'Rakibul Islam',
-      email: 'rakibul.audit@agency.com',
-      roleId: 'auditor',
-      roleTitle: 'Security Compliance Auditor',
-      scope: 'mahabub.shop',
-      twoFactor: false,
-      lastActive: 'Yesterday',
-      isOwner: false,
-      joinedAt: '2026-09-05'
-    }
-  ])
-
-  const [pendingInvites, setPendingInvites] = useState([
-    {
-      id: 'inv-101',
-      email: 'alex.dev@partner.io',
-      roleTitle: 'DevOps & Infrastructure Engineer',
-      roleId: 'devops',
-      scope: 'Global (All Domains)',
-      invitedBy: 'mahabub@crafix.tech',
-      sentAt: '2026-10-23',
-      expiresIn: '5 days'
-    }
-  ])
-
-  const [auditLogs] = useState([
-    { id: 'aud-1', user: 'Tanvir Hossain', action: 'Created custom WAF rule (Block SQLi on /api/v1/checkout)', timestamp: 'Today, 02:40 AM', ip: '103.145.74.12' },
-    { id: 'aud-2', user: 'Sarah Jenkins', action: 'Updated DNS record CNAME shop.mahabub.shop to edge.mdefender-pro.com', timestamp: 'Yesterday, 18:15 PM', ip: '185.191.171.4' },
-    { id: 'aud-3', user: 'Mahabub (Owner)', action: 'Enforced Mandatory 2FA for all Workspace Members', timestamp: '2026-10-21', ip: '103.145.74.10' },
-    { id: 'aud-4', user: 'Rakibul Islam', action: 'Exported SOC2 Layer 7 WAF Threat Compliance Audit PDF', timestamp: '2026-10-20', ip: '118.179.32.90' },
-  ])
+  const [members, setMembers] = useState([])
+  const [pendingInvites, setPendingInvites] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
+  const [seatLimit, setSeatLimit] = useState(1)
 
   // Modals & Forms
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [submittingInvite, setSubmittingInvite] = useState(false)
   const [inviteForm, setInviteForm] = useState({
     name: '',
     email: '',
@@ -167,48 +105,79 @@ export default function UserTeam() {
     setTimeout(() => setToastMsg(null), 4000)
   }
 
-  // Quota & Seats
-  const seatLimit = 10
-  const usedSeats = members.length
-  const seatPercent = Math.min(100, Math.round((usedSeats / seatLimit) * 100))
+  // Load real team and audit logs from MongoDB API
+  const loadTeamData = async () => {
+    try {
+      const [membersRes, auditRes] = await Promise.all([
+        api.getTeamMembers().catch(() => null),
+        api.getTeamAuditLogs().catch(() => null)
+      ])
 
-  const handleInviteSubmit = (e) => {
+      if (membersRes?.data) {
+        setMembers(membersRes.data.members || [])
+        setPendingInvites(membersRes.data.pending_invites || [])
+        setSeatLimit(membersRes.data.seats_total || 1)
+      }
+      if (auditRes?.data?.logs) {
+        setAuditLogs(auditRes.data.logs)
+      }
+    } catch (err) {
+      console.error('Failed to load team data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadTeamData()
+  }, [])
+
+  // Quota & Seats
+  const usedSeats = members.length
+  const seatPercent = Math.min(100, Math.round((usedSeats / Math.max(1, seatLimit)) * 100))
+
+  const handleInviteSubmit = async (e) => {
     e.preventDefault()
     if (!inviteForm.name.trim() || !inviteForm.email.trim()) {
       showToast('Please provide a valid name and business email.', 'error')
       return
     }
 
-    const selectedRoleObj = TEAM_ROLES.find(r => r.id === inviteForm.roleId) || TEAM_ROLES[1]
-    const newMember = {
-      id: `usr-${Date.now()}`,
-      name: inviteForm.name.trim(),
-      email: inviteForm.email.trim(),
-      roleId: inviteForm.roleId,
-      roleTitle: selectedRoleObj.title,
-      scope: inviteForm.scope === 'all' ? 'Global (All Domains & Sites)' : inviteForm.scope,
-      twoFactor: false,
-      lastActive: 'Invitation Pending',
-      isOwner: false,
-      joinedAt: 'Just now'
+    setSubmittingInvite(true)
+    try {
+      const res = await api.inviteTeamMember({
+        name: inviteForm.name.trim(),
+        email: inviteForm.email.trim(),
+        role_id: inviteForm.roleId,
+        scope: inviteForm.scope,
+        require_2fa: inviteForm.require2fa
+      })
+      await loadTeamData()
+      setShowInviteModal(false)
+      setInviteForm({
+        name: '',
+        email: '',
+        roleId: 'secops',
+        scope: 'all',
+        require2fa: true
+      })
+      showToast(res.message || `Official invitation dispatched to ${inviteForm.email}!`)
+    } catch (err) {
+      showToast(err.message || 'Failed to dispatch team member invitation.', 'error')
+    } finally {
+      setSubmittingInvite(false)
     }
-
-    setMembers(prev => [...prev, newMember])
-    setShowInviteModal(false)
-    setInviteForm({
-      name: '',
-      email: '',
-      roleId: 'secops',
-      scope: 'all',
-      require2fa: true
-    })
-    showToast(`Official invitation dispatched to ${newMember.email}!`)
   }
 
-  const handleDeleteMember = (id, name) => {
+  const handleDeleteMember = async (id, name) => {
     if (!confirm(`Are you sure you want to revoke enterprise access for ${name}?`)) return
-    setMembers(prev => prev.filter(m => m.id !== id))
-    showToast(`Access revoked for ${name}.`)
+    try {
+      await api.deleteTeamMember(id)
+      await loadTeamData()
+      showToast(`Access revoked for ${name}.`)
+    } catch (err) {
+      showToast(err.message || 'Failed to revoke member access.', 'error')
+    }
   }
 
   const handleRevokeInvite = (id, email) => {
@@ -219,9 +188,9 @@ export default function UserTeam() {
   const filteredMembers = useMemo(() => {
     return members.filter(m => {
       const matchSearch = !searchQuery.trim() ||
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.scope.toLowerCase().includes(searchQuery.toLowerCase())
+        (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.scope || '').toLowerCase().includes(searchQuery.toLowerCase())
       const matchRole = roleFilter === 'all' || m.roleId === roleFilter
       return matchSearch && matchRole
     })
@@ -659,30 +628,38 @@ export default function UserTeam() {
         {/* Tab 4: Audit Trail */}
         {activeTab === 'audit' && (
           <div style={{ padding: '20px 24px' }}>
-            <div style={{ display: 'grid', gap: '10px' }}>
-              {auditLogs.map(log => (
-                <div key={log.id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '14px 18px', border: '1px solid #D9E1DC', borderRadius: '10px',
-                  background: '#FAFBF9', flexWrap: 'wrap', gap: '10px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #D9E1DC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10201E' }}>
-                      <Activity size={14} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
-                        <strong style={{ color: '#0284C7' }}>{log.user}:</strong> {log.action}
+            {auditLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748B' }}>
+                <Activity size={32} style={{ color: '#94A3B8', marginBottom: '8px' }} />
+                <div style={{ fontWeight: '700', color: '#10201E' }}>No Audit Events Yet</div>
+                <div style={{ fontSize: '12.5px', marginTop: '4px' }}>Administrative actions and team changes will be securely logged here.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {auditLogs.map(log => (
+                  <div key={log.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '14px 18px', border: '1px solid #D9E1DC', borderRadius: '10px',
+                    background: '#FAFBF9', flexWrap: 'wrap', gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #D9E1DC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10201E' }}>
+                        <Activity size={14} />
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-                        Logged from client IP: <span style={{ fontFamily: 'monospace' }}>{log.ip}</span>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
+                          <strong style={{ color: '#0284C7' }}>{log.user}:</strong> {log.action}
+                        </div>
+                        <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                          Logged from client IP: <span style={{ fontFamily: 'monospace' }}>{log.ip}</span>
+                        </div>
                       </div>
                     </div>
+                    <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>{log.timestamp}</span>
                   </div>
-                  <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>{log.timestamp}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -820,15 +797,16 @@ export default function UserTeam() {
                 </button>
                 <button
                   type="submit"
+                  disabled={submittingInvite}
                   style={{
-                    padding: '9px 20px', background: '#10201E', border: 'none',
+                    padding: '9px 20px', background: submittingInvite ? '#64748B' : '#10201E', border: 'none',
                     borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
-                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    cursor: submittingInvite ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                     boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'
                   }}
                 >
-                  <Send size={13} />
-                  <span>Send Workspace Invitation</span>
+                  {submittingInvite ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                  <span>{submittingInvite ? 'Dispatching Invitation...' : 'Send Workspace Invitation'}</span>
                 </button>
               </div>
             </form>

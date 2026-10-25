@@ -63,3 +63,19 @@ async def delete_notification(notification_id: str, user=Depends(get_current_use
     if not result or result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Notification not found")
     return success(message="Notification deleted")
+
+
+@router.post("/test")
+async def send_test_notification(user=Depends(get_current_user)):
+    service = NotificationService()
+    title = "MDefender Pro Security Verification Test"
+    message = "Synthetic security incident dispatch test successfully verified notification routing."
+    service.notify(
+        user_id=user["id"],
+        title=title,
+        message=message,
+        category="general",
+        data={"test": True, "sender": "Security Operations Gateway"}
+    )
+    return success(message="Test security alert dispatched successfully.")
+

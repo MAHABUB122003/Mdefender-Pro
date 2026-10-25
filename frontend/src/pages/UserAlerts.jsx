@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Bell,
   Mail,
@@ -26,11 +26,17 @@ import {
   Settings,
   X
 } from 'lucide-react'
+import api from '../api/api'
+import userStore from '../utils/userStore'
 
 export default function UserAlerts() {
+  const cachedUser = userStore.get('user') || {}
+  const initialEmail = cachedUser.email || 'operator@enterprise.com'
+
+  const [loading, setLoading] = useState(true)
   const [emailSettings, setEmailSettings] = useState({
-    primaryEmail: 'mahabub@crafix.tech',
-    secondaryEmail: 'security-team@crafix.tech',
+    primaryEmail: initialEmail,
+    secondaryEmail: '',
     instantCritical: true,
     weeklyDigest: true,
     includeForensicPayload: true
@@ -38,15 +44,15 @@ export default function UserAlerts() {
 
   const [webhookSettings, setWebhookSettings] = useState({
     enabled: false,
-    url: 'https://hooks.slack.com/services/T00/B00/XXXXX',
-    secretToken: 'mdf_whsec_994821a8f',
+    url: '',
+    secretToken: '',
     format: 'json'
   })
 
   const [showWebhookEdit, setShowWebhookEdit] = useState(false)
   const [showEmailEdit, setShowEmailEdit] = useState(false)
-  const [tempPrimaryEmail, setTempPrimaryEmail] = useState(emailSettings.primaryEmail)
-  const [tempSecondaryEmail, setTempSecondaryEmail] = useState(emailSettings.secondaryEmail)
+  const [tempPrimaryEmail, setTempPrimaryEmail] = useState(initialEmail)
+  const [tempSecondaryEmail, setTempSecondaryEmail] = useState('')
 
   const [alertPolicies, setAlertPolicies] = useState([
     {
@@ -117,73 +123,138 @@ export default function UserAlerts() {
     }
   ])
 
-  const [recentDispatches, setRecentDispatches] = useState([
-    {
-      id: 'disp-01',
-      title: 'Layer 7 HTTP Flood Neutralized',
-      target: 'mahabub.shop',
-      severity: 'CRITICAL',
-      destination: 'Email (mahabub@crafix.tech)',
-      status: 'Delivered (0.12s)',
-      time: 'Today, 03:15 AM',
-      details: 'Over 14,200 requests/sec dropped at Frankfurt Edge Node.'
-    },
-    {
-      id: 'disp-02',
-      title: 'SQL Injection Block Notice',
-      target: 'mahabub.shop',
-      severity: 'HIGH',
-      destination: 'Email (mahabub@crafix.tech)',
-      status: 'Delivered (0.15s)',
-      time: 'Yesterday, 22:40 PM',
-      details: 'Payload UNION SELECT blocked by Core Rule #942100.'
-    },
-    {
-      id: 'disp-03',
-      title: 'Automated SSL Certificate Auto-Renewed',
-      target: 'mahabub.shop',
-      severity: 'INFO',
-      destination: 'Email (mahabub@crafix.tech)',
-      status: 'Delivered (0.10s)',
-      time: '2026-10-21, 14:10 PM',
-      details: 'Let\'s Encrypt Universal TLS certificate renewed for 90 days.'
-    }
-  ])
-
+  const [recentDispatches, setRecentDispatches] = useState([])
   const [toastMsg, setToastMsg] = useState(null)
+  const [sendingTest, setSendingTest] = useState(false)
+
   const showToast = (text, type = 'success') => {
     setToastMsg({ text, type })
     setTimeout(() => setToastMsg(null), 4000)
   }
 
+  // Load preferences and notifications from backend API
+  const loadAlertData = async () => {
+    try {
+      const [prefRes, notifRes] = await Promise.all([
+        api.getNotificationPreferences().catch(() => null),
+        api.getNotifications({ limit: 30 }).catch(() => null)
+      ])
+
+      if (prefRes?.data?.preferences) {
+        const p = prefRes.data.preferences
+        const primEmail = p.primary_email || cachedUser.email || initialEmail
+        const secEmail = p.secondary_email || ''
+        setEmailSettings({
+          primaryEmail: primEmail,
+          secondaryEmail: secEmail,
+          instantCritical: p.instant_critical ?? true,
+          weeklyDigest: p.weekly_digest ?? true,
+          includeForensicPayload: p.include_forensic_payload ?? true
+        })
+        setTempPrimaryEmail(primEmail)
+        setTempSecondaryEmail(secEmail)
+
+        setWebhookSettings({
+          enabled: Boolean(p.webhook),
+          url: p.webhook_url || '',
+          secretToken: p.webhook_secret || '',
+          format: 'json'
+        })
+
+        if (p.policy_states) {
+          setAlertPolicies(prev => prev.map(pol => ({
+            ...pol,
+            enabled: p.policy_states[pol.id] !== undefined ? p.policy_states[pol.id] : pol.enabled
+          })))
+        }
+      }
+
+      if (notifRes?.data?.notifications) {
+        const list = notifRes.data.notifications.map(n => ({
+          id: n.id || n._id,
+          title: n.title,
+          target: n.data?.website_domain || n.website_id || 'Workspace Fleet',
+          severity: (n.severity || 'info').toUpperCase(),
+          destination: 'Dashboard & Corporate Email',
+          status: 'Delivered',
+          time: n.created_at ? new Date(n.created_at).toLocaleString() : 'Recent',
+          details: n.message
+        }))
+        setRecentDispatches(list)
+      }
+    } catch (err) {
+      console.error('Failed to load alert settings:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAlertData()
+  }, [])
+
+  const persistPreferences = async (updatedEmail, updatedWebhook, updatedPolicies) => {
+    try {
+      const policyStates = {}
+      ;(updatedPolicies || alertPolicies).forEach(p => { policyStates[p.id] = p.enabled })
+
+      const eSettings = updatedEmail || emailSettings
+      const whSettings = updatedWebhook || webhookSettings
+
+      await api.saveNotificationPreferences({
+        primary_email: eSettings.primaryEmail,
+        secondary_email: eSettings.secondaryEmail,
+        instant_critical: eSettings.instantCritical,
+        weekly_digest: eSettings.weeklyDigest,
+        include_forensic_payload: eSettings.includeForensicPayload,
+        webhook: whSettings.enabled,
+        webhook_url: whSettings.url,
+        webhook_secret: whSettings.secretToken,
+        policy_states: policyStates
+      })
+    } catch (err) {
+      console.error('Failed to persist notification preferences:', err)
+    }
+  }
+
   const handleTogglePolicy = (id) => {
-    setAlertPolicies(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p))
+    const updated = alertPolicies.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p)
+    setAlertPolicies(updated)
+    persistPreferences(null, null, updated)
     showToast('Alert notification policy updated!')
   }
 
-  const handleSendTestAlert = () => {
-    const newAlert = {
-      id: `disp-${Date.now()}`,
-      title: 'MDefender Pro Security Verification Test',
-      target: 'All Active Domains',
-      severity: 'INFO',
-      destination: `Email (${emailSettings.primaryEmail})`,
-      status: 'Delivered (0.09s)',
-      time: 'Just now',
-      details: 'Synthetic test incident successfully verified dispatch routing.'
-    }
-    setRecentDispatches(prev => [newAlert, ...prev])
-    showToast(`Test security notification sent to ${emailSettings.primaryEmail}!`)
+  const handleToggleWebhook = async () => {
+    const next = !webhookSettings.enabled
+    const updated = { ...webhookSettings, enabled: next }
+    setWebhookSettings(updated)
+    await persistPreferences(null, updated)
+    showToast(`SOC Webhook ${next ? 'activated' : 'disabled'}!`)
   }
 
-  const handleSaveEmail = (e) => {
+  const handleSendTestAlert = async () => {
+    setSendingTest(true)
+    try {
+      await api.sendTestNotification()
+      await loadAlertData()
+      showToast(`Test security verification notification dispatched to ${emailSettings.primaryEmail}!`)
+    } catch (err) {
+      showToast(err.message || 'Failed to dispatch test notification.', 'error')
+    } finally {
+      setSendingTest(false)
+    }
+  }
+
+  const handleSaveEmail = async (e) => {
     e.preventDefault()
-    setEmailSettings(prev => ({
-      ...prev,
+    const updated = {
+      ...emailSettings,
       primaryEmail: tempPrimaryEmail.trim(),
       secondaryEmail: tempSecondaryEmail.trim()
-    }))
+    }
+    setEmailSettings(updated)
     setShowEmailEdit(false)
+    await persistPreferences(updated, null)
     showToast('Alert recipient emails updated successfully!')
   }
 
@@ -243,16 +314,17 @@ export default function UserAlerts() {
 
         <button
           onClick={handleSendTestAlert}
+          disabled={sendingTest}
           style={{
             padding: '10px 22px', borderRadius: '9px', border: 'none',
-            background: '#10201E', color: '#FFFFFF', fontSize: '13px',
-            fontWeight: '700', cursor: 'pointer', display: 'inline-flex',
+            background: sendingTest ? '#64748B' : '#10201E', color: '#FFFFFF', fontSize: '13px',
+            fontWeight: '700', cursor: sendingTest ? 'not-allowed' : 'pointer', display: 'inline-flex',
             alignItems: 'center', gap: '8px', boxShadow: '0 2px 10px rgba(16, 32, 30, 0.18)',
             transition: 'all 0.15s ease'
           }}
         >
-          <Send size={14} />
-          <span>Send Test Alert</span>
+          {sendingTest ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+          <span>{sendingTest ? 'Dispatching Verification...' : 'Send Test Alert'}</span>
         </button>
       </div>
 
@@ -284,9 +356,9 @@ export default function UserAlerts() {
         </div>
 
         <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delivered This Month</div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>18 Notices</div>
-          <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>100% successful delivery rate</div>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recorded Dispatches</div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>{recentDispatches.length} Events</div>
+          <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>Logged in security audit trail</div>
         </div>
       </div>
 
@@ -385,30 +457,39 @@ export default function UserAlerts() {
             </div>
 
             <div style={{ fontSize: '12.5px', color: '#64748B', lineHeight: '1.5', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
-              {webhookSettings.enabled ? (
+              {webhookSettings.enabled && webhookSettings.url ? (
                 <div>Endpoint: <strong style={{ color: '#10201E', fontFamily: 'monospace' }}>{webhookSettings.url}</strong></div>
               ) : (
                 <div>Connect your incident response management system via automated HTTP POST payload.</div>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                const next = !webhookSettings.enabled
-                setWebhookSettings({ ...webhookSettings, enabled: next })
-                showToast(`SOC Webhook ${next ? 'activated' : 'disabled'}!`)
-              }}
-              style={{
-                padding: '6px 14px', borderRadius: '7px',
-                background: webhookSettings.enabled ? '#FEF2F2' : '#10201E',
-                border: `1px solid ${webhookSettings.enabled ? '#FECACA' : '#10201E'}`,
-                color: webhookSettings.enabled ? '#DC2626' : '#FFFFFF',
-                fontSize: '11.5px', fontWeight: '700', cursor: 'pointer'
-              }}
-            >
-              {webhookSettings.enabled ? 'Disable Webhook' : 'Enable Webhook Endpoint'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleToggleWebhook}
+                style={{
+                  padding: '6px 14px', borderRadius: '7px',
+                  background: webhookSettings.enabled ? '#FEF2F2' : '#10201E',
+                  border: `1px solid ${webhookSettings.enabled ? '#FECACA' : '#10201E'}`,
+                  color: webhookSettings.enabled ? '#DC2626' : '#FFFFFF',
+                  fontSize: '11.5px', fontWeight: '700', cursor: 'pointer'
+                }}
+              >
+                {webhookSettings.enabled ? 'Disable Webhook' : 'Enable Webhook Endpoint'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowWebhookEdit(true)}
+                style={{
+                  padding: '6px 12px', borderRadius: '7px',
+                  background: '#FFFFFF', border: '1px solid #D9E1DC',
+                  color: '#10201E', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer'
+                }}
+              >
+                Edit URL &amp; Secret
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -510,44 +591,54 @@ export default function UserAlerts() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: '10px' }}>
-          {recentDispatches.map(item => (
-            <div
-              key={item.id}
-              style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '14px 18px', border: '1px solid #D9E1DC', borderRadius: '10px',
-                background: '#FAFBF9', flexWrap: 'wrap', gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{
-                  padding: '3px 8px', borderRadius: '5px', fontSize: '10px', fontWeight: '800',
-                  background: item.severity === 'CRITICAL' ? '#FEF2F2' : item.severity === 'HIGH' ? '#FFFBEB' : '#F0F9FF',
-                  color: item.severity === 'CRITICAL' ? '#DC2626' : item.severity === 'HIGH' ? '#D97706' : '#0284C7',
-                  border: `1px solid ${item.severity === 'CRITICAL' ? '#FECACA' : item.severity === 'HIGH' ? '#FDE68A' : '#BAE6FD'}`
-                }}>
-                  {item.severity}
-                </span>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>
-                    {item.title} <span style={{ color: '#64748B', fontWeight: '500' }}>on {item.target}</span>
-                  </div>
-                  <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-                    {item.details} • Dispatched via {item.destination}
+        {recentDispatches.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FAFBF9', border: '1px dashed #D9E1DC', borderRadius: '12px' }}>
+            <ShieldCheck size={36} style={{ color: '#15803D', margin: '0 auto 10px' }} />
+            <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: '800', color: '#10201E' }}>No Security Alerts Dispatched Yet</h4>
+            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+              All connected domains are clean and protected with zero critical incidents. Click "Send Test Alert" to verify delivery to your inbox.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '10px' }}>
+            {recentDispatches.map(item => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '14px 18px', border: '1px solid #D9E1DC', borderRadius: '10px',
+                  background: '#FAFBF9', flexWrap: 'wrap', gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{
+                    padding: '3px 8px', borderRadius: '5px', fontSize: '10px', fontWeight: '800',
+                    background: item.severity === 'CRITICAL' ? '#FEF2F2' : item.severity === 'HIGH' ? '#FFFBEB' : '#F0F9FF',
+                    color: item.severity === 'CRITICAL' ? '#DC2626' : item.severity === 'HIGH' ? '#D97706' : '#0284C7',
+                    border: `1px solid ${item.severity === 'CRITICAL' ? '#FECACA' : item.severity === 'HIGH' ? '#FDE68A' : '#BAE6FD'}`
+                  }}>
+                    {item.severity}
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>
+                      {item.title} <span style={{ color: '#64748B', fontWeight: '500' }}>on {item.target}</span>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                      {item.details} • Dispatched via {item.destination}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7' }}>
-                  {item.status}
-                </span>
-                <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{item.time}</div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7' }}>
+                    {item.status}
+                  </span>
+                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{item.time}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Configure Recipients Modal */}
@@ -638,6 +729,110 @@ export default function UserAlerts() {
                 >
                   <Check size={14} />
                   <span>Save Recipients</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Configure Webhook Modal */}
+      {showWebhookEdit && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(16, 32, 30, 0.65)',
+          backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: '16px', border: '1px solid #D9E1DC',
+            width: '100%', maxWidth: '480px', boxShadow: '0 20px 40px rgba(16, 32, 30, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '18px 24px', borderBottom: '1px solid #F1F5F2',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAFBF9'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Terminal size={18} style={{ color: '#0284C7' }} />
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: 0 }}>
+                  Configure SOC Webhook
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWebhookEdit(false)}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault()
+                setShowWebhookEdit(false)
+                await persistPreferences(null, webhookSettings)
+                showToast('Webhook configuration updated!')
+              }}
+              style={{ padding: '22px 24px' }}
+            >
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  HTTP POST Endpoint URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://hooks.slack.com/services/... or https://api.pagerduty.com/..."
+                  value={webhookSettings.url}
+                  onChange={e => setWebhookSettings({ ...webhookSettings, url: e.target.value })}
+                  required
+                  style={{
+                    width: '100%', height: '38px', padding: '0 12px', borderRadius: '8px',
+                    border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E',
+                    fontSize: '13px', boxSizing: 'border-box', outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  HMAC Secret / Authorization Token (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Bearer token or signing secret"
+                  value={webhookSettings.secretToken}
+                  onChange={e => setWebhookSettings({ ...webhookSettings, secretToken: e.target.value })}
+                  style={{
+                    width: '100%', height: '38px', padding: '0 12px', borderRadius: '8px',
+                    border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E',
+                    fontSize: '13px', boxSizing: 'border-box', outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowWebhookEdit(false)}
+                  style={{
+                    padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
+                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#475569', cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '9px 20px', background: '#10201E', border: 'none',
+                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'
+                  }}
+                >
+                  <Check size={14} />
+                  <span>Save Endpoint</span>
                 </button>
               </div>
             </form>

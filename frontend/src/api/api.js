@@ -532,6 +532,25 @@ export const api = {
 
   // Public Pricing APIs
   getPublicPricing: () => apiCall('/api/v1/pricing/plans', { skipAuthRedirect: true }).catch(() => ({ data: { plans: [] } })),
+
+  // Notification & Alerts APIs
+  getNotifications: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/notifications${qs ? '?' + qs : ''}`)
+  },
+  getNotificationUnreadCount: () => apiCall('/api/v1/notifications/unread-count'),
+  getNotificationPreferences: () => apiCall('/api/v1/notifications/preferences'),
+  saveNotificationPreferences: (data) => apiCall('/api/v1/notifications/preferences', { method: 'PUT', body: JSON.stringify(data) }),
+  markNotificationRead: (id) => apiCall(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () => apiCall('/api/v1/notifications/read-all', { method: 'POST' }),
+  deleteNotification: (id) => apiCall(`/api/v1/notifications/${id}`, { method: 'DELETE' }),
+  sendTestNotification: () => apiCall('/api/v1/notifications/test', { method: 'POST' }),
+
+  // Team RBAC APIs
+  getTeamMembers: () => apiCall('/api/v1/team/members'),
+  inviteTeamMember: (data) => apiCall('/api/v1/team/invite', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTeamMember: (id) => apiCall(`/api/v1/team/members/${id}`, { method: 'DELETE' }),
+  getTeamAuditLogs: () => apiCall('/api/v1/team/audit'),
 }
 
 export default api

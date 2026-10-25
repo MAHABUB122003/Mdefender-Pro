@@ -48,15 +48,12 @@ class NotificationService:
     def get_preferences(self, user_id):
         doc = self.db.settings.find_one({"_type": "notification_prefs", "user_id": str(user_id)})
         prefs = dict(DEFAULT_PREFERENCES)
-        if doc:
-            prefs.update(doc.get("prefs", {}))
+        if doc and isinstance(doc.get("prefs"), dict):
+            prefs.update(doc.get("prefs"))
         return prefs
 
     def save_preferences(self, user_id, prefs):
-        cleaned = {}
-        for key in DEFAULT_PREFERENCES:
-            if key in prefs:
-                cleaned[key] = prefs[key]
+        cleaned = dict(prefs) if isinstance(prefs, dict) else {}
         self.db.settings.update_one(
             {"_type": "notification_prefs", "user_id": str(user_id)},
             {"$set": {"prefs": cleaned, "updated_at": datetime.now()}},
