@@ -115,7 +115,7 @@ def ensure_default_wordpress_site():
 
         if not site_doc:
             _db.websites.insert_one(site_fields)
-        else:
+        elif not site_doc.get('user_id') or site_doc.get('user_id') == admin_id:
             _db.websites.update_one({'_id': site_doc['_id']}, {'$set': site_fields})
 
         key_hash = hashlib.sha256(wp_api_key.encode()).hexdigest()

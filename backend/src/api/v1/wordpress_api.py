@@ -124,6 +124,7 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     now = datetime.now()
     
     update_fields = {
+        "user_id": str(auth_data["user_id"]),
         "platform": "wordpress",
         "verified": True,
         "api_key": api_key,

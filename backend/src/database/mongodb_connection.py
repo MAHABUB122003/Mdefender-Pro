@@ -81,12 +81,12 @@ class MongoDB:
                 pass
 
             connect_kwargs = {
-                'serverSelectionTimeoutMS': 5000,
-                'connectTimeoutMS': 5000,
-                'socketTimeoutMS': 5000,
+                'serverSelectionTimeoutMS': 15000,
+                'connectTimeoutMS': 15000,
+                'socketTimeoutMS': 15000,
                 'retryWrites': True,
                 'retryReads': True,
-                'maxIdleTimeMS': 15000,
+                'maxIdleTimeMS': 30000,
             }
 
             if 'mongodb+srv://' in mongo_uri or 'ssl=true' in mongo_uri.lower():
@@ -392,6 +392,15 @@ class InMemoryCollection:
         self._index += 1
         self._data.append(doc)
         return type('obj', (object,), {'inserted_id': doc['_id']})()
+
+    def insert_many(self, docs):
+        ids = []
+        for doc in docs:
+            doc['_id'] = str(self._index)
+            self._index += 1
+            self._data.append(doc)
+            ids.append(doc['_id'])
+        return type('obj', (object,), {'inserted_ids': ids})()
 
     def find(self, query=None, projection=None):
         if query is None:
