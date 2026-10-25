@@ -42,7 +42,7 @@ wheels/
 *.egg
 
 # Frontend Builds & Static Assets
-frontend/dist/
+!frontend/dist/**
 frontend/dist-ssr/
 *.local
 

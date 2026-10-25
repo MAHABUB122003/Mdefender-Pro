@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Subtle warm background container -->
+  <rect width="100" height="100" rx="22" fill="#F7F5EE"/>
+  
+  <!-- Terracotta Orange Defense Apex Arrow -->
+  <path d="M50 16 L66 28 L50 40 L34 28 Z" fill="#E8792F"/>
+
+  <!-- Deep Pine Green Aerodynamic M-Shield Contour -->
+  <path 
+    d="M20 28 
+       C20 28, 32 30, 42 34 
+       L36 50 
+       L50 68 
+       L64 50 
+       L58 34 
+       C68 30, 80 28, 80 28
+       C80 54, 68 76, 50 86
+       C32 76, 20 54, 20 28 Z" 
+    fill="#0B2522"
+  />
+
+  <!-- Inner M Accentuation Cutout in Cream -->
+  <path 
+    d="M50 60 
+       L40 46 
+       L46 36 
+       L50 42 
+       L54 36 
+       L60 46 Z" 
+    fill="#F7F5EE"
+  />
+</svg>
