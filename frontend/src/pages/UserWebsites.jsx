@@ -97,10 +97,35 @@ export default function UserWebsites() {
 
   const fetchData = useCallback(async (force = false) => {
     try {
-      const result = await api.getUserDashboard(force ? { refresh: '1' } : {})
-      setData(result)
-      userStore.set('websites', result)
-      userStore.set('dashboard', result)
+      const [dashRes, sitesRes] = await Promise.allSettled([
+        api.getUserDashboard(force ? { refresh: '1' } : {}),
+        api.getUserWebsites()
+      ])
+
+      const dashData = dashRes.status === 'fulfilled' ? dashRes.value : null
+      const sitesData = sitesRes.status === 'fulfilled' ? sitesRes.value : null
+
+      const dashList = dashData?.websites || dashData?.data?.websites || []
+      const v1List = sitesData?.data?.websites || sitesData?.websites || []
+
+      // Merge both sources by domain / id so nothing is ever dropped
+      const mergedMap = new Map()
+      for (const w of [...dashList, ...v1List]) {
+        const key = (w.domain || w.id || w._id || '').toLowerCase()
+        if (key) {
+          mergedMap.set(key, { ...(mergedMap.get(key) || {}), ...w })
+        }
+      }
+      const allWebsites = Array.from(mergedMap.values())
+
+      const finalData = {
+        ...(dashData || {}),
+        websites: allWebsites
+      }
+
+      setData(finalData)
+      userStore.set('websites', finalData)
+      userStore.set('dashboard', finalData)
     } catch (err) {
       console.error('Error fetching websites dashboard:', err)
     } finally {
