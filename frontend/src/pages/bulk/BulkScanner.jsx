@@ -21,6 +21,7 @@ import {
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
+import api from '../../api/api'
 
 export default function BulkScanner() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
@@ -38,6 +39,15 @@ export default function BulkScanner() {
   const handleRunScan = () => {
     setScanning(true)
     setScanStep(1)
+
+    const targetSiteId = selectedSiteId === 'all' ? (wpWebsites[0]?.id || 'all') : (activeWebsite?.id || activeWebsite?._id || 'all')
+    try {
+      if (targetSiteId && targetSiteId !== 'all') {
+        api.triggerWebsiteScan(targetSiteId, 'full').catch(() => null)
+      }
+    } catch {
+      // Background scan
+    }
 
     setTimeout(() => {
       setScanStep(2)

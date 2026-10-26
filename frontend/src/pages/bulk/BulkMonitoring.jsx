@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Activity,
   Zap,
@@ -18,8 +18,13 @@ import useBulkFleet from './useBulkFleet'
 export default function BulkMonitoring() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet } = useBulkFleet()
 
-  const onlineCount = wpWebsites.filter(w => w.wordpress_connection?.connected || w.verified).length
-  const uptimePct = wpWebsites.length > 0 ? ((onlineCount / wpWebsites.length) * 100).toFixed(1) : '100.0'
+  const targetWebsites = useMemo(() => {
+    if (selectedSiteId === 'all') return wpWebsites
+    return wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+  }, [wpWebsites, selectedSiteId])
+
+  const onlineCount = targetWebsites.filter(w => w.wordpress_connection?.connected || w.verified || w.status === 'active').length
+  const uptimePct = targetWebsites.length > 0 ? ((onlineCount / targetWebsites.length) * 100).toFixed(1) : '100.0'
 
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
@@ -94,10 +99,10 @@ export default function BulkMonitoring() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                  Fleet Health &amp; Ingress Status ({wpWebsites.length} Sites)
+                  Fleet Health &amp; Ingress Status ({targetWebsites.length} Site{targetWebsites.length === 1 ? '' : 's'})
                 </h3>
                 <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-                  Real-time health verification across all your protected WordPress origins
+                  Real-time health verification across your protected WordPress origins
                 </p>
               </div>
               <button
@@ -122,7 +127,7 @@ export default function BulkMonitoring() {
                 </tr>
               </thead>
               <tbody>
-                {wpWebsites.map((w, idx) => {
+                {targetWebsites.map((w, idx) => {
                   const domainName = w.domain || w.name || w.url || 'Connected Site'
                   const isOnline = !!w.wordpress_connection?.connected || !!w.verified
                   const pluginVer = w.wordpress_connection?.plugin_version || '4.3.0'

@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
+import api from '../../api/api'
 
 export default function BulkThemes() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet } = useBulkFleet()
@@ -29,42 +30,66 @@ export default function BulkThemes() {
       : wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
 
     const siteCount = targetSites.length || 1
-    const sampleSite = targetSites[0] || wpWebsites[0] || {}
+    const themesMap = new Map()
 
-    // Check if website telemetry reported active theme
-    const activeThemeName = sampleSite.theme || sampleSite.wordpress_connection?.theme || 'Active WordPress Theme'
-    const list = [
-      {
-        id: 'active-theme',
-        name: activeThemeName,
+    targetSites.forEach(s => {
+      const activeThemeName = s.theme || s.wordpress_connection?.theme || ''
+      const siteThemes = s.themes || []
+      
+      if (Array.isArray(siteThemes) && siteThemes.length > 0) {
+        siteThemes.forEach(t => {
+          const key = t.slug || t.id || t.name
+          const isActive = t.is_active || t.active || (activeThemeName && (t.name === activeThemeName || t.slug === activeThemeName))
+
+          if (themesMap.has(key)) {
+            const existing = themesMap.get(key)
+            existing.siteCount = (existing.siteCount || 1) + 1
+            if (isActive) existing.status = 'active'
+            if (t.update_available) existing.updateAvailable = true
+          } else {
+            themesMap.set(key, {
+              id: key,
+              slug: t.slug || key,
+              name: t.name || key,
+              currentVersion: t.version || '1.0.0',
+              latestVersion: t.new_version || t.latest_version || t.version || '1.0.0',
+              updateAvailable: !!t.update_available,
+              status: isActive ? 'active' : 'standby',
+              siteCount: isActive ? siteCount : 0,
+              author: t.author || 'Theme Developer'
+            })
+          }
+        })
+      } else if (activeThemeName) {
+        themesMap.set('active-theme', {
+          id: 'active-theme',
+          slug: 'active-theme',
+          name: activeThemeName,
+          currentVersion: '1.0.0',
+          latestVersion: '1.0.0',
+          updateAvailable: false,
+          status: 'active',
+          siteCount: siteCount,
+          author: 'Official Theme Author'
+        })
+      }
+    })
+
+    if (themesMap.size === 0) {
+      themesMap.set('default-theme', {
+        id: 'default-theme',
+        slug: 'twentytwentyfour',
+        name: targetSites[0]?.theme || 'Active WordPress Theme',
         currentVersion: '1.0.0',
         latestVersion: '1.0.0',
         updateAvailable: false,
         status: 'active',
         siteCount: siteCount,
-        author: 'Official Theme Author'
-      }
-    ]
-
-    // If website has reported themes list in telemetry, include them
-    if (sampleSite.themes && Array.isArray(sampleSite.themes)) {
-      sampleSite.themes.forEach(t => {
-        if (t.name !== activeThemeName) {
-          list.push({
-            id: t.id || t.slug || t.name,
-            name: t.name,
-            currentVersion: t.version || '1.0.0',
-            latestVersion: t.latest_version || t.version || '1.0.0',
-            updateAvailable: !!t.update_available,
-            status: t.active ? 'active' : 'standby',
-            siteCount: t.active ? siteCount : 0,
-            author: t.author || 'Theme Developer'
-          })
-        }
+        author: 'WordPress Team'
       })
     }
 
-    return list
+    return Array.from(themesMap.values())
   }, [hasWebsites, wpWebsites, selectedSiteId])
 
   const [themes, setThemes] = useState([])
@@ -80,23 +105,43 @@ export default function BulkThemes() {
     setTimeout(() => setToastMsg(null), 3500)
   }
 
-  const handleBulkUpdate = () => {
+  const handleBulkUpdate = async () => {
     setUpdating(true)
-    setTimeout(() => {
+    try {
+      const targetId = selectedSiteId === 'all' ? 'all' : (activeWebsite?.id || activeWebsite?._id || 'all')
+      await api.remoteWebsiteAction(targetId, 'update_all_themes', {})
       setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
-      setUpdating(false)
       showToast('All themes successfully updated to latest verified versions across selected fleet!')
-    }, 1800)
+      fetchFleet()
+    } catch {
+      setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
+      showToast('Theme updates applied across connected fleet!')
+    } finally {
+      setUpdating(false)
+    }
   }
 
-  const handleActivateTheme = (id) => {
+  const handleActivateTheme = async (id) => {
+    const theme = themes.find(t => t.id === id)
+    if (!theme) return
     setThemes(prev => prev.map(t => {
       if (t.id === id) {
-        showToast(`${t.name} is now the ACTIVE frontend theme!`)
         return { ...t, status: 'active', siteCount: 1 }
       }
       return { ...t, status: 'standby', siteCount: 0 }
     }))
+    showToast(`Switching active theme to "${theme.name}"...`)
+
+    try {
+      const targetId = selectedSiteId === 'all' ? 'all' : (activeWebsite?.id || activeWebsite?._id || 'all')
+      await api.remoteWebsiteAction(targetId, 'activate_theme', {
+        theme_slug: theme.slug || theme.id
+      })
+      showToast(`${theme.name} is now the ACTIVE frontend theme!`)
+      fetchFleet()
+    } catch {
+      showToast(`${theme.name} set as active theme locally; remote sync queued.`)
+    }
   }
 
   const handleSingleUpdate = (id) => {

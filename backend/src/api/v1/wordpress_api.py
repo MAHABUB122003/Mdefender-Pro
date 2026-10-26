@@ -98,6 +98,13 @@ class ConnectRequest(BaseModel):
     plugin_version: str | None = None
     php_version: str | None = None
     wp_version: str | None = None
+    site_url: str | None = None
+    home_url: str | None = None
+    plugins: list | None = None
+    themes: list | None = None
+    theme: str | None = None
+    hardening: dict | None = None
+    backups: list | None = None
 
 
 class HeartbeatRequest(BaseModel):
@@ -107,6 +114,11 @@ class HeartbeatRequest(BaseModel):
     plugin_version: str | None = None
     status: str = "online"
     stats: dict | None = None  # e.g. {requests_blocked, requests_allowed, last_scan, uptime}
+    plugins: list | None = None
+    themes: list | None = None
+    theme: str | None = None
+    hardening: dict | None = None
+    backups: list | None = None
 
 
 @router.post("/connect")
@@ -122,6 +134,10 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     website = auth_data["website"]
     site_token = _generate_site_token()
     now = datetime.now()
+
+    clean_target_url = body.site_url or body.home_url or ""
+    if not clean_target_url and body.domain:
+        clean_target_url = f"https://{body.domain}" if body.domain not in ("localhost", "127.0.0.1") else "http://localhost"
     
     update_fields = {
         "user_id": str(auth_data["user_id"]),
@@ -129,12 +145,14 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         "verified": True,
         "api_key": api_key,
         "site_token": site_token,
+        "url": clean_target_url,
         "wordpress_connection": {
             "connected": True,
             "connected_at": now,
             "site_token": _hash_token(site_token),
             "raw_site_token": site_token,
             "api_key": api_key,
+            "site_url": clean_target_url,
             "plugin_version": body.plugin_version,
             "php_version": body.php_version,
             "wp_version": body.wp_version,
@@ -142,16 +160,30 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         "updated_at": now,
     }
     
+    if body.plugins is not None:
+        update_fields["plugins"] = body.plugins
+    if body.themes is not None:
+        update_fields["themes"] = body.themes
+    if body.theme is not None:
+        update_fields["theme"] = body.theme
+    if body.hardening is not None:
+        update_fields["hardening"] = body.hardening
+        for hk, hv in body.hardening.items():
+            if hk in ("disable_xmlrpc", "block_uploads_php", "disable_file_editing", "hide_wp_version", "prevent_user_enumeration", "security_headers", "file_permissions_check", "login_two_factor", "disable_directory_listing"):
+                update_fields[hk] = bool(hv)
+    if body.backups is not None:
+        update_fields["backups"] = body.backups
+
     if not website.get("verified") or website.get("domain") in ("localhost", "127.0.0.1", "", None):
         update_fields["domain"] = body.domain
-        if body.domain != "localhost":
-            update_fields["url"] = f"https://{body.domain}"
-        else:
-            update_fields["url"] = "http://localhost"
+
+    w_cond = {"$or": [{"_id": auth_data["website_id"]}]}
+    if ObjectId.is_valid(str(auth_data["website_id"])):
+        w_cond["$or"].append({"_id": ObjectId(str(auth_data["website_id"]))})
 
     try:
         db.websites.update_one(
-            {"_id": auth_data["website_id"]},
+            w_cond,
             {"$set": update_fields},
         )
     except Exception as e:
@@ -160,17 +192,23 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
             update_fields.pop("domain", None)
             update_fields.pop("url", None)
             db.websites.update_one(
-                {"_id": auth_data["website_id"]},
+                w_cond,
                 {"$set": update_fields},
             )
         else:
             raise
+
+    wp_site_cond = {"$or": [{"website_id": str(auth_data["website_id"])}]}
+    if ObjectId.is_valid(str(auth_data["website_id"])):
+        wp_site_cond["$or"].append({"website_id": ObjectId(str(auth_data["website_id"]))})
+
     db.wordpress_sites.update_one(
-        {"website_id": auth_data["website_id"]},
+        wp_site_cond,
         {"$set": {
             "website_id": auth_data["website_id"],
             "user_id": auth_data["user_id"],
             "domain": body.domain,
+            "url": clean_target_url,
             "api_key": api_key,
             "site_token": site_token,
             "connected": True,
@@ -183,6 +221,12 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         }},
         upsert=True,
     )
+    # Immediately push current blacklist, country blocks & rules upon connection
+    try:
+        push_instant_sync_to_wordpress(user_id=auth_data["user_id"], website_id=auth_data["website_id"])
+    except Exception:
+        pass
+
     return success({
         "site_token": site_token,
         "website_id": auth_data["website_id"],
@@ -226,6 +270,26 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "status": body.status,
         "last_heartbeat": datetime.now(),
     }
+    site_updates = {"last_activity": datetime.now()}
+    if body.plugins is not None:
+        updates["plugins"] = body.plugins
+        site_updates["plugins"] = body.plugins
+    if body.themes is not None:
+        updates["themes"] = body.themes
+        site_updates["themes"] = body.themes
+    if body.theme is not None:
+        updates["theme"] = body.theme
+        site_updates["theme"] = body.theme
+    if body.hardening is not None:
+        updates["hardening"] = body.hardening
+        site_updates["hardening"] = body.hardening
+        for hk, hv in body.hardening.items():
+            if hk in ("disable_xmlrpc", "block_uploads_php", "disable_file_editing", "hide_wp_version", "prevent_user_enumeration", "security_headers", "file_permissions_check", "login_two_factor", "disable_directory_listing"):
+                site_updates[hk] = bool(hv)
+    if body.backups is not None:
+        updates["backups"] = body.backups
+        site_updates["backups"] = body.backups
+
     if body.plugin_version:
         updates["plugin_version"] = body.plugin_version
     if body.stats:
@@ -254,8 +318,12 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         new_today_reqs = site_prev_today + delta_reqs
         new_today_blocked = site_prev_blocked_today + delta_blocked
 
+        w_cond = {"$or": [{"_id": website_id}]}
+        if ObjectId.is_valid(str(website_id)):
+            w_cond["$or"].append({"_id": ObjectId(str(website_id))})
+
         db.websites.update_one(
-            {"_id": website_id},
+            w_cond,
             {
                 "$set": {
                     "total_requests": new_lifetime_reqs,
@@ -268,7 +336,6 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             }
         )
         try:
-            from bson import ObjectId
             u_id = auth_data.get("user_id")
             u_matches = [{"_id": u_id}, {"id": u_id}]
             if ObjectId.is_valid(str(u_id)):
@@ -296,13 +363,21 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         except Exception:
             pass
         
+    w_cond = {"$or": [{"_id": website_id}]}
+    if ObjectId.is_valid(str(website_id)):
+        w_cond["$or"].append({"_id": ObjectId(str(website_id))})
+
+    wp_site_cond = {"$or": [{"website_id": str(auth_data["website_id"])}]}
+    if ObjectId.is_valid(str(auth_data["website_id"])):
+        wp_site_cond["$or"].append({"website_id": ObjectId(str(auth_data["website_id"]))})
+
     db.websites.update_one(
-        {"_id": website_id},
-        {"$set": {"last_activity": datetime.now()}},
+        w_cond,
+        {"$set": site_updates},
     )
 
     db.wordpress_sites.update_one(
-        {"website_id": auth_data["website_id"]},
+        wp_site_cond,
         {"$set": updates},
     )
 
@@ -701,30 +776,16 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 if not clean_url:
                     return
                 try:
-                    headers = {"Content-Type": "application/json"}
+                    headers = {
+                        "Content-Type": "application/json",
+                        "User-Agent": "MDefender-Pro-CloudSync/1.0",
+                    }
                     if api_key:
                         headers["Authorization"] = f"Bearer {api_key}"
                         headers["X-API-Key"] = api_key
                     if site_token:
                         headers["X-Site-Token"] = site_token
 
-                    # 1. Attempt REST API Sync Endpoint first (with bypass param)
-                    rest_endpoint = f"{clean_url}/wp-json/waf-fw/v1/sync?waf_cloud_sync=1"
-                    try:
-                        resp = requests.post(
-                            rest_endpoint,
-                            json=sync_payload,
-                            headers=headers,
-                            timeout=3.5,
-                            verify=False,
-                            allow_redirects=True
-                        )
-                        if resp.status_code == 200:
-                            return
-                    except Exception:
-                        pass
-
-                    # 2. Attempt POST with query parameter & JSON payload
                     sep = "&" if "?" in clean_url else "?"
                     url_params = "waf_cloud_sync=1"
                     if api_key:
@@ -732,25 +793,32 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     if site_token:
                         url_params += f"&site_token={site_token}"
 
-                    target_endpoint = f"{clean_url}{sep}{url_params}"
-                    try:
-                        resp = requests.post(
-                            target_endpoint,
-                            json=sync_payload,
-                            headers=headers,
-                            timeout=3.5,
-                            verify=False,
-                            allow_redirects=True
-                        )
-                        if resp.status_code == 200:
-                            return
-                    except Exception:
-                        pass
+                    candidate_endpoints = [
+                        f"{clean_url}/wp-json/waf-fw/v1/sync?{url_params}",
+                        f"{clean_url}{sep}{url_params}",
+                        f"{clean_url}/index.php?{url_params}",
+                    ]
 
-                    # 3. Fallback GET notification
+                    for target_ep in candidate_endpoints:
+                        try:
+                            resp = requests.post(
+                                target_ep,
+                                json=sync_payload,
+                                headers=headers,
+                                timeout=4.0,
+                                verify=False,
+                                allow_redirects=True
+                            )
+                            if resp.status_code == 200:
+                                return
+                        except Exception:
+                            pass
+
+                    # Fallback GET notification
+                    fallback_ep = f"{clean_url}{sep}{url_params}"
                     try:
                         requests.get(
-                            target_endpoint,
+                            fallback_ep,
                             headers=headers,
                             timeout=2.5,
                             verify=False,

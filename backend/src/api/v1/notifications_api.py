@@ -74,8 +74,8 @@ async def send_test_notification(user=Depends(get_current_user)):
         user_id=user["id"],
         title=title,
         message=message,
-        category="general",
-        data={"test": True, "sender": "Security Operations Gateway"}
+        category="critical_attack",
+        data={"test": True, "sender": "Security Operations Gateway", "website_domain": "All Protected Domains"}
     )
     return success(message="Test security alert dispatched successfully.")
 

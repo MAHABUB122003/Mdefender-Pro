@@ -1841,6 +1841,7 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
     
     if is_admin:
         db.country_blocks.delete_many({'country_code': code})
+        db.websites.update_many({}, {'$pull': {'blocked_countries': code}})
     else:
         del_conds = [
             {'user_id': u_str},
@@ -1851,6 +1852,11 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
             del_conds.append({'user_id': ObjectId(u_str)})
             del_conds.append({'added_by_user_id': ObjectId(u_str)})
         db.country_blocks.delete_many({'country_code': code, '$or': del_conds})
+
+        site_conds = [{'user_id': u_str}]
+        if ObjectId.is_valid(u_str):
+            site_conds.append({'user_id': ObjectId(u_str)})
+        db.websites.update_many({'$or': site_conds}, {'$pull': {'blocked_countries': code}})
         
     try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress

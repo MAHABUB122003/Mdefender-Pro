@@ -403,6 +403,11 @@ export const api = {
     }),
   getWebsiteScans: (websiteId) =>
     apiCall(`/api/v1/websites/${websiteId}/scans`),
+  remoteWebsiteAction: (websiteId, action, payload = {}) =>
+    apiCall(`/api/v1/websites/${websiteId}/remote-action`, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...payload })
+    }),
 
   // Cloudflare-Style Domain & DNS Zone Management APIs
   getDomainsOverview: () => apiCall('/api/v1/domains/overview'),

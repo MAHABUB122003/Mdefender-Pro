@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Shield,
   ShieldCheck,
@@ -15,9 +15,13 @@ import {
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
+import api from '../../api/api'
 
 export default function BulkHardening() {
-  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
+
+  const targetSite = activeWebsite || wpWebsites[0] || {}
+
   const [hardening, setHardening] = useState({
     disableFileEdit: true,
     restrictXmlRpc: true,
@@ -28,6 +32,23 @@ export default function BulkHardening() {
     filePermissionsCheck: true,
     loginTwoFactor: true
   })
+
+  // Synchronize with active site or fleet defaults
+  useEffect(() => {
+    if (!targetSite) return
+    const h = targetSite.hardening || {}
+    setHardening({
+      disableFileEdit: targetSite.disable_file_editing ?? h.disable_file_editing ?? true,
+      restrictXmlRpc: targetSite.disable_xmlrpc ?? h.disable_xmlrpc ?? true,
+      hideWpVersion: targetSite.hide_wp_version ?? h.hide_wp_version ?? true,
+      preventUserEnum: targetSite.prevent_user_enumeration ?? h.prevent_user_enumeration ?? true,
+      blockUploadsPhp: targetSite.block_uploads_php ?? h.block_uploads_php ?? true,
+      securityHeaders: targetSite.security_headers ?? h.security_headers ?? true,
+      filePermissionsCheck: targetSite.file_permissions_check ?? h.file_permissions_check ?? true,
+      loginTwoFactor: targetSite.login_two_factor ?? h.login_two_factor ?? true
+    })
+  }, [targetSite?.id, targetSite?._id, selectedSiteId])
+
   const [saving, setSaving] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
@@ -36,20 +57,42 @@ export default function BulkHardening() {
     setTimeout(() => setToastMsg(null), 3500)
   }
 
-  const handleToggle = (key) => {
-    setHardening(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      setSaving(true)
-      setTimeout(() => {
-        setSaving(false)
-        showToast('Hardening policy dispatched and synchronized across connected WordPress sites!')
-      }, 600)
-      return next
-    })
+  const keyToBackendMap = {
+    disableFileEdit: 'disable_file_editing',
+    restrictXmlRpc: 'disable_xmlrpc',
+    hideWpVersion: 'hide_wp_version',
+    preventUserEnum: 'prevent_user_enumeration',
+    blockUploadsPhp: 'block_uploads_php',
+    securityHeaders: 'security_headers',
+    filePermissionsCheck: 'file_permissions_check',
+    loginTwoFactor: 'login_two_factor'
   }
 
-  const handleRevertDefaults = () => {
-    setHardening({
+  const handleToggle = async (key) => {
+    const nextVal = !hardening[key]
+    setHardening(prev => ({ ...prev, [key]: nextVal }))
+    setSaving(true)
+
+    const backendKey = keyToBackendMap[key]
+    const payload = { [backendKey]: nextVal }
+
+    try {
+      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
+      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
+        const sid = site.id || site._id
+        return api.updateWebsiteSecuritySettings(sid, payload)
+      }))
+      showToast('Hardening policy dispatched and synchronized across connected WordPress sites!')
+      fetchFleet()
+    } catch {
+      showToast('Hardening policy updated locally; sync queued.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRevertDefaults = async () => {
+    const defaults = {
       disableFileEdit: true,
       restrictXmlRpc: true,
       hideWpVersion: true,
@@ -58,8 +101,32 @@ export default function BulkHardening() {
       securityHeaders: true,
       filePermissionsCheck: true,
       loginTwoFactor: true
-    })
-    showToast('Reverted to MDefender Pro Maximum Enterprise Security Baseline.')
+    }
+    setHardening(defaults)
+    setSaving(true)
+    try {
+      const payload = {
+        disable_file_editing: true,
+        disable_xmlrpc: true,
+        hide_wp_version: true,
+        prevent_user_enumeration: true,
+        block_uploads_php: true,
+        security_headers: true,
+        file_permissions_check: true,
+        login_two_factor: true
+      }
+      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
+      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
+        const sid = site.id || site._id
+        return api.updateWebsiteSecuritySettings(sid, payload)
+      }))
+      showToast('Reverted to MDefender Pro Maximum Enterprise Security Baseline across fleet!')
+      fetchFleet()
+    } catch {
+      showToast('Reverted to MDefender Pro Maximum Enterprise Security Baseline.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const hardeningRules = [

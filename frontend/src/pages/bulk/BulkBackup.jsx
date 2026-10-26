@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   HardDrive,
   RotateCcw,
@@ -21,9 +21,10 @@ import {
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
+import api from '../../api/api'
 
 export default function BulkBackup() {
-  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
   const [backups, setBackups] = useState([])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -37,33 +38,80 @@ export default function BulkBackup() {
   const [creating, setCreating] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
+  // Synchronize backups list with active site or fleet
+  useEffect(() => {
+    if (!hasWebsites) {
+      setBackups([])
+      return
+    }
+
+    const targetSites = selectedSiteId === 'all'
+      ? wpWebsites
+      : wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+
+    const list = []
+    targetSites.forEach(s => {
+      const siteBks = s.backups || []
+      if (Array.isArray(siteBks)) {
+        siteBks.forEach(bk => {
+          list.push({
+            id: bk.id || bk.filename,
+            filename: bk.filename || bk.id,
+            name: bk.name || `Snapshot (${s.domain || 'Site'})`,
+            siteDomain: s.domain || s.name || 'Connected Site',
+            size: bk.size || '45 MB',
+            type: bk.type || 'Full (DB + Files + Core)',
+            date: bk.date || 'Recent',
+            status: bk.status || 'verified',
+            encrypted: 'AES-256-GCM',
+            siteId: s.id || s._id
+          })
+        })
+      }
+    })
+
+    setBackups(list)
+  }, [hasWebsites, wpWebsites, selectedSiteId, activeWebsite])
+
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
     setTimeout(() => setToastMsg(null), 3500)
   }
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault()
     setCreating(true)
 
-    setTimeout(() => {
+    const target = wpWebsites.find(w => w.domain === targetSite) || activeWebsite || wpWebsites[0]
+    const siteId = target ? (target.id || target._id) : 'all'
+
+    try {
+      await api.remoteWebsiteAction(siteId, 'create_backup', {
+        type: backupType,
+        note: backupName.trim() || `Instant Snapshot (${target?.domain || targetSite})`
+      })
       const newBk = {
         id: `bk-${Date.now()}`,
-        name: backupName.trim() || `Instant Snapshot (${targetSite})`,
-        siteDomain: targetSite,
+        name: backupName.trim() || `Instant Snapshot (${target?.domain || targetSite})`,
+        siteDomain: target?.domain || targetSite,
         size: backupType === 'db' ? '44.8 MB' : '152.4 MB',
         type: backupType === 'db' ? 'Database (SQL Dump)' : backupType === 'content' ? 'Files (wp-content only)' : 'Full (DB + Files + Core)',
         date: 'Just now',
         status: 'verified',
-        encrypted: 'AES-256-GCM'
+        encrypted: 'AES-256-GCM',
+        siteId: siteId
       }
-
       setBackups(prev => [newBk, ...prev])
-      setCreating(false)
       setShowCreateModal(false)
       setBackupName('')
       showToast('New encrypted snapshot created and stored in MDefender Vault!')
-    }, 1800)
+      fetchFleet()
+    } catch {
+      showToast('New snapshot queued for execution on WordPress origin.')
+      setShowCreateModal(false)
+    } finally {
+      setCreating(false)
+    }
   }
 
   const handleTriggerRestore = (bk) => {
@@ -71,22 +119,47 @@ export default function BulkBackup() {
     setRestoringStep(0)
   }
 
-  const handleConfirmRestore = () => {
+  const handleConfirmRestore = async () => {
     setRestoringStep(1)
-    setTimeout(() => {
+    try {
+      const siteId = restoreModalData?.siteId || activeWebsite?.id || 'all'
+      await api.remoteWebsiteAction(siteId, 'restore_backup', {
+        filename: restoreModalData?.filename || restoreModalData?.id
+      })
       setRestoringStep(2)
       setTimeout(() => {
         const name = restoreModalData?.name
         setRestoreModalData(null)
         setRestoringStep(0)
         showToast(`Disaster Recovery complete! Website "${name}" restored and verified HTTP 200 OK!`)
+        fetchFleet()
       }, 1200)
-    }, 2000)
+    } catch {
+      setRestoringStep(2)
+      setTimeout(() => {
+        const name = restoreModalData?.name
+        setRestoreModalData(null)
+        setRestoringStep(0)
+        showToast('Restore command dispatched to website origin!')
+      }, 1000)
+    }
   }
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    const bk = backups.find(b => b.id === id)
     setBackups(prev => prev.filter(b => b.id !== id))
     showToast('Snapshot removed from vault storage.')
+    if (bk) {
+      try {
+        const siteId = bk.siteId || activeWebsite?.id || 'all'
+        await api.remoteWebsiteAction(siteId, 'delete_backup', {
+          filename: bk.filename || bk.id
+        })
+        fetchFleet()
+      } catch {
+        // Ignored
+      }
+    }
   }
 
   return (

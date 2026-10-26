@@ -25,8 +25,9 @@ export default function BulkCore() {
   const [checksumStatus, setChecksumStatus] = useState('verified') // 'verified' | 'checking'
   const [toastMsg, setToastMsg] = useState(null)
 
-  const currentWpVersion = wpWebsites[0]?.wordpress_connection?.wp_version || '6.7.1'
-  const currentPhpVersion = wpWebsites[0]?.wordpress_connection?.php_version || '8.2'
+  const targetSite = activeWebsite || wpWebsites[0] || {}
+  const currentWpVersion = targetSite.wp_version || targetSite.wordpress_connection?.wp_version || '6.7.1'
+  const currentPhpVersion = targetSite.php_version || targetSite.wordpress_connection?.php_version || '8.2'
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })

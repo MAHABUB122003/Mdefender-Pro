@@ -422,7 +422,19 @@ class WAF_FW_Engine {
             }
         }
 
-        // Keep local option cache synchronized strictly to active DB IPs
+        // Also merge local option cache so cloud-synced blacklist is never accidentally erased
+        $opt_bl = get_option('waf_fw_local_blacklist_cache', []);
+        if (is_array($opt_bl)) {
+            foreach ($opt_bl as $b_ip) {
+                $cand = trim((string) $b_ip);
+                if (!empty($cand) && !in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
+                    $bl_map[$cand] = true;
+                    $active_ips[] = $cand;
+                }
+            }
+        }
+
+        // Keep local option cache synchronized strictly to active IPs
         $active_ips = array_values(array_unique($active_ips));
         update_option('waf_fw_local_blacklist_cache', $active_ips);
 
@@ -524,6 +536,26 @@ class WAF_FW_Engine {
             'user_agent' => $user_agent,
         ]);
         waf_fw_bump_stat('allowed');
+
+        // Always buffer normal (allowed) requests for Cloud Telemetry ingestion
+        $country = $this->get_ip_country($ip);
+        $this->buffer_telemetry([
+            'event_type' => 'allowed',
+            'ip' => $ip,
+            'url' => $url,
+            'method' => $method,
+            'attack_type' => null,
+            'confidence' => 0.0,
+            'user_agent' => $user_agent,
+            'referer' => $_SERVER['HTTP_REFERER'] ?? '',
+            'rule_matched' => '',
+            'message' => $message,
+            'reference_id' => '',
+            'status' => 'allowed',
+            'action' => 'allowed',
+            'country_code' => $country,
+            'timestamp' => current_time('mysql'),
+        ]);
 
         return $this->allowed_result($ip, $url, $method, $message);
     }
@@ -665,10 +697,10 @@ class WAF_FW_Engine {
 
         $resolved_country = 'XX';
 
-        // Single fast provider with tight 0.25s timeout only when country blocking is actively configured
+        // Fast provider with reliable fallback when country blocking is actively configured
         if (function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
             $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", [
-                'timeout' => 0.25,
+                'timeout' => 1.5,
                 'sslverify' => false,
                 'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
             ]);
@@ -676,6 +708,19 @@ class WAF_FW_Engine {
                 $g1 = json_decode(wp_remote_retrieve_body($resp), true);
                 if (!empty($g1['countryCode'])) {
                     $resolved_country = strtoupper(trim($g1['countryCode']));
+                }
+            }
+            if ($resolved_country === 'XX') {
+                $resp2 = wp_remote_get("https://ipwho.is/{$ip}", [
+                    'timeout' => 1.5,
+                    'sslverify' => false,
+                    'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
+                ]);
+                if (!is_wp_error($resp2) && wp_remote_retrieve_response_code($resp2) === 200) {
+                    $g2 = json_decode(wp_remote_retrieve_body($resp2), true);
+                    if (!empty($g2['country_code'])) {
+                        $resolved_country = strtoupper(trim($g2['country_code']));
+                    }
                 }
             }
         }

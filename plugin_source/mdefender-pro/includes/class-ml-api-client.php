@@ -54,7 +54,14 @@ class WAF_FW_ML_Api_Client {
             update_option('waf_fw_ml_api_url', $url);
         }
         $this->base_url   = untrailingslashit($url);
-        $this->api_key    = (string) get_option('waf_fw_ml_api_key', '');
+        $k = (string) get_option('waf_fw_ml_api_key', '');
+        if (empty($k)) {
+            $k = (string) get_option('waf_fw_api_key', '');
+            if (!empty($k)) {
+                update_option('waf_fw_ml_api_key', $k);
+            }
+        }
+        $this->api_key    = $k;
         $this->website_id = (string) get_option('waf_fw_website_id', '');
         $this->site_token = (string) get_option('waf_fw_site_token', '');
     }
@@ -198,6 +205,114 @@ class WAF_FW_ML_Api_Client {
     }
 
     /**
+     * Collect full WordPress inventory (plugins, themes, active theme, hardening options, backups).
+     * Used for real-time fleet synchronization with the MDefender-Pro dashboard.
+     */
+    public static function get_site_inventory() {
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        // 1. Plugins Audit
+        $all_plugins = function_exists('get_plugins') ? get_plugins() : [];
+        $active_plugins = (array) get_option('active_plugins', []);
+        $update_plugins = get_site_transient('update_plugins');
+
+        $plugins = [];
+        foreach ($all_plugins as $plugin_file => $data) {
+            $is_active = in_array($plugin_file, $active_plugins, true);
+            $has_update = false;
+            $new_version = '';
+            if ($update_plugins && isset($update_plugins->response[$plugin_file])) {
+                $has_update = true;
+                $new_version = $update_plugins->response[$plugin_file]->new_version ?? '';
+            }
+            $plugins[] = [
+                'id' => sanitize_title($data['Name']),
+                'file' => $plugin_file,
+                'slug' => dirname($plugin_file) === '.' ? sanitize_title($data['Name']) : dirname($plugin_file),
+                'name' => $data['Name'],
+                'version' => $data['Version'],
+                'author' => strip_tags($data['Author'] ?? ''),
+                'status' => $is_active ? 'active' : 'inactive',
+                'update_available' => $has_update,
+                'new_version' => $new_version,
+            ];
+        }
+
+        // 2. Themes Audit
+        $all_themes = function_exists('wp_get_themes') ? wp_get_themes() : [];
+        $active_theme = function_exists('wp_get_theme') ? wp_get_theme() : null;
+        $active_slug = $active_theme ? $active_theme->get_stylesheet() : '';
+        $update_themes = get_site_transient('update_themes');
+
+        $themes = [];
+        foreach ($all_themes as $theme_slug => $tObj) {
+            $is_active = ($active_slug === $theme_slug);
+            $has_update = false;
+            $new_ver = '';
+            if ($update_themes && isset($update_themes->response[$theme_slug])) {
+                $has_update = true;
+                $new_ver = $update_themes->response[$theme_slug]['new_version'] ?? '';
+            }
+            $themes[] = [
+                'id' => $theme_slug,
+                'slug' => $theme_slug,
+                'name' => $tObj->get('Name'),
+                'version' => $tObj->get('Version'),
+                'author' => strip_tags($tObj->get('Author') ?? ''),
+                'active' => $is_active,
+                'is_active' => $is_active,
+                'status' => $is_active ? 'active' : 'standby',
+                'update_available' => $has_update,
+                'new_version' => $new_ver,
+            ];
+        }
+
+        // 3. Hardening Configuration
+        $hardening = [
+            'disable_file_editing' => get_option('waf_fw_disable_file_editing', 'yes') === 'yes',
+            'disable_xmlrpc' => get_option('waf_fw_disable_xmlrpc', 'yes') === 'yes',
+            'hide_wp_version' => get_option('waf_harden_hide_wp_version', 'yes') === 'yes',
+            'prevent_user_enumeration' => get_option('waf_fw_prevent_user_enumeration', 'yes') === 'yes',
+            'block_uploads_php' => get_option('waf_harden_block_uploads_php', 'yes') === 'yes',
+            'security_headers' => get_option('waf_harden_security_headers', 'enabled') === 'enabled',
+            'file_permissions_check' => true,
+            'login_two_factor' => get_option('waf_harden_login_guard', 'enabled') === 'enabled',
+            'disable_directory_listing' => get_option('waf_fw_disable_directory_listing', 'yes') === 'yes',
+        ];
+
+        // 4. Backups Inventory
+        $backups = [];
+        if (class_exists('WAF_FW_Backup_Engine')) {
+            $raw_bks = WAF_FW_Backup_Engine::instance()->get_backups();
+            if (is_array($raw_bks)) {
+                foreach ($raw_bks as $bk) {
+                    $backups[] = [
+                        'id' => $bk['id'] ?? $bk['filename'],
+                        'filename' => $bk['filename'] ?? '',
+                        'name' => $bk['note'] ?? ($bk['filename'] ?? 'Backup Snapshot'),
+                        'size' => $bk['size_formatted'] ?? '0 MB',
+                        'type' => $bk['type'] ?? 'full',
+                        'date' => $bk['created_at'] ?? 'Recently',
+                        'status' => 'verified',
+                    ];
+                }
+            }
+        }
+
+        return [
+            'plugins' => $plugins,
+            'themes' => $themes,
+            'theme' => $active_theme ? $active_theme->get('Name') : 'Active WordPress Theme',
+            'hardening' => $hardening,
+            'backups' => $backups,
+            'wp_version' => get_bloginfo('version'),
+            'php_version' => PHP_VERSION,
+        ];
+    }
+
+    /**
      * Register this site with the cloud. Exchanges the API key for a site
      * token and stores the connection details returned by the server.
      * Returns ['success' => bool, 'message' => string, 'data' => array|null].
@@ -211,13 +326,22 @@ class WAF_FW_ML_Api_Client {
             ];
         }
 
+        $inventory = self::get_site_inventory();
+
         $body = [
             'api_key'        => $this->api_key,
             'domain'         => $this->get_domain(),
             'site_token'     => $this->site_token ? $this->site_token : 'connect',
-            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.0.0',
+            'site_url'       => function_exists('home_url') ? home_url() : '',
+            'home_url'       => function_exists('home_url') ? home_url() : '',
+            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0',
             'php_version'    => phpversion(),
             'wp_version'     => get_bloginfo('version'),
+            'plugins'        => $inventory['plugins'] ?? [],
+            'themes'         => $inventory['themes'] ?? [],
+            'theme'          => $inventory['theme'] ?? '',
+            'hardening'      => $inventory['hardening'] ?? [],
+            'backups'        => $inventory['backups'] ?? [],
         ];
 
         $data = $this->request('POST', '/api/v1/wordpress/connect', $body, 15);
@@ -257,12 +381,20 @@ class WAF_FW_ML_Api_Client {
         if (!$this->is_available()) {
             return null;
         }
+
+        $inventory = self::get_site_inventory();
+
         $payload = [
             'api_key'        => $this->api_key,
             'domain'         => $this->get_domain(),
             'site_token'     => $this->site_token,
-            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.2.2',
+            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0',
             'status'         => 'online',
+            'plugins'        => $inventory['plugins'] ?? [],
+            'themes'         => $inventory['themes'] ?? [],
+            'theme'          => $inventory['theme'] ?? '',
+            'hardening'      => $inventory['hardening'] ?? [],
+            'backups'        => $inventory['backups'] ?? [],
         ];
         if (!empty($stats) && is_array($stats)) {
             $payload['stats'] = $stats;
@@ -351,12 +483,10 @@ class WAF_FW_ML_Api_Client {
             'events'  => $events,
         ];
         $host = parse_url($this->base_url, PHP_URL_HOST);
-        $is_loopback = $host === 'localhost' || $host === '127.0.0.1' || $host === '::1'
-            || (defined('WAF_FW_DEV_MODE') && WAF_FW_DEV_MODE);
-        $scheme = wp_parse_url($this->base_url, PHP_URL_SCHEME) ?: '';
         $url = $this->base_url . '/api/v1/waf/telemetry';
         $json_body = wp_json_encode($payload);
 
+        // Try direct cURL execution with robust background timeouts & SSL flexibility
         if (function_exists('curl_init')) {
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_POST, 1);
@@ -367,29 +497,43 @@ class WAF_FW_ML_Api_Client {
                 'User-Agent: WordPress/' . get_bloginfo('version') . '; ' . home_url()
             ]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 400);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 200);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
             curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
-            if ($is_loopback || $scheme !== 'https') {
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+            if (defined('CURLOPT_RESOLVE') && $host === 'mdefender-pro.crafix.tech') {
+                curl_setopt($ch, CURLOPT_RESOLVE, [
+                    'mdefender-pro.crafix.tech:443:217.15.170.82',
+                    'mdefender-pro.crafix.tech:80:217.15.170.82'
+                ]);
             }
-            @curl_exec($ch);
+
+            $exec_res = @curl_exec($ch);
+            $c_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             @curl_close($ch);
-            return true;
+
+            if ($c_code >= 200 && $c_code < 300) {
+                return true;
+            }
         }
 
-        wp_remote_post($url, [
-            'timeout'     => 1,
-            'blocking'    => false,
-            'sslverify'   => ($is_loopback || $scheme !== 'https') ? false : true,
-            'redirection' => 0,
-            'headers'     => [
-                'Authorization' => 'Bearer ' . $this->api_key,
-                'Content-Type'  => 'application/json',
-            ],
-            'body'        => $json_body,
-        ]);
+        // Fallback to WordPress HTTP API (non-blocking)
+        if (function_exists('wp_remote_post')) {
+            wp_remote_post($url, [
+                'timeout'     => 4,
+                'blocking'    => false,
+                'sslverify'   => false,
+                'redirection' => 2,
+                'headers'     => [
+                    'Authorization' => 'Bearer ' . $this->api_key,
+                    'Content-Type'  => 'application/json',
+                    'User-Agent'    => 'WordPress/' . get_bloginfo('version') . '; ' . home_url(),
+                ],
+                'body'        => $json_body,
+            ]);
+        }
         return true;
     }
 

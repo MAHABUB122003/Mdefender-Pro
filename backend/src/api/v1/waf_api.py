@@ -97,17 +97,26 @@ def verify_api_key(db, api_key, domain=None):
     # 2. Master Account API key (from db.users)
     user = db.users.find_one({"api_key": api_key})
     if user:
+        from bson import ObjectId
         user_id_str = str(user["_id"])
+        u_conds = [{"user_id": user_id_str}]
+        if ObjectId.is_valid(user_id_str):
+            u_conds.append({"user_id": ObjectId(user_id_str)})
+
         expected = _hostname(domain) if domain else "localhost"
-        escaped_expected = re.escape(expected)
+        clean_expected = re.sub(r"^www\.", "", expected, flags=re.I)
+        escaped_clean = re.escape(clean_expected)
         website = None
         if domain:
             website = db.websites.find_one({
-                "user_id": user_id_str,
-                "$or": [
-                    {"domain": {"$regex": f"^{escaped_expected}", "$options": "i"}},
-                    {"url": {"$regex": f"://{escaped_expected}", "$options": "i"}},
-                    {"domain": expected},
+                "$and": [
+                    {"$or": u_conds},
+                    {"$or": [
+                        {"domain": {"$regex": f"{escaped_clean}", "$options": "i"}},
+                        {"url": {"$regex": f"{escaped_clean}", "$options": "i"}},
+                        {"domain": expected},
+                        {"domain": f"www.{clean_expected}"},
+                    ]}
                 ]
             })
         if not website:

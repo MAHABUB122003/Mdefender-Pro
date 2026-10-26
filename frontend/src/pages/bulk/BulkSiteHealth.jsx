@@ -16,7 +16,9 @@ import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
 
 export default function BulkSiteHealth() {
-  const { wpWebsites, hasWebsites } = useBulkFleet()
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
+  const targetSite = activeWebsite || wpWebsites[0] || {}
+  const phpVer = targetSite.php_version || targetSite.wordpress_connection?.php_version || '8.2'
   const [runningAudit, setRunningAudit] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
@@ -79,7 +81,7 @@ export default function BulkSiteHealth() {
             PHP Compatibility
           </div>
           <div style={{ fontSize: '24px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>
-            PHP 8.2.12
+            PHP {phpVer}
           </div>
           <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
             Memory Limit: 512M • OPcache Enabled

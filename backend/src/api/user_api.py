@@ -738,7 +738,10 @@ class UserAPI:
         return {'status': 'success', 'message': 'Password changed successfully'}
 
     def get_dashboard_stats(self, user, website_id=None, force_refresh=False):
-        user_id_str = str(user['_id'])
+        if not isinstance(user, dict):
+            u_id = self._resolve_id(user)
+            user = self.db.users.find_one({'_id': u_id}) or {'_id': u_id}
+        user_id_str = str(user.get('_id', ''))
         user_id_obj = self._resolve_id(user_id_str)
         cache_key = f"{user_id_str}_{website_id or 'all'}"
         now_ts = datetime.now().timestamp()
@@ -767,14 +770,18 @@ class UserAPI:
         wp_domains = [wp.get('domain') for wp in wp_sites if wp.get('domain')]
         
         all_discovered_domains = set(filter(None, wp_domains))
+        for ws in user.get('websites', []):
+            if isinstance(ws, dict) and ws.get('domain'):
+                all_discovered_domains.add(ws.get('domain'))
 
         for d in all_discovered_domains:
             if d not in ('unknown', '') and d not in known_domains:
-                site_id = str(uuid.uuid4())
+                matching_user_ws = next((w for w in user.get('websites', []) if isinstance(w, dict) and w.get('domain') == d), None)
+                site_id = str(matching_user_ws.get('id')) if matching_user_ws and matching_user_ws.get('id') else str(uuid.uuid4())
                 now_dt = datetime.now()
-                is_local = d in ("localhost", "127.0.0.1", "::1")
+                is_local = d in ("localhost", "127.0.0.1", "::1") or (matching_user_ws and "localhost" in matching_user_ws.get('url', ''))
                 site_display_name = "Localhost (XAMPP)" if is_local else d
-                site_url = "http://localhost" if is_local else f"https://{d}"
+                site_url = matching_user_ws.get('url') if matching_user_ws and matching_user_ws.get('url') else ("http://localhost" if is_local else f"https://{d}")
                 new_site = {
                     '_id': site_id,
                     'user_id': user_id_str,
@@ -820,10 +827,23 @@ class UserAPI:
                     pass
 
             added_at_val = self._format_dt(w.get('added_at') or w.get('connected_at'))
+            wp_conn = w.get('wordpress_connection') or {}
+            hardening_opts = w.get('hardening') or {
+                'disable_file_editing': bool(w.get('disable_file_editing', True)),
+                'disable_xmlrpc': bool(w.get('disable_xmlrpc', True)),
+                'hide_wp_version': bool(w.get('hide_wp_version', True)),
+                'prevent_user_enumeration': bool(w.get('prevent_user_enumeration', True)),
+                'block_uploads_php': bool(w.get('block_uploads_php', True)),
+                'security_headers': bool(w.get('security_headers', True)),
+                'file_permissions_check': bool(w.get('file_permissions_check', True)),
+                'login_two_factor': bool(w.get('login_two_factor', True)),
+                'disable_directory_listing': bool(w.get('disable_directory_listing', True)),
+            }
             websites.append({
                 'id': str(w['_id']),
                 'domain': w.get('domain', ''),
                 'name': w.get('name', ''),
+                'url': w.get('url', ''),
                 'platform': w.get('platform', 'WordPress'),
                 'origin_server': w.get('origin_server', ''),
                 'status': w.get('status', 'active'),
@@ -836,6 +856,24 @@ class UserAPI:
                 'waf_mode': w.get('waf_mode', 'protect'),
                 'malware_scanner': w.get('malware_scanner', 'active'),
                 'threat_level': w.get('threat_level', 'LOW'),
+                'plugins': w.get('plugins', []),
+                'themes': w.get('themes', []),
+                'theme': w.get('theme', wp_conn.get('theme', '')),
+                'hardening': hardening_opts,
+                'backups': w.get('backups', []),
+                'wordpress_connection': wp_conn,
+                'wp_version': wp_conn.get('wp_version', w.get('wp_version', '6.7.1')),
+                'php_version': wp_conn.get('php_version', w.get('php_version', '8.2')),
+                'plugin_version': wp_conn.get('plugin_version', w.get('plugin_version', '4.3.0')),
+                'disable_xmlrpc': bool(w.get('disable_xmlrpc', True)),
+                'block_uploads_php': bool(w.get('block_uploads_php', True)),
+                'disable_file_editing': bool(w.get('disable_file_editing', True)),
+                'disable_directory_listing': bool(w.get('disable_directory_listing', True)),
+                'prevent_user_enumeration': bool(w.get('prevent_user_enumeration', True)),
+                'hide_wp_version': bool(w.get('hide_wp_version', True)),
+                'security_headers': bool(w.get('security_headers', True)),
+                'file_permissions_check': bool(w.get('file_permissions_check', True)),
+                'login_two_factor': bool(w.get('login_two_factor', True)),
             })
 
         website_domains = {w['id']: w.get('domain', '') for w in websites}

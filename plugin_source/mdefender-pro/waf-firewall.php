@@ -346,17 +346,80 @@ function waf_fw_handle_cloud_sync_webhook() {
                 waf_fw_sync_cloud_blacklist_fast(true);
             }
 
+            // Handle remote fleet management actions
+            $action = sanitize_text_field($_REQUEST['action'] ?? $pushed_data['action'] ?? '');
+            $action_result = null;
+
+            if ($action === 'create_backup') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $btype = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? 'full');
+                    $bnote = sanitize_text_field($_REQUEST['note'] ?? $pushed_data['note'] ?? 'Dashboard Instant Snapshot');
+                    $action_result = WAF_FW_Backup_Engine::instance()->create_backup($btype, [], $bnote);
+                }
+            } elseif ($action === 'restore_backup') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $bfilename = sanitize_text_field($_REQUEST['filename'] ?? $pushed_data['filename'] ?? '');
+                    if ($bfilename) {
+                        $action_result = WAF_FW_Backup_Engine::instance()->restore_backup($bfilename);
+                    }
+                }
+            } elseif ($action === 'delete_backup') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $bfilename = sanitize_text_field($_REQUEST['filename'] ?? $pushed_data['filename'] ?? '');
+                    if ($bfilename) {
+                        $action_result = WAF_FW_Backup_Engine::instance()->delete_backup($bfilename);
+                    }
+                }
+            } elseif ($action === 'toggle_plugin') {
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? '');
+                $target_status = sanitize_text_field($_REQUEST['status'] ?? $pushed_data['status'] ?? '');
+                if (!$plugin_file) {
+                    $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
+                    if ($pid) {
+                        $all_p = get_plugins();
+                        foreach ($all_p as $pfile => $pdata) {
+                            if (sanitize_title($pdata['Name']) === $pid || strpos($pfile, $pid) !== false) {
+                                $plugin_file = $pfile;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($plugin_file) {
+                    if ($target_status === 'active' || $target_status === 'activate') {
+                        activate_plugin($plugin_file);
+                        $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'active'];
+                    } else {
+                        deactivate_plugins($plugin_file);
+                        $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'inactive'];
+                    }
+                }
+            } elseif ($action === 'activate_theme') {
+                $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? '');
+                if ($theme_slug) {
+                    switch_theme($theme_slug);
+                    $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'active'];
+                }
+            }
+
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=UTF-8');
             }
             $bl_list = (array) get_option('waf_fw_local_blacklist_cache', []);
+            $inventory = class_exists('WAF_FW_ML_Api_Client') ? WAF_FW_ML_Api_Client::get_site_inventory() : [];
             echo json_encode([
                 'status' => 'success',
                 'message' => 'MDefender cloud blacklist & country rules synced successfully',
                 'blacklist_count' => count($bl_list),
                 'blacklist' => $bl_list,
                 'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
-                'synced_at' => current_time('mysql')
+                'synced_at' => current_time('mysql'),
+                'action' => $action,
+                'action_result' => $action_result,
+                'inventory' => $inventory,
             ]);
             exit;
         }
@@ -395,13 +458,15 @@ add_action('rest_api_init', function() {
                 waf_fw_sync_cloud_blacklist_fast(true);
             }
             $bl_list = (array) get_option('waf_fw_local_blacklist_cache', []);
+            $inventory = class_exists('WAF_FW_ML_Api_Client') ? WAF_FW_ML_Api_Client::get_site_inventory() : [];
             return new WP_REST_Response([
                 'status' => 'success',
                 'message' => 'MDefender cloud blacklist & country rules synced successfully',
                 'blacklist_count' => count($bl_list),
                 'blacklist' => $bl_list,
                 'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
-                'synced_at' => current_time('mysql')
+                'synced_at' => current_time('mysql'),
+                'inventory' => $inventory,
             ], 200);
         },
         'permission_callback' => '__return_true'
@@ -502,10 +567,13 @@ function waf_fw_cloud_heartbeat() {
             }
         }
 
-        // Sync local IP blacklist cache
+        // Sync local IP blacklist cache & database table
         if (isset($res['blacklist']) && is_array($res['blacklist'])) {
-            $ips = array_map('sanitize_text_field', $res['blacklist']);
+            $ips = array_values(array_filter(array_map('sanitize_text_field', $res['blacklist'])));
             update_option('waf_fw_local_blacklist_cache', $ips);
+            if (class_exists('WAF_FW_IP_Filter')) {
+                WAF_FW_IP_Filter::instance()->sync_with_cloud_blacklist($ips);
+            }
         }
 
         // Sync Country Blocks
@@ -655,6 +723,14 @@ function waf_fw_analyze_request() {
         }
     }
 
+    // Fast periodic pull from cloud (guarded by 60s transient, 0.001ms overhead)
+    if (!is_admin() && empty($_GET['waf_cloud_sync']) && empty($_POST['waf_cloud_sync'])) {
+        $last_sync = get_transient('waf_fw_last_bl_sync');
+        if (!$last_sync && function_exists('waf_fw_sync_cloud_blacklist_fast')) {
+            waf_fw_sync_cloud_blacklist_fast(false);
+        }
+    }
+
     if (defined('REST_REQUEST') && REST_REQUEST) {
         waf_fw_analyze_rest_request();
         return;
@@ -674,6 +750,8 @@ function waf_fw_analyze_request() {
         if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
             WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
         }
+        // Immediately flush telemetry so the blocked attack is recorded on cloud dashboard
+        WAF_FW_Engine::flush_telemetry();
         exit;
     }
 }
@@ -704,6 +782,8 @@ function waf_fw_analyze_rest_request() {
         if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
             WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
         }
+        // Immediately flush telemetry so the blocked attack is recorded on cloud dashboard
+        WAF_FW_Engine::flush_telemetry();
         exit;
     }
 }
