@@ -889,39 +889,32 @@ $dashboard = $logger->get_dashboard_data();
                     </div>
 
                     <form id="wafFwMlForm" class="waf-cloud-form" onsubmit="return false;">
-                        <div class="waf-api-key-group" style="margin-bottom: 16px;">
-                            <label for="wafFwMlKey" style="font-weight:700;font-size:14px;color:#0f172a;display:flex;align-items:center;justify-content:space-between;">
-                                <span>Website License / API Key</span>
-                                <a href="https://mdefender-pro.crafix.tech/user/websites" target="_blank" style="font-size:12px;font-weight:600;color:#2563eb;text-decoration:none;">Get API Key &nearr;</a>
-                            </label>
-                            <div class="waf-key-input-wrapper" style="margin-top:6px;">
+                        <div class="waf-api-key-group" style="margin-bottom: 14px;">
+                            <label for="wafFwMlUrl" style="font-weight:600;font-size:13px;color:#1e293b;">Cloud Server Endpoint / URL</label>
+                            <div class="waf-key-input-wrapper">
+                                <?php
+                                $current_ml_url = get_option('waf_fw_ml_api_url', '');
+                                if (empty($current_ml_url) || strpos($current_ml_url, 'localhost:8000') !== false || strpos($current_ml_url, '217.15.170.82') !== false || strpos($current_ml_url, 'onrender.com') !== false) {
+                                    $current_ml_url = 'https://mdefender-pro.crafix.tech';
+                                }
+                                ?>
+                                <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="https://mdefender-pro.crafix.tech" value="<?php echo esc_attr($current_ml_url); ?>" autocomplete="off">
+                            </div>
+                            <span class="description" style="font-size:12px;color:#64748b;margin:4px 0 0;display:block;"><span class="dashicons dashicons-info" style="font-size:14px;vertical-align:middle;"></span> Your MDefender-Pro Cloud Domain (e.g. <code>https://mdefender-pro.crafix.tech</code>).</span>
+                        </div>
+
+                        <div class="waf-api-key-group">
+                            <label for="wafFwMlKey" style="font-weight:600;font-size:13px;color:#1e293b;">Website API Key</label>
+                            <div class="waf-key-input-wrapper">
                                 <span class="dashicons dashicons-admin-network waf-key-lead-icon"></span>
-                                <input type="password" id="wafFwMlKey" class="waf-key-input" placeholder="Enter your MDefender-Pro Website API Key" autocomplete="off">
+                                <input type="password" id="wafFwMlKey" class="waf-key-input" placeholder="Enter your MDefender-Pro Website API Key (AM-...)" autocomplete="off">
                                 <button type="button" class="waf-toggle-key-visibility" id="wafToggleKeyBtn" title="Toggle visibility">
                                     <span class="dashicons dashicons-visibility"></span>
                                 </button>
                             </div>
                             <div class="waf-key-hints">
-                                <span class="description" style="font-size:12px;color:#64748b;margin:0;"><span class="dashicons dashicons-shield-alt" style="font-size:14px;vertical-align:middle;color:#16a34a;"></span> Official Cloud Security: <strong>https://mdefender-pro.crafix.tech</strong></span>
+                                <span class="description" style="font-size:12px;color:#64748b;margin:0;"><span class="dashicons dashicons-info" style="font-size:14px;vertical-align:middle;"></span> Issued per-website in your MDefender-Pro Dashboard.</span>
                                 <span id="wafConnectedSiteMeta" style="display:none;font-size:12px;color:#059669;font-weight:600;"><span class="dashicons dashicons-yes-alt" style="font-size:14px;vertical-align:middle;"></span> Protected &amp; Synced with Cloud</span>
-                            </div>
-                        </div>
-
-                        <!-- Advanced Endpoint (Hidden by default, Wordfence style) -->
-                        <div style="margin-bottom: 14px;">
-                            <a href="javascript:void(0)" onclick="jQuery('#wafAdvancedEndpointRow').slideToggle(150);" style="font-size:11.5px;color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
-                                <span class="dashicons dashicons-admin-generic" style="font-size:13px;vertical-align:middle;"></span> Advanced Settings
-                            </a>
-                            <div id="wafAdvancedEndpointRow" style="display:none;margin-top:8px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
-                                <label for="wafFwMlUrl" style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">Custom Cloud API Endpoint</label>
-                                <?php
-                                $current_ml_url = get_option('waf_fw_ml_api_url', '');
-                                if (empty($current_ml_url) || strpos($current_ml_url, 'localhost:8000') !== false || strpos($current_ml_url, 'onrender.com') !== false) {
-                                    $current_ml_url = 'https://mdefender-pro.crafix.tech';
-                                }
-                                ?>
-                                <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="https://mdefender-pro.crafix.tech" value="<?php echo esc_attr($current_ml_url); ?>" autocomplete="off" style="font-size:12px;">
-                                <span class="description" style="font-size:11px;color:#94a3b8;margin-top:4px;display:block;">Default: <code>https://mdefender-pro.crafix.tech</code>. Leave default unless running a custom proxy.</span>
                             </div>
                         </div>
 
@@ -1052,41 +1045,16 @@ $dashboard = $logger->get_dashboard_data();
                     </form>
                 </div>
 
-                <?php 
-                $can_country_block = !defined('MDEFENDER_BUILD_EDITION') || MDEFENDER_BUILD_EDITION !== 'free';
-                ?>
-                <div class="waf-fw-card" style="position:relative; <?php echo !$can_country_block ? 'border-top:3px solid #64748b;' : 'border-top:3px solid #2563eb;'; ?>">
-                    <?php if (!$can_country_block): ?>
-                        <div style="background:linear-gradient(135deg, #1e293b, #0f172a); border-radius:8px; padding:16px; margin-bottom:16px; color:#fff; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border:1px solid #334155;">
-                            <div>
-                                <strong style="font-size:14px; color:#38bdf8; display:flex; align-items:center; gap:6px;">
-                                    <span class="dashicons dashicons-lock"></span> Country Blocking Requires Pro / Premium
-                                </strong>
-                                <p style="margin:4px 0 0; font-size:12px; color:#94a3b8; max-width:480px;">
-                                    Country-level GeoIP firewalling is available in MD Defender Pro Go, Premium, and Dedicated editions. Prevent attacks by blocking entire foreign territories.
-                                </p>
-                            </div>
-                            <a href="https://mdefender-pro.io/pricing" target="_blank" class="button button-primary" style="background:#2563eb; border-color:#2563eb; font-weight:700; border-radius:6px;">
-                                Upgrade to Pro &rarr;
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                    <h3>
-                        <span class="dashicons dashicons-admin-site-alt"></span> Country / GeoIP Blocking
-                        <?php if ($can_country_block): ?>
-                            <span class="waf-badge-pro" style="background:#2563eb; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px;">ACTIVE (PRO)</span>
-                        <?php else: ?>
-                            <span class="waf-badge-pro" style="background:#64748b; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px;">PRO FEATURE</span>
-                        <?php endif; ?>
-                    </h3>
-                    <p class="description">Block visitors, scrapers, and automated attacks from selected countries before they reach your WordPress site.</p>
+                <div class="waf-fw-card">
+                    <h3><span class="dashicons dashicons-admin-site-alt"></span> Country Blocking</h3>
+                    <p class="description">Block visitors from selected countries (uses ip-api.com for geo lookup).</p>
                     <form id="wafFwModeForm">
                         <p>
-                            <label>Blocked Countries (comma-separated 2-letter ISO codes)</label>
-                            <input type="text" id="wafFwBlockedCountries" class="widefat" placeholder="e.g. CN, RU, KP, IR" <?php echo !$can_country_block ? 'disabled' : ''; ?>>
-                            <span class="description">Popular threat origin filters: <code>RU</code> (Russia), <code>CN</code> (China), <code>KP</code> (North Korea), <code>IR</code> (Iran). Leave empty for no country blocking.</span>
+                            <label>Blocked Countries (comma-separated ISO codes)</label>
+                            <input type="text" id="wafFwBlockedCountries" class="widefat" placeholder="CN, RU, KP, IR">
+                            <span class="description">e.g. CN, RU, KP, IR. Leave empty for no country blocking.</span>
                         </p>
-                        <p><button type="submit" class="button button-primary" <?php echo !$can_country_block ? 'disabled' : ''; ?>>Save Country Settings</button></p>
+                        <p><button type="submit" class="button button-primary">Save Country Settings</button></p>
                     </form>
                 </div>
             </div>

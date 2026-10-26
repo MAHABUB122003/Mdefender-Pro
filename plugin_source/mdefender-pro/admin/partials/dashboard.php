@@ -89,32 +89,15 @@ if (!function_exists('waf_mdf_country_flag')) {
         </div>
     </div>
 
-    <?php
-    $current_edition = defined('MDEFENDER_BUILD_EDITION') ? MDEFENDER_BUILD_EDITION : (class_exists('MDefender_Interop') ? MDefender_Interop::get_edition() : 'free');
-    $edition_name = defined('MDEFENDER_EDITION_NAME') ? MDEFENDER_EDITION_NAME : 'MD Defender Free';
-    $tier_badge = defined('MDEFENDER_TIER_BADGE') ? MDEFENDER_TIER_BADGE : 'FREE EDITION';
-    $tier_color = defined('MDEFENDER_TIER_COLOR') ? MDEFENDER_TIER_COLOR : '#64748b';
-    $is_free = ($current_edition === 'free');
-    ?>
-
     <!-- 2. Hero Header -->
     <div class="mdf-hero-header">
         <div class="mdf-hero-left">
-            <div class="mdf-tag-pill" style="gap:10px;">
+            <div class="mdf-tag-pill">
                 <span class="mdf-tag-square"></span>
                 <span>SECURITY OVERVIEW &nbsp;/&nbsp; <?php echo strtoupper(date('M d, Y')); ?></span>
-                <span style="background:<?php echo esc_attr($tier_color); ?>; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px; letter-spacing:0.5px;">
-                    <?php echo esc_html($tier_badge); ?>
-                </span>
             </div>
             <h1 class="mdf-hero-title">Your site is <span class="mdf-orange-text">protected.</span></h1>
-            <p class="mdf-hero-subtitle">
-                <?php if ($is_free): ?>
-                    Protected by <strong>MD Defender Free</strong> (Community Rules delayed 30 days &bull; Scheduled scans every 3 days). <a href="https://mdefender-pro.io/pricing" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">Upgrade to Go for Real-Time Rules &rarr;</a>
-                <?php else: ?>
-                    Protected by <strong><?php echo esc_html($edition_name); ?></strong> with Real-Time Cloud Rules, Live Signatures, and Active Country Blocking.
-                <?php endif; ?>
-            </p>
+            <p class="mdf-hero-subtitle">A real-time overview of your security posture, traffic, and active threats.</p>
         </div>
         <div class="mdf-hero-actions">
             <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings')); ?>" class="mdf-btn-customize" id="mdfCustomizeBtn">
@@ -180,42 +163,6 @@ if (!function_exists('waf_mdf_country_flag')) {
             <button type="button" class="mdf-arm-pill-btn <?php echo $is_under_attack ? 'is-disarm' : ''; ?>" id="mdfUnderAttackBtn">
                 <?php echo $is_under_attack ? 'Disarm' : 'Arm mode'; ?>
             </button>
-        </div>
-    </div>
-
-    <!-- 3b. Tier Capabilities Ribbon (Matches Comparison Matrix) -->
-    <div style="background:#0b2522; border-radius:10px; padding:12px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; border:1px solid #164e43; font-size:12px; color:#cbd5e1;">
-        <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; color:#38bdf8;">WAF Rules:</span>
-            <?php if ($is_free): ?>
-                <span style="color:#fbbf24; background:rgba(251,191,36,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Community (30 Days Delayed)</span>
-            <?php else: ?>
-                <span style="color:#34d399; background:rgba(52,211,153,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Real-Time Active</span>
-            <?php endif; ?>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; color:#38bdf8;">Signatures:</span>
-            <?php if ($is_free): ?>
-                <span style="color:#fbbf24; background:rgba(251,191,36,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Community (30 Days Delayed)</span>
-            <?php else: ?>
-                <span style="color:#34d399; background:rgba(52,211,153,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Real-Time Active</span>
-            <?php endif; ?>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; color:#38bdf8;">Country Blocking:</span>
-            <?php if ($is_free): ?>
-                <span style="color:#94a3b8; background:rgba(148,163,184,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Pro Feature</span>
-            <?php else: ?>
-                <span style="color:#34d399; background:rgba(52,211,153,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Active</span>
-            <?php endif; ?>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; color:#38bdf8;">Real-Time IP Blocklist:</span>
-            <?php if ($is_free): ?>
-                <span style="color:#94a3b8; background:rgba(148,163,184,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Pro Feature</span>
-            <?php else: ?>
-                <span style="color:#34d399; background:rgba(52,211,153,0.15); padding:2px 8px; border-radius:10px; font-weight:600;">Enforcing</span>
-            <?php endif; ?>
         </div>
     </div>
 
