@@ -394,6 +394,18 @@ async def update_website(website_id: str, body: WebsiteUpdate, user=Depends(get_
     return success({"website": _website_out(db.websites.find_one({"_id": website["_id"]}))})
 
 
+@router.delete("/{website_id}")
+async def delete_website(website_id: str, user=Depends(get_current_user)):
+    from src.api.user_api import UserAPI
+    db = MongoDB()
+    user_api = UserAPI(db)
+    res = user_api.remove_website(user, website_id=website_id)
+    if res.get('status') == 'error':
+        raise HTTPException(status_code=404, detail=res.get('message', 'Website not found'))
+    return success(res)
+
+
+
 class UnderAttackToggle(BaseModel):
     enabled: bool = True
 

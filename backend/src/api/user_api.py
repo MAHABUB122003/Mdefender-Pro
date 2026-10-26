@@ -534,160 +534,178 @@ class UserAPI:
             'message': f'{domain} connected successfully'
         }
 
-    def remove_website(self, user, website_id):
-        if not website_id:
-            return {'status': 'error', 'message': 'Website ID is required'}
+    def remove_website(self, user, website_id=None, domain=None):
+        if not website_id and not domain:
+            return {'status': 'error', 'message': 'Website ID or Domain is required'}
         
         user_id_str = str(user.get('_id') or user.get('id') or '')
         user_id_obj = self._resolve_id(user_id_str)
         is_admin = bool(user.get('is_admin') or user.get('role') in ('admin', 'super_admin'))
         
-        target_ids = [website_id]
-        if ObjectId.is_valid(website_id):
-            target_ids.append(ObjectId(website_id))
+        # Build set of target IDs to purge
+        target_ids = []
+        if website_id:
+            target_ids.append(str(website_id))
+            if ObjectId.is_valid(str(website_id)):
+                target_ids.append(ObjectId(str(website_id)))
 
         user_cond = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}, {'user_id': str(user_id_obj)}]}
-        
-        # 1. Look up in websites collection
+
+        # Find any matching site doc across all potential identifiers
+        find_query = []
+        if target_ids:
+            find_query.append({'_id': {'$in': target_ids}})
+            find_query.append({'website_id': {'$in': [str(t) for t in target_ids]}})
+        if domain:
+            find_query.extend([{'domain': domain}, {'url': domain}, {'name': domain}])
+        if website_id and not ObjectId.is_valid(str(website_id)):
+            find_query.extend([{'domain': str(website_id)}, {'url': str(website_id)}, {'name': str(website_id)}])
+
+        # 1. Search in websites collection
+        site_docs = []
         if is_admin:
-            site_doc = self.db.websites.find_one({
-                '$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]
-            })
+            site_docs = list(self.db.websites.find({'$or': find_query}))
         else:
-            site_doc = self.db.websites.find_one({
-                '$and': [
-                    user_cond,
-                    {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}, {'name': website_id}, {'url': website_id}]}
-                ]
-            })
-            if not site_doc:
-                # Also try looking up strictly by _id in case user_id was stored differently
-                raw_doc = self.db.websites.find_one({'_id': {'$in': target_ids}})
-                if raw_doc and str(raw_doc.get('user_id', '')).lower() == user_id_str.lower():
-                    site_doc = raw_doc
+            site_docs = list(self.db.websites.find({'$and': [user_cond, {'$or': find_query}]}))
+            if not site_docs:
+                raw_docs = list(self.db.websites.find({'$or': find_query}))
+                for rd in raw_docs:
+                    if str(rd.get('user_id', '')).lower() == user_id_str.lower() or not rd.get('user_id'):
+                        site_docs.append(rd)
 
-        if site_doc:
-            domain = site_doc.get('domain')
-            actual_id = site_doc['_id']
-            site_platform = (site_doc.get('platform') or '').lower()
-            is_wp = 'wordpress' in site_platform or 'wp' in site_platform
+        # Collect all domains and IDs to be purged
+        domains_to_purge = set()
+        ids_to_purge = set()
 
-            # Delete the website document
-            self.db.websites.delete_one({'_id': actual_id})
+        if domain:
+            clean_d = str(domain).strip().lower().replace('https://', '').replace('http://', '').rstrip('/')
+            domains_to_purge.add(clean_d)
+            domains_to_purge.add(str(domain))
 
-            # Clean up domains collection for this specific website / domain
-            dom_del_query = {'$or': [{'_id': actual_id}, {'_id': str(actual_id)}, {'domain': domain}]}
-            if not is_admin:
-                dom_del_query = {'$and': [user_cond, dom_del_query]}
-            self.db.domains.delete_many(dom_del_query)
+        for sd in site_docs:
+            ids_to_purge.add(str(sd['_id']))
+            d_val = sd.get('domain') or sd.get('url') or sd.get('name')
+            if d_val:
+                clean_d = str(d_val).strip().lower().replace('https://', '').replace('http://', '').rstrip('/')
+                domains_to_purge.add(clean_d)
+                domains_to_purge.add(str(d_val))
 
-            # Clean up DNS records for this specific website
-            self.db.dns_records.delete_many({
-                '$or': [{'website_id': str(actual_id)}, {'website_id': actual_id}, {'domain_id': str(actual_id)}, {'domain': domain}]
-            })
+        if website_id:
+            ids_to_purge.add(str(website_id))
+            if '.' in str(website_id):
+                clean_w = str(website_id).strip().lower().replace('https://', '').replace('http://', '').rstrip('/')
+                domains_to_purge.add(clean_w)
+                domains_to_purge.add(str(website_id))
 
-            # Clean up API keys for this specific website
-            self.db.api_keys.delete_many({
-                '$or': [{'website_id': str(actual_id)}, {'website_id': actual_id}]
-            })
+        # Also search in wordpress_sites to catch any WP site records
+        wp_find_query = []
+        if ids_to_purge:
+            valid_oids = [ObjectId(i) for i in ids_to_purge if ObjectId.is_valid(i)]
+            wp_find_query.append({'_id': {'$in': valid_oids + list(ids_to_purge)}})
+            wp_find_query.append({'website_id': {'$in': list(ids_to_purge)}})
+        if domains_to_purge:
+            wp_find_query.append({'domain': {'$in': list(domains_to_purge)}})
+            wp_find_query.append({'site_url': {'$in': list(domains_to_purge)}})
 
-            # ONLY delete from wordpress_sites if this site was actually a WordPress site!
-            if is_wp:
-                wp_del_query = {'$or': [{'_id': {'$in': target_ids}}, {'website_id': str(actual_id)}]}
-                if not is_admin:
-                    wp_del_query = {'$and': [user_cond, wp_del_query]}
-                self.db.wordpress_sites.delete_many(wp_del_query)
+        if wp_find_query:
+            wp_docs = list(self.db.wordpress_sites.find({'$or': wp_find_query}))
+            for wd in wp_docs:
+                ids_to_purge.add(str(wd['_id']))
+                if wd.get('website_id'):
+                    ids_to_purge.add(str(wd['website_id']))
+                if wd.get('domain'):
+                    domains_to_purge.add(str(wd['domain']))
 
-            # Check if user has any other website with this same domain (e.g. domain vs wordpress)
-            remaining = self.db.websites.count_documents({
-                '$and': [
-                    user_cond,
-                    {'domain': domain}
-                ]
-            })
-            if remaining == 0 and domain:
-                try:
-                    self.db.users.update_many(
-                        user_cond,
-                        {'$pull': {'websites': domain}}
-                    )
-                except Exception:
-                    pass
+        # Also search in domains collection
+        if wp_find_query:
+            dom_docs = list(self.db.domains.find({'$or': wp_find_query}))
+            for dd in dom_docs:
+                ids_to_purge.add(str(dd['_id']))
+                if dd.get('domain'):
+                    domains_to_purge.add(str(dd['domain']))
 
-            self._stats_cache.clear()
-            label = "WordPress site" if is_wp else "Domain"
-            return {'status': 'success', 'message': f'{label} "{domain or website_id}" removed successfully'}
+        # Delete from websites collection
+        del_ids = list(ids_to_purge) + [ObjectId(i) for i in ids_to_purge if ObjectId.is_valid(i)]
+        del_websites_filter = {'$or': [
+            {'_id': {'$in': del_ids}},
+            {'domain': {'$in': list(domains_to_purge)}},
+            {'url': {'$in': list(domains_to_purge)}},
+            {'name': {'$in': list(domains_to_purge)}}
+        ]}
+        if not is_admin:
+            del_websites_filter = {'$and': [user_cond, del_websites_filter]}
+        self.db.websites.delete_many(del_websites_filter)
 
-        # 2. Fallback: Look up in wordpress_sites collection
-        if is_admin:
-            wp_doc = self.db.wordpress_sites.find_one({
-                '$or': [{'_id': {'$in': target_ids}}, {'website_id': {'$in': [str(t) for t in target_ids]}}, {'domain': website_id}, {'site_url': website_id}]
-            })
-        else:
-            wp_doc = self.db.wordpress_sites.find_one({
-                '$and': [
-                    user_cond,
-                    {'$or': [{'_id': {'$in': target_ids}}, {'website_id': {'$in': [str(t) for t in target_ids]}}, {'domain': website_id}, {'site_url': website_id}]}
-                ]
-            })
+        # Delete from wordpress_sites
+        del_wp_filter = {'$or': [
+            {'_id': {'$in': del_ids}},
+            {'website_id': {'$in': list(ids_to_purge)}},
+            {'domain': {'$in': list(domains_to_purge)}},
+            {'site_url': {'$in': list(domains_to_purge)}}
+        ]}
+        if not is_admin:
+            del_wp_filter = {'$and': [user_cond, del_wp_filter]}
+        self.db.wordpress_sites.delete_many(del_wp_filter)
 
-        if wp_doc:
-            domain = wp_doc.get('domain')
-            actual_id = wp_doc['_id']
-            ws_id = wp_doc.get('website_id')
+        # Delete from domains collection
+        del_dom_filter = {'$or': [
+            {'_id': {'$in': del_ids}},
+            {'domain': {'$in': list(domains_to_purge)}}
+        ]}
+        if not is_admin:
+            del_dom_filter = {'$and': [user_cond, del_dom_filter]}
+        self.db.domains.delete_many(del_dom_filter)
 
-            if is_admin:
-                self.db.wordpress_sites.delete_many({'_id': actual_id})
-                if ws_id:
-                    self.db.websites.delete_many({'_id': ws_id, 'platform': {'$regex': '^wordpress', '$options': 'i'}})
-                    self.db.api_keys.delete_many({'website_id': str(ws_id)})
-            else:
-                self.db.wordpress_sites.delete_many({
-                    '$and': [
-                        user_cond,
-                        {'_id': actual_id}
-                    ]
-                })
-                if ws_id:
-                    self.db.websites.delete_many({
-                        '_id': ws_id,
-                        'platform': {'$regex': '^wordpress', '$options': 'i'},
-                        '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
-                    })
-                    self.db.api_keys.delete_many({
-                        'website_id': str(ws_id),
-                        '$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]
-                    })
+        # Delete from dns_records
+        self.db.dns_records.delete_many({'$or': [
+            {'website_id': {'$in': list(ids_to_purge)}},
+            {'domain_id': {'$in': list(ids_to_purge)}},
+            {'domain': {'$in': list(domains_to_purge)}}
+        ]})
 
-            self._stats_cache.clear()
-            return {'status': 'success', 'message': f'WordPress site "{domain or website_id}" removed successfully'}
+        # Delete API keys
+        self.db.api_keys.delete_many({'$or': [
+            {'website_id': {'$in': list(ids_to_purge)}}
+        ]})
 
-        # 3. Fallback: Look up in domains collection (if domain was created in Cloud WAF)
-        if is_admin:
-            dom_doc = self.db.domains.find_one({
-                '$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}]
-            })
-        else:
-            dom_doc = self.db.domains.find_one({
-                '$and': [
-                    user_cond,
-                    {'$or': [{'_id': {'$in': target_ids}}, {'domain': website_id}]}
-                ]
-            })
+        # Thoroughly purge from users.websites array in MongoDB
+        for d in domains_to_purge:
+            self.db.users.update_many(
+                user_cond,
+                {'$pull': {'websites': d}}
+            )
+            self.db.users.update_many(
+                user_cond,
+                {'$pull': {'websites': {'domain': d}}}
+            )
+            self.db.users.update_many(
+                user_cond,
+                {'$pull': {'websites': {'url': d}}}
+            )
+            self.db.users.update_many(
+                user_cond,
+                {'$pull': {'websites': {'name': d}}}
+            )
+        for i_val in ids_to_purge:
+            self.db.users.update_many(
+                user_cond,
+                {'$pull': {'websites': {'id': i_val}}}
+            )
+            self.db.users.update_many(
+                user_cond,
+                {'$pull': {'websites': {'_id': i_val}}}
+            )
 
-        if dom_doc:
-            domain = dom_doc.get('domain')
-            actual_id = dom_doc['_id']
-            dom_del = {'_id': actual_id}
-            if not is_admin:
-                dom_del = {'$and': [user_cond, dom_del]}
-            self.db.domains.delete_many(dom_del)
-            self.db.websites.delete_many({'$or': [{'_id': actual_id}, {'domain': domain}]})
-            self.db.dns_records.delete_many({'$or': [{'domain_id': str(actual_id)}, {'domain': domain}]})
-            self._stats_cache.clear()
-            return {'status': 'success', 'message': f'Domain "{domain or website_id}" removed successfully'}
+        # In-memory user object cleanup
+        if 'websites' in user and isinstance(user['websites'], list):
+            user['websites'] = [
+                w for w in user['websites']
+                if (w if isinstance(w, str) else (w.get('domain') or w.get('id') or w.get('name') or '')) not in domains_to_purge.union(ids_to_purge)
+            ]
 
-        return {'status': 'error', 'message': 'Website not found or unauthorized'}
+        self._stats_cache.clear()
+        primary_label = next(iter(domains_to_purge), website_id or 'Website')
+        return {'status': 'success', 'message': f'Website "{primary_label}" removed successfully'}
 
     def update_profile(self, user, data):
         updates = {}
@@ -757,68 +775,9 @@ class UserAPI:
             )
             user['requests_today'] = 0
 
-        # Query websites from the websites and wordpress_sites collections scoped to the user
+        # Query websites from the websites collection scoped to the user
         websites_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
         websites_cursor = list(self.db.websites.find(websites_query))
-
-        # Auto-discover active domains from connected wordpress_sites if not yet in websites table
-        known_domains = {w.get('domain') for w in websites_cursor if w.get('domain')}
-        wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
-        wp_domains = [wp.get('domain') for wp in wp_sites if wp.get('domain')]
-        
-        all_discovered_domains = set(filter(None, wp_domains))
-        for ws in user.get('websites', []):
-            if isinstance(ws, dict) and ws.get('domain'):
-                all_discovered_domains.add(ws.get('domain'))
-            elif isinstance(ws, str) and ws:
-                all_discovered_domains.add(ws)
-
-        for d in all_discovered_domains:
-            if d not in ('unknown', '') and d not in known_domains:
-                matching_user_ws = next((w for w in user.get('websites', []) if isinstance(w, dict) and w.get('domain') == d), None)
-                site_id = str(matching_user_ws.get('id')) if matching_user_ws and matching_user_ws.get('id') else str(uuid.uuid4())
-                now_dt = datetime.now()
-                is_local = d in ("localhost", "127.0.0.1", "::1") or (matching_user_ws and "localhost" in matching_user_ws.get('url', ''))
-                site_display_name = "Localhost (XAMPP)" if is_local else d
-                site_url = matching_user_ws.get('url') if matching_user_ws and matching_user_ws.get('url') else ("http://localhost" if is_local else f"https://{d}")
-                raw_key = generate_api_key()
-                key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-                new_site = {
-                    '_id': site_id,
-                    'user_id': user_id_str,
-                    'name': site_display_name,
-                    'domain': d,
-                    'url': site_url,
-                    'platform': 'WordPress (XAMPP)' if is_local else 'WordPress',
-                    'api_key': raw_key,
-                    'status': 'active',
-                    'protection_enabled': True,
-                    'waf_mode': 'protect',
-                    'malware_scanner': 'active',
-                    'threat_level': 'LOW',
-                    'added_at': now_dt,
-                    'connected_at': now_dt,
-                    'requests_today': 0,
-                    'total_requests': 0,
-                    'total_blocked': 0,
-                }
-                try:
-                    self.db.websites.insert_one(new_site)
-                    try:
-                        self.db.api_keys.insert_one({
-                            'website_id': site_id,
-                            'user_id': user_id_str,
-                            'key_hash': key_hash,
-                            'label': 'WordPress',
-                            'created_at': now_dt,
-                            'status': 'active'
-                        })
-                    except Exception:
-                        pass
-                    websites_cursor.append(new_site)
-                    known_domains.add(d)
-                except Exception:
-                    pass
 
         websites = []
         for w in websites_cursor:

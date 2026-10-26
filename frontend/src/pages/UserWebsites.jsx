@@ -351,17 +351,33 @@ export default function UserWebsites() {
 
     const targetId = deleteModalSite.id || deleteModalSite._id || deleteModalSite.website_id || domainName
     setDeletingSite(true)
+
+    // 1. Optimistic removal: instantly drop from screen
+    setData(prev => {
+      const prevList = prev?.websites || []
+      const updatedList = prevList.filter(w => {
+        const wDom = (w.domain || w.name || w.url || '').toLowerCase()
+        const wId = String(w.id || w._id || '')
+        return wDom !== domainName.toLowerCase() && wId !== String(targetId)
+      })
+      const updated = { ...(prev || {}), websites: updatedList }
+      userStore.set('websites', updated)
+      userStore.set('dashboard', updated)
+      return updated
+    })
+
     try {
-      await api.removeUserWebsite(targetId)
+      await api.removeUserWebsite(targetId, domainName)
       setFeedbackMsg({ type: 'success', text: `Website "${domainName}" disconnected and removed successfully.` })
       userStore.clear()
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
       setDeleteModalSite(null)
       setDeleteConfirmInput('')
-      await fetchData()
+      await fetchData(true)
     } catch (err) {
       setFeedbackMsg({ type: 'error', text: err.message || 'Failed to remove website' })
+      await fetchData(true)
     } finally {
       setDeletingSite(false)
     }

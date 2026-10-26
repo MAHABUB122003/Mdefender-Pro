@@ -381,11 +381,14 @@ export const api = {
   regenerateApiKey: (data) => apiCall('/api/user/regenerate_key', { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
   getUserWebsites: (platform) => apiCall(`/api/v1/websites${platform ? `?platform=${encodeURIComponent(platform)}` : ''}`),
   addUserWebsite: (data) => apiCall('/api/user/websites', { method: 'POST', body: JSON.stringify(data) }),
-  removeUserWebsite: async (id) => {
+  removeUserWebsite: async (id, domain) => {
+    const params = new URLSearchParams()
+    if (id) params.set('id', id)
+    if (domain) params.set('domain', domain)
     try {
-      return await apiCall(`/api/user/websites?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return await apiCall(`/api/user/websites?${params.toString()}`, { method: 'DELETE' });
     } catch (err) {
-      return await apiCall(`/api/v1/websites/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return await apiCall(`/api/v1/websites/${encodeURIComponent(id || domain)}`, { method: 'DELETE' });
     }
   },
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),

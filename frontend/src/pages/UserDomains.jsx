@@ -340,7 +340,7 @@ export default function UserDomains() {
       try {
         await api.deleteDomain(siteId || domainName).catch(() => null)
       } catch (_) {}
-      await api.removeUserWebsite(siteId || domainName)
+      await api.removeUserWebsite(siteId || domainName, domainName)
       setFeedbackMsg({ type: 'success', text: `Domain "${domainName}" disconnected and removed successfully.` })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')

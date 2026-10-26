@@ -1038,7 +1038,8 @@ async def user_add_website(request: Request, user: dict = Depends(verify_user_to
 async def user_remove_website(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
         website_id = request.query_params.get('id')
-        res = user_api.remove_website(user, website_id)
+        domain = request.query_params.get('domain')
+        res = user_api.remove_website(user, website_id=website_id, domain=domain)
         status_code = 200 if res.get('status') != 'error' else 400
         return JSONResponse(status_code=status_code, content=res)
     except Exception as e:
