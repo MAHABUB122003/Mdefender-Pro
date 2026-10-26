@@ -475,6 +475,39 @@ function mdfToggleExportDropdown(e) {
     }
 }
 
+function wafFwActionBlockIp(ip) {
+    wafFwSendIpAction('waf_fw_block_ip', ip, 'Manually blocked from Security Logs');
+}
+
+function wafFwActionWhitelistIp(ip) {
+    wafFwSendIpAction('waf_fw_whitelist_ip', ip, 'Whitelisted from Security Logs');
+}
+
+function wafFwSendIpAction(action, ip, reason) {
+    var isBlock = action === 'waf_fw_block_ip';
+    var actionLabel = isBlock ? 'blacklist' : 'whitelist';
+    if (!ip || !window.confirm('Add IP ' + ip + ' to the ' + actionLabel + '?')) return;
+
+    jQuery.post(ajaxurl, {
+        action: action,
+        ip: ip,
+        reason: reason,
+        nonce: (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : ''
+    }, function(response) {
+        if (response && response.success) {
+            window.alert(response.data && response.data.message ? response.data.message : 'IP action completed.');
+            window.location.reload();
+            return;
+        }
+        window.alert(response && response.data && response.data.message ? response.data.message : 'Could not update the IP list.');
+    }).fail(function(xhr) {
+        var message = xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+            ? xhr.responseJSON.data.message
+            : 'Request failed. The IP list was not changed.';
+        window.alert(message);
+    });
+}
+
 document.addEventListener('click', function() {
     var menu = document.getElementById('mdfExportDropdown');
     if (menu) menu.style.display = 'none';

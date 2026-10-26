@@ -124,7 +124,24 @@ if (is_array($blacklist)) {
         <div class="mdf-card-header-flex">
             <div>
                 <h3 class="mdf-chart-heading">Blacklisted IP Records</h3>
-                <span class="mdf-chart-sub">Perimeter bans enforced across HTTP/HTTPS traffic</span>
+                <span class="mdf-chart-sub"><span id="wafBlacklistVisibleCount"><?php echo number_format($total_blacklisted); ?></span> IPs shown</span>
+            </div>
+            <div class="mdf-blacklist-toolbar">
+                <label class="screen-reader-text" for="wafBlacklistSearch">Search blocked IPs</label>
+                <input type="search" id="wafBlacklistSearch" placeholder="Search IP or reason">
+                <label class="screen-reader-text" for="wafBlacklistType">Filter by block type</label>
+                <select id="wafBlacklistType">
+                    <option value="all">All block types</option>
+                    <option value="permanent">Permanent</option>
+                    <option value="temporary">Temporary</option>
+                </select>
+                <label class="screen-reader-text" for="wafBlacklistSource">Filter by source</label>
+                <select id="wafBlacklistSource">
+                    <option value="all">All sources</option>
+                    <option value="manual">Manual</option>
+                    <option value="automatic">Automatic</option>
+                </select>
+                <button type="button" class="mdf-btn-customize" id="wafBlacklistExport">Export CSV</button>
             </div>
         </div>
 
@@ -149,7 +166,7 @@ if (is_array($blacklist)) {
                         </tr>
                     <?php else: ?>
                         <?php foreach ($blacklist as $entry): ?>
-                            <tr>
+                            <tr data-blacklist-record="1" data-ip="<?php echo esc_attr($entry->ip); ?>" data-type="<?php echo esc_attr($entry->type); ?>" data-source="<?php echo !empty($entry->auto_blocked) ? 'automatic' : 'manual'; ?>">
                                 <td>
                                     <div class="mdf-cell-origin">
                                         <span class="mdf-shield-icon-badge">
@@ -188,6 +205,11 @@ if (is_array($blacklist)) {
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                    <tr id="wafBlacklistNoMatches" style="display:none;">
+                        <td colspan="6" style="text-align:center; padding: 28px; color: #66756d;">
+                            No IPs match the current search and filters.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -272,4 +294,57 @@ function wafFwUnblock(ip) {
     }
 }
 jQuery('#wafFwBlacklistModal').on('click', function(e) { if (e.target.id === 'wafFwBlacklistModal') jQuery('#wafFwBlacklistModal').hide(); });
+
+jQuery(function($) {
+    function filterBlacklist() {
+        var query = $('#wafBlacklistSearch').val().trim().toLowerCase();
+        var type = $('#wafBlacklistType').val();
+        var source = $('#wafBlacklistSource').val();
+        var visibleCount = 0;
+
+        $('tr[data-blacklist-record]').each(function() {
+            var row = $(this);
+            var matches = (!query || row.text().toLowerCase().indexOf(query) !== -1)
+                && (type === 'all' || row.data('type') === type)
+                && (source === 'all' || row.data('source') === source);
+            row.toggle(matches);
+            if (matches) visibleCount++;
+        });
+
+        $('#wafBlacklistVisibleCount').text(visibleCount);
+        $('#wafBlacklistNoMatches').toggle(visibleCount === 0 && $('tr[data-blacklist-record]').length > 0);
+    }
+
+    $('#wafBlacklistSearch, #wafBlacklistType, #wafBlacklistSource').on('input change', filterBlacklist);
+
+    $('#wafBlacklistExport').on('click', function() {
+        var headers = [];
+        $('.mdf-events-data-table thead th').slice(0, 5).each(function() {
+            headers.push($(this).text().trim());
+        });
+        var rows = [headers.map(function(value) {
+            return '"' + value.replace(/"/g, '""') + '"';
+        }).join(',')];
+
+        $('tr[data-blacklist-record]:visible').each(function() {
+            var cells = [];
+            $(this).find('td').slice(0, 5).each(function() {
+                var value = $(this).text().trim().replace(/\s+/g, ' ');
+                if (/^[\s]*[=+\-@]/.test(value)) value = "'" + value;
+                cells.push('"' + value.replace(/"/g, '""') + '"');
+            });
+            rows.push(cells.join(','));
+        });
+
+        var blob = new Blob(['\uFEFF' + rows.join('\r\n')], {type: 'text/csv;charset=utf-8;'});
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'mdefender-blacklist.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    });
+});
 </script>

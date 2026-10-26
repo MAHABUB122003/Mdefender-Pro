@@ -32,23 +32,33 @@ var warDashboard = {
 
     initToggle: function() {
         var toggle = document.getElementById('warProtectionToggle');
-        var status = document.getElementById('warToggleStatus');
+        var status = document.getElementById('mdfProtectionStatusVal');
         if (!toggle || !status) return;
         toggle.addEventListener('change', function() {
             var enabled = this.checked;
+            var previousValue = !enabled;
+            toggle.disabled = true;
             jQuery.post(ajaxurl, {
                 action: 'waf_fw_toggle_protection',
-                enabled: enabled
+                enabled: enabled ? 'yes' : 'no',
+                nonce: (typeof waf_fw_ajax !== 'undefined') ? waf_fw_ajax.nonce : ''
             }, function(r) {
-                if (r.success) {
-                    if (enabled) {
-                        status.textContent = 'Active';
-                        status.style.color = '#10b981';
-                    } else {
-                        status.textContent = 'Inactive';
-                        status.style.color = '#ef4444';
-                    }
+                if (r && r.success) {
+                    status.textContent = enabled ? 'Active & enforcing' : 'Disabled';
+                    status.style.color = enabled ? '' : '#ef4444';
+                    window.location.reload();
+                    return;
                 }
+                toggle.checked = previousValue;
+                window.alert((r && r.data && r.data.message) ? r.data.message : 'Could not update protection status.');
+            }).fail(function(xhr) {
+                toggle.checked = previousValue;
+                var message = xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+                    ? xhr.responseJSON.data.message
+                    : 'Request failed. Protection status was not changed.';
+                window.alert(message);
+            }).always(function() {
+                toggle.disabled = false;
             });
         });
     },
@@ -508,7 +518,17 @@ function escapeHtml(str) {
 function wafFwBlockIP(ip) {
     if (!confirm('Block IP ' + ip + '?')) return;
     jQuery.post(ajaxurl, {action: 'waf_fw_block_ip', ip: ip, reason: 'Manually blocked from dashboard', nonce: waf_fw_ajax.nonce}, function(r) {
-        alert(r.success ? 'IP blocked successfully' : 'Failed to block IP');
+        if (r && r.success) {
+            alert(r.data && r.data.message ? r.data.message : 'IP blocked successfully.');
+            warDashboard.loadData();
+            return;
+        }
+        alert(r && r.data && r.data.message ? r.data.message : 'Failed to block IP.');
+    }).fail(function(xhr) {
+        var message = xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+            ? xhr.responseJSON.data.message
+            : 'Request failed. The IP was not blocked.';
+        alert(message);
     });
 }
 

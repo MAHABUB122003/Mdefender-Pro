@@ -35,6 +35,13 @@ $last_scan_record = null;
 if ($wpdb->get_var("SHOW TABLES LIKE '{$table_scan_results}'") === $table_scan_results) {
     $last_scan_record = $wpdb->get_row("SELECT * FROM {$table_scan_results} ORDER BY id DESC LIMIT 1");
 }
+$last_scan_metrics = [];
+if ($last_scan_record && !empty($last_scan_record->vulnerabilities)) {
+    $last_scan_results = json_decode($last_scan_record->vulnerabilities, true);
+    if (is_array($last_scan_results) && !empty($last_scan_results['real_metrics']) && is_array($last_scan_results['real_metrics'])) {
+        $last_scan_metrics = $last_scan_results['real_metrics'];
+    }
+}
 
 $active_threats_count = 0;
 if ($wpdb->get_var("SHOW TABLES LIKE '{$table_file_changes}'") === $table_file_changes) {
@@ -47,8 +54,9 @@ if (!$last_scan_date && $last_scan_record && !empty($last_scan_record->created_a
 }
 $last_scan_display = !empty($last_scan_date) ? human_time_diff(strtotime($last_scan_date), current_time('timestamp')) . ' ago' : 'Not scanned yet';
 $last_scan_duration = ($last_scan_record && !empty($last_scan_record->duration_seconds)) ? 'Duration: ' . $last_scan_record->duration_seconds . 's' : ($last_scan_date ? 'Duration: ~1m' : 'Ready to scan');
-$health_score = $last_scan_record && isset($last_scan_record->score) ? (int)$last_scan_record->score : ($active_threats_count > 0 ? 75 : 100);
-$health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 80 ? 'Good Security Posture' : 'Action Required');
+$has_scan_score = $last_scan_record && isset($last_scan_record->score);
+$health_score = $has_scan_score ? (int)$last_scan_record->score : null;
+$health_sub = !$has_scan_score ? 'No completed scan yet' : ($health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 80 ? 'Good Security Posture' : 'Action Required'));
 ?>
 
 <div class="mdf-canvas-wrap">
@@ -80,9 +88,9 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
             <p class="mdf-canvas-subtitle">Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics.</p>
         </div>
         <div class="mdf-canvas-hero-right">
-            <div class="mdf-status-badge mdf-status-protected" id="mdfGlobalStatusPill">
+            <div class="mdf-status-badge mdf-status-idle" id="mdfGlobalStatusPill">
                 <span class="mdf-status-dot" id="mdfGlobalStatusDot"></span>
-                <span class="mdf-status-text" id="mdfGlobalStatusText">SYSTEM PROTECTED</span>
+                <span class="mdf-status-text" id="mdfGlobalStatusText">SCAN NOT RUN</span>
             </div>
             <div class="mdf-btn-group">
                 <button type="button" class="mdf-primary-action-btn" id="wafStartFullScan">
@@ -115,8 +123,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                     <canvas id="mdfRadarCanvas" width="340" height="340"></canvas>
                     <div class="mdf-radar-center-target">
                         <svg class="mdf-radar-center-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                        <span class="mdf-radar-score-display" id="mdfRadarCenterScore">100%</span>
-                        <span class="mdf-radar-target-label">SECURE</span>
+                        <span class="mdf-radar-score-display" id="mdfRadarCenterScore">&mdash;</span>
+                        <span class="mdf-radar-target-label" id="mdfRadarTargetLabel">NOT SCANNED</span>
                     </div>
                 </div>
                 <div class="mdf-radar-footer-meta">
@@ -126,7 +134,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                     </div>
                     <div class="mdf-meta-block" style="text-align:right;">
                         <span class="mdf-meta-title">RADAR SWEEP</span>
-                        <strong class="mdf-meta-val mdf-text-emerald" id="mdfSweepStatus">Active Continuous</strong>
+                        <strong class="mdf-meta-val mdf-text-emerald" id="mdfSweepStatus">Awaiting First Scan</strong>
                     </div>
                 </div>
             </div>
@@ -142,8 +150,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                         </div>
                         <div class="mdf-telemetry-body">
                             <div class="mdf-telemetry-label">SECURITY HEALTH</div>
-                            <div class="mdf-telemetry-val" id="wafScanScore"><?php echo esc_html($health_score); ?><span class="mdf-telemetry-unit">/100</span></div>
-                            <div class="mdf-telemetry-sub mdf-text-emerald" id="mdfHealthSub"><?php echo esc_html($health_sub); ?></div>
+                            <div class="mdf-telemetry-val" id="wafScanScore"><?php echo $has_scan_score ? esc_html($health_score) . '<span class="mdf-telemetry-unit">/100</span>' : '&mdash;'; ?></div>
+                            <div class="mdf-telemetry-sub <?php echo $has_scan_score ? 'mdf-text-emerald' : ''; ?>" id="mdfHealthSub"><?php echo esc_html($health_sub); ?></div>
                         </div>
                     </div>
 
@@ -153,9 +161,9 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         </div>
                         <div class="mdf-telemetry-body">
-                            <div class="mdf-telemetry-label">FILES MONITORED</div>
-                            <div class="mdf-telemetry-val" id="wafSummaryFilesCount"><?php echo $monitored_files_count > 0 ? number_format($monitored_files_count) : '0'; ?></div>
-                            <div class="mdf-telemetry-sub"><?php echo $monitored_files_count > 0 ? 'SHA-256 Baseline Tracked' : 'Pending Baseline Scan'; ?></div>
+                            <div class="mdf-telemetry-label">FILES SCANNED</div>
+                            <div class="mdf-telemetry-val" id="wafSummaryFilesCount"><?php echo isset($last_scan_metrics['total_files']) ? number_format((int)$last_scan_metrics['total_files']) : '&mdash;'; ?></div>
+                            <div class="mdf-telemetry-sub"><?php echo isset($last_scan_metrics['total_files']) ? 'In the last completed scan' : 'No completed scan yet'; ?></div>
                         </div>
                     </div>
 
@@ -165,9 +173,9 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                         </div>
                         <div class="mdf-telemetry-body">
-                            <div class="mdf-telemetry-label">COMPONENTS AUDITED</div>
-                            <div class="mdf-telemetry-val" id="wafSummaryThemesCount">18 Modules</div>
-                            <div class="mdf-telemetry-sub">Core, Plugins, Themes &amp; DB</div>
+                            <div class="mdf-telemetry-label">COMPONENT FILES SCANNED</div>
+                            <div class="mdf-telemetry-val" id="wafSummaryThemesCount"><?php echo isset($last_scan_metrics['plugin_files'], $last_scan_metrics['theme_files']) ? number_format((int)$last_scan_metrics['plugin_files'] + (int)$last_scan_metrics['theme_files']) : '&mdash;'; ?></div>
+                            <div class="mdf-telemetry-sub"><?php echo isset($last_scan_metrics['plugin_files'], $last_scan_metrics['theme_files']) ? 'Plugin and theme files' : 'No completed scan yet'; ?></div>
                         </div>
                     </div>
 
@@ -177,7 +185,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         </div>
                         <div class="mdf-telemetry-body">
-                            <div class="mdf-telemetry-label">ACTIVE THREATS</div>
+                            <div class="mdf-telemetry-label" id="mdfThreatLabel">UNRESOLVED FILE CHANGES</div>
                             <div class="mdf-telemetry-val <?php echo $active_threats_count > 0 ? 'mdf-text-coral' : 'mdf-text-emerald'; ?>" id="wafCriticalCount"><?php echo number_format($active_threats_count); ?></div>
                             <div class="mdf-telemetry-sub" id="mdfThreatSub"><?php echo $active_threats_count > 0 ? number_format($active_threats_count) . ' Actionable Threats' : '0 Actionable Threats'; ?></div>
                         </div>
@@ -202,8 +210,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                         </div>
                         <div class="mdf-telemetry-body">
                             <div class="mdf-telemetry-label">AUTONOMOUS UPTIME</div>
-                            <div class="mdf-telemetry-val">99.98%</div>
-                            <div class="mdf-telemetry-sub">Micro-Batch Queue Watcher</div>
+                            <div class="mdf-telemetry-val"><?php echo $continuous_monitoring === 'yes' ? 'Enabled' : 'Paused'; ?></div>
+                            <div class="mdf-telemetry-sub">Continuous scan monitoring</div>
                         </div>
                     </div>
 
@@ -286,16 +294,118 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
         </div>
     </div>
 
-    <!-- 18 SECURITY DOMAINS RADAR MATRIX -->
-    <div class="mdf-section-heading">
-        <div class="mdf-heading-left">
-            <svg class="mdf-heading-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-            <h3 class="mdf-heading-title">18 Autonomous Security Domains Matrix</h3>
+    <!-- WORDFENCE-GRADE COMPACT SCAN PIPELINE -->
+    <div class="mdf-scan-pipeline-bar" id="mdfScanPipelineBar">
+        <div class="mdf-pipeline-step active" id="pipeStepSpam">
+            <span class="mdf-pipeline-dot"></span>
+            <span class="mdf-pipeline-name">1. Spam &amp; SEO</span>
         </div>
-        <span class="mdf-badge-pill">REAL-TIME CONTINUOUS AUDIT</span>
+        <div class="mdf-pipeline-divider"></div>
+        <div class="mdf-pipeline-step active" id="pipeStepServer">
+            <span class="mdf-pipeline-dot"></span>
+            <span class="mdf-pipeline-name">2. Server &amp; Environment</span>
+        </div>
+        <div class="mdf-pipeline-divider"></div>
+        <div class="mdf-pipeline-step active" id="pipeStepCore">
+            <span class="mdf-pipeline-dot"></span>
+            <span class="mdf-pipeline-name">3. WP Core Checksums</span>
+        </div>
+        <div class="mdf-pipeline-divider"></div>
+        <div class="mdf-pipeline-step active" id="pipeStepMalware">
+            <span class="mdf-pipeline-dot"></span>
+            <span class="mdf-pipeline-name">4. Deep AST Malware &amp; ML</span>
+        </div>
+        <div class="mdf-pipeline-divider"></div>
+        <div class="mdf-pipeline-step active" id="pipeStepDB">
+            <span class="mdf-pipeline-dot"></span>
+            <span class="mdf-pipeline-name">5. Database &amp; Users</span>
+        </div>
+        <div class="mdf-pipeline-divider"></div>
+        <div class="mdf-pipeline-step active" id="pipeStepIntel">
+            <span class="mdf-pipeline-dot"></span>
+            <span class="mdf-pipeline-name">6. Threat Intel &amp; Leaks</span>
+        </div>
     </div>
 
-    <div class="mdf-domains-grid" id="mdfDomainsGrid">
+    <!-- EVIDENCE-DRIVEN THREAT FINDINGS CENTER (WORDFENCE-GRADE SOC) -->
+    <div class="mdf-unified-card mdf-findings-card" id="wafScanResults">
+        <!-- SECURITY FINDINGS & FORENSIC ANALYSIS TOP HEADER (IMAGE 1 PARITY) -->
+        <div class="mdf-wf-findings-header-block">
+            <div class="mdf-findings-top-bar">
+                <div class="mdf-findings-title-group">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <circle cx="12" cy="11" r="2.5"/>
+                    </svg>
+                    <h3 class="mdf-findings-main-title">Security Findings &amp; Forensic Analysis</h3>
+                    <span class="mdf-findings-issues-badge" id="wafHeaderIssuesBadge">0 Issues</span>
+                </div>
+                <div class="mdf-findings-top-actions">
+                    <button type="button" class="mdf-pill-action-btn" id="wafToggleExpandAllBtn" title="Expand or collapse all issue details">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                        <span id="wafExpandAllLabel">Expand All</span>
+                    </button>
+                    <button type="button" class="mdf-pill-action-btn mdf-pill-btn-quarantine" id="wafBulkCleanBtn" title="Safely quarantine isolated rogue malware">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Quarantine All Threats</span>
+                    </button>
+                    <button type="button" class="mdf-pill-action-btn mdf-pill-btn-repair" id="wafBulkRestoreBtn" title="Restore modified core files to pristine WordPress.org release">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        <span>Repair All Core Files</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mdf-findings-filter-row">
+                <button type="button" class="mdf-findings-pill-tab active" data-tab="all">All Findings (<span id="wafTabAllCount">0</span>)</button>
+                <button type="button" class="mdf-findings-pill-tab" data-tab="critical">Critical Threats (<span id="wafTabCriticalCount">0</span>)</button>
+                <button type="button" class="mdf-findings-pill-tab" data-tab="warning">Warnings (<span id="wafTabWarningCount">0</span>)</button>
+                <button type="button" class="mdf-findings-pill-tab" data-tab="ignored">Ignored (<span id="wafTabIgnoredCount">0</span>)</button>
+            </div>
+        </div>
+
+        <!-- Telemetry Stats Strip (Identical to Wordfence) -->
+        <div class="mdf-wf-stats-strip">
+            <div class="mdf-wf-stat-item">Files scanned: <strong id="mdfStatFiles"><?php echo isset($last_scan_metrics['total_files']) ? number_format((int)$last_scan_metrics['total_files']) : '&mdash;'; ?></strong></div>
+            <div class="mdf-wf-stat-item">Plugin &amp; theme files: <strong id="mdfStatThemesPlugins"><?php echo isset($last_scan_metrics['plugin_files'], $last_scan_metrics['theme_files']) ? number_format((int)$last_scan_metrics['plugin_files'] + (int)$last_scan_metrics['theme_files']) : '&mdash;'; ?></strong></div>
+            <div class="mdf-wf-stat-item">Users checked: <strong id="mdfStatUsers"><?php echo isset($last_scan_metrics['users_checked']) ? number_format((int)$last_scan_metrics['users_checked']) : '&mdash;'; ?></strong></div>
+            <div class="mdf-wf-stat-item">Database tables: <strong id="mdfStatDatabaseTables"><?php echo isset($last_scan_metrics['database_tables']) ? number_format((int)$last_scan_metrics['database_tables']) : '&mdash;'; ?></strong></div>
+            <div class="mdf-wf-stat-item">Results Found: <strong id="wafResultsFoundCount" style="color:#dc2626;">0</strong></div>
+        </div>
+
+        <!-- Findings List -->
+        <div id="wafScanDetails" class="mdf-findings-list">
+            <div class="mdf-empty-state" id="mdfNoFindingsState">
+                <div class="mdf-empty-icon">
+                    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                </div>
+                <h4>Zero Threats Detected</h4>
+                <p>Your WordPress files, core checksums, database and server configuration match pristine baseline integrity.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 18 SECURITY DOMAINS RADAR MATRIX (COMPACT COLLAPSIBLE SENTINELS) -->
+    <div class="mdf-section-heading mdf-collapsible-heading" id="mdfDomainsHeaderToggle" style="cursor:pointer;margin-top:32px;">
+        <div class="mdf-heading-left">
+            <div class="mdf-heading-icon-wrap" style="width:36px;height:36px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+            <div>
+                <h3 class="mdf-heading-title" style="margin:0;">18 Autonomous Security Sentinel Domains</h3>
+                <div style="font-size:12px;color:#64748b;margin-top:2px;">Filesystem, integrity, backdoor, CVE vulnerability and header sentinels</div>
+            </div>
+        </div>
+        <div class="mdf-heading-right" style="display:flex;align-items:center;gap:10px;">
+            <span class="mdf-badge-pill" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;" id="mdfDomainsStatusBadge">18/18 SENTINELS ACTIVE</span>
+            <button type="button" class="mdf-secondary-action-btn" id="mdfToggleDomainsBtn">
+                <span id="mdfToggleDomainsText">View 18 Sentinels</span>
+                <svg class="mdf-chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s ease;"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="mdf-domains-grid" id="mdfDomainsGrid" style="display:none;">
         
         <!-- 1. Filesystem -->
         <div class="mdf-domain-card" data-domain="filesystem" id="domain-card-filesystem">
@@ -303,7 +413,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-forest">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-filesystem">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-filesystem">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Filesystem Sentinel</h4>
             <p class="mdf-domain-desc">New, modified, deleted & executable files in uploads folder</p>
@@ -319,7 +429,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-emerald">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-malware">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-malware">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Malware & Trojan Scanner</h4>
             <p class="mdf-domain-desc">Known malware, ransomware & YARA signature intelligence</p>
@@ -335,7 +445,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-coral">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-backdoors">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-backdoors">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Backdoors & Webshells</h4>
             <p class="mdf-domain-desc">AST dataflow, dynamic eval, entropy & obfuscated code</p>
@@ -351,7 +461,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-forest">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-integrity">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-integrity">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">File Integrity Monitor</h4>
             <p class="mdf-domain-desc">SHA-256 cryptographic baseline & delta change tracking</p>
@@ -367,7 +477,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-mint">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-wp_core">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-wp_core">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">WordPress Core Integrity</h4>
             <p class="mdf-domain-desc">Official WordPress.org pristine checksum verification</p>
@@ -383,7 +493,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-forest">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-plugins">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-plugins">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Plugin Integrity & Health</h4>
             <p class="mdf-domain-desc">Audits plugin modifications, unexpected files & tampered code</p>
@@ -399,7 +509,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-mint">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-themes">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-themes">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Theme Integrity</h4>
             <p class="mdf-domain-desc">Active & parent themes file integrity and hidden functions</p>
@@ -415,7 +525,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-emerald">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-database">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-database">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Database Security</h4>
             <p class="mdf-domain-desc">Table integrity, injected SQL fragments & prefix safety</p>
@@ -431,7 +541,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-forest">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-users">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-users">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">User & Privilege Audit</h4>
             <p class="mdf-domain-desc">Rogue admin detection, password audits & app passwords</p>
@@ -447,7 +557,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-mint">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-config">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-config">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Option & Config Security</h4>
             <p class="mdf-domain-desc">wp-config.php constants, siteurl, active plugins & core options</p>
@@ -463,7 +573,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-coral">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-exposure">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-exposure">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Public Exposure Sentinel</h4>
             <p class="mdf-domain-desc">Probes for exposed .env, .git, SQL dumps, debug logs & backups</p>
@@ -479,7 +589,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-amber">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-vulnerabilities">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-vulnerabilities">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Vulnerability & CVE DB</h4>
             <p class="mdf-domain-desc">Checks core, plugins & themes against active CVE databases</p>
@@ -495,7 +605,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-forest">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-headers">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-headers">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Security Headers Guard</h4>
             <p class="mdf-domain-desc">CSP, HSTS, X-Frame-Options, X-Content-Type & Permissions</p>
@@ -511,7 +621,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-mint">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-server">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-server">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">PHP & Server Config</h4>
             <p class="mdf-domain-desc">PHP version, dangerous functions, display_errors & SSL/TLS</p>
@@ -527,7 +637,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-emerald">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-changes">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-changes">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Suspicious Changes</h4>
             <p class="mdf-domain-desc">Unscheduled file writes, permission escalations & modifications</p>
@@ -543,7 +653,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-forest">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-threat_intel">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-threat_intel">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Threat Intelligence & ML</h4>
             <p class="mdf-domain-desc">MDefender Cloud AI zero-day model & IP blacklist feed</p>
@@ -559,7 +669,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-coral">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-redirects">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-redirects">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">Suspicious Redirects</h4>
             <p class="mdf-domain-desc">Detects conditional hacker redirects and rogue JavaScript links</p>
@@ -575,7 +685,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
                 <div class="mdf-domain-icon mdf-icon-amber">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </div>
-                <span class="mdf-dom-badge badge-secure" id="badge-domain-seo_spam">SECURE</span>
+                <span class="mdf-dom-badge badge-idle" id="badge-domain-seo_spam">NOT SCANNED</span>
             </div>
             <h4 class="mdf-domain-name">SEO Spam & Injected Content</h4>
             <p class="mdf-domain-desc">Scans posts & database for pharmaceutical spam & hidden backdoors</p>
@@ -587,53 +697,6 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 
     </div>
 
-    <!-- EVIDENCE-DRIVEN THREAT FINDINGS CENTER -->
-    <div class="mdf-unified-card mdf-findings-card" id="wafScanResults">
-        <div class="mdf-findings-head-row">
-            <div class="mdf-findings-head-left">
-                <div class="mdf-findings-title-wrap">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
-                    <h3 class="mdf-findings-title">Security Findings & Forensic Analysis</h3>
-                </div>
-                <span class="mdf-count-pill" id="wafResultsFoundCount">0 Issues</span>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="mdf-findings-head-actions">
-                <button type="button" class="mdf-secondary-action-btn" id="wafToggleAllDetailsBtn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                    <span id="wafToggleAllText">Expand All</span>
-                </button>
-                <button type="button" class="mdf-outline-coral-btn" id="wafBulkCleanBtn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    <span>Quarantine All Threats</span>
-                </button>
-                <button type="button" class="mdf-outline-emerald-btn" id="wafBulkRestoreBtn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    <span>Repair All Core Files</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Filter Tabs -->
-        <div class="mdf-filter-tabs-row">
-            <button type="button" class="mdf-tab-btn active" data-tab="all">All Findings (<span id="wafTabAllCount">0</span>)</button>
-            <button type="button" class="mdf-tab-btn tab-critical" data-tab="critical">Critical Threats (<span id="wafTabCriticalCount">0</span>)</button>
-            <button type="button" class="mdf-tab-btn tab-warning" data-tab="warning">Warnings (<span id="wafTabWarningCount">0</span>)</button>
-            <button type="button" class="mdf-tab-btn tab-ignored" data-tab="ignored">Ignored (<span id="wafTabIgnoredCount">0</span>)</button>
-        </div>
-
-        <!-- Findings List -->
-        <div id="wafScanDetails" class="mdf-findings-list">
-            <div class="mdf-empty-state" id="mdfNoFindingsState">
-                <div class="mdf-empty-icon">
-                    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                </div>
-                <h4>Zero Threats Detected</h4>
-                <p>Your WordPress files, core checksums, database and server configuration match pristine baseline integrity.</p>
-            </div>
-        </div>
-    </div>
 
     <!-- SECURITY TIMELINE & SCAN HISTORY DUAL GRID -->
     <div class="mdf-dual-grid">
@@ -876,19 +939,61 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     </div>
 </div>
 
+
+<!-- Wordfence-Style Repair Confirmation & Backup Download Modal -->
+<div id="wafRepairModal" class="mdf-modal-backdrop" style="display:none;">
+    <div class="mdf-modal-box" style="max-width: 520px; width: 100%; padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(15,23,42,0.18);">
+        <div class="mdf-modal-header" style="padding: 16px 20px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </div>
+                <strong style="font-size: 16px; color: #0f172a; font-weight: 700;">Download Backup File</strong>
+            </div>
+            <button type="button" id="wafCloseRepairModalBtn" class="mdf-modal-close" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+        <div class="mdf-modal-body" style="padding: 22px 24px; background: #ffffff;">
+            <p style="font-size: 13.5px; color: #334155; line-height: 1.55; margin: 0 0 14px;">
+                Please make a backup of this file before proceeding. If you need to restore this backup file, you can copy it to the following path from your site's root:
+            </p>
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 11px 14px; font-family: Consolas, Monaco, monospace; font-size: 12.5px; color: #0f172a; margin-bottom: 18px; word-break: break-all;" id="wafRepairTargetFilePath">
+                wp-admin/includes/update-core.php
+            </div>
+            <div style="margin-bottom: 18px;">
+                <button type="button" class="mdf-secondary-action-btn" id="wafRepairDownloadBackupBtn" style="font-size: 12px; font-weight: 700; padding: 9px 16px; border-color: #cbd5e1; color: #2563eb; background: #f8fafc;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>DOWNLOAD FILE</span>
+                </button>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #64748b; cursor: pointer; user-select: none;">
+                <input type="checkbox" id="wafRepairDontAskAgain" style="accent-color: #2563eb; cursor: pointer;">
+                <span>Don't ask again</span>
+            </label>
+        </div>
+        <div class="mdf-modal-footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="mdf-secondary-action-btn" id="wafRepairCancelBtn" style="font-size:12.5px;padding:8px 18px;">CANCEL</button>
+            <button type="button" class="mdf-primary-action-btn" id="wafRepairConfirmBtn" style="font-size:12.5px;padding:8px 18px;background:#dc2626;border-color:#dc2626;box-shadow:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                <span>REPAIR FILE</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
 /* ==========================================================================
    MDefender Pro - Unified Enterprise Security Scanner Design System
-   Matches Command Center Dashboard Theme:
-   Base Canvas: #F6F8F6 | White Cards: #FFFFFF | Border: #E6ECE8
-   Spruce: #0F2C26 | Emerald: #059669 | Terracotta Coral: #DF5A38
+   Matches Authentic MDefender Pro SOC Theme:
+   Base Canvas: #f8fafc | Cards: #ffffff | Border: #e2e8f0
+   Slate Dark: #0f172a / #1e293b | Cyber Blue: #2563eb | Emerald: #10b981
+   Crimson: #ef4444 | Amber: #f59e0b
    ========================================================================== */
 
 .mdf-canvas-wrap {
-    background: #F6F8F6;
+    background: #f8fafc;
     padding: 24px 32px 60px;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #0F2C26;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
     box-sizing: border-box;
     width: 100%;
     margin-left: 0;
@@ -911,19 +1016,19 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #5B756E;
+    color: #64748b;
 }
 
 .mdf-platform-crumb {
-    color: #7A928B;
+    color: #64748b;
 }
 
 .mdf-platform-sep {
-    color: #CBD8CF;
+    color: #cbd5e1;
 }
 
 .mdf-platform-active {
-    color: #0F2C26;
+    color: #0f172a;
     font-weight: 700;
 }
 
@@ -931,22 +1036,22 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #FFFFFF;
-    border: 1px solid #E6ECE8;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     padding: 6px 14px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
-    color: #0F2C26;
-    box-shadow: 0 1px 3px rgba(15,44,38,0.03);
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.04);
 }
 
 .mdf-pulse-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #059669;
-    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
     animation: mdfPulseEmerald 1.8s infinite ease-in-out;
 }
 
@@ -966,21 +1071,21 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-canvas-title {
-    font-size: 32px;
+    font-size: 30px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     margin: 0 0 6px 0;
     line-height: 1.15;
     letter-spacing: -0.025em;
 }
 
 .mdf-canvas-highlight {
-    color: #DF5A38;
+    color: #2563eb;
 }
 
 .mdf-canvas-subtitle {
     font-size: 14px;
-    color: #5B756E;
+    color: #64748b;
     margin: 0;
     font-weight: 500;
 }
@@ -999,111 +1104,117 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     padding: 6px 14px;
     border-radius: 999px;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: 0.04em;
 }
 
 .mdf-status-protected {
-    background: #ECFDF5;
+    background: #ecfdf5;
     color: #059669;
-    border: 1px solid #A7F3D0;
+    border: 1px solid #a7f3d0;
+}
+
+.mdf-status-threat {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
 }
 
 .mdf-status-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #059669;
+    background: currentColor;
 }
 
 .mdf-btn-group {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .mdf-primary-action-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #0F2C26;
-    color: #FFFFFF !important;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
     font-size: 13px;
     font-weight: 700;
     padding: 10px 18px;
-    border-radius: 12px;
-    border: none;
+    border-radius: 10px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(15,44,38,0.15);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
     transition: all 0.2s ease;
 }
 
 .mdf-primary-action-btn:hover {
-    background: #183D35;
+    background: #1d4ed8;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(15,44,38,0.22);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.36);
 }
 
 .mdf-secondary-action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    background: #FFFFFF;
-    color: #0F2C26;
+    gap: 8px;
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
     font-size: 13px;
     font-weight: 700;
-    padding: 10px 16px;
-    border-radius: 12px;
-    border: 1px solid #E6ECE8;
+    padding: 10px 18px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .mdf-secondary-action-btn:hover {
-    background: #F4F8F5;
-    border-color: #CBD8CF;
-    color: #0F2C26;
+    background: #f1f5f9;
+    border-color: #94a3b8;
 }
 
 .mdf-warning-action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: #D97706;
-    color: #FFFFFF;
+    gap: 8px;
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
     font-size: 13px;
     font-weight: 700;
-    padding: 10px 16px;
-    border-radius: 12px;
-    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .mdf-danger-action-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: #DC2626;
-    color: #FFFFFF;
+    gap: 8px;
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
     font-size: 13px;
     font-weight: 700;
-    padding: 10px 16px;
-    border-radius: 12px;
-    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-/* UNIFIED CARDS */
+/* UNIFIED CARD CONTAINER */
 .mdf-unified-card {
-    background: #FFFFFF;
-    border: 1px solid #E6ECE8;
-    border-radius: 20px;
-    padding: 24px 28px;
-    box-shadow: 0 4px 20px -2px rgba(15,44,38,0.04);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+    padding: 24px;
     margin-bottom: 24px;
 }
 
-/* HUD MAIN GRID */
+/* RADAR HUD MAIN CARD */
 .mdf-hud-main-grid {
     display: grid;
     grid-template-columns: 360px 1fr;
@@ -1117,101 +1228,94 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     }
 }
 
-/* RADAR VIEWPORT */
 .mdf-radar-display-column {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: #F9FAF9;
-    border: 1px solid #E6ECE8;
-    border-radius: 18px;
-    padding: 20px;
 }
 
 .mdf-radar-viewport {
     position: relative;
-    width: 320px;
-    height: 320px;
+    width: 340px;
+    height: 340px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .mdf-radar-viewport canvas {
-    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 340px;
+    height: 340px;
     border-radius: 50%;
+    box-shadow: inset 0 0 24px rgba(37, 99, 235, 0.08);
 }
 
 .mdf-radar-center-target {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 108px;
-    height: 108px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1.5px solid #A7F3D0;
-    box-shadow: 0 4px 16px rgba(5,150,105,0.14);
+    position: relative;
+    z-index: 5;
+    text-align: center;
+    pointer-events: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    pointer-events: none;
-    backdrop-filter: blur(6px);
 }
 
 .mdf-radar-center-icon {
-    color: #059669;
-    margin-bottom: 2px;
+    color: #10b981;
+    margin-bottom: 4px;
 }
 
 .mdf-radar-score-display {
-    font-size: 20px;
+    font-size: 32px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     line-height: 1;
+    letter-spacing: -0.02em;
 }
 
 .mdf-radar-target-label {
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 800;
-    color: #059669;
+    color: #64748b;
     letter-spacing: 0.08em;
-    margin-top: 3px;
+    margin-top: 4px;
 }
 
 .mdf-radar-footer-meta {
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    width: 100%;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid #E6ECE8;
+    padding-top: 16px;
+    margin-top: 14px;
+    border-top: 1px solid #f1f5f9;
 }
 
 .mdf-meta-block {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
 }
 
 .mdf-meta-title {
     font-size: 10.5px;
     font-weight: 700;
-    color: #7A928B;
+    color: #94a3b8;
     letter-spacing: 0.05em;
 }
 
 .mdf-meta-val {
     font-size: 12.5px;
     font-weight: 700;
-    color: #0F2C26;
+    color: #0f172a;
 }
 
-.mdf-text-emerald { color: #059669 !important; }
-.mdf-text-coral { color: #DF5A38 !important; }
-.mdf-text-forest { color: #0F2C26 !important; }
+.mdf-text-emerald { color: #10b981 !important; }
+.mdf-text-coral { color: #ef4444 !important; }
+.mdf-text-forest { color: #0f172a !important; }
 
 /* TELEMETRY METRICS GRID */
 .mdf-metrics-grid {
@@ -1228,8 +1332,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-telemetry-item {
-    background: #F9FAF9;
-    border: 1px solid #E6ECE8;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 14px;
     padding: 16px 18px;
     display: flex;
@@ -1239,10 +1343,10 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-telemetry-item:hover {
-    background: #FFFFFF;
-    border-color: #CBD8CF;
+    background: #ffffff;
+    border-color: #cbd5e1;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(15,44,38,0.05);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.06);
 }
 
 .mdf-telemetry-icon {
@@ -1255,11 +1359,11 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     flex-shrink: 0;
 }
 
-.mdf-icon-emerald { background: #ECFDF5; color: #059669; }
-.mdf-icon-forest { background: #E8EFEA; color: #0F2C26; }
-.mdf-icon-mint { background: #EDF7F2; color: #10B981; }
-.mdf-icon-coral { background: #FEF2F2; color: #DF5A38; }
-.mdf-icon-amber { background: #FEF3C7; color: #D97706; }
+.mdf-icon-emerald { background: #ecfdf5; color: #10b981; }
+.mdf-icon-forest { background: #eff6ff; color: #2563eb; }
+.mdf-icon-mint { background: #f0fdf4; color: #10b981; }
+.mdf-icon-coral { background: #fef2f2; color: #ef4444; }
+.mdf-icon-amber { background: #fffbeb; color: #f59e0b; }
 
 .mdf-telemetry-body {
     flex: 1;
@@ -1268,7 +1372,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-telemetry-label {
     font-size: 10.5px;
     font-weight: 800;
-    color: #7A928B;
+    color: #64748b;
     letter-spacing: 0.05em;
     margin-bottom: 4px;
 }
@@ -1276,19 +1380,19 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-telemetry-val {
     font-size: 22px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     line-height: 1.1;
 }
 
 .mdf-telemetry-unit {
     font-size: 14px;
     font-weight: 600;
-    color: #7A928B;
+    color: #64748b;
 }
 
 .mdf-telemetry-sub {
     font-size: 11.5px;
-    color: #5B756E;
+    color: #64748b;
     margin-top: 4px;
     font-weight: 500;
 }
@@ -1298,8 +1402,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #F9FAF9;
-    border: 1px solid #E6ECE8;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 12px 18px;
     flex-wrap: wrap;
@@ -1330,7 +1434,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #CBD8CF;
+    background-color: #cbd5e1;
     transition: 0.3s;
     border-radius: 999px;
 }
@@ -1345,11 +1449,11 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     background-color: white;
     transition: 0.3s;
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
 .mdf-canvas-toggle input:checked + .mdf-canvas-toggle-slider {
-    background-color: #059669;
+    background-color: #2563eb;
 }
 
 .mdf-canvas-toggle input:checked + .mdf-canvas-toggle-slider:before {
@@ -1359,7 +1463,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-switch-label {
     font-size: 13px;
     font-weight: 700;
-    color: #0F2C26;
+    color: #0f172a;
 }
 
 .mdf-strip-actions {
@@ -1374,26 +1478,26 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     gap: 6px;
     font-size: 12.5px;
     font-weight: 700;
-    color: #0F2C26;
+    color: #0f172a;
     text-decoration: none;
     padding: 6px 12px;
-    background: #FFFFFF;
-    border: 1px solid #E6ECE8;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     transition: all 0.2s ease;
 }
 
 .mdf-strip-btn:hover {
-    background: #E8EFEA;
-    color: #0F2C26;
-    border-color: #CBD8CF;
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
 }
 
 /* SCAN LIVE PROGRESS HUD */
 .mdf-scan-live-progress {
     margin-top: 24px;
     padding-top: 24px;
-    border-top: 1px solid #E6ECE8;
+    border-top: 1px solid #e2e8f0;
 }
 
 .mdf-progress-top-row {
@@ -1406,16 +1510,16 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-progress-stage-info {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
 }
 
 .mdf-radar-spinner {
     width: 24px;
     height: 24px;
-    border: 3px solid #E8EFEA;
-    border-top-color: #059669;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2563eb;
     border-radius: 50%;
-    animation: mdfSpin 0.8s linear infinite;
+    animation: mdfSpin 0.9s linear infinite;
     display: inline-block;
 }
 
@@ -1426,19 +1530,19 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-stage-title {
     font-size: 15px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
 }
 
 .mdf-stage-detail {
     font-size: 12.5px;
-    color: #5B756E;
+    color: #64748b;
     margin-top: 2px;
 }
 
 .mdf-progress-pct-val {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 800;
-    color: #059669;
+    color: #2563eb;
 }
 
 .mdf-domain-bars-grid {
@@ -1455,8 +1559,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-domain-bar-item {
-    background: #F9FAF9;
-    border: 1px solid #E6ECE8;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 10px;
     padding: 10px 12px;
 }
@@ -1464,29 +1568,29 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-domain-bar-head {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
-    color: #0F2C26;
+    color: #64748b;
     margin-bottom: 6px;
 }
 
 .mdf-bar-track {
     width: 100%;
     height: 6px;
-    background: #E8EFEA;
+    background: #e2e8f0;
     border-radius: 999px;
     overflow: hidden;
 }
 
 .mdf-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #059669, #10B981);
+    background: linear-gradient(90deg, #2563eb, #10b981);
     transition: width 0.3s ease;
 }
 
 .mdf-stream-terminal {
-    background: #0A1C18;
-    color: #A7F3D0;
+    background: #0f172a;
+    color: #38bdf8;
     font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
     font-size: 12px;
     border-radius: 12px;
@@ -1494,18 +1598,70 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid rgba(167, 243, 208, 0.15);
+    border: 1px solid #1e293b;
 }
 
 .mdf-term-prompt {
-    color: #10B981;
+    color: #10b981;
     font-weight: 800;
     margin-right: 8px;
 }
 
 .mdf-terminal-right {
-    color: #7A928B;
+    color: #94a3b8;
     font-size: 11px;
+}
+
+/* ==========================================================================
+   WORDFENCE-GRADE HORIZONTAL SCAN PIPELINE BAR
+   ========================================================================== */
+.mdf-scan-pipeline-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 20px;
+    margin: 20px 0 24px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    overflow-x: auto;
+}
+
+.mdf-pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.mdf-pipeline-step.active {
+    color: #0f172a;
+}
+
+.mdf-pipeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.mdf-pipeline-step.pending .mdf-pipeline-dot {
+    background: #cbd5e1;
+    box-shadow: none;
+}
+
+.mdf-pipeline-divider {
+    flex: 1;
+    height: 2px;
+    background: #f1f5f9;
+    margin: 0 12px;
+    min-width: 16px;
+    max-width: 48px;
 }
 
 /* SECTION HEADING */
@@ -1513,23 +1669,19 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 32px 0 18px;
+    margin: 28px 0 18px;
 }
 
 .mdf-heading-left {
     display: flex;
     align-items: center;
-    gap: 10px;
-}
-
-.mdf-heading-icon {
-    color: #0F2C26;
+    gap: 12px;
 }
 
 .mdf-heading-title {
     font-size: 18px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     margin: 0;
 }
 
@@ -1540,12 +1692,12 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
-    background: #E8EFEA;
-    color: #0F2C26;
+    background: #f1f5f9;
+    color: #0f172a;
     letter-spacing: 0.04em;
 }
 
-/* 18 SECURITY DOMAINS GRID */
+/* 18 SECURITY DOMAINS GRID (COMPACT) */
 .mdf-domains-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1566,30 +1718,30 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-domain-card {
-    background: #FFFFFF;
-    border: 1px solid #E6ECE8;
-    border-radius: 16px;
-    padding: 18px 20px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
     transition: all 0.2s ease;
 }
 
 .mdf-domain-card:hover {
-    border-color: #CBD8CF;
+    border-color: #cbd5e1;
     transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(15,44,38,0.06);
+    box-shadow: 0 4px 14px rgba(15,23,42,0.06);
 }
 
 .mdf-domain-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .mdf-domain-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1603,52 +1755,84 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     letter-spacing: 0.04em;
 }
 
+.badge-idle {
+    background: #f1f4f2;
+    color: #69766f;
+    border: 1px solid #dce3de;
+}
+
+.badge-checking {
+    background: #eff6ff;
+    color: #356b96;
+    border: 1px solid #c7dced;
+}
+
 .badge-secure {
-    background: #ECFDF5;
+    background: #ecfdf5;
     color: #059669;
-    border: 1px solid #A7F3D0;
+    border: 1px solid #a7f3d0;
+}
+
+.badge-warning {
+    background: #fff8e9;
+    color: #936b22;
+    border: 1px solid #efdfb8;
 }
 
 .badge-threat {
-    background: #FEF2F2;
-    color: #DF5A38;
-    border: 1px solid #FECACA;
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.badge-danger {
+    background: #fef2f2;
+    color: #a94337;
+    border: 1px solid #f0d0ca;
+}
+
+.mdf-status-idle {
+    background: #f1f4f2;
+    color: #69766f;
+    border: 1px solid #dce3de;
 }
 
 .mdf-domain-name {
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 700;
-    color: #0F2C26;
-    margin: 0 0 6px 0;
+    color: #0f172a;
+    margin: 0 0 4px 0;
 }
 
 .mdf-domain-desc {
     font-size: 12px;
-    color: #5B756E;
-    margin: 0 0 14px 0;
-    line-height: 1.45;
-    min-height: 35px;
+    color: #64748b;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+    min-height: 34px;
 }
 
 .mdf-domain-foot {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #7A928B;
-    border-top: 1px solid #F0F4F2;
-    padding-top: 10px;
+    color: #94a3b8;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
 }
 
 .mdf-domain-foot strong {
-    color: #0F2C26;
+    color: #0f172a;
 }
 
-/* FINDINGS CARD */
+/* ==========================================================================
+   EVIDENCE-DRIVEN FINDINGS CENTER (WORDFENCE-GRADE SOC DESIGN)
+   ========================================================================== */
 .mdf-findings-head-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #E6ECE8;
+    border-bottom: 1px solid #e2e8f0;
     padding-bottom: 16px;
     margin-bottom: 16px;
     flex-wrap: wrap;
@@ -1665,19 +1849,20 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #0F2C26;
+    color: #0f172a;
 }
 
 .mdf-findings-title {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     margin: 0;
 }
 
 .mdf-count-pill {
-    background: #E8EFEA;
-    color: #0F2C26;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
     padding: 3px 10px;
     border-radius: 999px;
     font-size: 11.5px;
@@ -1694,9 +1879,9 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #FFFFFF;
-    color: #DF5A38;
-    border: 1px solid #FECACA;
+    background: #ffffff;
+    color: #dc2626;
+    border: 1px solid #fecaca;
     font-size: 12.5px;
     font-weight: 700;
     padding: 8px 14px;
@@ -1706,17 +1891,17 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-outline-coral-btn:hover {
-    background: #FEF2F2;
-    border-color: #DF5A38;
+    background: #fef2f2;
+    border-color: #ef4444;
 }
 
 .mdf-outline-emerald-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #FFFFFF;
+    background: #ffffff;
     color: #059669;
-    border: 1px solid #A7F3D0;
+    border: 1px solid #a7f3d0;
     font-size: 12.5px;
     font-weight: 700;
     padding: 8px 14px;
@@ -1726,16 +1911,17 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-outline-emerald-btn:hover {
-    background: #ECFDF5;
-    border-color: #059669;
+    background: #ecfdf5;
+    border-color: #10b981;
 }
 
 .mdf-filter-tabs-row {
     display: flex;
     gap: 8px;
     margin-bottom: 18px;
-    border-bottom: 1px solid #F0F4F2;
+    border-bottom: 1px solid #f1f5f9;
     padding-bottom: 10px;
+    flex-wrap: wrap;
 }
 
 .mdf-tab-btn {
@@ -1743,7 +1929,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     border: none;
     font-size: 13px;
     font-weight: 700;
-    color: #5B756E;
+    color: #64748b;
     padding: 6px 14px;
     border-radius: 8px;
     cursor: pointer;
@@ -1751,25 +1937,25 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-tab-btn:hover {
-    color: #0F2C26;
-    background: #F4F8F5;
+    color: #0f172a;
+    background: #f1f5f9;
 }
 
 .mdf-tab-btn.active {
-    background: #0F2C26;
-    color: #FFFFFF;
+    background: #0f172a;
+    color: #ffffff;
 }
 
 .mdf-empty-state {
     text-align: center;
-    padding: 44px 20px;
+    padding: 48px 20px;
 }
 
 .mdf-empty-icon {
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: #ECFDF5;
+    background: #ecfdf5;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1779,15 +1965,325 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-empty-state h4 {
     font-size: 18px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     margin: 0 0 6px 0;
 }
 
 .mdf-empty-state p {
     font-size: 13.5px;
-    color: #5B756E;
+    color: #64748b;
     max-width: 480px;
     margin: 0 auto;
+}
+
+/* ==========================================================================
+   INDIVIDUAL FINDING CARD (WORDFENCE-GRADE ACCORDION ITEM)
+   ========================================================================== */
+.mdf-findings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mdf-finding-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #f59e0b;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.03);
+}
+
+.mdf-finding-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+}
+
+.mdf-finding-item.severity-critical {
+    border-left-color: #ef4444;
+}
+
+.mdf-finding-item.severity-warning {
+    border-left-color: #f59e0b;
+}
+
+.mdf-finding-item.severity-safe, .mdf-finding-item.is-resolved {
+    border-left-color: #10b981;
+    opacity: 0.7;
+    background: #f8fafc;
+}
+
+/* Header summary row */
+.mdf-finding-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    background: #ffffff;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mdf-finding-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.mdf-finding-sev-pill {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.sev-pill-critical {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.sev-pill-warning {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+.sev-pill-safe {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.mdf-finding-type-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.mdf-finding-title-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.mdf-path-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 11.5px;
+    color: #334155;
+    max-width: 380px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mdf-copy-path-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s ease;
+}
+
+.mdf-copy-path-btn:hover {
+    color: #2563eb;
+}
+
+/* Quick Action Buttons in Summary Row */
+.mdf-finding-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.mdf-quick-btn {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.btn-quick-repair {
+    background: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+
+.btn-quick-repair:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+
+.btn-quick-quarantine {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.btn-quick-quarantine:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
+.btn-quick-ignore {
+    background: #ffffff;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+
+.btn-quick-ignore:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.btn-quick-details {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+}
+
+.btn-quick-details:hover {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+.mdf-details-chevron {
+    transition: transform 0.2s ease;
+}
+
+/* Expandable Details Drawer */
+.mdf-finding-drawer {
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    padding: 18px 20px;
+    display: none;
+}
+
+.mdf-finding-desc-box {
+    font-size: 13px;
+    color: #334155;
+    line-height: 1.5;
+    margin-bottom: 14px;
+}
+
+.mdf-forensic-box {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    color: #f8fafc;
+}
+
+.mdf-forensic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 6px;
+}
+
+.mdf-forensic-status {
+    color: #ef4444;
+    font-weight: 800;
+}
+
+.mdf-evidence-item {
+    font-size: 12px;
+    color: #cbd5e1;
+    margin: 4px 0;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.mdf-evidence-bullet {
+    color: #10b981;
+    font-weight: 800;
+}
+
+.mdf-code-snippet-box {
+    background: #090d16;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    color: #e2e8f0;
+    overflow-x: auto;
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.mdf-code-line-num {
+    color: #64748b;
+    user-select: none;
+    font-weight: 700;
+    min-width: 50px;
+}
+
+.mdf-code-line-content {
+    color: #f87171;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.mdf-drawer-remediation-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-top: 6px;
+}
+
+.mdf-remedy-btn {
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
 }
 
 /* DUAL GRID */
@@ -1829,20 +2325,20 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-card-title {
     font-size: 16px;
     font-weight: 800;
-    color: #0F2C26;
+    color: #0f172a;
     margin: 0;
 }
 
 .mdf-card-subtitle {
     font-size: 12px;
-    color: #5B756E;
+    color: #64748b;
     margin: 2px 0 0;
 }
 
 .mdf-clear-history-btn {
     background: transparent;
-    border: 1px solid #FECACA;
-    color: #DF5A38;
+    border: 1px solid #fecaca;
+    color: #dc2626;
     font-size: 11.5px;
     font-weight: 700;
     padding: 4px 10px;
@@ -1851,7 +2347,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-clear-history-btn:hover {
-    background: #FEF2F2;
+    background: #fef2f2;
 }
 
 /* TIMELINE */
@@ -1876,14 +2372,14 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .dot-emerald {
-    background: #059669;
-    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 .mdf-time-body {
     flex: 1;
-    background: #F9FAF9;
-    border: 1px solid #E6ECE8;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 10px;
     padding: 10px 14px;
 }
@@ -1893,18 +2389,18 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     justify-content: space-between;
     align-items: center;
     font-size: 13px;
-    color: #0F2C26;
+    color: #0f172a;
     margin-bottom: 4px;
 }
 
 .mdf-time-date {
     font-size: 11px;
-    color: #7A928B;
+    color: #94a3b8;
 }
 
 .mdf-time-text {
     font-size: 12px;
-    color: #5B756E;
+    color: #64748b;
     margin: 0;
     line-height: 1.4;
 }
@@ -1924,22 +2420,22 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     text-align: left;
     font-size: 11px;
     font-weight: 800;
-    color: #7A928B;
+    color: #64748b;
     letter-spacing: 0.05em;
     padding: 8px 12px;
-    border-bottom: 1px solid #E6ECE8;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .mdf-clean-table td {
     padding: 12px;
     font-size: 12.5px;
-    color: #0F2C26;
-    border-bottom: 1px solid #F4F8F5;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .mdf-empty-cell {
     text-align: center;
-    color: #7A928B;
+    color: #94a3b8;
     padding: 30px 12px !important;
 }
 
@@ -1947,8 +2443,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-modal-backdrop {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(15, 44, 38, 0.45);
-    backdrop-filter: blur(8px);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(6px);
     z-index: 100000;
     display: flex;
     align-items: center;
@@ -1957,9 +2453,9 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-modal-box {
-    background: #FFFFFF;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(15,44,38,0.2);
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 40px rgba(15,23,42,0.25);
     overflow: hidden;
     max-height: 90vh;
     display: flex;
@@ -1975,7 +2471,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     justify-content: space-between;
     align-items: center;
     padding: 18px 24px;
-    border-bottom: 1px solid #E6ECE8;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .mdf-modal-header-left {
@@ -1997,13 +2493,13 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     background: none;
     border: none;
     font-size: 24px;
-    color: #7A928B;
+    color: #94a3b8;
     cursor: pointer;
     line-height: 1;
 }
 
 .mdf-modal-close:hover {
-    color: #DF5A38;
+    color: #ef4444;
 }
 
 .mdf-modal-body {
@@ -2016,32 +2512,32 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: #F9FAF9;
-    border-top: 1px solid #E6ECE8;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
 }
 
 .mdf-input-text, .mdf-input-select {
     width: 100%;
     height: 40px;
-    border: 1px solid #CBD8CF;
+    border: 1px solid #cbd5e1;
     border-radius: 10px;
     padding: 0 14px;
     font-size: 13.5px;
-    color: #0F2C26;
-    background: #FFFFFF;
+    color: #0f172a;
+    background: #ffffff;
     outline: none;
     box-sizing: border-box;
 }
 
 .mdf-input-text:focus, .mdf-input-select:focus {
-    border-color: #059669;
-    box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
 }
 
 .mdf-view-toggle {
     display: inline-flex;
-    background: #F4F8F5;
-    border: 1px solid #E6ECE8;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 3px;
     gap: 3px;
@@ -2052,15 +2548,15 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     background: transparent;
     font-size: 11.5px;
     font-weight: 700;
-    color: #5B756E;
+    color: #64748b;
     padding: 4px 10px;
     border-radius: 6px;
     cursor: pointer;
 }
 
 .waf-diff-mode-btn.active {
-    background: #FFFFFF;
-    color: #0F2C26;
+    background: #ffffff;
+    color: #0f172a;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
@@ -2068,8 +2564,8 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #F4F8F5;
-    border-bottom: 1px solid #E6ECE8;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
     padding: 10px 24px;
     font-size: 12px;
 }
@@ -2077,7 +2573,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 .mdf-diff-container {
     flex: 1;
     overflow: auto;
-    background: #0D1117;
+    background: #0d1117;
 }
 
 .mdf-diff-split-view {
@@ -2091,7 +2587,7 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
 }
 
 .mdf-pane-left {
-    border-right: 1px solid #30363D;
+    border-right: 1px solid #30363d;
 }
 
 .mdf-diff-pane-title {
@@ -2106,13 +2602,13 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     z-index: 10;
 }
 
-.pane-pristine { background: #161B22; color: #10B981; border-bottom: 1px solid #30363D; }
-.pane-modified { background: #161B22; color: #F87171; border-bottom: 1px solid #30363D; }
+.pane-pristine { background: #161b22; color: #10b981; border-bottom: 1px solid #30363d; }
+.pane-modified { background: #161b22; color: #f87171; border-bottom: 1px solid #30363d; }
 
 .waf-diff-table {
     width: 100%;
     border-collapse: collapse;
-    color: #C9D1D9;
+    color: #c9d1d9;
 }
 
 .waf-diff-table td {
@@ -2128,20 +2624,20 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     width: 44px;
     min-width: 44px;
     text-align: right;
-    color: #484F58;
+    color: #484f58;
     user-select: none;
     padding-right: 10px !important;
-    border-right: 1px solid #30363D;
-    background: #090D14;
+    border-right: 1px solid #30363d;
+    background: #090d14;
 }
 
-.waf-diff-row-added { background: rgba(46, 160, 67, 0.18) !important; color: #7EE787 !important; }
-.waf-diff-row-deleted { background: rgba(248, 81, 73, 0.18) !important; color: #FFA198 !important; }
-.waf-diff-row-modified { background: rgba(210, 153, 34, 0.18) !important; color: #E3B341 !important; }
+.waf-diff-row-added { background: rgba(46, 160, 67, 0.18) !important; color: #7ee787 !important; }
+.waf-diff-row-deleted { background: rgba(248, 81, 73, 0.18) !important; color: #ffa198 !important; }
+.waf-diff-row-modified { background: rgba(210, 153, 34, 0.18) !important; color: #e3b341 !important; }
 
 .mdf-code-viewer {
-    background: #0D1117;
-    color: #E2E8F0;
+    background: #0d1117;
+    color: #e2e8f0;
     padding: 18px;
     margin: 0;
     overflow: auto;
@@ -2151,4 +2647,440 @@ $health_sub = $health_score >= 95 ? 'A+ Pristine Integrity' : ($health_score >= 
     line-height: 1.6;
     white-space: pre;
 }
+
+/* ==========================================================================
+   CLEAN, NATURAL & PROFESSIONAL WORDPRESS-GRADE FINDINGS STYLES
+   Restrained palette, natural typography, zero neon / rainbow distraction.
+   ========================================================================== */
+.mdf-wf-findings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #dcdcde;
+    padding-bottom: 0px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.mdf-wf-tabs-left {
+    display: flex;
+    gap: 6px;
+}
+
+.mdf-wf-tab-btn {
+    background: #f0f0f1;
+    border: 1px solid #c3c4c7;
+    border-bottom: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: #50575e;
+    padding: 9px 18px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mdf-wf-tab-btn.active {
+    background: #ffffff;
+    color: #1d2327;
+    border-color: #c3c4c7;
+    border-top: 3px solid #2271b1;
+    margin-bottom: -1px;
+    border-bottom: 1px solid #ffffff;
+}
+
+/* SECURITY FINDINGS & FORENSIC ANALYSIS TOP HEADER (IMAGE 1 PARITY) */
+.mdf-wf-findings-header-block {
+    margin-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 14px;
+}
+
+.mdf-findings-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.mdf-findings-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mdf-findings-title-group svg {
+    color: #0f172a;
+}
+
+.mdf-findings-main-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+.mdf-findings-issues-badge {
+    background: #e6f4ea;
+    color: #137333;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.2px;
+}
+
+.mdf-findings-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mdf-pill-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    color: #1d2327;
+    transition: all 0.15s ease;
+}
+
+.mdf-pill-action-btn:hover {
+    background: #f6f7f7;
+    border-color: #8c8f94;
+}
+
+.mdf-pill-btn-quarantine {
+    border-color: #fca5a5;
+    color: #dc2626;
+    background: #ffffff;
+}
+
+.mdf-pill-btn-quarantine:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #b91c1c;
+}
+
+.mdf-pill-btn-repair {
+    border-color: #6ee7b7;
+    color: #059669;
+    background: #ffffff;
+}
+
+.mdf-pill-btn-repair:hover {
+    background: #ecfdf5;
+    border-color: #059669;
+    color: #047857;
+}
+
+/* FILTER TABS ROW (ALL FINDINGS, CRITICAL, WARNINGS, IGNORED) */
+.mdf-findings-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mdf-findings-pill-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mdf-findings-pill-tab:hover {
+    color: #0f172a;
+    background: #f1f5f9;
+}
+
+.mdf-findings-pill-tab.active {
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.mdf-wf-btn-repair:hover {
+    background: #2271b1;
+    color: #ffffff;
+}
+
+.mdf-wf-stats-strip {
+    display: flex;
+    justify-content: space-between;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 10px 18px;
+    margin-bottom: 16px;
+    font-size: 12.5px;
+    color: #50575e;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.mdf-wf-stat-item strong {
+    color: #1d2327;
+    font-weight: 700;
+}
+
+/* NATURAL FINDING ROW ITEM */
+.mdf-wf-finding-row {
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    border-left: 4px solid #d63638;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.mdf-wf-finding-row:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    border-color: #c3c4c7;
+}
+
+.mdf-wf-finding-row.severity-high, .mdf-wf-finding-row.severity-critical {
+    border-left-color: #d63638;
+}
+
+.mdf-wf-finding-row.severity-medium, .mdf-wf-finding-row.severity-warning {
+    border-left-color: #dba617;
+}
+
+.mdf-wf-finding-row.severity-safe, .mdf-wf-finding-row.is-resolved {
+    border-left-color: #008a20;
+    opacity: 0.7;
+    background: #f6f7f7;
+}
+
+.mdf-wf-row-main {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    gap: 16px;
+}
+
+/* Neutral, natural gray category icons */
+.mdf-wf-row-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: #f0f0f1;
+    color: #50575e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mdf-wf-row-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.mdf-wf-row-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1d2327;
+    line-height: 1.4;
+    margin-bottom: 2px;
+    word-break: break-all;
+}
+
+.mdf-wf-row-type {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.mdf-wf-row-meta {
+    text-align: right;
+    font-size: 11.5px;
+    color: #64748b;
+    margin-right: 14px;
+    flex-shrink: 0;
+}
+
+.mdf-wf-meta-date {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.mdf-wf-meta-sev {
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sev-dot-critical, .sev-dot-high {
+    color: #d63638;
+}
+
+.sev-dot-medium, .sev-dot-warning {
+    color: #dba617;
+}
+
+/* Natural Action Buttons */
+.mdf-wf-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+.mdf-wf-action-btn {
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #50575e;
+    transition: all 0.15s ease;
+}
+
+.mdf-wf-action-btn svg {
+    stroke-width: 2;
+}
+
+.mdf-wf-action-btn:hover {
+    color: #2271b1;
+}
+
+.mdf-wf-action-btn.btn-act-repair:hover {
+    color: #008a20;
+}
+
+.mdf-wf-action-btn.btn-act-delete:hover {
+    color: #d63638;
+}
+
+/* Collapsible Natural Drawer */
+.mdf-wf-drawer {
+    background: #fbfbfb;
+    border-top: 1px solid #dcdcde;
+    padding: 16px 20px 20px;
+    display: none;
+}
+
+.mdf-wf-drawer-field {
+    font-size: 12.5px;
+    color: #2c3338;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.mdf-wf-drawer-field strong {
+    color: #1d2327;
+    font-weight: 600;
+    min-width: 80px;
+    display: inline-block;
+}
+
+.mdf-wf-path-code {
+    background: #f0f0f1;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    color: #1d2327;
+}
+
+/* Clean, natural code box */
+.mdf-wf-code-box {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 12px 0 16px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    color: #1d2327;
+}
+
+.mdf-wf-code-header {
+    font-size: 11px;
+    color: #50575e;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+}
+
+.mdf-wf-code-content {
+    color: #b32d2e;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-weight: 500;
+}
+
+.mdf-wf-drawer-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.mdf-wf-outline-btn {
+    background: #ffffff;
+    border: 1px solid #c3c4c7;
+    color: #2271b1;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mdf-wf-outline-btn:hover {
+    background: #f0f0f1;
+    border-color: #2271b1;
+}
+
+.mdf-wf-btn-mark {
+    color: #50575e;
+}
+
+.mdf-wf-btn-mark:hover {
+    background: #f0f0f1;
+    color: #1d2327;
+    border-color: #8c8f94;
+}
+
+.mdf-wf-btn-do-repair {
+    background: #008a20;
+    border-color: #008a20;
+    color: #ffffff;
+}
+
+.mdf-wf-btn-do-repair:hover {
+    background: #007017;
+    border-color: #007017;
+}
+
 </style>

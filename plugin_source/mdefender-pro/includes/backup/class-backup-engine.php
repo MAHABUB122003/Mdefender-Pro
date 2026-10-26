@@ -743,11 +743,14 @@ class WAF_FW_Backup_Engine {
 
         if ($sql_found) {
             $db_res = $this->import_database_file($sql_found);
-            if ($db_res['success']) {
-                $actions_log[] = 'Database reconstructed (' . ($db_res['queries'] ?? 0) . ' queries executed)';
-            } else {
-                $actions_log[] = 'Database restore note: ' . $db_res['message'];
+            if (empty($db_res['success'])) {
+                $this->delete_directory($staging_dir);
+                return [
+                    'success' => false,
+                    'message' => 'Database restoration failed; file restoration was stopped to avoid reporting a partial restore as successful. ' . ($db_res['message'] ?? ''),
+                ];
             }
+            $actions_log[] = 'Database reconstructed (' . ($db_res['queries'] ?? 0) . ' queries executed)';
             @unlink($sql_found);
         }
 
@@ -1024,7 +1027,9 @@ class WAF_FW_Backup_Engine {
         $file_path = $this->backup_dir . $filename;
 
         if (file_exists($file_path)) {
-            @unlink($file_path);
+            if (!@unlink($file_path)) {
+                return ['success' => false, 'message' => 'Could not delete backup archive: ' . $filename];
+            }
         }
 
         $catalog = get_option('waf_fw_backup_catalog', []);
@@ -1071,18 +1076,26 @@ class WAF_FW_Backup_Engine {
         $type = sanitize_text_field($settings['type'] ?? 'full');
         $retention = (int)($settings['retention'] ?? 5);
 
-        update_option('waf_fw_backup_sched_enabled', $enabled ? 'yes' : 'no');
-        update_option('waf_fw_backup_sched_freq', $frequency);
-        update_option('waf_fw_backup_sched_type', $type);
-        update_option('waf_fw_backup_retention', max(1, min(30, $retention)));
+        if (!in_array($frequency, ['daily', 'weekly', 'monthly'], true)) {
+            return ['success' => false, 'message' => 'Select a valid backup frequency.'];
+        }
+        if (!in_array($type, ['full', 'database', 'files'], true)) {
+            return ['success' => false, 'message' => 'Select a valid backup scope.'];
+        }
 
         wp_clear_scheduled_hook('waf_fw_automated_backup_cron');
 
         if ($enabled) {
-            if (!wp_next_scheduled('waf_fw_automated_backup_cron')) {
-                wp_schedule_event(time() + 300, $frequency, 'waf_fw_automated_backup_cron');
+            $scheduled = wp_schedule_event(time() + 300, $frequency, 'waf_fw_automated_backup_cron');
+            if (is_wp_error($scheduled) || !$scheduled) {
+                return ['success' => false, 'message' => 'Could not schedule automated backups.'];
             }
         }
+
+        update_option('waf_fw_backup_sched_enabled', $enabled ? 'yes' : 'no');
+        update_option('waf_fw_backup_sched_freq', $frequency);
+        update_option('waf_fw_backup_sched_type', $type);
+        update_option('waf_fw_backup_retention', max(1, min(30, $retention)));
 
         return [
             'success' => true,

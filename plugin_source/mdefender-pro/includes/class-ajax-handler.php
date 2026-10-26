@@ -181,7 +181,8 @@ class WAF_FW_Ajax_Handler {
     public function toggle_protection() {
         $this->check_access();
         $this->verify_nonce();
-        $enabled = !empty($_POST['enabled']);
+        $enabled_value = strtolower(sanitize_text_field($_POST['enabled'] ?? ''));
+        $enabled = in_array($enabled_value, ['1', 'yes', 'true', 'on'], true);
         update_option('waf_fw_protection_enabled', $enabled ? 'yes' : 'no');
         wp_send_json_success(['enabled' => $enabled]);
     }
@@ -297,10 +298,11 @@ class WAF_FW_Ajax_Handler {
         $ip = sanitize_text_field($_POST['ip'] ?? $data['ip'] ?? $_REQUEST['ip'] ?? '');
         $reason = sanitize_text_field($_POST['reason'] ?? $data['reason'] ?? $_REQUEST['reason'] ?? 'Manually blocked');
         $type = sanitize_text_field($_POST['type'] ?? $data['type'] ?? $_REQUEST['type'] ?? 'permanent');
-        if (empty($ip)) {
-            wp_send_json_error(['message' => 'IP is required']);
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            wp_send_json_error(['message' => 'Enter a valid IPv4 or IPv6 address.']);
         }
         $filter = WAF_FW_IP_Filter::instance();
+        $filter->remove_from_whitelist($ip);
         $filter->add_to_blacklist($ip, $reason, $type, false);
         wp_send_json_success(['message' => "IP $ip blocked"]);
     }
@@ -539,10 +541,11 @@ class WAF_FW_Ajax_Handler {
         $data = $this->get_json_input();
         $ip = sanitize_text_field($_POST['ip'] ?? $data['ip'] ?? $_REQUEST['ip'] ?? '');
         $reason = sanitize_text_field($_POST['reason'] ?? $data['reason'] ?? 'Manually blocked from attack log details');
-        if (empty($ip)) {
-            wp_send_json_error(['message' => 'IP address is required']);
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            wp_send_json_error(['message' => 'Enter a valid IPv4 or IPv6 address.']);
         }
         $filter = WAF_FW_IP_Filter::instance();
+        $filter->remove_from_whitelist($ip);
         $filter->add_to_blacklist($ip, $reason, 'permanent', false);
 
         // Also add to local cloud blacklist cache and refresh fast cache
@@ -564,8 +567,8 @@ class WAF_FW_Ajax_Handler {
         $data = $this->get_json_input();
         $ip = sanitize_text_field($_POST['ip'] ?? $data['ip'] ?? $_REQUEST['ip'] ?? '');
         $reason = sanitize_text_field($_POST['reason'] ?? $data['reason'] ?? 'Whitelisted from attack log details');
-        if (empty($ip)) {
-            wp_send_json_error(['message' => 'IP address is required']);
+        if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
+            wp_send_json_error(['message' => 'Enter a valid IPv4 or IPv6 address.']);
         }
         $filter = WAF_FW_IP_Filter::instance();
         $filter->add_to_whitelist($ip, $reason);
@@ -1093,21 +1096,31 @@ class WAF_FW_Ajax_Handler {
     public function save_scheduled_scan_settings() {
         $this->check_access();
         $this->verify_nonce();
-        $data = json_decode(file_get_contents('php://input'), true);
-        $enabled = !empty($data['enabled']) ? 'yes' : 'no';
-        $frequency = sanitize_text_field($data['frequency'] ?? 'weekly');
+        $data = $this->get_json_input();
+        $enabled_value = strtolower(sanitize_text_field((string) ($data['enabled'] ?? '')));
+        $enabled = in_array($enabled_value, ['1', 'yes', 'true', 'on'], true) ? 'yes' : 'no';
+        $frequency = sanitize_text_field($data['frequency'] ?? $data['interval'] ?? 'weekly');
         $scan_type = sanitize_text_field($data['scan_type'] ?? 'full');
+        $email = sanitize_email($data['email'] ?? get_option('waf_fw_scheduled_scan_email', ''));
+        if (!in_array($frequency, ['daily', 'weekly', 'monthly'], true)) {
+            wp_send_json_error(['message' => 'Select a valid scan frequency.']);
+        }
+        if ($email !== '' && !is_email($email)) {
+            wp_send_json_error(['message' => 'Enter a valid report email address.']);
+        }
+
+        wp_clear_scheduled_hook('waf_fw_scheduled_scan');
+        if ($enabled === 'yes') {
+            $scheduled = wp_schedule_event(time(), $frequency, 'waf_fw_scheduled_scan');
+            if (is_wp_error($scheduled) || !$scheduled) {
+                wp_send_json_error(['message' => 'Could not schedule the requested scan frequency.']);
+            }
+        }
 
         update_option('waf_fw_scheduled_scan_enabled', $enabled);
         update_option('waf_fw_scheduled_scan_frequency', $frequency);
         update_option('waf_fw_scheduled_scan_type', $scan_type);
-
-        wp_clear_scheduled_hook('waf_fw_scheduled_scan');
-        if ($enabled === 'yes') {
-            $schedule = in_array($frequency, ['daily', 'weekly']) ? $frequency : 'weekly';
-            wp_schedule_event(time(), $schedule, 'waf_fw_scheduled_scan');
-        }
-
+        update_option('waf_fw_scheduled_scan_email', $email);
         wp_send_json_success(['message' => 'Scheduled scan settings saved']);
     }
 
@@ -2386,6 +2399,9 @@ class WAF_FW_Ajax_Handler {
 
         $engine = WAF_FW_Backup_Engine::instance();
         $result = $engine->delete_backup($filename);
+        if (empty($result['success'])) {
+            wp_send_json_error($result);
+        }
         wp_send_json_success($result);
     }
 
@@ -2402,6 +2418,9 @@ class WAF_FW_Ajax_Handler {
 
         $engine = WAF_FW_Backup_Engine::instance();
         $result = $engine->save_schedule_settings($_POST);
+        if (empty($result['success'])) {
+            wp_send_json_error($result);
+        }
         wp_send_json_success($result);
     }
 
@@ -2417,7 +2436,7 @@ class WAF_FW_Ajax_Handler {
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
         if (!in_array($ext, ['zip', 'sql', 'gz'])) {
-            wp_send_json_error(['message' => 'Only .zip or .sql backup files are supported.']);
+            wp_send_json_error(['message' => 'Only .zip, .sql, or compressed .sql.gz backup files are supported.']);
         }
 
         $engine = WAF_FW_Backup_Engine::instance();
@@ -2548,4 +2567,3 @@ class WAF_FW_Ajax_Handler {
         wp_send_json_success($result);
     }
 }
-

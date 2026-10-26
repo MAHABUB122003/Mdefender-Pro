@@ -64,16 +64,22 @@
                 var btn = $(this);
                 
                 btn.prop('disabled', true).html('<span class="dashicons dashicons-update war-spin-icon"></span> Saving...');
-                hardening.applyFeature(feature, row, function() {
-                    btn.prop('disabled', false).html('<span class="dashicons dashicons-saved"></span> Saved');
-                    setTimeout(function() {
+                hardening.applyFeature(feature, row, function(response) {
+                    btn.prop('disabled', false);
+                    if (response && response.success) {
+                        btn.html('<span class="dashicons dashicons-saved"></span> Saved');
+                        setTimeout(function() {
+                            btn.html('<span class="dashicons dashicons-saved"></span> Save Configuration');
+                        }, 2000);
+                    } else {
                         btn.html('<span class="dashicons dashicons-saved"></span> Save Configuration');
-                    }, 2000);
+                    }
                 });
             });
         },
 
         applyFeature: function(feature, row, callback) {
+            var wasEnabled = row.hasClass('is-enabled');
             var data = {
                 action: 'waf_harden_apply',
                 feature: feature,
@@ -105,10 +111,12 @@
                     hardening.updateScore();
                 } else {
                     var errMsg = (r && r.data && r.data.message) ? r.data.message : 'Failed to apply security rule';
+                    row.find('.war-feature-switch').prop('checked', wasEnabled);
                     hardening.showToast('Error: ' + errMsg, 'error');
                 }
                 if (typeof callback === 'function') callback(r);
             }).fail(function() {
+                row.find('.war-feature-switch').prop('checked', wasEnabled);
                 hardening.showToast('Network error while applying security rule', 'error');
                 if (typeof callback === 'function') callback(false);
             });
@@ -128,8 +136,12 @@
                     hardening.showToast('<strong>' + (row.find('.war-control-name').text() || feature) + ':</strong> Protection disabled', 'info');
                     hardening.updateScore();
                 } else {
+                    row.find('.war-feature-switch').prop('checked', true);
                     hardening.showToast('Failed to disable security rule', 'error');
                 }
+            }).fail(function() {
+                row.find('.war-feature-switch').prop('checked', true);
+                hardening.showToast('Network error while disabling security rule', 'error');
             });
         },
 
@@ -148,21 +160,23 @@
                     return;
                 }
 
-                $('.war-profile-btn').removeClass('active');
-                btn.addClass('active');
-
                 $.post(waf_fw_ajax.ajax_url, {
                     action: 'waf_harden_apply_profile',
                     profile: profile,
                     nonce: typeof waf_fw_ajax !== 'undefined' ? waf_fw_ajax.nonce : ''
                 }, function(r) {
                     if (r && r.success) {
+                        $('.war-profile-btn').removeClass('active');
+                        btn.addClass('active');
                         hardening.showToast('<strong>' + (r.data.message || 'Profile applied') + '</strong>', 'success');
                         hardening.refreshStatus();
                         hardening.updateScore();
                     } else {
-                        hardening.showToast('Failed to apply profile: ' + (r.data.message || 'Unknown error'), 'error');
+                        var message = (r && r.data && r.data.message) ? r.data.message : 'Unknown error';
+                        hardening.showToast('Failed to apply profile: ' + message, 'error');
                     }
+                }).fail(function() {
+                    hardening.showToast('Network error while applying hardening profile', 'error');
                 });
             });
         },

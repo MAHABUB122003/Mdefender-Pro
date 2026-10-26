@@ -2191,32 +2191,20 @@ class WAF_FW_Scanner {
 
     private function run_basic_security_checks($url) {
         $checks = [];
-        $checks['admin_url_exposed'] = file_exists(ABSPATH . 'wp-admin/index.php');
-        $checks['wp_json_exposed'] = defined('REST_API_VERSION') || function_exists('rest_get_server');
-        $checks['readme_exists'] = file_exists(ABSPATH . 'readme.html');
-        $checks['wp_config_backup'] = file_exists(ABSPATH . 'wp-config.php.bak') || file_exists(dirname(ABSPATH) . '/wp-config.php.bak');
-        $checks['install_php_exists'] = file_exists(ABSPATH . 'wp-admin/install.php');
-        $checks['upgrade_php_exists'] = file_exists(ABSPATH . 'wp-admin/upgrade.php');
+        $checks['admin_url_exposed'] = $this->check_url_exists($url . '/wp-admin');
+        $checks['wp_json_exposed'] = $this->check_url_exists($url . '/wp-json/wp/v2/users');
+        $checks['readme_exists'] = $this->check_url_exists($url . '/readme.html');
+        $checks['wp_config_backup'] = $this->check_url_exists($url . '/wp-config.php.bak');
+        $checks['install_php_exists'] = $this->check_url_exists($url . '/wp-admin/install.php');
+        $checks['upgrade_php_exists'] = $this->check_url_exists($url . '/wp-admin/upgrade.php');
         return $checks;
     }
 
     private function check_security_headers($url) {
-        $header_keys = [];
-        if (function_exists('headers_list')) {
-            foreach (headers_list() as $h) {
-                if (strpos($h, ':') !== false) {
-                    [$k, $v] = explode(':', $h, 2);
-                    $header_keys[strtolower(trim($k))] = trim($v);
-                }
-            }
-        }
-        if (empty($header_keys)) {
-            $ctx = stream_context_create(['http' => ['timeout' => 2, 'ignore_errors' => true], 'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
-            $raw_headers = @get_headers($url, 1, $ctx);
-            if ($raw_headers) {
-                $header_keys = array_change_key_case($raw_headers, CASE_LOWER);
-            }
-        }
+        $headers = @get_headers($url, 1);
+        if (!$headers) return ['error' => 'Could not fetch headers'];
+
+        $header_keys = array_change_key_case($headers, CASE_LOWER);
         return [
             'x_frame_options' => isset($header_keys['x-frame-options']) ? $header_keys['x-frame-options'] : 'Missing',
             'x_xss_protection' => isset($header_keys['x-xss-protection']) ? $header_keys['x-xss-protection'] : 'Missing',
@@ -2418,18 +2406,12 @@ class WAF_FW_Scanner {
     }
 
     private function check_url_exists($url) {
-        $rel = parse_url($url, PHP_URL_PATH);
-        if ($rel) {
-            $base_rel = str_replace(parse_url(home_url(), PHP_URL_PATH) ?: '', '', $rel);
-            $local = ABSPATH . ltrim($base_rel, '/');
-            if (file_exists($local)) return true;
-        }
-        $response = wp_remote_head($url, ['timeout' => 2, 'sslverify' => false]);
+        $response = wp_remote_head($url, ['timeout' => 5]);
         return !is_wp_error($response) && in_array(wp_remote_retrieve_response_code($response), [200, 301, 302]);
     }
 
     private function check_wp_version($current_version) {
-        $response = wp_remote_get('https://api.wordpress.org/core/version-check/1.7/', ['timeout' => 3]);
+        $response = wp_remote_get('https://api.wordpress.org/core/version-check/1.7/', ['timeout' => 5]);
         if (is_wp_error($response)) return true;
         $data = json_decode(wp_remote_retrieve_body($response));
         if ($data && isset($data->offers[0]->current)) {
@@ -2440,10 +2422,7 @@ class WAF_FW_Scanner {
     }
 
     private function check_user_enumeration() {
-        if (get_option('waf_fw_prevent_user_enum') === 'yes' || get_option('waf_harden_prevent_user_enum') === 'yes') {
-            return false;
-        }
-        $response = wp_remote_get(home_url() . '/wp-json/wp/v2/users', ['timeout' => 2, 'sslverify' => false]);
+        $response = wp_remote_get(home_url() . '/wp-json/wp/v2/users', ['timeout' => 5]);
         return !is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200;
     }
 

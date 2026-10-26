@@ -359,12 +359,12 @@ $download_nonce = wp_create_nonce('waf_fw_download_backup');
     <div id="mdf-tab-upload" class="mdf-backup-tab-pane" style="display:none;">
         <div class="mdf-create-card">
             <h3>Upload Existing Backup Archive</h3>
-            <p class="mdf-card-desc">Upload a previously exported MDefender-Pro <code>.zip</code> or <code>.sql</code> archive file to restore or add to your local repository.</p>
+            <p class="mdf-card-desc">Upload a previously exported MDefender-Pro <code>.zip</code>, <code>.sql</code>, or compressed <code>.sql.gz</code> archive to restore or add to your local repository.</p>
 
             <form id="mdfUploadBackupForm" enctype="multipart/form-data">
                 <div class="mdf-upload-zone" id="mdfUploadDropzone">
                     <span class="dashicons dashicons-upload"></span>
-                    <h4>Drag &amp; Drop Backup Archive (.zip / .sql)</h4>
+                    <h4>Drag &amp; Drop Backup Archive (.zip / .sql / .sql.gz)</h4>
                     <p>or click to browse your computer</p>
                     <input type="file" id="mdfBackupFileInput" name="backup_file" accept=".zip,.sql,.gz" style="display:none;">
                     <button type="button" class="mdf-btn mdf-btn-outline" id="mdfBrowseBtn">Select Backup File</button>

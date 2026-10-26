@@ -749,6 +749,11 @@ jQuery(document).ready(function($) {
             } else {
                 alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Could not block IP'));
             }
+        }).fail(function(xhr) {
+            var message = xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+                ? xhr.responseJSON.data.message
+                : 'Request failed. The IP was not blacklisted.';
+            alert(message);
         });
     });
 
@@ -768,6 +773,11 @@ jQuery(document).ready(function($) {
             } else {
                 alert('Error: ' + ((r.data && r.data.message) ? r.data.message : 'Could not whitelist IP'));
             }
+        }).fail(function(xhr) {
+            var message = xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+                ? xhr.responseJSON.data.message
+                : 'Request failed. The IP was not whitelisted.';
+            alert(message);
         });
     });
 

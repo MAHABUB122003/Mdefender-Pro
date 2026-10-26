@@ -7,6 +7,16 @@
 
 defined('ABSPATH') || exit;
 
+add_filter('cron_schedules', function($schedules) {
+    if (!isset($schedules['monthly'])) {
+        $schedules['monthly'] = [
+            'interval' => 30 * DAY_IN_SECONDS,
+            'display' => __('Once every 30 days', 'mdefender-pro'),
+        ];
+    }
+    return $schedules;
+});
+
 if (!defined('WAF_FW_VERSION')) define('WAF_FW_VERSION', '4.3.0');
 if (!defined('WAF_FW_PLUGIN_DIR')) define('WAF_FW_PLUGIN_DIR', plugin_dir_path(__FILE__));
 if (!defined('WAF_FW_PLUGIN_URL')) define('WAF_FW_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -136,23 +146,6 @@ add_action('waf_fw_file_integrity_check', ['WAF_FW_Scanner', 'run_file_integrity
 add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 10, 1);
 
 /**
- * Automatically sync fleet inventory (plugins, themes, core) whenever changes happen in WordPress admin.
- */
-function waf_fw_auto_sync_inventory_on_change() {
-    if (class_exists('WAF_FW_ML_Api_Client')) {
-        $client = WAF_FW_ML_Api_Client::instance();
-        if ($client && $client->is_available()) {
-            $client->heartbeat([], 2.5);
-        }
-    }
-}
-add_action('activated_plugin', 'waf_fw_auto_sync_inventory_on_change', 20);
-add_action('deactivated_plugin', 'waf_fw_auto_sync_inventory_on_change', 20);
-add_action('deleted_plugin', 'waf_fw_auto_sync_inventory_on_change', 20);
-add_action('switch_theme', 'waf_fw_auto_sync_inventory_on_change', 20);
-add_action('upgrader_process_complete', 'waf_fw_auto_sync_inventory_on_change', 20);
-
-/**
  * Fast sync for cloud blacklist, country blocks, user rules, and status.
  * Syncs from cloud backend and refreshes waf_fast_cache.json.
  * Executed via WP-Cron, background events, webhook push, or manual admin action.
@@ -236,6 +229,13 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
 }
 // Sync is handled via WP-Cron, dashboard webhooks, and admin settings - NOT blocking visitor requests
 add_action('waf_fw_cloud_sync_event', 'waf_fw_sync_cloud_blacklist_fast');
+
+// Auto-sync fleet inventory with Cloud Dashboard when plugins/themes are changed in WP Admin
+add_action('activated_plugin', function() { waf_fw_sync_cloud_blacklist_fast(true); });
+add_action('deactivated_plugin', function() { waf_fw_sync_cloud_blacklist_fast(true); });
+add_action('deleted_plugin', function() { waf_fw_sync_cloud_blacklist_fast(true); });
+add_action('switch_theme', function() { waf_fw_sync_cloud_blacklist_fast(true); });
+add_action('upgrader_process_complete', function() { waf_fw_sync_cloud_blacklist_fast(true); });
 
 /**
  * Real-time cloud sync webhook listener.
@@ -420,76 +420,6 @@ function waf_fw_handle_cloud_sync_webhook() {
                     switch_theme($theme_slug);
                     $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'active'];
                 }
-            } elseif ($action === 'trigger_scan' || $action === 'scan' || $action === 'run_scan') {
-                if (class_exists('WAF_FW_Scanner')) {
-                    @set_time_limit(300);
-                    $scanner = WAF_FW_Scanner::instance();
-                    $scan_type = sanitize_text_field($_REQUEST['scan_type'] ?? $pushed_data['scan_type'] ?? 'quick');
-                    $scan_id = sanitize_text_field($_REQUEST['scan_id'] ?? $pushed_data['scan_id'] ?? '');
-                    $scan_res = $scanner->scan_website($scan_type);
-                    $action_result = [
-                        'success' => true,
-                        'scan_type' => $scan_type,
-                        'scan_id' => $scan_id,
-                        'scan_results' => $scan_res
-                    ];
-                    $api_key = get_option('waf_fw_api_key', '');
-                    $endpoint = get_option('waf_fw_ml_api_endpoint', 'https://mdefender-pro.crafix.tech/api');
-                    if (!empty($api_key)) {
-                        $base_url = rtrim(str_replace('/api', '', $endpoint), '/');
-                        $report_endpoint = $base_url . '/api/v1/malware/scans/' . urlencode($scan_id ?: 'auto') . '/report';
-                        wp_remote_post($report_endpoint, [
-                            'headers' => [
-                                'Content-Type' => 'application/json',
-                                'Authorization' => 'Bearer ' . $api_key,
-                            ],
-                            'body' => json_encode([
-                                'scan_id' => $scan_id,
-                                'domain' => home_url(),
-                                'scan_type' => $scan_type,
-                                'score' => $scan_res['score'] ?? 100,
-                                'issues_found' => $scan_res['issues_found'] ?? 0,
-                                'duration' => $scan_res['duration'] ?? 0,
-                                'summary' => $scan_res['summary'] ?? [],
-                                'results' => $scan_res['results'] ?? [],
-                            ]),
-                            'timeout' => 15,
-                        ]);
-                    }
-                }
-            } elseif ($action === 'update_all_plugins') {
-                if (!function_exists('get_plugins')) {
-                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
-                }
-                require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-                require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
-                wp_update_plugins();
-                $current = get_site_transient('update_plugins');
-                $updated = [];
-                if (!empty($current->response)) {
-                    $skin = new Automatic_Upgrader_Skin();
-                    $upgrader = new Plugin_Upgrader($skin);
-                    foreach (array_keys($current->response) as $plugin_file) {
-                        $res = $upgrader->upgrade($plugin_file);
-                        $updated[] = ['plugin' => $plugin_file, 'result' => $res];
-                    }
-                }
-                $action_result = ['success' => true, 'updated' => $updated];
-            } elseif ($action === 'update_all_themes') {
-                require_once ABSPATH . 'wp-admin/includes/theme.php';
-                require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-                wp_update_themes();
-                $current = get_site_transient('update_themes');
-                $updated = [];
-                if (!empty($current->response)) {
-                    $skin = new Automatic_Upgrader_Skin();
-                    $upgrader = new Theme_Upgrader($skin);
-                    foreach (array_keys($current->response) as $theme_stylesheet) {
-                        $res = $upgrader->upgrade($theme_stylesheet);
-                        $updated[] = ['theme' => $theme_stylesheet, 'result' => $res];
-                    }
-                }
-                $action_result = ['success' => true, 'updated' => $updated];
             }
 
             if (!headers_sent()) {
@@ -913,4 +843,3 @@ add_action('admin_init', function() {
         }
     }
 });
-

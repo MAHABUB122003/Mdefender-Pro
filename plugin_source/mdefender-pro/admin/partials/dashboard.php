@@ -65,39 +65,59 @@ if (!function_exists('waf_mdf_country_flag')) {
 <div class="mdf-canvas-wrap">
 
     <!-- 1. Top Platform Bar & Breadcrumb -->
-    <div class="mdf-top-bar">
+    <div class="mdf-top-bar mdf-dashboard-header">
         <div class="mdf-breadcrumbs" style="display:flex;align-items:center;gap:10px;">
             <div style="width:26px;height:26px;border-radius:7px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(15,44,38,0.12);background:#FFFFFF;flex-shrink:0;">
                 <img src="<?php echo defined('WAF_FW_PLUGIN_URL') ? esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.png') : ''; ?>" alt="MDefender Pro Logo" style="width:100%;height:100%;object-fit:contain;">
             </div>
-            <span class="mdf-crumb-base">MDefender Pro</span>
+            <span class="mdf-dashboard-brand">MDefender Pro</span>
             <span class="mdf-crumb-sep">&rsaquo;</span>
-            <span class="mdf-crumb-current">Command Center</span>
+            <span class="mdf-crumb-current">Dashboard</span>
         </div>
         <div class="mdf-top-right">
-            <div class="mdf-sys-status">
+            <div class="mdf-dashboard-status <?php echo $is_protection_enabled ? 'is-active' : 'is-disabled'; ?>">
                 <span class="mdf-dot-green"></span>
-                <span>All systems operational</span>
+                <span><?php echo $is_protection_enabled ? 'Protection active' : 'Protection disabled'; ?></span>
             </div>
-            <button type="button" class="mdf-icon-btn" title="Search" aria-label="Search">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </button>
-            <button type="button" class="mdf-icon-btn" title="Filter" aria-label="Filter">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-            </button>
-            <div class="mdf-avatar-chip"><?php echo esc_html($user_initials); ?></div>
+            <div class="mdf-dashboard-cloud <?php echo $is_cloud_connected ? 'is-active' : 'is-idle'; ?>">
+                <span class="mdf-dashboard-cloud-dot"></span>
+                <span><?php echo $is_cloud_connected ? 'Cloud connected' : 'Local protection'; ?></span>
+            </div>
+            <div class="mdf-dashboard-user">
+                <span class="mdf-avatar-chip"><?php echo esc_html($user_initials); ?></span>
+                <span><?php echo esc_html($user_display_name); ?></span>
+            </div>
         </div>
     </div>
+
+    <?php
+    $current_edition = defined('MDEFENDER_BUILD_EDITION') ? MDEFENDER_BUILD_EDITION : (class_exists('MDefender_Interop') ? MDefender_Interop::get_edition() : 'free');
+    $edition_name = defined('MDEFENDER_EDITION_NAME') ? MDEFENDER_EDITION_NAME : 'MD Defender Free';
+    $tier_badge = defined('MDEFENDER_TIER_BADGE') ? MDEFENDER_TIER_BADGE : 'FREE EDITION';
+    $tier_color = defined('MDEFENDER_TIER_COLOR') ? MDEFENDER_TIER_COLOR : '#64748b';
+    $is_free = ($current_edition === 'free');
+    ?>
 
     <!-- 2. Hero Header -->
     <div class="mdf-hero-header">
         <div class="mdf-hero-left">
-            <div class="mdf-tag-pill">
+            <div class="mdf-tag-pill" style="gap:10px;">
                 <span class="mdf-tag-square"></span>
                 <span>SECURITY OVERVIEW &nbsp;/&nbsp; <?php echo strtoupper(date('M d, Y')); ?></span>
+                <span style="background:<?php echo esc_attr($tier_color); ?>; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px; letter-spacing:0.5px;">
+                    <?php echo esc_html($tier_badge); ?>
+                </span>
             </div>
-            <h1 class="mdf-hero-title">Your site is <span class="mdf-orange-text">protected.</span></h1>
-            <p class="mdf-hero-subtitle">A real-time overview of your security posture, traffic, and active threats.</p>
+            <h1 class="mdf-hero-title">Your site is <span class="mdf-orange-text"><?php echo $is_protection_enabled ? 'protected.' : 'not protected.'; ?></span></h1>
+            <p class="mdf-hero-subtitle">
+                <?php if (!$is_protection_enabled): ?>
+                    Firewall protection is disabled. Enable protection before relying on the firewall to block threats.
+                <?php elseif ($is_free): ?>
+                    Protected by <strong>MD Defender Free</strong> (Community Rules delayed 30 days &bull; Scheduled scans every 3 days). <a href="https://mdefender-pro.io/pricing" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:600;">Upgrade to Go for Real-Time Rules &rarr;</a>
+                <?php else: ?>
+                    Protected by <strong><?php echo esc_html($edition_name); ?></strong> with Real-Time Cloud Rules, Live Signatures, and Active Country Blocking.
+                <?php endif; ?>
+            </p>
         </div>
         <div class="mdf-hero-actions">
             <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings')); ?>" class="mdf-btn-customize" id="mdfCustomizeBtn">
@@ -121,7 +141,7 @@ if (!function_exists('waf_mdf_country_flag')) {
         </div>
     </div>
 
-    <!-- 3. Dark Forest Green Posture Bar (#0F2C26) -->
+    <!-- 3. Protection status -->
     <div class="mdf-posture-banner">
         <div class="mdf-posture-col">
             <div class="mdf-posture-icon">

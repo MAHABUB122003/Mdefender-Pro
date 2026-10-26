@@ -616,25 +616,6 @@ class WAF_FW_Login_Protector {
             'details' => ['username' => $username, 'event' => 'login_failed']
         ]);
 
-        // Push to MDefender Dashboard Telemetry
-        if (class_exists('WAF_FW_Engine')) {
-            WAF_FW_Engine::instance()->buffer_telemetry([
-                'event_type' => 'blocked',
-                'ip' => $ip,
-                'url' => $_SERVER['REQUEST_URI'] ?? '/wp-login.php',
-                'method' => $_SERVER['REQUEST_METHOD'] ?? 'POST',
-                'attack_type' => 'Failed Login (User: ' . sanitize_text_field($username) . ')',
-                'confidence' => 0.85,
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-                'rule_matched' => 'Brute Force Login Protection',
-                'message' => 'Failed login attempt for user: ' . sanitize_text_field($username),
-                'status' => 'blocked',
-                'action' => 'blocked',
-                'timestamp' => current_time('mysql'),
-            ]);
-            WAF_FW_Engine::flush_telemetry();
-        }
-
         $enabled = get_option('waf_fw_login_lockout_enabled', 'yes');
         if ($enabled !== 'yes') return;
 
@@ -662,25 +643,6 @@ class WAF_FW_Login_Protector {
             'status' => 'allowed',
             'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
         ]);
-
-        // Push login event to MDefender Dashboard Telemetry
-        if (class_exists('WAF_FW_Engine')) {
-            WAF_FW_Engine::instance()->buffer_telemetry([
-                'event_type' => 'allowed',
-                'ip' => $ip,
-                'url' => $_SERVER['REQUEST_URI'] ?? '/wp-login.php',
-                'method' => $_SERVER['REQUEST_METHOD'] ?? 'POST',
-                'attack_type' => null,
-                'confidence' => 0.0,
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-                'rule_matched' => 'User Authentication Success',
-                'message' => 'Successful login by: ' . sanitize_text_field($user_login),
-                'status' => 'allowed',
-                'action' => 'allowed',
-                'timestamp' => current_time('mysql'),
-            ]);
-            WAF_FW_Engine::flush_telemetry();
-        }
     }
 
     public function get_attempts($ip) {
