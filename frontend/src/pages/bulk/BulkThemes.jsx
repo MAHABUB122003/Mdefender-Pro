@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import {
   Palette,
+  Layout,
   Sparkles,
   Check,
   RefreshCw,
@@ -226,112 +227,128 @@ export default function BulkThemes() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
-            {themes.map((theme) => (
-              <div
-                key={theme.id}
-                style={{
-                  background: '#FAFBF9',
-                  borderRadius: '14px',
-                  border: theme.status === 'active' ? '1.5px solid #2A8B68' : '1px solid #D9E1DC',
-                  padding: '20px 22px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
-                  position: 'relative'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                      <h4 style={{ margin: '0 0 3px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
-                        {theme.name}
-                      </h4>
-                      <span style={{ fontSize: '12px', color: '#60716B' }}>by {theme.author}</span>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <th style={{ padding: '12px 14px' }}>Theme Name</th>
+                <th style={{ padding: '12px 14px' }}>Installed Version</th>
+                <th style={{ padding: '12px 14px' }}>Latest Official</th>
+                <th style={{ padding: '12px 14px' }}>Fleet Scope</th>
+                <th style={{ padding: '12px 14px' }}>Status</th>
+                <th style={{ padding: '12px 14px', textAlign: 'right' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {themes.map((theme) => (
+                <tr key={theme.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                  <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: theme.status === 'active' ? '#ECFDF5' : '#FFF7ED',
+                        color: theme.status === 'active' ? '#059669' : '#D97735',
+                        border: `1px solid ${theme.status === 'active' ? '#A7F3D0' : '#FFEDD5'}`,
+                        flexShrink: 0
+                      }}>
+                        <Palette size={16} />
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '13.5px', color: '#10201E' }}>{theme.name}</span>
+                          {theme.status === 'active' && (
+                            <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                              ACTIVE PRIMARY
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#87948D', marginTop: '2px' }}>
+                          by {theme.author}
+                        </div>
+                      </div>
                     </div>
-
+                  </td>
+                  <td style={{ padding: '14px' }}>
+                    <code style={{ background: '#F1F5F3', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>
+                      v{theme.currentVersion}
+                    </code>
+                  </td>
+                  <td style={{ padding: '14px' }}>
+                    <code style={{ background: '#F1F5F3', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>
+                      v{theme.latestVersion}
+                    </code>
+                    {theme.updateAvailable && (
+                      <span style={{ ...badgeStyle('#FFFBEB', '#B45309', '#FEF3C7'), marginLeft: '6px' }}>
+                        UPDATE AVAILABLE
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ padding: '14px', color: '#60716B' }}>
+                    {theme.siteCount > 0 ? `Active on ${theme.siteCount} Site(s)` : 'Standby / Fleet Archive'}
+                  </td>
+                  <td style={{ padding: '14px' }}>
                     <span style={badgeStyle(
-                      theme.status === 'active' ? '#ECFDF5' : '#F1F5F9',
+                      theme.status === 'active' ? '#ECFDF5' : '#F8FAFC',
                       theme.status === 'active' ? '#059669' : '#64748B',
-                      theme.status === 'active' ? '#A7F3D0' : '#CBD5E1'
+                      theme.status === 'active' ? '#A7F3D0' : '#E2E8F0'
                     )}>
                       {theme.status === 'active' ? 'ACTIVE THEME' : 'STANDBY'}
                     </span>
-                  </div>
+                  </td>
+                  <td style={{ padding: '14px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      {theme.status !== 'active' && (
+                        <button
+                          onClick={() => handleActivateTheme(theme.id)}
+                          style={{
+                            background: '#ffffff',
+                            border: '1px solid #D9E1DC',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            color: '#059669',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          Activate
+                        </button>
+                      )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0', fontSize: '12.5px', color: '#60716B' }}>
-                    <span>Installed: <strong style={{ color: '#10201E' }}>v{theme.currentVersion}</strong></span>
-                    <span>•</span>
-                    <span>Latest: <strong style={{ color: '#10201E' }}>v{theme.latestVersion}</strong></span>
-                  </div>
-
-                  {theme.updateAvailable && (
-                    <div style={{
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      background: '#FFFBEB',
-                      border: '1px solid #FEF3C7',
-                      color: '#B45309',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '14px'
-                    }}>
-                      <AlertTriangle size={14} />
-                      <span>Security &amp; feature release v{theme.latestVersion} available</span>
+                      {theme.updateAvailable ? (
+                        <button
+                          onClick={() => handleSingleUpdate(theme.id)}
+                          style={{
+                            background: '#10201E',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Update
+                        </button>
+                      ) : (
+                        theme.status === 'active' && (
+                          <span style={{ fontSize: '11.5px', color: '#2A8B68', fontWeight: '700' }}>
+                            ✓ Current
+                          </span>
+                        )
+                      )}
                     </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #E6ECE8' }}>
-                  <span style={{ fontSize: '12px', color: '#60716B', fontWeight: '600' }}>
-                    {theme.siteCount > 0 ? `Active on ${theme.siteCount} Site(s)` : 'Available on Fleet'}
-                  </span>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {theme.status !== 'active' && (
-                      <button
-                        onClick={() => handleActivateTheme(theme.id)}
-                        style={{
-                          background: '#ffffff',
-                          border: '1px solid #D9E1DC',
-                          color: '#10201E',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          fontSize: '11.5px',
-                          fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Activate
-                      </button>
-                    )}
-
-                    {theme.updateAvailable && (
-                      <button
-                        onClick={() => handleSingleUpdate(theme.id)}
-                        style={{
-                          background: '#10201E',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '6px 14px',
-                          borderRadius: '6px',
-                          fontSize: '11.5px',
-                          fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Update
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

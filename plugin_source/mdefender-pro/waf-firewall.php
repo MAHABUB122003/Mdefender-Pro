@@ -136,6 +136,23 @@ add_action('waf_fw_file_integrity_check', ['WAF_FW_Scanner', 'run_file_integrity
 add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 10, 1);
 
 /**
+ * Automatically sync fleet inventory (plugins, themes, core) whenever changes happen in WordPress admin.
+ */
+function waf_fw_auto_sync_inventory_on_change() {
+    if (class_exists('WAF_FW_ML_Api_Client')) {
+        $client = WAF_FW_ML_Api_Client::instance();
+        if ($client && $client->is_available()) {
+            $client->heartbeat([], 2.5);
+        }
+    }
+}
+add_action('activated_plugin', 'waf_fw_auto_sync_inventory_on_change', 20);
+add_action('deactivated_plugin', 'waf_fw_auto_sync_inventory_on_change', 20);
+add_action('deleted_plugin', 'waf_fw_auto_sync_inventory_on_change', 20);
+add_action('switch_theme', 'waf_fw_auto_sync_inventory_on_change', 20);
+add_action('upgrader_process_complete', 'waf_fw_auto_sync_inventory_on_change', 20);
+
+/**
  * Fast sync for cloud blacklist, country blocks, user rules, and status.
  * Syncs from cloud backend and refreshes waf_fast_cache.json.
  * Executed via WP-Cron, background events, webhook push, or manual admin action.

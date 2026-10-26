@@ -486,7 +486,25 @@ class WAF_FW_ML_Api_Client {
         $url = $this->base_url . '/api/v1/waf/telemetry';
         $json_body = wp_json_encode($payload);
 
-        // Try direct cURL execution with robust background timeouts & SSL flexibility
+        // 1. Primary: WordPress Native Asynchronous Non-Blocking HTTP Post (0ms visitor latency)
+        if (function_exists('wp_remote_post')) {
+            $agent = (function_exists('get_bloginfo') ? get_bloginfo('version') : '6.7') . '; ' . (function_exists('home_url') ? home_url() : 'localhost');
+            @wp_remote_post($url, [
+                'timeout'     => 0.4,
+                'blocking'    => false, // Completely decoupled from visitor response time
+                'sslverify'   => false,
+                'redirection' => 0,
+                'headers'     => [
+                    'Authorization' => 'Bearer ' . $this->api_key,
+                    'Content-Type'  => 'application/json',
+                    'User-Agent'    => 'WordPress/' . $agent,
+                ],
+                'body'        => $json_body,
+            ]);
+            return true;
+        }
+
+        // 2. Fallback: Fast cURL with sub-second millisecond timeout for standalone/CLI runtimes
         if (function_exists('curl_init')) {
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_POST, 1);
@@ -494,11 +512,11 @@ class WAF_FW_ML_Api_Client {
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Authorization: Bearer ' . $this->api_key,
                 'Content-Type: application/json',
-                'User-Agent: WordPress/' . get_bloginfo('version') . '; ' . home_url()
+                'User-Agent: MDefender-Pro/4.3.0'
             ]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 400);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 300);
             curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
@@ -510,29 +528,9 @@ class WAF_FW_ML_Api_Client {
                 ]);
             }
 
-            $exec_res = @curl_exec($ch);
-            $c_code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            @curl_exec($ch);
             @curl_close($ch);
-
-            if ($c_code >= 200 && $c_code < 300) {
-                return true;
-            }
-        }
-
-        // Fallback to WordPress HTTP API (non-blocking)
-        if (function_exists('wp_remote_post')) {
-            wp_remote_post($url, [
-                'timeout'     => 4,
-                'blocking'    => false,
-                'sslverify'   => false,
-                'redirection' => 2,
-                'headers'     => [
-                    'Authorization' => 'Bearer ' . $this->api_key,
-                    'Content-Type'  => 'application/json',
-                    'User-Agent'    => 'WordPress/' . get_bloginfo('version') . '; ' . home_url(),
-                ],
-                'body'        => $json_body,
-            ]);
+            return true;
         }
         return true;
     }

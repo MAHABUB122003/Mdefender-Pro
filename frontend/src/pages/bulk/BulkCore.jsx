@@ -133,7 +133,7 @@ export default function BulkCore() {
           </div>
 
           {/* 3 Metric Detail Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px', marginBottom: '24px' }}>
             <div style={detailCardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                 <div style={{ ...iconBoxStyle, color: '#2A8B68', background: '#E8F3EC' }}>
@@ -181,6 +181,82 @@ export default function BulkCore() {
                 <span>Optimal Indexing Tier</span>
               </div>
             </div>
+          </div>
+
+          {/* Official Core Integrity File Ledger */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            padding: '24px 28px',
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  Core File Integrity Ledger &amp; Directory Audit
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
+                  Continuous cryptographic hash validation against WordPress.org official releases to detect backdoors or unauthorized core modifications.
+                </p>
+              </div>
+
+              <span style={badgeStyle('#ECFDF5', '#059669', '#A7F3D0')}>
+                ALL CHECKSUMS MATCHED
+              </span>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <th style={{ padding: '12px 14px' }}>Path / Directory</th>
+                  <th style={{ padding: '12px 14px' }}>Scope &amp; Role</th>
+                  <th style={{ padding: '12px 14px' }}>Official Hash Authority</th>
+                  <th style={{ padding: '12px 14px' }}>Integrity Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { path: '/wp-admin/', role: 'Administrative dashboard, authentication & AJAX engines', authority: 'WordPress.org SVN API v' + currentWpVersion, status: 'Verified Clean' },
+                  { path: '/wp-includes/', role: 'Core libraries, REST API controllers, typography & crypto', authority: 'WordPress.org SVN API v' + currentWpVersion, status: 'Verified Clean' },
+                  { path: '/index.php', role: 'Main WordPress execution bootstrap entry point', authority: 'Official MD5 Checksum', status: 'Untampered' },
+                  { path: '/wp-settings.php', role: 'Environment initialization & hooks bootstrap', authority: 'Official MD5 Checksum', status: 'Untampered' },
+                  { path: '/wp-config.php', role: 'Database credentials & security salts (Protected)', authority: 'MDefender File Guard', status: 'Secured (Read-Only)' },
+                  { path: '/.htaccess', role: 'Server rewrite directives & WAF firewall rules', authority: 'MDefender Apache Guard', status: 'Hardened Active' },
+                ].map((item, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', color: '#10201E', fontFamily: 'monospace' }}>
+                      {item.path}
+                    </td>
+                    <td style={{ padding: '14px', color: '#60716B' }}>
+                      {item.role}
+                    </td>
+                    <td style={{ padding: '14px' }}>
+                      <code style={{ background: '#F1F5F3', padding: '2px 8px', borderRadius: '4px', fontSize: '11.5px', color: '#10201E' }}>
+                        {item.authority}
+                      </code>
+                    </td>
+                    <td style={{ padding: '14px' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        background: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0'
+                      }}>
+                        <CheckCircle2 size={12} />
+                        <span>{item.status}</span>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

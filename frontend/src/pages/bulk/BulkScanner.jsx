@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Bug,
   ShieldAlert,
@@ -30,6 +30,20 @@ export default function BulkScanner() {
   const [activeHelpTab, setActiveHelpTab] = useState('how-it-works') // 'how-it-works' | 'signatures' | 'licenses'
   const [findings, setFindings] = useState([])
   const [toastMsg, setToastMsg] = useState(null)
+
+  useEffect(() => {
+    const targetSiteId = selectedSiteId === 'all' ? (wpWebsites[0]?.id || wpWebsites[0]?._id) : (activeWebsite?.id || activeWebsite?._id);
+    if (!targetSiteId || targetSiteId === 'all') return;
+    api.getWebsiteScans(targetSiteId).then(res => {
+      const scans = res?.scans || res?.data || (Array.isArray(res) ? res : []);
+      if (scans.length > 0) {
+        const latest = scans[0];
+        if (latest.findings && Array.isArray(latest.findings)) {
+          setFindings(latest.findings);
+        }
+      }
+    }).catch(() => {});
+  }, [selectedSiteId, activeWebsite?.id, activeWebsite?._id, wpWebsites]);
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })

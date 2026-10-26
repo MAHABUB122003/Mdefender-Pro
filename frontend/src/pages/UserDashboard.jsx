@@ -86,6 +86,8 @@ const severityConfig = {
   scanner: { label: 'BLOCKED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
   probe: { label: 'DETECTED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
   clean: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
+  allowed: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
+  ingress: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
   default: { label: 'MITIGATED', color: '#E8792F', bg: '#FEF3EB', border: '#FCD8BF' }
 };
 
@@ -2846,8 +2848,12 @@ export default function UserDashboard() {
                           alignItems: 'center',
                           gap: '4px'
                         }}>
-                          <ShieldAlert size={11} />
-                          <span>{log.attack_type || 'Exploit Intercepted'}</span>
+                          {log.status === 'allowed' || (log.attack_type || '').toLowerCase().includes('clean') || (log.attack_type || '').toLowerCase().includes('ingress') ? (
+                            <ShieldCheck size={11} color="#15803D" />
+                          ) : (
+                            <ShieldAlert size={11} />
+                          )}
+                          <span>{log.attack_type || (log.status === 'allowed' ? 'Clean Ingress' : 'Exploit Intercepted')}</span>
                         </span>
 
                         {/* Domain */}

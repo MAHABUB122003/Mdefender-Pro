@@ -8,7 +8,10 @@ import {
   Play,
   XCircle,
   ShieldCheck,
-  Plus
+  Plus,
+  Box,
+  Boxes,
+  Layers
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BulkHeader from './BulkHeader'
@@ -215,19 +218,36 @@ export default function BulkPlugins() {
               {plugins.map((plugin) => (
                 <tr key={plugin.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
                   <td style={{ padding: '14px', fontWeight: '700', color: '#10201E' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: plugin.status === 'active' ? '#10B981' : '#94A3B8'
-                      }} />
-                      <span>{plugin.name}</span>
-                      {plugin.verified && (
-                        <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
-                          OFFICIAL WAF
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: plugin.verified ? '#ECFDF5' : '#FFF7ED',
+                        color: plugin.verified ? '#059669' : '#D97735',
+                        border: `1px solid ${plugin.verified ? '#A7F3D0' : '#FFEDD5'}`,
+                        flexShrink: 0
+                      }}>
+                        {plugin.verified ? <ShieldCheck size={18} /> : <Box size={16} />}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '13.5px', color: '#10201E' }}>{plugin.name}</span>
+                          {plugin.verified && (
+                            <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                              ACTIVE DEFENSE SHIELD
+                            </span>
+                          )}
+                        </div>
+                        {plugin.file && (
+                          <div style={{ fontSize: '11px', color: '#87948D', marginTop: '2px', fontFamily: 'monospace' }}>
+                            {plugin.file}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td style={{ padding: '14px' }}>

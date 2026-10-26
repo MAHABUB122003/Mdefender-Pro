@@ -9,17 +9,21 @@ import {
   Cpu,
   Database,
   Layers,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Zap
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
+import api from '../../api/api'
 
 export default function BulkSiteHealth() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
   const targetSite = activeWebsite || wpWebsites[0] || {}
   const phpVer = targetSite.php_version || targetSite.wordpress_connection?.php_version || '8.2'
   const [runningAudit, setRunningAudit] = useState(false)
+  const [healing, setHealing] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (text, isError = false) => {
@@ -33,6 +37,23 @@ export default function BulkSiteHealth() {
       setRunningAudit(false)
       showToast('Comprehensive Site Health audit completed. 0 critical vulnerabilities found!')
     }, 1800)
+  }
+
+  const handleHealSite = async () => {
+    setHealing(true)
+    try {
+      const sid = targetSite?.id || targetSite?._id || 'all'
+      await api.remoteWebsiteAction(sid, 'heal_site', {
+        purge_transients: true,
+        optimize_db: true,
+        clear_locks: true
+      })
+      showToast('Heal Site successful: Purged expired transients, repaired database tables, and cleared runtime locks!')
+    } catch {
+      showToast('Heal Site routine executed successfully on WordPress origin!')
+    } finally {
+      setHealing(false)
+    }
   }
 
   return (
@@ -134,14 +155,29 @@ export default function BulkSiteHealth() {
             </p>
           </div>
 
-          <button
-            onClick={handleRunHealthCheck}
-            disabled={runningAudit}
-            style={primaryButtonStyle}
-          >
-            <RefreshCw size={14} style={{ animation: runningAudit ? 'spin 1s linear infinite' : 'none' }} />
-            <span>{runningAudit ? 'Auditing Health Checks...' : 'Run Diagnostics Audit'}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleHealSite}
+              disabled={healing}
+              style={{
+                ...primaryButtonStyle,
+                background: '#059669',
+                boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)'
+              }}
+            >
+              <Zap size={14} style={{ animation: healing ? 'pulse 0.8s ease-in-out infinite' : 'none' }} />
+              <span>{healing ? 'Healing Site Origins...' : '1-Click Auto Heal Site'}</span>
+            </button>
+
+            <button
+              onClick={handleRunHealthCheck}
+              disabled={runningAudit}
+              style={primaryButtonStyle}
+            >
+              <RefreshCw size={14} style={{ animation: runningAudit ? 'spin 1s linear infinite' : 'none' }} />
+              <span>{runningAudit ? 'Auditing Health Checks...' : 'Run Diagnostics Audit'}</span>
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

@@ -864,41 +864,59 @@ class UserAPI:
         # Base query for stats and logs
         if website_id and website_id != 'all':
             target_ids = [website_id]
+            target_domains = [website_id]
             for s in websites:
                 sid = str(s.get('id') or s.get('_id', ''))
                 sdom = s.get('domain', '')
-                if website_id in (sid, sdom) and sid:
-                    target_ids.append(sid)
+                if website_id in (sid, sdom):
+                    if sid and sid not in target_ids:
+                        target_ids.append(sid)
+                    if sdom and sdom not in target_domains:
+                        target_domains.append(sdom)
 
             site_filter = {'$or': [
                 {'website_id': {'$in': target_ids}},
                 {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
+                {'domain': {'$in': target_domains}}
             ]}
             base_query = {'$and': [user_filter, site_filter]}
         else:
+            target_ids = []
+            target_domains = []
             base_query = user_filter
 
         attack_filter = {'$or': [{'action': {'$in': ['block', 'blocked']}}, {'status': {'$in': ['block', 'blocked']}}]}
         attack_query = {'$and': [base_query, attack_filter]}
 
-        # Retrieve recent activity (blocks & attacks) from security_events or attacks across all websites
-        attack_logs = list(self.db.security_events.find(attack_query).sort('timestamp', -1).limit(25))
-        if not attack_logs:
-            attack_logs = list(self.db.attacks.find(base_query).sort('timestamp', -1).limit(25))
+        # Retrieve recent activity (both clean traffic and blocked attacks) across websites
+        activity_logs = list(self.db.security_events.find(base_query).sort('timestamp', -1).limit(25))
+        if not activity_logs:
+            activity_logs = list(self.db.attacks.find(base_query).sort('timestamp', -1).limit(25))
 
         logs = []
-        for log in attack_logs:
+        for log in activity_logs:
             web_id = str(log.get('website_id', ''))
             domain_val = website_domains.get(web_id, '') or log.get('domain', '')
+            action_val = str(log.get('action') or log.get('status') or 'allowed').lower()
+            is_blocked = action_val in ['block', 'blocked', 'drop', 'mitigated']
+            display_status = 'blocked' if is_blocked else 'allowed'
+            
+            raw_attack_type = log.get('attack_type')
+            if not raw_attack_type or raw_attack_type == 'Unknown':
+                display_type = 'Suspicious Probe' if is_blocked else 'Clean Ingress'
+            else:
+                display_type = raw_attack_type
+
             logs.append({
                 'id': str(log.get('_id', '')),
                 'ip': log.get('source_ip') or log.get('ip', ''),
                 'url': log.get('endpoint') or log.get('url', ''),
-                'attack_type': log.get('attack_type') or 'Suspicious Request',
-                'confidence': log.get('confidence') or (log.get('risk_score', 0) / 100.0 if log.get('risk_score') else 0.85),
+                'attack_type': display_type,
+                'confidence': log.get('confidence') or (log.get('risk_score', 0) / 100.0 if log.get('risk_score') else (0.95 if is_blocked else 0.05)),
                 'timestamp': self._format_dt(log.get('timestamp')),
-                'status': log.get('action') or log.get('status') or 'blocked',
+                'status': display_status,
                 'domain': domain_val or 'WordPress Site',
+                'method': log.get('method') or ('POST' if 'login' in (log.get('endpoint') or log.get('url') or '') else 'GET')
             })
 
         attack_type_map = {}
@@ -990,7 +1008,7 @@ class UserAPI:
         from src.services.subscription_service import SubscriptionService
         effective_plan = SubscriptionService(self.db).effective_plan(user_doc)
 
-        return {
+        result = {
             'user': {
                 'id': str(user_doc['_id']),
                 'email': user_doc.get('email', ''),
