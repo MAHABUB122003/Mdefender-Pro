@@ -312,30 +312,19 @@ class UserAPI:
         if current_websites_count >= max_sites:
             return {'status': 'error', 'message': f'Your {plan} plan allows up to {max_sites} website(s). Upgrade to Premium to connect more domains.'}
 
-        # Check if already added by this user for the SAME platform category
-        # A user can have mahabubur.shop as both a Cloud/Domain Edge proxy AND a WordPress site simultaneously
-        if platform == 'wordpress':
-            platform_filter = {'$or': [{'platform': 'wordpress'}, {'platform': {'$regex': '^wordpress', '$options': 'i'}}]}
-            platform_label = "WordPress site"
-        else:
-            platform_filter = {'$or': [{'platform': 'domain'}, {'platform': 'cloud'}, {'platform': {'$nin': ['wordpress']}}]}
-            platform_label = "Domain"
-
+        # Check if already added by this user (any platform) or orphaned
         existing_site = self.db.websites.find_one({
             '$and': [
                 {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
-                {'$or': [{'domain': domain}, {'url': domain}, {'name': domain}]},
-                platform_filter
+                {'$or': [{'domain': domain}, {'url': domain}, {'name': domain}]}
             ]
         })
 
-        orphan_site = self.db.websites.find_one({
-            '$and': [
-                {'$or': [{'domain': domain}, {'url': domain}]},
-                platform_filter,
-                {'$or': [{'user_id': {'$exists': False}}, {'user_id': None}, {'user_id': ''}]}
-            ]
-        })
+        orphan_site = None
+        if not existing_site:
+            orphan_site = self.db.websites.find_one({
+                '$or': [{'domain': domain}, {'url': domain}, {'name': domain}]
+            })
 
         # Generate unique dedicated scoped API Key for this website
         raw_key = generate_api_key()
@@ -376,7 +365,7 @@ class UserAPI:
             'threat_level': 'LOW',
         }
 
-        # If already added, re-connect and update records seamlessly instead of throwing blocking error
+        # If already added, re-connect and update records seamlessly
         if existing_site:
             website_id = str(existing_site['_id'])
             try:
@@ -417,6 +406,7 @@ class UserAPI:
                     'id': website_id,
                     'domain': domain,
                     'name': domain,
+                    'platform': platform,
                     'status': 'active',
                     'assigned_nameservers': assigned_ns
                 },
@@ -437,7 +427,12 @@ class UserAPI:
                 self.db.websites.insert_one(new_doc)
             except Exception:
                 try:
-                    self.db.websites.update_one({'_id': website_id}, {'$set': update_fields}, upsert=True)
+                    conflicting = self.db.websites.find_one({'$or': [{'domain': domain}, {'url': domain}]})
+                    if conflicting:
+                        website_id = str(conflicting['_id'])
+                        self.db.websites.update_one({'_id': conflicting['_id']}, {'$set': update_fields})
+                    else:
+                        self.db.websites.update_one({'_id': website_id}, {'$set': update_fields}, upsert=True)
                 except Exception:
                     pass
 
@@ -461,6 +456,8 @@ class UserAPI:
             })
         except Exception as e:
             logger.warning(f"Could not record API key for website {website_id}: {e}")
+
+        self._stats_cache.clear()
 
         # Seed DNS records
         try:
@@ -773,6 +770,8 @@ class UserAPI:
         for ws in user.get('websites', []):
             if isinstance(ws, dict) and ws.get('domain'):
                 all_discovered_domains.add(ws.get('domain'))
+            elif isinstance(ws, str) and ws:
+                all_discovered_domains.add(ws)
 
         for d in all_discovered_domains:
             if d not in ('unknown', '') and d not in known_domains:
@@ -782,6 +781,8 @@ class UserAPI:
                 is_local = d in ("localhost", "127.0.0.1", "::1") or (matching_user_ws and "localhost" in matching_user_ws.get('url', ''))
                 site_display_name = "Localhost (XAMPP)" if is_local else d
                 site_url = matching_user_ws.get('url') if matching_user_ws and matching_user_ws.get('url') else ("http://localhost" if is_local else f"https://{d}")
+                raw_key = generate_api_key()
+                key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
                 new_site = {
                     '_id': site_id,
                     'user_id': user_id_str,
@@ -789,6 +790,7 @@ class UserAPI:
                     'domain': d,
                     'url': site_url,
                     'platform': 'WordPress (XAMPP)' if is_local else 'WordPress',
+                    'api_key': raw_key,
                     'status': 'active',
                     'protection_enabled': True,
                     'waf_mode': 'protect',
@@ -802,6 +804,17 @@ class UserAPI:
                 }
                 try:
                     self.db.websites.insert_one(new_site)
+                    try:
+                        self.db.api_keys.insert_one({
+                            'website_id': site_id,
+                            'user_id': user_id_str,
+                            'key_hash': key_hash,
+                            'label': 'WordPress',
+                            'created_at': now_dt,
+                            'status': 'active'
+                        })
+                    except Exception:
+                        pass
                     websites_cursor.append(new_site)
                     known_domains.add(d)
                 except Exception:

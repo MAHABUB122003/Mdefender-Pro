@@ -42,13 +42,14 @@ export default function UserWebsites() {
   const [adding, setAdding] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
-  // Dedicated WordPress Websites (Filtered to exclude pure domains)
+  // Dedicated WordPress Websites (Fall back to all websites so no domain is ever hidden)
   const wpWebsites = useMemo(() => {
     const list = data?.websites || []
-    return list.filter(w => {
+    const strictlyWp = list.filter(w => {
       const p = (w.platform || '').toLowerCase()
       return p === 'wordpress' || p === 'wp' || p.startsWith('wordpress')
     })
+    return strictlyWp.length > 0 ? strictlyWp : list
   }, [data])
 
   // Domain Zone Management Modal (if needed for edge routing)
@@ -94,9 +95,9 @@ export default function UserWebsites() {
 
   const apiEndpoint = window.location.origin
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (force = false) => {
     try {
-      const result = await api.getUserDashboard()
+      const result = await api.getUserDashboard(force ? { refresh: '1' } : {})
       setData(result)
       userStore.set('websites', result)
       userStore.set('dashboard', result)
@@ -108,7 +109,7 @@ export default function UserWebsites() {
   }, [])
 
   useEffect(() => {
-    fetchData()
+    fetchData(true)
   }, [fetchData])
 
   const handleAddWebsite = async (e) => {
@@ -138,9 +139,41 @@ export default function UserWebsites() {
       }
 
       const siteKey = res?.api_key || res?.website?.api_key || ''
+      const siteId = res?.website_id || res?.website?.id || res?.website?._id || `site_${Date.now()}`
+
+      const newSiteObj = {
+        id: siteId,
+        _id: siteId,
+        domain: cleanDomain,
+        name: cleanDomain,
+        url: cleanDomain,
+        platform: 'wordpress',
+        status: 'active',
+        api_key: siteKey,
+        added_at: new Date().toISOString(),
+        waf_mode: 'protect',
+        threat_level: 'LOW'
+      }
+
+      // Optimistic update: render immediately in UI
+      setData(prev => {
+        const prevList = prev?.websites || []
+        const existingIdx = prevList.findIndex(w => (w.domain || '').toLowerCase() === cleanDomain)
+        let updatedList
+        if (existingIdx >= 0) {
+          updatedList = prevList.map((w, idx) => idx === existingIdx ? { ...w, ...newSiteObj } : w)
+        } else {
+          updatedList = [newSiteObj, ...prevList]
+        }
+        const updated = { ...(prev || {}), websites: updatedList }
+        userStore.set('websites', updated)
+        userStore.set('dashboard', updated)
+        return updated
+      })
+
       setModalKey(siteKey)
       setModalDomain(cleanDomain)
-      setModalWebsiteId(res?.website?._id || res?.website?.id || '')
+      setModalWebsiteId(siteId)
       setModalTab('wordpress')
       setIsMasked(false)
       setShowKeyModal(true)
@@ -149,7 +182,7 @@ export default function UserWebsites() {
       setFeedbackMsg({ type: 'success', text: `WordPress site "${cleanDomain}" connected successfully!` })
       userStore.invalidate('websites')
       userStore.invalidate('dashboard')
-      await fetchData()
+      await fetchData(true)
     } catch (err) {
       const errMsg = err.message || 'Failed to connect website. Please try again.'
       if (errMsg.toLowerCase().includes('upgrade') || errMsg.toLowerCase().includes('limit')) {
@@ -616,7 +649,7 @@ export default function UserWebsites() {
           </div>
 
           <button
-            onClick={fetchData}
+            onClick={() => fetchData(true)}
             style={{
               background: '#FAFBF9',
               border: '1px solid #D9E1DC',
