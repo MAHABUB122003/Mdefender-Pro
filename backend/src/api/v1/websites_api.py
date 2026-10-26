@@ -582,13 +582,94 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
     db.websites.update_one(
         {"_id": website["_id"]},
-        {"$set": {"last_scan_status": "queued", "last_scan_id": scan_id, "updated_at": now}}
+        {"$set": {"last_scan_status": "running", "last_scan_id": scan_id, "updated_at": now}}
     )
+
+    # Immediately dispatch scan execution to WordPress site if connected
+    target_url = website.get("url") or website.get("domain") or ""
+    if target_url and not target_url.startswith("http"):
+        target_url = f"https://{target_url}" if website.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+
+    api_key = website.get("api_key") or ""
+    site_token = website.get("site_token") or ""
+
+    if target_url:
+        import requests
+        sep = "&" if "?" in target_url else "?"
+        url_params = f"waf_cloud_sync=1&action=trigger_scan&scan_id={scan_id}&scan_type={scan_type}"
+        if api_key:
+            url_params += f"&api_key={api_key}"
+        if site_token:
+            url_params += f"&site_token={site_token}"
+
+        candidates = [
+            f"{target_url}/wp-json/waf-fw/v1/sync?{url_params}",
+            f"{target_url}{sep}{url_params}",
+            f"{target_url}/index.php?{url_params}",
+        ]
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "MDefender-Pro-CloudAction/1.0",
+        }
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["X-API-Key"] = api_key
+        if site_token:
+            headers["X-Site-Token"] = site_token
+
+        for ep in candidates:
+            try:
+                resp = requests.post(ep, json={"action": "trigger_scan", "scan_id": scan_id, "scan_type": scan_type}, headers=headers, timeout=12.0, verify=False)
+                if resp.status_code == 200:
+                    resp_json = resp.json()
+                    action_res = resp_json.get("action_result") or {}
+                    scan_results = action_res.get("scan_results")
+                    if scan_results:
+                        score = scan_results.get("score", 100)
+                        issues_count = scan_results.get("issues_found", 0)
+                        threat_level = "LOW"
+                        if score < 50 or issues_count >= 5:
+                            threat_level = "HIGH"
+                        elif score < 80 or issues_count > 0:
+                            threat_level = "MEDIUM"
+
+                        db.malware_scans.update_one(
+                            {"_id": scan_id},
+                            {"$set": {
+                                "status": "completed",
+                                "completed_at": datetime.now(),
+                                "score": score,
+                                "issues_found": issues_count,
+                                "duration": scan_results.get("duration", 0),
+                                "summary": scan_results.get("summary", {}),
+                                "results": scan_results.get("results", {}),
+                                "threat_level": threat_level
+                            }}
+                        )
+                        db.websites.update_one(
+                            {"_id": website["_id"]},
+                            {"$set": {
+                                "last_scan_status": "completed",
+                                "security_score": score,
+                                "threat_level": threat_level,
+                                "last_scan": datetime.now().isoformat()
+                            }}
+                        )
+                        return success({
+                            "scan_id": scan_id,
+                            "status": "completed",
+                            "score": score,
+                            "issues_found": issues_count,
+                            "message": f"Scan completed successfully with security score {score}/100."
+                        })
+                    break
+            except Exception:
+                pass
 
     return success({
         "scan_id": scan_id,
         "status": "queued",
-        "message": f"Deep {scan_type.upper()} security scan queued. The WordPress plugin will execute the scan on the next heartbeat and stream findings."
+        "message": f"Deep {scan_type.upper()} security scan initiated. Results will stream to your dashboard."
     })
 
 
