@@ -530,13 +530,21 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
         except Exception:
             pass
 
-    # Real-time counter increments (strictly 1:1 with real requests)
     if total_reqs > 0:
+        today_str = now.strftime("%Y-%m-%d")
         inc_web = {"total_requests": total_reqs, "requests_today": total_reqs}
         if total_blocks > 0:
             inc_web["total_blocked"] = total_blocks
             inc_web["blocked_today"] = total_blocks
-        db.websites.update_one({"_id": website_id_str}, {"$inc": inc_web, "$set": {"last_activity": now}})
+
+        w_matches = [{"_id": website_id_str}]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(website_id_str):
+                w_matches.append({"_id": ObjectId(website_id_str)})
+        except Exception:
+            pass
+        db.websites.update_one({"$or": w_matches}, {"$inc": inc_web, "$set": {"last_activity": now, "requests_today_date": today_str}})
 
         user_matches = [{"_id": user_id_str}, {"id": user_id_str}]
         try:
@@ -626,12 +634,22 @@ def store_event(db, auth_data, req_data, decision, ip):
             inc_website["total_blocked"] = 1
             inc_website["blocked_today"] = 1
 
+        today_str = now.strftime("%Y-%m-%d")
+        w_matches = [{"_id": website_id_str}]
+        try:
+            from bson import ObjectId
+            if ObjectId.is_valid(website_id_str):
+                w_matches.append({"_id": ObjectId(website_id_str)})
+        except Exception:
+            pass
+
         db.websites.update_one(
-            {"_id": website_id_str},
+            {"$or": w_matches},
             {
                 "$inc": inc_website,
                 "$set": {
                     "last_activity": now,
+                    "requests_today_date": today_str,
                     "threat_level": _threat_label(decision.get("risk_score", 0)),
                 }
             }

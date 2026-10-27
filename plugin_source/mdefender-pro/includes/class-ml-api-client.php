@@ -327,6 +327,16 @@ class WAF_FW_ML_Api_Client {
         }
 
         $inventory = self::get_site_inventory();
+        $b_cnt = (int) get_option('waf_fw_stats_blocked', 0);
+        $a_cnt = (int) get_option('waf_fw_stats_allowed', 0);
+        global $wpdb;
+        $tbl = $wpdb->prefix . 'waf_fw_logs';
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$tbl}'") === $tbl) {
+            $tot_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl}");
+            $blk_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked'");
+            $b_cnt = max($b_cnt, $blk_logs);
+            $a_cnt = max($a_cnt, $tot_logs - $blk_logs);
+        }
 
         $body = [
             'api_key'        => $this->api_key,
@@ -337,6 +347,10 @@ class WAF_FW_ML_Api_Client {
             'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0',
             'php_version'    => phpversion(),
             'wp_version'     => get_bloginfo('version'),
+            'stats'          => [
+                'requests_blocked' => $b_cnt,
+                'requests_allowed' => $a_cnt,
+            ],
             'plugins'        => $inventory['plugins'] ?? [],
             'themes'         => $inventory['themes'] ?? [],
             'theme'          => $inventory['theme'] ?? '',
@@ -364,6 +378,12 @@ class WAF_FW_ML_Api_Client {
         }
         update_option('waf_fw_connected', 'yes');
         update_option('waf_fw_connected_at', current_time('mysql'));
+
+        // Fire immediate heartbeat so cloud dashboard instantly updates with live counters
+        $this->heartbeat([
+            'requests_blocked' => $b_cnt,
+            'requests_allowed' => $a_cnt,
+        ], 4.0);
 
         return [
             'success' => true,

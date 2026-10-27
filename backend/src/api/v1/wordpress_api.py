@@ -105,6 +105,7 @@ class ConnectRequest(BaseModel):
     theme: str | None = None
     hardening: dict | None = None
     backups: list | None = None
+    stats: dict | None = None
 
 
 class HeartbeatRequest(BaseModel):
@@ -173,6 +174,18 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
                 update_fields[hk] = bool(hv)
     if body.backups is not None:
         update_fields["backups"] = body.backups
+
+    if body.stats:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        b_cnt = int(body.stats.get("requests_blocked", 0) or 0)
+        a_cnt = int(body.stats.get("requests_allowed", 0) or 0)
+        tot_cnt = b_cnt + a_cnt
+        update_fields["total_requests"] = tot_cnt
+        update_fields["total_blocked"] = b_cnt
+        update_fields["requests_today"] = tot_cnt
+        update_fields["blocked_today"] = b_cnt
+        update_fields["requests_today_date"] = today_str
+        update_fields["last_activity"] = now
 
     if not website.get("verified") or website.get("domain") in ("localhost", "127.0.0.1", "", None):
         update_fields["domain"] = body.domain

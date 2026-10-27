@@ -1177,9 +1177,9 @@ export default function UserDashboard() {
   const totalBlk = data?.total_blocked || 0;
   const threatRatio = totalReq > 0 ? (totalBlk / totalReq) : 0;
 
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    d.setDate(d.getDate() - (6 - i));
     dailyDays.push(d.toLocaleDateString('en', { weekday: 'short', month: 'numeric', day: 'numeric' }));
     const count = data?.daily_requests?.[i] || 0;
     const estimatedThreats = Math.round(count * threatRatio);

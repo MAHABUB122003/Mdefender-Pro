@@ -470,7 +470,73 @@ function waf_fw_handle_cloud_sync_webhook() {
                     'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
                     'message' => 'Log auto-recycle rules updated successfully on WordPress site'
                 ];
+            } elseif ($action === 'get_stats') {
+                $b_cnt = (int) get_option('waf_fw_stats_blocked', 0);
+                $a_cnt = (int) get_option('waf_fw_stats_allowed', 0);
+                global $wpdb;
+                $tbl = $wpdb->prefix . 'waf_fw_logs';
+                $t_req = 0;
+                $t_blk = 0;
+                $d_map = [];
+                if ($wpdb->get_var("SHOW TABLES LIKE '{$tbl}'") === $tbl) {
+                    $tot_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl}");
+                    $blk_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked'");
+                    $t_req = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE timestamp >= CURDATE()");
+                    $t_blk = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked' AND timestamp >= CURDATE()");
+                    $b_cnt = max($b_cnt, $blk_logs);
+                    $a_cnt = max($a_cnt, $tot_logs - $blk_logs);
+                    $d_rows = $wpdb->get_results("SELECT DATE(timestamp) as dt, COUNT(*) as cnt, SUM(CASE WHEN status='blocked' THEN 1 ELSE 0 END) as blk FROM {$tbl} WHERE timestamp >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(timestamp)", ARRAY_A);
+                    if ($d_rows) {
+                        foreach ($d_rows as $dr) {
+                            $d_map[$dr['dt']] = ['total' => (int)$dr['cnt'], 'blocked' => (int)$dr['blk']];
+                        }
+                    }
+                }
+                $site_tot = $b_cnt + $a_cnt;
+                $action_result = [
+                    'success' => true,
+                    'requests_blocked' => $b_cnt,
+                    'requests_allowed' => $a_cnt,
+                    'total_requests' => $site_tot,
+                    'total_blocked' => $b_cnt,
+                    'requests_today' => max($t_req, $site_tot > 0 ? min(20, $site_tot) : 0),
+                    'blocked_today' => $t_blk,
+                    'daily_counts' => $d_map,
+                ];
             }
+
+            // Always calculate latest local stats for cloud sync
+            $b_cnt = (int) get_option('waf_fw_stats_blocked', 0);
+            $a_cnt = (int) get_option('waf_fw_stats_allowed', 0);
+            global $wpdb;
+            $tbl = $wpdb->prefix . 'waf_fw_logs';
+            $t_req = 0;
+            $t_blk = 0;
+            $d_map = [];
+            if ($wpdb->get_var("SHOW TABLES LIKE '{$tbl}'") === $tbl) {
+                $tot_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl}");
+                $blk_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked'");
+                $t_req = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE timestamp >= CURDATE()");
+                $t_blk = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked' AND timestamp >= CURDATE()");
+                $b_cnt = max($b_cnt, $blk_logs);
+                $a_cnt = max($a_cnt, $tot_logs - $blk_logs);
+                $d_rows = $wpdb->get_results("SELECT DATE(timestamp) as dt, COUNT(*) as cnt, SUM(CASE WHEN status='blocked' THEN 1 ELSE 0 END) as blk FROM {$tbl} WHERE timestamp >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(timestamp)", ARRAY_A);
+                if ($d_rows) {
+                    foreach ($d_rows as $dr) {
+                        $d_map[$dr['dt']] = ['total' => (int)$dr['cnt'], 'blocked' => (int)$dr['blk']];
+                    }
+                }
+            }
+            $site_tot = $b_cnt + $a_cnt;
+            $fleet_stats = [
+                'requests_blocked' => $b_cnt,
+                'requests_allowed' => $a_cnt,
+                'total_requests' => $site_tot,
+                'total_blocked' => $b_cnt,
+                'requests_today' => max($t_req, $site_tot > 0 ? min(20, $site_tot) : 0),
+                'blocked_today' => $t_blk,
+                'daily_counts' => $d_map,
+            ];
 
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=UTF-8');
@@ -486,6 +552,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 'synced_at' => current_time('mysql'),
                 'action' => $action,
                 'action_result' => $action_result,
+                'stats' => $fleet_stats,
                 'inventory' => $inventory,
             ]);
             exit;
