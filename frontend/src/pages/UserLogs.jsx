@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useCallback, useMemo } from 'react';
+import { useState, useEffect, Fragment, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/api';
 import userStore from '../utils/userStore';
@@ -272,18 +272,23 @@ export default function UserLogs() {
     fetchWebsites();
   }, [fetchWebsites]);
 
+  const isFirstLoad = useRef(true);
+
   const fetchLogs = useCallback(async (manual = false) => {
     const cacheKey = `logs_p${page}_${search}_${ipFilter}_${typeFilter}_${statusFilter}_${websiteFilter}`;
-    try {
-      const cached = userStore.get(cacheKey);
-      if (cached && Array.isArray(cached?.logs) && !manual) {
-        setLogs(cached);
-        setLoading(false);
-      } else if (!cached && !manual) {
+    if (isFirstLoad.current && !manual) {
+      try {
+        const cached = userStore.get(cacheKey);
+        if (cached && Array.isArray(cached?.logs) && cached.logs.length > 0) {
+          setLogs(cached);
+          setLoading(false);
+        } else {
+          setLoading(true);
+        }
+      } catch {
         setLoading(true);
       }
-    } catch {
-      if (!manual) setLoading(true);
+      isFirstLoad.current = false;
     }
     if (manual) setRefreshing(true);
 

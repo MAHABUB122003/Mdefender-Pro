@@ -22,7 +22,7 @@ class UserAPI:
         self._stats_cache = {}
         self._stats_cache_ttl = 15
         self._logs_cache = {}
-        self._logs_cache_ttl = 8
+        self._logs_cache_ttl = 1
 
     @staticmethod
     def _format_dt(val, fmt='%Y-%m-%d %H:%M:%S', default=''):
@@ -1379,11 +1379,14 @@ class UserAPI:
             # High-performance Remote Log Query Proxy:
             # Query the WordPress plugin directly for authentic local logs without loading the central MongoDB database!
             if target_site and (target_site.get('url') or target_site.get('domain')):
-                site_url = target_site.get('url') or f"http://{target_site.get('domain')}"
+                raw_url = str(target_site.get('url') or target_site.get('domain') or '').strip().rstrip('/')
+                site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
                 site_key = target_site.get('api_key') or ''
                 try:
                     import requests
-                    remote_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_logs"
+                    import urllib3
+                    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                    remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs"
                     req_params = {
                         'page': page,
                         'limit': per_page,
@@ -1400,8 +1403,14 @@ class UserAPI:
                         'X-API-Key': site_key,
                         'User-Agent': 'MDefender-Cloud/2.0'
                     }
-                    resp = requests.get(remote_url, params=req_params, headers=headers, timeout=1.2)
-                    if resp.status_code == 200:
+                    resp = None
+                    try:
+                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.0, verify=False)
+                    except Exception:
+                        if site_url.startswith('https://'):
+                            clean_host = raw_url.replace('https://', '').replace('http://', '')
+                            resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs", params=req_params, headers=headers, timeout=2.0, verify=False)
+                    if resp and resp.status_code == 200:
                         r_data = resp.json()
                         if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
                             norm_logs = []
@@ -1445,22 +1454,34 @@ class UserAPI:
             ]})
         else:
             # Multi-Website Aggregated Query Proxy:
-            # When viewing "All Websites", query all user's connected WordPress sites in parallel!
+            # When viewing "All Websites", query all user's unique connected WordPress sites in parallel!
             # Zero database load on central MongoDB, completely lightweight and memory-efficient.
-            connected_wp_sites = [s for s in (user_sites + wp_sites) if s.get('url') and s.get('api_key')]
+            unique_connected_sites = {}
+            for s in (user_sites + wp_sites):
+                raw_u = s.get('url') or s.get('domain')
+                if not raw_u or not s.get('api_key'):
+                    continue
+                clean_k = str(raw_u).lower().strip().replace('http://', '').replace('https://', '').rstrip('/')
+                if clean_k and clean_k not in unique_connected_sites:
+                    unique_connected_sites[clean_k] = s
+
+            connected_wp_sites = list(unique_connected_sites.values())
             if connected_wp_sites:
                 import requests
+                import urllib3
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
                 from concurrent.futures import ThreadPoolExecutor, as_completed
 
                 all_remote_logs = []
                 total_remote_count = 0
 
                 def fetch_single_site_logs(site):
-                    site_url = site.get('url') or f"http://{site.get('domain')}"
+                    raw_url = str(site.get('url') or site.get('domain') or '').strip().rstrip('/')
+                    site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
                     site_key = site.get('api_key') or ''
                     domain_name = site.get('domain') or site.get('name') or 'localhost'
                     try:
-                        remote_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_logs"
+                        remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs"
                         req_params = {
                             'page': 1,
                             'limit': 50,
@@ -1477,8 +1498,14 @@ class UserAPI:
                             'X-API-Key': site_key,
                             'User-Agent': 'MDefender-Cloud/2.0'
                         }
-                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=1.2)
-                        if resp.status_code == 200:
+                        resp = None
+                        try:
+                            resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.0, verify=False)
+                        except Exception:
+                            if site_url.startswith('https://'):
+                                clean_host = raw_url.replace('https://', '').replace('http://', '')
+                                resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs", params=req_params, headers=headers, timeout=2.0, verify=False)
+                        if resp and resp.status_code == 200:
                             data = resp.json()
                             logs_list = data.get('logs', []) if isinstance(data, dict) else []
                             return logs_list, data.get('total', len(logs_list)), domain_name

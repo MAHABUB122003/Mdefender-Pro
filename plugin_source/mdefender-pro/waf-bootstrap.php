@@ -231,8 +231,22 @@ if (!$is_blocked) {
     }
 }
 
-// If blocked, render lightweight standalone block response in < 0.05ms
+// If blocked, render stealth connection drop or standalone block response in < 0.05ms
 if ($is_blocked) {
+    // Stealth Drop for Blacklisted IP and Country Block: attacker sees ERR_EMPTY_RESPONSE / Connection Reset (Dead Host)
+    if (strpos($block_reason, 'Blacklisted IP') !== false || strpos($block_reason, 'restricted by security policy') !== false) {
+        if (!headers_sent()) {
+            header('HTTP/1.1 444 No Response', true, 444);
+            header('Status: 444 No Response');
+            header('Connection: close');
+            header('Content-Length: 0');
+        }
+        if (function_exists('fastcgi_finish_request')) {
+            @fastcgi_finish_request();
+        }
+        exit;
+    }
+
     if (function_exists('http_response_code')) {
         http_response_code(403);
     }

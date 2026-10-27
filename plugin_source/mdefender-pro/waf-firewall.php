@@ -470,6 +470,138 @@ function waf_fw_handle_cloud_sync_webhook() {
                     'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
                     'message' => 'Log auto-recycle rules updated successfully on WordPress site'
                 ];
+            } elseif ($action === 'get_blacklist') {
+                global $wpdb;
+                $tbl = $wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
+                $items = [];
+                if ($wpdb->get_var("SHOW TABLES LIKE '{$tbl}'") === $tbl) {
+                    $rows = $wpdb->get_results("SELECT id, ip, reason, type, auto_blocked, blocked_at, block_expires_at FROM {$tbl} ORDER BY id DESC", ARRAY_A);
+                    if ($rows) {
+                        foreach ($rows as $r) {
+                            $exp = $r['block_expires_at'] ?? null;
+                            $is_exp = false;
+                            if ($exp && strtotime($exp) <= current_time('timestamp')) {
+                                $is_exp = true;
+                            }
+                            $items[] = [
+                                'id' => (string)$r['id'],
+                                'ip' => $r['ip'],
+                                'reason' => $r['reason'] ?: 'Blocked by security policy',
+                                'type' => $r['type'] ?: 'Permanent',
+                                'duration' => $r['type'] ?: 'Permanent',
+                                'blocked_at' => $r['blocked_at'],
+                                'expires_at' => $exp,
+                                'is_expired' => $is_exp,
+                                'auto_blocked' => (bool)$r['auto_blocked'],
+                            ];
+                        }
+                    }
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'blacklist' => $items, 'total' => count($items)]);
+                exit;
+            } elseif ($action === 'add_blacklist') {
+                $target_ip = trim(sanitize_text_field($_REQUEST['ip'] ?? $pushed_data['ip'] ?? ''));
+                if (!empty($target_ip)) {
+                    $b_reason = sanitize_text_field($_REQUEST['reason'] ?? $pushed_data['reason'] ?? 'Blocked from User Dashboard');
+                    $b_type = sanitize_text_field($_REQUEST['duration'] ?? $pushed_data['duration'] ?? $_REQUEST['type'] ?? $pushed_data['type'] ?? 'Permanent');
+                    $b_expires = sanitize_text_field($_REQUEST['expires_at'] ?? $pushed_data['expires_at'] ?? null);
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->add_to_blacklist($target_ip, $b_reason, $b_type, false, $b_expires);
+                    }
+                    if (!headers_sent()) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                    }
+                    echo json_encode(['status' => 'success', 'message' => "IP {$target_ip} blacklisted locally on WordPress ({$b_type})"]);
+                    exit;
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'error', 'message' => 'IP address is required']);
+                exit;
+            } elseif ($action === 'delete_blacklist' || $action === 'remove_blacklist' || $action === 'unblock_blacklist') {
+                $target_ip = trim(sanitize_text_field($_REQUEST['ip'] ?? $pushed_data['ip'] ?? ''));
+                if (!empty($target_ip)) {
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->remove_from_blacklist($target_ip);
+                    }
+                    if (!headers_sent()) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                    }
+                    echo json_encode(['status' => 'success', 'message' => "IP {$target_ip} unblocked locally on WordPress"]);
+                    exit;
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'error', 'message' => 'IP address is required']);
+                exit;
+            } elseif ($action === 'get_country_blocks') {
+                $raw_c = (string) get_option('waf_fw_blocked_countries', '');
+                $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
+                $c_blocks = [];
+                foreach ($c_codes as $idx => $code) {
+                    $c_blocks[] = [
+                        'id' => 'wp_c_' . $idx,
+                        'country_code' => $code,
+                        'country_name' => class_exists('WAF_FW_Logger') ? WAF_FW_Logger::get_country_name($code) : $code,
+                        'reason' => 'Geo-restricted by administrator',
+                        'is_global' => false,
+                        'created_at' => current_time('mysql'),
+                    ];
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'country_blocks' => $c_blocks, 'total' => count($c_blocks)]);
+                exit;
+            } elseif ($action === 'add_country_block') {
+                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? '')));
+                if (!empty($c_code)) {
+                    $raw_c = (string) get_option('waf_fw_blocked_countries', '');
+                    $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
+                    if (!in_array($c_code, $c_codes, true)) {
+                        $c_codes[] = $c_code;
+                        update_option('waf_fw_blocked_countries', implode(',', $c_codes));
+                        if (class_exists('WAF_FW_Engine')) {
+                            WAF_FW_Engine::instance()->export_fast_cache();
+                        }
+                    }
+                    if (!headers_sent()) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                    }
+                    echo json_encode(['status' => 'success', 'message' => "Country {$c_code} blocked locally on WordPress"]);
+                    exit;
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'error', 'message' => 'Country code is required']);
+                exit;
+            } elseif ($action === 'delete_country_block' || $action === 'remove_country_block') {
+                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? '')));
+                if (!empty($c_code)) {
+                    $raw_c = (string) get_option('waf_fw_blocked_countries', '');
+                    $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
+                    $c_codes = array_values(array_diff($c_codes, [$c_code]));
+                    update_option('waf_fw_blocked_countries', implode(',', $c_codes));
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (!headers_sent()) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                    }
+                    echo json_encode(['status' => 'success', 'message' => "Country {$c_code} unblocked locally on WordPress"]);
+                    exit;
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'error', 'message' => 'Country code is required']);
+                exit;
             } elseif ($action === 'get_stats') {
                 $b_cnt = (int) get_option('waf_fw_stats_blocked', 0);
                 $a_cnt = (int) get_option('waf_fw_stats_allowed', 0);
@@ -939,6 +1071,23 @@ function waf_fw_analyze_request() {
     $result = $engine->analyze_current_request();
 
     if ($result['status'] === 'blocked') {
+        $atype = $result['attack_type'] ?? '';
+        // Stealth Drop Mode for Blacklisted IP and Country Block:
+        // Attacker sees ERR_EMPTY_RESPONSE / Connection Reset (Dead Host)
+        if ($atype === 'Blacklisted IP' || $atype === 'Country Blocked') {
+            if (!headers_sent()) {
+                header('HTTP/1.1 444 No Response', true, 444);
+                header('Status: 444 No Response');
+                header('Connection: close');
+                header('Content-Length: 0');
+            }
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            WAF_FW_Engine::flush_telemetry();
+            exit;
+        }
+
         status_header(403);
         header('X-Protected-By: MDefender-Pro-WAAP');
         include WAF_FW_PLUGIN_DIR . 'block-page-template.php';

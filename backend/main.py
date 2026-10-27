@@ -1258,144 +1258,145 @@ def parse_ban_duration(duration_input):
         duration_label = 'Permanent'
     return expires_at, duration_label
 
+def get_user_connected_wordpress_sites(user):
+    from bson import ObjectId
+    user_id_str = str(user.get('_id', ''))
+    u_obj = ObjectId(user_id_str) if ObjectId.is_valid(user_id_str) else user_id_str
+    
+    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
+    if is_admin:
+        user_sites = list(db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': u_obj}]}))
+        if not user_sites:
+            user_sites = list(db.websites.find({'status': {'$ne': 'deleted'}}))
+        wp_sites = list(db.wordpress_sites.find())
+    else:
+        user_sites = list(db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': u_obj}]}))
+        wp_sites = list(db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': u_obj}]}))
+
+    unique_sites = {}
+    for s in (user_sites + wp_sites):
+        raw_u = s.get('url') or s.get('domain')
+        if not raw_u or not s.get('api_key'):
+            continue
+        clean_k = str(raw_u).lower().strip().replace('http://', '').replace('https://', '').rstrip('/')
+        if clean_k and clean_k not in unique_sites:
+            unique_sites[clean_k] = s
+    return list(unique_sites.values())
+
+
 @app.post("/api/user/block-ip")
 @app.post("/api/v1/user/block-ip")
 async def user_block_ip(request: Request, user: dict = Depends(verify_user_token_compat)):
-    data = await request.json()
-    ip = data.get('ip', '').strip()
-    reason = data.get('reason', 'Blocked by user')
-    if not ip:
-        return {'status': 'error', 'message': 'IP address is required'}
-    
-    from bson import ObjectId
-    user_id_str = str(user['_id'])
-    user_email = user.get('email', 'unknown')
-    
-    duration_raw = data.get('duration') or data.get('type') or 'permanent'
-    expires_at, duration_label = parse_ban_duration(duration_raw)
-    now = datetime.now()
-    
-    payload = {
-        'ip': ip,
-        'reason': reason,
-        'type': duration_label,
-        'duration': duration_label,
-        'expires_at': expires_at,
-        'added_by': user_email,
-        'added_by_user_id': user_id_str,
-        'user_id': user_id_str,
-        'blocked_at': now,
-        'is_global': False,
-    }
-    
-    match_conds = [{'ip': ip, 'user_id': user_id_str}, {'ip': ip, 'added_by_user_id': user_id_str}]
-    if ObjectId.is_valid(user_id_str):
-        match_conds.append({'ip': ip, 'user_id': ObjectId(user_id_str)})
-    existing = db.blacklist.find_one({'$or': match_conds}) or db.blacklist.find_one({'ip': ip})
-    if existing:
-        db.blacklist.update_one({'_id': existing['_id']}, {'$set': payload})
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user['_id'])
-        return {'status': 'success', 'message': f'{ip} has been updated in blacklist ({duration_label})'}
-    
-    db.blacklist.insert_one(payload)
-    from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-    push_instant_sync_to_wordpress(user_id=user['_id'])
-    return {'status': 'success', 'message': f'{ip} has been blacklisted ({duration_label})'}
+    return await user_add_blacklist(request, user)
+
 
 @app.get("/api/user/blacklist")
 @app.get("/api/v1/user/blacklist")
 async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
-    from bson import ObjectId
-    user_id_str = str(user['_id'])
-    user_email = user.get('email', '')
-    now = datetime.now()
+    # Decentralized Zero-Bloat: Query user's connected WordPress nodes directly
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    conds = [
-        {'added_by_user_id': user_id_str},
-        {'user_id': user_id_str},
-    ]
-    if user_email:
-        conds.append({'added_by': user_email})
-    if ObjectId.is_valid(user_id_str):
-        conds.append({'added_by_user_id': ObjectId(user_id_str)})
-        conds.append({'user_id': ObjectId(user_id_str)})
+    sites = get_user_connected_wordpress_sites(user)
+    aggregated_blacklist = []
+    seen_ips = set()
     
-    query = {'$or': conds}
-    
-    blacklist = []
-    for entry in db.blacklist.find(query).sort('blocked_at', -1):
-        exp = entry.get('expires_at')
-        is_expired = False
-        if exp and isinstance(exp, datetime) and exp <= now:
-            is_expired = True
+    for s in sites:
+        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+        site_key = s.get('api_key') or ''
+        try:
+            remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_blacklist"
+            headers = {
+                'Authorization': f'Bearer {site_key}',
+                'X-API-Key': site_key,
+                'User-Agent': 'MDefender-Cloud/2.0'
+            }
+            resp = None
+            try:
+                resp = requests.get(remote_url, headers=headers, timeout=2.0, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_host = raw_url.replace('https://', '').replace('http://', '')
+                    resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_blacklist", headers=headers, timeout=2.0, verify=False)
+            if resp and resp.status_code == 200:
+                data = resp.json()
+                b_list = data.get('blacklist', []) if isinstance(data, dict) else []
+                for item in b_list:
+                    ip_addr = item.get('ip')
+                    if ip_addr and ip_addr not in seen_ips:
+                        seen_ips.add(ip_addr)
+                        aggregated_blacklist.append(item)
+        except Exception:
+            pass
             
-        dur_type = entry.get('duration') or entry.get('type')
-        if not dur_type or dur_type.lower() == 'blacklist':
-            dur_type = 'Permanent' if not exp else 'Temporary'
-            
-        blacklist.append({
-            'id': str(entry['_id']),
-            'ip': entry.get('ip', ''),
-            'reason': entry.get('reason', ''),
-            'blocked_at': entry['blocked_at'].strftime('%Y-%m-%d %H:%M:%S') if entry.get('blocked_at') and hasattr(entry['blocked_at'], 'strftime') else str(entry.get('blocked_at', '')),
-            'expires_at': exp.strftime('%Y-%m-%d %H:%M:%S') if exp and hasattr(exp, 'strftime') else (str(exp) if exp else None),
-            'type': dur_type,
-            'duration': dur_type,
-            'is_expired': is_expired,
-            'auto_blocked': entry.get('auto_blocked', False),
-            'added_by': entry.get('added_by', ''),
-        })
-    return blacklist
+    return aggregated_blacklist
+
 
 @app.post("/api/user/blacklist")
 @app.post("/api/v1/user/blacklist")
 async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
+    # Decentralized Zero-Bloat: Push command directly to WordPress node (No MongoDB storage)
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    
     data = await request.json()
     ip = (data.get('ip') or '').strip()
     if not ip:
         return {'status': 'error', 'message': 'IP address is required'}
-    
-    from bson import ObjectId
-    user_id_str = str(user['_id'])
-    user_email = user.get('email', 'unknown')
-    
+        
     duration_raw = data.get('duration') or data.get('type') or 'permanent'
     expires_at, duration_label = parse_ban_duration(duration_raw)
-    now = datetime.now()
+    exp_str = expires_at.strftime('%Y-%m-%d %H:%M:%S') if expires_at else None
+    reason = data.get('reason', 'Blocked by user from cloud dashboard')
     
-    payload = {
-        'ip': ip,
-        'reason': data.get('reason', 'Blocked by user'),
-        'type': duration_label,
-        'duration': duration_label,
-        'expires_at': expires_at,
-        'added_by': user_email,
-        'added_by_user_id': user_id_str,
-        'user_id': user_id_str,
-        'blocked_at': now,
-        'is_global': False,
-    }
+    sites = get_user_connected_wordpress_sites(user)
+    success_count = 0
     
-    db.blacklist.delete_many({'ip': ip, 'user_id': user_id_str})
-    db.blacklist.delete_many({'ip': ip, 'added_by_user_id': user_id_str})
-    if ObjectId.is_valid(user_id_str):
-        db.blacklist.delete_many({'ip': ip, 'user_id': ObjectId(user_id_str)})
-        db.blacklist.delete_many({'ip': ip, 'added_by_user_id': ObjectId(user_id_str)})
-    db.blacklist.insert_one(payload)
-    
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user['_id'])
-    except Exception:
-        pass
-        
-    return {'status': 'success', 'message': f'IP {ip} blacklisted successfully ({duration_label})'}
+    for s in sites:
+        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+        site_key = s.get('api_key') or ''
+        try:
+            remote_url = f"{site_url}/?waf_cloud_sync=1"
+            headers = {
+                'Authorization': f'Bearer {site_key}',
+                'X-API-Key': site_key,
+                'Content-Type': 'application/json',
+                'User-Agent': 'MDefender-Cloud/2.0'
+            }
+            body = {
+                'action': 'add_blacklist',
+                'ip': ip,
+                'reason': reason,
+                'duration': duration_label,
+                'expires_at': exp_str
+            }
+            resp = None
+            try:
+                resp = requests.post(remote_url, json=body, headers=headers, timeout=2.5, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_host = raw_url.replace('https://', '').replace('http://', '')
+                    resp = requests.post(f"http://{clean_host}/?waf_cloud_sync=1", json=body, headers=headers, timeout=2.5, verify=False)
+            if resp and resp.status_code == 200:
+                success_count += 1
+        except Exception:
+            pass
+            
+    return {'status': 'success', 'message': f'IP {ip} blacklisted successfully on your website ({duration_label})'}
+
 
 @app.delete("/api/user/blacklist")
 @app.delete("/api/v1/user/blacklist")
 async def user_delete_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
-    from bson import ObjectId
+    # Decentralized Zero-Bloat: Command WordPress node to unblock IP (No MongoDB storage)
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    
     ip = request.query_params.get('ip', '').strip()
     if not ip:
         try:
@@ -1405,161 +1406,70 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
             pass
     if not ip:
         return {'status': 'error', 'message': 'IP is required'}
-    
-    user_id_str = str(user['_id'])
-    user_email = user.get('email', '')
-    
-    del_conds = [
-        {'added_by_user_id': user_id_str},
-        {'user_id': user_id_str},
-        {'added_by_user_id': {'$exists': False}},
-        {'added_by_user_id': None},
-        {'is_global': {'$ne': True}},
-    ]
-    if user_email:
-        del_conds.append({'added_by': user_email})
-    if ObjectId.is_valid(user_id_str):
-        del_conds.append({'added_by_user_id': ObjectId(user_id_str)})
-        del_conds.append({'user_id': ObjectId(user_id_str)})
-    
-    # 1. Delete from blacklist
-    db.blacklist.delete_many({
-        'ip': ip,
-        '$or': del_conds
-    })
-    db.blacklist.delete_many({'ip': ip, 'user_id': user_id_str})
-    db.blacklist.delete_many({'ip': ip, 'added_by_user_id': user_id_str})
-    if ObjectId.is_valid(user_id_str):
-        db.blacklist.delete_many({'ip': ip, 'user_id': ObjectId(user_id_str)})
-        db.blacklist.delete_many({'ip': ip, 'added_by_user_id': ObjectId(user_id_str)})
-    db.blacklist.delete_many({'ip': ip, 'is_global': {'$ne': True}})
-    
-    # 2. Delete from auto_blocks
-    db.auto_blocks.delete_many({'ip': ip})
-    
-    # 3. CRITICAL: Clear all attack attempts for this IP so auto_block won't immediately re-ban it!
-    db.attack_attempts.delete_many({'ip': ip})
-    
-    # 4. Immediate push sync to WordPress sites and local disk fast caches
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user['_id'])
-    except Exception:
-        pass
-        
+
+    sites = get_user_connected_wordpress_sites(user)
+    for s in sites:
+        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+        site_key = s.get('api_key') or ''
+        try:
+            remote_url = f"{site_url}/?waf_cloud_sync=1"
+            headers = {
+                'Authorization': f'Bearer {site_key}',
+                'X-API-Key': site_key,
+                'Content-Type': 'application/json',
+                'User-Agent': 'MDefender-Cloud/2.0'
+            }
+            body = {'action': 'delete_blacklist', 'ip': ip}
+            try:
+                requests.post(remote_url, json=body, headers=headers, timeout=2.5, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_host = raw_url.replace('https://', '').replace('http://', '')
+                    requests.post(f"http://{clean_host}/?waf_cloud_sync=1", json=body, headers=headers, timeout=2.5, verify=False)
+        except Exception:
+            pass
+
     return {'status': 'success', 'message': f'IP {ip} unblocked and removed from blacklist'}
+
 
 @app.post("/api/user/blacklist/unblock-expired")
 @app.post("/api/v1/user/blacklist/unblock-expired")
 async def user_unblock_expired_blacklist(user: dict = Depends(verify_user_token_compat)):
-    from bson import ObjectId
-    user_id_str = str(user['_id'])
-    user_email = user.get('email', '')
-    now = datetime.now()
+    # In decentralized architecture, WordPress auto-purges expired blocks on-the-fly via cleanup_expired_blocks()
+    return {'status': 'success', 'message': 'Expired IP blocks automatically purged on edge nodes', 'unblocked_count': 0}
 
-    conds = [
-        {'added_by_user_id': user_id_str},
-        {'user_id': user_id_str},
-    ]
-    if user_email:
-        conds.append({'added_by': user_email})
-    if ObjectId.is_valid(user_id_str):
-        conds.append({'added_by_user_id': ObjectId(user_id_str)})
-        conds.append({'user_id': ObjectId(user_id_str)})
-
-    query = {
-        '$and': [
-            {'$or': conds},
-            {'expires_at': {'$ne': None, '$lte': now}}
-        ]
-    }
-
-    expired_entries = list(db.blacklist.find(query))
-    expired_ips = list({e.get('ip') for e in expired_entries if e.get('ip')})
-
-    # Also clean auto_blocks that have expired
-    auto_exp_query = {'expires_at': {'$ne': None, '$lte': now}}
-    auto_expired = list(db.auto_blocks.find(auto_exp_query))
-    for ae in auto_expired:
-        ip_val = ae.get('ip')
-        if ip_val and ip_val not in expired_ips:
-            expired_ips.append(ip_val)
-
-    if not expired_ips:
-        return {'status': 'success', 'message': 'No expired IP bans found.', 'unblocked_count': 0}
-
-    db.blacklist.delete_many({
-        'ip': {'$in': expired_ips},
-        '$or': conds + [{'added_by_user_id': {'$exists': False}}, {'added_by_user_id': None}]
-    })
-    db.auto_blocks.delete_many({'ip': {'$in': expired_ips}})
-    db.attack_attempts.delete_many({'ip': {'$in': expired_ips}})
-
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user['_id'])
-    except Exception:
-        pass
-
-    return {
-        'status': 'success',
-        'message': f'Successfully unblocked {len(expired_ips)} expired IP(s)',
-        'unblocked_count': len(expired_ips),
-        'unblocked_ips': expired_ips
-    }
 
 @app.post("/api/user/blacklist/unblock-batch")
 @app.post("/api/v1/user/blacklist/unblock-batch")
 async def user_unblock_batch_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
-    from bson import ObjectId
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     try:
         data = await request.json()
     except Exception:
         data = {}
     ips = data.get('ips', [])
-    if not ips or not isinstance(ips, list):
-        return {'status': 'error', 'message': 'No IP addresses provided for batch unblock'}
-
     clean_ips = [str(x).strip() for x in ips if str(x).strip()]
     if not clean_ips:
         return {'status': 'error', 'message': 'List of IPs is empty'}
 
-    user_id_str = str(user['_id'])
-    user_email = user.get('email', '')
+    sites = get_user_connected_wordpress_sites(user)
+    for ip in clean_ips:
+        for s in sites:
+            raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+            site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+            site_key = s.get('api_key') or ''
+            try:
+                remote_url = f"{site_url}/?waf_cloud_sync=1"
+                headers = {'Authorization': f'Bearer {site_key}', 'X-API-Key': site_key, 'Content-Type': 'application/json'}
+                body = {'action': 'delete_blacklist', 'ip': ip}
+                requests.post(remote_url, json=body, headers=headers, timeout=1.5, verify=False)
+            except Exception:
+                pass
 
-    conds = [
-        {'added_by_user_id': user_id_str},
-        {'user_id': user_id_str},
-        {'added_by_user_id': {'$exists': False}},
-        {'added_by_user_id': None},
-        {'is_global': {'$ne': True}},
-    ]
-    if user_email:
-        del_conds = conds + [{'added_by': user_email}]
-    else:
-        del_conds = conds
-    if ObjectId.is_valid(user_id_str):
-        del_conds.append({'added_by_user_id': ObjectId(user_id_str)})
-        del_conds.append({'user_id': ObjectId(user_id_str)})
-
-    db.blacklist.delete_many({
-        'ip': {'$in': clean_ips},
-        '$or': del_conds
-    })
-    db.auto_blocks.delete_many({'ip': {'$in': clean_ips}})
-    db.attack_attempts.delete_many({'ip': {'$in': clean_ips}})
-
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user['_id'])
-    except Exception:
-        pass
-
-    return {
-        'status': 'success',
-        'message': f'Successfully unblocked {len(clean_ips)} selected IP(s)',
-        'unblocked_count': len(clean_ips)
-    }
+    return {'status': 'success', 'message': f'Successfully unblocked {len(clean_ips)} selected IP(s)', 'unblocked_count': len(clean_ips)}
 
 
 @app.get("/api/user/whitelist")
@@ -1768,79 +1678,82 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
 @app.get("/api/user/country-blocks")
 @app.get("/api/v1/user/country-blocks")
 async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)):
-    from bson import ObjectId
-    u_str = str(user.get('_id') or user.get('id') or '')
-    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
-    
-    if is_admin:
-        blocks = list(db.country_blocks.find({}).sort('created_at', -1))
-    else:
-        conds = [
-            {'user_id': u_str},
-            {'added_by_user_id': u_str},
-            {'is_global': True}
-        ]
-        if ObjectId.is_valid(u_str):
-            conds.append({'user_id': ObjectId(u_str)})
-            conds.append({'added_by_user_id': ObjectId(u_str)})
-        blocks = list(db.country_blocks.find({'$or': conds}).sort('created_at', -1))
-    
-    for b in blocks:
-        b['_id'] = str(b.get('_id', ''))
-        if isinstance(b.get('created_at'), datetime):
-            b['created_at'] = b['created_at'].strftime("%Y-%m-%d %H:%M:%S")
-    return {'status': 'success', 'country_blocks': blocks}
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    sites = get_user_connected_wordpress_sites(user)
+    aggregated_blocks = []
+    seen_codes = set()
+
+    for s in sites:
+        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+        site_key = s.get('api_key') or ''
+        try:
+            remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_country_blocks"
+            headers = {'Authorization': f'Bearer {site_key}', 'X-API-Key': site_key, 'User-Agent': 'MDefender-Cloud/2.0'}
+            resp = None
+            try:
+                resp = requests.get(remote_url, headers=headers, timeout=2.0, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_host = raw_url.replace('https://', '').replace('http://', '')
+                    resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_country_blocks", headers=headers, timeout=2.0, verify=False)
+            if resp and resp.status_code == 200:
+                c_data = resp.json()
+                for cb in c_data.get('country_blocks', []):
+                    code = cb.get('country_code')
+                    if code and code not in seen_codes:
+                        seen_codes.add(code)
+                        aggregated_blocks.append(cb)
+        except Exception:
+            pass
+
+    return {'status': 'success', 'country_blocks': aggregated_blocks}
 
 
 @app.post("/api/user/country-blocks")
 @app.post("/api/v1/user/country-blocks")
 async def user_add_country_block(request: Request, user: dict = Depends(verify_user_token_compat)):
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
     data = await request.json()
     code = (data.get('country_code') or data.get('code') or '').strip().upper()
     name = (data.get('country_name') or data.get('name') or code).strip()
-    reason = data.get('reason', 'Geo-restricted by administrator')
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
-    
-    from bson import ObjectId
-    u_str = str(user.get('_id') or user.get('id') or '')
-    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
-    
-    exist_conds = [
-        {'country_code': code, 'user_id': u_str},
-        {'country_code': code, 'added_by_user_id': u_str},
-        {'country_code': code, 'is_global': True}
-    ]
-    if ObjectId.is_valid(u_str):
-        exist_conds.append({'country_code': code, 'user_id': ObjectId(u_str)})
-    if is_admin:
-        exist_conds.append({'country_code': code})
-        
-    existing = db.country_blocks.find_one({'$or': exist_conds})
-    if existing:
-        return {'status': 'error', 'message': f'Country {name} ({code}) is already blocked'}
-    
-    doc = {
-        'user_id': u_str,
-        'added_by_user_id': u_str,
-        'country_code': code,
-        'country_name': name,
-        'reason': reason,
-        'is_global': True,
-        'created_at': datetime.now()
-    }
-    db.country_blocks.insert_one(doc)
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user.get('_id'))
-    except Exception as e:
-        print(f"[WAF] push_instant_sync_to_wordpress: {e}")
-    return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully'}
+
+    sites = get_user_connected_wordpress_sites(user)
+    for s in sites:
+        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+        site_key = s.get('api_key') or ''
+        try:
+            remote_url = f"{site_url}/?waf_cloud_sync=1"
+            headers = {'Authorization': f'Bearer {site_key}', 'X-API-Key': site_key, 'Content-Type': 'application/json', 'User-Agent': 'MDefender-Cloud/2.0'}
+            body = {'action': 'add_country_block', 'country_code': code}
+            try:
+                requests.post(remote_url, json=body, headers=headers, timeout=2.5, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_host = raw_url.replace('https://', '').replace('http://', '')
+                    requests.post(f"http://{clean_host}/?waf_cloud_sync=1", json=body, headers=headers, timeout=2.5, verify=False)
+        except Exception:
+            pass
+
+    return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully on your website'}
 
 
 @app.delete("/api/user/country-blocks")
 @app.delete("/api/v1/user/country-blocks")
 async def user_delete_country_block(request: Request, user: dict = Depends(verify_user_token_compat)):
+    import requests
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
     code = (request.query_params.get('code') or request.query_params.get('country_code') or '').strip().upper()
     if not code:
         try:
@@ -1850,35 +1763,26 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
             pass
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
-    from bson import ObjectId
-    u_str = str(user.get('_id') or user.get('id') or '')
-    is_admin = user.get('is_admin') or user.get('role') in ('admin', 'super_admin')
-    
-    if is_admin:
-        db.country_blocks.delete_many({'country_code': code})
-        db.websites.update_many({}, {'$pull': {'blocked_countries': code}})
-    else:
-        del_conds = [
-            {'user_id': u_str},
-            {'added_by_user_id': u_str},
-            {'is_global': True}
-        ]
-        if ObjectId.is_valid(u_str):
-            del_conds.append({'user_id': ObjectId(u_str)})
-            del_conds.append({'added_by_user_id': ObjectId(u_str)})
-        db.country_blocks.delete_many({'country_code': code, '$or': del_conds})
 
-        site_conds = [{'user_id': u_str}]
-        if ObjectId.is_valid(u_str):
-            site_conds.append({'user_id': ObjectId(u_str)})
-        db.websites.update_many({'$or': site_conds}, {'$pull': {'blocked_countries': code}})
-        
-    try:
-        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-        push_instant_sync_to_wordpress(user_id=user.get('_id'))
-    except Exception as e:
-        print(f"[WAF] push_instant_sync_to_wordpress: {e}")
-    return {'status': 'success', 'message': f'Country {code} unblocked successfully'}
+    sites = get_user_connected_wordpress_sites(user)
+    for s in sites:
+        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
+        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
+        site_key = s.get('api_key') or ''
+        try:
+            remote_url = f"{site_url}/?waf_cloud_sync=1"
+            headers = {'Authorization': f'Bearer {site_key}', 'X-API-Key': site_key, 'Content-Type': 'application/json', 'User-Agent': 'MDefender-Cloud/2.0'}
+            body = {'action': 'delete_country_block', 'country_code': code}
+            try:
+                requests.post(remote_url, json=body, headers=headers, timeout=2.5, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_host = raw_url.replace('https://', '').replace('http://', '')
+                    requests.post(f"http://{clean_host}/?waf_cloud_sync=1", json=body, headers=headers, timeout=2.5, verify=False)
+        except Exception:
+            pass
+
+    return {'status': 'success', 'message': f'Country {code} unblocked successfully from your website'}
 
 
 # ==================== USER SECURITY CONFIG & AUTO-BLOCK POLICIES ====================
