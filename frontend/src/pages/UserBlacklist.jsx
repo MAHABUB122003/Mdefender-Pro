@@ -1,30 +1,21 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   Ban,
-  ShieldAlert,
-  Clock,
+  Globe,
   Trash2,
   Search,
   Plus,
-  RefreshCw,
-  Check,
+  RotateCw,
   CheckSquare,
   Square,
   AlertTriangle,
   CheckCircle2,
   ShieldCheck,
-  Filter,
   X,
-  RotateCw,
-  Globe,
-  MapPin,
-  Flame,
-  LayoutGrid,
-  List,
   Shield,
-  Layers,
-  ArrowRight
+  Clock,
+  Flame
 } from 'lucide-react'
 import api from '../api/api'
 import userStore from '../utils/userStore'
@@ -35,9 +26,7 @@ export default function UserBlacklist() {
   const activeTab = searchParams.get('tab') === 'country' ? 'country' : 'ip'
   const setActiveTab = (tab) => setSearchParams({ tab })
 
-  // =========================================================================
-  // 1. IP BLACKLIST STATE & HANDLERS
-  // =========================================================================
+  // ── IP Blacklist State ──────────────────────────────────────────────────────
   const [entries, setEntries] = useState(() => userStore.get('blacklist') || [])
   const [loading, setLoading] = useState(() => !userStore.get('blacklist'))
   const [refreshing, setRefreshing] = useState(false)
@@ -46,12 +35,21 @@ export default function UserBlacklist() {
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState('')
   const [filterDuration, setFilterDuration] = useState('all')
-
   const [selectedIps, setSelectedIps] = useState([])
   const [bulkUnblocking, setBulkUnblocking] = useState(false)
   const [flushingExpired, setFlushingExpired] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
+  // ── Country Blacklist State ─────────────────────────────────────────────────
+  const [countryBlocks, setCountryBlocks] = useState([])
+  const [countryLoading, setCountryLoading] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState('CN')
+  const [selectedRegion, setSelectedRegion] = useState('All')
+  const [blockReason, setBlockReason] = useState('')
+  const [savingCountry, setSavingCountry] = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   const showToast = (text, type = 'success') => {
     setFeedbackMsg({ text, type })
     setTimeout(() => setFeedbackMsg(null), 4500)
@@ -72,26 +70,12 @@ export default function UserBlacklist() {
     }
   }, [])
 
-  // =========================================================================
-  // 2. COUNTRY BLACKLIST STATE & HANDLERS
-  // =========================================================================
-  const [countryBlocks, setCountryBlocks] = useState([])
-  const [countryLoading, setCountryLoading] = useState(false)
-  const [selectedCountry, setSelectedCountry] = useState('CN')
-  const [selectedRegion, setSelectedRegion] = useState('All')
-  const [blockReason, setBlockReason] = useState('')
-  const [savingCountry, setSavingCountry] = useState(false)
-  const [countrySearch, setCountrySearch] = useState('')
-  const [geoViewMode, setGeoViewMode] = useState('cards') // 'cards' | 'table'
-
   const fetchCountryBlocks = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
     setCountryLoading(true)
     try {
       const res = await api.getUserCountryBlocks()
-      if (res?.country_blocks) {
-        setCountryBlocks(res.country_blocks)
-      }
+      if (res?.country_blocks) setCountryBlocks(res.country_blocks)
     } catch (err) {
       console.error('Failed to load country blocks:', err)
     } finally {
@@ -105,36 +89,140 @@ export default function UserBlacklist() {
     fetchCountryBlocks()
   }, [fetchBlacklist, fetchCountryBlocks])
 
-  // Set of currently blocked country codes for O(1) lookup
-  const blockedCodesSet = useMemo(() => {
-    return new Set(countryBlocks.map(b => (b.country_code || '').toUpperCase().trim()))
-  }, [countryBlocks])
+  const blockedCodesSet = useMemo(() =>
+    new Set(countryBlocks.map(b => (b.country_code || '').toUpperCase().trim()))
+  , [countryBlocks])
 
-  // Automatically switch selected country if currently blocked to ensure the Block button is always active
   useEffect(() => {
     if (blockedCodesSet.has(selectedCountry)) {
       const firstAvailable = ALL_COUNTRIES.find(c => !blockedCodesSet.has(c.code))
-      if (firstAvailable) {
-        setSelectedCountry(firstAvailable.code)
-      }
+      if (firstAvailable) setSelectedCountry(firstAvailable.code)
     }
   }, [blockedCodesSet, selectedCountry])
 
+  // ── IP computations ─────────────────────────────────────────────────────────
+  const expiredEntries = useMemo(() => {
+    const now = new Date()
+    return entries.filter(item => {
+      if (item.is_expired) return true
+      if (!item.expires_at) return false
+      try { const exp = new Date(item.expires_at); return !isNaN(exp) && exp <= now } catch { return false }
+    })
+  }, [entries])
+
+  const tempCount = useMemo(() => entries.filter(e => e.expires_at && !e.is_expired).length, [entries])
+  const permCount = useMemo(() => entries.filter(e => !e.expires_at || String(e.type || e.duration || '').toLowerCase() === 'permanent').length, [entries])
+  const autoCount = useMemo(() => entries.filter(e => e.auto_blocked).length, [entries])
+
+  const filteredEntries = useMemo(() => {
+    const now = new Date()
+    return entries.filter(item => {
+      const ipMatch = !search ||
+        item.ip?.toLowerCase().includes(search.toLowerCase()) ||
+        item.reason?.toLowerCase().includes(search.toLowerCase())
+      if (!ipMatch) return false
+      const isPerm = !item.expires_at || String(item.type || item.duration || '').toLowerCase() === 'permanent'
+      const isExpired = item.is_expired || (item.expires_at && new Date(item.expires_at) <= now)
+      if (filterDuration === 'expired') return isExpired
+      if (filterDuration === 'permanent') return isPerm
+      if (filterDuration === 'temporary') return !isPerm && !isExpired
+      if (filterDuration === 'auto') return !!item.auto_blocked
+      return true
+    })
+  }, [entries, search, filterDuration])
+
+  const filteredCountryBlocks = useMemo(() => {
+    if (!countrySearch) return countryBlocks
+    const q = countrySearch.toLowerCase().trim()
+    return countryBlocks.filter(b =>
+      (b.country_code || '').toLowerCase().includes(q) ||
+      (b.country_name || '').toLowerCase().includes(q) ||
+      (b.reason || '').toLowerCase().includes(q)
+    )
+  }, [countryBlocks, countrySearch])
+
+  // ── IP Handlers ─────────────────────────────────────────────────────────────
+  const handleUnblock = async (ip) => {
+    if (!confirm(`Unblock IP ${ip}?`)) return
+    setEntries(prev => prev.filter(item => item.ip !== ip))
+    setSelectedIps(prev => prev.filter(i => i !== ip))
+    userStore.invalidate('blacklist')
+    try {
+      await api.removeUserBlacklist(ip)
+      showToast(`IP ${ip} unblocked.`)
+      fetchBlacklist(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to unblock IP', 'error')
+      fetchBlacklist(true)
+    }
+  }
+
+  const handleFlushExpired = async () => {
+    if (expiredEntries.length === 0) { showToast('No expired entries to purge.', 'info'); return }
+    if (!confirm(`Purge all ${expiredEntries.length} expired IP bans?`)) return
+    setFlushingExpired(true)
+    try {
+      const res = await api.unblockExpiredBlacklist()
+      showToast(`Unblocked ${res?.unblocked_count ?? expiredEntries.length} expired IPs.`)
+      setSelectedIps([])
+      userStore.invalidate('blacklist')
+      await fetchBlacklist(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to flush expired IPs', 'error')
+    } finally { setFlushingExpired(false) }
+  }
+
+  const handleBulkUnblock = async () => {
+    if (!selectedIps.length) return
+    if (!confirm(`Unblock ${selectedIps.length} selected IPs?`)) return
+    setBulkUnblocking(true)
+    try {
+      const res = await api.unblockBatchBlacklist(selectedIps)
+      showToast(res?.message || `Unblocked ${selectedIps.length} IP(s).`)
+      setSelectedIps([])
+      userStore.invalidate('blacklist')
+      await fetchBlacklist(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to unblock IPs', 'error')
+    } finally { setBulkUnblocking(false) }
+  }
+
+  const toggleSelectAll = () =>
+    setSelectedIps(selectedIps.length === filteredEntries.length ? [] : filteredEntries.map(e => e.ip))
+
+  const toggleSelectIp = (ip) =>
+    setSelectedIps(prev => prev.includes(ip) ? prev.filter(i => i !== ip) : [...prev, ip])
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.ip.trim()) return
+    setSubmitting(true)
+    try {
+      const res = await api.addUserBlacklist(form)
+      setShowModal(false)
+      setForm({ ip: '', reason: '', duration: '1d' })
+      showToast(res?.message || `IP ${form.ip} blocked.`)
+      fetchBlacklist(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to block IP', 'error')
+    } finally { setSubmitting(false) }
+  }
+
+  // ── Country Handlers ────────────────────────────────────────────────────────
   const handleAddCountryBlock = async (e) => {
     if (e) e.preventDefault()
     const targetObj = ALL_COUNTRIES.find(c => c.code === selectedCountry)
     if (!targetObj) return
-
     setSavingCountry(true)
     try {
       const payload = {
         country_code: targetObj.code,
         country_name: targetObj.name,
-        reason: blockReason.trim() || `Sovereign Geo-Restriction Policy (${targetObj.name})`
+        reason: blockReason.trim() || `Geo-Restriction Policy (${targetObj.name})`
       }
       const res = await api.addUserCountryBlock(payload)
       if (res?.status === 'success' || (res?.message && !res?.message.toLowerCase().includes('already') && res?.status !== 'error')) {
-        showToast(`${targetObj.name} (${targetObj.code}) is now blocked. Visitors will receive HTTP 403 Forbidden.`, 'success')
+        showToast(`${targetObj.name} blocked.`)
         setBlockReason('')
         setCountryBlocks(prev => {
           if (prev.some(b => b.country_code === targetObj.code)) return prev
@@ -146,50 +234,40 @@ export default function UserBlacklist() {
       }
     } catch (err) {
       showToast(err.message || 'Error saving country block.', 'error')
-    } finally {
-      setSavingCountry(false)
-    }
+    } finally { setSavingCountry(false) }
   }
 
   const handleQuickPresetToggle = async (preset) => {
-    const isBlocked = blockedCodesSet.has(preset.code)
-    if (isBlocked) {
+    if (blockedCodesSet.has(preset.code)) {
       handleRemoveCountryBlock(preset.code, preset.name)
     } else {
       setSelectedCountry(preset.code)
-      const reason = `High Cyber Threat Policy (${preset.name})`
-      setBlockReason(reason)
+      const reason = `Threat Policy (${preset.name})`
       setSavingCountry(true)
       try {
-        const res = await api.addUserCountryBlock({
-          country_code: preset.code,
-          country_name: preset.name,
-          reason
-        })
+        const res = await api.addUserCountryBlock({ country_code: preset.code, country_name: preset.name, reason })
         if (res?.status === 'success' || (res?.message && !res?.message.toLowerCase().includes('already') && res?.status !== 'error')) {
-          showToast(`${preset.name} (${preset.code}) blocked successfully.`, 'success')
+          showToast(`${preset.name} blocked.`)
           setCountryBlocks(prev => {
             if (prev.some(b => b.country_code === preset.code)) return prev
             return [{ country_code: preset.code, country_name: preset.name, reason, created_at: 'Just now' }, ...prev]
           })
           fetchCountryBlocks(true)
         } else {
-          showToast(res?.message || 'Failed to block country.', 'error')
+          showToast(res?.message || 'Failed.', 'error')
         }
       } catch (err) {
-        showToast(err.message || 'Failed to block country.', 'error')
-      } finally {
-        setSavingCountry(false)
-      }
+        showToast(err.message || 'Failed.', 'error')
+      } finally { setSavingCountry(false) }
     }
   }
 
   const handleRemoveCountryBlock = async (code, name) => {
-    if (!confirm(`Are you sure you want to unblock traffic from ${name || code}?`)) return
+    if (!confirm(`Unblock traffic from ${name || code}?`)) return
     setCountryBlocks(prev => prev.filter(b => b.country_code !== code))
     try {
       await api.removeUserCountryBlock(code)
-      showToast(`Traffic from ${name || code} is now permitted.`, 'success')
+      showToast(`${name || code} unblocked.`)
       fetchCountryBlocks(true)
     } catch (err) {
       showToast(err.message || 'Failed to unblock country.', 'error')
@@ -197,648 +275,223 @@ export default function UserBlacklist() {
     }
   }
 
-  // =========================================================================
-  // IP BLACKLIST COMPUTATIONS
-  // =========================================================================
-  const expiredEntries = useMemo(() => {
-    const now = new Date()
-    return entries.filter(item => {
-      if (item.is_expired) return true
-      if (!item.expires_at) return false
-      try {
-        const exp = new Date(item.expires_at)
-        return !isNaN(exp) && exp <= now
-      } catch {
-        return false
-      }
-    })
-  }, [entries])
-
-  const tempCount = useMemo(() => {
-    return entries.filter(e => e.expires_at && !e.is_expired).length
-  }, [entries])
-
-  const permCount = useMemo(() => {
-    return entries.filter(e => !e.expires_at || String(e.type || e.duration || '').toLowerCase() === 'permanent').length
-  }, [entries])
-
-  const autoCount = useMemo(() => {
-    return entries.filter(e => e.auto_blocked).length
-  }, [entries])
-
-  const filteredEntries = useMemo(() => {
-    const now = new Date()
-    return entries.filter(item => {
-      const ipMatch = !search ||
-        item.ip?.toLowerCase().includes(search.toLowerCase()) ||
-        item.reason?.toLowerCase().includes(search.toLowerCase())
-      if (!ipMatch) return false
-
-      const isPerm = !item.expires_at || String(item.type || item.duration || '').toLowerCase() === 'permanent'
-      const isExpired = item.is_expired || (item.expires_at && new Date(item.expires_at) <= now)
-
-      if (filterDuration === 'expired') return isExpired
-      if (filterDuration === 'permanent') return isPerm
-      if (filterDuration === 'temporary') return !isPerm && !isExpired
-      if (filterDuration === 'auto') return !!item.auto_blocked
-      return true
-    })
-  }, [entries, search, filterDuration])
-
-  const handleUnblock = async (ip) => {
-    if (!confirm(`Are you sure you want to unblock IP ${ip}?`)) return
-    setEntries(prev => prev.filter(item => item.ip !== ip))
-    setSelectedIps(prev => prev.filter(i => i !== ip))
-    userStore.invalidate('blacklist')
-    try {
-      await api.removeUserBlacklist(ip)
-      showToast(`IP ${ip} unblocked successfully.`)
-      fetchBlacklist(true)
-    } catch (err) {
-      showToast(err.message || 'Failed to unblock IP', 'error')
-      fetchBlacklist(true)
-    }
-  }
-
-  const handleFlushExpired = async () => {
-    if (expiredEntries.length === 0) {
-      showToast('No expired IP bans found to purge.', 'info')
-      return
-    }
-    if (!confirm(`Confirm unblocking all ${expiredEntries.length} expired IP bans?`)) return
-
-    setFlushingExpired(true)
-    try {
-      const res = await api.unblockExpiredBlacklist()
-      const unblockedCount = res?.unblocked_count ?? expiredEntries.length
-      showToast(`Successfully unblocked ${unblockedCount} expired IP(s)!`)
-      setSelectedIps([])
-      userStore.invalidate('blacklist')
-      await fetchBlacklist(true)
-    } catch (err) {
-      showToast(err.message || 'Failed to flush expired IPs', 'error')
-    } finally {
-      setFlushingExpired(false)
-    }
-  }
-
-  const handleBulkUnblock = async () => {
-    if (selectedIps.length === 0) return
-    if (!confirm(`Confirm unblocking all ${selectedIps.length} selected IP addresses?`)) return
-
-    setBulkUnblocking(true)
-    try {
-      const res = await api.unblockBatchBlacklist(selectedIps)
-      showToast(res?.message || `Successfully unblocked ${selectedIps.length} IP(s)!`)
-      setSelectedIps([])
-      userStore.invalidate('blacklist')
-      await fetchBlacklist(true)
-    } catch (err) {
-      showToast(err.message || 'Failed to unblock selected IPs', 'error')
-    } finally {
-      setBulkUnblocking(false)
-    }
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedIps.length === filteredEntries.length) {
-      setSelectedIps([])
-    } else {
-      setSelectedIps(filteredEntries.map(e => e.ip))
-    }
-  }
-
-  const toggleSelectIp = (ip) => {
-    if (selectedIps.includes(ip)) {
-      setSelectedIps(prev => prev.filter(i => i !== ip))
-    } else {
-      setSelectedIps(prev => [...prev, ip])
-    }
-  }
-
-  const handleAddSubmit = async (e) => {
-    e.preventDefault()
-    if (!form.ip.trim()) return
-    setSubmitting(true)
-    try {
-      const res = await api.addUserBlacklist(form)
-      setShowModal(false)
-      setForm({ ip: '', reason: '', duration: '1d' })
-      showToast(res?.message || `IP ${form.ip} has been blacklisted.`)
-      fetchBlacklist(true)
-    } catch (err) {
-      showToast(err.message || 'Failed to block IP', 'error')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  // Country Block filter for blocked countries list
-  const filteredCountryBlocks = useMemo(() => {
-    if (!countrySearch) return countryBlocks
-    const q = countrySearch.toLowerCase().trim()
-    return countryBlocks.filter(b => {
-      const code = (b.country_code || '').toLowerCase()
-      const name = (b.country_name || '').toLowerCase()
-      const reason = (b.reason || '').toLowerCase()
-      return code.includes(q) || name.includes(q) || reason.includes(q)
-    })
-  }, [countryBlocks, countrySearch])
-
-  // Helper to determine flag info for an IP address
   const getIpOriginInfo = (entry) => {
-    const ip = String(entry.ip || '').trim()
     const code = (entry.country_code || entry.country || '').toLowerCase()
     if (code && code.length === 2) {
-      return {
-        flagUrl: `https://flagcdn.com/20x15/${code}.png`,
-        name: entry.country_name || code.toUpperCase(),
-        code: code.toUpperCase()
-      }
+      return { flagUrl: `https://flagcdn.com/20x15/${code}.png`, name: entry.country_name || code.toUpperCase() }
     }
-    if (!ip || ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) {
-      return {
-        flagUrl: 'https://flagcdn.com/20x15/bd.png',
-        name: 'Local Network / Proxy Ingress',
-        code: 'BD'
-      }
-    }
-    return {
-      flagUrl: 'https://flagcdn.com/20x15/bd.png',
-      name: 'Ingress Node',
-      code: 'BD'
-    }
+    return { flagUrl: null, name: 'Unknown' }
+  }
+
+  // ── Styles ──────────────────────────────────────────────────────────────────
+  const S = {
+    page: { maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 60px', color: '#10201E' },
+    card: { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
+    cardPad: { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
+    th: { padding: '11px 16px', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' },
+    td: { padding: '13px 16px', fontSize: '13px', color: '#334155', borderBottom: '1px solid #F1F5F9' },
+    badge: (bg, color, border) => ({ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', background: bg, color, border: `1px solid ${border}` }),
+    btn: (bg, color, border = 'transparent') => ({
+      padding: '8px 16px', borderRadius: '8px', border: `1px solid ${border}`, background: bg, color,
+      fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.15s'
+    }),
+    btnSm: (bg, color, border = 'transparent') => ({
+      padding: '5px 12px', borderRadius: '7px', border: `1px solid ${border}`, background: bg, color,
+      fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px'
+    }),
+    input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: '13px', color: '#10201E', boxSizing: 'border-box', outline: 'none' },
+    label: { display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '5px' }
   }
 
   return (
-    <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '16px 20px 48px', color: '#10201E' }}>
-      
-      {/* Toast Feedback Messages */}
+    <div style={S.page}>
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+
+      {/* ── Toast ── */}
       {feedbackMsg && (
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '12px 18px',
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 16px',
           background: feedbackMsg.type === 'error' ? '#FEF2F2' : '#F0FDF4',
           border: `1px solid ${feedbackMsg.type === 'error' ? '#FECACA' : '#DCFCE7'}`,
-          borderRadius: '12px',
-          marginBottom: '20px',
+          borderRadius: '10px', marginBottom: '16px',
           color: feedbackMsg.type === 'error' ? '#991B1B' : '#15803D',
-          fontSize: '13.5px',
-          fontWeight: '600',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+          fontSize: '13px', fontWeight: '600'
         }}>
-          {feedbackMsg.type === 'error' ? (
-            <AlertTriangle size={18} color="#DC2626" />
-          ) : (
-            <CheckCircle2 size={18} color="#15803D" />
-          )}
-          <span>{feedbackMsg.text}</span>
+          {feedbackMsg.type === 'error'
+            ? <AlertTriangle size={15} color="#DC2626" />
+            : <CheckCircle2 size={15} color="#15803D" />
+          }
+          {feedbackMsg.text}
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 1. EXECUTIVE HEADER BANNER & UNIFIED DUAL NAVIGATION TABS                  */}
-      {/* ========================================================================= */}
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #D9E1DC',
-        borderRadius: '18px',
-        padding: '24px 28px',
-        marginBottom: '22px',
-        boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)',
-        position: 'relative'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
-          marginBottom: '20px'
-        }}>
+      {/* ── Page Header ── */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span style={{
-                display: 'inline-flex',
-                padding: '3px 10px',
-                background: '#FEF2F2',
-                color: '#DC2626',
-                borderRadius: '9999px',
-                fontSize: '11px',
-                fontWeight: '800',
-                border: '1px solid #FECACA',
-                alignItems: 'center',
-                gap: '5px',
-                letterSpacing: '0.4px'
-              }}>
-                <Ban size={12} />
-                <span>ANYCAST PERIMETER ENFORCEMENT</span>
-              </span>
-            </div>
-
-            <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', margin: '0 0 4px', letterSpacing: '-0.3px' }}>
-              Access Control &amp; Threat Blacklist
-            </h1>
-            <p style={{ margin: 0, color: '#64748B', fontSize: '13px', maxWidth: '780px', lineHeight: 1.5 }}>
-              Enforce granular IP quarantine and sovereign country geo-fencing policies. Quarantined requests are dropped at edge nodes with sub-millisecond HTTP 403 enforcement.
-            </p>
+            <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '800', color: '#0F172A' }}>Access Control</h1>
+            <p style={{ margin: 0, fontSize: '13.5px', color: '#64748B' }}>Block IPs and countries across all your connected websites.</p>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Sync / Refresh Button */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
-              type="button"
-              onClick={() => {
-                if (activeTab === 'country') fetchCountryBlocks(true)
-                else fetchBlacklist(true)
-              }}
+              style={S.btn('#F8FAFC', '#475569', '#E2E8F0')}
+              onClick={() => activeTab === 'country' ? fetchCountryBlocks(true) : fetchBlacklist(true)}
               disabled={refreshing}
-              style={{
-                padding: '9px 15px',
-                borderRadius: '9px',
-                background: '#FAFBF9',
-                color: '#334155',
-                border: '1px solid #D9E1DC',
-                fontSize: '12.5px',
-                fontWeight: '700',
-                cursor: refreshing ? 'not-allowed' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease'
-              }}
             >
               <RotateCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-              <span>{refreshing ? 'Syncing...' : 'Sync'}</span>
+              {refreshing ? 'Syncing...' : 'Refresh'}
             </button>
-
-            {activeTab === 'ip' ? (
+            {activeTab === 'ip' && (
               <button
-                type="button"
-                onClick={() => {
-                  setForm({ ip: '', reason: '', duration: '1d' })
-                  setShowModal(true)
-                }}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: '9px',
-                  background: '#DC2626',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)'
-                }}
+                style={S.btn('#DC2626', '#FFFFFF')}
+                onClick={() => { setForm({ ip: '', reason: '', duration: '1d' }); setShowModal(true) }}
               >
-                <Plus size={14} />
-                <span>Block IP Address</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  const target = document.getElementById('country-block-form')
-                  if (target) target.scrollIntoView({ behavior: 'smooth' })
-                }}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: '9px',
-                  background: '#10201E',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 8px rgba(16, 32, 30, 0.25)'
-                }}
-              >
-                <Plus size={14} />
-                <span>Add Country Block</span>
+                <Plus size={14} /> Block IP
               </button>
             )}
           </div>
         </div>
 
-        {/* Dual Tab Switcher: 1. IP Blacklist | 2. Country Blacklist & Geo-Fencing */}
-        <div style={{
-          display: 'flex',
-          gap: '6px',
-          background: '#F1F5F3',
-          padding: '4px',
-          borderRadius: '12px',
-          border: '1px solid #D9E1DC',
-          width: 'fit-content',
-          flexWrap: 'wrap'
-        }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('ip')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: '9px',
-              border: 'none',
-              background: activeTab === 'ip' ? '#FFFFFF' : 'transparent',
-              color: activeTab === 'ip' ? '#10201E' : '#64748B',
-              fontSize: '13px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: activeTab === 'ip' ? '0 1px 4px rgba(16, 32, 30, 0.08)' : 'none',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Ban size={15} color={activeTab === 'ip' ? '#DC2626' : '#64748B'} />
-            <span>IP Blacklist</span>
-            <span style={{
-              fontSize: '11px',
-              padding: '1px 7px',
-              borderRadius: '999px',
-              background: activeTab === 'ip' ? '#FEF2F2' : '#E2E8F0',
-              color: activeTab === 'ip' ? '#DC2626' : '#64748B',
-              fontWeight: '800'
-            }}>
-              {entries.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('country')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: '999px',
-              borderRadius: '9px',
-              border: 'none',
-              background: activeTab === 'country' ? '#FFFFFF' : 'transparent',
-              color: activeTab === 'country' ? '#10201E' : '#64748B',
-              fontSize: '13px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: activeTab === 'country' ? '0 1px 4px rgba(16, 32, 30, 0.08)' : 'none',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Globe size={15} color={activeTab === 'country' ? '#E8792F' : '#64748B'} />
-            <span>Country Blacklist &amp; Geo-Fencing</span>
-            <span style={{
-              fontSize: '11px',
-              padding: '1px 7px',
-              borderRadius: '999px',
-              background: activeTab === 'country' ? '#FEF3EB' : '#E2E8F0',
-              color: activeTab === 'country' ? '#D97735' : '#64748B',
-              fontWeight: '800'
-            }}>
-              {countryBlocks.length}
-            </span>
-          </button>
+        {/* ── Tabs ── */}
+        <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '3px', borderRadius: '10px', width: 'fit-content' }}>
+          {[
+            { id: 'ip', icon: <Ban size={14} />, label: 'IP Blacklist', count: entries.length },
+            { id: 'country', icon: <Globe size={14} />, label: 'Country Block', count: countryBlocks.length }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '8px 18px', borderRadius: '8px', border: 'none',
+                background: activeTab === tab.id ? '#FFFFFF' : 'transparent',
+                color: activeTab === tab.id ? '#0F172A' : '#64748B',
+                fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '7px',
+                boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.15s'
+              }}
+            >
+              {tab.icon}
+              {tab.label}
+              <span style={{
+                fontSize: '11px', padding: '1px 7px', borderRadius: '999px', fontWeight: '800',
+                background: activeTab === tab.id ? '#FEF2F2' : '#E2E8F0',
+                color: activeTab === tab.id ? '#DC2626' : '#64748B'
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* SECTION A: IP BLACKLIST VIEW                                              */}
-      {/* ========================================================================= */}
+      {/* ════ SECTION A: IP BLACKLIST ════ */}
       {activeTab === 'ip' && (
         <>
-          {/* Quick Stats Metric Cards */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-            gap: '14px',
-            marginBottom: '20px'
-          }}>
-            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Blacklisted</div>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>{entries.length}</div>
-            </div>
-
-            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Permanent Bans</div>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#DC2626', marginTop: '2px' }}>{permCount}</div>
-            </div>
-
-            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Temporary Active</div>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#E8792F', marginTop: '2px' }}>{tempCount}</div>
-            </div>
-
-            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Auto-Shield Dropped</div>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: '#475569', marginTop: '2px' }}>{autoCount}</div>
-            </div>
+          {/* Stats row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            {[
+              { label: 'Total Blocked', value: entries.length, color: '#0F172A' },
+              { label: 'Permanent', value: permCount, color: '#DC2626' },
+              { label: 'Temporary', value: tempCount, color: '#F59E0B' },
+              { label: 'Auto-Blocked', value: autoCount, color: '#6366F1' },
+              { label: 'Expired', value: expiredEntries.length, color: '#94A3B8' }
+            ].map(s => (
+              <div key={s.label} style={{ ...S.cardPad, padding: '14px 18px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+                <div style={{ fontSize: '24px', fontWeight: '800', color: s.color, marginTop: '2px' }}>{s.value}</div>
+              </div>
+            ))}
           </div>
 
-          {/* Search, Filter Tabs & Bulk Actions */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #D9E1DC',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '14px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
-              <div style={{ position: 'relative', flex: 1, maxWidth: '340px' }}>
-                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#87948D' }} />
+          {/* Toolbar */}
+          <div style={{ ...S.cardPad, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+              <div style={{ position: 'relative', flex: 1, maxWidth: '320px' }}>
+                <Search size={14} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
                 <input
                   type="text"
-                  placeholder="Search by IP or reason..."
+                  placeholder="Search IP or reason..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px 8px 34px',
-                    borderRadius: '8px',
-                    border: '1px solid #D9E1DC',
-                    background: '#FAFBF9',
-                    fontSize: '12.5px',
-                    color: '#10201E',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
+                  style={{ ...S.input, paddingLeft: '33px' }}
                 />
               </div>
-
-              {/* Filter duration pills */}
-              <div style={{ display: 'flex', gap: '4px', background: '#F1F5F3', padding: '3px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', gap: '3px', background: '#F1F5F9', padding: '3px', borderRadius: '8px', flexWrap: 'wrap' }}>
                 {[
-                  { id: 'all', label: `All (${entries.length})` },
-                  { id: 'permanent', label: `Permanent (${permCount})` },
-                  { id: 'temporary', label: `Temporary (${tempCount})` },
-                  { id: 'auto', label: `Auto-Shield (${autoCount})` },
-                  { id: 'expired', label: `Expired (${expiredEntries.length})` }
-                ].map(tab => (
+                  { id: 'all', label: 'All' },
+                  { id: 'permanent', label: 'Permanent' },
+                  { id: 'temporary', label: 'Temporary' },
+                  { id: 'auto', label: 'Auto' },
+                  { id: 'expired', label: 'Expired' }
+                ].map(f => (
                   <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setFilterDuration(tab.id)}
+                    key={f.id}
+                    onClick={() => setFilterDuration(f.id)}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: filterDuration === tab.id ? '#FFFFFF' : 'transparent',
-                      color: filterDuration === tab.id ? '#10201E' : '#64748B',
-                      fontSize: '11.5px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      boxShadow: filterDuration === tab.id ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+                      padding: '4px 10px', borderRadius: '6px', border: 'none',
+                      background: filterDuration === f.id ? '#FFFFFF' : 'transparent',
+                      color: filterDuration === f.id ? '#0F172A' : '#64748B',
+                      fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                      boxShadow: filterDuration === f.id ? '0 1px 3px rgba(0,0,0,0.07)' : 'none'
                     }}
                   >
-                    {tab.label}
+                    {f.label}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Bulk Selection Actions */}
-            {selectedIps.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: '#10201E' }}>
-                  {selectedIps.length} Selected
-                </span>
-                <button
-                  type="button"
-                  onClick={handleBulkUnblock}
-                  disabled={bulkUnblocking}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '7px',
-                    background: '#FEF2F2',
-                    color: '#DC2626',
-                    border: '1px solid #FECACA',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: bulkUnblocking ? 'not-allowed' : 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {selectedIps.length > 0 && (
+                <button style={S.btn('#FEF2F2', '#DC2626', '#FECACA')} onClick={handleBulkUnblock} disabled={bulkUnblocking}>
                   <Trash2 size={13} />
-                  <span>{bulkUnblocking ? 'Unblocking...' : 'Unblock Selected'}</span>
+                  {bulkUnblocking ? 'Unblocking...' : `Unblock ${selectedIps.length}`}
                 </button>
-              </div>
-            )}
-
-            {expiredEntries.length > 0 && selectedIps.length === 0 && (
-              <button
-                type="button"
-                onClick={handleFlushExpired}
-                disabled={flushingExpired}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '7px',
-                  background: '#FEF2F2',
-                  color: '#DC2626',
-                  border: '1px solid #FECACA',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: flushingExpired ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
-              >
-                <Trash2 size={13} />
-                <span>Flush {expiredEntries.length} Expired</span>
-              </button>
-            )}
+              )}
+              {expiredEntries.length > 0 && selectedIps.length === 0 && (
+                <button style={S.btn('#F8FAFC', '#64748B', '#E2E8F0')} onClick={handleFlushExpired} disabled={flushingExpired}>
+                  <Trash2 size={13} />
+                  {flushingExpired ? 'Purging...' : `Purge ${expiredEntries.length} Expired`}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* IP Blacklist Table */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #D9E1DC',
-            borderRadius: '14px',
-            overflow: 'hidden',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-          }}>
+          {/* IP Table */}
+          <div style={S.card}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{
-                    background: '#FAFBF9',
-                    borderBottom: '1px solid #D9E1DC',
-                    fontSize: '11px',
-                    color: '#475569',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.6px',
-                    fontWeight: '700'
-                  }}>
-                    <th style={{ padding: '14px 16px', width: '36px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={toggleSelectAll}
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
-                        title={selectedIps.length === filteredEntries.length ? 'Deselect all' : 'Select all'}
-                      >
-                        {filteredEntries.length > 0 && selectedIps.length === filteredEntries.length ? (
-                          <CheckSquare size={16} color="#DC2626" />
-                        ) : (
-                          <Square size={16} color="#94A3B8" />
-                        )}
+                  <tr>
+                    <th style={{ ...S.th, width: '36px', textAlign: 'center' }}>
+                      <button onClick={toggleSelectAll} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        {filteredEntries.length > 0 && selectedIps.length === filteredEntries.length
+                          ? <CheckSquare size={15} color="#DC2626" />
+                          : <Square size={15} color="#CBD5E1" />}
                       </button>
                     </th>
-                    <th style={{ padding: '14px 16px' }}>ORIGIN &amp; IP ADDRESS</th>
-                    <th style={{ padding: '14px 16px' }}>REASON / TRIGGER</th>
-                    <th style={{ padding: '14px 16px' }}>DURATION</th>
-                    <th style={{ padding: '14px 16px' }}>EXPIRES AT</th>
-                    <th style={{ padding: '14px 16px' }}>SOURCE</th>
-                    <th style={{ padding: '14px 16px' }}>BLOCKED AT</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'right' }}>ACTION</th>
+                    <th style={S.th}>IP Address</th>
+                    <th style={S.th}>Reason</th>
+                    <th style={S.th}>Duration</th>
+                    <th style={S.th}>Expires</th>
+                    <th style={S.th}>Source</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', color: '#64748B', padding: '60px 20px' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', fontWeight: '600' }}>
-                          <RotateCw size={18} style={{ animation: 'spin 1s linear infinite', color: '#DC2626' }} />
-                          <span>Loading Active Blacklist Entries...</span>
-                        </div>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
+                        <RotateCw size={20} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
+                        Loading...
                       </td>
                     </tr>
                   ) : filteredEntries.length === 0 ? (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
-                        <div style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '12px',
-                          background: '#F0FDF4',
-                          border: '1px solid #DCFCE7',
-                          color: '#15803D',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          margin: '0 auto 10px'
-                        }}>
-                          <ShieldCheck size={22} />
-                        </div>
-                        <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
-                          No Blacklisted IPs Found
-                        </div>
-                        <p style={{ fontSize: '12.5px', color: '#87948D', margin: '4px 0 0' }}>
-                          {search || filterDuration !== 'all' ? 'Try adjusting your search query or duration filter.' : 'Your websites are secure. No IP addresses are currently blocked.'}
-                        </p>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
+                        <ShieldCheck size={32} style={{ display: 'block', margin: '0 auto 10px', color: '#86EFAC' }} />
+                        <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No blocked IPs</div>
+                        <div style={{ fontSize: '12.5px' }}>{search || filterDuration !== 'all' ? 'Try adjusting filters.' : 'All websites are clean.'}</div>
                       </td>
                     </tr>
                   ) : filteredEntries.map((entry, i) => {
@@ -849,150 +502,52 @@ export default function UserBlacklist() {
                     const origin = getIpOriginInfo(entry)
 
                     return (
-                      <tr
-                        key={entry.id || entry.ip || i}
-                        style={{
-                          borderBottom: '1px solid #F1F5F9',
-                          background: isSelected ? '#FEF3EB' : (isExpired ? '#FFFBFB' : '#FFFFFF'),
-                          transition: 'background-color 0.15s ease'
-                        }}
-                      >
-                        {/* Checkbox */}
-                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectIp(entry.ip)}
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
-                          >
-                            {isSelected ? <CheckSquare size={16} color="#DC2626" /> : <Square size={16} color="#CBD5E1" />}
+                      <tr key={entry.id || entry.ip || i} style={{ background: isSelected ? '#FFF7F7' : '#FFFFFF', transition: 'background 0.1s' }}>
+                        <td style={{ ...S.td, textAlign: 'center' }}>
+                          <button onClick={() => toggleSelectIp(entry.ip)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                            {isSelected ? <CheckSquare size={15} color="#DC2626" /> : <Square size={15} color="#CBD5E1" />}
                           </button>
                         </td>
-
-                        {/* Origin Flag & IP */}
-                        <td style={{ padding: '14px 16px' }}>
+                        <td style={S.td}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <img
-                              src={origin.flagUrl}
-                              alt={origin.code}
-                              onError={(e) => { e.target.style.display = 'none' }}
-                              style={{
-                                width: '18px',
-                                height: '13px',
-                                borderRadius: '2px',
-                                objectFit: 'cover',
-                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                              }}
-                              title={origin.name}
-                            />
-                            <code style={{
-                              fontFamily: "'JetBrains Mono', Menlo, Consolas, monospace",
-                              fontSize: '13px',
-                              fontWeight: '800',
-                              color: '#10201E',
-                              background: '#F1F5F9',
-                              padding: '3px 8px',
-                              borderRadius: '6px'
-                            }}>
+                            {origin.flagUrl && (
+                              <img src={origin.flagUrl} alt="" onError={e => { e.target.style.display = 'none' }}
+                                style={{ width: '18px', height: '13px', borderRadius: '2px', objectFit: 'cover' }} />
+                            )}
+                            <code style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', color: '#0F172A', background: '#F1F5F9', padding: '2px 8px', borderRadius: '5px' }}>
                               {entry.ip}
                             </code>
-                            {isExpired && (
-                              <span style={{
-                                fontSize: '10px',
-                                fontWeight: '800',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                background: '#FEE2E2',
-                                color: '#DC2626',
-                                border: '1px solid #FECACA'
-                              }}>
-                                EXPIRED
-                              </span>
-                            )}
+                            {isExpired && <span style={S.badge('#FEE2E2', '#DC2626', '#FECACA')}>Expired</span>}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px', marginLeft: '26px' }}>
-                            {origin.name}
-                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px', marginLeft: '26px' }}>{origin.name}</div>
                         </td>
-
-                        {/* Reason */}
-                        <td style={{ padding: '14px 16px', color: '#475569', fontSize: '12.5px', maxWidth: '280px' }}>
-                          {entry.reason || 'Blocked by security policy'}
+                        <td style={{ ...S.td, color: '#475569', maxWidth: '250px', fontSize: '12.5px' }}>
+                          {entry.reason || '—'}
                         </td>
-
-                        {/* Duration */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '3px 10px',
-                            borderRadius: '9999px',
-                            fontSize: '11.5px',
-                            fontWeight: '700',
-                            background: isPerm ? '#FEF2F2' : '#F1F5F9',
-                            color: isPerm ? '#DC2626' : '#475569',
-                            border: `1px solid ${isPerm ? '#FECACA' : '#CBD5E1'}`
-                          }}>
-                            <Clock size={11} />
-                            <span>{entry.duration || entry.type || (isPerm ? 'Permanent' : 'Temporary')}</span>
+                        <td style={S.td}>
+                          <span style={S.badge(isPerm ? '#FEF2F2' : '#F0F9FF', isPerm ? '#DC2626' : '#0284C7', isPerm ? '#FECACA' : '#BAE6FD')}>
+                            <Clock size={10} />
+                            {entry.duration || entry.type || (isPerm ? 'Permanent' : 'Temp')}
                           </span>
                         </td>
-
-                        {/* Expires At */}
-                        <td style={{ padding: '14px 16px', fontSize: '12px' }}>
-                          {isPerm ? (
-                            <span style={{ color: '#87948D', fontWeight: '500' }}>Never (Permanent)</span>
-                          ) : isExpired ? (
-                            <span style={{ color: '#DC2626', fontWeight: '700' }}>Expired</span>
-                          ) : (
-                            <span style={{ color: '#15803D', fontWeight: '600' }}>{entry.expires_at}</span>
-                          )}
+                        <td style={{ ...S.td, fontSize: '12.5px' }}>
+                          {isPerm
+                            ? <span style={{ color: '#94A3B8' }}>Never</span>
+                            : isExpired
+                              ? <span style={{ color: '#DC2626', fontWeight: '700' }}>Expired</span>
+                              : <span style={{ color: '#15803D' }}>{entry.expires_at}</span>}
                         </td>
-
-                        {/* Source */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <span style={{
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            background: entry.auto_blocked ? '#FEF3EB' : '#F0FDF4',
-                            color: entry.auto_blocked ? '#D97735' : '#15803D',
-                            border: `1px solid ${entry.auto_blocked ? '#FCD8BF' : '#DCFCE7'}`
-                          }}>
-                            {entry.auto_blocked ? 'Auto Shield' : 'Manual'}
+                        <td style={S.td}>
+                          <span style={S.badge(entry.auto_blocked ? '#FFF7ED' : '#F0FDF4', entry.auto_blocked ? '#C2410C' : '#15803D', entry.auto_blocked ? '#FED7AA' : '#DCFCE7')}>
+                            {entry.auto_blocked ? 'Auto' : 'Manual'}
                           </span>
                         </td>
-
-                        {/* Blocked At */}
-                        <td style={{ padding: '14px 16px', color: '#64748B', fontSize: '12px' }}>
-                          {entry.blocked_at || entry.added_at || 'Recently'}
-                        </td>
-
-                        {/* Action */}
-                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <td style={{ ...S.td, textAlign: 'right' }}>
                           <button
-                            type="button"
                             onClick={() => handleUnblock(entry.ip)}
-                            style={{
-                              padding: '5px 12px',
-                              borderRadius: '6px',
-                              background: '#FFFFFF',
-                              border: '1px solid #FECACA',
-                              color: '#DC2626',
-                              fontSize: '12px',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.background = '#DC2626'
-                              e.currentTarget.style.color = '#FFFFFF'
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.background = '#FFFFFF'
-                              e.currentTarget.style.color = '#DC2626'
-                            }}
+                            style={S.btnSm('#FFFFFF', '#DC2626', '#FECACA')}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
                           >
                             Unblock
                           </button>
@@ -1007,186 +562,75 @@ export default function UserBlacklist() {
         </>
       )}
 
-      {/* ========================================================================= */}
-      {/* SECTION B: COUNTRY BLACKLIST & GEO-FENCING VIEW                           */}
-      {/* ========================================================================= */}
+      {/* ════ SECTION B: COUNTRY BLACKLIST ════ */}
       {activeTab === 'country' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Telemetry Hero Card */}
-          <div style={{
-            background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBF9 60%, #F5F9F6 100%)',
-            border: '1px solid #D9E1DC',
-            borderRadius: '16px',
-            padding: '22px 26px',
-            boxShadow: '0 2px 10px rgba(16, 32, 30, 0.03)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '18px'
-          }}>
-            <div style={{ maxWidth: '640px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#F0FDF4',
-                  color: '#15803D',
-                  border: '1px solid #DCFCE7',
-                  padding: '3px 10px',
-                  borderRadius: '999px',
-                  fontSize: '11px',
-                  fontWeight: '800'
-                }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
-                  <span>EDGE GEO-FIREWALL ENFORCING</span>
-                </span>
-              </div>
-              <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                Sovereign Country-Level Perimeter Defense
-              </h3>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748B', lineHeight: 1.5 }}>
-                Drop all HTTP/HTTPS ingress traffic originating from blocked nation states in <strong>&lt;0.10ms</strong> with an immediate <strong>403 Cyber Block Page</strong> at the Anycast edge, shielding your server bandwidth and application layers.
-              </p>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '12px 18px', textAlign: 'center', minWidth: '110px' }}>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: countryBlocks.length > 0 ? '#DC2626' : '#15803D' }}>
-                  {countryBlocks.length}
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#87948D', textTransform: 'uppercase', fontWeight: '700', marginTop: '2px' }}>
-                  Blocked Countries
-                </div>
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+            {[
+              { label: 'Blocked Countries', value: countryBlocks.length, color: countryBlocks.length > 0 ? '#DC2626' : '#15803D' },
+              { label: 'Available Regions', value: '250+', color: '#6366F1' },
+              { label: 'Block Response', value: 'HTTP 444', color: '#F59E0B' }
+            ].map(s => (
+              <div key={s.label} style={{ ...S.cardPad, padding: '14px 18px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: s.color, marginTop: '2px' }}>{s.value}</div>
               </div>
-
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '12px 18px', textAlign: 'center', minWidth: '110px' }}>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E' }}>
-                  &lt;0.10ms
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#87948D', textTransform: 'uppercase', fontWeight: '700', marginTop: '2px' }}>
-                  Trie Lookup
-                </div>
-              </div>
-
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '12px 18px', textAlign: 'center', minWidth: '110px' }}>
-                <div style={{ fontSize: '20px', fontWeight: '800', color: '#E8792F' }}>
-                  250+
-                </div>
-                <div style={{ fontSize: '10.5px', color: '#87948D', textTransform: 'uppercase', fontWeight: '700', marginTop: '2px' }}>
-                  ISO Regions
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Quick Threat Presets Ribbon */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #D9E1DC',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '12px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Flame size={15} color="#DC2626" />
-              <span style={{ fontSize: '11.5px', fontWeight: '800', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.4px' }}>
-                Popular Threat Origin Presets (1-Click Enforce):
-              </span>
+          {/* Quick Threat Presets */}
+          <div style={S.cardPad}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '12px' }}>
+              <Flame size={14} color="#DC2626" />
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quick Block Presets</span>
             </div>
-
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {POPULAR_THREAT_COUNTRIES.map(preset => {
                 const isBlocked = blockedCodesSet.has(preset.code)
                 return (
                   <button
                     key={preset.code}
-                    type="button"
                     onClick={() => handleQuickPresetToggle(preset)}
                     style={{
-                      background: isBlocked ? '#FEF2F2' : '#FAFBF9',
-                      border: isBlocked ? '1px solid #FECACA' : '1px solid #D9E1DC',
-                      color: isBlocked ? '#DC2626' : '#10201E',
-                      fontSize: '12px',
-                      padding: '5px 12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: '700',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.15s ease'
+                      background: isBlocked ? '#FEF2F2' : '#F8FAFC',
+                      border: `1px solid ${isBlocked ? '#FECACA' : '#E2E8F0'}`,
+                      color: isBlocked ? '#DC2626' : '#334155',
+                      fontSize: '12.5px', padding: '5px 12px', borderRadius: '8px',
+                      cursor: 'pointer', fontWeight: '600',
+                      display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s'
                     }}
                   >
-                    <img
-                      src={getFlagUrl(preset.code, '20x15')}
-                      alt={preset.code}
-                      onError={(e) => { e.target.style.display = 'none' }}
-                      style={{ width: '16px', height: '11px', borderRadius: '2px', objectFit: 'cover' }}
-                    />
-                    <span>{preset.name}</span>
-                    <span style={{
-                      fontSize: '9.5px',
-                      fontWeight: '800',
-                      padding: '1px 5px',
-                      borderRadius: '4px',
-                      background: isBlocked ? '#DC2626' : '#E2E8F0',
-                      color: isBlocked ? '#FFFFFF' : '#475569'
-                    }}>
-                      {isBlocked ? 'BLOCKED' : preset.code}
-                    </span>
+                    <img src={getFlagUrl(preset.code, '20x15')} alt={preset.code}
+                      onError={e => { e.target.style.display = 'none' }}
+                      style={{ width: '16px', height: '11px', borderRadius: '2px', objectFit: 'cover' }} />
+                    {preset.name}
+                    {isBlocked && <span style={{ fontSize: '10px', background: '#DC2626', color: '#FFF', padding: '1px 5px', borderRadius: '4px' }}>Blocked</span>}
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Add Country Block Configuration Card */}
-          <div
-            id="country-block-form"
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #D9E1DC',
-              borderRadius: '16px',
-              padding: '24px 26px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Shield size={17} color="#DC2626" />
-                  <span>Enforce Country-Level Geo-Restriction Policy</span>
-                </h3>
-                <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B' }}>
-                  Select sovereign regions to drop immediately upon edge connection.
-                </p>
+          {/* Add Country Form */}
+          <div id="country-block-form" style={S.cardPad}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <Shield size={15} color="#DC2626" />
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>Block a Country</span>
               </div>
-
-              {/* Region Filter Chips */}
-              <div style={{ display: 'flex', gap: '4px', background: '#F1F5F3', padding: '3px', borderRadius: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '3px', background: '#F1F5F9', padding: '3px', borderRadius: '8px', flexWrap: 'wrap' }}>
                 {['All', 'Asia', 'Europe', 'Americas', 'Middle East', 'Africa'].map(reg => (
                   <button
                     key={reg}
-                    type="button"
                     onClick={() => setSelectedRegion(reg)}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      border: 'none',
+                      padding: '4px 9px', borderRadius: '6px', border: 'none',
                       background: selectedRegion === reg ? '#FFFFFF' : 'transparent',
-                      color: selectedRegion === reg ? '#10201E' : '#64748B',
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      boxShadow: selectedRegion === reg ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+                      color: selectedRegion === reg ? '#0F172A' : '#64748B',
+                      fontSize: '11.5px', fontWeight: '600', cursor: 'pointer',
+                      boxShadow: selectedRegion === reg ? '0 1px 3px rgba(0,0,0,0.07)' : 'none'
                     }}
                   >
                     {reg}
@@ -1195,610 +639,194 @@ export default function UserBlacklist() {
               </div>
             </div>
 
-            {/* Form Inputs Grid */}
-            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr)) 180px', gap: '16px', alignItems: 'end' }}>
+            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#475569', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Target Sovereign Country
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={selectedCountry}
-                    onChange={(e) => setSelectedCountry(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: '42px',
-                      borderRadius: '9px',
-                      border: '1px solid #D9E1DC',
-                      background: '#FAFBF9',
-                      color: '#10201E',
-                      fontSize: '13px',
-                      fontWeight: '700',
-                      padding: '0 12px',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    {ALL_COUNTRIES
-                      .filter(c => selectedRegion === 'All' || c.region === selectedRegion)
-                      .map((c) => {
-                        const isBlocked = blockedCodesSet.has(c.code)
-                        return (
-                          <option key={c.code} value={c.code} disabled={isBlocked}>
-                            {getFlagEmoji(c.code)} {c.name} ({c.code}) {isBlocked ? '— [ALREADY BLOCKED]' : ''}
-                          </option>
-                        )
-                      })}
-                  </select>
-                </div>
+                <label style={S.label}>Country</label>
+                <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)} style={{ ...S.input, cursor: 'pointer' }}>
+                  {ALL_COUNTRIES
+                    .filter(c => selectedRegion === 'All' || c.region === selectedRegion)
+                    .map(c => {
+                      const isBlocked = blockedCodesSet.has(c.code)
+                      return (
+                        <option key={c.code} value={c.code} disabled={isBlocked}>
+                          {getFlagEmoji(c.code)} {c.name} ({c.code}){isBlocked ? ' [Blocked]' : ''}
+                        </option>
+                      )
+                    })}
+                </select>
               </div>
-
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: '#475569', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Firewall Policy Reason
-                </label>
+                <label style={S.label}>Reason (optional)</label>
                 <input
                   type="text"
                   value={blockReason}
-                  onChange={(e) => setBlockReason(e.target.value)}
-                  placeholder="e.g. Hostile Port Probing, Malicious Bot Traffic"
-                  style={{
-                    width: '100%',
-                    height: '42px',
-                    borderRadius: '9px',
-                    border: '1px solid #D9E1DC',
-                    background: '#FAFBF9',
-                    color: '#10201E',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    padding: '0 12px',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
+                  onChange={e => setBlockReason(e.target.value)}
+                  placeholder="e.g. Bot traffic, malicious scans"
+                  style={S.input}
                 />
               </div>
-
               <button
                 type="submit"
                 disabled={savingCountry || blockedCodesSet.has(selectedCountry)}
-                style={{
-                  height: '42px',
-                  background: '#DC2626',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '9px',
-                  fontWeight: '700',
-                  fontSize: '13px',
-                  cursor: (savingCountry || blockedCodesSet.has(selectedCountry)) ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
-                  opacity: blockedCodesSet.has(selectedCountry) ? 0.6 : 1,
-                  transition: 'all 0.15s ease'
-                }}
+                style={{ ...S.btn('#DC2626', '#FFFFFF'), height: '39px', opacity: blockedCodesSet.has(selectedCountry) ? 0.5 : 1 }}
               >
-                {savingCountry ? (
-                  <>
-                    <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                    <span>Enforcing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Ban size={14} />
-                    <span>Block Country</span>
-                  </>
-                )}
+                {savingCountry
+                  ? <><RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} />Blocking...</>
+                  : <><Ban size={13} />Block Country</>}
               </button>
             </form>
           </div>
 
-          {/* Active Blocked Countries Console */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #D9E1DC',
-            borderRadius: '16px',
-            padding: '24px 26px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '14px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Globe size={18} color="#10201E" />
-                  <span>Active Sovereign Geo-Block Policies ({countryBlocks.length})</span>
-                </h3>
-                <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B' }}>
-                  All traffic from these regions is immediately dropped with HTTP 403 Forbidden.
-                </p>
+          {/* Country Blocks Table */}
+          <div style={S.cardPad}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <Globe size={15} color="#0F172A" />
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>
+                  Blocked Countries <span style={{ fontSize: '13px', color: '#94A3B8', fontWeight: '600' }}>({countryBlocks.length})</span>
+                </span>
               </div>
-
-              {/* View Mode & Search */}
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                {countryBlocks.length > 0 && (
-                  <div style={{ position: 'relative', width: '220px' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#87948D' }} />
-                    <input
-                      type="text"
-                      placeholder="Filter blocked..."
-                      value={countrySearch}
-                      onChange={e => setCountrySearch(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '6px 10px 6px 30px',
-                        borderRadius: '8px',
-                        border: '1px solid #D9E1DC',
-                        background: '#FAFBF9',
-                        fontSize: '12px',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', background: '#F1F5F3', padding: '3px', borderRadius: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setGeoViewMode('cards')}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: geoViewMode === 'cards' ? '#FFFFFF' : 'transparent',
-                      color: geoViewMode === 'cards' ? '#10201E' : '#64748B',
-                      fontSize: '11.5px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      boxShadow: geoViewMode === 'cards' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
-                    }}
-                  >
-                    <LayoutGrid size={13} />
-                    <span>Cards</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGeoViewMode('table')}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: geoViewMode === 'table' ? '#FFFFFF' : 'transparent',
-                      color: geoViewMode === 'table' ? '#10201E' : '#64748B',
-                      fontSize: '11.5px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      boxShadow: geoViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
-                    }}
-                  >
-                    <List size={13} />
-                    <span>Table</span>
-                  </button>
+              {countryBlocks.length > 0 && (
+                <div style={{ position: 'relative', width: '220px' }}>
+                  <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                  <input
+                    type="text"
+                    placeholder="Search countries..."
+                    value={countrySearch}
+                    onChange={e => setCountrySearch(e.target.value)}
+                    style={{ ...S.input, paddingLeft: '30px' }}
+                  />
                 </div>
-              </div>
+              )}
             </div>
 
             {countryLoading ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
-                <RotateCw size={24} style={{ animation: 'spin 1s linear infinite', color: '#DC2626', marginBottom: '10px' }} />
-                <div style={{ fontSize: '13.5px', fontWeight: '600' }}>Loading sovereign country blocks...</div>
+              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8' }}>
+                <RotateCw size={22} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
+                Loading...
               </div>
             ) : countryBlocks.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '50px 20px',
-                background: '#FAFBF9',
-                borderRadius: '14px',
-                border: '1px dashed #D9E1DC',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  background: '#F0FDF4',
-                  border: '1px solid #DCFCE7',
-                  color: '#15803D',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '12px'
-                }}>
-                  <Globe size={24} />
-                </div>
-                <h4 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
-                  Global Ingress Permitted
-                </h4>
-                <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748B', maxWidth: '440px', lineHeight: 1.5 }}>
-                  Your websites currently accept clean traffic from all sovereign regions. Use the form above or click a threat preset to drop specific nations.
-                </p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedCountry('CN'); setBlockReason('High Threat Defense (China)'); }}
-                    style={{ padding: '6px 14px', borderRadius: '7px', border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    🇨🇳 Block China
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedCountry('RU'); setBlockReason('High Threat Defense (Russia)'); }}
-                    style={{ padding: '6px 14px', borderRadius: '7px', border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    🇷🇺 Block Russia
-                  </button>
-                </div>
+              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #E2E8F0' }}>
+                <Globe size={30} style={{ display: 'block', margin: '0 auto 10px', color: '#CBD5E1' }} />
+                <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No countries blocked</div>
+                <div style={{ fontSize: '12.5px' }}>Use the form above or click a preset to block a country.</div>
               </div>
             ) : (
-              <>
-                {geoViewMode === 'cards' ? (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
-                    gap: '14px'
-                  }}>
-                    {filteredCountryBlocks.map((block) => {
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Country</th>
+                      <th style={S.th}>Code</th>
+                      <th style={S.th}>Reason</th>
+                      <th style={S.th}>Status</th>
+                      <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCountryBlocks.map(block => {
                       const code = (block.country_code || '').toUpperCase().trim()
                       const cObj = ALL_COUNTRIES.find(c => c.code === code)
                       const displayName = cObj ? cObj.name : (block.country_name || code)
-                      const flagUrl = getFlagUrl(code, '24x18')
+                      const flagUrl = getFlagUrl(code, '20x15')
 
                       return (
-                        <div
-                          key={block._id || code}
-                          style={{
-                            background: '#FFFFFF',
-                            border: '1px solid #FECACA',
-                            borderRadius: '14px',
-                            padding: '16px 18px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            gap: '12px',
-                            boxShadow: '0 2px 6px rgba(220, 38, 38, 0.04)',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <img
-                                src={flagUrl}
-                                alt={code}
-                                onError={(e) => { e.target.style.display = 'none' }}
-                                style={{
-                                  width: '28px',
-                                  height: '20px',
-                                  borderRadius: '3px',
-                                  objectFit: 'cover',
-                                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                                }}
-                              />
-                              <div>
-                                <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
-                                  {displayName}
-                                </div>
-                                <div style={{ display: 'flex', gap: '6px', marginTop: '3px', alignItems: 'center' }}>
-                                  <span style={{ background: '#FEF2F2', color: '#DC2626', padding: '1px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: '800', border: '1px solid #FECACA' }}>
-                                    {code}
-                                  </span>
-                                  <span style={{ fontSize: '11px', color: '#87948D' }}>
-                                    {cObj?.region || 'Global'}
-                                  </span>
-                                </div>
-                              </div>
+                        <tr key={block._id || code} style={{ background: '#FFFFFF' }}>
+                          <td style={S.td}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <img src={flagUrl} alt={code}
+                                onError={e => { e.target.style.display = 'none' }}
+                                style={{ width: '20px', height: '14px', borderRadius: '2px', objectFit: 'cover' }} />
+                              <span style={{ fontWeight: '700', color: '#0F172A' }}>{displayName}</span>
                             </div>
-
-                            <span style={{
-                              background: '#DC2626',
-                              color: '#FFFFFF',
-                              fontSize: '10px',
-                              fontWeight: '800',
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              letterSpacing: '0.4px'
-                            }}>
-                              403 BLOCKED
-                            </span>
-                          </div>
-
-                          <div style={{ background: '#FAFBF9', padding: '8px 10px', borderRadius: '8px', fontSize: '11.5px', color: '#475569', border: '1px solid #EAEFEA' }}>
-                            <span style={{ fontWeight: '700', color: '#10201E' }}>Reason:</span> {block.reason || 'Sovereign Geo-Restriction Policy'}
-                          </div>
-
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '2px' }}>
-                            <span style={{ fontSize: '11px', color: '#87948D' }}>
-                              Enforced at edge
-                            </span>
-
+                          </td>
+                          <td style={S.td}>
+                            <span style={S.badge('#F1F5F9', '#475569', '#E2E8F0')}>{code}</span>
+                          </td>
+                          <td style={{ ...S.td, color: '#64748B', fontSize: '12.5px', maxWidth: '280px' }}>
+                            {block.reason || '—'}
+                          </td>
+                          <td style={S.td}>
+                            <span style={S.badge('#FEF2F2', '#DC2626', '#FECACA')}>Blocked</span>
+                          </td>
+                          <td style={{ ...S.td, textAlign: 'right' }}>
                             <button
-                              type="button"
                               onClick={() => handleRemoveCountryBlock(code, displayName)}
-                              style={{
-                                background: '#FFFFFF',
-                                border: '1px solid #FECACA',
-                                color: '#DC2626',
-                                padding: '4px 12px',
-                                borderRadius: '6px',
-                                fontSize: '11.5px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease'
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.background = '#DC2626'
-                                e.currentTarget.style.color = '#FFFFFF'
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.background = '#FFFFFF'
-                                e.currentTarget.style.color = '#DC2626'
-                              }}
+                              style={S.btnSm('#FFFFFF', '#DC2626', '#FECACA')}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
                             >
-                              Unblock Country
+                              Unblock
                             </button>
-                          </div>
-                        </div>
+                          </td>
+                        </tr>
                       )
                     })}
-                  </div>
-                ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #D9E1DC', borderRadius: '12px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                      <thead>
-                        <tr style={{ background: '#FAFBF9', borderBottom: '1px solid #D9E1DC', fontSize: '11px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: '700' }}>
-                          <th style={{ padding: '12px 16px' }}>SOVEREIGN REGION</th>
-                          <th style={{ padding: '12px 16px' }}>ISO CODE</th>
-                          <th style={{ padding: '12px 16px' }}>POLICY REASON</th>
-                          <th style={{ padding: '12px 16px' }}>ENFORCEMENT</th>
-                          <th style={{ padding: '12px 16px', textAlign: 'right' }}>ACTION</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCountryBlocks.map((block) => {
-                          const code = (block.country_code || '').toUpperCase().trim()
-                          const cObj = ALL_COUNTRIES.find(c => c.code === code)
-                          const displayName = cObj ? cObj.name : (block.country_name || code)
-                          const flagUrl = getFlagUrl(code, '20x15')
-
-                          return (
-                            <tr key={block._id || code} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                              <td style={{ padding: '12px 16px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <img
-                                    src={flagUrl}
-                                    alt={code}
-                                    onError={(e) => { e.target.style.display = 'none' }}
-                                    style={{ width: '20px', height: '14px', borderRadius: '2px', objectFit: 'cover' }}
-                                  />
-                                  <span style={{ fontWeight: '700', color: '#10201E' }}>{displayName}</span>
-                                </div>
-                              </td>
-                              <td style={{ padding: '12px 16px' }}>
-                                <span style={{ background: '#FEF2F2', color: '#DC2626', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '800' }}>
-                                  {code}
-                                </span>
-                              </td>
-                              <td style={{ padding: '12px 16px', color: '#475569', fontSize: '12.5px' }}>
-                                {block.reason || 'Sovereign Geo-Restriction Policy'}
-                              </td>
-                              <td style={{ padding: '12px 16px' }}>
-                                <span style={{ background: '#DC2626', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '10.5px', fontWeight: '800' }}>
-                                  403 BLOCKED
-                                </span>
-                              </td>
-                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveCountryBlock(code, displayName)}
-                                  style={{
-                                    background: '#FFFFFF',
-                                    border: '1px solid #FECACA',
-                                    color: '#DC2626',
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    fontSize: '11.5px',
-                                    fontWeight: '700',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Unblock
-                                </button>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 5. ADD IP BLOCK MODAL                                                     */}
-      {/* ========================================================================= */}
+      {/* ── Add IP Modal ── */}
       {showModal && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(16, 32, 30, 0.5)',
-            backdropFilter: 'blur(3px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px'
-          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}
           onClick={() => setShowModal(false)}
         >
           <div
-            style={{
-              background: '#FFFFFF',
-              borderRadius: '16px',
-              maxWidth: '460px',
-              width: '100%',
-              padding: '26px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-              border: '1px solid #D9E1DC',
-              position: 'relative'
-            }}
+            style={{ background: '#FFFFFF', borderRadius: '16px', maxWidth: '440px', width: '100%', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #E2E8F0' }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  background: '#FEF2F2',
-                  color: '#DC2626',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Ban size={16} />
                 </div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                  Block IP Address
-                </h3>
+                <span style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A' }}>Block IP Address</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
-              >
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  IP Address (IPv4 / IPv6)
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 192.168.1.100"
-                  value={form.ip}
-                  onChange={e => setForm({ ...form, ip: e.target.value.trim() })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #D9E1DC',
-                    background: '#FAFBF9',
-                    fontSize: '13.5px',
-                    color: '#10201E',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
+            <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={S.label}>IP Address</label>
+                <input type="text" required placeholder="e.g. 192.168.1.100"
+                  value={form.ip} onChange={e => setForm({ ...form, ip: e.target.value.trim() })}
+                  style={S.input} />
               </div>
-
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Ban Duration
-                </label>
-                <select
-                  value={form.duration}
-                  onChange={e => setForm({ ...form, duration: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #D9E1DC',
-                    background: '#FAFBF9',
-                    fontSize: '13.5px',
-                    color: '#10201E',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="1d">1 Day (Auto-Expires in 24 Hours)</option>
-                  <option value="2d">2 Days (Auto-Expires in 48 Hours)</option>
-                  <option value="7d">7 Days (1 Week Quarantine)</option>
-                  <option value="30d">30 Days (1 Month Quarantine)</option>
-                  <option value="permanent">Permanent Block (Manual Lift Only)</option>
+              <div>
+                <label style={S.label}>Duration</label>
+                <select value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} style={{ ...S.input, cursor: 'pointer' }}>
+                  <option value="1d">1 Day</option>
+                  <option value="2d">2 Days</option>
+                  <option value="7d">7 Days</option>
+                  <option value="30d">30 Days</option>
+                  <option value="permanent">Permanent</option>
                 </select>
               </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>
-                  Reason / Threat Annotation
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Repeated SQL injection & probe attempts"
-                  value={form.reason}
-                  onChange={e => setForm({ ...form, reason: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #D9E1DC',
-                    background: '#FAFBF9',
-                    fontSize: '13.5px',
-                    color: '#10201E',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
+              <div>
+                <label style={S.label}>Reason (optional)</label>
+                <input type="text" placeholder="e.g. SQL injection attempts"
+                  value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })}
+                  style={S.input} />
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    padding: '9px 16px',
-                    borderRadius: '8px',
-                    background: '#FAFBF9',
-                    color: '#475569',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={S.btn('#F8FAFC', '#64748B', '#E2E8F0')}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    padding: '9px 20px',
-                    borderRadius: '8px',
-                    background: '#DC2626',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    cursor: submitting ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {submitting ? 'Applying Ban...' : 'Confirm Block'}
+                <button type="submit" disabled={submitting} style={S.btn('#DC2626', '#FFFFFF')}>
+                  {submitting ? 'Blocking...' : 'Confirm Block'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   )
 }
