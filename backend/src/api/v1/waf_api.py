@@ -471,9 +471,11 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
             "country_code": cc,
             "country": cname,
         }
-        security_docs.append(doc)
 
+        # Zero-Bloat SaaS Architecture: Only save genuine attack and threat events in MongoDB.
+        # Routine benign requests are accounted for in atomic telemetry counters without wasting gigabytes of disk.
         if is_blocked or attack_type:
+            security_docs.append(doc)
             attack_docs.append({
                 "user_id": user_id_str,
                 "website_id": website_id_str,

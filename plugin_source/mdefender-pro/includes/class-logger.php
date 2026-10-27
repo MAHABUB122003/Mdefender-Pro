@@ -67,6 +67,7 @@ class WAF_FW_Logger {
                 'created_at' => current_time('mysql'),
             ]
         );
+        $this->auto_recycle_if_needed();
     }
 
     public function log_error($message) {
@@ -108,6 +109,7 @@ class WAF_FW_Logger {
             );
         }
         self::$request_buffer = [];
+        $inst->auto_recycle_if_needed();
     }
 
     /**
@@ -386,24 +388,89 @@ class WAF_FW_Logger {
         ];
     }
 
-    public function clear_logs() {
+    /**
+     * Automatic log recycler: purges old records and enforces maximum buffer limits.
+     * Prevents the client's WordPress MySQL database from ever bloating or running out of disk space.
+     */
+    public function auto_recycle_if_needed($force = false) {
+        if (!$force && get_transient('waf_fw_auto_recycle_lock')) {
+            return;
+        }
+        set_transient('waf_fw_auto_recycle_lock', 1, 600); // Check at most once every 10 minutes
+
+        $enabled = get_option('waf_fw_auto_recycle_logs', 'yes');
+        if ($enabled !== 'yes' && $enabled !== '1' && $enabled !== true) {
+            return;
+        }
+
+        global $wpdb;
+        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 10000);
+        $days = (int) get_option('waf_fw_recycle_days', 7);
+        if ($max_logs <= 0) $max_logs = 10000;
+        if ($days <= 0) $days = 7;
+
+        $requests_table = $this->db->get_requests_table();
+        $attacks_table = $this->db->get_attacks_table();
+
+        // 1. Purge records older than retention threshold
+        $wpdb->query($wpdb->prepare("DELETE FROM $requests_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days));
+        $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days));
+
+        // 2. Enforce max row cap on requests table to ensure ultra-lightweight footprint
+        $req_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        if ($req_count > $max_logs) {
+            $excess = $req_count - $max_logs;
+            $wpdb->query($wpdb->prepare("DELETE FROM $requests_table ORDER BY id ASC LIMIT %d", $excess));
+        }
+
+        // 3. Enforce max row cap on attacks table
+        $att_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
+        if ($att_count > $max_logs) {
+            $excess = $att_count - $max_logs;
+            $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table ORDER BY id ASC LIMIT %d", $excess));
+        }
+    }
+
+    public function clear_logs($days = 'all') {
         global $wpdb;
         $attacks_table = $this->db->get_attacks_table();
         $requests_table = $this->db->get_requests_table();
         $events_table = $wpdb->prefix . (defined('WAF_FW_TABLE_SECURITY_EVENTS') ? WAF_FW_TABLE_SECURITY_EVENTS : 'waf_security_events');
-        
-        $wpdb->query("TRUNCATE TABLE $attacks_table");
-        $wpdb->query("DELETE FROM $attacks_table");
-        
-        $wpdb->query("TRUNCATE TABLE $requests_table");
-        $wpdb->query("DELETE FROM $requests_table");
-        
-        if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
-            $wpdb->query("TRUNCATE TABLE $events_table");
-            $wpdb->query("DELETE FROM $events_table");
+
+        $days_str = strtolower(trim((string)$days));
+
+        if ($days_str === 'all' || $days_str === '' || $days_str === '0') {
+            $wpdb->query("TRUNCATE TABLE $attacks_table");
+            $wpdb->query("DELETE FROM $attacks_table");
+            
+            $wpdb->query("TRUNCATE TABLE $requests_table");
+            $wpdb->query("DELETE FROM $requests_table");
+            
+            if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
+                $wpdb->query("TRUNCATE TABLE $events_table");
+                $wpdb->query("DELETE FROM $events_table");
+            }
+        } elseif ($days_str === 'today') {
+            $today = current_time('Y-m-d') . ' 00:00:00';
+            $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table WHERE created_at >= %s", $today));
+            $wpdb->query($wpdb->prepare("DELETE FROM $requests_table WHERE created_at >= %s", $today));
+            if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
+                $wpdb->query($wpdb->prepare("DELETE FROM $events_table WHERE created_at >= %s", $today));
+            }
+        } else {
+            $days_int = intval($days_str);
+            if ($days_int > 0) {
+                $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days_int));
+                $wpdb->query($wpdb->prepare("DELETE FROM $requests_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days_int));
+                if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
+                    $wpdb->query($wpdb->prepare("DELETE FROM $events_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days_int));
+                }
+            }
         }
 
         $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_waf_%' OR option_name LIKE '_transient_timeout_waf_%'");
+        delete_transient('waf_fw_last_bl_sync');
+        delete_transient('waf_fw_auto_recycle_lock');
     }
 
     public function clean_requests() {

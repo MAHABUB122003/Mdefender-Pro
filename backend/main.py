@@ -9,6 +9,7 @@ from typing import Optional
 
 from bson import ObjectId
 from fastapi import FastAPI, Request, Response, HTTPException, Depends, BackgroundTasks
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -1052,7 +1053,7 @@ async def user_dashboard(request: Request, user: dict = Depends(verify_user_toke
         website_id = request.query_params.get('website_id')
         refresh = request.query_params.get('refresh') in ('1', 'true')
         res = user_api.get_dashboard_stats(user, website_id=website_id, force_refresh=refresh)
-        return JSONResponse(status_code=200, content=res)
+        return JSONResponse(status_code=200, content=jsonable_encoder(res))
     except Exception as e:
         print(f"[Error] user_dashboard exception: {e}")
         return JSONResponse(status_code=500, content={'status': 'error', 'message': str(e)})
@@ -1171,6 +1172,19 @@ async def user_clean_logs(request: Request, user: dict = Depends(verify_user_tok
     except Exception:
         data = {}
     return user_api.clean_user_logs(user, data)
+
+@app.get("/api/user/log-recycle-settings")
+async def user_get_log_recycle_settings(request: Request, user: dict = Depends(verify_user_token_compat)):
+    website_id = request.query_params.get('website_id')
+    return user_api.get_log_recycle_settings(user, website_id=website_id)
+
+@app.post("/api/user/log-recycle-settings")
+async def user_update_log_recycle_settings(request: Request, user: dict = Depends(verify_user_token_compat)):
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+    return user_api.update_log_recycle_settings(user, data)
 
 @app.post("/api/user/reset-stats")
 async def user_reset_stats(request: Request, user: dict = Depends(verify_user_token_compat)):

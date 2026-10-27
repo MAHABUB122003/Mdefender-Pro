@@ -1190,11 +1190,13 @@ class UserAPI:
         if website_id and website_id != 'all':
             target_ids = [website_id]
             target_domains = [website_id]
+            target_site = None
             for s in user_sites + wp_sites:
                 sid = str(s.get('_id', ''))
                 sdom = s.get('domain', '')
                 surl = s.get('url', '')
                 if website_id in (sid, sdom, surl):
+                    target_site = s
                     if sid:
                         target_ids.append(sid)
                     if sdom:
@@ -1202,12 +1204,158 @@ class UserAPI:
                     if surl:
                         target_domains.append(surl)
 
+            # High-performance Remote Log Query Proxy:
+            # Query the WordPress plugin directly for authentic local logs without loading the central MongoDB database!
+            if target_site and (target_site.get('url') or target_site.get('domain')):
+                site_url = target_site.get('url') or f"http://{target_site.get('domain')}"
+                site_key = target_site.get('api_key') or ''
+                try:
+                    import requests
+                    remote_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_logs"
+                    req_params = {
+                        'page': page,
+                        'limit': per_page,
+                        'per_page': per_page,
+                        'search': search,
+                        'ip': ip_filter,
+                        'attack_type': attack_type,
+                        'status': status_filter,
+                        'date_from': date_from,
+                        'date_to': date_to
+                    }
+                    headers = {
+                        'Authorization': f'Bearer {site_key}',
+                        'X-API-Key': site_key,
+                        'User-Agent': 'MDefender-Cloud/2.0'
+                    }
+                    resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.0)
+                    if resp.status_code == 200:
+                        r_data = resp.json()
+                        if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
+                            norm_logs = []
+                            for idx, rl in enumerate(r_data['logs']):
+                                st = str(rl.get('status') or rl.get('action') or 'allowed').lower()
+                                is_b = (st in ('block', 'blocked', 'b'))
+                                at = rl.get('attack_type') or ('Blocked Attack' if is_b else 'Clean Traffic')
+                                norm_logs.append({
+                                    'id': str(rl.get('id', idx)),
+                                    'ip': rl.get('ip') or rl.get('source_ip', ''),
+                                    'url': rl.get('url') or rl.get('endpoint', '/'),
+                                    'domain': target_site.get('domain') or target_site.get('name') or 'localhost',
+                                    'attack_type': at,
+                                    'status': 'blocked' if is_b else 'allowed',
+                                    'timestamp': str(rl.get('created_at') or rl.get('timestamp') or ''),
+                                    'confidence': float(rl.get('confidence') or (0.95 if is_b else 0.0)),
+                                    'method': rl.get('method', 'GET'),
+                                    'user_agent': rl.get('user_agent', ''),
+                                    'rule_matched': rl.get('rule_matched', ''),
+                                    'country_code': rl.get('country_code', ''),
+                                    'country': rl.get('country', ''),
+                                })
+                            tot = int(r_data.get('total', len(norm_logs)))
+                            return {
+                                'total': tot,
+                                'page': page,
+                                'per_page': per_page,
+                                'total_pages': int(r_data.get('total_pages', max(1, (tot + per_page - 1) // per_page))),
+                                'logs': norm_logs,
+                                'source': 'wordpress_live'
+                            }
+                except Exception as e:
+                    # Gracefully fall back to MongoDB
+                    pass
+
             conditions.append({'$or': [
                 {'website_id': {'$in': target_ids}},
                 {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
                 {'domain': {'$in': target_domains}},
                 {'url': {'$in': target_domains}},
             ]})
+        else:
+            # Multi-Website Aggregated Query Proxy:
+            # When viewing "All Websites", query all user's connected WordPress sites in parallel!
+            # Zero database load on central MongoDB, completely lightweight and memory-efficient.
+            connected_wp_sites = [s for s in (user_sites + wp_sites) if s.get('url') and s.get('api_key')]
+            if connected_wp_sites:
+                import requests
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+
+                all_remote_logs = []
+                total_remote_count = 0
+
+                def fetch_single_site_logs(site):
+                    site_url = site.get('url') or f"http://{site.get('domain')}"
+                    site_key = site.get('api_key') or ''
+                    domain_name = site.get('domain') or site.get('name') or 'localhost'
+                    try:
+                        remote_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_logs"
+                        req_params = {
+                            'page': 1,
+                            'limit': 50,
+                            'per_page': 50,
+                            'search': search,
+                            'ip': ip_filter,
+                            'attack_type': attack_type,
+                            'status': status_filter,
+                            'date_from': date_from,
+                            'date_to': date_to
+                        }
+                        headers = {
+                            'Authorization': f'Bearer {site_key}',
+                            'X-API-Key': site_key,
+                            'User-Agent': 'MDefender-Cloud/2.0'
+                        }
+                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=1.8)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            logs_list = data.get('logs', []) if isinstance(data, dict) else []
+                            return logs_list, data.get('total', len(logs_list)), domain_name
+                    except Exception:
+                        pass
+                    return [], 0, domain_name
+
+                with ThreadPoolExecutor(max_workers=min(10, len(connected_wp_sites))) as executor:
+                    futures = [executor.submit(fetch_single_site_logs, s) for s in connected_wp_sites]
+                    for fut in as_completed(futures):
+                        try:
+                            s_logs, s_tot, s_dom = fut.result()
+                            total_remote_count += s_tot
+                            for idx, rl in enumerate(s_logs):
+                                st = str(rl.get('status') or rl.get('action') or 'allowed').lower()
+                                is_b = (st in ('block', 'blocked', 'b'))
+                                at = rl.get('attack_type') or ('Blocked Attack' if is_b else 'Clean Traffic')
+                                all_remote_logs.append({
+                                    'id': str(rl.get('id', idx)),
+                                    'ip': rl.get('ip') or rl.get('source_ip', ''),
+                                    'url': rl.get('url') or rl.get('endpoint', '/'),
+                                    'domain': s_dom,
+                                    'attack_type': at,
+                                    'status': 'blocked' if is_b else 'allowed',
+                                    'timestamp': str(rl.get('created_at') or rl.get('timestamp') or ''),
+                                    'confidence': float(rl.get('confidence') or (0.95 if is_b else 0.0)),
+                                    'method': rl.get('method', 'GET'),
+                                    'user_agent': rl.get('user_agent', ''),
+                                    'rule_matched': rl.get('rule_matched', ''),
+                                    'country_code': rl.get('country_code', ''),
+                                    'country': rl.get('country', ''),
+                                })
+                        except Exception:
+                            pass
+
+                if all_remote_logs:
+                    # Sort in memory by timestamp descending
+                    all_remote_logs.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
+                    start_idx = (page - 1) * per_page
+                    paged_logs = all_remote_logs[start_idx:start_idx + per_page]
+                    tot = max(total_remote_count, len(all_remote_logs))
+                    return {
+                        'total': tot,
+                        'page': page,
+                        'per_page': per_page,
+                        'total_pages': max(1, (tot + per_page - 1) // per_page),
+                        'logs': paged_logs,
+                        'source': 'wordpress_fleet_live'
+                    }
 
         if status_filter:
             if status_filter in ('block', 'blocked'):
@@ -1518,13 +1666,125 @@ class UserAPI:
             r2 = self.db.attacks.delete_many(final_query)
             r3 = self.db.requests.delete_many(final_query)
             total_deleted = r1.deleted_count + r2.deleted_count + r3.deleted_count
+
+            # Remote fleet command: Dispatch log purge to connected WordPress sites
+            wp_targets = []
+            for s in user_sites:
+                sid = str(s.get('_id', ''))
+                sdom = s.get('domain', '')
+                if not website_id or website_id == 'all' or website_id in (sid, sdom):
+                    if s.get('url') or s.get('domain'):
+                        wp_targets.append(s)
+
+            remote_cleaned = 0
+            for target in wp_targets:
+                s_url = target.get('url') or (f"http://{target.get('domain')}" if target.get('domain') else None)
+                s_key = target.get('api_key') or ''
+                if s_url and s_key:
+                    try:
+                        import requests
+                        clean_endpoint = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=clear_logs"
+                        headers = {
+                            'Authorization': f'Bearer {s_key}',
+                            'X-API-Key': s_key,
+                            'User-Agent': 'MDefender-Cloud/2.0'
+                        }
+                        cr = requests.post(clean_endpoint, json={'days': days_param, 'action': 'clear_logs'}, headers=headers, timeout=2.5)
+                        if cr.status_code == 200:
+                            remote_cleaned += 1
+                    except Exception as e:
+                        print(f"[Remote Log Purge] Error reaching {s_url}: {e}")
+
+            msg_suffix = f" and remotely purged local database on {remote_cleaned} connected WordPress site(s)." if remote_cleaned > 0 else "."
             return {
                 'status': 'success',
                 'deleted': total_deleted,
-                'message': f'Successfully cleared {total_deleted} {time_desc} log record(s).'
+                'remote_cleaned_sites': remote_cleaned,
+                'message': f'Successfully cleared {time_desc} log record(s) from Central Dashboard{msg_suffix}'
             }
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
+
+    def get_log_recycle_settings(self, user, website_id=None):
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+        site = None
+        if website_id and website_id != 'all':
+            site = self.db.websites.find_one({
+                '$and': [
+                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
+                    {'$or': [{'_id': self._resolve_id(website_id)}, {'_id': website_id}, {'domain': website_id}]}
+                ]
+            })
+        if not site:
+            site = self.db.websites.find_one({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+
+        recycle_cfg = (site.get('log_recycle') if site else {}) or {}
+        return {
+            'status': 'success',
+            'website_id': str(site['_id']) if site else None,
+            'domain': site.get('domain') if site else '',
+            'auto_recycle': recycle_cfg.get('auto_recycle', True),
+            'max_logs': recycle_cfg.get('max_logs', 10000),
+            'retention_days': recycle_cfg.get('retention_days', 7)
+        }
+
+    def update_log_recycle_settings(self, user, data=None):
+        data = data or {}
+        user_id_str = str(user['_id'])
+        user_id_obj = self._resolve_id(user_id_str)
+        website_id = data.get('website_id')
+
+        auto_recycle = bool(data.get('auto_recycle', True))
+        max_logs = int(data.get('max_logs', 10000))
+        retention_days = int(data.get('retention_days', 7))
+
+        site_query = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
+        if website_id and website_id != 'all':
+            site_query = {
+                '$and': [
+                    {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
+                    {'$or': [{'_id': self._resolve_id(website_id)}, {'_id': website_id}, {'domain': website_id}]}
+                ]
+            }
+
+        recycle_obj = {
+            'auto_recycle': auto_recycle,
+            'max_logs': max_logs,
+            'retention_days': retention_days,
+            'updated_at': datetime.now()
+        }
+
+        self.db.websites.update_many(site_query, {'$set': {'log_recycle': recycle_obj}})
+
+        # Dispatch settings push to connected WordPress sites
+        sites = list(self.db.websites.find(site_query))
+        synced_count = 0
+        for s in sites:
+            s_url = s.get('url') or (f"http://{s.get('domain')}" if s.get('domain') else None)
+            s_key = s.get('api_key') or ''
+            if s_url and s_key:
+                try:
+                    import requests
+                    push_url = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=update_recycle_settings"
+                    headers = {'Authorization': f'Bearer {s_key}', 'X-API-Key': s_key}
+                    payload = {
+                        'action': 'update_recycle_settings',
+                        'auto_recycle': 'yes' if auto_recycle else 'no',
+                        'max_logs': max_logs,
+                        'retention_days': retention_days
+                    }
+                    resp = requests.post(push_url, json=payload, headers=headers, timeout=2.5)
+                    if resp.status_code == 200:
+                        synced_count += 1
+                except Exception as e:
+                    print(f"[Recycle Settings Push] Error {s_url}: {e}")
+
+        return {
+            'status': 'success',
+            'message': f'Auto-recycle settings updated and synced to {synced_count} WordPress site(s).',
+            'settings': recycle_obj
+        }
 
     def reset_user_stats(self, user, data=None):
         data = data or {}
