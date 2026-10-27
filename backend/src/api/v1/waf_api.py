@@ -608,7 +608,10 @@ def store_event(db, auth_data, req_data, decision, ip):
             "user_agent": (req_data.get("headers") or {}).get("User-Agent", ""),
             "rule_matched": decision.get("reason", ""),
         }
-        db.security_events.insert_one(event)
+        # Zero-Bloat SaaS Architecture: Only save genuine attack and threat events in MongoDB.
+        # Benign routine requests are kept on user WordPress website DB and only reflected in counters.
+        if is_blocked or attack_type:
+            db.security_events.insert_one(event)
 
         # Also store in attacks collection for unified user logs
         if is_blocked or attack_type:

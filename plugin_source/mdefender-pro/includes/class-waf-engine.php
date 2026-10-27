@@ -180,6 +180,15 @@ class WAF_FW_Engine {
     }
 
     public function analyze_current_request() {
+        static $cached_res = null;
+        if ($cached_res !== null) {
+            return $cached_res;
+        }
+        $cached_res = $this->_do_analyze_current_request();
+        return $cached_res;
+    }
+
+    private function _do_analyze_current_request() {
         try {
             if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') {
                 return $this->allowed_result('', '', '', 'Protection disabled');
@@ -348,15 +357,11 @@ class WAF_FW_Engine {
                             : ("Cloud ML WAF detected $attack_type");
 
                         if ($cloud_mode === 'monitor') {
-                            waf_fw_bump_stat('allowed');
                             return $this->do_allow($ip, $url, $method, $user_agent);
                         }
 
-                        waf_fw_bump_stat('blocked');
                         return $this->do_block($ip, $url, $method, $attack_type, $confidence, $user_agent, $referer, $body, $reason, 'cloud_ml_waf');
                     }
-
-                    waf_fw_bump_stat('allowed');
                 }
             }
 

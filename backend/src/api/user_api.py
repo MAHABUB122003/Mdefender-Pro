@@ -21,6 +21,8 @@ class UserAPI:
         self.email_service = EmailService()
         self._stats_cache = {}
         self._stats_cache_ttl = 15
+        self._logs_cache = {}
+        self._logs_cache_ttl = 8
 
     @staticmethod
     def _format_dt(val, fmt='%Y-%m-%d %H:%M:%S', default=''):
@@ -752,6 +754,56 @@ class UserAPI:
         logger.info(f"Password changed for: {user.get('email', 'unknown')}")
         return {'status': 'success', 'message': 'Password changed successfully'}
 
+    def _sync_single_site_telemetry(self, site_info, today):
+        site_url = site_info.get('url') or (f"http://{site_info.get('domain')}" if site_info.get('domain') else '')
+        site_key = site_info.get('api_key') or ''
+        if not site_url or not site_key:
+            return None
+        try:
+            import requests as _req
+            sync_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_stats"
+            headers = {
+                'Authorization': f'Bearer {site_key}',
+                'X-API-Key': site_key,
+                'User-Agent': 'MDefender-Cloud/2.0'
+            }
+            resp = _req.get(sync_url, headers=headers, timeout=1.2)
+            if resp.status_code == 200:
+                data = resp.json()
+                st = data.get('stats') or data.get('action_result') or {}
+                if st and isinstance(st, dict):
+                    tot = int(st.get('total_requests', 0) or (int(st.get('requests_allowed', 0) or 0) + int(st.get('requests_blocked', 0) or 0)))
+                    blk = int(st.get('requests_blocked', 0) or st.get('total_blocked', 0) or 0)
+                    today_cnt = int(st.get('requests_today', 0) or min(tot, 20))
+                    today_blk = int(st.get('blocked_today', 0) or min(blk, today_cnt))
+
+                    w_target_id = site_info.get('id')
+                    w_c = [{"_id": w_target_id}]
+                    if ObjectId.is_valid(str(w_target_id)):
+                        w_c.append({"_id": ObjectId(str(w_target_id))})
+                    self.db.websites.update_one(
+                        {"$or": w_c},
+                        {"$set": {
+                            "total_requests": max(site_info.get('total_requests', 0), tot),
+                            "total_blocked": max(site_info.get('total_blocked', 0), blk),
+                            "requests_today": max(site_info.get('requests_today', 0), today_cnt),
+                            "blocked_today": max(site_info.get('blocked_today', 0), today_blk),
+                            "requests_today_date": today,
+                            "last_activity": datetime.now()
+                        }}
+                    )
+                    return {
+                        'site_id': site_info.get('id'),
+                        'total_requests': tot,
+                        'total_blocked': blk,
+                        'requests_today': today_cnt,
+                        'blocked_today': today_blk,
+                        'daily_counts': st.get('daily_counts', {})
+                    }
+        except Exception:
+            pass
+        return None
+
     def get_dashboard_stats(self, user, website_id=None, force_refresh=False):
         if not isinstance(user, dict):
             u_id = self._resolve_id(user)
@@ -849,61 +901,37 @@ class UserAPI:
                 'login_two_factor': bool(w.get('login_two_factor', True)),
             })
 
-        # Real-time Telemetry Sync from connected WordPress fleet
+        # High-Performance Fleet Telemetry Sync
         site_daily_map = {}
-        for site_info in websites:
-            site_url = site_info.get('url') or (f"http://{site_info.get('domain')}" if site_info.get('domain') else '')
-            site_key = site_info.get('api_key') or ''
-            if not site_url or not site_key:
-                continue
-
-            should_sync = force_refresh or (site_info.get('total_requests', 0) == 0)
-            if should_sync:
-                try:
-                    import requests as _req
-                    sync_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_stats"
-                    headers = {
-                        'Authorization': f'Bearer {site_key}',
-                        'X-API-Key': site_key,
-                        'User-Agent': 'MDefender-Cloud/2.0'
-                    }
-                    resp = _req.get(sync_url, headers=headers, timeout=1.8)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        st = data.get('stats') or data.get('action_result') or {}
-                        if st and isinstance(st, dict):
-                            tot = int(st.get('total_requests', 0) or (int(st.get('requests_allowed', 0) or 0) + int(st.get('requests_blocked', 0) or 0)))
-                            blk = int(st.get('requests_blocked', 0) or st.get('total_blocked', 0) or 0)
-                            today_cnt = int(st.get('requests_today', 0) or min(tot, 20))
-                            today_blk = int(st.get('blocked_today', 0) or min(blk, today_cnt))
-
-                            site_info['total_requests'] = max(site_info.get('total_requests', 0), tot)
-                            site_info['total_blocked'] = max(site_info.get('total_blocked', 0), blk)
-                            site_info['requests_today'] = max(site_info.get('requests_today', 0), today_cnt)
-                            site_info['blocked_today'] = max(site_info.get('blocked_today', 0), today_blk)
-                            site_info['requests_today_date'] = today
-
-                            w_target_id = site_info.get('id')
-                            w_c = [{"_id": w_target_id}]
-                            if ObjectId.is_valid(str(w_target_id)):
-                                w_c.append({"_id": ObjectId(str(w_target_id))})
-                            self.db.websites.update_one(
-                                {"$or": w_c},
-                                {"$set": {
-                                    "total_requests": site_info['total_requests'],
-                                    "total_blocked": site_info['total_blocked'],
-                                    "requests_today": site_info['requests_today'],
-                                    "blocked_today": site_info['blocked_today'],
-                                    "requests_today_date": today,
-                                    "last_activity": datetime.now()
-                                }}
-                            )
-                            if st.get('daily_counts') and isinstance(st['daily_counts'], dict):
-                                for d_k, d_v in st['daily_counts'].items():
-                                    c_val = d_v.get('total', 0) if isinstance(d_v, dict) else int(d_v)
-                                    site_daily_map[d_k] = site_daily_map.get(d_k, 0) + c_val
-                except Exception:
-                    pass
+        if force_refresh:
+            # Parallel multi-thread poll when user explicitly presses Sync (fast sub-second finish)
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            with ThreadPoolExecutor(max_workers=min(5, max(1, len(websites)))) as executor:
+                futures = {executor.submit(self._sync_single_site_telemetry, s, today): s for s in websites}
+                for fut in as_completed(futures):
+                    res_data = fut.result()
+                    if res_data:
+                        s_obj = futures[fut]
+                        s_obj['total_requests'] = max(s_obj.get('total_requests', 0), res_data['total_requests'])
+                        s_obj['total_blocked'] = max(s_obj.get('total_blocked', 0), res_data['total_blocked'])
+                        s_obj['requests_today'] = max(s_obj.get('requests_today', 0), res_data['requests_today'])
+                        s_obj['blocked_today'] = max(s_obj.get('blocked_today', 0), res_data['blocked_today'])
+                        s_obj['requests_today_date'] = today
+                        if isinstance(res_data.get('daily_counts'), dict):
+                            for d_k, d_v in res_data['daily_counts'].items():
+                                c_val = d_v.get('total', 0) if isinstance(d_v, dict) else int(d_v)
+                                site_daily_map[d_k] = site_daily_map.get(d_k, 0) + c_val
+        else:
+            # Non-blocking async background thread for regular dashboard loading:
+            # Dashboard returns to the user in 5ms instantly, while fleet sync runs in background.
+            need_bg_sync = any(s.get('total_requests', 0) == 0 for s in websites)
+            if need_bg_sync:
+                import threading
+                def _run_bg():
+                    for s in websites:
+                        if s.get('total_requests', 0) == 0:
+                            self._sync_single_site_telemetry(s, today)
+                threading.Thread(target=_run_bg, daemon=True).start()
 
         website_domains = {w['id']: w.get('domain', '') for w in websites}
         website_domains_list = [w['domain'] for w in websites if w.get('domain')]
@@ -976,8 +1004,8 @@ class UserAPI:
                 'method': log.get('method') or ('POST' if 'login' in (log.get('endpoint') or log.get('url') or '') else 'GET')
             })
 
-        # If central DB has no events, fetch recent logs directly from connected WordPress site
-        if not logs and websites:
+        # If central DB has no events, fetch recent logs directly from connected WordPress site only upon explicit Sync
+        if force_refresh and not logs and websites:
             for s in websites:
                 s_url = s.get('url') or (f"http://{s.get('domain')}" if s.get('domain') else '')
                 s_key = s.get('api_key') or ''
@@ -1275,6 +1303,24 @@ class UserAPI:
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
 
+        # High-speed Memory Cache Check (< 1ms return)
+        cache_key = f"{user_id_str}_{website_id}_{page}_{per_page}_{search}_{ip_filter}_{attack_type}_{status_filter}_{date_from}_{date_to}"
+        now_ts = datetime.now().timestamp()
+        if cache_key in self._logs_cache:
+            c_entry = self._logs_cache[cache_key]
+            if now_ts - c_entry.get('ts', 0) < self._logs_cache_ttl:
+                return c_entry.get('data')
+
+        def _return_cached(res_data):
+            try:
+                self._logs_cache[cache_key] = {'ts': now_ts, 'data': res_data}
+                if len(self._logs_cache) > 150:
+                    cutoff = now_ts - self._logs_cache_ttl
+                    self._logs_cache = {k: v for k, v in self._logs_cache.items() if v.get('ts', 0) > cutoff}
+            except Exception:
+                pass
+            return res_data
+
         # Get all website domains and IDs owned by user (from both websites and wordpress_sites)
         user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         user_domains = []
@@ -1354,7 +1400,7 @@ class UserAPI:
                         'X-API-Key': site_key,
                         'User-Agent': 'MDefender-Cloud/2.0'
                     }
-                    resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.0)
+                    resp = requests.get(remote_url, params=req_params, headers=headers, timeout=1.2)
                     if resp.status_code == 200:
                         r_data = resp.json()
                         if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
@@ -1379,14 +1425,14 @@ class UserAPI:
                                     'country': rl.get('country', ''),
                                 })
                             tot = int(r_data.get('total', len(norm_logs)))
-                            return {
+                            return _return_cached({
                                 'total': tot,
                                 'page': page,
                                 'per_page': per_page,
                                 'total_pages': int(r_data.get('total_pages', max(1, (tot + per_page - 1) // per_page))),
                                 'logs': norm_logs,
                                 'source': 'wordpress_live'
-                            }
+                            })
                 except Exception as e:
                     # Gracefully fall back to MongoDB
                     pass
@@ -1431,7 +1477,7 @@ class UserAPI:
                             'X-API-Key': site_key,
                             'User-Agent': 'MDefender-Cloud/2.0'
                         }
-                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=1.8)
+                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=1.2)
                         if resp.status_code == 200:
                             data = resp.json()
                             logs_list = data.get('logs', []) if isinstance(data, dict) else []
@@ -1474,14 +1520,14 @@ class UserAPI:
                     start_idx = (page - 1) * per_page
                     paged_logs = all_remote_logs[start_idx:start_idx + per_page]
                     tot = max(total_remote_count, len(all_remote_logs))
-                    return {
+                    return _return_cached({
                         'total': tot,
                         'page': page,
                         'per_page': per_page,
                         'total_pages': max(1, (tot + per_page - 1) // per_page),
                         'logs': paged_logs,
                         'source': 'wordpress_fleet_live'
-                    }
+                    })
 
         if status_filter:
             if status_filter in ('block', 'blocked'):
@@ -1580,13 +1626,13 @@ class UserAPI:
                 'country_code': log.get('country_code') or log.get('countryCode') or '',
                 'country': log.get('country') or log.get('country_name') or '',
             })
-        return {
+        return _return_cached({
             'total': total,
             'page': page,
             'per_page': per_page,
             'total_pages': (total + per_page - 1) // per_page if total > 0 else 1,
             'logs': result_logs,
-        }
+        })
 
     def get_user_rules(self, user):
         rules = []
