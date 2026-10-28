@@ -483,6 +483,19 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
             raw_blacklist.append(ip_val)
     blacklist = list(set(raw_blacklist))
 
+    # Fetch active whitelisted IPs (scoped to user or is_global)
+    raw_whitelist = []
+    for item in db.whitelist.find():
+        ip_val = (item.get("ip") or "").strip()
+        if not ip_val:
+            continue
+        item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
+        item_email = item.get("added_by", "")
+        is_global = item.get("is_global", False)
+        if not user_id or is_global or not item_u or item_u == str(user_id) or (user_email and item_email == user_email):
+            raw_whitelist.append(ip_val)
+    whitelist = list(set(raw_whitelist))
+
     # Fetch active country blocks (strictly scoped to user or is_global)
     country_set = set()
     for item in db.country_blocks.find():
@@ -521,6 +534,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "config": config,
         "command": command,
         "blacklist": blacklist,
+        "whitelist": whitelist,
         "blocked_countries": blocked_countries,
         "user_rules": user_rules,
     }
@@ -528,6 +542,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
         "status": "success",
         "data": resp,
         "blacklist": blacklist,
+        "whitelist": whitelist,
         "blocked_countries": blocked_countries,
         "user_rules": user_rules,
         "config": config,
@@ -583,6 +598,19 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     raw_bl.append(ip_val)
             
             blacklist = list(set(raw_bl))
+
+            # Build fresh active Whitelist
+            raw_wl = []
+            for item in db.whitelist.find():
+                ip_val = (item.get("ip") or "").strip()
+                if not ip_val:
+                    continue
+                item_u = str(item.get("user_id") or item.get("added_by_user_id") or "")
+                item_email = item.get("added_by", "")
+                is_global = item.get("is_global", False)
+                if not u_str or is_global or not item_u or item_u == u_str or (user_email and item_email == user_email):
+                    raw_wl.append(ip_val)
+            whitelist = list(set(raw_wl))
 
             # Build fresh Country Blocks with robust parsing
             country_set = set()
@@ -683,6 +711,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             sync_payload = {
                 "status": "ok",
                 "blacklist": blacklist,
+                "whitelist": whitelist,
                 "blocked_countries": blocked_countries,
                 "user_rules": user_rules,
                 "config": {

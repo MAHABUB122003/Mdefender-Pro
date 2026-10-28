@@ -1830,7 +1830,9 @@ class UserAPI:
         user_id_obj = self._resolve_id(user_id_str)
 
         user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
-        user_domains = [w.get('domain') for w in user_sites if w.get('domain')]
+        wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+        all_sites = user_sites + wp_sites
+        user_domains = [w.get('domain') for w in all_sites if w.get('domain')]
 
         user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if user_domains:
@@ -1868,7 +1870,7 @@ class UserAPI:
 
             # Remote fleet command: Dispatch log purge to connected WordPress sites
             wp_targets = []
-            for s in user_sites:
+            for s in all_sites:
                 sid = str(s.get('_id', ''))
                 sdom = s.get('domain', '')
                 if not website_id or website_id == 'all' or website_id in (sid, sdom):
@@ -1876,20 +1878,29 @@ class UserAPI:
                         wp_targets.append(s)
 
             remote_cleaned = 0
+            import requests
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             for target in wp_targets:
-                s_url = target.get('url') or (f"http://{target.get('domain')}" if target.get('domain') else None)
+                raw_u = str(target.get('url') or target.get('domain') or '').strip().rstrip('/')
                 s_key = target.get('api_key') or ''
-                if s_url and s_key:
+                if raw_u and s_key:
+                    s_url = ('https://' + raw_u) if not raw_u.startswith(('http://', 'https://')) else raw_u
+                    clean_endpoint = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=clear_logs"
+                    headers = {
+                        'Authorization': f'Bearer {s_key}',
+                        'X-API-Key': s_key,
+                        'User-Agent': 'MDefender-Cloud/2.0'
+                    }
                     try:
-                        import requests
-                        clean_endpoint = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=clear_logs"
-                        headers = {
-                            'Authorization': f'Bearer {s_key}',
-                            'X-API-Key': s_key,
-                            'User-Agent': 'MDefender-Cloud/2.0'
-                        }
-                        cr = requests.post(clean_endpoint, json={'days': days_param, 'action': 'clear_logs'}, headers=headers, timeout=2.5)
-                        if cr.status_code == 200:
+                        cr = None
+                        try:
+                            cr = requests.post(clean_endpoint, json={'days': days_param, 'action': 'clear_logs'}, headers=headers, timeout=2.5, verify=False)
+                        except Exception:
+                            if s_url.startswith('https://'):
+                                clean_host = raw_u.replace('https://', '').replace('http://', '')
+                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs", json={'days': days_param, 'action': 'clear_logs'}, headers=headers, timeout=2.5, verify=False)
+                        if cr and cr.status_code == 200:
                             remote_cleaned += 1
                     except Exception as e:
                         print(f"[Remote Log Purge] Error reaching {s_url}: {e}")

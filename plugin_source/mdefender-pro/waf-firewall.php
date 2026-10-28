@@ -177,6 +177,11 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                         WAF_FW_IP_Filter::instance()->sync_with_cloud_blacklist($ips);
                     }
                 }
+                if (isset($p['whitelist']) && is_array($p['whitelist'])) {
+                    $w_ips = array_values(array_filter(array_map('sanitize_text_field', $p['whitelist'])));
+                    update_option('waf_fw_ip_whitelist', implode(',', $w_ips));
+                    update_option('waf_fw_local_whitelist_cache', $w_ips);
+                }
                 if (isset($p['blocked_countries'])) {
                     $c_val = is_array($p['blocked_countries']) ? implode(',', array_filter(array_map('sanitize_text_field', $p['blocked_countries']))) : sanitize_text_field($p['blocked_countries']);
                     update_option('waf_fw_blocked_countries', $c_val);
@@ -277,6 +282,11 @@ function waf_fw_handle_cloud_sync_webhook() {
                         update_option('waf_fw_local_blacklist_cache', $ips);
                     }
                 }
+                if (isset($pushed_data['whitelist']) && is_array($pushed_data['whitelist'])) {
+                    $w_ips = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['whitelist'])));
+                    update_option('waf_fw_ip_whitelist', implode(',', $w_ips));
+                    update_option('waf_fw_local_whitelist_cache', $w_ips);
+                }
                 if (isset($pushed_data['blocked_countries']) && is_array($pushed_data['blocked_countries'])) {
                     $countries = array_values(array_filter(array_map('sanitize_text_field', $pushed_data['blocked_countries'])));
                     update_option('waf_fw_blocked_countries', implode(',', $countries));
@@ -360,7 +370,10 @@ function waf_fw_handle_cloud_sync_webhook() {
                     WAF_FW_Engine::instance()->export_fast_cache();
                 }
             } else {
-                waf_fw_sync_cloud_blacklist_fast(true);
+                $action_candidate = sanitize_text_field($_REQUEST['action'] ?? $pushed_data['action'] ?? '');
+                if (empty($action_candidate)) {
+                    waf_fw_sync_cloud_blacklist_fast(true);
+                }
             }
 
             // Handle remote fleet management actions
@@ -509,7 +522,11 @@ function waf_fw_handle_cloud_sync_webhook() {
                     $b_type = sanitize_text_field($_REQUEST['duration'] ?? $pushed_data['duration'] ?? $_REQUEST['type'] ?? $pushed_data['type'] ?? 'Permanent');
                     $b_expires = sanitize_text_field($_REQUEST['expires_at'] ?? $pushed_data['expires_at'] ?? null);
                     if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->remove_from_whitelist($target_ip);
                         WAF_FW_IP_Filter::instance()->add_to_blacklist($target_ip, $b_reason, $b_type, false, $b_expires);
+                    }
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
                     }
                     if (!headers_sent()) {
                         header('Content-Type: application/json; charset=UTF-8');
@@ -528,10 +545,72 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (class_exists('WAF_FW_IP_Filter')) {
                         WAF_FW_IP_Filter::instance()->remove_from_blacklist($target_ip);
                     }
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
                     if (!headers_sent()) {
                         header('Content-Type: application/json; charset=UTF-8');
                     }
                     echo json_encode(['status' => 'success', 'message' => "IP {$target_ip} unblocked locally on WordPress"]);
+                    exit;
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'error', 'message' => 'IP address is required']);
+                exit;
+            } elseif ($action === 'get_whitelist') {
+                $custom = get_option('waf_fw_ip_whitelist', '');
+                $ips = is_array($custom) ? $custom : array_values(array_filter(array_map('trim', preg_split('/[,\r\n]+/', (string) $custom))));
+                $items = [];
+                foreach ($ips as $idx => $w_ip) {
+                    $items[] = [
+                        'id' => 'wl_' . $idx,
+                        'ip' => $w_ip,
+                        'reason' => 'Whitelisted by administrator',
+                        'created_at' => current_time('mysql'),
+                    ];
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'whitelist' => $items, 'total' => count($items)]);
+                exit;
+            } elseif ($action === 'add_whitelist') {
+                $target_ip = trim(sanitize_text_field($_REQUEST['ip'] ?? $pushed_data['ip'] ?? ''));
+                if (!empty($target_ip)) {
+                    $w_reason = sanitize_text_field($_REQUEST['reason'] ?? $pushed_data['reason'] ?? 'Whitelisted from Dashboard');
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->remove_from_blacklist($target_ip);
+                        WAF_FW_IP_Filter::instance()->add_to_whitelist($target_ip, $w_reason);
+                    }
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (!headers_sent()) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                    }
+                    echo json_encode(['status' => 'success', 'message' => "IP {$target_ip} whitelisted locally on WordPress"]);
+                    exit;
+                }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'error', 'message' => 'IP address is required']);
+                exit;
+            } elseif ($action === 'delete_whitelist' || $action === 'remove_whitelist') {
+                $target_ip = trim(sanitize_text_field($_REQUEST['ip'] ?? $pushed_data['ip'] ?? ''));
+                if (!empty($target_ip)) {
+                    if (class_exists('WAF_FW_IP_Filter')) {
+                        WAF_FW_IP_Filter::instance()->remove_from_whitelist($target_ip);
+                    }
+                    if (class_exists('WAF_FW_Engine')) {
+                        WAF_FW_Engine::instance()->export_fast_cache();
+                    }
+                    if (!headers_sent()) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                    }
+                    echo json_encode(['status' => 'success', 'message' => "IP {$target_ip} removed from whitelist on WordPress"]);
                     exit;
                 }
                 if (!headers_sent()) {

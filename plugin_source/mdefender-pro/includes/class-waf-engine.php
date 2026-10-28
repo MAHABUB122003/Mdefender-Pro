@@ -533,34 +533,52 @@ class WAF_FW_Engine {
     }
 
     private function do_allow($ip, $url, $method, $user_agent, $message = 'Request allowed') {
-        $this->logger->log_request([
-            'ip' => $ip,
-            'url' => $url,
-            'method' => $method,
-            'status' => 'allowed',
-            'user_agent' => $user_agent,
-        ]);
-        waf_fw_bump_stat('allowed');
+        // Filter out background noise from bloating the request ledger:
+        // WP-Cron, Heartbeat, WooCommerce cart fragments, telemetry, favicon, robots, sitemap, internal sync
+        $clean_url = strtolower($url);
+        $is_internal_noise = (
+            strpos($clean_url, 'wp-cron.php') !== false || isset($_GET['doing_wp_cron']) ||
+            (isset($_POST['action']) && $_POST['action'] === 'heartbeat') ||
+            strpos($clean_url, 'wc-ajax=') !== false ||
+            strpos($clean_url, 'favicon.ico') !== false ||
+            strpos($clean_url, 'robots.txt') !== false ||
+            strpos($clean_url, 'sitemap.xml') !== false ||
+            strpos($clean_url, 'waf_cloud_sync') !== false ||
+            strpos($clean_url, 'waf-fw') !== false ||
+            !empty($GLOBALS['waf_fw_request_logged'])
+        );
 
-        // Always buffer normal (allowed) requests for Cloud Telemetry ingestion
-        $country = $this->get_ip_country($ip);
-        $this->buffer_telemetry([
-            'event_type' => 'allowed',
-            'ip' => $ip,
-            'url' => $url,
-            'method' => $method,
-            'attack_type' => null,
-            'confidence' => 0.0,
-            'user_agent' => $user_agent,
-            'referer' => $_SERVER['HTTP_REFERER'] ?? '',
-            'rule_matched' => '',
-            'message' => $message,
-            'reference_id' => '',
-            'status' => 'allowed',
-            'action' => 'allowed',
-            'country_code' => $country,
-            'timestamp' => current_time('mysql'),
-        ]);
+        if (!$is_internal_noise) {
+            $GLOBALS['waf_fw_request_logged'] = true;
+            $this->logger->log_request([
+                'ip' => $ip,
+                'url' => $url,
+                'method' => $method,
+                'status' => 'allowed',
+                'user_agent' => $user_agent,
+            ]);
+            waf_fw_bump_stat('allowed');
+
+            // Buffer normal (allowed) requests for Cloud Telemetry ingestion
+            $country = $this->get_ip_country($ip);
+            $this->buffer_telemetry([
+                'event_type' => 'allowed',
+                'ip' => $ip,
+                'url' => $url,
+                'method' => $method,
+                'attack_type' => null,
+                'confidence' => 0.0,
+                'user_agent' => $user_agent,
+                'referer' => $_SERVER['HTTP_REFERER'] ?? '',
+                'rule_matched' => '',
+                'message' => $message,
+                'reference_id' => '',
+                'status' => 'allowed',
+                'action' => 'allowed',
+                'country_code' => $country,
+                'timestamp' => current_time('mysql'),
+            ]);
+        }
 
         return $this->allowed_result($ip, $url, $method, $message);
     }
@@ -598,6 +616,12 @@ class WAF_FW_Engine {
         if (empty($blocked)) return false;
 
         $country_code = $this->get_ip_country($ip);
+        if ($country_code === 'LOCAL' || $country_code === 'XX') {
+            $local_srv = get_option('waf_fw_local_server_country', 'BD');
+            if (!empty($local_srv)) {
+                $country_code = strtoupper(trim($local_srv));
+            }
+        }
         if (empty($country_code) || $country_code === 'XX') return false;
 
         return in_array($country_code, $blocked, true);

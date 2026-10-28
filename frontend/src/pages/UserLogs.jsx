@@ -246,7 +246,7 @@ export default function UserLogs() {
 
   const perPage = 20;
   const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase();
-  const isPaidUser = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
+  const isPaidUser = true; // All tiers can inspect and manage live ingress telemetry
 
   const fetchWebsites = useCallback(async () => {
     try {
@@ -538,6 +538,20 @@ export default function UserLogs() {
       alert(err?.message || 'Failed to clear logs');
     } finally {
       setCleaningLogs(false);
+    }
+  };
+
+  const handleWhitelistIp = async (rawIp) => {
+    const ip = String(rawIp || '').trim();
+    if (!ip) return;
+    if (!confirm(`Confirm Whitelist: Do you want to allow all traffic from IP ${ip} across your connected websites?`)) {
+      return;
+    }
+    try {
+      const res = await api.addUserWhitelist({ ip, reason: 'Whitelisted from deep log inspection' });
+      alert(res?.message || `IP ${ip} successfully whitelisted across edge nodes.`);
+    } catch (err) {
+      alert('Error whitelisting IP: ' + (err?.message || String(err)));
     }
   };
 
@@ -1278,9 +1292,9 @@ export default function UserLogs() {
         overflow: 'hidden',
         position: 'relative',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        filter: !isPaidUser ? 'blur(4px)' : 'none',
-        pointerEvents: !isPaidUser ? 'none' : 'auto',
-        userSelect: !isPaidUser ? 'none' : 'auto'
+        filter: 'none',
+        pointerEvents: 'auto',
+        userSelect: 'auto'
       }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
@@ -1645,6 +1659,27 @@ export default function UserLogs() {
                                   <Compass size={11} />
                                   <span>WHOIS</span>
                                 </Link>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleWhitelistIp(log?.ip)}
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: '800',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #BBF7D0',
+                                    background: '#F0FDF4',
+                                    color: '#15803D',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  <ShieldCheck size={11} />
+                                  <span>Whitelist IP</span>
+                                </button>
 
                                 <button
                                   type="button"
