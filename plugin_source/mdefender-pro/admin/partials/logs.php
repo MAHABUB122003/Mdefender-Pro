@@ -117,10 +117,32 @@ $user_initials = $current_user && $current_user->display_name ? strtoupper(subst
                     </div>
                 </div>
 
-                <button type="button" onclick="wafFwClearLogs()" class="mdf-btn mdf-btn-coral-outline">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    Clear All Logs
-                </button>
+                <!-- Clean Logs Dropdown -->
+                <div class="mdf-clean-container" style="position:relative; display:inline-block;">
+                    <button type="button" class="mdf-btn mdf-btn-coral-outline" id="mdfCleanBtnMain" onclick="mdfToggleCleanLogsDropdown(event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Clean Logs</span>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div id="mdfCleanLogsDropdown" class="mdf-dropdown-menu" style="display:none; position:absolute; right:0; top:100%; margin-top:6px; background:#FFFFFF; border:1px solid #E1E5E2; border-radius:8px; box-shadow:0 6px 18px rgba(25,55,51,0.06); width:240px; z-index:1000; padding:6px 0;">
+                        <a href="javascript:void(0)" onclick="wafFwClearLogs('all')" class="mdf-dropdown-item" style="color:#ef4444; font-weight:600;">
+                            <span class="mdf-dropdown-item-title" style="color:#ef4444;">Purge All Logs</span>
+                            <span class="mdf-dropdown-item-sub">Completely empty log database</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="wafFwClearLogs('today')" class="mdf-dropdown-item">
+                            <span class="mdf-dropdown-item-title">Clear Today's Logs</span>
+                            <span class="mdf-dropdown-item-sub">Only delete entries from today</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="wafFwClearLogs('7')" class="mdf-dropdown-item">
+                            <span class="mdf-dropdown-item-title">Clear Older Than 7 Days</span>
+                            <span class="mdf-dropdown-item-sub">Retain last 7 days of telemetry</span>
+                        </a>
+                        <a href="javascript:void(0)" onclick="wafFwClearLogs('30')" class="mdf-dropdown-item">
+                            <span class="mdf-dropdown-item-title">Clear Older Than 30 Days</span>
+                            <span class="mdf-dropdown-item-sub">Retain last 30 days of telemetry</span>
+                        </a>
+                    </div>
+                </div>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings')); ?>" class="mdf-btn mdf-btn-primary">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     WAF Settings
@@ -468,11 +490,71 @@ $user_initials = $current_user && $current_user->display_name ? strtoupper(subst
 
 <script>
 function mdfToggleExportDropdown(e) {
-    e.stopPropagation();
+    if (e) {
+        e.stopPropagation();
+    }
+    var cleanMenu = document.getElementById('mdfCleanLogsDropdown');
+    if (cleanMenu) cleanMenu.style.display = 'none';
     var menu = document.getElementById('mdfExportDropdown');
     if (menu) {
         menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
     }
+}
+
+function mdfToggleCleanLogsDropdown(e) {
+    if (e) {
+        e.stopPropagation();
+    }
+    var exportMenu = document.getElementById('mdfExportDropdown');
+    if (exportMenu) exportMenu.style.display = 'none';
+    var menu = document.getElementById('mdfCleanLogsDropdown');
+    if (menu) {
+        menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
+    }
+}
+
+function wafFwClearLogs(days) {
+    days = days || 'all';
+    var confirmMsg = days === 'all'
+        ? 'Are you sure you want to completely purge ALL security logs? This action cannot be undone.'
+        : (days === 'today' ? 'Are you sure you want to delete today\'s security logs?' : 'Are you sure you want to delete logs older than ' + days + ' days?');
+        
+    if (!window.confirm(confirmMsg)) return;
+
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+
+    jQuery.post(ajaxurl, {
+        action: 'waf_fw_clear_logs',
+        days: days,
+        nonce: nonce
+    }, function(response) {
+        if (response && response.success) {
+            window.alert(response.data && response.data.message ? response.data.message : 'Logs cleared successfully.');
+            window.location.reload();
+            return;
+        }
+        window.alert(response && response.data && response.data.message ? response.data.message : 'Failed to clear logs.');
+    }).fail(function() {
+        window.alert('Request failed. Please try again.');
+    });
+}
+
+function wafFwExportCsv(scope) {
+    scope = scope || 'all';
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    var url = ajaxurl + '?action=waf_fw_export_logs&scope=' + encodeURIComponent(scope) + '&nonce=' + encodeURIComponent(nonce);
+    
+    if (scope === 'filtered') {
+        var filterForm = document.getElementById('mdfFilterForm') || document.querySelector('form.mdf-filter-bar');
+        if (filterForm) {
+            var formData = jQuery(filterForm).serialize();
+            if (formData) {
+                url += '&' + formData;
+            }
+        }
+    }
+    
+    window.location.href = url;
 }
 
 function wafFwActionBlockIp(ip) {
@@ -508,9 +590,12 @@ function wafFwSendIpAction(action, ip, reason) {
     });
 }
 
-document.addEventListener('click', function() {
-    var menu = document.getElementById('mdfExportDropdown');
-    if (menu) menu.style.display = 'none';
+document.addEventListener('click', function(e) {
+    var exportMenu = document.getElementById('mdfExportDropdown');
+    if (exportMenu && !e.target.closest('#mdfExportBtnMain')) exportMenu.style.display = 'none';
+    
+    var cleanMenu = document.getElementById('mdfCleanLogsDropdown');
+    if (cleanMenu && !e.target.closest('#mdfCleanBtnMain')) cleanMenu.style.display = 'none';
 });
 
 jQuery(document).ready(function($) {

@@ -482,13 +482,13 @@ class WAF_FW_Logger {
     public function clean_blocked() {
         global $wpdb;
         $table = $this->db->get_attacks_table();
-        $wpdb->query("DELETE FROM $table WHERE status = 'blocked'");
+        $wpdb->query("DELETE FROM $table WHERE status = 'blocked' OR action = 'blocked' OR status = 'drop'");
     }
 
     public function clean_threats() {
         global $wpdb;
         $table = $this->db->get_attacks_table();
-        $wpdb->query("DELETE FROM $table WHERE attack_type != ''");
+        $wpdb->query("DELETE FROM $table");
     }
 
     public function get_rate_limit_stats() {

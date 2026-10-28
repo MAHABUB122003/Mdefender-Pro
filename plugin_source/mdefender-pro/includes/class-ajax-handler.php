@@ -203,6 +203,10 @@ class WAF_FW_Ajax_Handler {
             case 'threats_detected':
                 $logger->clean_threats();
                 break;
+            case 'all':
+            case 'all_logs':
+                $logger->clear_logs('all');
+                break;
             default:
                 wp_send_json_error(['message' => 'Invalid clean type']);
         }
@@ -481,9 +485,11 @@ class WAF_FW_Ajax_Handler {
     public function clear_logs() {
         $this->check_access();
         $this->verify_nonce();
+        $days = sanitize_text_field($_POST['days'] ?? $_REQUEST['days'] ?? 'all');
         $logger = WAF_FW_Logger::instance();
-        $logger->clear_logs();
-        wp_send_json_success(['message' => 'All logs cleared']);
+        $logger->clear_logs($days);
+        $msg = ($days === 'all' || empty($days)) ? 'All logs cleared successfully from local database' : "Logs ($days) cleared successfully";
+        wp_send_json_success(['message' => $msg]);
     }
 
     public function reset_all_data() {

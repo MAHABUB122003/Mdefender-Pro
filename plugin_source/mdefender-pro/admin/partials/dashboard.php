@@ -120,6 +120,32 @@ if (!function_exists('waf_mdf_country_flag')) {
             </p>
         </div>
         <div class="mdf-hero-actions">
+            <div style="position:relative; display:inline-block;">
+                <button type="button" class="mdf-btn-customize" onclick="mdfToggleCardMenu(event, 'heroCleanDropdown')" style="cursor:pointer;" title="Clean & Maintenance Options">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Clean Data
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="heroCleanDropdown" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:100%; margin-top:6px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:230px; z-index:1000; padding:6px; text-align:left;">
+                    <a href="javascript:void(0)" onclick="wafFwClearLogsModal('all')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;color:#ef4444;text-decoration:none;font-weight:600;font-size:12px;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Purge All Security Logs</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwClearLogsModal('today')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;color:#334155;text-decoration:none;font-size:12px;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>Clear Today's Logs Only</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwClearLogsModal('7')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;color:#334155;text-decoration:none;font-size:12px;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>Purge Older Than 7 Days</span>
+                    </a>
+                    <div style="border-top:1px solid #F1F5F9;margin:4px 0;"></div>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings#data_management')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:8px 12px;color:#64748b;text-decoration:none;font-size:12px;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Auto-Recycle Configuration</span>
+                    </a>
+                </div>
+            </div>
             <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings')); ?>" class="mdf-btn-customize" id="mdfCustomizeBtn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
@@ -205,7 +231,7 @@ if (!function_exists('waf_mdf_country_flag')) {
     <div class="mdf-bento-grid-4">
         <!-- Card 1: Requests inspected -->
         <div class="mdf-bento-card">
-            <div class="mdf-card-top">
+            <div class="mdf-card-top" style="position:relative;">
                 <div class="mdf-card-icon-circle mdf-circle-mint">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="6" r="3"/>
@@ -213,9 +239,23 @@ if (!function_exists('waf_mdf_country_flag')) {
                         <line x1="8.5" y1="16.5" x2="15.5" y2="16.5"/>
                     </svg>
                 </div>
-                <button type="button" class="mdf-dots-btn" aria-label="Options">
+                <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuRequests')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
+                <div id="cardMenuRequests" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                    <a href="javascript:void(0)" onclick="wafFwCleanStats('total_requests', 'statTotalRequests', 'All Inspected Traffic')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Clean Request Logs</span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-logs')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        <span>View Live Traffic Logs</span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings#data_management')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#64748b;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Retention Policy</span>
+                    </a>
+                </div>
             </div>
             <span class="mdf-card-metric-label">Requests inspected</span>
             <div class="mdf-card-metric-row">
@@ -230,16 +270,30 @@ if (!function_exists('waf_mdf_country_flag')) {
 
         <!-- Card 2: Threats blocked -->
         <div class="mdf-bento-card">
-            <div class="mdf-card-top">
+            <div class="mdf-card-top" style="position:relative;">
                 <div class="mdf-card-icon-circle mdf-circle-mint">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="9"/>
                         <line x1="5.6" y1="5.6" x2="18.4" y2="18.4"/>
                     </svg>
                 </div>
-                <button type="button" class="mdf-dots-btn" aria-label="Options">
+                <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuThreats')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
+                <div id="cardMenuThreats" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                    <a href="javascript:void(0)" onclick="wafFwCleanStats('threats_detected', 'statAttackBlocked', 'Threat Incident Records')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Clean Threat Logs</span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-logs&status=blocked')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <span>View Blocked Attacks</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwClearAllLogs()" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#dc2626;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Truncate All Logs</span>
+                    </a>
+                </div>
             </div>
             <span class="mdf-card-metric-label">Threats blocked</span>
             <div class="mdf-card-metric-row">
@@ -254,16 +308,26 @@ if (!function_exists('waf_mdf_country_flag')) {
 
         <!-- Card 3: AI confidence score -->
         <div class="mdf-bento-card">
-            <div class="mdf-card-top">
+            <div class="mdf-card-top" style="position:relative;">
                 <div class="mdf-card-icon-circle mdf-circle-mint">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2v4m0 12v4M2 12h4m12 0h4m-3.5-6.5l-2.8 2.8m-7.4 7.4l-2.8 2.8m0-13l2.8 2.8m7.4 7.4l2.8 2.8"/>
                         <circle cx="12" cy="12" r="3"/>
                     </svg>
                 </div>
-                <button type="button" class="mdf-dots-btn" aria-label="Options">
+                <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuConfidence')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
+                <div id="cardMenuConfidence" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings#ml_confidence')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Calibrate ROC Threshold</span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings#learning_mode')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        <span>Toggle Learning Mode</span>
+                    </a>
+                </div>
             </div>
             <span class="mdf-card-metric-label">AI confidence score</span>
             <div class="mdf-card-metric-row">
@@ -278,7 +342,7 @@ if (!function_exists('waf_mdf_country_flag')) {
 
         <!-- Card 4: Blacklisted IPs -->
         <div class="mdf-bento-card">
-            <div class="mdf-card-top">
+            <div class="mdf-card-top" style="position:relative;">
                 <div class="mdf-card-icon-circle mdf-circle-mint">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="4" width="18" height="16" rx="2"/>
@@ -287,9 +351,23 @@ if (!function_exists('waf_mdf_country_flag')) {
                         <line x1="12" y1="15" x2="12.01" y2="15"/>
                     </svg>
                 </div>
-                <button type="button" class="mdf-dots-btn" aria-label="Options">
+                <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuBlacklist')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
+                <div id="cardMenuBlacklist" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-blacklist')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <span>Manage Blacklisted IPs</span>
+                    </a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings#country_blocking')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        <span>Country Block Rules</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwFlushTempBlocks()" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Flush Temporary Blocks</span>
+                    </a>
+                </div>
             </div>
             <span class="mdf-card-metric-label">Blacklisted IPs</span>
             <div class="mdf-card-metric-row">
@@ -481,3 +559,112 @@ if (!function_exists('waf_mdf_country_flag')) {
     </div>
 
 </div>
+
+<script>
+function mdfToggleCardMenu(e, menuId) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    // Close other dropdowns
+    var allMenus = document.querySelectorAll('.mdf-card-dropdown');
+    allMenus.forEach(function(m) {
+        if (m.id !== menuId) {
+            m.style.display = 'none';
+        }
+    });
+
+    var target = document.getElementById(menuId);
+    if (target) {
+        target.style.display = (target.style.display === 'none' || target.style.display === '') ? 'block' : 'none';
+    }
+}
+
+// Global click listener to close dropdown menus when clicked outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.mdf-card-dropdown') && !e.target.closest('.mdf-dots-btn') && !e.target.closest('.mdf-btn-customize')) {
+        var allMenus = document.querySelectorAll('.mdf-card-dropdown');
+        allMenus.forEach(function(m) {
+            m.style.display = 'none';
+        });
+    }
+});
+
+function wafFwCleanStats(statType, statElementId, statLabel) {
+    if (!confirm('Are you sure you want to clean and reset ' + (statLabel || statType) + '? This action cannot be undone.')) {
+        return;
+    }
+
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    
+    jQuery.post(ajaxurl, {
+        action: 'waf_fw_clean_stats',
+        type: statType,
+        nonce: nonce
+    }, function(res) {
+        if (res && res.success) {
+            if (statElementId && document.getElementById(statElementId)) {
+                document.getElementById(statElementId).textContent = '0';
+            }
+            alert(res.data && res.data.message ? res.data.message : 'Cleaned successfully.');
+            window.location.reload();
+        } else {
+            alert('Failed: ' + (res && res.data && res.data.message ? res.data.message : 'Unknown error'));
+        }
+    }).fail(function() {
+        alert('Server request failed. Please check connection.');
+    });
+}
+
+function wafFwClearLogsModal(days) {
+    var promptMsg = days === 'all' 
+        ? 'Are you sure you want to completely purge ALL security logs?' 
+        : (days === 'today' ? 'Are you sure you want to clear today\'s logs?' : 'Are you sure you want to clear logs older than ' + days + ' days?');
+
+    if (!confirm(promptMsg)) return;
+
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+
+    jQuery.post(ajaxurl, {
+        action: 'waf_fw_clear_logs',
+        days: days,
+        nonce: nonce
+    }, function(res) {
+        if (res && res.success) {
+            alert(res.data && res.data.message ? res.data.message : 'Logs cleared successfully.');
+            window.location.reload();
+        } else {
+            alert('Failed: ' + (res && res.data && res.data.message ? res.data.message : 'Unknown error'));
+        }
+    }).fail(function() {
+        alert('Server request failed. Please check connection.');
+    });
+}
+
+function wafFwClearAllLogs() {
+    wafFwClearLogsModal('all');
+}
+
+function wafFwFlushTempBlocks() {
+    if (!confirm('Are you sure you want to flush all active temporary rate-limit and attack IP blocks?')) {
+        return;
+    }
+
+    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+
+    jQuery.post(ajaxurl, {
+        action: 'waf_fw_clean_stats',
+        type: 'flush_temp_blocks',
+        nonce: nonce
+    }, function(res) {
+        if (res && res.success) {
+            alert(res.data && res.data.message ? res.data.message : 'Temporary blocks flushed successfully.');
+            window.location.reload();
+        } else {
+            alert('Failed: ' + (res && res.data && res.data.message ? res.data.message : 'Unknown error'));
+        }
+    }).fail(function() {
+        alert('Server request failed.');
+    });
+}
+</script>
