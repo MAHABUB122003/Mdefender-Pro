@@ -83,10 +83,16 @@ async function apiCall(endpoint, options = {}) {
     headers['X-CSRF-Token'] = csrf;
   }
 
-  const { skipAuthRedirect, timeout = 12000, ...fetchOptions } = options;
+  const { skipAuthRedirect, timeout = 15000, ...fetchOptions } = options;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
+  const timer = setTimeout(() => {
+    try {
+      controller.abort(new Error('Server connection timed out: The backend service took too long to respond.'));
+    } catch {
+      controller.abort();
+    }
+  }, timeout);
 
   let response;
   try {
@@ -96,6 +102,11 @@ async function apiCall(endpoint, options = {}) {
       credentials: 'include',
       signal: options.signal || controller.signal,
     });
+  } catch (fetchErr) {
+    if (fetchErr.name === 'AbortError' || String(fetchErr.message || '').toLowerCase().includes('aborted')) {
+      throw new Error('Server connection timed out: The backend service is currently unreachable or still starting up. Please check your server.');
+    }
+    throw fetchErr;
   } finally {
     clearTimeout(timer);
   }
