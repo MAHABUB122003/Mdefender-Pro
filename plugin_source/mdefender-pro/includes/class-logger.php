@@ -175,7 +175,8 @@ class WAF_FW_Logger {
         $blacklist_table = $this->db->get_blacklist_table();
 
         $total_attacks = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
-        $total_requests = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $total_allowed = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $total_requests = $total_attacks + $total_allowed;
         $blacklisted_ips = (int) $wpdb->get_var("SELECT COUNT(*) FROM $blacklist_table");
 
         $attack_types = $wpdb->get_results(
@@ -203,6 +204,8 @@ class WAF_FW_Logger {
         return [
             'total_attacks_blocked' => $total_attacks,
             'total_requests' => $total_requests,
+            'total_allowed' => $total_allowed,
+            'total_attacks' => $total_attacks,
             'blacklisted_ips' => $blacklisted_ips,
             'login_blocked_ips' => $login_blocked,
             'attack_types' => $attack_types_labels,
@@ -221,7 +224,8 @@ class WAF_FW_Logger {
         $blacklist_table = $this->db->get_blacklist_table();
 
         $total_attacks = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
-        $total_requests = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $total_allowed = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $total_requests = $total_attacks + $total_allowed;
         $total_blacklisted = (int) $wpdb->get_var("SELECT COUNT(*) FROM $blacklist_table");
         $login_blocked = WAF_FW_Login_Protector::instance()->get_blocked_login_count();
         $attack_blocked = WAF_FW_Attack_Blocker::instance()->get_blocked_count();
@@ -229,13 +233,18 @@ class WAF_FW_Logger {
         $today_attacks = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM $attacks_table WHERE DATE(created_at) = CURDATE()"
         );
-        $today_requests = (int) $wpdb->get_var(
+        $today_allowed = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM $requests_table WHERE DATE(created_at) = CURDATE()"
         );
+        $today_requests = $today_attacks + $today_allowed;
 
         $yesterday_attacks = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM $attacks_table WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)"
         );
+        $yesterday_allowed = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM $requests_table WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)"
+        );
+        $yesterday_requests = $yesterday_attacks + $yesterday_allowed;
 
         $attack_trend = 0;
         if ($yesterday_attacks > 0) {
@@ -295,27 +304,63 @@ class WAF_FW_Logger {
         $hourly_labels = [];
         $hourly_counts = [];
         $hourly_req_counts = [];
+        $hourly_total_counts = [];
         for ($i = 23; $i >= 0; $i--) {
             $ts = strtotime("-{$i} hours");
             $slot_key = date('Y-m-d H:00', $ts);
             $hourly_labels[] = date('g A', $ts);
-            $hourly_counts[] = $hourly_atk_map[$slot_key] ?? 0;
-            $hourly_req_counts[] = $hourly_req_map[$slot_key] ?? ($hourly_atk_map[$slot_key] ?? 0);
+            $atk_count = $hourly_atk_map[$slot_key] ?? 0;
+            $req_count = $hourly_req_map[$slot_key] ?? 0;
+            $hourly_counts[] = $atk_count;
+            $hourly_req_counts[] = $req_count;
+            $hourly_total_counts[] = $atk_count + $req_count;
         }
 
-        $daily = $wpdb->get_results(
+        $daily_req_map = [];
+        $daily_reqs = $wpdb->get_results(
+            "SELECT DATE(created_at) as day, COUNT(*) as count
+             FROM $requests_table
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+             GROUP BY day"
+        );
+        if (!empty($daily_reqs)) {
+            foreach ($daily_reqs as $dr) {
+                $daily_req_map[$dr->day] = (int) $dr->count;
+            }
+        }
+
+        $daily_atk_map = [];
+        $daily_atks = $wpdb->get_results(
             "SELECT DATE(created_at) as day, COUNT(*) as count
              FROM $attacks_table
-             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-             GROUP BY day
-             ORDER BY day ASC"
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+             GROUP BY day"
         );
+        if (!empty($daily_atks)) {
+            foreach ($daily_atks as $da) {
+                $daily_atk_map[$da->day] = (int) $da->count;
+            }
+        }
 
         $daily_labels = [];
         $daily_counts = [];
-        foreach ($daily as $d) {
-            $daily_labels[] = date('M j', strtotime($d->day));
-            $daily_counts[] = (int) $d->count;
+        $daily_clean_counts = [];
+        $daily_threat_counts = [];
+        $daily_map = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $ts = strtotime("-{$i} days");
+            $day_key = date('Y-m-d', $ts);
+            $daily_labels[] = date('M j', $ts);
+            $c_req = $daily_req_map[$day_key] ?? 0;
+            $c_atk = $daily_atk_map[$day_key] ?? 0;
+            $daily_clean_counts[] = $c_req;
+            $daily_threat_counts[] = $c_atk;
+            $daily_counts[] = $c_req + $c_atk;
+            $daily_map[$day_key] = [
+                'total' => $c_req + $c_atk,
+                'blocked' => $c_atk,
+                'clean' => $c_req,
+            ];
         }
 
         $rate_limit = (int) get_option('waf_fw_rate_limit', 100);
@@ -372,11 +417,13 @@ class WAF_FW_Logger {
         return [
             'total_attacks' => $total_attacks,
             'total_requests' => $total_requests,
+            'total_allowed' => $total_allowed,
             'total_blacklisted' => $total_blacklisted,
             'login_blocked' => $login_blocked,
             'attack_blocked' => $attack_blocked,
             'today_attacks' => $today_attacks,
             'today_requests' => $today_requests,
+            'today_allowed' => $today_allowed,
             'attack_trend' => $attack_trend,
             'attack_types_labels' => $attack_types_labels,
             'attack_types_counts' => $attack_types_counts,
@@ -385,8 +432,12 @@ class WAF_FW_Logger {
             'hourly_labels' => $hourly_labels,
             'hourly_counts' => $hourly_counts,
             'hourly_requests' => $hourly_req_counts,
+            'hourly_total' => $hourly_total_counts,
             'daily_labels' => $daily_labels,
             'daily_counts' => $daily_counts,
+            'daily_clean' => $daily_clean_counts,
+            'daily_threats' => $daily_threat_counts,
+            'daily_map' => $daily_map,
             'rate_current' => $current_minute,
             'rate_limit' => $rate_limit,
             'rate_pct' => $rate_pct,
@@ -514,6 +565,8 @@ class WAF_FW_Logger {
         $table = $this->db->get_requests_table();
         $wpdb->query("DELETE FROM $table");
         update_option('waf_fw_stats_allowed', 0);
+        delete_transient('waf_fw_fast_requests_queue');
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_waf_fw_fast_requests_%'");
     }
 
     public function clean_blocked() {
@@ -521,6 +574,7 @@ class WAF_FW_Logger {
         $table = $this->db->get_attacks_table();
         $wpdb->query("DELETE FROM $table WHERE status = 'blocked' OR action = 'blocked' OR status = 'drop'");
         update_option('waf_fw_stats_blocked', 0);
+        delete_transient('waf_fw_fast_attacks_queue');
     }
 
     public function clean_threats() {
@@ -528,6 +582,8 @@ class WAF_FW_Logger {
         $table = $this->db->get_attacks_table();
         $wpdb->query("DELETE FROM $table");
         update_option('waf_fw_stats_blocked', 0);
+        delete_transient('waf_fw_fast_attacks_queue');
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_waf_fw_fast_attacks_%'");
     }
 
     public function get_rate_limit_stats() {

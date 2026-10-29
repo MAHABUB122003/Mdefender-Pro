@@ -137,7 +137,12 @@ var warDashboard = {
         }
         var subReq = document.getElementById('subTotalRequests');
         if (subReq) {
-            subReq.textContent = (d.total_requests > 0) ? 'Boundary traffic inspected' : 'Awaiting incoming network traffic';
+            if (d.total_requests > 0) {
+                var allowed = (d.total_allowed !== undefined) ? d.total_allowed : Math.max(0, d.total_requests - (d.total_attacks || 0));
+                subReq.innerHTML = allowed.toLocaleString() + ' allowed &bull; ' + (d.total_attacks || 0).toLocaleString() + ' blocked';
+            } else {
+                subReq.textContent = 'Awaiting incoming network traffic';
+            }
         }
         var subBl = document.getElementById('subBlacklistCount');
         if (subBl) {

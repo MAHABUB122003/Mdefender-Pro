@@ -761,21 +761,30 @@ class UserAPI:
             return None
         try:
             import requests as _req
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             sync_url = f"{site_url.rstrip('/')}/?waf_cloud_sync=1&action=get_stats"
             headers = {
                 'Authorization': f'Bearer {site_key}',
                 'X-API-Key': site_key,
                 'User-Agent': 'MDefender-Cloud/2.0'
             }
-            resp = _req.get(sync_url, headers=headers, timeout=1.2)
-            if resp.status_code == 200:
+            resp = None
+            try:
+                resp = _req.get(sync_url, headers=headers, timeout=2.0, verify=False)
+            except Exception:
+                if site_url.startswith('https://'):
+                    clean_h = site_url.replace('https://', '').replace('http://', '')
+                    resp = _req.get(f"http://{clean_h}/?waf_cloud_sync=1&action=get_stats", headers=headers, timeout=2.0, verify=False)
+
+            if resp and resp.status_code == 200:
                 data = resp.json()
-                st = data.get('stats') or data.get('action_result') or {}
+                st = data.get('action_result') or data.get('stats') or {}
                 if st and isinstance(st, dict):
-                    tot = int(st.get('total_requests', 0) or (int(st.get('requests_allowed', 0) or 0) + int(st.get('requests_blocked', 0) or 0)))
-                    blk = int(st.get('requests_blocked', 0) or st.get('total_blocked', 0) or 0)
-                    today_cnt = int(st.get('requests_today', 0) or min(tot, 20))
-                    today_blk = int(st.get('blocked_today', 0) or min(blk, today_cnt))
+                    tot = int(st.get('total_requests', 0))
+                    blk = int(st.get('total_blocked', 0) or st.get('requests_blocked', 0) or 0)
+                    today_cnt = int(st.get('requests_today', 0))
+                    today_blk = int(st.get('blocked_today', 0))
 
                     w_target_id = site_info.get('id')
                     w_c = [{"_id": w_target_id}]
@@ -784,21 +793,30 @@ class UserAPI:
                     self.db.websites.update_one(
                         {"$or": w_c},
                         {"$set": {
-                            "total_requests": max(site_info.get('total_requests', 0), tot),
-                            "total_blocked": max(site_info.get('total_blocked', 0), blk),
-                            "requests_today": max(site_info.get('requests_today', 0), today_cnt),
-                            "blocked_today": max(site_info.get('blocked_today', 0), today_blk),
+                            "total_requests": tot,
+                            "total_blocked": blk,
+                            "requests_today": today_cnt,
+                            "blocked_today": today_blk,
                             "requests_today_date": today,
                             "last_activity": datetime.now()
                         }}
                     )
                     return {
                         'site_id': site_info.get('id'),
+                        'domain': site_info.get('domain') or site_info.get('name') or '',
                         'total_requests': tot,
                         'total_blocked': blk,
                         'requests_today': today_cnt,
                         'blocked_today': today_blk,
-                        'daily_counts': st.get('daily_counts', {})
+                        'daily_counts': st.get('daily_counts', {}),
+                        'daily_series': st.get('daily_series', []),
+                        'daily_clean': st.get('daily_clean', []),
+                        'daily_threats': st.get('daily_threats', []),
+                        'hourly_total': st.get('hourly_total', []),
+                        'attack_types': st.get('attack_types', []),
+                        'attack_counts': st.get('attack_counts', []),
+                        'top_attackers': st.get('top_attackers', []),
+                        'recent_logs': st.get('recent_logs', []),
                     }
         except Exception:
             pass
@@ -901,261 +919,189 @@ class UserAPI:
                 'login_two_factor': bool(w.get('login_two_factor', True)),
             })
 
-        # High-Performance Fleet Telemetry Sync
-        site_daily_map = {}
-        if force_refresh:
-            # Parallel multi-thread poll when user explicitly presses Sync (fast sub-second finish)
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-            with ThreadPoolExecutor(max_workers=min(5, max(1, len(websites)))) as executor:
-                futures = {executor.submit(self._sync_single_site_telemetry, s, today): s for s in websites}
-                for fut in as_completed(futures):
-                    res_data = fut.result()
-                    if res_data:
-                        s_obj = futures[fut]
-                        s_obj['total_requests'] = max(s_obj.get('total_requests', 0), res_data['total_requests'])
-                        s_obj['total_blocked'] = max(s_obj.get('total_blocked', 0), res_data['total_blocked'])
-                        s_obj['requests_today'] = max(s_obj.get('requests_today', 0), res_data['requests_today'])
-                        s_obj['blocked_today'] = max(s_obj.get('blocked_today', 0), res_data['blocked_today'])
-                        s_obj['requests_today_date'] = today
-                        if isinstance(res_data.get('daily_counts'), dict):
-                            for d_k, d_v in res_data['daily_counts'].items():
-                                c_val = d_v.get('total', 0) if isinstance(d_v, dict) else int(d_v)
-                                site_daily_map[d_k] = site_daily_map.get(d_k, 0) + c_val
-        else:
-            # Non-blocking async background thread for regular dashboard loading:
-            # Dashboard returns to the user in 5ms instantly, while fleet sync runs in background.
-            need_bg_sync = any(s.get('total_requests', 0) == 0 for s in websites)
-            if need_bg_sync:
-                import threading
-                def _run_bg():
-                    for s in websites:
-                        if s.get('total_requests', 0) == 0:
-                            self._sync_single_site_telemetry(s, today)
-                threading.Thread(target=_run_bg, daemon=True).start()
-
-        website_domains = {w['id']: w.get('domain', '') for w in websites}
-        website_domains_list = [w['domain'] for w in websites if w.get('domain')]
-        website_ids_list = [w['id'] for w in websites if w.get('id')]
-
-        # Build strict tenant-isolated user scope query across user_id, owned website_ids and domains
-        user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
-        if website_ids_list:
-            user_scope.append({'website_id': {'$in': website_ids_list}})
-            user_scope.append({'website_id': {'$in': [self._resolve_id(wid) for wid in website_ids_list if wid]}})
-        if website_domains_list:
-            user_scope.append({'domain': {'$in': website_domains_list}})
-        user_filter = {'$or': user_scope}
-
-        # Base query for stats and logs
+        # -------------------------------------------------------------
+        # Live Remote Telemetry Proxy (Zero MongoDB log storage)
+        # All requests/attacks are fetched directly from connected WordPress site(s)
+        # -------------------------------------------------------------
         if website_id and website_id != 'all':
-            target_ids = [website_id]
-            target_domains = [website_id]
-            for s in websites:
-                sid = str(s.get('id') or s.get('_id', ''))
-                sdom = s.get('domain', '')
-                if website_id in (sid, sdom):
-                    if sid and sid not in target_ids:
-                        target_ids.append(sid)
-                    if sdom and sdom not in target_domains:
-                        target_domains.append(sdom)
+            target_site = next((w for w in websites if w['id'] == website_id or w.get('domain') == website_id or w.get('url') == website_id), None)
+            if target_site:
+                site_res = self._sync_single_site_telemetry(target_site, today)
+                if site_res:
+                    tot_req = site_res['total_requests']
+                    tot_block = site_res['total_blocked']
+                    req_today = site_res['requests_today']
+                    block_today = site_res['blocked_today']
+                    target_site['total_requests'] = tot_req
+                    target_site['total_blocked'] = tot_block
+                    target_site['requests_today'] = req_today
+                    target_site['blocked_today'] = block_today
 
-            site_filter = {'$or': [
-                {'website_id': {'$in': target_ids}},
-                {'website_id': {'$in': [self._resolve_id(tid) for tid in target_ids if tid]}},
-                {'domain': {'$in': target_domains}}
-            ]}
-            base_query = {'$and': [user_filter, site_filter]}
-        else:
-            target_ids = []
-            target_domains = []
-            base_query = user_filter
+                    ds = site_res.get('daily_series', [])
+                    if isinstance(ds, list) and len(ds) == 7:
+                        daily_requests = [int(x or 0) for x in ds]
+                    else:
+                        daily_requests = [0] * 7
+                        if isinstance(site_res.get('daily_counts'), dict):
+                            now_time = datetime.now()
+                            for idx in range(7):
+                                dt_key = (now_time - timedelta(days=6-idx)).strftime('%Y-%m-%d')
+                                c_info = site_res['daily_counts'].get(dt_key, {})
+                                daily_requests[idx] = c_info.get('total', 0) if isinstance(c_info, dict) else int(c_info or 0)
 
-        attack_filter = {'$or': [{'action': {'$in': ['block', 'blocked']}}, {'status': {'$in': ['block', 'blocked']}}]}
-        attack_query = {'$and': [base_query, attack_filter]}
+                    attack_types = site_res.get('attack_types', [])
+                    attack_counts = site_res.get('attack_counts', [])
+                    top_attackers = site_res.get('top_attackers', [])
 
-        # Retrieve recent activity (both clean traffic and blocked attacks) across websites
-        activity_logs = list(self.db.security_events.find(base_query).sort('timestamp', -1).limit(25))
-        if not activity_logs:
-            activity_logs = list(self.db.attacks.find(base_query).sort('timestamp', -1).limit(25))
-
-        logs = []
-        for log in activity_logs:
-            web_id = str(log.get('website_id', ''))
-            domain_val = website_domains.get(web_id, '') or log.get('domain', '')
-            action_val = str(log.get('action') or log.get('status') or 'allowed').lower()
-            is_blocked = action_val in ['block', 'blocked', 'drop', 'mitigated']
-            display_status = 'blocked' if is_blocked else 'allowed'
-            
-            raw_attack_type = log.get('attack_type')
-            if not raw_attack_type or raw_attack_type == 'Unknown':
-                display_type = 'Suspicious Probe' if is_blocked else 'Clean Ingress'
+                    logs = []
+                    for item in site_res.get('recent_logs', []):
+                        if isinstance(item, dict):
+                            st = str(item.get('status', 'allowed')).lower()
+                            is_b = st in ('block', 'blocked', 'drop', 'mitigated')
+                            raw_at = item.get('attack_type')
+                            disp_type = raw_at or ('Suspicious Probe' if is_b else 'Clean Ingress')
+                            logs.append({
+                                'id': str(item.get('id', '')),
+                                'ip': item.get('ip', ''),
+                                'url': item.get('url', '/'),
+                                'attack_type': disp_type,
+                                'confidence': float(item.get('confidence') or (0.95 if is_b else 0.05)),
+                                'timestamp': self._format_dt(item.get('created_at') or item.get('timestamp')),
+                                'status': 'blocked' if is_b else 'allowed',
+                                'domain': target_site.get('domain') or 'WordPress Site',
+                                'method': item.get('method', 'GET')
+                            })
+                else:
+                    tot_req = target_site.get('total_requests', 0)
+                    tot_block = target_site.get('total_blocked', 0)
+                    req_today = target_site.get('requests_today', 0)
+                    block_today = target_site.get('blocked_today', 0)
+                    daily_requests = [0] * 7
+                    attack_types = []
+                    attack_counts = []
+                    top_attackers = []
+                    logs = []
             else:
-                display_type = raw_attack_type
-
-            logs.append({
-                'id': str(log.get('_id', '')),
-                'ip': log.get('source_ip') or log.get('ip', ''),
-                'url': log.get('endpoint') or log.get('url', ''),
-                'attack_type': display_type,
-                'confidence': log.get('confidence') or (log.get('risk_score', 0) / 100.0 if log.get('risk_score') else (0.95 if is_blocked else 0.05)),
-                'timestamp': self._format_dt(log.get('timestamp')),
-                'status': display_status,
-                'domain': domain_val or 'WordPress Site',
-                'method': log.get('method') or ('POST' if 'login' in (log.get('endpoint') or log.get('url') or '') else 'GET')
-            })
-
-        # If central DB has no events, fetch recent logs directly from connected WordPress site only upon explicit Sync
-        if force_refresh and not logs and websites:
-            for s in websites:
-                s_url = s.get('url') or (f"http://{s.get('domain')}" if s.get('domain') else '')
-                s_key = s.get('api_key') or ''
-                if not s_url or not s_key:
-                    continue
-                try:
-                    import requests as _req
-                    rem_url = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=get_logs"
-                    res = _req.get(rem_url, headers={'Authorization': f'Bearer {s_key}', 'X-API-Key': s_key}, params={'limit': 15}, timeout=1.5)
-                    if res.status_code == 200:
-                        r_data = res.json()
-                        raw_list = r_data.get('logs') if isinstance(r_data, dict) else r_data
-                        if isinstance(raw_list, list) and raw_list:
-                            for item in raw_list:
-                                is_blk = str(item.get('status', '')).lower() in ['block', 'blocked', 'drop', 'mitigated']
-                                logs.append({
-                                    'id': str(item.get('id', '')),
-                                    'ip': item.get('ip', '127.0.0.1'),
-                                    'url': item.get('url', '/'),
-                                    'attack_type': item.get('attack_type') or ('Suspicious Probe' if is_blk else 'Clean Ingress'),
-                                    'confidence': 0.95 if is_blk else 0.05,
-                                    'timestamp': str(item.get('timestamp', '')),
-                                    'status': 'blocked' if is_blk else 'allowed',
-                                    'domain': s.get('domain') or 'WordPress Site',
-                                    'method': item.get('method', 'GET')
-                                })
-                            break
-                except Exception:
-                    pass
-
-        attack_type_map = {}
-        attacker_ip_map = {}
-        all_attacks = list(self.db.security_events.find(attack_query).limit(500))
-        if not all_attacks:
-            all_attacks = list(self.db.attacks.find(base_query).limit(500))
-
-        for a in all_attacks:
-            atype = a.get('attack_type', 'Unknown') or 'Unknown'
-            attack_type_map[atype] = attack_type_map.get(atype, 0) + 1
-            ip = a.get('source_ip') or a.get('ip', '')
-            if ip:
-                attacker_ip_map[ip] = attacker_ip_map.get(ip, 0) + 1
-
-        attack_types = list(attack_type_map.keys())
-        attack_counts = [attack_type_map[k] for k in attack_types]
-
-        top_attackers = sorted(
-            [{'ip': ip, 'count': count} for ip, count in attacker_ip_map.items()],
-            key=lambda x: x['count'],
-            reverse=True
-        )[:10]
-
-        # Fetch daily requests count (7 days) via single-pass time range
-        now_time = datetime.now()
-        start_7days = datetime(now_time.year, now_time.month, now_time.day) - timedelta(days=6)
-        today_start = datetime(now_time.year, now_time.month, now_time.day)
-        
-        # Aggregate 7-day request trends efficiently
-        match_stage = {'$match': {'$and': [base_query, {'timestamp': {'$gte': start_7days}}]}}
-        group_stage = {
-            '$group': {
-                '_id': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
-                'count': {'$sum': 1}
-            }
-        }
-        try:
-            agg_results = list(self.db.security_events.aggregate([match_stage, group_stage]))
-            day_map = {item['_id']: item['count'] for item in agg_results if '_id' in item}
-        except Exception:
-            day_map = {}
-
-        daily_requests = []
-        for i in range(7):
-            day_dt = start_7days + timedelta(days=i)
-            d_str = day_dt.strftime('%Y-%m-%d')
-            c = day_map.get(d_str, 0) + site_daily_map.get(d_str, 0)
-            daily_requests.append(c)
-
-        # Get latest user doc
-        user_doc = self.db.users.find_one({'_id': user['_id']}) or user
-
-        # Count real live telemetry numbers from database
-        events_total = self.db.security_events.count_documents(base_query)
-        attacks_total = self.db.attacks.count_documents(base_query)
-        
-        blocked_events_count = self.db.security_events.count_documents(attack_query)
-        blocked_attacks_count = self.db.attacks.count_documents(base_query)
-
-        today_events_count = day_map.get(today_start.strftime('%Y-%m-%d'), 0)
-        if today_events_count == 0:
-            try:
-                today_events_count = self.db.security_events.count_documents({
-                    '$and': [base_query, {'timestamp': {'$gte': today_start}}]
-                })
-            except Exception:
-                today_events_count = 0
-
-        if website_id and website_id != 'all':
-            matching_sites = [w for w in websites if w['id'] in target_ids or w.get('domain') in target_domains]
-            site_req_sum = sum(w.get('total_requests', 0) for w in matching_sites)
-            site_today_sum = sum(w.get('requests_today', 0) for w in matching_sites if (not w.get('requests_today_date') or w.get('requests_today_date') == today))
-            if site_today_sum == 0 and site_req_sum > 0:
-                site_today_sum = max(1, min(site_req_sum, 15))
-            req_today = max(today_events_count, site_today_sum)
-            tot_req = max(events_total, attacks_total, site_req_sum, req_today)
-            tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in matching_sites))
+                tot_req = 0
+                tot_block = 0
+                req_today = 0
+                block_today = 0
+                daily_requests = [0] * 7
+                attack_types = []
+                attack_counts = []
+                top_attackers = []
+                logs = []
         else:
-            site_req_sum = sum(w.get('total_requests', 0) for w in websites)
-            site_today_sum = sum(w.get('requests_today', 0) for w in websites if (not w.get('requests_today_date') or w.get('requests_today_date') == today))
-            user_today_delta = user_doc.get('requests_today', 0) if (not user_doc.get('requests_today_date') or user_doc.get('requests_today_date') == today) else 0
-            if site_today_sum == 0 and site_req_sum > 0:
-                site_today_sum = max(1, min(site_req_sum, 15))
-            
-            req_today = max(today_events_count, user_today_delta, site_today_sum)
-            tot_req = max(events_total, attacks_total, site_req_sum, user_doc.get('total_requests', 0), req_today)
-            tot_block = max(blocked_events_count, blocked_attacks_count, sum(w.get('total_blocked', 0) for w in websites), user_doc.get('total_blocked', 0))
+            # Query all user's connected WordPress sites in parallel
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            synced_results = []
+            if websites:
+                with ThreadPoolExecutor(max_workers=min(10, max(1, len(websites)))) as executor:
+                    futures = {executor.submit(self._sync_single_site_telemetry, s, today): s for s in websites}
+                    for fut in as_completed(futures):
+                        try:
+                            res = fut.result()
+                            if res:
+                                synced_results.append(res)
+                                s_obj = futures[fut]
+                                s_obj['total_requests'] = res['total_requests']
+                                s_obj['total_blocked'] = res['total_blocked']
+                                s_obj['requests_today'] = res['requests_today']
+                                s_obj['blocked_today'] = res['blocked_today']
+                        except Exception:
+                            pass
 
-        # Ensure today's telemetry is represented in daily_requests
-        if daily_requests:
-            daily_requests[-1] = max(daily_requests[-1], req_today)
+            if synced_results:
+                tot_req = sum(r['total_requests'] for r in synced_results)
+                tot_block = sum(r['total_blocked'] for r in synced_results)
+                req_today = sum(r['requests_today'] for r in synced_results)
+                block_today = sum(r['blocked_today'] for r in synced_results)
 
-        # Realistic telemetry fallback: if daily_requests is all zeroes but there is recorded traffic
-        if sum(daily_requests) == 0 and tot_req > 0:
-            daily_requests[-1] = max(req_today, min(tot_req, 12))
-            remainder = max(0, tot_req - daily_requests[-1])
-            if remainder > 0:
-                for idx in range(len(daily_requests) - 2, -1, -1):
-                    portion = max(1, remainder // (idx + 1))
-                    daily_requests[idx] = min(remainder, portion)
-                    remainder -= daily_requests[idx]
-                    if remainder <= 0:
-                        break
+                daily_requests = [0] * 7
+                for r in synced_results:
+                    ds = r.get('daily_series', [])
+                    if isinstance(ds, list) and len(ds) == 7:
+                        for idx in range(7):
+                            daily_requests[idx] += int(ds[idx] or 0)
+                    elif isinstance(r.get('daily_counts'), dict):
+                        now_time = datetime.now()
+                        for idx in range(7):
+                            dt_key = (now_time - timedelta(days=6-idx)).strftime('%Y-%m-%d')
+                            c_info = r['daily_counts'].get(dt_key, {})
+                            val = c_info.get('total', 0) if isinstance(c_info, dict) else int(c_info or 0)
+                            daily_requests[idx] += val
 
-        # Sync user document counters if fleet has higher numbers
-        if tot_req > user_doc.get('total_requests', 0) or req_today > user_doc.get('requests_today', 0):
-            try:
+                atk_map = {}
+                for r in synced_results:
+                    types = r.get('attack_types', [])
+                    counts = r.get('attack_counts', [])
+                    for t, c in zip(types, counts):
+                        atk_map[t] = atk_map.get(t, 0) + int(c)
+                attack_types = list(atk_map.keys())
+                attack_counts = [atk_map[k] for k in attack_types]
+
+                att_ip_map = {}
+                for r in synced_results:
+                    for a in r.get('top_attackers', []):
+                        if isinstance(a, dict):
+                            ip = a.get('ip', '')
+                            cnt = int(a.get('count', 1))
+                            if ip:
+                                att_ip_map[ip] = att_ip_map.get(ip, 0) + cnt
+                top_attackers = sorted(
+                    [{'ip': ip, 'count': cnt} for ip, cnt in att_ip_map.items()],
+                    key=lambda x: x['count'],
+                    reverse=True
+                )[:10]
+
+                all_logs = []
+                for r in synced_results:
+                    site_domain = r.get('domain') or 'WordPress Site'
+                    for item in r.get('recent_logs', []):
+                        if isinstance(item, dict):
+                            st = str(item.get('status', 'allowed')).lower()
+                            is_b = st in ('block', 'blocked', 'drop', 'mitigated')
+                            raw_at = item.get('attack_type')
+                            disp_type = raw_at or ('Suspicious Probe' if is_b else 'Clean Ingress')
+                            all_logs.append({
+                                'id': str(item.get('id', '')),
+                                'ip': item.get('ip', ''),
+                                'url': item.get('url', '/'),
+                                'attack_type': disp_type,
+                                'confidence': float(item.get('confidence') or (0.95 if is_b else 0.05)),
+                                'timestamp': self._format_dt(item.get('created_at') or item.get('timestamp')),
+                                'status': 'blocked' if is_b else 'allowed',
+                                'domain': site_domain,
+                                'method': item.get('method', 'GET')
+                            })
+                all_logs.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
+                logs = all_logs[:25]
+
+                # Update user document in MongoDB to reflect authentic sum
                 self.db.users.update_one(
                     {'_id': user['_id']},
                     {'$set': {
                         'total_requests': tot_req,
-                        'requests_today': req_today,
                         'total_blocked': tot_block,
+                        'requests_today': req_today,
+                        'blocked_today': block_today,
                         'requests_today_date': today,
                         'updated_at': datetime.now()
                     }}
                 )
-            except Exception:
-                pass
+            else:
+                tot_req = sum(w.get('total_requests', 0) for w in websites)
+                tot_block = sum(w.get('total_blocked', 0) for w in websites)
+                req_today = sum(w.get('requests_today', 0) for w in websites)
+                block_today = sum(w.get('blocked_today', 0) for w in websites)
+                daily_requests = [0] * 7
+                attack_types = []
+                attack_counts = []
+                top_attackers = []
+                logs = []
 
         active_sites_count = len(websites)
+        user_doc = self.db.users.find_one({'_id': user['_id']}) or user
         user_full_name = user_doc.get('full_name') or user_doc.get('name', '')
         user_uname = user_doc.get('username') or (user_doc.get('email', '').split('@')[0] if user_doc.get('email') else '')
 
@@ -1177,6 +1123,7 @@ class UserAPI:
             'api_key': user_doc.get('api_key', ''),
             'plan': effective_plan,
             'requests_today': req_today,
+            'blocked_today': block_today,
             'total_requests': tot_req,
             'total_blocked': tot_block,
             'websites_count': active_sites_count,
@@ -1541,7 +1488,7 @@ class UserAPI:
                         except Exception:
                             pass
 
-                if all_remote_logs:
+                if all_remote_logs or len(connected_wp_sites) > 0:
                     # Sort in memory by timestamp descending
                     all_remote_logs.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
                     start_idx = (page - 1) * per_page
@@ -1551,7 +1498,7 @@ class UserAPI:
                         'total': tot,
                         'page': page,
                         'per_page': per_page,
-                        'total_pages': max(1, (tot + per_page - 1) // per_page),
+                        'total_pages': max(1, (tot + per_page - 1) // per_page) if tot > 0 else 1,
                         'logs': paged_logs,
                         'source': 'wordpress_fleet_live'
                     })
@@ -1823,11 +1770,15 @@ class UserAPI:
 
     def clean_user_logs(self, user, data=None):
         data = data or {}
-        days_param = str(data.get('days', '0')).strip().lower()
+        days_param = str(data.get('days', 'all')).strip().lower()
+        stat_type = data.get('type') or data.get('stat_type', '')
         mode = data.get('mode', '')
         website_id = data.get('website_id', '')
         user_id_str = str(user['_id'])
         user_id_obj = self._resolve_id(user_id_str)
+
+        self._stats_cache.clear()
+        self._logs_cache.clear()
 
         user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
@@ -1845,10 +1796,11 @@ class UserAPI:
 
         now = datetime.now()
         time_desc = "all"
-        if days_param == 'today' or mode == 'today':
+        if days_param == 'today' or mode == 'today' or stat_type == 'requests_today':
             today_start = datetime(now.year, now.month, now.day)
             conditions.append({'timestamp': {'$gte': today_start}})
             time_desc = "today's"
+            days_param = 'today'
         elif days_param and days_param not in ('0', 'all'):
             try:
                 days = int(days_param)
@@ -1862,18 +1814,18 @@ class UserAPI:
         final_query = {'$and': conditions} if len(conditions) > 1 else conditions[0]
 
         try:
-            self._stats_cache.clear()
             r1 = self.db.security_events.delete_many(final_query)
             r2 = self.db.attacks.delete_many(final_query)
             r3 = self.db.requests.delete_many(final_query)
             total_deleted = r1.deleted_count + r2.deleted_count + r3.deleted_count
 
-            # Remote fleet command: Dispatch log purge to connected WordPress sites
+            # Remote fleet command: Dispatch log purge directly to connected WordPress sites
             wp_targets = []
             for s in all_sites:
                 sid = str(s.get('_id', ''))
                 sdom = s.get('domain', '')
-                if not website_id or website_id == 'all' or website_id in (sid, sdom):
+                surl = s.get('url', '')
+                if not website_id or website_id == 'all' or website_id in (sid, sdom, surl):
                     if s.get('url') or s.get('domain'):
                         wp_targets.append(s)
 
@@ -1892,16 +1844,39 @@ class UserAPI:
                         'X-API-Key': s_key,
                         'User-Agent': 'MDefender-Cloud/2.0'
                     }
+                    clean_payload = {
+                        'days': days_param,
+                        'type': stat_type,
+                        'action': 'clear_logs'
+                    }
                     try:
                         cr = None
                         try:
-                            cr = requests.post(clean_endpoint, json={'days': days_param, 'action': 'clear_logs'}, headers=headers, timeout=2.5, verify=False)
+                            cr = requests.post(clean_endpoint, json=clean_payload, headers=headers, timeout=2.5, verify=False)
                         except Exception:
                             if s_url.startswith('https://'):
                                 clean_host = raw_u.replace('https://', '').replace('http://', '')
-                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs", json={'days': days_param, 'action': 'clear_logs'}, headers=headers, timeout=2.5, verify=False)
+                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs", json=clean_payload, headers=headers, timeout=2.5, verify=False)
                         if cr and cr.status_code == 200:
                             remote_cleaned += 1
+                            # Update target site counters immediately
+                            set_zero = {}
+                            if stat_type == 'total_requests':
+                                set_zero['total_requests'] = 0
+                                set_zero['requests_today'] = 0
+                            elif stat_type == 'total_blocked':
+                                set_zero['total_blocked'] = 0
+                                set_zero['blocked_today'] = 0
+                            elif stat_type == 'requests_today' or days_param == 'today':
+                                set_zero['requests_today'] = 0
+                                set_zero['blocked_today'] = 0
+                            else:
+                                set_zero['total_requests'] = 0
+                                set_zero['total_blocked'] = 0
+                                set_zero['requests_today'] = 0
+                                set_zero['blocked_today'] = 0
+                            if set_zero:
+                                self.db.websites.update_one({'_id': target['_id']}, {'$set': set_zero})
                     except Exception as e:
                         print(f"[Remote Log Purge] Error reaching {s_url}: {e}")
 
@@ -2004,43 +1979,34 @@ class UserAPI:
         user_id_obj = self._resolve_id(user_id_str)
 
         try:
+            self._stats_cache.clear()
+            self._logs_cache.clear()
+
             site_filter = {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}
             if website_id and website_id != 'all':
                 site_filter = {'$and': [
                     {'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]},
-                    {'$or': [{'_id': website_id}, {'domain': website_id}]}
+                    {'$or': [{'_id': website_id}, {'domain': website_id}, {'_id': self._resolve_id(website_id)}]}
                 ]}
 
+            # Delegate to clean_user_logs with the specific type
             if stat_type == 'requests_today':
-                self.clean_user_logs(user, {'website_id': website_id, 'days': 'today'})
-                self.db.users.update_one({'_id': user['_id']}, {'$set': {'requests_today': 0, 'updated_at': datetime.now()}})
-                self.db.websites.update_many(site_filter, {'$set': {'requests_today': 0}})
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'today', 'type': 'requests_today'})
+                self.db.websites.update_many(site_filter, {'$set': {'requests_today': 0, 'blocked_today': 0}})
                 msg = "Requests Today counter cleaned successfully."
 
             elif stat_type == 'total_requests':
-                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all'})
-                self.db.users.update_one({'_id': user['_id']}, {'$set': {'total_requests': 0, 'requests_today': 0, 'updated_at': datetime.now()}})
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all', 'type': 'total_requests'})
                 self.db.websites.update_many(site_filter, {'$set': {'total_requests': 0, 'requests_today': 0}})
                 msg = "Total Lifetime Traffic counter cleaned successfully."
 
             elif stat_type == 'total_blocked':
-                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all'})
-                self.db.users.update_one({'_id': user['_id']}, {'$set': {'total_blocked': 0, 'blocked_today': 0, 'updated_at': datetime.now()}})
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all', 'type': 'total_blocked'})
                 self.db.websites.update_many(site_filter, {'$set': {'total_blocked': 0, 'blocked_today': 0}})
                 msg = "Attacks Blocked counter cleaned successfully."
 
             else:
-                self.clean_user_logs(user, {'website_id': website_id, 'days': 0})
-                self.db.users.update_one(
-                    {'_id': user['_id']},
-                    {'$set': {
-                        'requests_today': 0,
-                        'total_requests': 0,
-                        'total_blocked': 0,
-                        'blocked_today': 0,
-                        'updated_at': datetime.now()
-                    }}
-                )
+                self.clean_user_logs(user, {'website_id': website_id, 'days': 'all', 'type': 'all'})
                 self.db.websites.update_many(
                     site_filter,
                     {'$set': {
@@ -2052,7 +2018,23 @@ class UserAPI:
                 )
                 msg = "All dashboard statistics reset to 0 successfully."
 
+            # Recalculate user document sum from current websites
+            user_sites = list(self.db.websites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+            u_tot_req = sum(s.get('total_requests', 0) for s in user_sites)
+            u_tot_blk = sum(s.get('total_blocked', 0) for s in user_sites)
+            u_req_today = sum(s.get('requests_today', 0) for s in user_sites)
+            u_blk_today = sum(s.get('blocked_today', 0) for s in user_sites)
+            self.db.users.update_one(
+                {'_id': user['_id']},
+                {'$set': {
+                    'total_requests': u_tot_req,
+                    'total_blocked': u_tot_blk,
+                    'requests_today': u_req_today,
+                    'blocked_today': u_blk_today,
+                    'updated_at': datetime.now()
+                }}
+            )
+
             return {'status': 'success', 'message': msg}
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
-

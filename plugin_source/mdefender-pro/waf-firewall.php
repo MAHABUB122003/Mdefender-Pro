@@ -433,16 +433,58 @@ function waf_fw_handle_cloud_sync_webhook() {
                     switch_theme($theme_slug);
                     $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'active'];
                 }
-            } elseif ($action === 'clear_logs' || $action === 'clean_logs') {
+            } elseif ($action === 'clear_logs' || $action === 'clean_logs' || $action === 'clean_stats' || $action === 'reset_stats') {
                 $days = sanitize_text_field($_REQUEST['days'] ?? $pushed_data['days'] ?? 'all');
-                if (class_exists('WAF_FW_Logger')) {
-                    WAF_FW_Logger::instance()->clear_logs($days);
+                $type = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? $_REQUEST['stat_type'] ?? $pushed_data['stat_type'] ?? '');
+                $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+                if ($logger) {
+                    if ($type === 'total_requests') {
+                        $logger->clean_requests();
+                    } elseif ($type === 'total_blocked') {
+                        $logger->clean_threats();
+                    } elseif ($type === 'requests_today' || $days === 'today') {
+                        $logger->clear_logs('today');
+                    } else {
+                        $logger->clear_logs($days);
+                    }
                 }
+                $fresh = $logger ? $logger->get_dashboard_data() : [];
                 $action_result = [
                     'success' => true,
                     'cleared' => true,
                     'days' => $days,
+                    'type' => $type,
+                    'total_requests' => (int)($fresh['total_requests'] ?? 0),
+                    'total_blocked' => (int)($fresh['total_attacks'] ?? 0),
+                    'requests_today' => (int)($fresh['today_requests'] ?? 0),
+                    'blocked_today' => (int)($fresh['today_attacks'] ?? 0),
                     'message' => 'WordPress local request and attack logs successfully purged'
+                ];
+            } elseif ($action === 'clean_requests') {
+                $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+                if ($logger) {
+                    $logger->clean_requests();
+                }
+                $fresh = $logger ? $logger->get_dashboard_data() : [];
+                $action_result = [
+                    'success' => true,
+                    'cleared' => true,
+                    'type' => 'total_requests',
+                    'total_requests' => (int)($fresh['total_requests'] ?? 0),
+                    'message' => 'Requests cleared successfully from WordPress database'
+                ];
+            } elseif ($action === 'clean_threats') {
+                $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+                if ($logger) {
+                    $logger->clean_threats();
+                }
+                $fresh = $logger ? $logger->get_dashboard_data() : [];
+                $action_result = [
+                    'success' => true,
+                    'cleared' => true,
+                    'type' => 'total_blocked',
+                    'total_blocked' => (int)($fresh['total_attacks'] ?? 0),
+                    'message' => 'Threats cleared successfully from WordPress database'
                 ];
             } elseif ($action === 'get_logs') {
                 if (class_exists('WAF_FW_Logger')) {
@@ -681,72 +723,61 @@ function waf_fw_handle_cloud_sync_webhook() {
                 }
                 echo json_encode(['status' => 'error', 'message' => 'Country code is required']);
                 exit;
-            } elseif ($action === 'get_stats') {
-                $b_cnt = (int) get_option('waf_fw_stats_blocked', 0);
-                $a_cnt = (int) get_option('waf_fw_stats_allowed', 0);
-                global $wpdb;
-                $tbl = $wpdb->prefix . 'waf_fw_logs';
-                $t_req = 0;
-                $t_blk = 0;
-                $d_map = [];
-                if ($wpdb->get_var("SHOW TABLES LIKE '{$tbl}'") === $tbl) {
-                    $tot_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl}");
-                    $blk_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked'");
-                    $t_req = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE timestamp >= CURDATE()");
-                    $t_blk = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked' AND timestamp >= CURDATE()");
-                    $b_cnt = max($b_cnt, $blk_logs);
-                    $a_cnt = max($a_cnt, $tot_logs - $blk_logs);
-                    $d_rows = $wpdb->get_results("SELECT DATE(timestamp) as dt, COUNT(*) as cnt, SUM(CASE WHEN status='blocked' THEN 1 ELSE 0 END) as blk FROM {$tbl} WHERE timestamp >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(timestamp)", ARRAY_A);
-                    if ($d_rows) {
-                        foreach ($d_rows as $dr) {
-                            $d_map[$dr['dt']] = ['total' => (int)$dr['cnt'], 'blocked' => (int)$dr['blk']];
-                        }
-                    }
-                }
-                $site_tot = $b_cnt + $a_cnt;
+            } elseif ($action === 'get_stats' || $action === 'get_dashboard_data') {
+                $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+                $dash_data = $logger ? $logger->get_dashboard_data() : [];
+                $tot_requests = (int)($dash_data['total_requests'] ?? 0);
+                $tot_blocked = (int)($dash_data['total_attacks'] ?? $dash_data['total_attacks_blocked'] ?? 0);
+                $tot_allowed = (int)($dash_data['total_allowed'] ?? 0);
+                $today_req = (int)($dash_data['today_requests'] ?? 0);
+                $today_blk = (int)($dash_data['today_attacks'] ?? 0);
+                $today_all = (int)($dash_data['today_allowed'] ?? 0);
+
                 $action_result = [
                     'success' => true,
-                    'requests_blocked' => $b_cnt,
-                    'requests_allowed' => $a_cnt,
-                    'total_requests' => $site_tot,
-                    'total_blocked' => $b_cnt,
-                    'requests_today' => max($t_req, $site_tot > 0 ? min(20, $site_tot) : 0),
-                    'blocked_today' => $t_blk,
-                    'daily_counts' => $d_map,
+                    'total_requests' => $tot_requests,
+                    'requests_blocked' => $tot_blocked,
+                    'requests_allowed' => $tot_allowed,
+                    'total_blocked' => $tot_blocked,
+                    'requests_today' => $today_req,
+                    'blocked_today' => $today_blk,
+                    'allowed_today' => $today_all,
+                    'daily_counts' => $dash_data['daily_map'] ?? [],
+                    'daily_labels' => $dash_data['daily_labels'] ?? [],
+                    'daily_series' => $dash_data['daily_counts'] ?? [],
+                    'daily_clean' => $dash_data['daily_clean'] ?? [],
+                    'daily_threats' => $dash_data['daily_threats'] ?? [],
+                    'hourly_labels' => $dash_data['hourly_labels'] ?? [],
+                    'hourly_requests' => $dash_data['hourly_requests'] ?? [],
+                    'hourly_counts' => $dash_data['hourly_counts'] ?? [],
+                    'hourly_total' => $dash_data['hourly_total'] ?? [],
+                    'attack_types' => $dash_data['attack_types_labels'] ?? [],
+                    'attack_counts' => $dash_data['attack_types_counts'] ?? [],
+                    'top_attackers' => $dash_data['top_attackers'] ?? [],
+                    'recent_logs' => $dash_data['recent_logs'] ?? [],
+                    'security_score' => $dash_data['security_score'] ?? 100,
                 ];
             }
 
-            // Always calculate latest local stats for cloud sync
-            $b_cnt = (int) get_option('waf_fw_stats_blocked', 0);
-            $a_cnt = (int) get_option('waf_fw_stats_allowed', 0);
-            global $wpdb;
-            $tbl = $wpdb->prefix . 'waf_fw_logs';
-            $t_req = 0;
-            $t_blk = 0;
-            $d_map = [];
-            if ($wpdb->get_var("SHOW TABLES LIKE '{$tbl}'") === $tbl) {
-                $tot_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl}");
-                $blk_logs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked'");
-                $t_req = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE timestamp >= CURDATE()");
-                $t_blk = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tbl} WHERE status = 'blocked' AND timestamp >= CURDATE()");
-                $b_cnt = max($b_cnt, $blk_logs);
-                $a_cnt = max($a_cnt, $tot_logs - $blk_logs);
-                $d_rows = $wpdb->get_results("SELECT DATE(timestamp) as dt, COUNT(*) as cnt, SUM(CASE WHEN status='blocked' THEN 1 ELSE 0 END) as blk FROM {$tbl} WHERE timestamp >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(timestamp)", ARRAY_A);
-                if ($d_rows) {
-                    foreach ($d_rows as $dr) {
-                        $d_map[$dr['dt']] = ['total' => (int)$dr['cnt'], 'blocked' => (int)$dr['blk']];
-                    }
-                }
-            }
-            $site_tot = $b_cnt + $a_cnt;
+            // Always calculate latest live local stats from WAF_FW_Logger
+            $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+            $dash_data = $logger ? $logger->get_dashboard_data() : [];
             $fleet_stats = [
-                'requests_blocked' => $b_cnt,
-                'requests_allowed' => $a_cnt,
-                'total_requests' => $site_tot,
-                'total_blocked' => $b_cnt,
-                'requests_today' => max($t_req, $site_tot > 0 ? min(20, $site_tot) : 0),
-                'blocked_today' => $t_blk,
-                'daily_counts' => $d_map,
+                'total_requests' => (int)($dash_data['total_requests'] ?? 0),
+                'requests_blocked' => (int)($dash_data['total_attacks'] ?? 0),
+                'requests_allowed' => (int)($dash_data['total_allowed'] ?? 0),
+                'total_blocked' => (int)($dash_data['total_attacks'] ?? 0),
+                'requests_today' => (int)($dash_data['today_requests'] ?? 0),
+                'blocked_today' => (int)($dash_data['today_attacks'] ?? 0),
+                'allowed_today' => (int)($dash_data['today_allowed'] ?? 0),
+                'daily_counts' => $dash_data['daily_map'] ?? [],
+                'daily_labels' => $dash_data['daily_labels'] ?? [],
+                'daily_series' => $dash_data['daily_counts'] ?? [],
+                'hourly_total' => $dash_data['hourly_total'] ?? [],
+                'attack_types' => $dash_data['attack_types_labels'] ?? [],
+                'attack_counts' => $dash_data['attack_types_counts'] ?? [],
+                'top_attackers' => $dash_data['top_attackers'] ?? [],
+                'recent_logs' => $dash_data['recent_logs'] ?? [],
             ];
 
             if (!headers_sent()) {
@@ -838,14 +869,27 @@ add_action('rest_api_init', function() {
         'callback' => function($request) {
             $params = array_merge($request->get_query_params(), (array)$request->get_json_params());
             $days = sanitize_text_field($params['days'] ?? 'all');
+            $type = sanitize_text_field($params['type'] ?? $params['stat_type'] ?? '');
             $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
             if ($logger) {
-                $logger->clear_logs($days);
+                if ($type === 'total_requests') {
+                    $logger->clean_requests();
+                } elseif ($type === 'total_blocked') {
+                    $logger->clean_threats();
+                } elseif ($type === 'requests_today' || $days === 'today') {
+                    $logger->clear_logs('today');
+                } else {
+                    $logger->clear_logs($days);
+                }
             }
+            $fresh = $logger ? $logger->get_dashboard_data() : [];
             return new WP_REST_Response([
                 'status' => 'success',
                 'message' => 'WordPress local request and attack logs successfully purged',
-                'days' => $days
+                'days' => $days,
+                'type' => $type,
+                'total_requests' => (int)($fresh['total_requests'] ?? 0),
+                'total_blocked' => (int)($fresh['total_attacks'] ?? 0),
             ], 200);
         },
         'permission_callback' => '__return_true'

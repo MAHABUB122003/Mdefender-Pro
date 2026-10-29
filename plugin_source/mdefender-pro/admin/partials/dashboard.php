@@ -24,6 +24,7 @@ $user_initials = $current_user && $current_user->display_name ? strtoupper(subst
 $total_requests_real = isset($dash_data['total_requests']) ? (int)$dash_data['total_requests'] : 0;
 $total_attacks_real = isset($dash_data['total_attacks']) ? (int)$dash_data['total_attacks'] : 0;
 $total_blacklisted_real = isset($dash_data['total_blacklisted']) ? (int)$dash_data['total_blacklisted'] : 0;
+$total_allowed_real = isset($dash_data['total_allowed']) ? (int)$dash_data['total_allowed'] : max(0, $total_requests_real - $total_attacks_real);
 
 if ($total_requests_real >= 1000000) {
     $formatted_requests = round($total_requests_real / 1000000, 2) . 'M';
@@ -262,7 +263,7 @@ if (!function_exists('waf_mdf_country_flag')) {
                 <span class="mdf-card-metric-num" id="statTotalRequests"><?php echo esc_html($formatted_requests); ?></span>
                 <span class="mdf-badge-trend mdf-trend-green" id="trendRequests"><?php echo $total_requests_real > 0 ? '&uarr; Live' : '0%'; ?></span>
             </div>
-            <span class="mdf-card-metric-sub" id="subTotalRequests"><?php echo $total_requests_real > 0 ? 'Boundary traffic inspected' : 'Awaiting incoming network traffic'; ?></span>
+            <span class="mdf-card-metric-sub" id="subTotalRequests"><?php echo $total_requests_real > 0 ? (number_format($total_allowed_real) . ' allowed &bull; ' . number_format($total_attacks_real) . ' blocked') : 'Awaiting incoming network traffic'; ?></span>
             <div class="mdf-sparkline-area">
                 <canvas id="sparkline1" width="200" height="40" class="mdf-spark-svg"></canvas>
             </div>
