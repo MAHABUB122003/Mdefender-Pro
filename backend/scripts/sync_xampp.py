@@ -17,3 +17,4 @@ for root, dirs, files in os.walk(src):
         count += 1
 
 print(f"Successfully copied {count} files to XAMPP WordPress plugin directory.")
+

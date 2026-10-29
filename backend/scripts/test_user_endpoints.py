@@ -41,3 +41,4 @@ print(f"\nUser Blacklist count: {len(bl_res.json() if isinstance(bl_res.json(), 
 # 5. Test Country Blocks GET
 cb_res = requests.get('http://localhost:8000/api/user/country-blocks', headers=headers)
 print(f"User Country Blocks count: {len(cb_res.json().get('country_blocks', []))}")
+

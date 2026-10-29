@@ -823,9 +823,48 @@ class UserAPI:
         return None
 
     def _get_fallback_dashboard_metrics(self, user_id_str, target_site_ids=None, target_domains=None):
-        """Query MongoDB for genuine telemetry when live site sync is unreachable (e.g. localhost, offline, firewall)."""
-        conditions = []
+        """Query ephemeral live stream buffer or MongoDB for genuine telemetry when live site sync is unreachable."""
         user_id_obj = self._resolve_id(user_id_str)
+
+        # 1. Check Ephemeral Live Stream Buffer (Zero-Bloat real-time storage)
+        live_docs = []
+        if target_site_ids:
+            target_ids_str = [str(tid) for tid in target_site_ids if tid]
+            live_docs = list(self.db.live_site_events.find({'website_id': {'$in': target_ids_str}}))
+        else:
+            live_docs = list(self.db.live_site_events.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+
+        all_live = []
+        for ld in live_docs:
+            all_live.extend(ld.get('events', []))
+
+        if all_live:
+            all_live.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
+            logs = all_live[:25]
+            att_counts = {}
+            type_counts = {}
+            for ev in all_live:
+                if str(ev.get('status', '')).lower() in ('block', 'blocked') or str(ev.get('action', '')).lower() in ('block', 'blocked'):
+                    ip_k = ev.get('ip') or ev.get('source_ip')
+                    if ip_k:
+                        att_counts[ip_k] = att_counts.get(ip_k, 0) + 1
+                    at_k = ev.get('attack_type')
+                    if at_k and at_k not in ('Clean Traffic', 'Allowed Request'):
+                        type_counts[at_k] = type_counts.get(at_k, 0) + 1
+            top_attackers = [{'ip': k, 'count': v} for k, v in sorted(att_counts.items(), key=lambda x: x[1], reverse=True)[:10]]
+            attack_types = list(type_counts.keys())[:8]
+            attack_counts = [type_counts[k] for k in attack_types]
+            daily_requests = [0] * 7
+            daily_requests[6] = len(all_live)
+            return {
+                'logs': logs,
+                'top_attackers': top_attackers,
+                'attack_types': attack_types,
+                'attack_counts': attack_counts,
+                'daily_requests': daily_requests
+            }
+
+        conditions = []
         if target_site_ids or target_domains:
             or_conds = []
             if target_site_ids:
@@ -1662,6 +1701,49 @@ class UserAPI:
                 conditions.append({'timestamp': time_filter})
 
         final_query = {'$and': conditions} if len(conditions) > 1 else (conditions[0] if conditions else {})
+
+        # 1. Check Ephemeral Live Stream Buffer (Zero MongoDB Bloat Real-Time Stream)
+        live_stream_docs = []
+        if website_id and website_id != 'all':
+            target_ids_str = [str(tid) for tid in target_ids if tid]
+            live_stream_docs = list(self.db.live_site_events.find({'website_id': {'$in': target_ids_str}}))
+        else:
+            live_stream_docs = list(self.db.live_site_events.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
+            if not live_stream_docs and user_site_ids:
+                live_stream_docs = list(self.db.live_site_events.find({'website_id': {'$in': user_site_ids}}))
+
+        all_live_events = []
+        for l_doc in live_stream_docs:
+            for ev in l_doc.get('events', []):
+                if status_filter:
+                    st = str(ev.get('status') or ev.get('action') or '').lower()
+                    if status_filter in ('block', 'blocked') and st not in ('block', 'blocked'):
+                        continue
+                    if status_filter in ('allow', 'allowed') and st not in ('allow', 'allowed'):
+                        continue
+                if attack_type and ev.get('attack_type') != attack_type:
+                    continue
+                if ip_filter and (ev.get('ip') != ip_filter and ev.get('source_ip') != ip_filter):
+                    continue
+                if search:
+                    s_low = search.lower()
+                    if s_low not in str(ev.get('ip', '')).lower() and s_low not in str(ev.get('url', '')).lower() and s_low not in str(ev.get('attack_type', '')).lower():
+                        continue
+                all_live_events.append(ev)
+
+        if all_live_events:
+            all_live_events.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
+            tot = len(all_live_events)
+            start_idx = (page - 1) * per_page
+            paged_logs = all_live_events[start_idx:start_idx + per_page]
+            return _return_cached({
+                'total': tot,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': max(1, (tot + per_page - 1) // per_page),
+                'logs': paged_logs,
+                'source': 'live_stream_buffer'
+            })
 
         # Primary source: security_events (contains all requests: normal & blocked)
         total = self.db.security_events.count_documents(final_query)

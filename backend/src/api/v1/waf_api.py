@@ -398,8 +398,7 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
     if not events:
         return success({"received": 0})
 
-    security_docs = []
-    attack_docs = []
+    live_stream_events = []
     total_reqs = 0
     total_blocks = 0
     now = datetime.now()
@@ -472,61 +471,74 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
             "country": cname,
         }
 
-        # Zero-Bloat SaaS Architecture: Only save genuine attack and threat events in MongoDB.
-        # Routine benign requests are accounted for in atomic telemetry counters without wasting gigabytes of disk.
-        if is_blocked or attack_type:
-            security_docs.append(doc)
-            attack_docs.append({
-                "user_id": user_id_str,
-                "website_id": website_id_str,
-                "domain": domain,
-                "ip": ip,
-                "url": url,
-                "attack_type": attack_type or "Suspicious Request",
-                "confidence": ev.get("confidence", 0.95),
-                "status": "blocked",
-                "timestamp": ev_time,
-                "method": method,
-                "user_agent": ev.get("user_agent", ""),
-                "rule_matched": rule_matched or "WAF Block",
-                "reference_id": ref_id,
-                "country_code": cc,
-                "country": cname,
-            })
+        # Zero-Bloat Real-Time Live Architecture:
+        # Buffer incoming event into ephemeral live stream buffer
+        ts_str = ev_time.strftime("%Y-%m-%d %H:%M:%S") if hasattr(ev_time, "strftime") else str(ev_time)
+        live_stream_events.append({
+            "id": ref_id or f"ev_{int(now.timestamp())}_{total_reqs}",
+            "ip": ip,
+            "url": url,
+            "domain": domain,
+            "attack_type": attack_type or ("Blocked Attack" if is_blocked else "Clean Traffic"),
+            "confidence": float(ev.get("confidence") or (0.95 if is_blocked else 0.0)),
+            "status": "blocked" if is_blocked else "allowed",
+            "action": "blocked" if is_blocked else "allowed",
+            "timestamp": ts_str,
+            "method": method,
+            "user_agent": ev.get("user_agent", ""),
+            "rule_matched": rule_matched or ("Blocked Attack" if is_blocked else "Clean Traffic"),
+            "reference_id": ref_id or "",
+            "country_code": cc,
+            "country": cname,
+        })
 
-            # Record attack and auto-block repeating offenders (only for genuine payload threats)
-            attack_type_str = str(attack_type or "")
-            non_threat_types = ("Blacklisted IP", "Country Blocked", "Country Block", "Whitelisted IP", "User Authentication Success", "Successful Login", "None", "")
-            if is_blocked and ip and ip not in ("127.0.0.1", "::1", "localhost", "0.0.0.0") and attack_type_str not in non_threat_types:
-                try:
-                    ab.record_attack(
+        # Record attack and auto-block repeating offenders (only for genuine payload threats)
+        attack_type_str = str(attack_type or "")
+        non_threat_types = ("Blacklisted IP", "Country Blocked", "Country Block", "Whitelisted IP", "User Authentication Success", "Successful Login", "None", "")
+        if is_blocked and ip and ip not in ("127.0.0.1", "::1", "localhost", "0.0.0.0") and attack_type_str not in non_threat_types:
+            try:
+                ab.record_attack(
+                    ip=ip,
+                    attack_type=attack_type_str or "WordPress WAF Block",
+                    url=url,
+                    user_id=user_id_str,
+                    website_id=website_id_str
+                )
+                if auto_block_enabled:
+                    ab.check_and_auto_block(
                         ip=ip,
-                        attack_type=attack_type_str or "WordPress WAF Block",
-                        url=url,
+                        threshold=auto_block_thresh,
+                        window_hours=auto_block_win_h,
+                        duration_hours=auto_block_dur_h,
                         user_id=user_id_str,
                         website_id=website_id_str
                     )
-                    if auto_block_enabled:
-                        ab.check_and_auto_block(
-                            ip=ip,
-                            threshold=auto_block_thresh,
-                            window_hours=auto_block_win_h,
-                            duration_hours=auto_block_dur_h,
-                            user_id=user_id_str,
-                            website_id=website_id_str
-                        )
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
-    if security_docs:
+    # Ephemeral Live Stream Ring Buffer: Strictly capped to latest 50 events per website.
+    # Zero persistent MongoDB log accumulation! Customer WordPress site stores full historical archive in MySQL.
+    if live_stream_events:
         try:
-            db.security_events.insert_many(security_docs, ordered=False)
-        except Exception:
-            pass
-
-    if attack_docs:
-        try:
-            db.attacks.insert_many(attack_docs, ordered=False)
+            db.live_site_events.update_one(
+                {"website_id": website_id_str},
+                {
+                    "$set": {
+                        "website_id": website_id_str,
+                        "user_id": user_id_str,
+                        "domain": domain,
+                        "updated_at": now
+                    },
+                    "$push": {
+                        "events": {
+                            "$each": live_stream_events,
+                            "$sort": {"timestamp": -1},
+                            "$slice": 50
+                        }
+                    }
+                },
+                upsert=True
+            )
         except Exception:
             pass
 

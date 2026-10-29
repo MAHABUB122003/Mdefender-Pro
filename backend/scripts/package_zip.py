@@ -30,3 +30,4 @@ for t in targets:
 
 os.remove(temp_zip)
 print("Plugin packaging complete!")
+

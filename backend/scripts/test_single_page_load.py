@@ -23,3 +23,4 @@ print(f"Loaded page: HTTP {res.status_code}")
 after = get_db_counts()
 print(f"After load: allowed requests = {after['requests']}, attacks = {after['attacks']}")
 print(f"Difference: +{after['requests'] - before['requests']} allowed requests! (Expected exactly +1)")
+

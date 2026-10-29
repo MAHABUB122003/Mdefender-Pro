@@ -29,3 +29,4 @@ after = get_db_counts()
 print(f"Before: requests={before['requests']}")
 print(f"After internal AJAX calls: requests={after['requests']}")
 print(f"Difference: +{after['requests'] - before['requests']} (Expected 0 since internal AJAX is filtered out!)")
+

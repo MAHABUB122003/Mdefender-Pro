@@ -21,3 +21,4 @@ res_attack = requests.get('http://localhost/mahabub/?waf_test=<script>alert("hac
 print(f"\nMalicious Attack test: HTTP {res_attack.status_code}")
 has_xss = 'XSS' in res_attack.text or 'Script Tag' in res_attack.text or 'Access Denied' in res_attack.text
 print(f"Attack renders Threat Blocked page: {has_xss}")
+
