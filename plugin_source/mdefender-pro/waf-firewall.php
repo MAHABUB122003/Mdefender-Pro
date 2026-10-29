@@ -1234,14 +1234,23 @@ function waf_fw_analyze_request() {
         }
     }
 
-    // Intercept hosting administration & cPanel redirect probes immediately
+    // Intercept hosting administration & cPanel redirect probes immediately (Port 2082/2083 & /cpanel)
+    $server_port = (int)($_SERVER['SERVER_PORT'] ?? 80);
+    $host_hdr = $_SERVER['HTTP_HOST'] ?? '';
     $req_uri = $_SERVER['REQUEST_URI'] ?? '';
-    if (preg_match('#^/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $req_uri)) {
+    $query_str = $_SERVER['QUERY_STRING'] ?? '';
+    $is_cpanel_probe = (
+        in_array($server_port, [2082, 2083, 2086, 2087, 2095, 2096], true) ||
+        preg_match('/:(?:2082|2083|2086|2087|2095|2096)(?:$|\/)/', $host_hdr) ||
+        preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $req_uri) ||
+        preg_match('#(?:^|&)(?:cpanel|whm|webmail|2082|2083)=?#i', $query_str)
+    );
+    if ($is_cpanel_probe) {
         $GLOBALS['waf_fw_analyzed'] = true;
         if ($engine) {
             $client_ip = $engine->get_client_ip();
             if (class_exists('WAF_FW_IP_Filter')) {
-                WAF_FW_IP_Filter::instance()->add_to_blacklist($client_ip, 'Hosting control panel probe (/cpanel or port redirect)');
+                WAF_FW_IP_Filter::instance()->add_to_blacklist($client_ip, 'Hosting control panel probe (/cpanel or port 2083 redirect)');
             }
         }
         include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';

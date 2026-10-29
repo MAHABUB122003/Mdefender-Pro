@@ -350,8 +350,23 @@ async def waf_self_protection_middleware(request: Request, call_next):
         
     client_ip = get_client_ip(request)
     query_params = dict(request.query_params)
-    raw_host = request.headers.get("host", "").split(":")[0].strip().lower()
+    full_host = request.headers.get("host", "").strip().lower()
+    raw_host = full_host.split(":")[0].strip().lower()
     clean_host = raw_host[4:] if raw_host.startswith("www.") else raw_host
+
+    # Stealth Guard: Intercept cPanel / WHM / Port 2082/2083 probes before proxying
+    is_cpanel_probe = (
+        any(f":{p}" in full_host for p in ["2082", "2083", "2086", "2087", "2095", "2096"])
+        or (request.url.port in [2082, 2083, 2086, 2087, 2095, 2096])
+        or any(path.lower().startswith(cp) for cp in ["/cpanel", "/whm", "/webmail", "/cpsrvd", "/kpanel", "/2082", "/2083"])
+    )
+    if is_cpanel_probe:
+        from src.utils.block_page import render_dead_network_page
+        return HTMLResponse(
+            content=render_dead_network_page(clean_host),
+            status_code=502,
+            headers={"Connection": "close", "Cache-Control": "no-cache, no-store"}
+        )
 
     # Fast in-memory lookup for registered site & origin configuration (30s TTL, 0.001ms RAM lookup)
     now_ts = datetime.now().timestamp()
@@ -589,6 +604,16 @@ async def waf_self_protection_middleware(request: Request, call_next):
                             yield chunk
                     finally:
                         await origin_resp.aclose()
+
+                # Shield origin cPanel redirects: Never expose :2083 or /cpanel to visitors
+                location_hdr = origin_resp.headers.get("location", "")
+                if location_hdr and any(cp in location_hdr.lower() for cp in [":2082", ":2083", ":2086", ":2087", ":2095", ":2096", "/cpanel", "/whm"]):
+                    from src.utils.block_page import render_dead_network_page
+                    return HTMLResponse(
+                        content=render_dead_network_page(clean_host),
+                        status_code=502,
+                        headers={"Connection": "close", "Cache-Control": "no-cache, no-store"}
+                    )
 
                 response = StreamingResponse(
                     stream_generator(),

@@ -320,12 +320,22 @@ if (!$is_blocked) {
         }
     }
 
-    // Direct cPanel / Hosting Administration Probe Interception
-    if (!$is_blocked && preg_match('#^/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $uri)) {
+    // Direct cPanel / Hosting Administration & Port 2082/2083 Probe Interception
+    $server_port = (int)($_SERVER['SERVER_PORT'] ?? 80);
+    $host_hdr = $_SERVER['HTTP_HOST'] ?? '';
+    $uri_check = $_SERVER['REQUEST_URI'] ?? '';
+    $query_check = $_SERVER['QUERY_STRING'] ?? '';
+    $is_cpanel_probe = (
+        in_array($server_port, [2082, 2083, 2086, 2087, 2095, 2096], true) ||
+        preg_match('/:(?:2082|2083|2086|2087|2095|2096)(?:$|\/)/', $host_hdr) ||
+        preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $uri_check) ||
+        preg_match('#(?:^|&)(?:cpanel|whm|webmail|2082|2083)=?#i', $query_check)
+    );
+    if (!$is_blocked && $is_cpanel_probe) {
         $is_blocked = true;
         $attack_name = 'Server Admin Probe';
         $rule_name = 'Pre-Flight WAAP: Hosting Control Panel & Port Guard';
-        $block_reason = 'Direct probing of hosting control panel (cPanel/WHM/Webmail) intercepted by Pre-Flight WAAP.';
+        $block_reason = 'Direct probing of hosting control panel (cPanel/WHM/Port 2083) intercepted by Pre-Flight WAAP.';
     }
 }
 
