@@ -114,43 +114,25 @@ class MongoDB:
             except Exception:
                 pass
 
-        _idx('attacks', 'timestamp')
-        _idx('attacks', 'ip')
-        _idx('attacks', 'attack_type')
-        _idx('attacks', 'user_id')
-        _idx('attack_attempts', 'timestamp')
-        _idx('attack_attempts', 'ip')
+        # Essential production indexes (zero-bloat: visitor/attack logs are stored in customer WordPress MySQL)
         _idx('blacklist', 'ip')
         _idx('clients', 'api_key')
         _idx('clients', 'domain')
         _idx('auto_blocks', 'ip')
-        _idx('finance_transactions', 'date')
-        _idx('finance_transactions', 'bank_account_id')
-        _idx('finance_transactions', 'type')
-        _idx('bank_accounts', 'account_number')
-        _idx('notices', 'created_at')
         _idx('malware_scans', 'timestamp')
         _idx('malware_scans', 'verdict')
         _idx('malware_scans', 'domain')
         _idx('websites', 'user_id')
         _idx('websites', [('user_id', 1), ('domain', 1), ('platform', 1)])
         _idx('websites', 'domain')
+        _idx('wordpress_sites', 'user_id')
+        _idx('wordpress_sites', 'domain')
+        _idx('wordpress_sites', 'api_key')
         _idx('api_keys', 'user_id')
         _idx('api_keys', 'key_hash')
         _idx('api_keys', 'website_id')
         _idx('subscriptions', 'user_id')
-        _idx('waf_events', 'user_id')
-        _idx('waf_events', 'website_id')
-        _idx('waf_events', 'timestamp')
-        _idx('security_events', 'user_id')
-        _idx('security_events', 'website_id')
-        _idx('security_events', 'timestamp')
-        _idx('security_events', [('user_id', 1), ('timestamp', -1)])
-        _idx('security_events', [('website_id', 1), ('timestamp', -1)])
-        _idx('security_events', [('action', 1), ('timestamp', -1)])
-        _idx('attacks', [('user_id', 1), ('timestamp', -1)])
-        _idx('attacks', [('website_id', 1), ('timestamp', -1)])
-        for coll in ('entitlements', 'notifications', 'usage_metrics', 'paddle_transactions'):
+        for coll in ('entitlements', 'notifications', 'usage_metrics'):
             _idx(coll, 'user_id')
         _idx('users', 'email', sparse=True)
         _idx('users', 'username', sparse=True)
@@ -171,20 +153,9 @@ class MongoDB:
         _idx('audit_logs', 'user_id')
         _idx('audit_logs', 'timestamp')
         _idx('audit_logs', 'action')
-        _idx('security_events', 'event_type')
         _idx('mfa_secrets', 'user_id')
 
-    @property
-    def attacks(self):
-        return self._db['attacks'] if self._db is not None else None
 
-    @property
-    def attack_attempts(self):
-        return self._db['attack_attempts'] if self._db is not None else None
-
-    @property
-    def requests(self):
-        return self._db['requests'] if self._db is not None else None
 
     @property
     def blacklist(self):

@@ -2,7 +2,7 @@
 
 > **File:** `AI.md`  
 > **Last Updated:** October 2026  
-> **Purpose:** এই ফাইলটি যে কোনো AI অ্যাসিস্ট্যান্ট বা ডেভেলপারের জন্য প্রোজেক্টের পূর্ণাঙ্গ রেফারেন্স হিসেবে তৈরি করা হয়েছে। পরবর্তীতে যে কোনো সেশনে কাজ শুরু করার সময় এই ফাইলটি পড়লে কোনো পূর্ববর্তী তথ্য নষ্ট হবে না এবং সরাসরি কাজ শুরু করা যাবে।
+> **Purpose:** এই ফাইলটি Antigravity AI অ্যাসিস্ট্যান্ট বা যেকোনো ডেভেলপারের জন্য MDefender Pro প্রোজেক্টের পূর্ণাঙ্গ ও অপরিবর্তনীয় আর্কিটেকচারাল গাইড হিসেবে তৈরি করা হয়েছে। পরবর্তীতে যে কোনো নতুন চ্যাট বা সেশনে কাজ শুরু করার সময় এই ফাইলটি রেফারেন্স হিসেবে ব্যবহার করতে হবে যাতে কোনো পূর্ববর্তী আর্কিটেকচারাল নিয়ম বা রিয়েল-টাইম ফাংশন নষ্ট না হয়।
 
 ---
 
@@ -10,144 +10,144 @@
 
 **MDefender Pro** হলো একটি এন্টারপ্রাইজ-গ্রেড নেক্সট-জেনারেশন ক্লাউড WAF (Web Application Firewall), অ্যান্টি-DDoS, DNS জোন ম্যানেজার এবং ওয়ার্ডপ্রেস সাইবার সিকিউরিটি প্ল্যাটফর্ম।
 
-### মূল ফিচারসমূহ:
-1. **Cloud WAF & DNS Zone Protection:** ডোমেন-ভিত্তিক প্রটেকশন (Cloudflare স্টাইল, কিন্তু নিজস্ব MDefender Cyber Blue ব্র্যান্ডিং)। ব্যবহারকারী ডোমেন যোগ করলে পাবলিক DoH দিয়ে রিয়েল DNS রেকর্ড খুঁজে বের করে এবং ট্রাফিক ফিল্টার করে।
-2. **WordPress Security Plugin (`mdefender-pro`):** সরাসরি ওয়ার্ডপ্রেস সাইটে প্লাগইন ইনস্টল করে WAF, IP ব্ল্যাকলিস্ট/হোয়াইটলিস্ট, ম্যালওয়্যার স্ক্যানার এবং রিয়েল-টাইম থ্রেট ব্লকিং কার্যকর করা।
-3. **AI/ML WAF Engine:** মেশিন লার্নিং মডেল (RandomForest / GradientBoosting) দিয়ে SQL Injection (SQLi), Cross-Site Scripting (XSS), Command Injection, Path Traversal শনাক্তকরণ।
-4. **PHP Malware Detection Engine:** ওয়ার্ডপ্রেস থিম/প্লাগইন ফাইলে ব্যাকডোর, ওয়েবশেল ও ম্যালিসিয়াস কোড শনাক্ত করার ML মডেল।
-5. **Real-time DDoS Shield:** রিকোয়েস্ট রেট লিমিটিং, আচরণ বিশ্লেষণ ও অটোমেটিক ব্লকিং।
+### মূল আর্কিটেকচারাল পিলার:
+1. **Cloud WAF & Central Dashboard:** সেন্ট্রাল কন্ট্রোল প্যানেল (`https://mdefender-pro.crafix.tech`) যেখান থেকে ব্যবহারকারীরা তাদের একাধিক ওয়েবসাইট যুক্ত করতে পারেন, ফ্লিট ম্যানেজমেন্ট করতে পারেন, রুলস কনফিগার করতে পারেন এবং লাইভ ট্রাফিক পর্যবেক্ষণ করতে পারেন।
+2. **WordPress Security Plugin (`mdefender-pro`):** গ্রাহকের নিজস্ব ওয়ার্ডপ্রেস সাইটে সক্রিয় থাকা হাইপার-ফাস্ট প্লাগইন যা প্রতিটি ইনকামিং রিকোয়েস্ট লোকাল মেমোরি ও রুলস দিয়ে < 0.1ms সময়ে পরীক্ষা করে এবং ট্রাফিকের হিসাব সংরক্ষণ করে।
+3. **AI/ML Threat Inspection:** Random Forest / Gradient Boosting ভিত্তিক ক্লাউড ও লোকাল মডেল যা SQLi, XSS, RCE, Path Traversal ও ওয়েবশেল/ম্যালওয়্যার শনাক্ত করে।
 
 ---
 
-## ২. লাইভ পরিবেশ ও ডিপ্লয়মেন্ট স্ট্যাটাস (Live Deployments)
+## ২. লাইভ পরিবেশ ও ডিপ্লয়মেন্ট স্ট্যাটাস (Live Environments)
 
-| পরিবেশ (Environment) | লিঙ্ক / আইপি | বিবরণ |
+| পরিবেশ (Environment) | লিঙ্ক / আইপি / পাথ | বিবরণ |
 | :--- | :--- | :--- |
-| **Production VPS** | `217.15.170.82` | Ubuntu/Debian VPS, অবস্থান: `/var/www/Mdefender-Pro` |
-| **Live Web App** | `https://217.15.170.82.sslip.io/` | Nginx রিভার্স প্রক্সি + Let's Encrypt SSL সহ লাইভ চলছে |
-| **Local WordPress Testbed** | `http://localhost/mahabub` | Windows XAMPP (Apache + MySQL), PHP 8.0+ |
-| **টেস্ট ডোমেন (Verified)** | `mahabubur.shop` | Origin IP: `49.12.82.48`, NS: `ns1/ns2.procloudify.com` |
+| **Live VPS (Production)** | `srv1732297:/var/www/Mdefender-Pro` | উবুন্টু VPS, ডকার কম্পোজ (`docker compose restart mdefender-app`) |
+| **Production Web App** | `https://mdefender-pro.crafix.tech` | Nginx + SSL + FastAPI Backend (Port 8000) + React SPA Frontend |
+| **Test WordPress Site** | `https://mahabubur.shop` | LiteSpeed সার্ভার, প্লাগইন কানেক্টেড লাইভ টেস্ট নোড |
+| **Local WordPress Testbed** | `http://localhost/mahabub` | Windows XAMPP (Apache + MySQL), `C:\xampp\htdocs\mahabub` |
 
 ---
 
-## ৩. টেকনোলজি স্ট্যাক (Tech Stack)
+## ৩. অপরিবর্তনীয় মূল আর্কিটেকচারাল নীতিমালা (Core Immutable Rules)
 
-### ব্যাকএন্ড (Backend)
-- **Language & Framework:** Python 3.10+, FastAPI, Uvicorn ASGI
-- **Database Driver:** PyMongo / Motor (`backend/src/database/mongodb_connection.py`)
-- **Machine Learning:** Scikit-learn, Joblib, NumPy, Pandas
-- **DNS Engine:** `dnspython`, Multi-provider Public DNS-over-HTTPS (Google & Cloudflare DoH APIs)
+যেকোনো কোড পরিবর্তন করার সময় নিচের ৫টি গোল্ডেন রুলস অবশ্যই অক্ষুণ্ণ রাখতে হবে:
 
-### ফ্রন্টএন্ড (Frontend)
-- **Framework:** React 18, Vite, React Router v6
-- **UI & Icons:** Vanilla CSS / Tailwind Utilities, Lucide React Icons
-- **Branding Tokens:** MDefender Cyber Blue (`#2563eb`), Dark Navy Indigo (`#0f172a`, `#1e293b`), Emerald Active (`#10b981`)
-- **API Base:** `VITE_API_BASE` (লোকালে `http://localhost:8000/api/v1` অথবা প্রোডাকশনে `/api/v1`)
+### ১. জিরো মঙ্গোডিবি ট্রাফিক/অ্যাটাক লগ স্টোরেজ (Zero MongoDB Log Storage Rule)
+- সেন্ট্রাল মঙ্গোডিবিতে কোনো ট্রাফিক বা অ্যাটাক ইভেন্ট লগ (`security_events`, `attacks`, `requests`, `live_site_events`, `waf_events`) **কখনোই স্থায়ীভাবে জমা হবে না**।
+- গ্রাহকের ওয়ার্ডপ্রেস সাইটের নিজস্ব MySQL ডেটাবেজ টেবিল (`wp_waf_attacks`) হলো হিস্টোরিকাল সিকিউরিটি অডিটের একমাত্র সত্য উৎস (Source of Truth)।
+- মঙ্গোডিবিতে শুধু ব্যবহারকারীর অ্যাকাউন্ট, ওয়েবসাইট মেটাডেটা, এপিআই কী, কাস্টম রুলস, ম্যালওয়্যার স্ক্যান সামারি এবং লাইভ এগ্রিগেটেড কাউন্টার (`total_requests`, `requests_today`, `total_blocked`, `blocked_today`) সংরক্ষিত থাকবে। এর ফলে মঙ্গোডিবিতে কোনো ডাটা ব্লোট হয় না এবং কোনো গ্রাহক প্লাগইন আনইনস্টল করলে সেন্ট্রাল সার্ভারে অপ্রয়োজনীয় ডাটা জমে থাকে না।
 
-### ওয়ার্ডপ্রেস প্লাগইন ইকোসিস্টেম (`plugin_source/`)
-MDefender Pro-এর ওয়ার্ডপ্রেস সিকিউরিটি আর্কিটেকচার ৪টি স্বাধীন প্লাগইনে বিভক্ত (বিস্তারিত দেখুন: `PLUGIN_ARCHITECTURE.md`):
-1. **Plugin 01 — `mdefender-pro-security` (Protect):** WAF, Brute Force, Login Security, Rate Limiter, IP Rules, Live Request Blocking।
-2. **Plugin 02 — `mdefender-pro-scanner` (Detect):** Malware Scanning, Core Integrity, Vulnerability Assessment, Obfuscated PHP Analysis।
-3. **Plugin 03 — `mdefender-pro-response` (Remediate):** Quarantine Vault, Cleanup Workflow, Rollback & Backups, Incident Timeline, Recovery Verification।
-4. **Plugin 04 — `mdefender-pro-threat-intelligence` (Understand):** Threat Feeds, IP Reputation Lookups, IOC Matching, Campaign Intelligence।
-- **৪টি এডিশন:** Free (WordPress.org), Developer Go, Enterprise Pro, Dedicated Enterprise।
-- **বিল্ড ও প্যাকেজিং:** `scripts/build_all_plugins.py` দিয়ে ৪টি প্লাগইনের ZIP তৈরি হয় (`downloads/`)।
+### ২. লাইভ ব্রডকাস্ট স্ট্রিম আর্কিটেকচার (Live Stream Broadcast Dashboard)
+- ইউজার ড্যাশবোর্ডের লগস পেজ (`/user/logs`) কোনো সেন্ট্রাল ডাটাবেজ থেকে ডাটা নেয় না; এটি সরাসরি কানেক্টেড ওয়ার্ডপ্রেস সাইট থেকে অন-ডিমান্ড প্রক্সি রিকোয়েস্ট পাঠিয়ে (`/?waf_cloud_sync=1&action=get_logs`) লাইভ স্ট্রিম করে লগ প্রদর্শন করে।
+- ওয়ার্ডপ্রেস সাইট ডিসকানেক্ট থাকলে বা ০ লগস থাকলে ড্যাশবোর্ডে **০ টি লগ** দেখাবে। কোনো পুরনো ভূতুড়ে (ghost) মঙ্গোডিবি লগ প্রদর্শিত হবে না।
+
+### ৩. স্টিলথ "ওয়েবসাইট ডাউন" স্ক্রিন (HTTP 502 Bad Gateway / ERR_CONNECTION_CLOSED)
+- যখন কোনো আইপি ব্ল্যাকলিস্ট করা হয় অথবা কোনো দেশ (Geo-Blocking) নিষিদ্ধ করা হয়, তখন সেই ভিজিটর বা অ্যাটাকারকে **কখনোই ৪০৩ এক্সেস ডিনাইড বা MDefender ব্লক পেজ দেখানো যাবে না**।
+- তাকে সবসময় খাঁটি ব্রাউজার অফলাইন নেটওয়ার্ক এরর পেজ দেখাতে হবে:
+  > **"This site can’t be reached — {domain} unexpectedly closed the connection. / ERR_CONNECTION_CLOSED"**
+  - স্ট্যাটাস কোড: `HTTP/1.1 502 Bad Gateway`
+  - হেডার: `Connection: close`, `Cache-Control: no-cache, no-store`
+  - ব্র্যান্ডিং: **Zero MDefender branding**. ভিজিটর মনে করবে ওয়েবসাইটের সার্ভার ও নেটওয়ার্ক পুরোপুরি ডাউন।
+
+### ৪. নির্ভরযোগ্য লগ পার্জ প্রটোকল (Clear Logs Protocol)
+- ড্যাশবোর্ডে "Confirm Purge / Clear Logs" চাপলে ব্যাকএন্ড থেকে কানেক্টেড ওয়ার্ডপ্রেস সাইটে `action=clear_logs` রিকোয়েস্ট যায়।
+- এটি ওয়ার্ডপ্রেসের MySQL টেবিল (`wp_waf_attacks`) ট্রাঙ্কেট করে, ড্যাশবোর্ডের সব কাউন্টার তাৎক্ষণিকভাবে রিসেট করে এবং ব্যাকএন্ডের ইন-মেমরি ক্যাশ ডিকশনারি ড্রপ করে দেয়।
+
+### ৫. লাইটস্পিড ও রিভার্স প্রক্সি অথেন্টিকেশন সেইফগার্ড (LiteSpeed Compatibility)
+- লাইভ সার্ভারে LiteSpeed, Cloudflare বা কাস্টম রিভার্স প্রক্সি প্রায়ই `Authorization: Bearer` হেডার বাদ (strip) দিয়ে দেয়।
+- তাই ব্যাকএন্ড থেকে ওয়ার্ডপ্রেসে যেকোনো সিঙ্ক বা অ্যাকশন পাঠানোর সময় সবসময় ইউআরএল কোয়েরি স্ট্রিং (`&api_key={key}&site_token={key}`) এবং JSON বডি—উভয় মাধ্যমেই ক্রেডেনশিয়াল পাঠাতে হবে।
 
 ---
 
-## ৪. ডেটাবেজ আর্কিটেকচার ও কালেকশন (Database Collections)
+## ৪. ডেটাবেজ আর্কিটেকচার (MongoDB Collections)
 
-সিস্টেমটি MongoDB 7.0 ব্যবহার করে (অফলাইন বা ব্যাকআপের জন্য `mongodb_connection.py`-তে স্বয়ংক্রিয় ইন-মেমোরি ফলব্যাক সংযুক্ত রয়েছে)।
+MDefender Pro-এর সেন্ট্রাল মঙ্গোডিবিতে শুধুমাত্র আবশ্যকীয় প্রোডাকশন কালেকশনগুলো সংরক্ষিত থাকে (মোট ২৬টি):
 
-### প্রধান MongoDB Collections:
-
-| Collection Name | ফিল্ড ও বিবরণ |
+| কালেকশন | বিবরণ |
 | :--- | :--- |
-| **`websites`** | ডোমেন এবং ক্লাউড WAF প্রোটেকশন রেকর্ড। ফিল্ড: `domain`, `name`, `status`, `nameservers`, `current_nameservers`, `plan` (Free/Go/Pro/Ultra), `created_at`, `user_id` |
-| **`dns_records`** | প্রতিটি ডোমেনের DNS রেকর্ডসমূহ। ফিল্ড: `website_id`, `domain`, `type` (A/AAAA/CNAME/MX/TXT/NS), `name`, `content`, `proxied` (boolean), `ttl` ("Auto"), `priority` |
-| **`wordpress_sites`** | প্লাগইন কানেক্টেড ওয়ার্ডপ্রেস সাইটসমূহ। ফিল্ড: `site_url`, `api_key`, `sync_status`, `wp_version`, `plugin_version`, `last_ping` |
-| **`waf_events`** | ব্লকিং ও ডিটেকশন ইভেন্ট লগ। ফিল্ড: `client_ip`, `request_method`, `path`, `attack_type`, `action` (BLOCKED/ALLOWED), `severity`, `timestamp` |
-| **`rules` / `user_rules`** | গ্লোবাল এবং কাস্টম WAF রুলস। ফিল্ড: `rule_id`, `rule_name`, `pattern`, `action`, `enabled` |
-| **`blacklist` / `whitelist`** | ম্যানুয়াল এবং অটোমেটিক আইপি তালিকা। ফিল্ড: `ip`, `reason`, `expires_at`, `created_at` |
-| **`auto_blocks`** | রেট লিমিট বা হাই-থ্রেট ডিটেকশনের কারণে সিস্টেম দ্বারা অটো-ব্লক হওয়া আইপি। |
-| **`users`** | ব্যবহারকারীর প্রোফাইল ও ক্রেডেনশিয়ালস। ফিল্ড: `email`, `hashed_password`, `role` (admin/user), `plan`, `created_at` |
-| **`sessions` / `user_tokens`** | JWT অথেন্টিকেশন ও সেশন ট্র্যাকিং। |
-| **`malware_scans` / `malware_findings`** | ওয়ার্ডপ্রেস সাইট বা আপলোড ফাইলের ম্যালওয়্যার স্ক্যান রিপোর্ট। |
-| **`subscriptions` / `payments`** | সাবস্ক্রিপশন প্ল্যান, পেমেন্ট ও ইনভয়েস ডেটা। |
+| **`users`** | ব্যবহারকারীর প্রোফাইল, ইমেইল, হ্যাশড পাসওয়ার্ড, সাবস্ক্রিপশন প্ল্যান, রোল |
+| **`user_tokens`** | অ্যাক্টিভ JWT অথেন্টিকেশন ও সেশন রিফ্রেশ টোকেন |
+| **`sessions`** | ব্রাউজার সেশন মেটাডেটা |
+| **`websites`** | রেজিস্টার্ড ওয়েবসাইট, ওনার আইডি, এপিআই কী, রেট লিমিট, রিয়েল-টাইম ট্রাফিক কাউন্টার |
+| **`wordpress_sites`** | প্লাগইন দিয়ে সংযুক্ত ওয়ার্ডপ্রেস ইনস্ট্যান্স, ভার্সন, লাস্ট পিং |
+| **`api_keys`** | ওয়েবসাইট কানেকশনের জন্য হ্যাশড এপিআই কী |
+| **`rules` / `user_rules`** | গ্লোবাল এবং ইউজার-ডিফাইন্ড কাস্টম WAF রুলস ও প্যাটার্ন |
+| **`blacklist` / `whitelist`** | ম্যানুয়ালি ও অটোমেটিক্যালি ম্যানেজড আইপি তালিকা |
+| **`auto_blocks`** | রেট লিমিট বা ম্যালিসিয়াস স্ক্যানারের কারণে স্বয়ংক্রিয়ভাবে ব্লকড আইপি |
+| **`dns_records`** | ক্লাউড WAF ও প্রক্সি ডোমেনের জন্য ম্যানেজড DNS রেকর্ডসমূহ |
+| **`malware_scans`** | ওয়ার্ডপ্রেস সাইট ও ফাইলের ম্যালওয়্যার স্ক্যান ফলাফল সামারি |
+| **`quarantine_files`** | ম্যালওয়্যার স্ক্যানে কোয়ারেন্টাইন করা ফাইলের মেটাডেটা |
+| **`audit_logs`** | ড্যাশবোর্ড ম্যানেজমেন্ট ও অ্যাডমিন অ্যাক্টিভিটি ট্রেইল |
+| **`notifications`** | ব্যবহারকারীর জন্য ইন-অ্যাপ অ্যালার্ট ও নোটিফিকেশন |
+| **`settings`** | গ্লোবাল অ্যাপ্লিকেশন কনফিগারেশন |
+| **`entitlements` / `usage_metrics`** | প্ল্যান লিমিট ও ফিচার অ্যাক্সেস ট্র্যাকিং |
+| **`mfa_secrets`** | 2FA / TOTP সিকিউরিটি কী |
+| **`failed_logins`** | ব্রুট ফোর্স লগইন প্রতিরোধ ও রেট লিমিটিং ট্র্যাকিং |
+
+*(নোট: `security_events`, `attacks`, `requests`, `live_site_events`, `waf_events`, `bank_accounts`, `finance_transactions` কালেকশনগুলো ডেপ্রিকেটেড ও ড্রপ করা হয়েছে।)*
 
 ---
 
-## ৫. মেশিন লার্নিং (AI/ML) মডেল ও ডেটাসেট
+## ৫. ডিরেক্টরি সংগঠন ও মূল ফাইলসমূহ
 
-মডেল ফাইল লোকেশন: `backend/models/`
-- **`waf_model.pkl` & `waf_category_model.pkl`**:
-  - ট্রেনিং ডেটা: `datasets/waf_requests/`
-  - ক্যাটাগরি: SQLi, XSS, Path Traversal, Command Injection, Malicious Payload, Normal.
-  - মেটাডেটা: `waf_meta.json`, `scaler.pkl`, `feature_engineer.pkl`.
-- **`malware_model.pkl` & `malware_family_model.pkl`**:
-  - ট্রেনিং ডেটা: `datasets/wordpress_malware/`
-  - ক্যাটাগরি: Webshells, eval/base64 obfuscators, PHP backdoors, crypto miners.
-  - মেটাডেটা: `malware_features.json`, `malware_meta.json`.
-
----
-
-## ৬. গুরুত্বপূর্ণ সাম্প্রতিক সমাধান ও ইমপ্লিমেন্টেশন (Recent Fixes)
-
-1. **ডোমেন অনবোর্ডিং ও DNS Discovery Engine:**
-   - ডোমেন যোগ করার সময় পূর্বে ডামি ফলব্যাক আইপি `203.0.113.10` তৈরি হতো। এটি **সম্পূর্ণ মুছে ফেলা হয়েছে**।
-   - **Multi-provider DoH Engine (`dns_zone_service.py`):** Google Public DNS (`https://dns.google/resolve`) এবং Cloudflare DoH (`https://cloudflare-dns.com/dns-query`) ব্যবহার করে পোর্ট 443 (HTTPS) দিয়ে রিয়েল পাবলিক রেকর্ড এক্সট্র্যাক্ট করে।
-   - **ক্লায়েন্ট-সাইড ব্রাউজার DoH ফলব্যাক (`DnsOnboardingModal.jsx`):** যদি কোনো কারণে VPS ব্যাকএন্ড কন্টেইনার রিস্টার্ট না থাকে বা 404 দেয়, ব্রাউজার সরাসরি গুগল DoH এপিআই কল করে তাৎক্ষণিকভাবে রিয়েল DNS রেকর্ড বের করে আনে।
-   - টেস্ট ডোমেন `mahabubur.shop`-এর সকল 7টি আসল রেকর্ড (A, CNAME, MX, TXT SPF, DMARC, NS) সঠিকভাবে লোড হচ্ছে।
-
-2. **UI & ব্র্যান্ডিং পরিচ্ছন্নতা:**
-   - ডোমেন ও ওয়ার্ডপ্রেস সম্পূর্ণ পৃথক মেনুতে বিভক্ত:
-     - `/user/domains` ➔ ক্লাউড WAF ও DNS জোন।
-     - `/user/websites` ➔ ওয়ার্ডপ্রেস প্লাগইন ও সাইট।
-   - Cloudflare-এর ট্রেডমার্ক ও কমলা ক্লাউড আইকন সম্পূর্ণ বাদ দিয়ে MDefender Pro-এর নিজস্ব Cyber Blue/Indigo স্টাইল (`#2563eb`) ও টগল সুইচ দেওয়া হয়েছে।
-   - ড্রপডাউনে মিনিটের বিভ্রান্তিকর TTL অপশন বাদ দিয়ে প্রফেশনাল `Auto` রাখা হয়েছে।
-
-3. **ওয়ার্ডপ্রেস প্লাগইন পিএইচপি 8 ফিক্স ও ভেরিফিকেশন:**
-   - `class-ip-filter.php`-এ `waf_fw_ip_whitelist` অ্যারে আসার কারণে হওয়া PHP 8.0 `TypeError` সমাধান করা হয়েছে।
-   - ব্লক পেজ টেমপ্লেট নীল সাইবার ক্রেস্টে আপডেট করা হয়েছে।
-   - লোকাল XAMPP-তে `test_full_xampp_site.php` দিয়ে টেস্ট করা হয়েছে: **14 / 14 টেস্ট সফল (100% SUCCESS)**।
-
----
-
-## ৭. কীভাবে ডোমেন এবং নেমসার্ভার VPS-এ কানেক্ট করবেন (Custom Domain & NS Setup)
-
-ব্যবহারকারী নতুন কোনো ডোমেন (যেমন: `yourdomain.com`) কিনে VPS (`217.15.170.82`)-এ যুক্ত করতে চাইলে:
-
-### ক. ডোমেন রেজিস্ট্রারে (Registrar DNS):
-1. **A Record:** `@` ➔ `217.15.170.82`
-2. **A Record:** `www` ➔ `217.15.170.82`
-3. **Glue Records (Child Nameservers):**
-   - `ns1.yourdomain.com` ➔ `217.15.170.82`
-   - `ns2.yourdomain.com` ➔ `217.15.170.82`
-
-### খ. VPS Nginx ও SSL (Certbot):
-1. `/etc/nginx/sites-available/mdefender.conf` এ ডোমেন কনফিগার করা।
-2. `sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com` চালিয়ে ফ্রি HTTPS নেওয়া।
-3. ফ্রন্টএন্ড `.env` এ `VITE_API_BASE=https://yourdomain.com/api/v1` দিয়ে রিবিল্ড করা।
+```
+Mdefender/
+├── backend/
+│   ├── main.py                          # FastAPI এন্ট্রি পয়েন্ট ও ক্লাউড প্রক্সি
+│   ├── .env                             # প্রোডাকশন এনভায়রনমেন্ট ও আর্কিটেকচারাল গাইডলাইনস
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── user_api.py              # ইউজার ড্যাশবোর্ড, লাইভ লগস স্ট্রিম ও পার্জ হ্যান্ডলার
+│   │   │   ├── waf_api.py               # ক্লাউড WAF মূল ইভালুয়েশন ও রুল চেকার
+│   │   │   └── v1/waf_api.py            # প্লাগইন এপিআই ও টেলিমেট্রি কাউন্টার এন্ডপয়েন্ট
+│   │   ├── database/
+│   │   │   └── mongodb_connection.py    # ক্লিন মঙ্গোডিবি কানেকশন ও অপ্টিমাইজড ইনডেক্স
+│   │   └── utils/
+│   │       └── block_page.py            # সাইবার ৪০৩ পেজ এবং স্টিলথ ৫০২ ডেড নেটওয়ার্ক পেজ
+│   └── scripts/
+│       ├── package_zip.py               # প্লাগইন জিপ প্যাকেজিং স্ক্রিপ্ট (সবগুলো লোকেশনে কপি করে)
+│       ├── cleanup_mongodb.py           # মঙ্গোডিবি জিরো-ব্লোট ক্লিনার ও অপ্টিমাইজার
+│       └── sync_xampp.py                # লোকাল XAMPP ওয়ার্ডপ্রেসে প্লাগইন সিঙ্ক করার স্ক্রিপ্ট
+├── plugin_source/
+│   └── mdefender-pro/
+│       ├── mdefender-pro.php            # ওয়ার্ডপ্রেস প্লাগইন মেইন ফাইল (v4.3.0)
+│       ├── waf-firewall.php             # রিয়েল-টাইম WAF ইন্টারেকশন, ক্লাউড সিঙ্ক ও রুল ইঞ্জিন
+│       ├── waf-bootstrap.php            # আর্লি এক্সিকিউশন বুটস্ট্র্যাপ
+│       ├── block-page-template.php      # ৪০৩ সাইবার থ্রেট ব্লক টেমপ্লেট
+│       ├── dead-network-template.php    # ৫০২ স্টিলথ অফলাইন ব্রাউজার এরর টেমপ্লেট
+│       └── includes/
+│           ├── class-logger.php         # ওয়ার্ডপ্রেস লোকাল MySQL লগিং ও পার্জ ইঞ্জিন
+│           ├── class-waf-engine.php     # মেমোরি রুল ও জিওআইপি ফিল্টারিং
+│           └── class-ip-filter.php      # লোকাল ও ক্লাউড আইপি ব্ল্যাকলিস্ট হ্যান্ডলার
+└── frontend/
+    ├── src/pages/UserDashboard.jsx      # সেন্ট্রাল ইউজার ড্যাশবোর্ড (থ্রেট মেট্রিক্স কার্ডস)
+    ├── src/pages/UserLogs.jsx           # লাইভ ব্রডকাস্ট স্ট্রিম ও রোলিং পার্জ ইউআই
+    └── dist/                            # প্রোডাকশন বিল্ড অ্যাসেটস
+```
 
 ---
 
-## ৮. পরবর্তী ধাপসমূহ (Next Roadmap / Pending Actions)
+## ৬. ডিপ্লয়মেন্ট ও আপডেটের কমান্ডসমূহ
 
-পরের বার যখন প্রোজেক্টে কাজ শুরু করবেন, এই ধাপগুলো অনুসরণ করুন:
+যেকোনো নতুন পরিবর্তনের পর লাইভ সার্ভার আপডেট করার ধাপ:
 
-1. [ ] **VPS ব্যাকএন্ড কন্টেইনার রিস্টার্ট (Sync Check):**
-   - VPS টার্মিনালে গিয়ে:
-     ```bash
-     cd /var/www/Mdefender-Pro
-     git pull origin main
-     docker compose restart
-     # অথবা: systemctl restart mdefender
-     ```
-   - এটি নিশ্চিত করবে যে সার্ভার-সাইড `/api/v1/websites/dns/discover` 404 ছাড়া লাইভ আছে।
-2. [ ] **কাস্টম ডোমেন বাইন্ডিং:** ব্যবহারকারী ডোমেন কিনলে তার ডোমেন নাম দিয়ে VPS Nginx কনফিগার করা।
-3. [ ] **Authoritative DNS Daemon (Port 53):** যদি অন্য গ্রাহকদের ডোমেনের নেমসার্ভার সরাসরি VPS-এ হ্যান্ডেল করতে হয়, তবে VPS-এ BIND9 বা PowerDNS অথবা কাস্টম DNS লিসেনার কনফিগার করা।
-4. [ ] **WAF Reverse Proxy Traffic Routing:** প্রক্সি অন করা রেকর্ডগুলোর ট্রাফিক MDefender রিভার্স প্রক্সি দিয়ে পাস করিয়ে অ্যাটাক ফিল্টার করা।
-
----
-
-> **AI Instruction:** এই ফাইলটি প্রোজেক্টের বর্তমান বাস্তব অবস্থার সত্য প্রতিচ্ছবি। কোনো কাজ শুরু করার আগে এই ফাইলের স্ট্যাটাস এবং Git লগ চেক করুন।
+1. **প্লাগইন রি-প্যাকেজ করা (প্রয়োজনে):**
+   ```bash
+   python backend/scripts/package_zip.py
+   ```
+2. **গিট পুশ:**
+   ```bash
+   git add .
+   git commit -m "update: ..."
+   git push origin main
+   ```
+3. **লাইভ সার্ভারে পুল ও রিস্টার্ট (`srv1732297:/var/www/Mdefender-Pro`):**
+   ```bash
+   cd /var/www/Mdefender-Pro
+   git pull origin main
+   docker compose restart mdefender-app
+   ```
+4. **মঙ্গোডিবি ক্লিনআপ রান করা (সার্ভারে অপ্রয়োজনীয় কালেকশন ড্রপ করতে):**
+   ```bash
+   docker compose exec mdefender-app python backend/scripts/cleanup_mongodb.py
+   ```
