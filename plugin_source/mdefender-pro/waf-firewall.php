@@ -1158,8 +1158,9 @@ function waf_fw_analyze_request() {
         }
     }
 
-    // Fast bypass for WordPress Heartbeat & Cron runners
-    if ((isset($_POST['action']) && $_POST['action'] === 'heartbeat') || isset($_GET['doing_wp_cron'])) {
+    // Fast bypass for WordPress Heartbeat, Cron runners, and internal MDefender admin AJAX actions
+    $act_early = $_REQUEST['action'] ?? '';
+    if ($act_early === 'heartbeat' || strpos($act_early, 'waf_fw_') === 0 || strpos($act_early, 'mdefender') !== false || (isset($_POST['action']) && $_POST['action'] === 'heartbeat') || isset($_GET['doing_wp_cron']) || (defined('DOING_CRON') && DOING_CRON)) {
         if (empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
             return;
         }
@@ -1208,7 +1209,11 @@ function waf_fw_analyze_request() {
             $GLOBALS['waf_fw_analyzed'] = true;
             $result = $engine->analyze_current_request();
             if ($result['status'] === 'blocked') {
-                include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
+                status_header(403);
+                header('HTTP/1.1 403 Forbidden', true, 403);
+                header('X-Protected-By: MDefender-Pro-WAAP');
+                header('Connection: close');
+                include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
                 exit;
             }
         }

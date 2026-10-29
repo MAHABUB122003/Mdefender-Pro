@@ -356,7 +356,7 @@ class WAF_FW_Ajax_Handler {
             'security_level' => get_option('waf_fw_security_level', 'high'),
             'confidence_threshold' => (float) get_option('waf_fw_confidence_threshold', 0.7),
             'rate_limit' => (int) get_option('waf_fw_rate_limit', 100),
-            'ml_api_url' => (strpos(get_option('waf_fw_ml_api_url', ''), 'localhost:8000') !== false || !get_option('waf_fw_ml_api_url') || get_option('waf_fw_ml_api_url') === 'http://217.15.170.82') ? 'https://mdefender-pro.crafix.tech' : get_option('waf_fw_ml_api_url'),
+            'ml_api_url' => (!get_option('waf_fw_ml_api_url') || get_option('waf_fw_ml_api_url') === 'http://217.15.170.82') ? 'https://mdefender-pro.crafix.tech' : get_option('waf_fw_ml_api_url'),
             'ml_api_key' => get_option('waf_fw_ml_api_key', ''),
             'website_id' => get_option('waf_fw_website_id', ''),
             'cloud_mode' => get_option('waf_fw_cloud_mode', 'protect'),
@@ -1176,7 +1176,7 @@ class WAF_FW_Ajax_Handler {
         $ml_client = WAF_FW_ML_Api_Client::instance();
         $status = $ml_client->get_status();
         $ml_url = get_option('waf_fw_ml_api_url', '');
-        if (empty($ml_url) || strpos($ml_url, 'localhost:8000') !== false || strpos($ml_url, '217.15.170.82') !== false || strpos($ml_url, 'onrender.com') !== false) {
+        if (empty($ml_url) || strpos($ml_url, '217.15.170.82') !== false || strpos($ml_url, 'onrender.com') !== false) {
             $ml_url = 'https://mdefender-pro.crafix.tech';
         }
         $main_api_url = get_option('waf_fw_main_waf_api_url', '');

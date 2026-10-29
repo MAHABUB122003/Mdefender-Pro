@@ -519,18 +519,23 @@ class WAF_FW_Engine {
 
     private function do_allow($ip, $url, $method, $user_agent, $message = 'Request allowed') {
         // Filter out background noise from bloating the request ledger:
-        // WP-Cron, Heartbeat, WooCommerce cart fragments, telemetry, favicon, robots, sitemap, internal sync
+        // WP-Cron, Heartbeat, WooCommerce cart fragments, telemetry, favicon, robots, sitemap, internal sync, admin-ajax
         $clean_url = strtolower($url);
+        $req_action = $_REQUEST['action'] ?? '';
         $is_internal_noise = (
-            strpos($clean_url, 'wp-cron.php') !== false || isset($_GET['doing_wp_cron']) ||
-            (isset($_POST['action']) && $_POST['action'] === 'heartbeat') ||
+            !empty($GLOBALS['waf_fw_request_logged']) ||
+            strpos($clean_url, 'wp-cron.php') !== false || isset($_GET['doing_wp_cron']) || (defined('DOING_CRON') && DOING_CRON) ||
+            $req_action === 'heartbeat' || strpos($req_action, 'waf_fw_') === 0 || strpos($req_action, 'mdefender') !== false ||
+            strpos($clean_url, 'admin-ajax.php') !== false ||
+            is_admin() ||
             strpos($clean_url, 'wc-ajax=') !== false ||
             strpos($clean_url, 'favicon.ico') !== false ||
             strpos($clean_url, 'robots.txt') !== false ||
             strpos($clean_url, 'sitemap.xml') !== false ||
             strpos($clean_url, 'waf_cloud_sync') !== false ||
+            strpos($clean_url, 'waf_sync') !== false ||
             strpos($clean_url, 'waf-fw') !== false ||
-            !empty($GLOBALS['waf_fw_request_logged'])
+            preg_match('/\.(css|js|map|jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|eot)$/i', $clean_url)
         );
 
         if (!$is_internal_noise) {
@@ -570,9 +575,11 @@ class WAF_FW_Engine {
 
     private function blocked_result($ip, $url, $method, $attack_type, $confidence, $user_agent, $referer, $body, $message, $rule_matched = '') {
         $ref_id = strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 8));
+        $country = $this->get_ip_country($ip);
         return [
             'status' => 'blocked',
             'ip' => $ip,
+            'country_code' => $country,
             'url' => $url,
             'method' => $method,
             'attack_type' => $attack_type,

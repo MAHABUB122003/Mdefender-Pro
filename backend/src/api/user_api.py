@@ -822,6 +822,119 @@ class UserAPI:
             pass
         return None
 
+    def _get_fallback_dashboard_metrics(self, user_id_str, target_site_ids=None, target_domains=None):
+        """Query MongoDB for genuine telemetry when live site sync is unreachable (e.g. localhost, offline, firewall)."""
+        conditions = []
+        user_id_obj = self._resolve_id(user_id_str)
+        if target_site_ids or target_domains:
+            or_conds = []
+            if target_site_ids:
+                or_conds.append({'website_id': {'$in': target_site_ids}})
+                or_conds.append({'website_id': {'$in': [self._resolve_id(tid) for tid in target_site_ids if tid]}})
+            if target_domains:
+                or_conds.append({'domain': {'$in': target_domains}})
+            conditions.append({'$or': or_conds})
+        else:
+            conditions.append({'$or': [
+                {'user_id': user_id_str},
+                {'user_id': user_id_obj},
+                {'added_by_user_id': user_id_str}
+            ]})
+        query = {'$and': conditions} if len(conditions) > 1 else (conditions[0] if conditions else {})
+
+        # 1. Recent logs
+        recent_events = list(self.db.security_events.find(query).sort('timestamp', -1).limit(25))
+        if not recent_events:
+            recent_events = list(self.db.attacks.find(query).sort('timestamp', -1).limit(25))
+        
+        logs = []
+        for d in recent_events:
+            st = str(d.get('status') or d.get('action') or 'allowed').lower()
+            is_b = st in ('block', 'blocked', 'b', 'mitigated')
+            at = d.get('attack_type') or ('Suspicious Probe' if is_b else 'Clean Ingress')
+            logs.append({
+                'id': str(d.get('_id', '')),
+                'ip': d.get('source_ip') or d.get('ip', ''),
+                'url': d.get('endpoint') or d.get('url', '/'),
+                'attack_type': at,
+                'confidence': float(d.get('confidence') or (0.95 if is_b else 0.05)),
+                'timestamp': self._format_dt(d.get('timestamp') or d.get('created_at')),
+                'status': 'blocked' if is_b else 'allowed',
+                'domain': d.get('domain') or 'WordPress Site',
+                'method': d.get('method', 'GET')
+            })
+
+        # 2. Top attackers
+        att_query = {'$and': [query, {'$or': [{'status': {'$in': ['block', 'blocked']}}, {'action': {'$in': ['block', 'blocked']}}]}]} if query else {'$or': [{'status': {'$in': ['block', 'blocked']}}, {'action': {'$in': ['block', 'blocked']}}]}
+        top_attackers = []
+        try:
+            agg_pipeline = [
+                {'$match': att_query},
+                {'$group': {'_id': {'$ifNull': ['$source_ip', '$ip']}, 'count': {'$sum': 1}}},
+                {'$sort': {'count': -1}},
+                {'$limit': 10}
+            ]
+            agg_res = list(self.db.security_events.aggregate(agg_pipeline))
+            if not agg_res:
+                agg_res = list(self.db.attacks.aggregate(agg_pipeline))
+            for item in agg_res:
+                ip_v = item.get('_id')
+                if ip_v:
+                    top_attackers.append({'ip': str(ip_v), 'count': int(item.get('count', 0))})
+        except Exception:
+            pass
+
+        # 3. Attack types & counts
+        attack_types = []
+        attack_counts = []
+        try:
+            type_agg = [
+                {'$match': att_query},
+                {'$group': {'_id': '$attack_type', 'count': {'$sum': 1}}},
+                {'$sort': {'count': -1}},
+                {'$limit': 8}
+            ]
+            type_res = list(self.db.attacks.aggregate(type_agg))
+            if not type_res:
+                type_res = list(self.db.security_events.aggregate(type_agg))
+            for t_item in type_res:
+                t_name = t_item.get('_id')
+                if t_name and t_name not in ('Clean Traffic', 'Allowed Request'):
+                    attack_types.append(str(t_name))
+                    attack_counts.append(int(t_item.get('count', 0)))
+        except Exception:
+            pass
+
+        # 4. Daily series for last 7 days
+        now_time = datetime.now()
+        daily_requests = [0] * 7
+        try:
+            seven_days_ago = now_time - timedelta(days=7)
+            time_query = {'$and': [query, {'timestamp': {'$gte': seven_days_ago}}]} if query else {'timestamp': {'$gte': seven_days_ago}}
+            day_agg = [
+                {'$match': time_query},
+                {'$group': {
+                    '_id': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
+                    'count': {'$sum': 1}
+                }}
+            ]
+            day_res = {r['_id']: r['count'] for r in self.db.security_events.aggregate(day_agg)}
+            if not day_res:
+                day_res = {r['_id']: r['count'] for r in self.db.attacks.aggregate(day_agg)}
+            for idx in range(7):
+                dt_key = (now_time - timedelta(days=6 - idx)).strftime('%Y-%m-%d')
+                daily_requests[idx] = int(day_res.get(dt_key, 0))
+        except Exception:
+            pass
+
+        return {
+            'logs': logs,
+            'top_attackers': top_attackers,
+            'attack_types': attack_types,
+            'attack_counts': attack_counts,
+            'daily_requests': daily_requests
+        }
+
     def get_dashboard_stats(self, user, website_id=None, force_refresh=False):
         if not isinstance(user, dict):
             u_id = self._resolve_id(user)
@@ -976,11 +1089,12 @@ class UserAPI:
                     tot_block = target_site.get('total_blocked', 0)
                     req_today = target_site.get('requests_today', 0)
                     block_today = target_site.get('blocked_today', 0)
-                    daily_requests = [0] * 7
-                    attack_types = []
-                    attack_counts = []
-                    top_attackers = []
-                    logs = []
+                    fb = self._get_fallback_dashboard_metrics(user_id_str, [target_site['id']], [target_site.get('domain'), target_site.get('url')])
+                    daily_requests = fb['daily_requests']
+                    attack_types = fb['attack_types']
+                    attack_counts = fb['attack_counts']
+                    top_attackers = fb['top_attackers']
+                    logs = fb['logs']
             else:
                 tot_req = 0
                 tot_block = 0
@@ -1094,11 +1208,18 @@ class UserAPI:
                 tot_block = sum(w.get('total_blocked', 0) for w in websites)
                 req_today = sum(w.get('requests_today', 0) for w in websites)
                 block_today = sum(w.get('blocked_today', 0) for w in websites)
-                daily_requests = [0] * 7
-                attack_types = []
-                attack_counts = []
-                top_attackers = []
-                logs = []
+                all_site_ids = [w['id'] for w in websites]
+                all_site_domains = [w.get('domain') for w in websites if w.get('domain')]
+                fb = self._get_fallback_dashboard_metrics(user_id_str, all_site_ids, all_site_domains)
+                daily_requests = fb['daily_requests']
+                attack_types = fb['attack_types']
+                attack_counts = fb['attack_counts']
+                top_attackers = fb['top_attackers']
+                logs = fb['logs']
+                if tot_req == 0 and len(logs) > 0:
+                    tot_req = len(logs)
+                if tot_block == 0 and len(attack_counts) > 0:
+                    tot_block = sum(attack_counts)
 
         active_sites_count = len(websites)
         user_doc = self.db.users.find_one({'_id': user['_id']}) or user
@@ -1488,7 +1609,7 @@ class UserAPI:
                         except Exception:
                             pass
 
-                if all_remote_logs or len(connected_wp_sites) > 0:
+                if all_remote_logs:
                     # Sort in memory by timestamp descending
                     all_remote_logs.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
                     start_idx = (page - 1) * per_page

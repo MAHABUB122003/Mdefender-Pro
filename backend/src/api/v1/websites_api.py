@@ -153,6 +153,7 @@ def _website_out(doc):
         "plan": doc.get("plan", "free"),
         "ssl_mode": doc.get("ssl_mode", "flexible"),
         "status": doc.get("status", "active"),
+        "api_key": doc.get("api_key") or wp_conn.get("api_key") or "",
         "protection_enabled": doc.get("protection_enabled", True),
         "waf_mode": doc.get("waf_mode", "protect"),
         "malware_scanner": doc.get("malware_scanner", True),
