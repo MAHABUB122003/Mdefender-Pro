@@ -275,6 +275,14 @@ if (!$is_blocked) {
             $block_reason = 'Remote Command Execution (RCE) / WebShell payload intercepted by Pre-Flight WAAP.';
         }
     }
+
+    // Direct cPanel / Hosting Administration Probe Interception
+    if (!$is_blocked && preg_match('#^/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $uri)) {
+        $is_blocked = true;
+        $attack_name = 'Server Admin Probe';
+        $rule_name = 'Pre-Flight WAAP: Hosting Control Panel & Port Guard';
+        $block_reason = 'Direct probing of hosting control panel (cPanel/WHM/Webmail) intercepted by Pre-Flight WAAP.';
+    }
 }
 
 // If blocked, log forensic incident and render the appropriate page
@@ -322,8 +330,8 @@ if ($is_blocked) {
         } catch (\Throwable $e) {}
     }
 
-    // 3. Blacklisted IP & Geolocation Policy: Render Dead Network (Offline connection drop)
-    if ($attack_name === 'Blacklisted IP' || strpos($block_reason, 'Blacklisted IP') !== false || $attack_name === 'Country / Regional Restriction') {
+    // 3. Blacklisted IP, Geolocation Policy, and Control Panel Probes: Render Dead Network (Offline connection drop)
+    if ($attack_name === 'Blacklisted IP' || strpos($block_reason, 'Blacklisted IP') !== false || $attack_name === 'Country / Regional Restriction' || $attack_name === 'Server Admin Probe') {
         include __DIR__ . '/dead-network-template.php';
         exit;
     }

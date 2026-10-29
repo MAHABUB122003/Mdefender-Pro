@@ -1170,6 +1170,20 @@ function waf_fw_analyze_request() {
         }
     }
 
+    // Intercept hosting administration & cPanel redirect probes immediately
+    $req_uri = $_SERVER['REQUEST_URI'] ?? '';
+    if (preg_match('#^/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $req_uri)) {
+        $GLOBALS['waf_fw_analyzed'] = true;
+        if ($engine) {
+            $client_ip = $engine->get_client_ip();
+            if (class_exists('WAF_FW_IP_Filter')) {
+                WAF_FW_IP_Filter::instance()->add_to_blacklist($client_ip, 'Hosting control panel probe (/cpanel or port redirect)');
+            }
+        }
+        include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
+        exit;
+    }
+
     // In wp-admin panel, authenticated administrators are bypassed for routine administrative tasks
     // BUT file editing (theme/plugin editor) and file uploads are ALWAYS inspected to prevent backdoor persistence
     if (is_admin() && function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {

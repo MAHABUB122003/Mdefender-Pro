@@ -583,6 +583,16 @@ class WAF_FW_Website_Hardening {
             $this->apply_uploads_protect(['block_php' => true]);
             $results['actions'][] = 'PHP execution blocked in wp-content/uploads/ directory';
         }
+        if (!isset($settings['block_cpanel_probes']) || !empty($settings['block_cpanel_probes'])) {
+            $this->ensure_htaccess_rule($htaccess, 'block_cpanel_probes');
+            $results['actions'][] = 'cPanel / WHM / Webmail (:2083, :2082) direct probes & redirects blocked';
+        }
+
+        // Always synchronize active IP blacklist into root .htaccess for web-server level enforcement
+        if (class_exists('WAF_FW_IP_Filter')) {
+            WAF_FW_IP_Filter::instance()->sync_htaccess_blacklist();
+            $results['actions'][] = 'IP Blacklist synchronized to .htaccess (Web-server layer enforcement)';
+        }
 
         update_option('waf_harden_htaccess', 'enabled');
         update_option('waf_harden_htaccess_settings', $settings);
@@ -1466,7 +1476,7 @@ class WAF_FW_Website_Hardening {
         switch ($profile) {
             case 'strong':
                 $this->apply_wp_config(['lock_permissions' => true]);
-                $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true]);
+                $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true, 'block_cpanel_probes' => true]);
                 $this->apply_uploads(['block_php' => true, 'block_executables' => true]);
                 $this->apply_sensitive_files(['protect_git' => true]);
                 $this->apply_rest_api(['disable_user_endpoints' => true]);
@@ -1483,7 +1493,7 @@ class WAF_FW_Website_Hardening {
                 $this->apply_admin_protect(['disable_file_editor' => true, 'disable_user_enum' => true, 'admin_session_timeout' => 1800]);
                 $this->apply_login_protect(['login_captcha' => true, 'brute_force_threshold' => 3, 'login_lockout_time' => 3600]);
                 $this->apply_wp_config(['lock_permissions' => true]);
-                $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true]);
+                $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true, 'block_cpanel_probes' => true]);
                 $this->apply_uploads(['block_php' => true, 'scan_uploads' => true, 'block_executables' => true]);
                 $this->apply_sensitive_files(['protect_git' => true]);
                 $this->apply_rest_api(['disable_user_endpoints' => true, 'require_auth' => false, 'rate_limit' => 30]);
@@ -1502,7 +1512,7 @@ class WAF_FW_Website_Hardening {
             case 'balanced':
             default:
                 $this->apply_wp_config(['lock_permissions' => true]);
-                $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true]);
+                $this->apply_htaccess(['block_dir_browsing' => true, 'protect_wp_config' => true, 'block_cpanel_probes' => true]);
                 $this->apply_uploads(['block_php' => true]);
                 $this->apply_sensitive_files(['protect_git' => true]);
                 $this->apply_rest_api(['disable_user_endpoints' => true]);
@@ -1905,6 +1915,10 @@ class WAF_FW_Website_Hardening {
             'block_php_uploads' => [
                 'tag' => 'MDefender-Pro - Block PHP in Uploads',
                 'code' => "\n# MDefender-Pro - Block PHP in Uploads\n<Files *.php>\ndeny from all\n</Files>\n",
+            ],
+            'block_cpanel_probes' => [
+                'tag' => 'MDefender-Pro - Block cPanel & Server Admin Probes',
+                'code' => "\n# MDefender-Pro - Block cPanel & Server Admin Probes\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteCond %{REQUEST_URI} ^/(cpanel|whm|webmail|cpsrvd|2082|2083|2086|2087|2095|2096)/? [NC]\nRewriteRule .* - [F,L]\n</IfModule>\n",
             ],
         ];
         if (!isset($rules[$rule_type])) return false;

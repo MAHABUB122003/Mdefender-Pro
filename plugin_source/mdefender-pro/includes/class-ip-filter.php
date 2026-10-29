@@ -190,6 +190,9 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Web-Server Layer Enforcement: Sync Blacklist to .htaccess
+        $this->sync_htaccess_blacklist();
     }
 
     public function remove_from_whitelist($ip) {
@@ -204,6 +207,9 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Web-Server Layer Enforcement: Sync Blacklist to .htaccess
+        $this->sync_htaccess_blacklist();
     }
 
     public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'permanent', $auto = true, $expires_at = null) {
@@ -244,6 +250,12 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Web-Server Layer Enforcement: Sync Blacklist to .htaccess
+        $this->sync_htaccess_blacklist();
+
+        // Server-Level Firewall Sync (CSF / iptables / cPanel UAPI)
+        $this->sync_system_firewall_block($ip, $reason);
 
         // Notify cloud API so the block is immediately visible on Cloud User Dashboard
         $this->notify_cloud_block($ip, $reason, $expires_at);
@@ -306,6 +318,12 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Web-Server Layer Enforcement: Sync Blacklist to .htaccess
+        $this->sync_htaccess_blacklist();
+
+        // Server-Level Firewall Sync (CSF / iptables / cPanel UAPI)
+        $this->sync_system_firewall_unblock($ip);
 
         // Notify cloud API if site is connected
         $this->notify_cloud_unblock($ip);
@@ -388,6 +406,9 @@ class WAF_FW_IP_Filter {
         if (class_exists('WAF_FW_Engine')) {
             WAF_FW_Engine::instance()->export_fast_cache();
         }
+
+        // Web-Server Layer Enforcement: Sync Blacklist to .htaccess
+        $this->sync_htaccess_blacklist();
     }
 
     public function get_blacklist() {
@@ -403,6 +424,149 @@ class WAF_FW_IP_Filter {
             "DELETE FROM $table WHERE block_expires_at IS NOT NULL AND block_expires_at <= NOW()"
         );
         $this->runtime_blacklist_cache = [];
+        $this->sync_htaccess_blacklist();
+    }
+
+    /**
+     * Synchronize Blacklist to root .htaccess for web-server level enforcement.
+     * Prevents requests from ever reaching WordPress, /cpanel redirects, or PHP scripts.
+     */
+    public function sync_htaccess_blacklist() {
+        $home_path = defined('ABSPATH') ? ABSPATH : '';
+        if (function_exists('get_home_path')) {
+            $home_path = get_home_path();
+        }
+        if (empty($home_path)) return;
+
+        $htaccess_file = rtrim($home_path, '/\\') . DIRECTORY_SEPARATOR . '.htaccess';
+
+        // Check if server is running Apache / LiteSpeed where .htaccess is effective
+        $is_apache = true;
+        if (!empty($_SERVER['SERVER_SOFTWARE'])) {
+            $software = strtolower($_SERVER['SERVER_SOFTWARE']);
+            if (strpos($software, 'nginx') !== false && strpos($software, 'apache') === false && strpos($software, 'litespeed') === false) {
+                $is_apache = false;
+            }
+        }
+        if (!$is_apache && !file_exists($htaccess_file)) {
+            return;
+        }
+
+        global $wpdb;
+        $table = WAF_FW_DB::instance()->get_blacklist_table();
+        $now = current_time('mysql');
+        $results = $wpdb->get_col("SELECT ip FROM $table WHERE block_expires_at IS NULL OR block_expires_at > '$now'");
+
+        $valid_ips = [];
+        if (!empty($results)) {
+            foreach ($results as $raw_ip) {
+                $clean = trim((string) $raw_ip);
+                if (filter_var($clean, FILTER_VALIDATE_IP)) {
+                    // Do not block local loopback in .htaccess
+                    if (!in_array($clean, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
+                        $valid_ips[] = $clean;
+                    }
+                }
+            }
+        }
+        $valid_ips = array_values(array_unique($valid_ips));
+
+        $start_tag = '# BEGIN MDefender-Pro IP Blacklist';
+        $end_tag   = '# END MDefender-Pro IP Blacklist';
+
+        $existing_content = file_exists($htaccess_file) ? @file_get_contents($htaccess_file) : '';
+        if ($existing_content === false) {
+            $existing_content = '';
+        }
+
+        // Remove existing block
+        $pattern = '/' . preg_quote($start_tag, '/') . '.*?' . preg_quote($end_tag, '/') . '\s*/s';
+        $cleaned_content = preg_replace($pattern, '', $existing_content);
+
+        if (!empty($valid_ips)) {
+            $deny_require = [];
+            $deny_legacy  = [];
+            foreach ($valid_ips as $b_ip) {
+                $deny_require[] = "        Require not ip {$b_ip}";
+                $deny_legacy[]  = "    Deny from {$b_ip}";
+            }
+
+            $block = $start_tag . "\n";
+            $block .= "# Web-Server Layer Security - Blocks Ingress & cPanel / Administration Probes\n";
+            $block .= "<IfModule mod_authz_core.c>\n";
+            $block .= "    <RequireAll>\n";
+            $block .= "        Require all granted\n";
+            $block .= implode("\n", $deny_require) . "\n";
+            $block .= "    </RequireAll>\n";
+            $block .= "</IfModule>\n";
+            $block .= "<IfModule !mod_authz_core.c>\n";
+            $block .= "    Order Allow,Deny\n";
+            $block .= "    Allow from all\n";
+            $block .= implode("\n", $deny_legacy) . "\n";
+            $block .= "</IfModule>\n";
+            $block .= $end_tag . "\n\n";
+
+            $new_content = $block . ltrim($cleaned_content);
+        } else {
+            $new_content = ltrim($cleaned_content);
+        }
+
+        // Only write if file already existed or if we have valid IPs to write
+        if (file_exists($htaccess_file) || !empty($valid_ips)) {
+            @file_put_contents($htaccess_file, $new_content, LOCK_EX);
+        }
+    }
+
+    /**
+     * Server-Level Firewall Block (CSF / iptables / cPanel UAPI).
+     * Blocks all ports including cPanel 2083, 2082, 80, 443 at Linux kernel level.
+     */
+    public function sync_system_firewall_block($ip, $reason = '') {
+        $ip = trim((string) $ip);
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) return;
+        if (in_array($ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) return;
+        if (DIRECTORY_SEPARATOR === '\\') return; // Skip in Windows dev
+        if (!function_exists('exec')) return;
+
+        $disabled = array_map('trim', explode(',', ini_get('disable_functions') ?: ''));
+        if (in_array('exec', $disabled, true)) return;
+
+        // 1. ConfigServer Security & Firewall (CSF)
+        if (file_exists('/usr/sbin/csf')) {
+            $cmd = '/usr/sbin/csf -d ' . escapeshellarg($ip) . ' ' . escapeshellarg('MDefender-Pro: ' . substr($reason, 0, 50));
+            @exec($cmd . ' > /dev/null 2>&1');
+        }
+
+        // 2. cPanel UAPI IP Blocker
+        if (file_exists('/usr/local/cpanel/bin/uapi')) {
+            $cmd = '/usr/local/cpanel/bin/uapi IpBlocker add_ip ip=' . escapeshellarg($ip);
+            @exec($cmd . ' > /dev/null 2>&1');
+        }
+    }
+
+    /**
+     * Server-Level Firewall Unblock.
+     */
+    public function sync_system_firewall_unblock($ip) {
+        $ip = trim((string) $ip);
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) return;
+        if (DIRECTORY_SEPARATOR === '\\') return;
+        if (!function_exists('exec')) return;
+
+        $disabled = array_map('trim', explode(',', ini_get('disable_functions') ?: ''));
+        if (in_array('exec', $disabled, true)) return;
+
+        // 1. ConfigServer Security & Firewall (CSF)
+        if (file_exists('/usr/sbin/csf')) {
+            $cmd = '/usr/sbin/csf -dr ' . escapeshellarg($ip);
+            @exec($cmd . ' > /dev/null 2>&1');
+        }
+
+        // 2. cPanel UAPI IP Blocker
+        if (file_exists('/usr/local/cpanel/bin/uapi')) {
+            $cmd = '/usr/local/cpanel/bin/uapi IpBlocker remove_ip ip=' . escapeshellarg($ip);
+            @exec($cmd . ' > /dev/null 2>&1');
+        }
     }
 }
 

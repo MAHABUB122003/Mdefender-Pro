@@ -344,6 +344,7 @@ class WAF_FW_Admin {
                 $this->checkbox_setting('block_dir_browsing', 'Block directory browsing (Options -Indexes)', $settings, true);
                 $this->checkbox_setting('protect_wp_config', 'Protect wp-config.php via .htaccess rules', $settings, true);
                 $this->checkbox_setting('block_php_uploads', 'Block direct PHP execution in wp-content/uploads', $settings, true);
+                $this->checkbox_setting('block_cpanel_probes', 'Block direct cPanel / WHM / Webmail (:2083, :2082) probes & redirects', $settings, true);
                 break;
             case 'uploads':
                 $this->checkbox_setting('block_php', 'Block PHP script execution in uploads directory', $settings, true);
