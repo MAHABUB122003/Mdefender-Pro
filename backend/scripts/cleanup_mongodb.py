@@ -76,3 +76,4 @@ except Exception as e:
     print(f"[-] Compact note: {e}")
 
 print("\nMongoDB cleanup successfully finished!")
+

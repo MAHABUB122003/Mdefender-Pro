@@ -680,7 +680,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 echo json_encode(['status' => 'success', 'country_blocks' => $c_blocks, 'total' => count($c_blocks)]);
                 exit;
             } elseif ($action === 'add_country_block') {
-                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? '')));
+                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? $_REQUEST['country'] ?? $pushed_data['country'] ?? '')));
                 if (!empty($c_code)) {
                     $raw_c = (string) get_option('waf_fw_blocked_countries', '');
                     $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
@@ -703,7 +703,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 echo json_encode(['status' => 'error', 'message' => 'Country code is required']);
                 exit;
             } elseif ($action === 'delete_country_block' || $action === 'remove_country_block') {
-                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? '')));
+                $c_code = strtoupper(trim(sanitize_text_field($_REQUEST['country_code'] ?? $pushed_data['country_code'] ?? $_REQUEST['code'] ?? $pushed_data['code'] ?? $_REQUEST['country'] ?? $pushed_data['country'] ?? '')));
                 if (!empty($c_code)) {
                     $raw_c = (string) get_option('waf_fw_blocked_countries', '');
                     $c_codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_c)))));
