@@ -516,31 +516,8 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
             except Exception:
                 pass
 
-    # Ephemeral Live Stream Ring Buffer: Strictly capped to latest 50 events per website.
-    # Zero persistent MongoDB log accumulation! Customer WordPress site stores full historical archive in MySQL.
-    if live_stream_events:
-        try:
-            db.live_site_events.update_one(
-                {"website_id": website_id_str},
-                {
-                    "$set": {
-                        "website_id": website_id_str,
-                        "user_id": user_id_str,
-                        "domain": domain,
-                        "updated_at": now
-                    },
-                    "$push": {
-                        "events": {
-                            "$each": live_stream_events,
-                            "$sort": {"timestamp": -1},
-                            "$slice": 50
-                        }
-                    }
-                },
-                upsert=True
-            )
-        except Exception:
-            pass
+    # Zero MongoDB Storage: Live stream logs are queried on-demand directly from WordPress MySQL.
+    pass
 
     if total_reqs > 0:
         today_str = now.strftime("%Y-%m-%d")
@@ -620,28 +597,9 @@ def store_event(db, auth_data, req_data, decision, ip):
             "user_agent": (req_data.get("headers") or {}).get("User-Agent", ""),
             "rule_matched": decision.get("reason", ""),
         }
-        # Zero-Bloat SaaS Architecture: Only save genuine attack and threat events in MongoDB.
-        # Benign routine requests are kept on user WordPress website DB and only reflected in counters.
-        if is_blocked or attack_type:
-            db.security_events.insert_one(event)
-
-        # Also store in attacks collection for unified user logs
-        if is_blocked or attack_type:
-            db.attacks.insert_one({
-                "user_id": user_id_str,
-                "website_id": website_id_str,
-                "domain": domain,
-                "ip": ip or "127.0.0.1",
-                "url": req_data.get("url", "/"),
-                "attack_type": attack_type or "Suspicious Request",
-                "confidence": decision.get("confidence", 0.85),
-                "status": "blocked",
-                "timestamp": now,
-                "method": req_data.get("method", "GET"),
-                "user_agent": (req_data.get("headers") or {}).get("User-Agent", ""),
-                "rule_matched": decision.get("reason", "ML/Rule Detection"),
-                "reference_id": decision.get("reference_id"),
-            })
+        # Zero MongoDB Storage: Authenticity is preserved on customer WordPress MySQL.
+        # Zero attack/visitor logs are permanently stored in central MongoDB.
+        pass
 
         # Update live real-time counters on website document
         inc_website = {"total_requests": 1, "requests_today": 1}

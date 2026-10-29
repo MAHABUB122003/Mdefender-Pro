@@ -59,3 +59,4 @@ with open(r"Mdefender\plugin_source\mdefender-pro\includes\class-logger.php", "w
     f.write(code)
 
 print("Successfully updated class-logger.php with zero-bloat pure security logging!")
+

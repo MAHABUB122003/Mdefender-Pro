@@ -217,12 +217,8 @@ class WAFAPI:
                 'website_id': website_id or '',
                 'detection_source': 'geo_filter',
             }
-            try:
-                self.db.attacks.insert_one(log_entry)
-                if website_id:
-                    self.db.waf_events.insert_one(log_entry.copy())
-            except Exception:
-                pass
+            # Zero MongoDB Storage: Customer WordPress MySQL stores authentic logs.
+            pass
             return {
                 'decision': 'BLOCK',
                 'confidence': 1.0,
@@ -271,39 +267,8 @@ class WAFAPI:
             'detection_source': 'rule' if 'rule' in decision['reason'].lower() else 'ml',
         }
         
-        try:
-            self.db.attacks.insert_one(log_entry)
-            if website_id:
-                self.db.waf_events.insert_one(log_entry.copy())
-        except Exception:
-            pass
-            
-        try:
-            signals = decision.get("signals", {})
-            detection_source = "combined"
-            if signals.get("rule_matches"):
-                detection_source = "rule"
-            elif signals.get("ml_probability", 0) >= 0.6:
-                detection_source = "ml"
-
-            event = {
-                "user_id": user_id or "",
-                "website_id": website_id or "",
-                "timestamp": datetime.now(),
-                "source_ip": ip,
-                "method": method,
-                "endpoint": url,
-                "attack_type": attack_type,
-                "detection_source": detection_source,
-                "risk_score": decision.get("risk_score", 0),
-                "action": decision.get("action"),
-                "status": decision.get("action"),
-                "reference_id": decision.get("reference_id"),
-                "user_agent": user_agent,
-            }
-            self.db.security_events.insert_one(event)
-        except Exception:
-            pass
+        # Zero MongoDB Storage: Authenticity is preserved on customer WordPress MySQL.
+        pass
 
         # Update statistics in DB
         if user_id:
@@ -659,15 +624,9 @@ class WAFAPI:
                     )
             except Exception: pass
 
-        try:
-            self.db.attacks.insert_one(log_entry)
-            if website_id:
-                self.db.waf_events.insert_one(log_entry.copy())
-        except Exception: pass
-
-        try:
-            self.db.security_events.insert_one(event)
-        except Exception: pass
+        # Zero-Bloat SaaS Architecture: Customer WordPress MySQL stores authentic local logs.
+        # Zero attack/visitor logs are permanently stored in central MongoDB.
+        pass
 
         if user_id:
             today = datetime.now().strftime('%Y-%m-%d')

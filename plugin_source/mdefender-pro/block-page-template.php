@@ -46,6 +46,16 @@ $is_ip_blacklist = (
     )
 );
 
+// Absolute Stealth Enforcement: Blacklisted IPs, Country Blocks, and Admin Probes
+// MUST NEVER show a 403 Forbidden page. They must always show the authentic browser "Website Down" offline screen!
+if ($is_country_block || $is_ip_blacklist || $attack_type === 'Server Admin Probe') {
+    $dead_template = __DIR__ . '/dead-network-template.php';
+    if (file_exists($dead_template)) {
+        include $dead_template;
+        exit;
+    }
+}
+
 // GeoIP Resolution (with fallback matching design)
 $geoip_info = '';
 $country_code_lower = 'bd';

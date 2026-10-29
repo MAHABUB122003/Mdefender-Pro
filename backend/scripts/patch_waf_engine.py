@@ -114,3 +114,4 @@ with open(r"Mdefender\plugin_source\mdefender-pro\includes\class-waf-engine.php"
     f.write(code)
 
 print("Successfully updated class-waf-engine.php with zero-overhead clean traffic pipeline!")
+

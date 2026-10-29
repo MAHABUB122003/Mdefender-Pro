@@ -67,3 +67,4 @@ if old_auth_block in code_norm:
     print("SUCCESS: waf-firewall.php auth block patched")
 else:
     print("FAILED: old_auth_block pattern not found in waf-firewall.php")
+

@@ -121,3 +121,4 @@ if old_card1_and_3 in code_norm:
     print("SUCCESS: UserDashboard.jsx patched successfully")
 else:
     print("FAILED: old_card1_and_3 pattern not found in UserDashboard.jsx")
+

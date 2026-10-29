@@ -501,6 +501,8 @@ async def waf_self_protection_middleware(request: Request, call_next):
         except Exception:
             pass
             
+        atk_type_str = str(decision.get('attack_type', '')).lower()
+        is_stealth = any(k in atk_type_str for k in ['blacklist', 'country', 'geoip', 'geograph', 'probe'])
         block_html = render_block_page(
             reference_id=decision.get('reference_id', 'N/A'),
             client_ip=claimed_ip,
@@ -510,10 +512,11 @@ async def waf_self_protection_middleware(request: Request, call_next):
         )
         return HTMLResponse(
             content=block_html,
-            status_code=403,
+            status_code=502 if is_stealth else 403,
             headers={
                 "X-WAF-Eval-Time": f"{waf_eval_ms:.2f}ms",
-                "X-WAF-Status": "BLOCKED"
+                "X-WAF-Status": "BLOCKED",
+                "Connection": "close"
             }
         )
 

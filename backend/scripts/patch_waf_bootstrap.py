@@ -75,3 +75,4 @@ with open(r"Mdefender\plugin_source\mdefender-pro\waf-bootstrap.php", "w", encod
     f.write(code)
 
 print("Successfully updated waf-bootstrap.php!")
+

@@ -1210,7 +1210,23 @@ function waf_fw_analyze_request() {
             $result = $engine->analyze_current_request();
             if ($result['status'] === 'blocked') {
                 $atype = $result['attack_type'] ?? '';
-                if ($atype === 'Blacklisted IP' || $atype === 'Country Blocked' || strpos($atype, 'Country') !== false || strpos($atype, 'Geograph') !== false || $atype === 'Server Admin Probe') {
+                $rule_m = $result['rule_matched'] ?? '';
+                $msg = $result['message'] ?? '';
+                $is_stealth = (
+                    $atype === 'Blacklisted IP' ||
+                    $atype === 'Country Blocked' ||
+                    stripos($atype, 'Blacklist') !== false ||
+                    stripos($atype, 'Country') !== false ||
+                    stripos($atype, 'Geograph') !== false ||
+                    stripos($atype, 'GeoIP') !== false ||
+                    stripos($atype, 'Probe') !== false ||
+                    stripos($rule_m, 'Blacklist') !== false ||
+                    stripos($rule_m, 'Country') !== false ||
+                    stripos($rule_m, 'GeoIP') !== false ||
+                    stripos($msg, 'blacklist') !== false ||
+                    stripos($msg, 'country') !== false
+                );
+                if ($is_stealth) {
                     include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
                     exit;
                 }
@@ -1261,7 +1277,23 @@ function waf_fw_analyze_request() {
 
     if ($result['status'] === 'blocked') {
         $atype = $result['attack_type'] ?? '';
-        if ($atype === 'Blacklisted IP' || $atype === 'Country Blocked' || strpos($atype, 'Country') !== false || strpos($atype, 'Geograph') !== false || $atype === 'Server Admin Probe') {
+        $rule_m = $result['rule_matched'] ?? '';
+        $msg = $result['message'] ?? '';
+        $is_stealth = (
+            $atype === 'Blacklisted IP' ||
+            $atype === 'Country Blocked' ||
+            stripos($atype, 'Blacklist') !== false ||
+            stripos($atype, 'Country') !== false ||
+            stripos($atype, 'Geograph') !== false ||
+            stripos($atype, 'GeoIP') !== false ||
+            stripos($atype, 'Probe') !== false ||
+            stripos($rule_m, 'Blacklist') !== false ||
+            stripos($rule_m, 'Country') !== false ||
+            stripos($rule_m, 'GeoIP') !== false ||
+            stripos($msg, 'blacklist') !== false ||
+            stripos($msg, 'country') !== false
+        );
+        if ($is_stealth) {
             include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
             exit;
         }

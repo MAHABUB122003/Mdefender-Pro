@@ -60,3 +60,4 @@ with open(r"Mdefender\plugin_source\mdefender-pro\waf-firewall.php", "w", encodi
     f.write(code)
 
 print("Successfully updated waf-firewall.php with dead network template!")
+

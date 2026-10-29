@@ -1493,7 +1493,7 @@ class UserAPI:
                     import requests
                     import urllib3
                     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-                    remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs"
+                    remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}"
                     req_params = {
                         'page': page,
                         'limit': per_page,
@@ -1512,11 +1512,11 @@ class UserAPI:
                     }
                     resp = None
                     try:
-                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.0, verify=False)
+                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=6.0, verify=False)
                     except Exception:
                         if site_url.startswith('https://'):
                             clean_host = raw_url.replace('https://', '').replace('http://', '')
-                            resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs", params=req_params, headers=headers, timeout=2.0, verify=False)
+                            resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=6.0, verify=False)
                     if resp and resp.status_code == 200:
                         r_data = resp.json()
                         if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
@@ -1549,9 +1549,24 @@ class UserAPI:
                                 'logs': norm_logs,
                                 'source': 'wordpress_live'
                             })
+                    # Target site is connected: Return live clean broadcast state (never load old ghost logs from MongoDB)
+                    return _return_cached({
+                        'total': 0,
+                        'page': page,
+                        'per_page': per_page,
+                        'total_pages': 1,
+                        'logs': [],
+                        'source': 'wordpress_live'
+                    })
                 except Exception as e:
-                    # Gracefully fall back to MongoDB
-                    pass
+                    return _return_cached({
+                        'total': 0,
+                        'page': page,
+                        'per_page': per_page,
+                        'total_pages': 1,
+                        'logs': [],
+                        'source': 'wordpress_live'
+                    })
 
             conditions.append({'$or': [
                 {'website_id': {'$in': target_ids}},
@@ -1588,7 +1603,7 @@ class UserAPI:
                     site_key = site.get('api_key') or ''
                     domain_name = site.get('domain') or site.get('name') or 'localhost'
                     try:
-                        remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs"
+                        remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}"
                         req_params = {
                             'page': 1,
                             'limit': 50,
@@ -1607,11 +1622,11 @@ class UserAPI:
                         }
                         resp = None
                         try:
-                            resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.0, verify=False)
+                            resp = requests.get(remote_url, params=req_params, headers=headers, timeout=6.0, verify=False)
                         except Exception:
                             if site_url.startswith('https://'):
                                 clean_host = raw_url.replace('https://', '').replace('http://', '')
-                                resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs", params=req_params, headers=headers, timeout=2.0, verify=False)
+                                resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=6.0, verify=False)
                         if resp and resp.status_code == 200:
                             data = resp.json()
                             logs_list = data.get('logs', []) if isinstance(data, dict) else []
@@ -1662,6 +1677,24 @@ class UserAPI:
                         'logs': paged_logs,
                         'source': 'wordpress_fleet_live'
                     })
+                else:
+                    return _return_cached({
+                        'total': 0,
+                        'page': page,
+                        'per_page': per_page,
+                        'total_pages': 1,
+                        'logs': [],
+                        'source': 'wordpress_fleet_live'
+                    })
+            else:
+                return _return_cached({
+                    'total': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': 1,
+                    'logs': [],
+                    'source': 'wordpress_fleet_live'
+                })
 
         if status_filter:
             if status_filter in ('block', 'blocked'):
@@ -2020,6 +2053,20 @@ class UserAPI:
             r1 = self.db.security_events.delete_many(final_query)
             r2 = self.db.attacks.delete_many(final_query)
             r3 = self.db.requests.delete_many(final_query)
+            try:
+                self.db.live_site_events.delete_many(final_query)
+                self.db.waf_events.delete_many(final_query)
+                if not website_id or website_id == 'all':
+                    self.db.live_site_events.delete_many({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+                    self.db.waf_events.delete_many({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]})
+                    if user_site_ids:
+                        self.db.live_site_events.delete_many({'website_id': {'$in': user_site_ids}})
+                        self.db.waf_events.delete_many({'website_id': {'$in': user_site_ids}})
+                else:
+                    self.db.live_site_events.delete_many({'website_id': website_id})
+                    self.db.waf_events.delete_many({'website_id': website_id})
+            except Exception:
+                pass
             total_deleted = r1.deleted_count + r2.deleted_count + r3.deleted_count
 
             # Remote fleet command: Dispatch log purge directly to connected WordPress sites
@@ -2041,7 +2088,7 @@ class UserAPI:
                 s_key = target.get('api_key') or ''
                 if raw_u and s_key:
                     s_url = ('https://' + raw_u) if not raw_u.startswith(('http://', 'https://')) else raw_u
-                    clean_endpoint = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=clear_logs"
+                    clean_endpoint = f"{s_url.rstrip('/')}/?waf_cloud_sync=1&action=clear_logs&api_key={s_key}&site_token={s_key}"
                     headers = {
                         'Authorization': f'Bearer {s_key}',
                         'X-API-Key': s_key,
@@ -2050,16 +2097,18 @@ class UserAPI:
                     clean_payload = {
                         'days': days_param,
                         'type': stat_type,
-                        'action': 'clear_logs'
+                        'action': 'clear_logs',
+                        'api_key': s_key,
+                        'site_token': s_key
                     }
                     try:
                         cr = None
                         try:
-                            cr = requests.post(clean_endpoint, json=clean_payload, headers=headers, timeout=2.5, verify=False)
+                            cr = requests.post(clean_endpoint, json=clean_payload, headers=headers, timeout=6.0, verify=False)
                         except Exception:
                             if s_url.startswith('https://'):
                                 clean_host = raw_u.replace('https://', '').replace('http://', '')
-                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs", json=clean_payload, headers=headers, timeout=2.5, verify=False)
+                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs&api_key={s_key}&site_token={s_key}", json=clean_payload, headers=headers, timeout=6.0, verify=False)
                         if cr and cr.status_code == 200:
                             remote_cleaned += 1
                             # Update target site counters immediately

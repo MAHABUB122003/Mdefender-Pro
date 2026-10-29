@@ -122,3 +122,4 @@ if old_func in norm_content:
     print("SUCCESS: push_to_fleet_async patched in main.py")
 else:
     print("FAILED: old_func pattern not found in main.py")
+
