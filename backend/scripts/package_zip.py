@@ -2,17 +2,27 @@ import os
 import zipfile
 import shutil
 
-src_dir = os.path.abspath('plugin_source/mdefender-pro')
+possible_srcs = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'plugin_source', 'mdefender-pro')),
+    os.path.abspath('Mdefender/plugin_source/mdefender-pro'),
+    os.path.abspath('plugin_source/mdefender-pro'),
+]
+src_dir = None
+for s in possible_srcs:
+    if os.path.exists(s) and os.path.exists(os.path.join(s, 'mdefender-pro.php')):
+        src_dir = s
+        break
+
+base_dir = os.path.dirname(os.path.dirname(src_dir))
+
 targets = [
-    os.path.abspath('mdefender-pro.zip'),
-    os.path.abspath('backend/downloads/mdefender-pro.zip'),
-    os.path.abspath('frontend/public/mdefender-pro.zip'),
-    os.path.abspath('frontend/dist/mdefender-pro.zip'),
-    os.path.abspath('frontend/public/downloads/mdefender-pro.zip'),
-    os.path.abspath('frontend/dist/downloads/mdefender-pro.zip'),
+    os.path.join(base_dir, 'mdefender-pro.zip'),
+    os.path.join(base_dir, 'backend', 'downloads', 'mdefender-pro.zip'),
+    os.path.join(base_dir, 'frontend', 'public', 'mdefender-pro.zip'),
+    os.path.join(base_dir, 'frontend', 'dist', 'mdefender-pro.zip'),
 ]
 
-temp_zip = os.path.abspath('temp_mdefender.zip')
+temp_zip = os.path.join(base_dir, 'temp_mdefender.zip')
 if os.path.exists(temp_zip):
     os.remove(temp_zip)
 
@@ -32,4 +42,3 @@ for t in targets:
 
 os.remove(temp_zip)
 print("Plugin packaging complete!")
-

@@ -46,9 +46,17 @@ $is_ip_blacklist = (
     )
 );
 
-// Absolute Stealth Enforcement: Blacklisted IPs, Country Blocks, and Admin Probes
-// MUST NEVER show a 403 Forbidden page. They must always show the authentic browser "Website Down" offline screen!
-if ($is_country_block || $is_ip_blacklist || $attack_type === 'Server Admin Probe') {
+// 1. IP Blacklist: Render dedicated authentic LiteSpeed-style 403 Forbidden page with visible IP disclosure
+if ($is_ip_blacklist) {
+    $ip_template = __DIR__ . '/ip-blacklist-template.php';
+    if (file_exists($ip_template)) {
+        include $ip_template;
+        exit;
+    }
+}
+
+// 2. Country / Geographic Block & Admin Probes: Stealth Dead Network (502 / ERR_NAME_NOT_RESOLVED)
+if ($is_country_block || $attack_type === 'Server Admin Probe') {
     $dead_template = __DIR__ . '/dead-network-template.php';
     if (file_exists($dead_template)) {
         include $dead_template;

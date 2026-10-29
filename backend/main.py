@@ -657,7 +657,11 @@ def verify_admin_token(request: Request):
 def verify_user_token_compat(request: Request):
     token = cookie_svc.get_access_token(request)
     if not token:
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        token = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    if not token:
+        token = request.headers.get('X-API-Key', '').strip()
+    if not token:
+        token = request.query_params.get('api_key', '').strip()
     if not token:
         raise HTTPException(status_code=401, detail='Unauthorized')
     payload = jwt_svc.decode_access_token(token)
@@ -669,6 +673,14 @@ def verify_user_token_compat(request: Request):
             ws = db.websites.find_one({'api_key': token})
             if ws and ws.get('user_id'):
                 u_id = ws['user_id']
+                u_cond = [{'_id': u_id}, {'id': u_id}]
+                if ObjectId.is_valid(str(u_id)):
+                    u_cond.append({'_id': ObjectId(str(u_id))})
+                user_by_key = db.users.find_one({'$or': u_cond})
+        if not user_by_key:
+            wp_site = db.wordpress_sites.find_one({'api_key': token})
+            if wp_site and wp_site.get('user_id'):
+                u_id = wp_site['user_id']
                 u_cond = [{'_id': u_id}, {'id': u_id}]
                 if ObjectId.is_valid(str(u_id)):
                     u_cond.append({'_id': ObjectId(str(u_id))})
@@ -1532,6 +1544,11 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
         'duration': duration_label,
         'expires_at': exp_str
     })
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
+    except Exception:
+        pass
             
     scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully{scope_txt} ({duration_label})'}
@@ -1570,6 +1587,11 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
         db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
 
     push_to_fleet_async(target_sites, {'action': 'delete_blacklist', 'ip': ip})
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
+    except Exception:
+        pass
 
     return {'status': 'success', 'message': f'IP {ip} unblocked and removed from blacklist'}
 
@@ -1577,8 +1599,18 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
 @app.post("/api/user/blacklist/unblock-expired")
 @app.post("/api/v1/user/blacklist/unblock-expired")
 async def user_unblock_expired_blacklist(user: dict = Depends(verify_user_token_compat)):
-    # In decentralized architecture, WordPress auto-purges expired blocks on-the-fly via cleanup_expired_blocks()
-    return {'status': 'success', 'message': 'Expired IP blocks automatically purged on edge nodes', 'unblocked_count': 0}
+    user_id_str = str(user.get('_id') or '')
+    del_res = db.blacklist.delete_many({
+        'expires_at': {'$ne': None, '$lte': datetime.now()},
+        '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]
+    })
+    purged_cnt = del_res.deleted_count
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str)
+    except Exception:
+        pass
+    return {'status': 'success', 'message': f'Successfully purged {purged_cnt} expired IP bans across fleet', 'unblocked_count': purged_cnt}
 
 
 @app.post("/api/user/blacklist/unblock-batch")
@@ -1592,23 +1624,30 @@ async def user_unblock_batch_blacklist(request: Request, user: dict = Depends(ve
     except Exception:
         data = {}
     ips = data.get('ips', [])
+    website_id = (data.get('website_id') or '').strip()
     clean_ips = [str(x).strip() for x in ips if str(x).strip()]
     if not clean_ips:
         return {'status': 'error', 'message': 'List of IPs is empty'}
 
+    user_id_str = str(user.get('_id') or '')
+    del_query = {'ip': {'$in': clean_ips}, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]}
+    if website_id and website_id != 'all':
+        del_query['website_id'] = website_id
+    db.blacklist.delete_many(del_query)
+
     sites = get_user_connected_wordpress_sites(user)
+    target_sites = sites
+    if website_id and website_id != 'all':
+        target_sites = [s for s in sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+
     for ip in clean_ips:
-        for s in sites:
-            raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
-            site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
-            site_key = s.get('api_key') or ''
-            try:
-                remote_url = f"{site_url}/?waf_cloud_sync=1"
-                headers = {'Authorization': f'Bearer {site_key}', 'X-API-Key': site_key, 'Content-Type': 'application/json'}
-                body = {'action': 'delete_blacklist', 'ip': ip}
-                requests.post(remote_url, json=body, headers=headers, timeout=1.5, verify=False)
-            except Exception:
-                pass
+        push_to_fleet_async(target_sites, {'action': 'delete_blacklist', 'ip': ip})
+
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
+    except Exception:
+        pass
 
     return {'status': 'success', 'message': f'Successfully unblocked {len(clean_ips)} selected IP(s)', 'unblocked_count': len(clean_ips)}
 
@@ -2023,6 +2062,11 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
 
     # 2. Instant Asynchronous Push to connected WordPress fleet nodes (< 15ms UI response)
     push_to_fleet_async(target_sites, {'action': 'add_country_block', 'country_code': code})
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
+    except Exception:
+        pass
 
     scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
     return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully{scope_txt}'}
@@ -2062,6 +2106,11 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
 
     # Instant Asynchronous Push to connected WordPress fleet nodes (< 15ms UI response)
     push_to_fleet_async(target_sites, {'action': 'delete_country_block', 'country_code': code})
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
+    except Exception:
+        pass
 
     return {'status': 'success', 'message': f'Country {code} unblocked successfully across security nodes'}
 
@@ -2360,7 +2409,7 @@ async def download_wp_plugin_edition(edition: str = None, filename: str = None):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.log_error(f"Unhandled exception: {exc}")
+    logger.log_error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
     return JSONResponse(
         status_code=500,
         content={'status': 'error', 'message': 'Internal server error'}

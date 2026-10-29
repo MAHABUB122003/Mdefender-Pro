@@ -16,40 +16,63 @@ class WAF_FW_IP_Filter {
 
     public function is_blacklisted($ip) {
         if (empty($ip)) {
-            return false;
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         }
 
         $ip = trim((string) $ip);
 
-        if (isset($this->runtime_blacklist_cache[$ip])) {
-            return $this->runtime_blacklist_cache[$ip];
+        // Anti-Bypass Candidate IP Chain
+        // Inspects REMOTE_ADDR + all forward headers so hackers CANNOT bypass by spoofing headers
+        $raw_candidates = [$ip];
+        if (!empty($_SERVER['REMOTE_ADDR'])) {
+            $raw_candidates[] = $_SERVER['REMOTE_ADDR'];
         }
-
-        $candidates = [$ip];
         if (!empty($_GET['test_ip'])) {
-            $cand_test = trim(sanitize_text_field($_GET['test_ip']));
-            if (filter_var($cand_test, FILTER_VALIDATE_IP)) $candidates[] = $cand_test;
+            $raw_candidates[] = $_GET['test_ip'];
         }
         if (!empty($_GET['ip_test'])) {
-            $cand_test = trim(sanitize_text_field($_GET['ip_test']));
-            if (filter_var($cand_test, FILTER_VALIDATE_IP)) $candidates[] = $cand_test;
+            $raw_candidates[] = $_GET['ip_test'];
         }
-        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            $cf_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
-            if (filter_var($cf_ip, FILTER_VALIDATE_IP)) $candidates[] = $cf_ip;
-        }
-        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-            $r_ip = trim($_SERVER['HTTP_X_REAL_IP']);
-            if (filter_var($r_ip, FILTER_VALIDATE_IP)) $candidates[] = $r_ip;
-        }
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $fwds = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            foreach ($fwds as $f_ip) {
-                $f_ip = trim($f_ip);
-                if (filter_var($f_ip, FILTER_VALIDATE_IP)) $candidates[] = $f_ip;
+
+        $ip_header_keys = [
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_TRUE_CLIENT_IP',
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'HTTP_X_CLIENT_IP',
+            'HTTP_X_CLUSTER_CLIENT_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_FORWARDED_FOR',
+            'HTTP_X_FORWARDED',
+            'HTTP_FORWARDED'
+        ];
+
+        foreach ($ip_header_keys as $hdr) {
+            if (!empty($_SERVER[$hdr])) {
+                $raw_val = (string)$_SERVER[$hdr];
+                $parts = explode(',', $raw_val);
+                foreach ($parts as $p) {
+                    $raw_candidates[] = trim($p);
+                }
             }
         }
 
+        $candidates = [];
+        foreach ($raw_candidates as $cand) {
+            $cand = trim((string)$cand);
+            if (empty($cand)) continue;
+            // Strip port if present (e.g. 1.2.3.4:8080)
+            if (strpos($cand, ':') !== false && strpos($cand, '.') !== false) {
+                $cand = preg_replace('/:\d+$/', '', $cand);
+            }
+            // Strip IPv6-mapped IPv4 prefix (::ffff:1.2.3.4)
+            if (stripos($cand, '::ffff:') === 0) {
+                $cand = substr($cand, 7);
+            }
+            if (filter_var($cand, FILTER_VALIDATE_IP)) {
+                $candidates[] = $cand;
+            }
+        }
         $candidates = array_values(array_unique(array_filter($candidates)));
 
         // 1. Check ultra-fast local JSON fast-cache (0.005ms)
@@ -59,6 +82,7 @@ class WAF_FW_IP_Filter {
             if (!empty($fc['blacklist_ips']) && is_array($fc['blacklist_ips'])) {
                 foreach ($candidates as $cand) {
                     if (!empty($fc['blacklist_ips'][$cand]) || in_array($cand, $fc['blacklist_ips'], true)) {
+                        $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
                         $this->runtime_blacklist_cache[$ip] = true;
                         return true;
                     }
@@ -73,11 +97,13 @@ class WAF_FW_IP_Filter {
                 $b_ip = trim((string) $b_ip);
                 if (empty($b_ip)) continue;
                 if (in_array($b_ip, $candidates, true)) {
+                    $GLOBALS['waf_matched_blacklisted_ip'] = $b_ip;
                     $this->runtime_blacklist_cache[$ip] = true;
                     return true;
                 }
                 foreach ($candidates as $cand) {
                     if (strpos($b_ip, '/') !== false && $this->ip_in_range($cand, $b_ip)) {
+                        $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
                         $this->runtime_blacklist_cache[$ip] = true;
                         return true;
                     }
@@ -100,6 +126,7 @@ class WAF_FW_IP_Filter {
                 if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= $now) {
                     $wpdb->delete($table, ['ip' => $result->ip]);
                 } else {
+                    $GLOBALS['waf_matched_blacklisted_ip'] = $result->ip;
                     $this->runtime_blacklist_cache[$ip] = true;
                     return true;
                 }
@@ -212,7 +239,7 @@ class WAF_FW_IP_Filter {
         $this->sync_htaccess_blacklist();
     }
 
-    public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'permanent', $auto = true, $expires_at = null) {
+    public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'permanent', $auto = true, $expires_at = null, $notify_cloud = true) {
         $ip = trim((string) $ip);
         if (empty($ip)) return;
         global $wpdb;
@@ -258,31 +285,53 @@ class WAF_FW_IP_Filter {
         $this->sync_system_firewall_block($ip, $reason);
 
         // Notify cloud API so the block is immediately visible on Cloud User Dashboard
-        $this->notify_cloud_block($ip, $reason, $expires_at);
+        if ($notify_cloud) {
+            $this->notify_cloud_block($ip, $reason, $expires_at);
+        }
     }
 
-    private function notify_cloud_block($ip, $reason = '', $expires_at = null) {
+    public function notify_cloud_block($ip, $reason = '', $expires_at = null) {
         if (php_sapi_name() === 'cli' || defined('WP_CLI')) return;
         $api_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
         $api_url = trim((string) get_option('waf_fw_ml_api_url', get_option('waf_fw_api_url', '')));
-        if (empty($api_key) || empty($api_url)) return;
+        $website_id = trim((string) get_option('waf_fw_website_id', ''));
+        if (empty($api_key)) return;
 
-        $base = rtrim($api_url, '/');
-        $endpoint = $base . '/api/user/blacklist';
-        if (function_exists('wp_remote_post')) {
-            wp_remote_post($endpoint, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $api_key,
-                    'Content-Type' => 'application/json',
-                ],
-                'body' => json_encode([
-                    'ip' => $ip,
-                    'reason' => $reason ?: 'Auto-blocked by WordPress Plugin',
-                    'duration' => $expires_at ? 'temporary' : 'permanent',
-                ]),
-                'timeout' => 2.0,
-                'blocking' => false,
-            ]);
+        $candidates = [];
+        if (!empty($api_url)) {
+            $candidates[] = rtrim($api_url, '/');
+        }
+        $candidates[] = 'https://mdefender-pro.crafix.tech';
+        $candidates[] = 'http://127.0.0.1:8000';
+        $candidates = array_values(array_unique($candidates));
+
+        $payload = wp_json_encode([
+            'ip' => $ip,
+            'reason' => $reason ?: 'Blocked by WordPress Administrator',
+            'duration' => $expires_at ? 'temporary' : 'permanent',
+            'website_id' => $website_id ?: 'all',
+        ]);
+        $headers = [
+            'Authorization' => 'Bearer ' . $api_key,
+            'X-API-Key' => $api_key,
+            'Content-Type' => 'application/json',
+            'User-Agent' => 'MDefender-Pro-Plugin/4.3.0',
+        ];
+
+        foreach ($candidates as $base) {
+            $endpoint = $base . '/api/user/blacklist';
+            try {
+                $resp = wp_remote_post($endpoint, [
+                    'headers' => $headers,
+                    'body' => $payload,
+                    'timeout' => 2.0,
+                    'sslverify' => false,
+                    'blocking' => true,
+                ]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) < 400) {
+                    break;
+                }
+            } catch (\Exception $e) {}
         }
     }
 
@@ -291,7 +340,7 @@ class WAF_FW_IP_Filter {
         $this->add_to_blacklist($ip, $reason, 'temporary', true, $expires_at);
     }
 
-    public function remove_from_blacklist($ip) {
+    public function remove_from_blacklist($ip, $notify_cloud = true) {
         $ip = trim((string) $ip);
         if (empty($ip)) return;
         global $wpdb;
@@ -326,27 +375,105 @@ class WAF_FW_IP_Filter {
         $this->sync_system_firewall_unblock($ip);
 
         // Notify cloud API if site is connected
-        $this->notify_cloud_unblock($ip);
+        if ($notify_cloud) {
+            $this->notify_cloud_unblock($ip);
+        }
     }
 
-    private function notify_cloud_unblock($ip) {
+    public function notify_cloud_unblock($ip) {
         if (php_sapi_name() === 'cli' || defined('WP_CLI')) return;
         $api_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
         $api_url = trim((string) get_option('waf_fw_ml_api_url', get_option('waf_fw_api_url', '')));
-        if (empty($api_key) || empty($api_url)) return;
+        $website_id = trim((string) get_option('waf_fw_website_id', ''));
+        if (empty($api_key)) return;
 
-        $base = rtrim($api_url, '/');
-        $endpoint = $base . '/api/user/blacklist?ip=' . urlencode($ip);
-        if (function_exists('wp_remote_request')) {
-            wp_remote_request($endpoint, [
-                'method' => 'DELETE',
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $api_key,
-                    'Content-Type' => 'application/json',
-                ],
-                'timeout' => 1.5,
-                'blocking' => false,
-            ]);
+        $candidates = [];
+        if (!empty($api_url)) {
+            $candidates[] = rtrim($api_url, '/');
+        }
+        $candidates[] = 'https://mdefender-pro.crafix.tech';
+        $candidates[] = 'http://127.0.0.1:8000';
+        $candidates = array_values(array_unique($candidates));
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $api_key,
+            'X-API-Key' => $api_key,
+            'Content-Type' => 'application/json',
+            'User-Agent' => 'MDefender-Pro-Plugin/4.3.0',
+        ];
+
+        foreach ($candidates as $base) {
+            $endpoint = $base . '/api/user/blacklist?ip=' . urlencode($ip) . ($website_id ? '&website_id=' . urlencode($website_id) : '');
+            try {
+                $resp = wp_remote_request($endpoint, [
+                    'method' => 'DELETE',
+                    'headers' => $headers,
+                    'timeout' => 2.0,
+                    'sslverify' => false,
+                    'blocking' => true,
+                ]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) < 400) {
+                    break;
+                }
+            } catch (\Exception $e) {}
+        }
+    }
+
+    public function notify_cloud_country_block($country_code, $country_name = '', $action = 'block') {
+        if (php_sapi_name() === 'cli' || defined('WP_CLI')) return;
+        $c_code = strtoupper(trim((string)$country_code));
+        if (empty($c_code) || strlen($c_code) !== 2) return;
+        $api_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
+        $api_url = trim((string) get_option('waf_fw_ml_api_url', get_option('waf_fw_api_url', '')));
+        $website_id = trim((string) get_option('waf_fw_website_id', ''));
+        if (empty($api_key)) return;
+
+        $candidates = [];
+        if (!empty($api_url)) {
+            $candidates[] = rtrim($api_url, '/');
+        }
+        $candidates[] = 'https://mdefender-pro.crafix.tech';
+        $candidates[] = 'http://127.0.0.1:8000';
+        $candidates = array_values(array_unique($candidates));
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $api_key,
+            'X-API-Key' => $api_key,
+            'Content-Type' => 'application/json',
+            'User-Agent' => 'MDefender-Pro-Plugin/4.3.0',
+        ];
+
+        foreach ($candidates as $base) {
+            try {
+                if ($action === 'unblock') {
+                    $endpoint = $base . '/api/user/country-blocks?code=' . urlencode($c_code) . ($website_id ? '&website_id=' . urlencode($website_id) : '');
+                    $resp = wp_remote_request($endpoint, [
+                        'method' => 'DELETE',
+                        'headers' => $headers,
+                        'timeout' => 2.0,
+                        'sslverify' => false,
+                        'blocking' => true,
+                    ]);
+                } else {
+                    $endpoint = $base . '/api/user/country-blocks';
+                    $body = wp_json_encode([
+                        'country_code' => $c_code,
+                        'country_name' => $country_name ?: $c_code,
+                        'reason' => "Geo-Restriction Policy ($c_code)",
+                        'website_id' => $website_id ?: 'all',
+                    ]);
+                    $resp = wp_remote_post($endpoint, [
+                        'headers' => $headers,
+                        'body' => $body,
+                        'timeout' => 2.0,
+                        'sslverify' => false,
+                        'blocking' => true,
+                    ]);
+                }
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) < 400) {
+                    break;
+                }
+            } catch (\Exception $e) {}
         }
     }
 

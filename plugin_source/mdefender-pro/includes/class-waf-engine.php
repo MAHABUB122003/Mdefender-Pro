@@ -558,7 +558,21 @@ class WAF_FW_Engine {
         }
         if (empty($blocked)) return false;
 
+        // Anti-Bypass Dual-Layer Verification:
+        // 1. Resolve country via edge headers
         $country_code = $this->get_ip_country($ip);
+        if (!empty($country_code) && in_array($country_code, $blocked, true)) {
+            return true;
+        }
+
+        // 2. Anti-Spoofing: If public IP, also verify true socket IP GeoIP regardless of headers
+        if (!empty($ip) && $ip !== '127.0.0.1' && $ip !== '::1' && filter_var($ip, FILTER_VALIDATE_IP)) {
+            $real_geo = $this->lookup_ip_country_real($ip);
+            if (!empty($real_geo) && in_array($real_geo, $blocked, true)) {
+                return true;
+            }
+        }
+
         if ($country_code === 'LOCAL' || $country_code === 'XX') {
             $local_srv = get_option('waf_fw_local_server_country', 'BD');
             if (!empty($local_srv)) {
@@ -568,6 +582,21 @@ class WAF_FW_Engine {
         if (empty($country_code) || $country_code === 'XX') return false;
 
         return in_array($country_code, $blocked, true);
+    }
+
+    private function lookup_ip_country_real($ip) {
+        $transient_key = 'waf_fw_geoip_' . md5($ip);
+        if (function_exists('get_transient')) {
+            $c = get_transient($transient_key);
+            if (!empty($c) && is_string($c) && strlen($c) === 2) return strtoupper($c);
+        }
+        $data_dir = plugin_dir_path(__FILE__) . 'data';
+        $disk_file = $data_dir . '/waf_geoip_cache.json';
+        if (file_exists($disk_file)) {
+            $d = @json_decode(@file_get_contents($disk_file), true);
+            if (!empty($d[$ip]) && strlen($d[$ip]) === 2) return strtoupper($d[$ip]);
+        }
+        return '';
     }
 
     public function get_ip_country($ip) {

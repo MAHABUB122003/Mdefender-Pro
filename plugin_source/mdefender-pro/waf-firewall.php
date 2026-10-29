@@ -565,7 +565,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                     $b_expires = sanitize_text_field($_REQUEST['expires_at'] ?? $pushed_data['expires_at'] ?? null);
                     if (class_exists('WAF_FW_IP_Filter')) {
                         WAF_FW_IP_Filter::instance()->remove_from_whitelist($target_ip);
-                        WAF_FW_IP_Filter::instance()->add_to_blacklist($target_ip, $b_reason, $b_type, false, $b_expires);
+                        WAF_FW_IP_Filter::instance()->add_to_blacklist($target_ip, $b_reason, $b_type, false, $b_expires, false);
                     }
                     if (class_exists('WAF_FW_Engine')) {
                         WAF_FW_Engine::instance()->export_fast_cache();
@@ -585,7 +585,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 $target_ip = trim(sanitize_text_field($_REQUEST['ip'] ?? $pushed_data['ip'] ?? ''));
                 if (!empty($target_ip)) {
                     if (class_exists('WAF_FW_IP_Filter')) {
-                        WAF_FW_IP_Filter::instance()->remove_from_blacklist($target_ip);
+                        WAF_FW_IP_Filter::instance()->remove_from_blacklist($target_ip, false);
                     }
                     if (class_exists('WAF_FW_Engine')) {
                         WAF_FW_Engine::instance()->export_fast_cache();
@@ -1212,21 +1212,15 @@ function waf_fw_analyze_request() {
                 $atype = $result['attack_type'] ?? '';
                 $rule_m = $result['rule_matched'] ?? '';
                 $msg = $result['message'] ?? '';
-                $is_stealth = (
-                    $atype === 'Blacklisted IP' ||
-                    $atype === 'Country Blocked' ||
-                    stripos($atype, 'Blacklist') !== false ||
-                    stripos($atype, 'Country') !== false ||
-                    stripos($atype, 'Geograph') !== false ||
-                    stripos($atype, 'GeoIP') !== false ||
-                    stripos($atype, 'Probe') !== false ||
-                    stripos($rule_m, 'Blacklist') !== false ||
-                    stripos($rule_m, 'Country') !== false ||
-                    stripos($rule_m, 'GeoIP') !== false ||
-                    stripos($msg, 'blacklist') !== false ||
-                    stripos($msg, 'country') !== false
-                );
-                if ($is_stealth) {
+
+                $is_ip_bl = ($atype === 'Blacklisted IP' || stripos($atype, 'Blacklist') !== false || stripos($rule_m, 'Blacklist') !== false || stripos($msg, 'blacklist') !== false);
+                $is_country_bl = ($atype === 'Country Blocked' || stripos($atype, 'Country') !== false || stripos($atype, 'Geograph') !== false || stripos($atype, 'GeoIP') !== false || stripos($rule_m, 'Country') !== false || stripos($rule_m, 'GeoIP') !== false || stripos($msg, 'country') !== false);
+
+                if ($is_ip_bl) {
+                    include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
+                    exit;
+                }
+                if ($is_country_bl || stripos($atype, 'Probe') !== false) {
                     include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
                     exit;
                 }
@@ -1279,21 +1273,15 @@ function waf_fw_analyze_request() {
         $atype = $result['attack_type'] ?? '';
         $rule_m = $result['rule_matched'] ?? '';
         $msg = $result['message'] ?? '';
-        $is_stealth = (
-            $atype === 'Blacklisted IP' ||
-            $atype === 'Country Blocked' ||
-            stripos($atype, 'Blacklist') !== false ||
-            stripos($atype, 'Country') !== false ||
-            stripos($atype, 'Geograph') !== false ||
-            stripos($atype, 'GeoIP') !== false ||
-            stripos($atype, 'Probe') !== false ||
-            stripos($rule_m, 'Blacklist') !== false ||
-            stripos($rule_m, 'Country') !== false ||
-            stripos($rule_m, 'GeoIP') !== false ||
-            stripos($msg, 'blacklist') !== false ||
-            stripos($msg, 'country') !== false
-        );
-        if ($is_stealth) {
+
+        $is_ip_bl = ($atype === 'Blacklisted IP' || stripos($atype, 'Blacklist') !== false || stripos($rule_m, 'Blacklist') !== false || stripos($msg, 'blacklist') !== false);
+        $is_country_bl = ($atype === 'Country Blocked' || stripos($atype, 'Country') !== false || stripos($atype, 'Geograph') !== false || stripos($atype, 'GeoIP') !== false || stripos($rule_m, 'Country') !== false || stripos($rule_m, 'GeoIP') !== false || stripos($msg, 'country') !== false);
+
+        if ($is_ip_bl) {
+            include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
+            exit;
+        }
+        if ($is_country_bl || stripos($atype, 'Probe') !== false) {
             include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
             exit;
         }

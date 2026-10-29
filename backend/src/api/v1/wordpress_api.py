@@ -802,6 +802,13 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                                 $escaped = array_map(function($ip) use ($c) {{ return "'" . mysqli_real_escape_string($c, $ip) . "'"; }}, $bl);
                                 $in_clause = implode(',', $escaped);
                                 mysqli_query($c, "DELETE FROM wp_waf_blacklist WHERE ip NOT IN ($in_clause)");
+                                foreach ($bl as $b_ip) {{
+                                    $b_esc = mysqli_real_escape_string($c, $b_ip);
+                                    $chk = mysqli_query($c, "SELECT id FROM wp_waf_blacklist WHERE ip = '$b_esc' LIMIT 1");
+                                    if (mysqli_num_rows($chk) == 0) {{
+                                        mysqli_query($c, "INSERT INTO wp_waf_blacklist (ip, reason, type, auto_blocked, blocked_at) VALUES ('$b_esc', 'Synced from MDefender-Pro Cloud', 'permanent', 0, NOW())");
+                                    }}
+                                }}
                             }}
                             mysqli_query($c, "DELETE FROM wp_options WHERE option_name LIKE '_transient_waf_attack_cnt_%' OR option_name LIKE '_transient_timeout_waf_attack_cnt_%'");
                             mysqli_close($c);

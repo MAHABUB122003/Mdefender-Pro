@@ -14,6 +14,8 @@ class WAF_FW_Ajax_Handler {
         add_action('wp_ajax_waf_fw_get_blacklist', [$this, 'get_blacklist']);
         add_action('wp_ajax_waf_fw_add_blacklist', [$this, 'add_blacklist']);
         add_action('wp_ajax_waf_fw_remove_blacklist', [$this, 'remove_blacklist']);
+        add_action('wp_ajax_waf_fw_add_country_block', [$this, 'add_country_block']);
+        add_action('wp_ajax_waf_fw_remove_country_block', [$this, 'remove_country_block']);
         add_action('wp_ajax_waf_fw_get_settings', [$this, 'get_settings']);
         add_action('wp_ajax_waf_fw_save_settings', [$this, 'save_settings']);
         add_action('wp_ajax_waf_fw_change_password', [$this, 'change_password']);
@@ -350,6 +352,51 @@ class WAF_FW_Ajax_Handler {
         wp_send_json_success(['message' => "IP $ip unblocked"]);
     }
 
+    public function add_country_block() {
+        $this->check_access();
+        $this->verify_nonce();
+        $data = $this->get_json_input();
+        $code = strtoupper(trim(sanitize_text_field($_POST['country_code'] ?? $data['country_code'] ?? $_POST['code'] ?? $data['code'] ?? '')));
+        $name = sanitize_text_field($_POST['country_name'] ?? $data['country_name'] ?? $code);
+        if (empty($code) || strlen($code) !== 2) {
+            wp_send_json_error(['message' => 'Valid 2-letter ISO country code is required (e.g., RO, CN, RU)']);
+        }
+        $raw = (string) get_option('waf_fw_blocked_countries', '');
+        $codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw)))));
+        if (!in_array($code, $codes, true)) {
+            $codes[] = $code;
+            update_option('waf_fw_blocked_countries', implode(',', $codes));
+            if (class_exists('WAF_FW_Engine')) {
+                WAF_FW_Engine::instance()->export_fast_cache();
+            }
+        }
+        if (class_exists('WAF_FW_IP_Filter')) {
+            WAF_FW_IP_Filter::instance()->notify_cloud_country_block($code, $name, 'block');
+        }
+        wp_send_json_success(['message' => "Country {$name} ({$code}) added to Blacklist", 'country_code' => $code]);
+    }
+
+    public function remove_country_block() {
+        $this->check_access();
+        $this->verify_nonce();
+        $data = $this->get_json_input();
+        $code = strtoupper(trim(sanitize_text_field($_POST['country_code'] ?? $data['country_code'] ?? $_POST['code'] ?? $data['code'] ?? '')));
+        if (empty($code)) {
+            wp_send_json_error(['message' => 'Country code is required']);
+        }
+        $raw = (string) get_option('waf_fw_blocked_countries', '');
+        $codes = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw)))));
+        $codes = array_values(array_diff($codes, [$code]));
+        update_option('waf_fw_blocked_countries', implode(',', $codes));
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+        if (class_exists('WAF_FW_IP_Filter')) {
+            WAF_FW_IP_Filter::instance()->notify_cloud_country_block($code, $code, 'unblock');
+        }
+        wp_send_json_success(['message' => "Country {$code} removed from Blacklist", 'country_code' => $code]);
+    }
+
     public function get_settings() {
         $this->check_access();
         wp_send_json_success([
@@ -426,6 +473,24 @@ class WAF_FW_Ajax_Handler {
             update_option('waf_turnstile_theme', $theme);
         }
         
+        if (isset($data['blocked_countries'])) {
+            $old_c_raw = (string) get_option('waf_fw_blocked_countries', '');
+            $old_c_list = array_values(array_filter(array_map('trim', explode(',', strtoupper($old_c_raw)))));
+            $new_raw = is_array($data['blocked_countries']) ? implode(',', $data['blocked_countries']) : (string)$data['blocked_countries'];
+            $new_c_list = array_values(array_filter(array_map('trim', explode(',', strtoupper($new_raw)))));
+
+            $added_c = array_diff($new_c_list, $old_c_list);
+            $removed_c = array_diff($old_c_list, $new_c_list);
+            if (class_exists('WAF_FW_IP_Filter')) {
+                foreach ($added_c as $c) {
+                    WAF_FW_IP_Filter::instance()->notify_cloud_country_block($c, $c, 'block');
+                }
+                foreach ($removed_c as $c) {
+                    WAF_FW_IP_Filter::instance()->notify_cloud_country_block($c, $c, 'unblock');
+                }
+            }
+        }
+
         foreach ($allowed as $key) {
             if (isset($data[$key])) {
                 if ($key === 'cloud_mode' && !in_array($data[$key], ['monitor', 'protect', 'off'], true)) {

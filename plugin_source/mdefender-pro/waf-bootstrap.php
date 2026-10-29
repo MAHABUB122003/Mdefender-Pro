@@ -93,35 +93,59 @@ $block_reason = '';
 $attack_name = 'Security Threat';
 $rule_name = 'Pre-Flight Edge WAAP';
 
-$candidates = [$mdefender_ip];
+// Comprehensive Anti-Bypass Candidate IP Chain (REMOTE_ADDR + all forward headers)
+$raw_candidates = [$mdefender_ip];
+if (!empty($_SERVER['REMOTE_ADDR'])) {
+    $raw_candidates[] = $_SERVER['REMOTE_ADDR'];
+}
 if (!empty($_GET['test_ip'])) {
-    $t_ip = preg_replace('/:\d+$/', '', trim($_GET['test_ip']));
-    if (filter_var($t_ip, FILTER_VALIDATE_IP)) $candidates[] = $t_ip;
+    $raw_candidates[] = $_GET['test_ip'];
 }
 if (!empty($_GET['ip_test'])) {
-    $t_ip = preg_replace('/:\d+$/', '', trim($_GET['ip_test']));
-    if (filter_var($t_ip, FILTER_VALIDATE_IP)) $candidates[] = $t_ip;
+    $raw_candidates[] = $_GET['ip_test'];
 }
-if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-    $cf_ip = preg_replace('/:\d+$/', '', trim($_SERVER['HTTP_CF_CONNECTING_IP']));
-    if (filter_var($cf_ip, FILTER_VALIDATE_IP)) $candidates[] = $cf_ip;
+$ip_headers = [
+    'HTTP_CF_CONNECTING_IP',
+    'HTTP_TRUE_CLIENT_IP',
+    'HTTP_X_REAL_IP',
+    'HTTP_CLIENT_IP',
+    'HTTP_X_CLIENT_IP',
+    'HTTP_X_CLUSTER_CLIENT_IP',
+    'HTTP_X_FORWARDED_FOR',
+    'HTTP_FORWARDED_FOR',
+    'HTTP_X_FORWARDED',
+    'HTTP_FORWARDED'
+];
+foreach ($ip_headers as $hdr) {
+    if (!empty($_SERVER[$hdr])) {
+        $parts = explode(',', (string)$_SERVER[$hdr]);
+        foreach ($parts as $p) {
+            $raw_candidates[] = trim($p);
+        }
+    }
 }
-if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
-    $r_ip = preg_replace('/:\d+$/', '', trim($_SERVER['HTTP_X_REAL_IP']));
-    if (filter_var($r_ip, FILTER_VALIDATE_IP)) $candidates[] = $r_ip;
-}
-if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    $fwds = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-    foreach ($fwds as $f_ip) {
-        $f_ip = preg_replace('/:\d+$/', '', trim($f_ip));
-        if (filter_var($f_ip, FILTER_VALIDATE_IP)) $candidates[] = $f_ip;
+$candidates = [];
+foreach ($raw_candidates as $cand) {
+    $cand = trim((string)$cand);
+    if (empty($cand)) continue;
+    if (strpos($cand, ':') !== false && strpos($cand, '.') !== false) {
+        $cand = preg_replace('/:\d+$/', '', $cand);
+    }
+    if (stripos($cand, '::ffff:') === 0) {
+        $cand = substr($cand, 7);
+    }
+    if (filter_var($cand, FILTER_VALIDATE_IP)) {
+        $candidates[] = $cand;
     }
 }
 $candidates = array_values(array_unique(array_filter($candidates)));
 
+$matched_ip = '';
 foreach ($candidates as $cand) {
     if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true)) || !empty($_GET['waf_test_blacklist']) || !empty($_GET['test_blacklisted'])) {
         $is_blocked = true;
+        $matched_ip = $cand;
+        $GLOBALS['waf_matched_blacklisted_ip'] = $cand;
         $attack_name = 'Blacklisted IP';
         $rule_name = 'Pre-Flight WAAP: Blacklisted IP Policy Rule';
         $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP Policy Rule).';
@@ -350,10 +374,16 @@ if ($is_blocked) {
         } catch (\Throwable $e) {}
     }
 
-    // 3. Stealth Dead Network: Blacklisted IPs, Country/Regional Restrictions, and Server Admin Probes
-    // Never reveal that a security plugin or WAF is present. To the attacker or blocked region, the site is completely down!
-    if ($attack_name === 'Blacklisted IP' || $attack_name === 'Country / Regional Restriction' || $attack_name === 'Server Admin Probe' || !empty($is_country_block)) {
+    // 3. Country / Regional Restrictions & Admin Probes: Stealth Dead Network (502 / ERR_NAME_NOT_RESOLVED)
+    // Keep 100% authentic browser offline screen for blocked regions with 0% branding.
+    if ($attack_name === 'Country / Regional Restriction' || $attack_name === 'Server Admin Probe' || !empty($is_country_block)) {
         include __DIR__ . '/dead-network-template.php';
+        exit;
+    }
+
+    // 4. IP Blacklist: Authentic LiteSpeed 403 Forbidden with prominent Blacklisted IP display
+    if ($attack_name === 'Blacklisted IP') {
+        include __DIR__ . '/ip-blacklist-template.php';
         exit;
     }
 

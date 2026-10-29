@@ -66,8 +66,6 @@ backend/.pytest_cache/
 !backend/downloads/mdefender-pro.zip
 !frontend/public/mdefender-pro.zip
 !frontend/dist/mdefender-pro.zip
-!frontend/public/downloads/mdefender-pro.zip
-!frontend/dist/downloads/mdefender-pro.zip
 *.tar.gz
 *.rar
 waf_ml_dataset.csv
