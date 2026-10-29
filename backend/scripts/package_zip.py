@@ -8,6 +8,8 @@ targets = [
     os.path.abspath('backend/downloads/mdefender-pro.zip'),
     os.path.abspath('frontend/public/mdefender-pro.zip'),
     os.path.abspath('frontend/dist/mdefender-pro.zip'),
+    os.path.abspath('frontend/public/downloads/mdefender-pro.zip'),
+    os.path.abspath('frontend/dist/downloads/mdefender-pro.zip'),
 ]
 
 temp_zip = os.path.abspath('temp_mdefender.zip')
