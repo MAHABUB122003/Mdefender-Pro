@@ -90,6 +90,9 @@ def build(src_dir: str | None = None) -> str:
     for f_dir in [os.path.join(PROJECT_DIR, "frontend", "public"), os.path.join(PROJECT_DIR, "frontend", "dist")]:
         if os.path.isdir(f_dir):
             shutil.copy2(OUT_FILE, os.path.join(f_dir, "mdefender-pro.zip"))
+            dl_dir = os.path.join(f_dir, "downloads")
+            os.makedirs(dl_dir, exist_ok=True)
+            shutil.copy2(OUT_FILE, os.path.join(dl_dir, "mdefender-pro.zip"))
 
     print(f"Built {OUT_FILE} ({count} files, {size:,} bytes)")
     return OUT_FILE

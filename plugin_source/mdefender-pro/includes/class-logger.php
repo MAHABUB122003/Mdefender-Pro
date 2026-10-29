@@ -44,6 +44,11 @@ class WAF_FW_Logger {
     }
 
     public function log_attack($data) {
+        if (!empty($GLOBALS['waf_fw_attack_logged_in_request'])) {
+            return;
+        }
+        $GLOBALS['waf_fw_attack_logged_in_request'] = true;
+
         global $wpdb;
         $ip = $data['ip'] ?? '';
         $country_code = $this->fast_get_country_code($ip);
@@ -74,42 +79,35 @@ class WAF_FW_Logger {
         error_log('[MDefender-Pro] ' . $message);
     }
 
-    private static $request_buffer = [];
-    private static $request_shutdown_registered = false;
-
     public function log_request($data) {
-        self::$request_buffer[] = $data;
-        if (!self::$request_shutdown_registered) {
-            add_action('shutdown', [__CLASS__, 'flush_requests'], 25);
-            self::$request_shutdown_registered = true;
+        if (!empty($GLOBALS['waf_fw_request_logged_in_request']) || !empty($GLOBALS['waf_fw_attack_logged_in_request'])) {
+            return;
         }
+        $GLOBALS['waf_fw_request_logged_in_request'] = true;
+
+        global $wpdb;
+        $table = $this->db->get_requests_table();
+        $ip = $data['ip'] ?? '';
+        $country_code = $this->fast_get_country_code($ip);
+        $now = current_time('mysql');
+
+        $wpdb->insert(
+            $table,
+            [
+                'ip' => $ip,
+                'country_code' => $country_code,
+                'url' => substr((string)($data['url'] ?? ''), 0, 500),
+                'method' => substr((string)($data['method'] ?? 'GET'), 0, 10),
+                'status' => substr((string)($data['status'] ?? 'allowed'), 0, 20),
+                'user_agent' => substr((string)($data['user_agent'] ?? ''), 0, 255),
+                'created_at' => $now,
+            ]
+        );
+        $this->auto_recycle_if_needed();
     }
 
     public static function flush_requests() {
-        if (empty(self::$request_buffer)) return;
-        global $wpdb;
-        $inst = self::instance();
-        $table = $inst->db->get_requests_table();
-        $now = current_time('mysql');
-
-        foreach (self::$request_buffer as $data) {
-            $ip = $data['ip'] ?? '';
-            $country_code = $inst->fast_get_country_code($ip);
-            $wpdb->insert(
-                $table,
-                [
-                    'ip' => $ip,
-                    'country_code' => $country_code,
-                    'url' => substr((string)($data['url'] ?? ''), 0, 500),
-                    'method' => substr((string)($data['method'] ?? 'GET'), 0, 10),
-                    'status' => substr((string)($data['status'] ?? 'allowed'), 0, 20),
-                    'user_agent' => substr((string)($data['user_agent'] ?? ''), 0, 255),
-                    'created_at' => $now,
-                ]
-            );
-        }
-        self::$request_buffer = [];
-        $inst->auto_recycle_if_needed();
+        // Maintained for backward compatibility
     }
 
     /**
@@ -436,20 +434,22 @@ class WAF_FW_Logger {
         $attacks_table = $this->db->get_attacks_table();
         $requests_table = $this->db->get_requests_table();
         $events_table = $wpdb->prefix . (defined('WAF_FW_TABLE_SECURITY_EVENTS') ? WAF_FW_TABLE_SECURITY_EVENTS : 'waf_security_events');
+        $login_table = $this->db->get_login_attempts_table();
 
         $days_str = strtolower(trim((string)$days));
 
         if ($days_str === 'all' || $days_str === '' || $days_str === '0') {
-            $wpdb->query("TRUNCATE TABLE $attacks_table");
             $wpdb->query("DELETE FROM $attacks_table");
-            
-            $wpdb->query("TRUNCATE TABLE $requests_table");
             $wpdb->query("DELETE FROM $requests_table");
             
             if ($wpdb->get_var("SHOW TABLES LIKE '$events_table'") === $events_table) {
-                $wpdb->query("TRUNCATE TABLE $events_table");
                 $wpdb->query("DELETE FROM $events_table");
             }
+            if ($wpdb->get_var("SHOW TABLES LIKE '$login_table'") === $login_table) {
+                $wpdb->query("DELETE FROM $login_table");
+            }
+            update_option('waf_fw_stats_blocked', 0);
+            update_option('waf_fw_stats_allowed', 0);
         } elseif ($days_str === 'today') {
             $today = current_time('Y-m-d') . ' 00:00:00';
             $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table WHERE created_at >= %s", $today));
@@ -477,18 +477,21 @@ class WAF_FW_Logger {
         global $wpdb;
         $table = $this->db->get_requests_table();
         $wpdb->query("DELETE FROM $table");
+        update_option('waf_fw_stats_allowed', 0);
     }
 
     public function clean_blocked() {
         global $wpdb;
         $table = $this->db->get_attacks_table();
         $wpdb->query("DELETE FROM $table WHERE status = 'blocked' OR action = 'blocked' OR status = 'drop'");
+        update_option('waf_fw_stats_blocked', 0);
     }
 
     public function clean_threats() {
         global $wpdb;
         $table = $this->db->get_attacks_table();
         $wpdb->query("DELETE FROM $table");
+        update_option('waf_fw_stats_blocked', 0);
     }
 
     public function get_rate_limit_stats() {

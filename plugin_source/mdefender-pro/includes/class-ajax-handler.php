@@ -190,28 +190,54 @@ class WAF_FW_Ajax_Handler {
     public function clean_stats() {
         $this->check_access();
         $this->verify_nonce();
+        global $wpdb;
         $type = sanitize_text_field($_POST['type'] ?? '');
         $logger = WAF_FW_Logger::instance();
+        $msg = 'Stats cleaned successfully';
 
         switch ($type) {
             case 'total_requests':
                 $logger->clean_requests();
+                $msg = 'Inspected traffic request logs cleaned successfully';
                 break;
             case 'blocked_requests':
                 $logger->clean_blocked();
+                $msg = 'Blocked requests cleaned successfully';
                 break;
             case 'threats_detected':
                 $logger->clean_threats();
+                $msg = 'Threat incident records cleaned successfully';
+                break;
+            case 'flush_temp_blocks':
+                $bl_tbl = WAF_FW_DB::instance()->get_blacklist_table();
+                $wpdb->query("DELETE FROM $bl_tbl WHERE type = 'temporary' OR auto_blocked = 1");
+                $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_waf_%' OR option_name LIKE '_transient_timeout_waf_%'");
+                delete_transient('waf_fw_last_bl_sync');
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+                $msg = 'Temporary rate-limit and attack IP blocks flushed successfully';
+                break;
+            case 'clean_blacklist':
+            case 'all_blacklist':
+                $bl_tbl = WAF_FW_DB::instance()->get_blacklist_table();
+                $wpdb->query("DELETE FROM $bl_tbl");
+                update_option('waf_fw_local_blacklist_cache', []);
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+                $msg = 'All blacklisted IP addresses cleared successfully';
                 break;
             case 'all':
             case 'all_logs':
                 $logger->clear_logs('all');
+                $msg = 'All security logs and telemetry purged successfully';
                 break;
             default:
-                wp_send_json_error(['message' => 'Invalid clean type']);
+                wp_send_json_error(['message' => 'Invalid clean type: ' . esc_html($type)]);
         }
 
-        wp_send_json_success(['message' => 'Stats cleaned successfully', 'type' => $type]);
+        wp_send_json_success(['message' => $msg, 'type' => $type]);
     }
 
     public function get_logs() {

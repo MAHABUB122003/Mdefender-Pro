@@ -635,14 +635,7 @@ class WAF_FW_Login_Protector {
         $ip = $this->get_client_ip();
         $this->clear_attempts($ip);
 
-        // Log legitimate administrator/user login to requests table (NOT as an attack event)
-        WAF_FW_Logger::instance()->log_request([
-            'ip' => $ip,
-            'url' => $_SERVER['REQUEST_URI'] ?? '/wp-login.php',
-            'method' => $_SERVER['REQUEST_METHOD'] ?? 'POST',
-            'status' => 'allowed',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-        ]);
+        // Request is already captured once by the WAF engine upon request ingress.
     }
 
     public function get_attempts($ip) {

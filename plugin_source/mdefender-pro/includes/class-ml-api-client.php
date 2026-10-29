@@ -126,10 +126,11 @@ class WAF_FW_ML_Api_Client {
             unset($args['body']);
         }
 
-        $curl_hook = function($handle) {
+        $eff_timeout = $timeout ?: $this->timeout;
+        $conn_timeout_ms = max(300, min((int)($eff_timeout * 1000), 5000));
+        $curl_hook = function($handle) use ($conn_timeout_ms) {
             if (is_resource($handle) || (is_object($handle) && get_class($handle) === 'CurlHandle')) {
-                curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 15);
-                curl_setopt($handle, CURLOPT_CONNECTTIMEOUT_MS, 15000);
+                curl_setopt($handle, CURLOPT_CONNECTTIMEOUT_MS, $conn_timeout_ms);
                 if (defined('CURLOPT_RESOLVE')) {
                     curl_setopt($handle, CURLOPT_RESOLVE, [
                         'mdefender-pro.crafix.tech:443:217.15.170.82',
@@ -449,7 +450,7 @@ class WAF_FW_ML_Api_Client {
             'domain'  => $domain,
             'mode'    => get_option('waf_fw_cloud_mode', 'protect'),
             'request' => is_array($request_data) ? $request_data : ['url' => '/', 'method' => 'GET', 'body' => '', 'headers' => [], 'ip' => ''],
-        ], 0.8);
+        ], 0.35);
     }
 
     /**

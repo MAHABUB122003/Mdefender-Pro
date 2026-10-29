@@ -234,7 +234,7 @@ $user_initials = $current_user && $current_user->display_name ? strtoupper(subst
             </div>
 
             <!-- Search and Filter Form -->
-            <form method="get" class="mdf-filter-form">
+            <form method="get" class="mdf-filter-form" id="mdfFilterForm">
                 <input type="hidden" name="page" value="waf-firewall-logs">
                 <div class="mdf-search-input-wrap">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71807A" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -513,6 +513,10 @@ function mdfToggleCleanLogsDropdown(e) {
     }
 }
 
+var mdfLogsNonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) 
+    ? waf_fw_ajax.nonce 
+    : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
+
 function wafFwClearLogs(days) {
     days = days || 'all';
     var confirmMsg = days === 'all'
@@ -521,7 +525,7 @@ function wafFwClearLogs(days) {
         
     if (!window.confirm(confirmMsg)) return;
 
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    var nonce = mdfLogsNonce;
 
     jQuery.post(ajaxurl, {
         action: 'waf_fw_clear_logs',
@@ -541,11 +545,11 @@ function wafFwClearLogs(days) {
 
 function wafFwExportCsv(scope) {
     scope = scope || 'all';
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    var nonce = mdfLogsNonce;
     var url = ajaxurl + '?action=waf_fw_export_logs&scope=' + encodeURIComponent(scope) + '&nonce=' + encodeURIComponent(nonce);
     
     if (scope === 'filtered') {
-        var filterForm = document.getElementById('mdfFilterForm') || document.querySelector('form.mdf-filter-bar');
+        var filterForm = document.getElementById('mdfFilterForm') || document.querySelector('form.mdf-filter-form') || document.querySelector('form.mdf-filter-bar');
         if (filterForm) {
             var formData = jQuery(filterForm).serialize();
             if (formData) {
@@ -574,7 +578,7 @@ function wafFwSendIpAction(action, ip, reason) {
         action: action,
         ip: ip,
         reason: reason,
-        nonce: (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : ''
+        nonce: mdfLogsNonce
     }, function(response) {
         if (response && response.success) {
             window.alert(response.data && response.data.message ? response.data.message : 'IP action completed.');

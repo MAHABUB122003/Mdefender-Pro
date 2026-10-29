@@ -17,4 +17,9 @@ if (!defined('WAF_FW_MAIN_FILE')) {
     define('WAF_FW_MAIN_FILE', __FILE__);
 }
 
+// 1. Ultra-Fast Pre-Flight Ingress Firewall (Microsecond Edge execution)
+if (file_exists(__DIR__ . '/waf-bootstrap.php')) {
+    require_once __DIR__ . '/waf-bootstrap.php';
+}
+
 require_once __DIR__ . '/waf-firewall.php';

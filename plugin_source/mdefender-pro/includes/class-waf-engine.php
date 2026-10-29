@@ -419,10 +419,8 @@ class WAF_FW_Engine {
             foreach ($blocked_rows as $row) {
                 if (!empty($row->ip)) {
                     $cand = trim((string) $row->ip);
-                    if (!in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
-                        $bl_map[$cand] = true;
-                        $active_ips[] = $cand;
-                    }
+                    $bl_map[$cand] = true;
+                    $active_ips[] = $cand;
                 }
             }
         }
@@ -432,7 +430,7 @@ class WAF_FW_Engine {
         if (is_array($opt_bl)) {
             foreach ($opt_bl as $b_ip) {
                 $cand = trim((string) $b_ip);
-                if (!empty($cand) && !in_array($cand, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true)) {
+                if (!empty($cand)) {
                     $bl_map[$cand] = true;
                     $active_ips[] = $cand;
                 }
@@ -443,8 +441,6 @@ class WAF_FW_Engine {
         $active_ips = array_values(array_unique($active_ips));
         update_option('waf_fw_local_blacklist_cache', $active_ips);
 
-        unset($bl_map['127.0.0.1'], $bl_map['::1'], $bl_map['0.0.0.0'], $bl_map['localhost']);
-
         $raw_countries = get_option('waf_fw_blocked_countries', '');
         $blocked_countries = [];
         if (is_array($raw_countries)) {
@@ -453,18 +449,7 @@ class WAF_FW_Engine {
             $blocked_countries = array_values(array_filter(array_map('trim', explode(',', strtoupper($raw_countries)))));
         }
 
-        $local_geo = get_transient('waf_fw_local_public_geo') ?: get_option('waf_fw_local_server_country', '');
-        if (empty($local_geo) && function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
-            $resp = wp_remote_get('http://ip-api.com/json/?fields=status,countryCode', ['timeout' => 0.8]);
-            if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
-                $g = json_decode(wp_remote_retrieve_body($resp), true);
-                if (!empty($g['countryCode'])) {
-                    $local_geo = strtoupper(trim($g['countryCode']));
-                    set_transient('waf_fw_local_public_geo', $local_geo, 86400);
-                    update_option('waf_fw_local_server_country', $local_geo);
-                }
-            }
-        }
+        $local_geo = get_transient('waf_fw_local_public_geo') ?: get_option('waf_fw_local_server_country', 'US');
 
         $cache_payload = [
             'enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
@@ -509,7 +494,7 @@ class WAF_FW_Engine {
 
         // Only buffer and flush telemetry if this block was NOT already analyzed & logged by cloud_ml_waf
         if ($rule_matched !== 'cloud_ml_waf') {
-            $country = $this->get_ip_country($ip);
+            $country = self::$geo_memory_cache[$ip] ?? (function_exists('get_transient') ? (get_transient('waf_fw_geoip_' . md5($ip)) ?: 'XX') : 'XX');
             $this->buffer_telemetry([
                 'event_type' => 'blocked',
                 'ip' => $ip,
@@ -726,10 +711,10 @@ class WAF_FW_Engine {
 
         $resolved_country = 'XX';
 
-        // Fast provider with reliable fallback when country blocking is actively configured
+        // Fast provider with strict sub-second timeout when country blocking is actively configured
         if (function_exists('wp_remote_get') && php_sapi_name() !== 'cli') {
             $resp = wp_remote_get("http://ip-api.com/json/{$ip}?fields=status,countryCode", [
-                'timeout' => 1.5,
+                'timeout' => 0.25,
                 'sslverify' => false,
                 'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
             ]);
@@ -737,19 +722,6 @@ class WAF_FW_Engine {
                 $g1 = json_decode(wp_remote_retrieve_body($resp), true);
                 if (!empty($g1['countryCode'])) {
                     $resolved_country = strtoupper(trim($g1['countryCode']));
-                }
-            }
-            if ($resolved_country === 'XX') {
-                $resp2 = wp_remote_get("https://ipwho.is/{$ip}", [
-                    'timeout' => 1.5,
-                    'sslverify' => false,
-                    'headers' => ['User-Agent' => 'MDefender-Pro-GeoIP/1.0']
-                ]);
-                if (!is_wp_error($resp2) && wp_remote_retrieve_response_code($resp2) === 200) {
-                    $g2 = json_decode(wp_remote_retrieve_body($resp2), true);
-                    if (!empty($g2['country_code'])) {
-                        $resolved_country = strtoupper(trim($g2['country_code']));
-                    }
                 }
             }
         }

@@ -1093,6 +1093,13 @@ function waf_fw_maybe_redirect_setup() {
 }
 add_action('admin_init', 'waf_fw_maybe_redirect_setup');
 
+if (!function_exists('waf_fw_bump_stat')) {
+    function waf_fw_bump_stat($which, $amount = 1) {
+        $key = $which === 'blocked' ? 'waf_fw_stats_blocked' : 'waf_fw_stats_allowed';
+        update_option($key, (int) get_option($key, 0) + (int) $amount);
+    }
+}
+
 function waf_fw_analyze_request() {
     if (php_sapi_name() === 'cli' || (defined('WP_CLI') && WP_CLI)) return;
     if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') return;
@@ -1122,6 +1129,61 @@ function waf_fw_analyze_request() {
     // Prevent double analysis in a single request lifecycle
     if (!empty($GLOBALS['waf_fw_analyzed'])) return;
 
+    // Drain any fast-logged attacks from pre-flight bootstrap into the database
+    $fast_log_file = WAF_FW_PLUGIN_DIR . 'includes/data/waf_attack_fast_log.json';
+    if (file_exists($fast_log_file) && filesize($fast_log_file) > 4) {
+        $raw_log = @file_get_contents($fast_log_file);
+        @unlink($fast_log_file);
+        if (!empty($raw_log)) {
+            $pending = @json_decode($raw_log, true);
+            if (!is_array($pending) || !isset($pending[0])) {
+                $pending = [];
+                $log_lines = explode("\n", trim($raw_log));
+                foreach ($log_lines as $l) {
+                    $item = @json_decode(trim($l), true);
+                    if ($item && is_array($item)) {
+                        $pending[] = $item;
+                    }
+                }
+            }
+            $logger = class_exists('WAF_FW_Logger') ? WAF_FW_Logger::instance() : null;
+            if ($logger && is_array($pending)) {
+                foreach ($pending as $atk) {
+                    $logger->log_attack($atk);
+                    waf_fw_bump_stat('blocked');
+                }
+            }
+        }
+    }
+
+    // Strict Blacklist Check: Blacklisted IPs are NEVER bypassed, even if logged in as administrator!
+    $engine = class_exists('WAF_FW_Engine') ? WAF_FW_Engine::instance() : null;
+    if ($engine) {
+        $client_ip = $engine->get_client_ip();
+        if (class_exists('WAF_FW_IP_Filter') && WAF_FW_IP_Filter::instance()->is_blacklisted($client_ip)) {
+            $GLOBALS['waf_fw_analyzed'] = true;
+            $result = $engine->analyze_current_request();
+            if ($result['status'] === 'blocked') {
+                status_header(403);
+                header('HTTP/1.1 403 Forbidden', true, 403);
+                header('X-Protected-By: MDefender-Pro-WAAP');
+                header('Connection: close');
+                include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
+
+                while (ob_get_level() > 0) {
+                    @ob_end_flush();
+                }
+                @flush();
+
+                if (function_exists('fastcgi_finish_request')) {
+                    @fastcgi_finish_request();
+                }
+                WAF_FW_Engine::flush_telemetry();
+                exit;
+            }
+        }
+    }
+
     // In wp-admin panel, authenticated administrators are bypassed for routine administrative tasks
     // BUT file editing (theme/plugin editor) and file uploads are ALWAYS inspected to prevent backdoor persistence
     if (is_admin() && function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
@@ -1132,51 +1194,39 @@ function waf_fw_analyze_request() {
         }
     }
 
-    // Fast periodic pull from cloud (guarded by 60s transient, 0.001ms overhead)
-    if (!is_admin() && empty($_GET['waf_cloud_sync']) && empty($_POST['waf_cloud_sync'])) {
-        $last_sync = get_transient('waf_fw_last_bl_sync');
-        if (!$last_sync && function_exists('waf_fw_sync_cloud_blacklist_fast')) {
-            waf_fw_sync_cloud_blacklist_fast(false);
-        }
-    }
-
     if (defined('REST_REQUEST') && REST_REQUEST) {
         waf_fw_analyze_rest_request();
         return;
     }
 
     $GLOBALS['waf_fw_analyzed'] = true;
-    $engine = WAF_FW_Engine::instance();
+    if (!$engine) {
+        $engine = WAF_FW_Engine::instance();
+    }
     $result = $engine->analyze_current_request();
 
     if ($result['status'] === 'blocked') {
         $atype = $result['attack_type'] ?? '';
-        // Stealth Drop Mode for Blacklisted IP and Country Block:
-        // Attacker sees ERR_EMPTY_RESPONSE / Connection Reset (Dead Host)
-        if ($atype === 'Blacklisted IP' || $atype === 'Country Blocked') {
-            if (!headers_sent()) {
-                header('HTTP/1.1 444 No Response', true, 444);
-                header('Status: 444 No Response');
-                header('Connection: close');
-                header('Content-Length: 0');
-            }
-            if (function_exists('fastcgi_finish_request')) {
-                @fastcgi_finish_request();
-            }
-            WAF_FW_Engine::flush_telemetry();
-            exit;
-        }
 
         status_header(403);
+        header('HTTP/1.1 403 Forbidden', true, 403);
         header('X-Protected-By: MDefender-Pro-WAAP');
+        header('Connection: close');
         include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
+
+        // Immediately flush all output buffers to the browser (< 0.1ms delivery)
+        while (ob_get_level() > 0) {
+            @ob_end_flush();
+        }
+        @flush();
+
         if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
+            @fastcgi_finish_request();
         }
         if (($result['attack_type'] ?? '') !== 'Blacklisted IP') {
             WAF_FW_Attack_Blocker::instance()->track_attack($result['ip']);
         }
-        // Immediately flush telemetry so the blocked attack is recorded on cloud dashboard
+        // Send telemetry asynchronously without delaying the visitor
         WAF_FW_Engine::flush_telemetry();
         exit;
     }

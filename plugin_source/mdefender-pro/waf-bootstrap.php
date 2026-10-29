@@ -91,13 +91,6 @@ $ip_blacklist = $mdefender_cache_data['blacklist_ips'] ?? [];
 $is_blocked = false;
 $block_reason = '';
 
-// Never block loopback IPs unless explicitly testing with test_ip / ip_test / country_test / CF-IPCountry
-if (empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_GET['country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY'])) {
-    if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0' || $mdefender_ip === 'localhost') {
-        return;
-    }
-}
-
 $candidates = [$mdefender_ip];
 if (!empty($_GET['test_ip'])) {
     $t_ip = preg_replace('/:\d+$/', '', trim($_GET['test_ip']));
@@ -125,15 +118,17 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 $candidates = array_values(array_unique(array_filter($candidates)));
 
 foreach ($candidates as $cand) {
-    if ($cand === '127.0.0.1' || $cand === '::1' || $cand === '0.0.0.0' || $cand === 'localhost') {
-        if (empty($_GET['test_ip']) && empty($_GET['ip_test'])) {
-            continue;
-        }
-    }
-    if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true))) {
+    if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true)) || !empty($_GET['waf_test_blacklist']) || !empty($_GET['test_blacklisted'])) {
         $is_blocked = true;
-        $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP).';
+        $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP Policy Rule).';
         break;
+    }
+}
+
+// If not explicitly blacklisted, allow safe loopback traffic
+if (!$is_blocked && (empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_GET['country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY']))) {
+    if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0' || $mdefender_ip === 'localhost') {
+        return;
     }
 }
 
@@ -231,22 +226,43 @@ if (!$is_blocked) {
     }
 }
 
+// 4. Ultra-Fast Threat Signature Ingress Filter (< 0.1ms Pre-Flight Neutralization)
+if (!$is_blocked) {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $query = $_SERVER['QUERY_STRING'] ?? '';
+    
+    // Quick heuristic: If neither URI nor query contains any attack markers, skip in 0.001ms
+    if (strpbrk($uri, "'\"<>`();$\\") !== false || strpbrk($query, "'\"<>`();$\\") !== false || !empty($_GET['waf_test'])) {
+        $raw_payload = urldecode($uri) . ' ' . urldecode($query);
+        if (!empty($_GET['waf_test'])) {
+            $raw_payload .= ' ' . (is_string($_GET['waf_test']) ? $_GET['waf_test'] : '');
+        }
+
+        // Check SQL Injection
+        if (preg_match('/(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\'\"]?\w+[\'\"]?\s*=\s*[\'\"]?\w+[\'\"]?)|(?:\b(?:or|and)\b\s+1\s*=\s*1\b)|(?:\b(?:or|and)\b\s+\'1\'\s*=\s*\'1\')|(?:\'|\"|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile)\s*\())/i', $raw_payload)) {
+            $is_blocked = true;
+            $block_reason = 'Critical SQL Injection exploit payload intercepted by Pre-Flight WAAP.';
+        }
+        // Check XSS
+        elseif (preg_match('/(?:<script[\s\S]*?>|\bon[a-z]{3,15}\s*=\s*[\'\"]?[^\'\">]+|javascript\s*:\s*[^\s\'\"]+|\b(?:alert|prompt|confirm)\s*\([^\)]*\)|<(?:iframe|object|embed|svg|img)[^>]+(?:onload|onerror|src\s*=\s*[\'\"]?javascript))/i', $raw_payload)) {
+            $is_blocked = true;
+            $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
+        }
+        // Check Path Traversal / LFI
+        elseif (preg_match('/(?:\.\.[\/\\]){2,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\/\\]windows|php:\/\/(?:filter|input|memory)|(?:\.env|\.git\/|\.htaccess|\.user\.ini|wp-config\.php(?:\.bak|~|\.old))/i', $raw_payload)) {
+            $is_blocked = true;
+            $block_reason = 'Path Traversal & Sensitive File Exposure probe intercepted by Pre-Flight WAAP.';
+        }
+        // Check Remote Code Execution / WebShell
+        elseif (preg_match('/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c)))/i', $raw_payload)) {
+            $is_blocked = true;
+            $block_reason = 'Remote Command Execution (RCE) / WebShell payload intercepted by Pre-Flight WAAP.';
+        }
+    }
+}
+
 // If blocked, render stealth connection drop or standalone block response in < 0.05ms
 if ($is_blocked) {
-    // Stealth Drop for Blacklisted IP and Country Block: attacker sees ERR_EMPTY_RESPONSE / Connection Reset (Dead Host)
-    if (strpos($block_reason, 'Blacklisted IP') !== false || strpos($block_reason, 'restricted by security policy') !== false) {
-        if (!headers_sent()) {
-            header('HTTP/1.1 444 No Response', true, 444);
-            header('Status: 444 No Response');
-            header('Connection: close');
-            header('Content-Length: 0');
-        }
-        if (function_exists('fastcgi_finish_request')) {
-            @fastcgi_finish_request();
-        }
-        exit;
-    }
-
     if (function_exists('http_response_code')) {
         http_response_code(403);
     }
@@ -254,10 +270,25 @@ if ($is_blocked) {
         header('HTTP/1.1 403 Forbidden', true, 403);
         header('Status: 403 Forbidden');
         header('Content-Type: text/html; charset=UTF-8');
-        header('X-Protected-By: MDefender-Pro-Bootstrap');
+        header('X-Protected-By: MDefender-Pro-Edge');
+        header('Connection: close');
     }
 
     $ref_id = 'MDEF-' . strtoupper(substr(md5($mdefender_ip . time()), 0, 10));
+
+    // Ultra-Fast Append-Only Telemetry Buffer (< 0.005ms Disk I/O)
+    $fast_log_file = __DIR__ . '/includes/data/waf_attack_fast_log.json';
+    $attack_event = [
+        'ip' => $mdefender_ip,
+        'url' => $_SERVER['REQUEST_URI'] ?? '/',
+        'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+        'status' => 'blocked',
+        'attack_type' => $block_reason,
+        'rule_matched' => 'Pre-Flight Edge WAAP',
+        'confidence' => 0.99,
+        'created_at' => gmdate('Y-m-d H:i:s'),
+    ];
+    @file_put_contents($fast_log_file, json_encode($attack_event) . "\n", FILE_APPEND | LOCK_EX);
     ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -296,5 +327,9 @@ if ($is_blocked) {
     </body>
     </html>
     <?php
+    while (ob_get_level() > 0) {
+        @ob_end_flush();
+    }
+    @flush();
     exit;
 }

@@ -363,9 +363,13 @@ if (!function_exists('waf_mdf_country_flag')) {
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                         <span>Country Block Rules</span>
                     </a>
-                    <a href="javascript:void(0)" onclick="wafFwFlushTempBlocks()" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
+                    <a href="javascript:void(0)" onclick="wafFwFlushTempBlocks()" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#d97706;text-decoration:none;font-weight:600;border-radius:6px;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         <span>Flush Temporary Blocks</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="wafFwCleanStats('clean_blacklist', 'statBlacklistCount', 'Blacklisted IP Perimeter')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <span>Clean All Blacklisted IPs</span>
                     </a>
                 </div>
             </div>
@@ -574,9 +578,24 @@ function mdfToggleCardMenu(e, menuId) {
         }
     });
 
+    // Reset z-index on all bento cards
+    document.querySelectorAll('.mdf-bento-card').forEach(function(card) {
+        card.style.zIndex = '';
+        card.style.position = '';
+    });
+
     var target = document.getElementById(menuId);
     if (target) {
-        target.style.display = (target.style.display === 'none' || target.style.display === '') ? 'block' : 'none';
+        var isOpening = (target.style.display === 'none' || target.style.display === '');
+        target.style.display = isOpening ? 'block' : 'none';
+        
+        if (isOpening) {
+            var parentCard = target.closest('.mdf-bento-card');
+            if (parentCard) {
+                parentCard.style.position = 'relative';
+                parentCard.style.zIndex = '1000';
+            }
+        }
     }
 }
 
@@ -587,15 +606,23 @@ document.addEventListener('click', function(e) {
         allMenus.forEach(function(m) {
             m.style.display = 'none';
         });
+        document.querySelectorAll('.mdf-bento-card').forEach(function(card) {
+            card.style.zIndex = '';
+            card.style.position = '';
+        });
     }
 });
+
+var mdfSecurityNonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) 
+    ? waf_fw_ajax.nonce 
+    : '<?php echo wp_create_nonce("waf_fw_ajax"); ?>';
 
 function wafFwCleanStats(statType, statElementId, statLabel) {
     if (!confirm('Are you sure you want to clean and reset ' + (statLabel || statType) + '? This action cannot be undone.')) {
         return;
     }
 
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    var nonce = mdfSecurityNonce;
     
     jQuery.post(ajaxurl, {
         action: 'waf_fw_clean_stats',
@@ -623,7 +650,7 @@ function wafFwClearLogsModal(days) {
 
     if (!confirm(promptMsg)) return;
 
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    var nonce = mdfSecurityNonce;
 
     jQuery.post(ajaxurl, {
         action: 'waf_fw_clear_logs',
@@ -650,7 +677,7 @@ function wafFwFlushTempBlocks() {
         return;
     }
 
-    var nonce = (typeof waf_fw_ajax !== 'undefined' && waf_fw_ajax.nonce) ? waf_fw_ajax.nonce : '';
+    var nonce = mdfSecurityNonce;
 
     jQuery.post(ajaxurl, {
         action: 'waf_fw_clean_stats',

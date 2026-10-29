@@ -20,19 +20,9 @@ class WAF_FW_IP_Filter {
         }
 
         $ip = trim((string) $ip);
-        if (empty($_GET['test_ip']) && empty($_GET['ip_test'])) {
-            if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
-                return false;
-            }
-        }
 
         if (isset($this->runtime_blacklist_cache[$ip])) {
             return $this->runtime_blacklist_cache[$ip];
-        }
-
-        if ($this->is_whitelisted($ip)) {
-            $this->runtime_blacklist_cache[$ip] = false;
-            return false;
         }
 
         $candidates = [$ip];
@@ -95,18 +85,7 @@ class WAF_FW_IP_Filter {
             }
         }
 
-        // 3. Check Global Threat Intel Cache (0.01ms)
-        $threat_ips = get_transient('waf_fw_cloud_threat_ips');
-        if (is_array($threat_ips) && !empty($threat_ips)) {
-            foreach ($candidates as $cand) {
-                if (in_array($cand, $threat_ips, true)) {
-                    $this->runtime_blacklist_cache[$ip] = true;
-                    return true;
-                }
-            }
-        }
-
-        // 4. Fallback DB lookup in a single query
+        // 3. Fallback DB lookup in a single query
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         $placeholders = implode(',', array_fill(0, count($candidates), '%s'));
@@ -121,6 +100,17 @@ class WAF_FW_IP_Filter {
                 if (!empty($result->block_expires_at) && strtotime($result->block_expires_at) <= $now) {
                     $wpdb->delete($table, ['ip' => $result->ip]);
                 } else {
+                    $this->runtime_blacklist_cache[$ip] = true;
+                    return true;
+                }
+            }
+        }
+
+        // 4. Check Global Threat Intel Cache (0.01ms)
+        $threat_ips = get_transient('waf_fw_cloud_threat_ips');
+        if (is_array($threat_ips) && !empty($threat_ips)) {
+            foreach ($candidates as $cand) {
+                if (in_array($cand, $threat_ips, true)) {
                     $this->runtime_blacklist_cache[$ip] = true;
                     return true;
                 }
@@ -158,11 +148,13 @@ class WAF_FW_IP_Filter {
 
     public function is_whitelisted($ip) {
         $ip = trim((string) $ip);
-        if (empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY'])) {
-            if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
-                return true;
-            }
+        if (empty($ip)) return false;
+
+        // If an IP is in the blacklist, it can NEVER be considered whitelisted!
+        if ($this->is_blacklisted_raw($ip)) {
+            return false;
         }
+
         $custom = get_option('waf_fw_ip_whitelist', '');
         if (!empty($custom)) {
             $ips = is_array($custom) ? $custom : array_map('trim', preg_split('/[,\r\n]+/', (string) $custom));
@@ -170,7 +162,18 @@ class WAF_FW_IP_Filter {
                 return true;
             }
         }
-        return in_array($ip, $this->whitelist, true);
+        if (in_array($ip, $this->whitelist, true)) {
+            return true;
+        }
+
+        // Loopback is allowed by default ONLY IF not explicitly added to the blacklist table and not running a waf test
+        if (empty($_GET['waf_test']) && empty($_POST['waf_test']) && empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY'])) {
+            if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function add_to_whitelist($ip, $reason = '') {
