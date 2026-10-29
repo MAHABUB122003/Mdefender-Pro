@@ -499,19 +499,36 @@ export const api = {
   updateUserRule: (id, data) => apiCall(`/api/user/rules?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteUserRule: (id) => apiCall(`/api/user/rules?id=${id}`, { method: 'DELETE' }),
   userBlockIP: (ip, reason) => apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify({ ip, reason }) }),
-  getUserBlacklist: () => apiCall('/api/user/blacklist'),
+  getUserBlacklist: (params = {}) => {
+    const siteId = typeof params === 'string' ? params : (params?.website_id || '');
+    const q = siteId && siteId !== 'all' ? `?website_id=${encodeURIComponent(siteId)}` : '';
+    return apiCall(`/api/user/blacklist${q}`);
+  },
   addUserBlacklist: (data) => apiCall('/api/user/blacklist', { method: 'POST', body: JSON.stringify(data) }),
-  removeUserBlacklist: (ip) => apiCall(`/api/user/blacklist?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
-  unblockExpiredBlacklist: () => apiCall('/api/user/blacklist/unblock-expired', { method: 'POST' }),
-  unblockBatchBlacklist: (ips) => apiCall('/api/user/blacklist/unblock-batch', { method: 'POST', body: JSON.stringify({ ips }) }),
+  removeUserBlacklist: (ip, website_id = '') => {
+    const q = website_id && website_id !== 'all' ? `&website_id=${encodeURIComponent(website_id)}` : '';
+    return apiCall(`/api/user/blacklist?ip=${encodeURIComponent(ip)}${q}`, { method: 'DELETE' });
+  },
+  unblockExpiredBlacklist: (website_id = '') => {
+    const q = website_id && website_id !== 'all' ? `?website_id=${encodeURIComponent(website_id)}` : '';
+    return apiCall(`/api/user/blacklist/unblock-expired${q}`, { method: 'POST' });
+  },
+  unblockBatchBlacklist: (ips, website_id = '') => apiCall('/api/user/blacklist/unblock-batch', { method: 'POST', body: JSON.stringify({ ips, website_id }) }),
   getDdosStatus: () => apiCall('/api/user/ddos-status'),
   toggleDdos: (enabled) => apiCall('/api/user/ddos-toggle', { method: 'POST', body: JSON.stringify({ enabled }) }),
   getNotices: () => apiCall('/api/notices'),
   addNotice: (content) => apiCall('/api/notices', { method: 'POST', body: JSON.stringify({ content }) }),
   whoisLookup: (ip) => apiCall(`/api/user/whois?ip=${encodeURIComponent(ip)}`),
-  getUserCountryBlocks: () => apiCall('/api/user/country-blocks'),
+  getUserCountryBlocks: (params = {}) => {
+    const siteId = typeof params === 'string' ? params : (params?.website_id || '');
+    const q = siteId && siteId !== 'all' ? `?website_id=${encodeURIComponent(siteId)}` : '';
+    return apiCall(`/api/user/country-blocks${q}`);
+  },
   addUserCountryBlock: (data) => apiCall('/api/user/country-blocks', { method: 'POST', body: JSON.stringify(data) }),
-  removeUserCountryBlock: (code) => apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}`, { method: 'DELETE' }),
+  removeUserCountryBlock: (code, website_id = '') => {
+    const q = website_id && website_id !== 'all' ? `&website_id=${encodeURIComponent(website_id)}` : '';
+    return apiCall(`/api/user/country-blocks?code=${encodeURIComponent(code)}${q}`, { method: 'DELETE' });
+  },
   userCleanLogs: (data = {}) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
   userResetStats: (data = {}) => apiCall('/api/user/reset-stats', { method: 'POST', body: JSON.stringify(data) }),
 

@@ -559,7 +559,7 @@ export default function UserLogs() {
     const ip = String(rawIp || '').trim();
     if (!ip) return;
     const reason = log?.attack_type ? `Hostile vector detected: ${log.attack_type}` : 'Blocked from deep log inspection';
-    setBlockForm({ ip, reason, duration: '1d' });
+    setBlockForm({ ip, reason, duration: '1d', website_id: websiteFilter || 'all' });
     setShowBlockModal(true);
   };
 
@@ -569,6 +569,7 @@ export default function UserLogs() {
     setSubmittingBlock(true);
     try {
       const res = await api.addUserBlacklist(blockForm);
+      userStore.invalidate('blacklist');
       setShowBlockModal(false);
       alert(res?.message || `IP ${blockForm.ip} quarantined across edge nodes successfully.`);
     } catch (err) {
@@ -2448,6 +2449,34 @@ export default function UserLogs() {
             </div>
 
             <form onSubmit={handleConfirmBlock}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '5px' }}>
+                  Target Website Scope
+                </label>
+                <select
+                  value={blockForm.website_id || 'all'}
+                  onChange={e => setBlockForm({ ...blockForm, website_id: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #D9E1DC',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    background: '#FFFFFF',
+                    boxSizing: 'border-box',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="all">Global Fleet (All Connected Websites)</option>
+                  {websites.map(w => (
+                    <option key={w.id || w._id} value={w.id || w._id}>
+                      {w.domain || w.name || w.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '5px' }}>
                   Target IP Address

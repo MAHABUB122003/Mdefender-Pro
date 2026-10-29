@@ -15,6 +15,9 @@ if (!function_exists('esc_attr')) {
 if (!function_exists('sanitize_text_field')) {
     function sanitize_text_field($s) { return strip_tags(trim((string)$s)); }
 }
+if (!function_exists('esc_js')) {
+    function esc_js($s) { return addcslashes((string)$s, "\'\"\r\n\0\x08\x0c\x1a"); }
+}
 
 // Dynamic variables extracted from WAF analysis context
 $attack_type  = !empty($result['attack_type']) ? $result['attack_type'] : 'Security Threat';
@@ -25,9 +28,38 @@ $timestamp    = !empty($result['timestamp']) ? $result['timestamp'] : (function_
 $site_host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $site_name    = function_exists('get_bloginfo') ? (get_bloginfo('name') ?: 'MAHABUB') : 'MAHABUB';
 
+// Determine Policy vs Attack Type
+$is_country_block = (
+    $attack_type === 'Country Blocked' ||
+    $attack_type === 'Country / Regional Restriction' ||
+    stripos($attack_type, 'Country') !== false ||
+    stripos($attack_type, 'GeoIP') !== false ||
+    stripos($reason, 'country') !== false ||
+    stripos($reason, 'geographic') !== false
+);
+
+$is_ip_blacklist = (
+    !$is_country_block && (
+        $attack_type === 'Blacklisted IP' ||
+        stripos($attack_type, 'Blacklist') !== false ||
+        stripos($reason, 'blacklisted') !== false
+    )
+);
+
 // GeoIP Resolution (with fallback matching design)
 $geoip_info = '';
 $country_code_lower = 'bd';
+
+if (!empty($_GET['country_test'])) {
+    $country_code_lower = strtolower(substr(trim($_GET['country_test']), 0, 2));
+    $geoip_info = " (GeoIP: " . strtoupper($country_code_lower) . ")";
+} elseif (!empty($result['country_code'])) {
+    $country_code_lower = strtolower(substr(trim($result['country_code']), 0, 2));
+    $geoip_info = " (GeoIP: " . strtoupper($country_code_lower) . ")";
+} elseif (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+    $country_code_lower = strtolower(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY']), 0, 2));
+    $geoip_info = " (GeoIP: " . strtoupper($country_code_lower) . ")";
+}
 
 if (!empty($client_ip) && $client_ip !== '127.0.0.1' && $client_ip !== '::1' && filter_var($client_ip, FILTER_VALIDATE_IP)) {
     $transient_key = 'waf_fw_geoip_' . md5($client_ip);
@@ -82,7 +114,13 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php if ($is_country_block): ?>
+    <title>403 Forbidden &mdash; Geographic Restriction | MDefender-Pro AI</title>
+<?php elseif ($is_ip_blacklist): ?>
+    <title>403 Forbidden &mdash; IP Blacklisted | MDefender-Pro AI</title>
+<?php else: ?>
     <title>403 Forbidden &mdash; Access Denied | MDefender-Pro AI</title>
+<?php endif; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -400,22 +438,45 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
 
         <!-- Headline -->
         <h1 class="headline-403">403 Forbidden</h1>
-        <h2 class="headline-denied">Access Denied</h2>
-        <div class="headline-restricted">Access to <?php echo esc_html($server_host); ?> is restricted</div>
+        <?php if ($is_country_block): ?>
+            <h2 class="headline-denied" style="color: #0369a1;">Access Denied &mdash; Geographic Restriction</h2>
+            <div class="headline-restricted">Access to <?php echo esc_html($server_host); ?> is restricted from your geographic location</div>
+        <?php elseif ($is_ip_blacklist): ?>
+            <h2 class="headline-denied" style="color: #ea580c;">Access Denied &mdash; IP Blacklisted</h2>
+            <div class="headline-restricted">Access to <?php echo esc_html($server_host); ?> is restricted for IP <?php echo esc_html($client_ip); ?></div>
+        <?php else: ?>
+            <h2 class="headline-denied">Access Denied</h2>
+            <div class="headline-restricted">Access to <?php echo esc_html($server_host); ?> is restricted</div>
+        <?php endif; ?>
 
         <!-- 2 Columns: What happened? & What can I do? -->
         <div class="info-columns">
             <div class="info-box">
                 <div class="info-box-title">What happened?</div>
                 <div class="info-box-text">
-                    <p>This website is using a security service (MDefender-Pro AI) to protect itself from online attacks. The action you tried to perform has been blocked by corporate WAF.</p>
+                    <?php if ($is_country_block): ?>
+                        <p>Access to this website from your geographic region (<strong><?php echo strtoupper(esc_html($country_code_lower)); ?></strong>) has been restricted by the site administrator's security policy.</p>
+                        <p>Your connection is not identified as an attack, but inbound traffic from this country or region is not permitted.</p>
+                    <?php elseif ($is_ip_blacklist): ?>
+                        <p>Your IP address (<strong><?php echo esc_html($client_ip); ?></strong>) has been placed on the access restriction blacklist by the security administrator or automated defense rules.</p>
+                        <p>Requests originating from this IP address are denied access to protected resources.</p>
+                    <?php else: ?>
+                        <p>This website is using a security service (MDefender-Pro AI) to protect itself from online attacks. The action you tried to perform has been blocked by corporate WAF.</p>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="info-box">
                 <div class="info-box-title">What can I do?</div>
                 <div class="info-box-text">
-                    <p>If you are a visitor, please contact the site owner or support operations with the details below.</p>
-                    <p>If you believe this is a valid corporate action, please share the Reference ID below.</p>
+                    <?php if ($is_country_block): ?>
+                        <p>If you are an authorized visitor, customer, or partner traveling abroad, please contact the site administrator or support operations with your Reference ID to request access.</p>
+                        <p>If you are using a VPN or proxy from an unintended region, try connecting directly or via an authorized network.</p>
+                    <?php elseif ($is_ip_blacklist): ?>
+                        <p>If you believe this restriction is an error, please share your Reference ID and IP address with the site administrator for review.</p>
+                    <?php else: ?>
+                        <p>If you are a visitor, please contact the site owner or support operations with the details below.</p>
+                        <p>If you believe this is a valid corporate action, please share the Reference ID below.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -454,14 +515,28 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
                 <!-- Column 1, Row 2 -->
                 <div>
                     <div class="tech-item-label">Violation Reason</div>
-                    <div class="tech-item-value">Request blocked by rule ID: <?php echo esc_html($rule_id); ?> (Ref: <?php echo esc_html($rule_name); ?>)</div>
+                    <div class="tech-item-value">
+                        <?php if ($is_country_block): ?>
+                            Geographic Access Policy (Region: <?php echo strtoupper(esc_html($country_code_lower)); ?> restricted)
+                        <?php elseif ($is_ip_blacklist): ?>
+                            IP Blacklist Policy (IP: <?php echo esc_html($client_ip); ?> blacklisted)
+                        <?php else: ?>
+                            Request blocked by rule ID: <?php echo esc_html($rule_id); ?> (Ref: <?php echo esc_html($rule_name); ?>)
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <!-- Column 2, Row 2 -->
                 <div>
-                    <div class="tech-item-label">Attack Classification</div>
+                    <div class="tech-item-label"><?php echo ($is_country_block || $is_ip_blacklist) ? 'Policy Classification' : 'Attack Classification'; ?></div>
                     <div class="tech-item-value">
-                        <span class="attack-badge"><?php echo esc_html($attack_type); ?></span>
+                        <?php if ($is_country_block): ?>
+                            <span class="attack-badge" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">🌍 GeoIP Country Restriction</span>
+                        <?php elseif ($is_ip_blacklist): ?>
+                            <span class="attack-badge" style="background: #fef3c7; color: #b45309; border-color: #fde68a;">🚫 IP Blacklist Policy</span>
+                        <?php else: ?>
+                            <span class="attack-badge"><?php echo esc_html($attack_type); ?></span>
+                        <?php endif; ?>
                     </div>
                 </div>
 

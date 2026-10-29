@@ -1292,20 +1292,71 @@ async def user_block_ip(request: Request, user: dict = Depends(verify_user_token
 
 @app.get("/api/user/blacklist")
 @app.get("/api/v1/user/blacklist")
-async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
-    # Decentralized Zero-Bloat: Query user's connected WordPress nodes directly
+async def user_get_blacklist(request: Request, user: dict = Depends(verify_user_token_compat)):
     import requests
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    sites = get_user_connected_wordpress_sites(user)
+    website_id = (request.query_params.get('website_id') or '').strip()
+    user_id_str = str(user.get('_id') or '')
+    all_sites = get_user_connected_wordpress_sites(user)
+    
+    target_sites = all_sites
+    if website_id and website_id != 'all':
+        target_sites = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+
     aggregated_blacklist = []
     seen_ips = set()
+
+    # 1. Merge from MongoDB db.blacklist (so newly added or deep-log-quarantined IPs reflect immediately)
+    db_filter = {'$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]}
+    if website_id and website_id != 'all':
+        db_filter = {
+            '$and': [
+                {'$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
+                {'$or': [{'website_id': website_id}, {'website_id': 'all'}, {'website_id': {'$exists': False}}, {'website_id': None}]}
+            ]
+        }
     
-    for s in sites:
+    db_items = list(db.blacklist.find(db_filter).sort('blocked_at', -1))
+    for item in db_items:
+        ip_addr = str(item.get('ip') or '').strip()
+        if ip_addr and ip_addr not in seen_ips:
+            seen_ips.add(ip_addr)
+            exp_val = item.get('expires_at')
+            if isinstance(exp_val, datetime):
+                exp_str = exp_val.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                exp_str = str(exp_val) if exp_val else None
+            
+            created_val = item.get('blocked_at') or item.get('created_at')
+            if isinstance(created_val, datetime):
+                created_str = created_val.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                created_str = str(created_val) if created_val else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            w_id = item.get('website_id') or 'all'
+            w_domain = item.get('website_domain') or ('Global Fleet' if w_id == 'all' else 'Site')
+            aggregated_blacklist.append({
+                'id': str(item.get('_id', '')),
+                'ip': ip_addr,
+                'reason': item.get('reason') or 'Blocked by administrator',
+                'type': item.get('type') or 'Permanent',
+                'duration': item.get('type') or 'Permanent',
+                'expires_at': exp_str,
+                'created_at': created_str,
+                'website_id': w_id,
+                'website_domain': w_domain,
+                'auto_blocked': bool(item.get('auto_blocked', False))
+            })
+
+    # 2. Query WordPress fleet nodes directly
+    for s in target_sites:
         raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
         site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
         site_key = s.get('api_key') or ''
+        site_domain = s.get('domain') or raw_url.replace('http://', '').replace('https://', '').split('/')[0]
+        s_id = str(s.get('_id') or s.get('id') or '')
         try:
             remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_blacklist"
             headers = {
@@ -1327,7 +1378,13 @@ async def user_get_blacklist(user: dict = Depends(verify_user_token_compat)):
                     ip_addr = item.get('ip')
                     if ip_addr and ip_addr not in seen_ips:
                         seen_ips.add(ip_addr)
+                        item['website_id'] = s_id
+                        item['website_domain'] = site_domain
                         aggregated_blacklist.append(item)
+                    elif ip_addr:
+                        for existing in aggregated_blacklist:
+                            if existing.get('ip') == ip_addr and existing.get('website_id') == 'all':
+                                existing['website_domain'] = site_domain
         except Exception:
             pass
             
@@ -1350,11 +1407,23 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     expires_at, duration_label = parse_ban_duration(duration_raw)
     exp_str = expires_at.strftime('%Y-%m-%d %H:%M:%S') if expires_at else None
     reason = data.get('reason', 'Blocked by user from cloud dashboard')
+    website_id = (data.get('website_id') or 'all').strip()
     user_id_str = str(user.get('_id') or '')
 
-    # 1. Persist in Central Database (scoped to user) so background heartbeat never wipes it
+    all_sites = get_user_connected_wordpress_sites(user)
+    target_sites = all_sites
+    website_domain = 'Global Fleet'
+    if website_id and website_id != 'all':
+        matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+        if matched:
+            target_sites = matched
+            website_domain = matched[0].get('domain') or matched[0].get('url') or 'Site'
+        else:
+            website_domain = website_id
+
+    # 1. Persist in Central Database (scoped to user & website)
     db.blacklist.update_one(
-        {'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
+        {'ip': ip, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
         {'$set': {
             'ip': ip,
             'reason': reason,
@@ -1363,18 +1432,18 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
             'user_id': user_id_str,
             'added_by_user_id': user_id_str,
             'added_by': user.get('email', 'dashboard'),
-            'blocked_at': datetime.now()
+            'blocked_at': datetime.now(),
+            'website_id': website_id,
+            'website_domain': website_domain
         }},
         upsert=True
     )
     # Automatically remove from whitelist if blacklisted
     db.whitelist.delete_many({'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]})
 
-    # 2. Push command directly to WordPress fleet nodes
-    sites = get_user_connected_wordpress_sites(user)
+    # 2. Push command directly to targeted WordPress fleet nodes
     success_count = 0
-    
-    for s in sites:
+    for s in target_sites:
         raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
         site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
         site_key = s.get('api_key') or ''
@@ -1405,7 +1474,8 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
         except Exception:
             pass
             
-    return {'status': 'success', 'message': f'IP {ip} blacklisted successfully across security nodes ({duration_label})'}
+    scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
+    return {'status': 'success', 'message': f'IP {ip} blacklisted successfully{scope_txt} ({duration_label})'}
 
 
 @app.delete("/api/user/blacklist")
@@ -1416,20 +1486,31 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
     ip = request.query_params.get('ip', '').strip()
+    website_id = request.query_params.get('website_id', '').strip()
     if not ip:
         try:
             body = await request.json()
             ip = (body.get('ip') or body.get('id') or '').strip()
+            if not website_id:
+                website_id = (body.get('website_id') or '').strip()
         except Exception:
             pass
     if not ip:
         return {'status': 'error', 'message': 'IP is required'}
 
     user_id_str = str(user.get('_id') or '')
-    db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+    all_sites = get_user_connected_wordpress_sites(user)
+    target_sites = all_sites
+    
+    if website_id and website_id != 'all':
+        db.blacklist.delete_many({'ip': ip, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+        matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+        if matched:
+            target_sites = matched
+    else:
+        db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
 
-    sites = get_user_connected_wordpress_sites(user)
-    for s in sites:
+    for s in target_sites:
         raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
         site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
         site_key = s.get('api_key') or ''
@@ -1765,19 +1846,56 @@ async def user_whois_lookup(ip: str, user: dict = Depends(verify_user_token_comp
 
 @app.get("/api/user/country-blocks")
 @app.get("/api/v1/user/country-blocks")
-async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)):
+async def user_get_country_blocks(request: Request, user: dict = Depends(verify_user_token_compat)):
     import requests
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    sites = get_user_connected_wordpress_sites(user)
+    website_id = (request.query_params.get('website_id') or '').strip()
+    user_id_str = str(user.get('_id') or '')
+    all_sites = get_user_connected_wordpress_sites(user)
+    
+    target_sites = all_sites
+    if website_id and website_id != 'all':
+        target_sites = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+
     aggregated_blocks = []
     seen_codes = set()
 
-    for s in sites:
+    # 1. Merge from MongoDB db.country_blocks
+    db_filter = {'$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]}
+    if website_id and website_id != 'all':
+        db_filter = {
+            '$and': [
+                {'$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
+                {'$or': [{'website_id': website_id}, {'website_id': 'all'}, {'website_id': {'$exists': False}}, {'website_id': None}]}
+            ]
+        }
+    
+    db_items = list(db.country_blocks.find(db_filter).sort('created_at', -1))
+    for item in db_items:
+        code = (item.get('country_code') or '').strip().upper()
+        if code and code not in seen_codes:
+            seen_codes.add(code)
+            w_id = item.get('website_id') or 'all'
+            w_domain = item.get('website_domain') or ('Global Fleet' if w_id == 'all' else 'Site')
+            aggregated_blocks.append({
+                'id': str(item.get('_id', '')),
+                'country_code': code,
+                'country_name': item.get('country_name') or code,
+                'reason': item.get('reason') or f'Geo-Restriction Policy ({code})',
+                'website_id': w_id,
+                'website_domain': w_domain,
+                'created_at': item.get('created_at').strftime('%Y-%m-%d %H:%M:%S') if isinstance(item.get('created_at'), datetime) else str(item.get('created_at') or 'Active')
+            })
+
+    # 2. Query WordPress nodes directly
+    for s in target_sites:
         raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
         site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
         site_key = s.get('api_key') or ''
+        site_domain = s.get('domain') or raw_url.replace('http://', '').replace('https://', '').split('/')[0]
+        s_id = str(s.get('_id') or s.get('id') or '')
         try:
             remote_url = f"{site_url}/?waf_cloud_sync=1&action=get_country_blocks"
             headers = {'Authorization': f'Bearer {site_key}', 'X-API-Key': site_key, 'User-Agent': 'MDefender-Cloud/2.0'}
@@ -1794,7 +1912,13 @@ async def user_get_country_blocks(user: dict = Depends(verify_user_token_compat)
                     code = cb.get('country_code')
                     if code and code not in seen_codes:
                         seen_codes.add(code)
+                        cb['website_id'] = s_id
+                        cb['website_domain'] = site_domain
                         aggregated_blocks.append(cb)
+                    elif code:
+                        for existing in aggregated_blocks:
+                            if existing.get('country_code') == code and existing.get('website_id') == 'all':
+                                existing['website_domain'] = site_domain
         except Exception:
             pass
 
@@ -1812,14 +1936,25 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
     code = (data.get('country_code') or data.get('code') or '').strip().upper()
     name = (data.get('country_name') or data.get('name') or code).strip()
     reason = data.get('reason') or f'Geo-Restriction Policy ({name})'
+    website_id = (data.get('website_id') or 'all').strip()
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
 
     user_id_str = str(user.get('_id') or '')
+    all_sites = get_user_connected_wordpress_sites(user)
+    target_sites = all_sites
+    website_domain = 'Global Fleet'
+    if website_id and website_id != 'all':
+        matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+        if matched:
+            target_sites = matched
+            website_domain = matched[0].get('domain') or matched[0].get('url') or 'Site'
+        else:
+            website_domain = website_id
 
-    # 1. Persist in Central Database (scoped to user) so periodic heartbeat never wipes it
+    # 1. Persist in Central Database (scoped to user & website)
     db.country_blocks.update_one(
-        {'country_code': code, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
+        {'country_code': code, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]},
         {'$set': {
             'country_code': code,
             'country_name': name,
@@ -1827,14 +1962,15 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
             'user_id': user_id_str,
             'added_by_user_id': user_id_str,
             'added_by': user.get('email', 'dashboard'),
+            'website_id': website_id,
+            'website_domain': website_domain,
             'created_at': datetime.now()
         }},
         upsert=True
     )
 
     # 2. Push command to connected WordPress fleet nodes
-    sites = get_user_connected_wordpress_sites(user)
-    for s in sites:
+    for s in target_sites:
         raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
         site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
         site_key = s.get('api_key') or ''
@@ -1851,7 +1987,8 @@ async def user_add_country_block(request: Request, user: dict = Depends(verify_u
         except Exception:
             pass
 
-    return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully across security nodes'}
+    scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
+    return {'status': 'success', 'message': f'Country {name} ({code}) blocked successfully{scope_txt}'}
 
 
 @app.delete("/api/user/country-blocks")
@@ -1862,20 +1999,31 @@ async def user_delete_country_block(request: Request, user: dict = Depends(verif
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     code = (request.query_params.get('code') or request.query_params.get('country_code') or '').strip().upper()
+    website_id = request.query_params.get('website_id', '').strip()
     if not code:
         try:
             body = await request.json()
             code = (body.get('code') or body.get('country_code') or '').strip().upper()
+            if not website_id:
+                website_id = (body.get('website_id') or '').strip()
         except Exception:
             pass
     if not code:
         return {'status': 'error', 'message': 'Country code is required'}
 
     user_id_str = str(user.get('_id') or '')
-    db.country_blocks.delete_many({'country_code': code, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+    all_sites = get_user_connected_wordpress_sites(user)
+    target_sites = all_sites
 
-    sites = get_user_connected_wordpress_sites(user)
-    for s in sites:
+    if website_id and website_id != 'all':
+        db.country_blocks.delete_many({'country_code': code, 'website_id': website_id, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+        matched = [s for s in all_sites if str(s.get('_id')) == website_id or str(s.get('id')) == website_id or s.get('domain') == website_id or s.get('name') == website_id]
+        if matched:
+            target_sites = matched
+    else:
+        db.country_blocks.delete_many({'country_code': code, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
+
+    for s in target_sites:
         raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
         site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
         site_key = s.get('api_key') or ''

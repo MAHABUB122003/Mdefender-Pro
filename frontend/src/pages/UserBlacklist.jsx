@@ -40,6 +40,17 @@ export default function UserBlacklist() {
   const [flushingExpired, setFlushingExpired] = useState(false)
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
+  // ── Fleet & Website Scope State ─────────────────────────────────────────────
+  const [selectedWebsite, setSelectedWebsite] = useState('all')
+  const [websites, setWebsites] = useState(() => {
+    try {
+      const cached = userStore.get('websites') || userStore.get('dashboard')
+      return (cached && Array.isArray(cached?.websites)) ? cached.websites : []
+    } catch {
+      return []
+    }
+  })
+
   // ── Country Blacklist State ─────────────────────────────────────────────────
   const [countryBlocks, setCountryBlocks] = useState([])
   const [countryLoading, setCountryLoading] = useState(false)
@@ -48,6 +59,7 @@ export default function UserBlacklist() {
   const [blockReason, setBlockReason] = useState('')
   const [savingCountry, setSavingCountry] = useState(false)
   const [countrySearch, setCountrySearch] = useState('')
+  const [countryPickerSearch, setCountryPickerSearch] = useState('')
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const showToast = (text, type = 'success') => {
@@ -55,10 +67,26 @@ export default function UserBlacklist() {
     setTimeout(() => setFeedbackMsg(null), 4500)
   }
 
-  const fetchBlacklist = useCallback(async (manual = false) => {
+  const fetchWebsites = useCallback(async () => {
+    try {
+      const cached = userStore.get('websites') || userStore.get('dashboard')
+      if (cached?.websites && Array.isArray(cached.websites) && cached.websites.length > 0) {
+        setWebsites(cached.websites)
+      }
+      const data = await api.getUserDashboard()
+      if (data?.websites && Array.isArray(data.websites) && data.websites.length > 0) {
+        setWebsites(data.websites)
+        userStore.set('websites', data)
+      }
+    } catch (err) {
+      console.error('Error loading websites:', err)
+    }
+  }, [])
+
+  const fetchBlacklist = useCallback(async (manual = false, siteId = selectedWebsite) => {
     if (manual) setRefreshing(true)
     try {
-      const data = await api.getUserBlacklist()
+      const data = await api.getUserBlacklist({ website_id: siteId })
       const list = Array.isArray(data) ? data : (data?.blacklist || [])
       setEntries(list)
       userStore.set('blacklist', list)
@@ -68,13 +96,13 @@ export default function UserBlacklist() {
       setLoading(false)
       if (manual) setTimeout(() => setRefreshing(false), 300)
     }
-  }, [])
+  }, [selectedWebsite])
 
-  const fetchCountryBlocks = useCallback(async (manual = false) => {
+  const fetchCountryBlocks = useCallback(async (manual = false, siteId = selectedWebsite) => {
     if (manual) setRefreshing(true)
     setCountryLoading(true)
     try {
-      const res = await api.getUserCountryBlocks()
+      const res = await api.getUserCountryBlocks({ website_id: siteId })
       if (res?.country_blocks) setCountryBlocks(res.country_blocks)
     } catch (err) {
       console.error('Failed to load country blocks:', err)
@@ -82,16 +110,32 @@ export default function UserBlacklist() {
       setCountryLoading(false)
       if (manual) setTimeout(() => setRefreshing(false), 300)
     }
-  }, [])
+  }, [selectedWebsite])
 
   useEffect(() => {
-    fetchBlacklist()
-    fetchCountryBlocks()
-  }, [fetchBlacklist, fetchCountryBlocks])
+    fetchWebsites()
+    fetchBlacklist(false, selectedWebsite)
+    fetchCountryBlocks(false, selectedWebsite)
+  }, [fetchWebsites, fetchBlacklist, fetchCountryBlocks, selectedWebsite])
 
   const blockedCodesSet = useMemo(() =>
     new Set(countryBlocks.map(b => (b.country_code || '').toUpperCase().trim()))
   , [countryBlocks])
+
+  const pickerFilteredCountries = useMemo(() => {
+    let list = ALL_COUNTRIES
+    if (selectedRegion !== 'All') {
+      list = list.filter(c => c.region === selectedRegion)
+    }
+    if (countryPickerSearch.trim()) {
+      const q = countryPickerSearch.toLowerCase().trim()
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [selectedRegion, countryPickerSearch])
 
   useEffect(() => {
     if (blockedCodesSet.has(selectedCountry)) {
@@ -142,18 +186,18 @@ export default function UserBlacklist() {
   }, [countryBlocks, countrySearch])
 
   // ── IP Handlers ─────────────────────────────────────────────────────────────
-  const handleUnblock = async (ip) => {
+  const handleUnblock = async (ip, siteId) => {
     if (!confirm(`Unblock IP ${ip}?`)) return
     setEntries(prev => prev.filter(item => item.ip !== ip))
     setSelectedIps(prev => prev.filter(i => i !== ip))
     userStore.invalidate('blacklist')
     try {
-      await api.removeUserBlacklist(ip)
+      await api.removeUserBlacklist(ip, siteId || selectedWebsite)
       showToast(`IP ${ip} unblocked.`)
-      fetchBlacklist(true)
+      fetchBlacklist(true, selectedWebsite)
     } catch (err) {
       showToast(err.message || 'Failed to unblock IP', 'error')
-      fetchBlacklist(true)
+      fetchBlacklist(true, selectedWebsite)
     }
   }
 
@@ -177,11 +221,11 @@ export default function UserBlacklist() {
     if (!confirm(`Unblock ${selectedIps.length} selected IPs?`)) return
     setBulkUnblocking(true)
     try {
-      const res = await api.unblockBatchBlacklist(selectedIps)
+      const res = await api.unblockBatchBlacklist(selectedIps, selectedWebsite)
       showToast(res?.message || `Unblocked ${selectedIps.length} IP(s).`)
       setSelectedIps([])
       userStore.invalidate('blacklist')
-      await fetchBlacklist(true)
+      await fetchBlacklist(true, selectedWebsite)
     } catch (err) {
       showToast(err.message || 'Failed to unblock IPs', 'error')
     } finally { setBulkUnblocking(false) }
@@ -198,11 +242,13 @@ export default function UserBlacklist() {
     if (!form.ip.trim()) return
     setSubmitting(true)
     try {
-      const res = await api.addUserBlacklist(form)
+      const payload = { ...form, website_id: form.website_id || selectedWebsite }
+      const res = await api.addUserBlacklist(payload)
       setShowModal(false)
-      setForm({ ip: '', reason: '', duration: '1d' })
+      setForm({ ip: '', reason: '', duration: '1d', website_id: selectedWebsite })
+      userStore.invalidate('blacklist')
       showToast(res?.message || `IP ${form.ip} blocked.`)
-      fetchBlacklist(true)
+      fetchBlacklist(true, selectedWebsite)
     } catch (err) {
       showToast(err.message || 'Failed to block IP', 'error')
     } finally { setSubmitting(false) }
@@ -215,20 +261,23 @@ export default function UserBlacklist() {
     if (!targetObj) return
     setSavingCountry(true)
     try {
+      const siteObj = websites.find(w => (w.id || w._id) === selectedWebsite)
+      const wDom = siteObj ? (siteObj.domain || siteObj.name) : (selectedWebsite === 'all' ? 'Global Fleet' : selectedWebsite)
       const payload = {
         country_code: targetObj.code,
         country_name: targetObj.name,
-        reason: blockReason.trim() || `Geo-Restriction Policy (${targetObj.name})`
+        reason: blockReason.trim() || `Geo-Restriction Policy (${targetObj.name})`,
+        website_id: selectedWebsite
       }
       const res = await api.addUserCountryBlock(payload)
       if (res?.status === 'success' || (res?.message && !res?.message.toLowerCase().includes('already') && res?.status !== 'error')) {
         showToast(`${targetObj.name} blocked.`)
         setBlockReason('')
         setCountryBlocks(prev => {
-          if (prev.some(b => b.country_code === targetObj.code)) return prev
-          return [{ country_code: targetObj.code, country_name: targetObj.name, reason: payload.reason, created_at: 'Just now' }, ...prev]
+          if (prev.some(b => b.country_code === targetObj.code && b.website_id === selectedWebsite)) return prev
+          return [{ country_code: targetObj.code, country_name: targetObj.name, reason: payload.reason, website_id: selectedWebsite, website_domain: wDom, created_at: 'Just now' }, ...prev]
         })
-        fetchCountryBlocks(true)
+        fetchCountryBlocks(true, selectedWebsite)
       } else {
         showToast(res?.message || 'Failed to block country.', 'error')
       }
@@ -239,20 +288,22 @@ export default function UserBlacklist() {
 
   const handleQuickPresetToggle = async (preset) => {
     if (blockedCodesSet.has(preset.code)) {
-      handleRemoveCountryBlock(preset.code, preset.name)
+      handleRemoveCountryBlock(preset.code, preset.name, selectedWebsite)
     } else {
       setSelectedCountry(preset.code)
       const reason = `Threat Policy (${preset.name})`
       setSavingCountry(true)
       try {
-        const res = await api.addUserCountryBlock({ country_code: preset.code, country_name: preset.name, reason })
+        const siteObj = websites.find(w => (w.id || w._id) === selectedWebsite)
+        const wDom = siteObj ? (siteObj.domain || siteObj.name) : (selectedWebsite === 'all' ? 'Global Fleet' : selectedWebsite)
+        const res = await api.addUserCountryBlock({ country_code: preset.code, country_name: preset.name, reason, website_id: selectedWebsite })
         if (res?.status === 'success' || (res?.message && !res?.message.toLowerCase().includes('already') && res?.status !== 'error')) {
           showToast(`${preset.name} blocked.`)
           setCountryBlocks(prev => {
-            if (prev.some(b => b.country_code === preset.code)) return prev
-            return [{ country_code: preset.code, country_name: preset.name, reason, created_at: 'Just now' }, ...prev]
+            if (prev.some(b => b.country_code === preset.code && b.website_id === selectedWebsite)) return prev
+            return [{ country_code: preset.code, country_name: preset.name, reason, website_id: selectedWebsite, website_domain: wDom, created_at: 'Just now' }, ...prev]
           })
-          fetchCountryBlocks(true)
+          fetchCountryBlocks(true, selectedWebsite)
         } else {
           showToast(res?.message || 'Failed.', 'error')
         }
@@ -262,16 +313,16 @@ export default function UserBlacklist() {
     }
   }
 
-  const handleRemoveCountryBlock = async (code, name) => {
+  const handleRemoveCountryBlock = async (code, name, siteId) => {
     if (!confirm(`Unblock traffic from ${name || code}?`)) return
     setCountryBlocks(prev => prev.filter(b => b.country_code !== code))
     try {
-      await api.removeUserCountryBlock(code)
+      await api.removeUserCountryBlock(code, siteId || selectedWebsite)
       showToast(`${name || code} unblocked.`)
-      fetchCountryBlocks(true)
+      fetchCountryBlocks(true, selectedWebsite)
     } catch (err) {
       showToast(err.message || 'Failed to unblock country.', 'error')
-      fetchCountryBlocks(true)
+      fetchCountryBlocks(true, selectedWebsite)
     }
   }
 
@@ -332,10 +383,50 @@ export default function UserBlacklist() {
             <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '800', color: '#0F172A' }}>Access Control</h1>
             <p style={{ margin: 0, fontSize: '13.5px', color: '#64748B' }}>Block IPs and countries across all your connected websites.</p>
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Website Selector Dropdown */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+              background: '#FFFFFF',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid #D9E1DC',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+            }}>
+              <Globe size={14} color="#0284C7" />
+              <select
+                value={selectedWebsite}
+                onChange={(e) => {
+                  const siteId = e.target.value
+                  setSelectedWebsite(siteId)
+                  fetchBlacklist(true, siteId)
+                  fetchCountryBlocks(true, siteId)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#0F172A',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  maxWidth: '190px'
+                }}
+              >
+                <option value="all">Global Fleet ({websites.length} Sites)</option>
+                {websites.map(w => (
+                  <option key={w.id || w._id} value={w.id || w._id}>
+                    {w.domain || w.name || w.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               style={S.btn('#F8FAFC', '#475569', '#E2E8F0')}
-              onClick={() => activeTab === 'country' ? fetchCountryBlocks(true) : fetchBlacklist(true)}
+              onClick={() => { fetchBlacklist(true, selectedWebsite); fetchCountryBlocks(true, selectedWebsite) }}
               disabled={refreshing}
             >
               <RotateCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
@@ -344,7 +435,7 @@ export default function UserBlacklist() {
             {activeTab === 'ip' && (
               <button
                 style={S.btn('#DC2626', '#FFFFFF')}
-                onClick={() => { setForm({ ip: '', reason: '', duration: '1d' }); setShowModal(true) }}
+                onClick={() => { setForm({ ip: '', reason: '', duration: '1d', website_id: selectedWebsite }); setShowModal(true) }}
               >
                 <Plus size={14} /> Block IP
               </button>
@@ -475,20 +566,21 @@ export default function UserBlacklist() {
                     <th style={S.th}>Duration</th>
                     <th style={S.th}>Expires</th>
                     <th style={S.th}>Source</th>
+                    <th style={S.th}>Scope</th>
                     <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
                         <RotateCw size={20} style={{ animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 10px' }} />
                         Loading...
                       </td>
                     </tr>
                   ) : filteredEntries.length === 0 ? (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
                         <ShieldCheck size={32} style={{ display: 'block', margin: '0 auto 10px', color: '#86EFAC' }} />
                         <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No blocked IPs</div>
                         <div style={{ fontSize: '12.5px' }}>{search || filterDuration !== 'all' ? 'Try adjusting filters.' : 'All websites are clean.'}</div>
@@ -542,9 +634,23 @@ export default function UserBlacklist() {
                             {entry.auto_blocked ? 'Auto' : 'Manual'}
                           </span>
                         </td>
+                        <td style={S.td}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: entry.website_id && entry.website_id !== 'all' ? '#E0F2FE' : '#F1F5F9',
+                            color: entry.website_id && entry.website_id !== 'all' ? '#0369A1' : '#475569',
+                            border: `1px solid ${entry.website_id && entry.website_id !== 'all' ? '#BAE6FD' : '#E2E8F0'}`,
+                            display: 'inline-block'
+                          }}>
+                            {entry.website_domain || (entry.website_id && entry.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
+                          </span>
+                        </td>
                         <td style={{ ...S.td, textAlign: 'right' }}>
                           <button
-                            onClick={() => handleUnblock(entry.ip)}
+                            onClick={() => handleUnblock(entry.ip, entry.website_id)}
                             style={S.btnSm('#FFFFFF', '#DC2626', '#FECACA')}
                             onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
                             onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
@@ -639,20 +745,59 @@ export default function UserBlacklist() {
               </div>
             </div>
 
-            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+            <form onSubmit={handleAddCountryBlock} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '12px', alignItems: 'end' }}>
               <div>
-                <label style={S.label}>Country</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={S.label}>Country ({pickerFilteredCountries.length} available)</label>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: selectedWebsite !== 'all' ? '#0284C7' : '#64748B' }}>
+                    Scope: {selectedWebsite !== 'all' ? (websites.find(w => (w.id || w._id) === selectedWebsite)?.domain || 'Selected Site') : 'Global Fleet'}
+                  </span>
+                </div>
+                
+                {/* Fast Instant Search for Country */}
+                <div style={{ position: 'relative', marginBottom: '6px' }}>
+                  <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                  <input
+                    type="text"
+                    placeholder="Type to find country (e.g. Bangladesh, Russia, US)..."
+                    value={countryPickerSearch}
+                    onChange={e => {
+                      const val = e.target.value
+                      setCountryPickerSearch(val)
+                      const q = val.toLowerCase().trim()
+                      if (q) {
+                        const topMatch = ALL_COUNTRIES.find(c =>
+                          (c.name.toLowerCase().includes(q) || c.code.toLowerCase() === q) && !blockedCodesSet.has(c.code)
+                        )
+                        if (topMatch) setSelectedCountry(topMatch.code)
+                      }
+                    }}
+                    style={{ ...S.input, paddingLeft: '30px', paddingRight: countryPickerSearch ? '28px' : '10px', fontSize: '12px', height: '34px', background: '#F8FAFC' }}
+                  />
+                  {countryPickerSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCountryPickerSearch('')}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
                 <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)} style={{ ...S.input, cursor: 'pointer' }}>
-                  {ALL_COUNTRIES
-                    .filter(c => selectedRegion === 'All' || c.region === selectedRegion)
-                    .map(c => {
+                  {pickerFilteredCountries.length === 0 ? (
+                    <option value="" disabled>No country matches "{countryPickerSearch}"</option>
+                  ) : (
+                    pickerFilteredCountries.map(c => {
                       const isBlocked = blockedCodesSet.has(c.code)
                       return (
                         <option key={c.code} value={c.code} disabled={isBlocked}>
-                          {getFlagEmoji(c.code)} {c.name} ({c.code}){isBlocked ? ' [Blocked]' : ''}
+                          {getFlagEmoji(c.code)} {c.name} ({c.code}){isBlocked ? ' [Already Blocked]' : ''}
                         </option>
                       )
-                    })}
+                    })
+                  )}
                 </select>
               </div>
               <div>
@@ -719,6 +864,7 @@ export default function UserBlacklist() {
                       <th style={S.th}>Country</th>
                       <th style={S.th}>Code</th>
                       <th style={S.th}>Reason</th>
+                      <th style={S.th}>Scope</th>
                       <th style={S.th}>Status</th>
                       <th style={{ ...S.th, textAlign: 'right' }}>Action</th>
                     </tr>
@@ -747,11 +893,25 @@ export default function UserBlacklist() {
                             {block.reason || '—'}
                           </td>
                           <td style={S.td}>
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: block.website_id && block.website_id !== 'all' ? '#E0F2FE' : '#F1F5F9',
+                              color: block.website_id && block.website_id !== 'all' ? '#0369A1' : '#475569',
+                              border: `1px solid ${block.website_id && block.website_id !== 'all' ? '#BAE6FD' : '#E2E8F0'}`,
+                              display: 'inline-block'
+                            }}>
+                              {block.website_domain || (block.website_id && block.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
+                            </span>
+                          </td>
+                          <td style={S.td}>
                             <span style={S.badge('#FEF2F2', '#DC2626', '#FECACA')}>Blocked</span>
                           </td>
                           <td style={{ ...S.td, textAlign: 'right' }}>
                             <button
-                              onClick={() => handleRemoveCountryBlock(code, displayName)}
+                              onClick={() => handleRemoveCountryBlock(code, displayName, block.website_id)}
                               style={S.btnSm('#FFFFFF', '#DC2626', '#FECACA')}
                               onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
                               onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
@@ -793,6 +953,22 @@ export default function UserBlacklist() {
             </div>
 
             <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={S.label}>Target Website Scope</label>
+                <select
+                  value={form.website_id || selectedWebsite}
+                  onChange={e => setForm({ ...form, website_id: e.target.value })}
+                  style={{ ...S.input, cursor: 'pointer' }}
+                >
+                  <option value="all">Global Fleet (All Websites)</option>
+                  {websites.map(w => (
+                    <option key={w.id || w._id} value={w.id || w._id}>
+                      {w.domain || w.name || w.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label style={S.label}>IP Address</label>
                 <input type="text" required placeholder="e.g. 192.168.1.100"

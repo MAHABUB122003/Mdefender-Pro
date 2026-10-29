@@ -169,6 +169,10 @@ if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['b
         }
     }
 
+    if (!empty($_GET['country_test'])) {
+        $geo_country = strtoupper(substr(trim($_GET['country_test']), 0, 2));
+    }
+
     $is_local_ip = in_array($mdefender_ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true) ||
                    strpos($mdefender_ip, '192.168.') === 0 || strpos($mdefender_ip, '10.') === 0 || 
                    strpos($mdefender_ip, '172.16.') === 0 || strpos($mdefender_ip, '172.17.') === 0 ||
@@ -331,7 +335,8 @@ if ($is_blocked) {
     }
 
     // 3. Blacklisted IP, Geolocation Policy, and Control Panel Probes: Render Dead Network (Offline connection drop)
-    if ($attack_name === 'Blacklisted IP' || strpos($block_reason, 'Blacklisted IP') !== false || $attack_name === 'Country / Regional Restriction' || $attack_name === 'Server Admin Probe') {
+    // 3. Control Panel Probes: Render Dead Network (Offline connection drop)
+    if ($attack_name === 'Server Admin Probe') {
         include __DIR__ . '/dead-network-template.php';
         exit;
     }
@@ -350,6 +355,7 @@ if ($is_blocked) {
 
     $result = [
         'ip' => $mdefender_ip,
+        'country_code' => !empty($geo_country) ? $geo_country : (!empty($_SERVER['HTTP_CF_IPCOUNTRY']) ? $_SERVER['HTTP_CF_IPCOUNTRY'] : ''),
         'attack_type' => $attack_name,
         'message' => $block_reason,
         'rule_matched' => $rule_name,

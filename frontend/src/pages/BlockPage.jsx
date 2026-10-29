@@ -11,6 +11,9 @@ export default function BlockPage() {
   
   const attackType = params.get('attack_type') || 'Suspicious Activity Detected'
   const clientIp = params.get('client_ip') || '127.0.0.1'
+
+  const isCountryBlock = attackType === 'Country Blocked' || attackType === 'Country / Regional Restriction' || attackType.toLowerCase().includes('country') || attackType.toLowerCase().includes('geoip')
+  const isIpBlacklist = !isCountryBlock && (attackType === 'Blacklisted IP' || attackType.toLowerCase().includes('blacklist'))
   const realIp = params.get('real_ip') || clientIp
   const reason = params.get('reason') || 'Request blocked by security rules'
   const timestamp = params.get('timestamp') || new Date().toISOString().replace('T', ' ').slice(0, 19)
@@ -133,16 +136,29 @@ export default function BlockPage() {
           </div>
           
           <div className="block-content">
-            <div className="block-icon">
-              <i className="fas fa-shield-virus"></i>
+            <div className="block-icon" style={{
+              background: isCountryBlock ? 'rgba(2, 132, 199, 0.1)' : isIpBlacklist ? 'rgba(234, 88, 12, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              color: isCountryBlock ? '#0284c7' : isIpBlacklist ? '#ea580c' : '#ef4444'
+            }}>
+              <i className={isCountryBlock ? "fas fa-globe-americas" : isIpBlacklist ? "fas fa-ban" : "fas fa-shield-virus"}></i>
             </div>
-            <h1 className="block-title">Request Blocked</h1>
-            <p className="block-subtitle">Our Web Application Firewall has intercepted this request due to suspicious activity matching known threat signatures.</p>
+            <h1 className="block-title">
+              {isCountryBlock ? 'Geographic Access Restricted' : isIpBlacklist ? 'Access Denied — IP Restricted' : 'Request Blocked'}
+            </h1>
+            <p className="block-subtitle">
+              {isCountryBlock
+                ? 'Access to this website from your geographic region is restricted by the site security policy. Your request was not identified as an attack, but incoming traffic from this region is not permitted.'
+                : isIpBlacklist
+                  ? 'Your IP address has been placed on the access restriction blacklist by security policy.'
+                  : 'Our Web Application Firewall has intercepted this request due to suspicious activity matching known threat signatures.'}
+            </p>
             
             <div className="details-grid">
               <div className="detail-row">
-                <span className="detail-label">Threat Type</span>
-                <span className="detail-value highlight">{attackType}</span>
+                <span className="detail-label">{isCountryBlock || isIpBlacklist ? 'Policy Classification' : 'Threat Type'}</span>
+                <span className="detail-value highlight" style={{ color: isCountryBlock ? '#0284c7' : isIpBlacklist ? '#ea580c' : '#ef4444' }}>
+                  {isCountryBlock ? 'GeoIP Country Restriction' : isIpBlacklist ? 'IP Blacklist Policy' : attackType}
+                </span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Client IP</span>
