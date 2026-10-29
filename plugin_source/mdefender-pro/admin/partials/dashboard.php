@@ -240,9 +240,9 @@ if (!function_exists('waf_mdf_country_flag')) {
                     </svg>
                 </div>
                 <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuRequests')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="pointer-events:none;"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
-                <div id="cardMenuRequests" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                <div id="cardMenuRequests" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:99999; padding:6px; font-size:12px; text-align:left;">
                     <a href="javascript:void(0)" onclick="wafFwCleanStats('total_requests', 'statTotalRequests', 'All Inspected Traffic')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         <span>Clean Request Logs</span>
@@ -278,9 +278,9 @@ if (!function_exists('waf_mdf_country_flag')) {
                     </svg>
                 </div>
                 <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuThreats')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="pointer-events:none;"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
-                <div id="cardMenuThreats" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                <div id="cardMenuThreats" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:99999; padding:6px; font-size:12px; text-align:left;">
                     <a href="javascript:void(0)" onclick="wafFwCleanStats('threats_detected', 'statAttackBlocked', 'Threat Incident Records')" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#ef4444;text-decoration:none;font-weight:600;border-radius:6px;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         <span>Clean Threat Logs</span>
@@ -316,9 +316,9 @@ if (!function_exists('waf_mdf_country_flag')) {
                     </svg>
                 </div>
                 <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuConfidence')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="pointer-events:none;"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
-                <div id="cardMenuConfidence" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                <div id="cardMenuConfidence" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:99999; padding:6px; font-size:12px; text-align:left;">
                     <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-settings#ml_confidence')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         <span>Calibrate ROC Threshold</span>
@@ -352,9 +352,9 @@ if (!function_exists('waf_mdf_country_flag')) {
                     </svg>
                 </div>
                 <button type="button" class="mdf-dots-btn" aria-label="Card Options" onclick="mdfToggleCardMenu(event, 'cardMenuBlacklist')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="pointer-events:none;"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
-                <div id="cardMenuBlacklist" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:100; padding:6px; font-size:12px; text-align:left;">
+                <div id="cardMenuBlacklist" class="mdf-card-dropdown" style="display:none; position:absolute; right:0; top:36px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); width:210px; z-index:99999; padding:6px; font-size:12px; text-align:left;">
                     <a href="<?php echo esc_url(admin_url('admin.php?page=waf-firewall-blacklist')); ?>" class="mdf-dropdown-item" style="display:flex;align-items:center;gap:8px;padding:7px 10px;color:#334155;text-decoration:none;border-radius:6px;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                         <span>Manage Blacklisted IPs</span>
@@ -567,49 +567,48 @@ if (!function_exists('waf_mdf_country_flag')) {
 <script>
 function mdfToggleCardMenu(e, menuId) {
     if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
     }
-    // Close other dropdowns
-    var allMenus = document.querySelectorAll('.mdf-card-dropdown');
-    allMenus.forEach(function(m) {
-        if (m.id !== menuId) {
-            m.style.display = 'none';
-        }
-    });
-
-    // Reset z-index on all bento cards
-    document.querySelectorAll('.mdf-bento-card').forEach(function(card) {
-        card.style.zIndex = '';
-        card.style.position = '';
-    });
-
     var target = document.getElementById(menuId);
-    if (target) {
-        var isOpening = (target.style.display === 'none' || target.style.display === '');
-        target.style.display = isOpening ? 'block' : 'none';
-        
-        if (isOpening) {
-            var parentCard = target.closest('.mdf-bento-card');
-            if (parentCard) {
-                parentCard.style.position = 'relative';
-                parentCard.style.zIndex = '1000';
-            }
+    if (!target) return;
+
+    var isOpen = (target.style.display === 'block');
+
+    // Close all menus first
+    var allMenus = document.querySelectorAll('.mdf-card-dropdown');
+    for (var i = 0; i < allMenus.length; i++) {
+        allMenus[i].style.display = 'none';
+    }
+    var allCards = document.querySelectorAll('.mdf-bento-card');
+    for (var j = 0; j < allCards.length; j++) {
+        allCards[j].style.zIndex = '';
+        allCards[j].style.position = '';
+    }
+
+    if (!isOpen) {
+        target.style.display = 'block';
+        var parentCard = target.closest('.mdf-bento-card');
+        if (parentCard) {
+            parentCard.style.position = 'relative';
+            parentCard.style.zIndex = '9999';
         }
     }
 }
 
 // Global click listener to close dropdown menus when clicked outside
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('.mdf-card-dropdown') && !e.target.closest('.mdf-dots-btn') && !e.target.closest('.mdf-btn-customize')) {
-        var allMenus = document.querySelectorAll('.mdf-card-dropdown');
-        allMenus.forEach(function(m) {
-            m.style.display = 'none';
-        });
-        document.querySelectorAll('.mdf-bento-card').forEach(function(card) {
-            card.style.zIndex = '';
-            card.style.position = '';
-        });
+    if (e.target && e.target.closest && (e.target.closest('.mdf-card-dropdown') || e.target.closest('.mdf-dots-btn') || e.target.closest('.mdf-btn-customize'))) {
+        return;
+    }
+    var allMenus = document.querySelectorAll('.mdf-card-dropdown');
+    for (var i = 0; i < allMenus.length; i++) {
+        allMenus[i].style.display = 'none';
+    }
+    var allCards = document.querySelectorAll('.mdf-bento-card');
+    for (var j = 0; j < allCards.length; j++) {
+        allCards[j].style.zIndex = '';
+        allCards[j].style.position = '';
     }
 });
 

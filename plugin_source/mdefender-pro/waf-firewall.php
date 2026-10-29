@@ -1164,21 +1164,7 @@ function waf_fw_analyze_request() {
             $GLOBALS['waf_fw_analyzed'] = true;
             $result = $engine->analyze_current_request();
             if ($result['status'] === 'blocked') {
-                status_header(403);
-                header('HTTP/1.1 403 Forbidden', true, 403);
-                header('X-Protected-By: MDefender-Pro-WAAP');
-                header('Connection: close');
-                include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
-
-                while (ob_get_level() > 0) {
-                    @ob_end_flush();
-                }
-                @flush();
-
-                if (function_exists('fastcgi_finish_request')) {
-                    @fastcgi_finish_request();
-                }
-                WAF_FW_Engine::flush_telemetry();
+                include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
                 exit;
             }
         }

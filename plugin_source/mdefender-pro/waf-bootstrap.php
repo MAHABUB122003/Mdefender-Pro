@@ -90,6 +90,8 @@ if (!$mdefender_cache_data || empty($mdefender_cache_data['enabled'])) {
 $ip_blacklist = $mdefender_cache_data['blacklist_ips'] ?? [];
 $is_blocked = false;
 $block_reason = '';
+$attack_name = 'Security Threat';
+$rule_name = 'Pre-Flight Edge WAAP';
 
 $candidates = [$mdefender_ip];
 if (!empty($_GET['test_ip'])) {
@@ -120,6 +122,8 @@ $candidates = array_values(array_unique(array_filter($candidates)));
 foreach ($candidates as $cand) {
     if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true)) || !empty($_GET['waf_test_blacklist']) || !empty($_GET['test_blacklisted'])) {
         $is_blocked = true;
+        $attack_name = 'Blacklisted IP';
+        $rule_name = 'Pre-Flight WAAP: Blacklisted IP Policy Rule';
         $block_reason = 'Your IP address has been flagged for malicious activity (Blacklisted IP Policy Rule).';
         break;
     }
@@ -211,6 +215,8 @@ if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['b
 
     if (!empty($geo_country) && in_array($geo_country, $blocked_list, true)) {
         $is_blocked = true;
+        $attack_name = 'Country / Regional Restriction';
+        $rule_name = 'Pre-Flight WAAP: Geolocation Restriction Policy';
         $block_reason = 'Access from your country/region (' . htmlspecialchars($geo_country) . ') is restricted by security policy.';
     }
 }
@@ -221,6 +227,8 @@ if (!$is_blocked) {
     if (!empty($ua)) {
         if (preg_match('/(sqlmap|nikto|nmap|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab)/i', $ua)) {
             $is_blocked = true;
+            $attack_name = 'Automated Vulnerability Scanner';
+            $rule_name = 'Pre-Flight WAAP: Scanner Signature Block';
             $block_reason = 'Automated vulnerability scanner signature detected.';
         }
     }
@@ -241,28 +249,86 @@ if (!$is_blocked) {
         // Check SQL Injection
         if (preg_match('/(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\'\"]?\w+[\'\"]?\s*=\s*[\'\"]?\w+[\'\"]?)|(?:\b(?:or|and)\b\s+1\s*=\s*1\b)|(?:\b(?:or|and)\b\s+\'1\'\s*=\s*\'1\')|(?:\'|\"|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile)\s*\())/i', $raw_payload)) {
             $is_blocked = true;
+            $attack_name = 'SQL Injection';
+            $rule_name = 'Pre-Flight WAAP: SQL Injection Guard';
             $block_reason = 'Critical SQL Injection exploit payload intercepted by Pre-Flight WAAP.';
         }
         // Check XSS
         elseif (preg_match('/(?:<script[\s\S]*?>|\bon[a-z]{3,15}\s*=\s*[\'\"]?[^\'\">]+|javascript\s*:\s*[^\s\'\"]+|\b(?:alert|prompt|confirm)\s*\([^\)]*\)|<(?:iframe|object|embed|svg|img)[^>]+(?:onload|onerror|src\s*=\s*[\'\"]?javascript))/i', $raw_payload)) {
             $is_blocked = true;
+            $attack_name = 'Cross-Site Scripting (XSS)';
+            $rule_name = 'Pre-Flight WAAP: Script Tag & Event Handler Guard';
             $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
         }
         // Check Path Traversal / LFI
         elseif (preg_match('/(?:\.\.[\/\\]){2,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\/\\]windows|php:\/\/(?:filter|input|memory)|(?:\.env|\.git\/|\.htaccess|\.user\.ini|wp-config\.php(?:\.bak|~|\.old))/i', $raw_payload)) {
             $is_blocked = true;
+            $attack_name = 'Path Traversal';
+            $rule_name = 'Pre-Flight WAAP: Directory Traversal & LFI Guard';
             $block_reason = 'Path Traversal & Sensitive File Exposure probe intercepted by Pre-Flight WAAP.';
         }
         // Check Remote Code Execution / WebShell
         elseif (preg_match('/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c)))/i', $raw_payload)) {
             $is_blocked = true;
+            $attack_name = 'Remote Code Execution (RCE)';
+            $rule_name = 'Pre-Flight WAAP: PHP Shell & Command Guard';
             $block_reason = 'Remote Command Execution (RCE) / WebShell payload intercepted by Pre-Flight WAAP.';
         }
     }
 }
 
-// If blocked, render stealth connection drop or standalone block response in < 0.05ms
+// If blocked, log forensic incident and render the appropriate page
 if ($is_blocked) {
+    $ref_id = 'MDEF-' . strtoupper(substr(md5($mdefender_ip . time() . mt_rand()), 0, 8));
+
+    // 1. Ultra-Fast Telemetry Buffer (< 0.005ms Disk I/O)
+    $fast_log_file = __DIR__ . '/includes/data/waf_attack_fast_log.json';
+    $attack_event = [
+        'ip' => $mdefender_ip,
+        'url' => $_SERVER['REQUEST_URI'] ?? '/',
+        'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+        'status' => 'blocked',
+        'attack_type' => $attack_name,
+        'rule_matched' => $rule_name,
+        'confidence' => 0.99,
+        'reference_id' => $ref_id,
+        'created_at' => gmdate('Y-m-d H:i:s'),
+    ];
+    @file_put_contents($fast_log_file, json_encode($attack_event) . "\n", FILE_APPEND | LOCK_EX);
+
+    // 2. Direct MySQL DB Insertion if wp-config.php database constants are defined
+    if (defined('DB_NAME') && defined('DB_USER') && defined('DB_PASSWORD') && defined('DB_HOST')) {
+        try {
+            $mysqli = @new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+            if (!$mysqli->connect_error) {
+                $prefix = $GLOBALS['table_prefix'] ?? 'wp_';
+                $tbl = $prefix . 'waf_attacks';
+                $now = gmdate('Y-m-d H:i:s');
+                $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+                $url = substr($_SERVER['REQUEST_URI'] ?? '/', 0, 500);
+                $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+                $c_code = 'LOCAL';
+                if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+                    $c_code = strtoupper(substr($_SERVER['HTTP_CF_IPCOUNTRY'], 0, 2));
+                }
+                $stmt = $mysqli->prepare("INSERT INTO `$tbl` (ip, country_code, url, method, attack_type, confidence, status, user_agent, rule_matched, reference_id, created_at) VALUES (?, ?, ?, ?, ?, 0.99, 'blocked', ?, ?, ?, ?)");
+                if ($stmt) {
+                    $stmt->bind_param("ssssssssss", $mdefender_ip, $c_code, $url, $method, $attack_name, $ua, $rule_name, $ref_id, $now);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+                $mysqli->close();
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    // 3. Blacklisted IP & Geolocation Policy: Render Dead Network (Offline connection drop)
+    if ($attack_name === 'Blacklisted IP' || strpos($block_reason, 'Blacklisted IP') !== false || $attack_name === 'Country / Regional Restriction') {
+        include __DIR__ . '/dead-network-template.php';
+        exit;
+    }
+
+    // 4. Ingress Threats (SQLi, XSS, Path Traversal, RCE): Render Original MDefender Pro Block Page
     if (function_exists('http_response_code')) {
         http_response_code(403);
     }
@@ -270,63 +336,26 @@ if ($is_blocked) {
         header('HTTP/1.1 403 Forbidden', true, 403);
         header('Status: 403 Forbidden');
         header('Content-Type: text/html; charset=UTF-8');
-        header('X-Protected-By: MDefender-Pro-Edge');
+        header('X-Protected-By: MDefender-Pro-WAAP');
         header('Connection: close');
     }
 
-    $ref_id = 'MDEF-' . strtoupper(substr(md5($mdefender_ip . time()), 0, 10));
-
-    // Ultra-Fast Append-Only Telemetry Buffer (< 0.005ms Disk I/O)
-    $fast_log_file = __DIR__ . '/includes/data/waf_attack_fast_log.json';
-    $attack_event = [
+    $result = [
         'ip' => $mdefender_ip,
-        'url' => $_SERVER['REQUEST_URI'] ?? '/',
-        'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
-        'status' => 'blocked',
-        'attack_type' => $block_reason,
-        'rule_matched' => 'Pre-Flight Edge WAAP',
+        'attack_type' => $attack_name,
+        'message' => $block_reason,
+        'rule_matched' => $rule_name,
+        'reference_id' => $ref_id,
         'confidence' => 0.99,
-        'created_at' => gmdate('Y-m-d H:i:s'),
+        'timestamp' => gmdate('Y-m-d H:i:s'),
+        'status' => 'blocked',
     ];
-    @file_put_contents($fast_log_file, json_encode($attack_event) . "\n", FILE_APPEND | LOCK_EX);
-    ?>
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>403 Forbidden — MDefender Pro WAF</title>
-        <style>
-            :root { --bg: #090d16; --card: #131a29; --border: #1e293b; --text: #f8fafc; --muted: #94a3b8; --accent: #ef4444; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
-            .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; max-width: 520px; width: 100%; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; }
-            .icon { width: 64px; height: 64px; background: rgba(239,68,68,0.12); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 20px; }
-            h1 { font-size: 24px; font-weight: 700; margin: 0 0 10px 0; }
-            p { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 24px 0; }
-            .meta { background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: left; font-size: 13px; font-family: monospace; color: var(--muted); margin-bottom: 20px; }
-            .meta-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-            .meta-row:last-child { margin-bottom: 0; }
-            .meta-val { color: var(--text); font-weight: 600; }
-            .footer { font-size: 12px; color: var(--muted); }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <h1>Access Denied by WAF</h1>
-            <p><?php echo htmlspecialchars($block_reason); ?></p>
-            <div class="meta">
-                <div class="meta-row"><span>Your IP:</span><span class="meta-val"><?php echo htmlspecialchars($mdefender_ip); ?></span></div>
-                <div class="meta-row"><span>Reference ID:</span><span class="meta-val"><?php echo htmlspecialchars($ref_id); ?></span></div>
-                <div class="meta-row"><span>Protection Tier:</span><span class="meta-val">MDefender Extended Pre-Flight</span></div>
-            </div>
-            <div class="footer">Protected by <strong>MDefender Pro</strong> Autonomous Defense Engine</div>
-        </div>
-    </body>
-    </html>
-    <?php
+
+    if (!defined('WAF_FW_BOOTSTRAP_ACTIVE')) {
+        define('WAF_FW_BOOTSTRAP_ACTIVE', true);
+    }
+    include __DIR__ . '/block-page-template.php';
+
     while (ob_get_level() > 0) {
         @ob_end_flush();
     }

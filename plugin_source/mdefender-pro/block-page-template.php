@@ -1,14 +1,29 @@
 <?php
-defined('ABSPATH') || exit;
+if (!defined('ABSPATH') && !defined('WAF_FW_BOOTSTRAP_ACTIVE') && !defined('WAF_FW_PLUGIN_DIR')) {
+    exit;
+}
+
+if (!function_exists('esc_html')) {
+    function esc_html($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+}
+if (!function_exists('esc_url')) {
+    function esc_url($s) { return filter_var($s, FILTER_SANITIZE_URL); }
+}
+if (!function_exists('esc_attr')) {
+    function esc_attr($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+}
+if (!function_exists('sanitize_text_field')) {
+    function sanitize_text_field($s) { return strip_tags(trim((string)$s)); }
+}
 
 // Dynamic variables extracted from WAF analysis context
 $attack_type  = !empty($result['attack_type']) ? $result['attack_type'] : 'Security Threat';
 $client_ip    = !empty($result['ip']) ? $result['ip'] : ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
 $reason       = !empty($result['message']) ? $result['message'] : 'Request blocked by security firewall rule';
 $reference_id = !empty($result['reference_id']) ? $result['reference_id'] : ('MDF-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)));
-$timestamp    = !empty($result['timestamp']) ? $result['timestamp'] : current_time('mysql');
-$site_name    = get_bloginfo('name') ?: 'MAHABUB';
+$timestamp    = !empty($result['timestamp']) ? $result['timestamp'] : (function_exists('current_time') ? current_time('mysql') : gmdate('Y-m-d H:i:s'));
 $site_host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$site_name    = function_exists('get_bloginfo') ? (get_bloginfo('name') ?: 'MAHABUB') : 'MAHABUB';
 
 // GeoIP Resolution (with fallback matching design)
 $geoip_info = '';
@@ -61,7 +76,7 @@ $rule_id = (abs(crc32($rule_name)) % 10000) + 90000;
 
 // Server Host
 $server_host = !empty($_SERVER['HTTP_HOST']) ? sanitize_text_field($_SERVER['HTTP_HOST']) : (!empty($_SERVER['SERVER_NAME']) ? sanitize_text_field($_SERVER['SERVER_NAME']) : (function_exists('gethostname') ? gethostname() : 'localhost'));
-$admin_email = get_option('admin_email') ?: 'security@' . $site_host;
+$admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'security@' . $site_host) : ('security@' . $site_host);
 ?><!DOCTYPE html>
 <html lang="en">
 <head>

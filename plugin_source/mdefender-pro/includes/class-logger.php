@@ -43,8 +43,43 @@ class WAF_FW_Logger {
         return $countries[$code] ?? ($code ?: 'Unknown / Edge');
     }
 
-    public function log_attack($data) {
-        if (!empty($GLOBALS['waf_fw_attack_logged_in_request'])) {
+    public function drain_fast_logs() {
+        $fast_log_file = defined('WAF_FW_PLUGIN_DIR') 
+            ? WAF_FW_PLUGIN_DIR . 'includes/data/waf_attack_fast_log.json'
+            : dirname(__DIR__) . '/includes/data/waf_attack_fast_log.json';
+            
+        if (!file_exists($fast_log_file) || filesize($fast_log_file) < 4) {
+            return;
+        }
+
+        $raw_log = @file_get_contents($fast_log_file);
+        @unlink($fast_log_file);
+        if (empty($raw_log)) return;
+
+        $pending = @json_decode($raw_log, true);
+        if (!is_array($pending) || !isset($pending[0])) {
+            $pending = [];
+            $log_lines = explode("\n", trim($raw_log));
+            foreach ($log_lines as $l) {
+                $item = @json_decode(trim($l), true);
+                if ($item && is_array($item)) {
+                    $pending[] = $item;
+                }
+            }
+        }
+
+        if (is_array($pending) && !empty($pending)) {
+            foreach ($pending as $atk) {
+                $this->log_attack($atk, true);
+                if (function_exists('waf_fw_bump_stat')) {
+                    waf_fw_bump_stat('blocked');
+                }
+            }
+        }
+    }
+
+    public function log_attack($data, $force = false) {
+        if (!$force && !empty($GLOBALS['waf_fw_attack_logged_in_request'])) {
             return;
         }
         $GLOBALS['waf_fw_attack_logged_in_request'] = true;
@@ -69,7 +104,7 @@ class WAF_FW_Logger {
                 'rule_matched' => $data['rule_matched'] ?? '',
                 'reference_id' => $data['reference_id'] ?? '',
                 'details' => isset($data['details']) ? json_encode($data['details']) : '',
-                'created_at' => current_time('mysql'),
+                'created_at' => !empty($data['created_at']) ? $data['created_at'] : current_time('mysql'),
             ]
         );
         $this->auto_recycle_if_needed();
@@ -179,6 +214,7 @@ class WAF_FW_Logger {
     }
 
     public function get_dashboard_data() {
+        $this->drain_fast_logs();
         global $wpdb;
         $attacks_table = $this->db->get_attacks_table();
         $requests_table = $this->db->get_requests_table();
@@ -510,6 +546,7 @@ class WAF_FW_Logger {
     }
 
     public function get_logs($args = []) {
+        $this->drain_fast_logs();
         global $wpdb;
         $page = max(1, intval($args['paged'] ?? $args['page'] ?? 1));
         
