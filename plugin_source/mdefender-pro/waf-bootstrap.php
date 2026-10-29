@@ -129,10 +129,25 @@ foreach ($candidates as $cand) {
     }
 }
 
-// If not explicitly blacklisted, allow safe loopback traffic
-if (!$is_blocked && (empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_GET['country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY']))) {
+// If not explicitly blacklisted, allow safe loopback traffic unless country/test simulation is provided
+$has_country_test = (!empty($_GET['country_test']) || !empty($_GET['test_country']) || !empty($_GET['country']) || !empty($_GET['geo_country']) || !empty($_SERVER['HTTP_CF_IPCOUNTRY']) || !empty($_SERVER['CF_IPCOUNTRY']) || !empty($_SERVER['GEOIP_COUNTRY_CODE']));
+if (!$is_blocked && empty($_GET['test_ip']) && empty($_GET['ip_test']) && !$has_country_test) {
     if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0' || $mdefender_ip === 'localhost') {
-        return;
+        $local_c = !empty($mdefender_cache_data['local_server_country']) ? strtoupper($mdefender_cache_data['local_server_country']) : '';
+        $raw_b = (array)($mdefender_cache_data['blocked_countries'] ?? []);
+        $is_local_c_blocked = false;
+        foreach ($raw_b as $rb) {
+            foreach (explode(',', strtoupper((string)$rb)) as $c_item) {
+                $c_clean = trim($c_item);
+                if (!empty($local_c) && !empty($c_clean) && $c_clean === $local_c) {
+                    $is_local_c_blocked = true;
+                    break 2;
+                }
+            }
+        }
+        if (!$is_local_c_blocked) {
+            return;
+        }
     }
 }
 
@@ -219,6 +234,7 @@ if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['b
 
     if (!empty($geo_country) && in_array($geo_country, $blocked_list, true)) {
         $is_blocked = true;
+        $is_country_block = true;
         $attack_name = 'Country / Regional Restriction';
         $rule_name = 'Pre-Flight WAAP: Geolocation Restriction Policy';
         $block_reason = 'Access from your country/region (' . htmlspecialchars($geo_country) . ') is restricted by security policy.';
@@ -334,9 +350,9 @@ if ($is_blocked) {
         } catch (\Throwable $e) {}
     }
 
-    // 3. Blacklisted IP, Geolocation Policy, and Control Panel Probes: Render Dead Network (Offline connection drop)
-    // 3. Control Panel Probes: Render Dead Network (Offline connection drop)
-    if ($attack_name === 'Server Admin Probe') {
+    // 3. Stealth Dead Network: Blacklisted IPs, Country/Regional Restrictions, and Server Admin Probes
+    // Never reveal that a security plugin or WAF is present. To the attacker or blocked region, the site is completely down!
+    if ($attack_name === 'Blacklisted IP' || $attack_name === 'Country / Regional Restriction' || $attack_name === 'Server Admin Probe' || !empty($is_country_block)) {
         include __DIR__ . '/dead-network-template.php';
         exit;
     }

@@ -23,8 +23,12 @@ $user_initials = $current_user && $current_user->display_name ? strtoupper(subst
 // Genuine database counters (clean 0-baseline on fresh install)
 $total_requests_real = isset($dash_data['total_requests']) ? (int)$dash_data['total_requests'] : 0;
 $total_attacks_real = isset($dash_data['total_attacks']) ? (int)$dash_data['total_attacks'] : 0;
+$today_attacks_real = isset($dash_data['today_attacks']) ? (int)$dash_data['today_attacks'] : 0;
 $total_blacklisted_real = isset($dash_data['total_blacklisted']) ? (int)$dash_data['total_blacklisted'] : 0;
 $total_allowed_real = isset($dash_data['total_allowed']) ? (int)$dash_data['total_allowed'] : max(0, $total_requests_real - $total_attacks_real);
+$raw_blocked_c = (string) get_option('waf_fw_blocked_countries', '');
+$blocked_countries_array = array_values(array_filter(array_map('trim', explode(',', $raw_blocked_c))));
+$total_restrictions = $total_blacklisted_real + count($blocked_countries_array);
 
 if ($total_requests_real >= 1000000) {
     $formatted_requests = round($total_requests_real / 1000000, 2) . 'M';
@@ -258,12 +262,12 @@ if (!function_exists('waf_mdf_country_flag')) {
                     </a>
                 </div>
             </div>
-            <span class="mdf-card-metric-label">Requests inspected</span>
+            <span class="mdf-card-metric-label">Threats blocked today</span>
             <div class="mdf-card-metric-row">
-                <span class="mdf-card-metric-num" id="statTotalRequests"><?php echo esc_html($formatted_requests); ?></span>
-                <span class="mdf-badge-trend mdf-trend-green" id="trendRequests"><?php echo $total_requests_real > 0 ? '&uarr; Live' : '0%'; ?></span>
+                <span class="mdf-card-metric-num" id="statTotalRequests"><?php echo esc_html(number_format($today_attacks_real)); ?></span>
+                <span class="mdf-badge-trend mdf-trend-green" id="trendRequests"><?php echo $today_attacks_real > 0 ? '&uarr; Active' : 'Zero Threat'; ?></span>
             </div>
-            <span class="mdf-card-metric-sub" id="subTotalRequests"><?php echo $total_requests_real > 0 ? (number_format($total_allowed_real) . ' allowed &bull; ' . number_format($total_attacks_real) . ' blocked') : 'Awaiting incoming network traffic'; ?></span>
+            <span class="mdf-card-metric-sub" id="subTotalRequests"><?php echo $today_attacks_real > 0 ? (number_format($today_attacks_real) . ' malicious attacks & probes stopped today') : 'No security threats detected today'; ?></span>
             <div class="mdf-sparkline-area">
                 <canvas id="sparkline1" width="200" height="40" class="mdf-spark-svg"></canvas>
             </div>
@@ -374,12 +378,12 @@ if (!function_exists('waf_mdf_country_flag')) {
                     </a>
                 </div>
             </div>
-            <span class="mdf-card-metric-label">Blacklisted IPs</span>
+            <span class="mdf-card-metric-label">Quarantined IPs &amp; Countries</span>
             <div class="mdf-card-metric-row">
-                <span class="mdf-card-metric-num" id="statBlacklistCount"><?php echo esc_html($formatted_blacklist); ?></span>
-                <span class="mdf-badge-trend mdf-trend-green"><?php echo $total_blacklisted_real > 0 ? 'Enforced' : 'Clean'; ?></span>
+                <span class="mdf-card-metric-num" id="statBlacklistCount"><?php echo esc_html(number_format($total_restrictions)); ?></span>
+                <span class="mdf-badge-trend mdf-trend-green"><?php echo $total_restrictions > 0 ? 'Restricted' : 'Clean'; ?></span>
             </div>
-            <span class="mdf-card-metric-sub" id="subBlacklistCount"><?php echo $total_blacklisted_real > 0 ? number_format($total_blacklisted_real) . ' perimeter blocks active' : 'Zero active perimeter IP blocks'; ?></span>
+            <span class="mdf-card-metric-sub" id="subBlacklistCount"><?php echo number_format($total_blacklisted_real) . ' IPs &bull; ' . count($blocked_countries_array) . ' Geo-restrictions'; ?></span>
             <div class="mdf-sparkline-area">
                 <canvas id="sparkline4" width="200" height="40" class="mdf-spark-svg"></canvas>
             </div>

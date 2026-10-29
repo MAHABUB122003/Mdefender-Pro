@@ -15,3 +15,4 @@ print("\nUser dashboard on LIVE:", d_res.json().get('total_requests'), d_res.jso
 # Check user logs on live server
 l_res = requests.get('https://mdefender-pro.crafix.tech/api/user/logs?page=1&per_page=10', headers=headers)
 print("\nUser logs on LIVE:", l_res.json().get('total'), len(l_res.json().get('logs', [])))
+

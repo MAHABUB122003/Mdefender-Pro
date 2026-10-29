@@ -1650,20 +1650,20 @@ export default function UserDashboard() {
         gap: '18px',
         marginBottom: '24px'
       }}>
-        {/* Card 1: Slate/Dark (Speed & Ingress Traffic) */}
+        {/* Card 1: Slate/Dark (24h Blocked Threats) */}
         <StatCard
-          icon={Zap}
+          icon={ShieldAlert}
           color="#10201E"
           bg="#F1F5F3"
           borderColor="#D9E1DC"
-          value={data?.requests_today || 0}
-          label="24h Ingress Requests"
-          sublabel="Real-Time Traffic Velocity"
-          badgeText="LIVE INGRESS"
+          value={data?.blocked_today || 0}
+          label="24h Blocked Threats"
+          sublabel="Real-Time Attack Neutralization"
+          badgeText="ACTIVE SHIELD"
           badgeType="emerald"
-          onClean={() => handleCleanCategory('requests_today', '24h Ingress')}
-          cleaning={cleaningCategory === 'requests_today'}
-          actionText="Inspect Ingress Traffic"
+          onClean={() => handleCleanCategory('blocked_today', '24h Blocked')}
+          cleaning={cleaningCategory === 'blocked_today'}
+          actionText="Inspect Threat Logs"
           actionLink="/user/logs"
           actionColor="#10201E"
         />
@@ -1686,20 +1686,20 @@ export default function UserDashboard() {
           actionColor="#DC2626"
         />
 
-        {/* Card 3: Brand Amber / Orange (Neural Engine & Heuristic Inspection) */}
+        {/* Card 3: Brand Amber / Orange (Neural Threat Signatures) */}
         <StatCard
           icon={Sparkles}
           color="#E8792F"
           bg="#FFF4ED"
           borderColor="#FCD3B6"
-          value={data?.total_requests || 0}
-          label="Lifetime Scrubbed Edge"
-          sublabel="6.5M+ Neural Model Heuristics"
-          badgeText="NEURAL ENGINE"
+          value={data?.total_blocked || 0}
+          label="All-Time Quarantined"
+          sublabel="6.5M+ Neural Threat Signatures"
+          badgeText="NEURAL SHIELD"
           badgeType="orange"
-          onClean={() => handleCleanCategory('total_requests', 'Lifetime Traffic')}
-          cleaning={cleaningCategory === 'total_requests'}
-          actionText="View AI Threat Model"
+          onClean={() => handleCleanCategory('total_blocked', 'Lifetime Threats')}
+          cleaning={cleaningCategory === 'total_blocked'}
+          actionText="View Threat Intel"
           actionLink="/user/rules"
           actionColor="#E8792F"
         />

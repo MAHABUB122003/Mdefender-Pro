@@ -13,3 +13,4 @@ for w in db.websites.find({'$or': [{'user_id': str(user['_id'])}, {'user_id': us
 print("\nWordpress_sites collection:")
 for wp in db.wordpress_sites.find({'$or': [{'user_id': str(user['_id'])}, {'user_id': user['_id']}]}):
     print(f"WP ID: {wp.get('website_id')} | Domain: {wp.get('domain')} | Connected: {wp.get('connected')} | Status: {wp.get('status')}")
+

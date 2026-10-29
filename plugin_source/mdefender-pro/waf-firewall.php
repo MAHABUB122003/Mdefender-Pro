@@ -248,10 +248,14 @@ add_action('upgrader_process_complete', function() { waf_fw_sync_cloud_blacklist
  */
 function waf_fw_handle_cloud_sync_webhook() {
     if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
-        $token = sanitize_text_field($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? '');
+        // Read JSON payload early so api_key/site_token can be verified from JSON body, headers, or query string
+        $raw_body = @file_get_contents('php://input');
+        $pushed_data = !empty($raw_body) ? @json_decode($raw_body, true) : null;
+
+        $token = sanitize_text_field($_REQUEST['site_token'] ?? $_REQUEST['token'] ?? $_SERVER['HTTP_X_SITE_TOKEN'] ?? ($pushed_data['site_token'] ?? ''));
         $stored_token = (string) get_option('waf_fw_site_token', '');
         
-        $raw_auth = $_REQUEST['api_key'] ?? $_REQUEST['key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? '';
+        $raw_auth = $_REQUEST['api_key'] ?? $_REQUEST['key'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['HTTP_X_API_KEY'] ?? ($pushed_data['api_key'] ?? '');
         $api_key = trim(str_ireplace('Bearer ', '', sanitize_text_field($raw_auth)));
         $stored_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
 
@@ -268,10 +272,6 @@ function waf_fw_handle_cloud_sync_webhook() {
         if ($is_authorized) {
             delete_transient('waf_fw_last_bl_sync');
             delete_transient('waf_fw_cloud_threat_ips');
-            
-            // Check if full JSON payload was pushed in request body
-            $raw_body = file_get_contents('php://input');
-            $pushed_data = !empty($raw_body) ? json_decode($raw_body, true) : null;
 
             if (is_array($pushed_data) && (isset($pushed_data['blacklist']) || isset($pushed_data['blocked_countries']) || isset($pushed_data['config']))) {
                 if (isset($pushed_data['blacklist']) && is_array($pushed_data['blacklist'])) {
@@ -1209,6 +1209,11 @@ function waf_fw_analyze_request() {
             $GLOBALS['waf_fw_analyzed'] = true;
             $result = $engine->analyze_current_request();
             if ($result['status'] === 'blocked') {
+                $atype = $result['attack_type'] ?? '';
+                if ($atype === 'Blacklisted IP' || $atype === 'Country Blocked' || strpos($atype, 'Country') !== false || strpos($atype, 'Geograph') !== false || $atype === 'Server Admin Probe') {
+                    include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
+                    exit;
+                }
                 status_header(403);
                 header('HTTP/1.1 403 Forbidden', true, 403);
                 header('X-Protected-By: MDefender-Pro-WAAP');
@@ -1256,6 +1261,10 @@ function waf_fw_analyze_request() {
 
     if ($result['status'] === 'blocked') {
         $atype = $result['attack_type'] ?? '';
+        if ($atype === 'Blacklisted IP' || $atype === 'Country Blocked' || strpos($atype, 'Country') !== false || strpos($atype, 'Geograph') !== false || $atype === 'Server Admin Probe') {
+            include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
+            exit;
+        }
 
         status_header(403);
         header('HTTP/1.1 403 Forbidden', true, 403);

@@ -115,30 +115,9 @@ class WAF_FW_Logger {
     }
 
     public function log_request($data) {
-        if (!empty($GLOBALS['waf_fw_request_logged_in_request']) || !empty($GLOBALS['waf_fw_attack_logged_in_request'])) {
-            return;
-        }
-        $GLOBALS['waf_fw_request_logged_in_request'] = true;
-
-        global $wpdb;
-        $table = $this->db->get_requests_table();
-        $ip = $data['ip'] ?? '';
-        $country_code = $this->fast_get_country_code($ip);
-        $now = current_time('mysql');
-
-        $wpdb->insert(
-            $table,
-            [
-                'ip' => $ip,
-                'country_code' => $country_code,
-                'url' => substr((string)($data['url'] ?? ''), 0, 500),
-                'method' => substr((string)($data['method'] ?? 'GET'), 0, 10),
-                'status' => substr((string)($data['status'] ?? 'allowed'), 0, 20),
-                'user_agent' => substr((string)($data['user_agent'] ?? ''), 0, 255),
-                'created_at' => $now,
-            ]
-        );
-        $this->auto_recycle_if_needed();
+        // Zero-Bloat Pure Security Engine:
+        // Ordinary benign visitor requests are not logged to prevent database bloat and maximize site performance.
+        return;
     }
 
     public static function flush_requests() {
@@ -616,15 +595,8 @@ class WAF_FW_Logger {
 
         $status = strtolower(trim($args['status'] ?? ''));
 
-        if ($status === 'allowed') {
-            $table_query = "SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0 AS confidence, 'allowed' AS status, 'Allowed Request' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table";
-        } elseif ($status === 'blocked') {
-            $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table";
-        } else {
-            $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table
-                            UNION ALL
-                            SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0 AS confidence, 'allowed' AS status, 'Allowed Request' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table";
-        }
+        // Pure Security Event Stream: Attacks, Injections, Blacklist Blocks, Country Geo-Restrictions
+        $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table";
 
         $where = ['1=1'];
         $params = [];

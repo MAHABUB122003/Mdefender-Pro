@@ -1,13 +1,19 @@
 <?php
 /**
- * Dead Network Template — Offline / Connection Dropped Simulation
- * Displays a realistic browser offline network error screen for blacklisted IPs.
- * Zero MDefender branding. To the attacker, the host and network appear completely dead.
+ * Dead Network Template — Stealth Network Error & Offline Simulation
+ * Displays a 100% authentic browser network offline / connection dropped screen
+ * for blacklisted IPs and geo-restricted countries.
+ * Zero MDefender branding. To the attacker or visitor, the host and network appear completely down.
  */
+if (function_exists('http_response_code')) {
+    http_response_code(502);
+}
 if (!headers_sent()) {
-    header('HTTP/1.1 444 No Response', true, 444);
-    header('Status: 444 No Response');
+    header('HTTP/1.1 502 Bad Gateway', true, 502);
+    header('Status: 502 Bad Gateway');
     header('Connection: close');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
 }
 $host = htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'The site');
 ?><!DOCTYPE html>

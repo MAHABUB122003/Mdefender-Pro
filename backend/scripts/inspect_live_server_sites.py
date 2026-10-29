@@ -10,3 +10,4 @@ sites = sites_res.json().get('data', {}).get('websites', [])
 print(f"Live Websites ({len(sites)}):")
 for s in sites:
     print(f"ID: {s.get('id')} | Name: {s.get('name')} | Domain: {s.get('domain')} | URL: {s.get('url')} | API Key: {s.get('api_key')}")
+
