@@ -384,7 +384,11 @@ function waf_fw_handle_cloud_sync_webhook() {
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $btype = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? 'full');
                     $bnote = sanitize_text_field($_REQUEST['note'] ?? $pushed_data['note'] ?? 'Dashboard Instant Snapshot');
-                    $action_result = WAF_FW_Backup_Engine::instance()->create_backup($btype, [], $bnote);
+                    $bcomps = isset($pushed_data['components']) && is_array($pushed_data['components']) ? array_map('sanitize_text_field', $pushed_data['components']) : (isset($_REQUEST['components']) && is_array($_REQUEST['components']) ? array_map('sanitize_text_field', $_REQUEST['components']) : []);
+                    if (empty($bcomps)) {
+                        $bcomps = ($btype === 'database') ? ['db'] : (($btype === 'files') ? ['plugins', 'themes', 'uploads', 'core', 'wp_config', 'others'] : ['db', 'plugins', 'themes', 'uploads', 'core', 'wp_config', 'others']);
+                    }
+                    $action_result = WAF_FW_Backup_Engine::instance()->create_backup($btype, $bcomps, $bnote);
                 }
             } elseif ($action === 'restore_backup') {
                 if (class_exists('WAF_FW_Backup_Engine')) {

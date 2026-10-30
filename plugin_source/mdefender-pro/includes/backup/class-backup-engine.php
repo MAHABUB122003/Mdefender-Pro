@@ -179,6 +179,17 @@ class WAF_FW_Backup_Engine {
         }
         $site_identifier = $domain ?: (sanitize_title(get_bloginfo('name')) ?: 'site');
 
+        if (empty($components) || !is_array($components) || count($components) === 0) {
+            if ($type === 'database') {
+                $components = ['db'];
+            } elseif ($type === 'files') {
+                $components = ['plugins', 'themes', 'uploads', 'core', 'wp_config', 'others'];
+            } else {
+                $type = 'full';
+                $components = ['db', 'plugins', 'themes', 'uploads', 'core', 'wp_config', 'others'];
+            }
+        }
+
         $backup_id = 'mdf_' . $type . '_' . $site_identifier . '_' . $timestamp;
         $zip_filename = $backup_id . '.zip';
         $zip_path = $this->backup_dir . $zip_filename;
@@ -435,10 +446,12 @@ class WAF_FW_Backup_Engine {
             fwrite($handle, "-- --------------------------------------------------------\n");
             fwrite($handle, "DROP TABLE IF EXISTS `{$table}`;\n");
 
-            $create_row = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
-            if ($create_row && isset($create_row[1])) {
-                fwrite($handle, $create_row[1] . ";\n\n");
+            $create_row = @$wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+            if (!$create_row || empty($create_row[1])) {
+                fwrite($handle, "-- Skipped table `{$table}` (unreadable or corrupted tablespace)\n\n");
+                continue;
             }
+            fwrite($handle, $create_row[1] . ";\n\n");
 
             // Stream rows in safe batches of 250
             $total_table_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
