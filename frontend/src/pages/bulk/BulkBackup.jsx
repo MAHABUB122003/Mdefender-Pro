@@ -70,6 +70,10 @@ export default function BulkBackup() {
   const [restoring, setRestoring] = useState(false)
   const [progressMsg, setProgressMsg] = useState(null)
 
+  // Live Download Progress Tracker State
+  const [downloadTracker, setDownloadTracker] = useState(null)
+  const downloadAbortRef = useRef(null)
+
   // Toast
   const [toastMsg, setToastMsg] = useState(null)
   const showToast = (text, isError = false) => {
@@ -217,25 +221,141 @@ export default function BulkBackup() {
     }
   }
 
-  // Handle Download File (Instant native browser streaming download)
-  const handleDownload = (bk) => {
+  // Format byte helper for live UI progress
+  const formatLiveBytes = (bytes) => {
+    if (!bytes || bytes <= 0) return '0 B'
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+    if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return bytes + ' B'
+  }
+
+  // Cancel live download stream
+  const handleCancelDownload = () => {
+    if (downloadAbortRef.current) {
+      try { downloadAbortRef.current.abort() } catch {}
+      downloadAbortRef.current = null
+    }
+    setDownloadTracker(null)
+  }
+
+  // Handle Download File (Visible Live Streaming Progress Tracker)
+  const handleDownload = async (bk) => {
     const siteId = bk.site_id || (activeTargetSite.id || activeTargetSite._id)
-    showToast(`Starting instant download for "${bk.filename}"...`)
+    const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token') || ''
+    const downloadUrl = api.getWebsiteBackupDownloadUrl(siteId, bk.filename) + (token ? `?token=${encodeURIComponent(token)}` : '')
+
+    // Parse backup size in bytes as fallback
+    let knownTotalBytes = bk.size_bytes || 0
+    if (!knownTotalBytes && bk.size) {
+      const s = String(bk.size).toUpperCase().trim()
+      if (s.includes('GB')) knownTotalBytes = Math.round(parseFloat(s) * 1024 * 1024 * 1024)
+      else if (s.includes('MB')) knownTotalBytes = Math.round(parseFloat(s) * 1024 * 1024)
+      else if (s.includes('KB')) knownTotalBytes = Math.round(parseFloat(s) * 1024)
+    }
+
+    const abortController = new AbortController()
+    downloadAbortRef.current = abortController
+
+    // IMMEDIATELY show the live download tracker popup (in 0.01 seconds)
+    setDownloadTracker({
+      filename: bk.filename,
+      receivedBytes: 0,
+      totalBytes: knownTotalBytes,
+      percent: 0,
+      speedStr: 'Connecting...',
+      status: 'starting',
+      downloadUrl: downloadUrl
+    })
+
     try {
-      const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token') || ''
-      const downloadUrl = api.getWebsiteBackupDownloadUrl(siteId, bk.filename) + (token ? `?token=${encodeURIComponent(token)}` : '')
-      
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.setAttribute('download', bk.filename)
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-      setTimeout(() => {
-        document.body.removeChild(link)
-      }, 1500)
+      const res = await fetch(downloadUrl, {
+        signal: abortController.signal,
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`)
+      }
+
+      const contentLengthHeader = res.headers.get('content-length')
+      const totalBytes = (contentLengthHeader ? parseInt(contentLengthHeader, 10) : 0) || knownTotalBytes || 0
+
+      const reader = res.body.getReader()
+      const chunks = []
+      let receivedBytes = 0
+      let lastTime = Date.now()
+      let lastBytes = 0
+      let speedStr = 'Starting stream...'
+
+      setDownloadTracker(prev => ({
+        ...prev,
+        status: 'downloading',
+        totalBytes: totalBytes,
+        speedStr: speedStr
+      }))
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        chunks.push(value)
+        receivedBytes += value.length
+
+        const now = Date.now()
+        const elapsed = (now - lastTime) / 1000
+        if (elapsed >= 0.25) {
+          const speedBps = (receivedBytes - lastBytes) / elapsed
+          speedStr = `${formatLiveBytes(speedBps)}/s`
+          lastTime = now
+          lastBytes = receivedBytes
+
+          const pct = totalBytes > 0 ? Math.min(99, Math.round((receivedBytes / totalBytes) * 100)) : 0
+          setDownloadTracker(prev => prev ? {
+            ...prev,
+            receivedBytes,
+            totalBytes: totalBytes || receivedBytes,
+            percent: pct,
+            speedStr,
+            status: 'downloading'
+          } : null)
+        }
+      }
+
+      // Stream completed - generate blob and trigger instant save
+      const blob = new Blob(chunks, { type: 'application/octet-stream' })
+      const blobUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = bk.filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(blobUrl)
+      document.body.removeChild(a)
+
+      setDownloadTracker(prev => prev ? {
+        ...prev,
+        receivedBytes,
+        totalBytes: receivedBytes,
+        percent: 100,
+        speedStr: 'Complete',
+        status: 'completed'
+      } : null)
+
+      showToast(`Backup archive "${bk.filename}" downloaded successfully!`)
     } catch (err) {
+      if (err.name === 'AbortError') {
+        showToast('Download cancelled by user.')
+        return
+      }
+      setDownloadTracker(prev => prev ? {
+        ...prev,
+        status: 'error',
+        errorMsg: err.message
+      } : null)
       showToast(`Download failed: ${err.message}`, true)
+    } finally {
+      downloadAbortRef.current = null
     }
   }
 
@@ -1163,6 +1283,143 @@ export default function BulkBackup() {
                 <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
                   {progressMsg}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* 7. LIVE DOWNLOAD PROGRESS TRACKER MODAL */}
+          {downloadTracker && (
+            <div style={modalBackdropStyle}>
+              <div style={{ ...modalContentStyle, maxWidth: '480px', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
+                      background: downloadTracker.status === 'completed' ? '#ECFDF5' : (downloadTracker.status === 'error' ? '#FEF2F2' : '#EFF6FF'),
+                      color: downloadTracker.status === 'completed' ? '#10B981' : (downloadTracker.status === 'error' ? '#EF4444' : '#3B82F6'),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {downloadTracker.status === 'completed' ? <CheckCircle2 size={20} /> : (downloadTracker.status === 'error' ? <AlertTriangle size={20} /> : <Download size={20} style={{ animation: 'bounce 1s infinite' }} />)}
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
+                        {downloadTracker.status === 'completed' ? 'Download Complete!' : (downloadTracker.status === 'error' ? 'Download Interrupted' : 'Downloading Archive...')}
+                      </h4>
+                      <div style={{ fontSize: '11.5px', color: '#68827B', marginTop: '2px', wordBreak: 'break-all' }}>
+                        {downloadTracker.filename}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCancelDownload}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#889892', padding: '4px' }}
+                    title="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Progress Bar Container */}
+                <div style={{ background: '#EEF3F0', borderRadius: '8px', height: '10px', overflow: 'hidden', position: 'relative', marginBottom: '12px' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${downloadTracker.percent}%`,
+                    background: downloadTracker.status === 'completed' ? 'linear-gradient(90deg, #10B981, #059669)' : (downloadTracker.status === 'error' ? '#EF4444' : 'linear-gradient(90deg, #3B82F6, #10B981)'),
+                    transition: 'width 0.2s ease-out',
+                    borderRadius: '8px'
+                  }} />
+                </div>
+
+                {/* Stats row: Downloaded / Total & Percentage & Speed */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#4B635D', marginBottom: '16px', fontWeight: '600' }}>
+                  <span>
+                    {formatLiveBytes(downloadTracker.receivedBytes)} / {formatLiveBytes(downloadTracker.totalBytes || downloadTracker.receivedBytes)}
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: downloadTracker.status === 'completed' ? '#059669' : '#1D4ED8' }}>
+                    {downloadTracker.percent}%
+                  </span>
+                  <span>
+                    {downloadTracker.speedStr}
+                  </span>
+                </div>
+
+                {/* Info status note */}
+                <div style={{
+                  background: '#F8FAF9',
+                  border: '1px solid #E5EBE8',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '12px',
+                  color: '#556964',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: downloadTracker.status === 'completed' ? '#10B981' : '#3B82F6',
+                      display: 'inline-block'
+                    }} />
+                    <span>
+                      {downloadTracker.status === 'completed'
+                        ? 'Archive successfully downloaded to your device.'
+                        : (downloadTracker.status === 'error'
+                          ? downloadTracker.errorMsg || 'Connection error. Click direct link below.'
+                          : 'Live streaming archive directly from origin server...')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  {downloadTracker.status !== 'completed' && (
+                    <a
+                      href={downloadTracker.downloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      download={downloadTracker.filename}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #CBD5E1',
+                        background: '#FFFFFF',
+                        color: '#334155',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <ExternalLink size={13} />
+                      <span>Direct Tab</span>
+                    </a>
+                  )}
+                  <button
+                    onClick={handleCancelDownload}
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: downloadTracker.status === 'completed' ? '#0F2C26' : '#E2E8F0',
+                      color: downloadTracker.status === 'completed' ? '#FFFFFF' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {downloadTracker.status === 'completed' ? 'Done' : 'Cancel'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -571,6 +571,10 @@ class BackupService:
                     cl = resp.headers.get("Content-Length")
                     res_headers = {
                         "Content-Disposition": f'attachment; filename="{clean_fn}"',
+                        "X-Accel-Buffering": "no",
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Access-Control-Expose-Headers": "Content-Length, Content-Disposition"
                     }
                     if cl:
                         res_headers["Content-Length"] = cl
