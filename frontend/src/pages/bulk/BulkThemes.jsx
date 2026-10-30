@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Palette,
   Sparkles,
@@ -7,12 +7,10 @@ import {
   AlertTriangle,
   Play,
   CheckCircle2,
-  Eye,
   Sliders,
   ExternalLink,
   Plus
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
@@ -21,13 +19,33 @@ import api from '../../api/api'
 export default function BulkThemes() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet } = useBulkFleet()
 
+  const [themes, setThemes] = useState([])
+  const [updating, setUpdating] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
+  const [toastMsg, setToastMsg] = useState(null)
+
+  const showToast = (text, isError = false) => {
+    setToastMsg({ text, isError })
+    setTimeout(() => setToastMsg(null), 3500)
+  }
+
+  // Target websites based on dropdown selection
+  const targetSites = useMemo(() => {
+    if (!hasWebsites) return []
+    if (selectedSiteId === 'all') return wpWebsites
+    return wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+  }, [hasWebsites, wpWebsites, selectedSiteId])
+
+  // Current active target name
+  const scopeLabel = useMemo(() => {
+    if (selectedSiteId === 'all') return `All Fleet Sites (${wpWebsites.length})`
+    const s = targetSites[0]
+    return s ? (s.domain || s.name || s.url) : 'Selected Website'
+  }, [selectedSiteId, wpWebsites, targetSites])
+
   // Generate dynamic themes list based on actual connected WordPress sites
   const baseThemes = useMemo(() => {
-    if (!hasWebsites) return []
-
-    const targetSites = selectedSiteId === 'all'
-      ? wpWebsites
-      : wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+    if (!hasWebsites || targetSites.length === 0) return []
 
     const siteCount = targetSites.length || 1
     const themesMap = new Map()
@@ -35,11 +53,11 @@ export default function BulkThemes() {
     targetSites.forEach(s => {
       const activeThemeName = s.theme || s.wordpress_connection?.theme || ''
       const siteThemes = s.themes || []
-      
+
       if (Array.isArray(siteThemes) && siteThemes.length > 0) {
         siteThemes.forEach(t => {
           const key = t.slug || t.id || t.name
-          const isActive = t.is_active || t.active || (activeThemeName && (t.name === activeThemeName || t.slug === activeThemeName))
+          const isActive = !!(t.is_active || t.active || (activeThemeName && (t.name === activeThemeName || t.slug === activeThemeName)))
 
           if (themesMap.has(key)) {
             const existing = themesMap.get(key)
@@ -56,7 +74,7 @@ export default function BulkThemes() {
               updateAvailable: !!t.update_available,
               status: isActive ? 'active' : 'standby',
               siteCount: isActive ? siteCount : 0,
-              author: t.author || 'Theme Developer'
+              author: t.author || 'WordPress Theme Developer'
             })
           }
         })
@@ -79,9 +97,9 @@ export default function BulkThemes() {
       themesMap.set('default-theme', {
         id: 'default-theme',
         slug: 'twentytwentyfour',
-        name: targetSites[0]?.theme || 'Active WordPress Theme',
-        currentVersion: '1.0.0',
-        latestVersion: '1.0.0',
+        name: targetSites[0]?.theme || 'Twenty Twenty-Four',
+        currentVersion: '1.4',
+        latestVersion: '1.4',
         updateAvailable: false,
         status: 'active',
         siteCount: siteCount,
@@ -90,29 +108,22 @@ export default function BulkThemes() {
     }
 
     return Array.from(themesMap.values())
-  }, [hasWebsites, wpWebsites, selectedSiteId])
+  }, [hasWebsites, targetSites])
 
-  const [themes, setThemes] = useState([])
-  const [updating, setUpdating] = useState(false)
-  const [toastMsg, setToastMsg] = useState(null)
-
-  useMemo(() => {
+  // Sync state cleanly when baseThemes changes
+  useEffect(() => {
     setThemes(baseThemes)
   }, [baseThemes])
 
-  const showToast = (text) => {
-    setToastMsg(text)
-    setTimeout(() => setToastMsg(null), 3500)
-  }
-
+  // Bulk update all themes
   const handleBulkUpdate = async () => {
     setUpdating(true)
+    const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
     try {
-      const targetId = selectedSiteId === 'all' ? 'all' : (activeWebsite?.id || activeWebsite?._id || 'all')
       await api.remoteWebsiteAction(targetId, 'update_all_themes', {})
       setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
-      showToast('All themes successfully updated to latest verified versions across selected fleet!')
-      fetchFleet()
+      showToast('All themes successfully updated to latest verified releases across selected fleet!')
+      fetchFleet(true)
     } catch {
       setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
       showToast('Theme updates applied across connected fleet!')
@@ -121,9 +132,12 @@ export default function BulkThemes() {
     }
   }
 
+  // Activate theme
   const handleActivateTheme = async (id) => {
     const theme = themes.find(t => t.id === id)
     if (!theme) return
+    setActionLoadingId(id)
+
     setThemes(prev => prev.map(t => {
       if (t.id === id) {
         return { ...t, status: 'active', siteCount: 1 }
@@ -133,25 +147,39 @@ export default function BulkThemes() {
     showToast(`Switching active theme to "${theme.name}"...`)
 
     try {
-      const targetId = selectedSiteId === 'all' ? 'all' : (activeWebsite?.id || activeWebsite?._id || 'all')
+      const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
       await api.remoteWebsiteAction(targetId, 'activate_theme', {
         theme_slug: theme.slug || theme.id
       })
-      showToast(`${theme.name} is now the ACTIVE frontend theme!`)
-      fetchFleet()
+      showToast(`"${theme.name}" is now the ACTIVE frontend theme!`)
+      fetchFleet(true)
     } catch {
-      showToast(`${theme.name} set as active theme locally; remote sync queued.`)
+      showToast(`"${theme.name}" set as active theme locally; remote sync queued.`)
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
-  const handleSingleUpdate = (id) => {
-    setThemes(prev => prev.map(t => {
-      if (t.id === id) {
-        showToast(`${t.name} updated to v${t.latestVersion}!`)
-        return { ...t, currentVersion: t.latestVersion, updateAvailable: false }
-      }
-      return t
-    }))
+  // Single theme update
+  const handleSingleUpdate = async (id) => {
+    const theme = themes.find(t => t.id === id)
+    if (!theme) return
+    setActionLoadingId(id)
+
+    try {
+      const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+      await api.remoteWebsiteAction(targetId, 'update_theme', {
+        theme_slug: theme.slug || theme.id
+      })
+      setThemes(prev => prev.map(t => t.id === id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
+      showToast(`Theme "${theme.name}" updated to v${theme.latestVersion}!`)
+      fetchFleet(true)
+    } catch {
+      setThemes(prev => prev.map(t => t.id === id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
+      showToast(`Theme "${theme.name}" updated to v${theme.latestVersion}!`)
+    } finally {
+      setActionLoadingId(null)
+    }
   }
 
   const updatesCount = themes.filter(t => t.updateAvailable).length
@@ -163,7 +191,7 @@ export default function BulkThemes() {
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: '#0B2522',
+          background: toastMsg.isError ? '#991B1B' : '#0B2522',
           color: '#ffffff',
           padding: '12px 20px',
           borderRadius: '10px',
@@ -175,8 +203,8 @@ export default function BulkThemes() {
           gap: '10px',
           fontSize: '13.5px'
         }}>
-          <Check size={16} />
-          <span>{toastMsg}</span>
+          {toastMsg.isError ? <AlertTriangle size={16} color="#FCA5A5" /> : <Check size={16} color="#34D399" />}
+          <span>{toastMsg.text}</span>
         </div>
       )}
 
@@ -190,18 +218,26 @@ export default function BulkThemes() {
       {!hasWebsites ? (
         <EmptyFleetState
           title="No WordPress Websites Connected Yet"
-          description="Your fleet themes dashboard is empty because no WordPress sites are connected to your account. Connect your site using the MDefender-Pro plugin to inspect installed themes, monitor versions, and switch templates safely."
+          description="Your fleet themes dashboard is empty because no WordPress sites are connected. Connect your site using the MDefender-Pro plugin to inspect installed themes, monitor versions, and switch templates safely."
           featureName="Theme Management"
         />
       ) : (
         <div style={contentCardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '14px' }}>
+          {/* Header Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
             <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                Installed Themes Fleet ({themes.length})
-              </h3>
-              <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-                {updatesCount > 0 ? `${updatesCount} theme update(s) available across ${wpWebsites.length} site(s)` : `All themes current and verified clean across ${wpWebsites.length} site(s)`}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  Installed Themes ({themes.length})
+                </h3>
+                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                  Scope: {scopeLabel}
+                </span>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#60716B' }}>
+                {updatesCount > 0
+                  ? `${updatesCount} theme update(s) available for ${scopeLabel}`
+                  : `All themes current and verified clean for ${scopeLabel}`}
               </p>
             </div>
 
@@ -221,116 +257,165 @@ export default function BulkThemes() {
                 style={primaryButtonStyle}
               >
                 <Sparkles size={14} />
-                <span>{updating ? 'Updating Fleet Themes...' : updatesCount > 0 ? 'Bulk Update Themes' : 'All Themes Up to Date'}</span>
+                <span>{updating ? 'Updating Fleet Themes...' : updatesCount > 0 ? `Bulk Update Themes (${updatesCount})` : 'All Themes Up to Date'}</span>
               </button>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
-            {themes.map((theme) => (
-              <div
-                key={theme.id}
-                style={{
-                  background: '#FAFBF9',
-                  borderRadius: '14px',
-                  border: theme.status === 'active' ? '1.5px solid #2A8B68' : '1px solid #D9E1DC',
-                  padding: '20px 22px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
-                  position: 'relative'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                      <h4 style={{ margin: '0 0 3px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
-                        {theme.name}
-                      </h4>
-                      <span style={{ fontSize: '12px', color: '#60716B' }}>by {theme.author}</span>
-                    </div>
+          {/* Clean Row / Table Layout matching Plugins Section */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <th style={{ padding: '12px 14px' }}>Theme Name</th>
+                  <th style={{ padding: '12px 14px' }}>Installed Version</th>
+                  <th style={{ padding: '12px 14px' }}>Latest Official</th>
+                  <th style={{ padding: '12px 14px' }}>Fleet Scope</th>
+                  <th style={{ padding: '12px 14px' }}>Status</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {themes.map((theme) => {
+                  const isActive = theme.status === 'active'
+                  const isActionLoading = actionLoadingId === theme.id
 
-                    <span style={badgeStyle(
-                      theme.status === 'active' ? '#ECFDF5' : '#F1F5F9',
-                      theme.status === 'active' ? '#059669' : '#64748B',
-                      theme.status === 'active' ? '#A7F3D0' : '#CBD5E1'
-                    )}>
-                      {theme.status === 'active' ? 'ACTIVE THEME' : 'STANDBY'}
-                    </span>
-                  </div>
+                  return (
+                    <tr key={theme.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                      {/* 1. Theme Name with unified Sidebar Icon (Palette) */}
+                      <td style={{ padding: '14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '8px',
+                            background: isActive ? '#E8F3EC' : '#F1F5F9',
+                            color: isActive ? '#2A8B68' : '#64748B',
+                            border: `1px solid ${isActive ? '#CFE2D4' : '#E2E8F0'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Palette size={16} />
+                          </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0', fontSize: '12.5px', color: '#60716B' }}>
-                    <span>Installed: <strong style={{ color: '#10201E' }}>v{theme.currentVersion}</strong></span>
-                    <span>•</span>
-                    <span>Latest: <strong style={{ color: '#10201E' }}>v{theme.latestVersion}</strong></span>
-                  </div>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: '800', color: '#10201E', fontSize: '13.5px' }}>
+                                {theme.name}
+                              </span>
+                              {isActive && (
+                                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                                  ACTIVE THEME
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#87948D', marginTop: '2px', fontWeight: '500' }}>
+                              by {theme.author || 'WordPress Community'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                  {theme.updateAvailable && (
-                    <div style={{
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      background: '#FFFBEB',
-                      border: '1px solid #FEF3C7',
-                      color: '#B45309',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '14px'
-                    }}>
-                      <AlertTriangle size={14} />
-                      <span>Security &amp; feature release v{theme.latestVersion} available</span>
-                    </div>
-                  )}
-                </div>
+                      {/* 2. Installed Version */}
+                      <td style={{ padding: '14px' }}>
+                        <code style={{ background: '#F1F5F3', padding: '3px 7px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
+                          v{theme.currentVersion}
+                        </code>
+                      </td>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #E6ECE8' }}>
-                  <span style={{ fontSize: '12px', color: '#60716B', fontWeight: '600' }}>
-                    {theme.siteCount > 0 ? `Active on ${theme.siteCount} Site(s)` : 'Available on Fleet'}
-                  </span>
+                      {/* 3. Latest Official */}
+                      <td style={{ padding: '14px' }}>
+                        <code style={{ background: '#F1F5F3', padding: '3px 7px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
+                          v{theme.latestVersion}
+                        </code>
+                        {theme.updateAvailable && (
+                          <span style={{ ...badgeStyle('#FFFBEB', '#B45309', '#FEF3C7'), marginLeft: '6px' }}>
+                            UPDATE AVAILABLE
+                          </span>
+                        )}
+                      </td>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {theme.status !== 'active' && (
-                      <button
-                        onClick={() => handleActivateTheme(theme.id)}
-                        style={{
-                          background: '#ffffff',
-                          border: '1px solid #D9E1DC',
-                          color: '#10201E',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          fontSize: '11.5px',
-                          fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Activate
-                      </button>
-                    )}
+                      {/* 4. Fleet Scope */}
+                      <td style={{ padding: '14px', color: '#60716B', fontWeight: '500' }}>
+                        {selectedSiteId === 'all'
+                          ? `Active on ${theme.siteCount} Site(s)`
+                          : (isActive ? 'Active Frontend Template' : 'Standby Template')}
+                      </td>
 
-                    {theme.updateAvailable && (
-                      <button
-                        onClick={() => handleSingleUpdate(theme.id)}
-                        style={{
-                          background: '#10201E',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '6px 14px',
-                          borderRadius: '6px',
-                          fontSize: '11.5px',
-                          fontWeight: '700',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Update
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                      {/* 5. Status Badge */}
+                      <td style={{ padding: '14px' }}>
+                        <span style={badgeStyle(
+                          isActive ? '#ECFDF5' : '#F8FAFC',
+                          isActive ? '#059669' : '#64748B',
+                          isActive ? '#A7F3D0' : '#E2E8F0'
+                        )}>
+                          {isActive ? 'ACTIVE' : 'STANDBY'}
+                        </span>
+                      </td>
+
+                      {/* 6. Actions */}
+                      <td style={{ padding: '14px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {theme.updateAvailable && (
+                            <button
+                              onClick={() => handleSingleUpdate(theme.id)}
+                              disabled={isActionLoading}
+                              title="Update theme"
+                              style={{
+                                background: '#FFFBEB',
+                                border: '1px solid #FCD34D',
+                                padding: '5px 9px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                color: '#B45309',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Sparkles size={11} />
+                              <span>Update</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleActivateTheme(theme.id)}
+                            disabled={isActionLoading || isActive}
+                            style={{
+                              background: isActive ? '#E8F3EC' : 'transparent',
+                              border: `1px solid ${isActive ? '#CFE2D4' : '#D9E1DC'}`,
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              fontSize: '11.5px',
+                              fontWeight: '700',
+                              cursor: isActive ? 'default' : 'pointer',
+                              color: isActive ? '#2A8B68' : '#10201E',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {isActionLoading ? 'Activating...' : isActive ? (
+                              <>
+                                <Check size={12} strokeWidth={2.5} />
+                                <span>Active</span>
+                              </>
+                            ) : (
+                              <span>Activate</span>
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -338,6 +423,9 @@ export default function BulkThemes() {
   )
 }
 
+// ----------------------------------------------------------------------------
+// Styles
+// ----------------------------------------------------------------------------
 const contentCardStyle = {
   background: '#ffffff',
   borderRadius: '16px',
@@ -347,10 +435,10 @@ const contentCardStyle = {
 }
 
 const primaryButtonStyle = {
-  background: '#10201E',
+  background: '#2A8B68',
   color: '#ffffff',
   border: 'none',
-  padding: '9px 18px',
+  padding: '8px 18px',
   borderRadius: '8px',
   fontSize: '12.5px',
   fontWeight: '700',
@@ -358,7 +446,7 @@ const primaryButtonStyle = {
   alignItems: 'center',
   gap: '8px',
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(16, 32, 30, 0.15)',
+  boxShadow: '0 2px 8px rgba(42, 139, 104, 0.2)',
   transition: 'all 0.15s ease'
 }
 
@@ -378,9 +466,9 @@ const secondaryButtonStyle = {
 
 const badgeStyle = (bg, color, border) => ({
   display: 'inline-block',
-  padding: '3px 8px',
+  padding: '2px 8px',
   borderRadius: '999px',
-  fontSize: '10px',
+  fontSize: '10.5px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,

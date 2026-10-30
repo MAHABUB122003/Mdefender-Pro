@@ -592,6 +592,15 @@ export const api = {
   inviteTeamMember: (data) => apiCall('/api/v1/team/invite', { method: 'POST', body: JSON.stringify(data) }),
   deleteTeamMember: (id) => apiCall(`/api/v1/team/members/${id}`, { method: 'DELETE' }),
   getTeamAuditLogs: () => apiCall('/api/v1/team/audit'),
+
+  // Real-Time Fleet Performance, SSL & Uptime Monitoring
+  getMonitoringOverview: () => apiCall('/api/v1/monitoring/overview'),
+  probeWebsiteHealth: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/probe`),
+  getWebsitePerformance: (websiteId, strategy = 'desktop') => apiCall(`/api/v1/monitoring/${websiteId}/performance?strategy=${strategy}`),
+  runPerformanceAudit: (websiteId, strategy = 'all', force = true) => apiCall(`/api/v1/monitoring/${websiteId}/performance/audit`, { method: 'POST', body: JSON.stringify({ strategy, force }) }),
+  getWebsiteSslMonitoring: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl`),
+  probeWebsiteSsl: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl/probe`, { method: 'POST' }),
+  getWebsiteIncidents: (websiteId, limit = 15) => apiCall(`/api/v1/monitoring/${websiteId}/incidents?limit=${limit}`),
 }
 
 export default api

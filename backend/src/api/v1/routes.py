@@ -17,10 +17,12 @@ from src.api.v1 import (
     turnstile_api,
     domains_api,
     team_api,
+    monitoring_api,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
 
+v1_router.include_router(monitoring_api.router)
 v1_router.include_router(domains_api.router)
 v1_router.include_router(websites_api.router)
 v1_router.include_router(waf_api.router)
