@@ -2240,6 +2240,25 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
     saved = ab.save_user_settings(user['_id'], data)
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
     push_instant_sync_to_wordpress(user_id=user['_id'])
+
+    try:
+        user_id_str = str(user.get('_id') or '')
+        audit_svc.log(
+            user_id=user_id_str,
+            action="bot_defense_updated",
+            ip_address=request.client.host if request.client else "127.0.0.1",
+            details={
+                "rate_limit_per_minute": data.get("rate_limit_per_minute"),
+                "auto_block_threshold": data.get("auto_block_threshold"),
+                "hold_press_enabled": data.get("hold_press_enabled"),
+                "turnstile_enabled": data.get("turnstile_enabled"),
+                "turnstile_mode": data.get("turnstile_mode"),
+                "category": "config"
+            }
+        )
+    except Exception:
+        pass
+
     return {'status': 'success', 'message': 'Security policy updated and synchronized across all protected websites.', 'config': saved}
 
 

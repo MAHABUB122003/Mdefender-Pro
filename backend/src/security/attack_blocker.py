@@ -252,6 +252,8 @@ class AttackBlocker:
             {'$set': update_data},
             upsert=True
         )
+        if hasattr(self, '_settings_cache'):
+            self._settings_cache.clear()
 
         # Synchronize per-domain or global 2FA settings to websites collection
         scope = update_data['two_factor_scope']

@@ -648,9 +648,23 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     conds.append({"user_id": ObjectId(u_str)})
                 query["$or"] = conds
             if website_id:
-                query["website_id"] = str(website_id)
+                w_id_str = str(website_id)
+                w_cond = [{"_id": w_id_str}, {"id": w_id_str}, {"domain": w_id_str}, {"website_id": w_id_str}]
+                from bson import ObjectId
+                if ObjectId.is_valid(w_id_str):
+                    w_cond.append({"_id": ObjectId(w_id_str)})
+                if "$or" in query:
+                    query = {"$and": [{"$or": query["$or"]}, {"$or": w_cond}]}
+                else:
+                    query["$or"] = w_cond
 
             w_sites = list(db.websites.find(query if query else {}))
+            if not w_sites and website_id:
+                w_id_str = str(website_id)
+                w_fallback = [{"_id": w_id_str}, {"id": w_id_str}, {"domain": w_id_str}, {"website_id": w_id_str}]
+                if ObjectId.is_valid(w_id_str):
+                    w_fallback.append({"_id": ObjectId(w_id_str)})
+                w_sites = list(db.websites.find({"$or": w_fallback}))
             if not w_sites and user_email:
                 w_sites = list(db.websites.find({"$or": [{"owner_email": user_email}, {"email": user_email}]}))
             if not w_sites:
@@ -707,7 +721,11 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             from src.security.attack_blocker import AttackBlocker
             u_cfg = AttackBlocker(db).get_user_settings(u_str)
 
-            ref_ws = w_sites[0] if w_sites else (ws_match or {})
+            if website_id:
+                matched_ws = [ws for ws in w_sites if str(ws.get("_id")) == str(website_id) or str(ws.get("id")) == str(website_id) or ws.get("domain") == str(website_id)]
+                ref_ws = matched_ws[0] if matched_ws else (w_sites[0] if w_sites else (ws_match or {}))
+            else:
+                ref_ws = w_sites[0] if w_sites else (ws_match or {})
             sync_payload = {
                 "status": "ok",
                 "blacklist": blacklist,
@@ -807,6 +825,12 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     if os.path.exists(php_exe):
                         b_str = json.dumps(blacklist)
                         c_str = ",".join(blocked_countries)
+                        uam_val = "yes" if sync_payload["config"].get("under_attack_mode") else "no"
+                        rate_limit_val = str(sync_payload["config"].get("rate_limit", 120))
+                        hold_en = "yes" if sync_payload["config"].get("hold_press_enabled") else "no"
+                        hold_ms = str(sync_payload["config"].get("hold_press_duration_ms", 2000))
+                        turn_en = "yes" if sync_payload["config"].get("turnstile_enabled") else "no"
+                        turn_mode = str(sync_payload["config"].get("turnstile_mode", "forms"))
                         php_code = f"""
                         $c = @mysqli_connect('127.0.0.1', 'root', '', 'mahabub');
                         if ($c) {{
@@ -815,6 +839,21 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             $c_val = '{c_str}';
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_local_blacklist_cache', '" . mysqli_real_escape_string($c, $bl_ser) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $bl_ser) . "'");
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_blocked_countries', '" . mysqli_real_escape_string($c, $c_val) . "', 'yes') ON DUPLICATE KEY UPDATE option_value = '" . mysqli_real_escape_string($c, $c_val) . "'");
+                            
+                            $uam = '{uam_val}';
+                            $rate_limit_val = '{rate_limit_val}';
+                            $hold_en = '{hold_en}';
+                            $hold_ms = '{hold_ms}';
+                            $turn_en = '{turn_en}';
+                            $turn_mode = '{turn_mode}';
+
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_under_attack_mode', '$uam', 'yes') ON DUPLICATE KEY UPDATE option_value = '$uam'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_under_attack_mode', '$uam', 'yes') ON DUPLICATE KEY UPDATE option_value = '$uam'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_rate_limit', '$rate_limit_val', 'yes') ON DUPLICATE KEY UPDATE option_value = '$rate_limit_val'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hold_press_enabled', '$hold_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$hold_en'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hold_press_duration_ms', '$hold_ms', 'yes') ON DUPLICATE KEY UPDATE option_value = '$hold_ms'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_turnstile_enabled', '$turn_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_en'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_turnstile_mode', '$turn_mode', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_mode'");
                             
                             // Synchronize wp_waf_blacklist MySQL table
                             if (empty($bl)) {{
