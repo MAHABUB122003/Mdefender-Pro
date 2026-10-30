@@ -322,6 +322,31 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (isset($cfg['under_attack_mode'])) {
                         update_option('waf_under_attack_mode', !empty($cfg['under_attack_mode']) ? 'yes' : 'no');
                     }
+                    if (isset($cfg['hold_press_enabled'])) {
+                        update_option('waf_hold_press_enabled', !empty($cfg['hold_press_enabled']) ? 'yes' : 'no');
+                    }
+                    if (isset($cfg['hold_press_duration_ms'])) {
+                        update_option('waf_hold_press_duration_ms', intval($cfg['hold_press_duration_ms']));
+                    }
+                    if (isset($cfg['turnstile_enabled'])) {
+                        $on = !empty($cfg['turnstile_enabled']) ? 'yes' : 'no';
+                        update_option('waf_fw_turnstile_enabled', $on);
+                        update_option('waf_turnstile_enabled', $on);
+                    }
+                    if (isset($cfg['turnstile_mode'])) {
+                        update_option('waf_fw_turnstile_mode', sanitize_text_field($cfg['turnstile_mode']));
+                        update_option('waf_turnstile_mode', sanitize_text_field($cfg['turnstile_mode']));
+                    }
+                    if (isset($cfg['turnstile_theme'])) {
+                        update_option('waf_fw_turnstile_theme', sanitize_text_field($cfg['turnstile_theme']));
+                        update_option('waf_turnstile_theme', sanitize_text_field($cfg['turnstile_theme']));
+                    }
+                    if (isset($cfg['turnstile_site_key'])) {
+                        update_option('waf_turnstile_site_key', sanitize_text_field($cfg['turnstile_site_key']));
+                    }
+                    if (isset($cfg['turnstile_secret_key'])) {
+                        update_option('waf_turnstile_secret_key', sanitize_text_field($cfg['turnstile_secret_key']));
+                    }
                 }
                 if (!empty($pushed_data['config']) && is_array($pushed_data['config'])) {
                     $config = $pushed_data['config'];

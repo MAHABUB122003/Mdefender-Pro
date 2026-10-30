@@ -133,6 +133,13 @@ class SecuritySettingsUpdate(BaseModel):
     bot_challenge_mode: str | None = None
     max_login_attempts: int | None = None
     login_lockout_duration: int | None = None
+    hold_press_enabled: bool | None = None
+    hold_press_duration_ms: int | None = None
+    turnstile_enabled: bool | None = None
+    turnstile_mode: str | None = None
+    turnstile_theme: str | None = None
+    turnstile_site_key: str | None = None
+    turnstile_secret_key: str | None = None
 
 
 def _website_out(doc):
@@ -463,6 +470,13 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
             "bot_challenge_mode": website.get("bot_challenge_mode", "hold_press"),
             "max_login_attempts": int(website.get("max_login_attempts", 5)),
             "login_lockout_duration": int(website.get("login_lockout_duration", 60)),
+            "hold_press_enabled": bool(website.get("hold_press_enabled", True)),
+            "hold_press_duration_ms": int(website.get("hold_press_duration_ms", 2000)),
+            "turnstile_enabled": bool(website.get("turnstile_enabled", True)),
+            "turnstile_mode": website.get("turnstile_mode", "forms"),
+            "turnstile_theme": website.get("turnstile_theme", "auto"),
+            "turnstile_site_key": website.get("turnstile_site_key", ""),
+            "turnstile_secret_key": website.get("turnstile_secret_key", ""),
         }
     })
 
@@ -516,6 +530,20 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
         updates["max_login_attempts"] = max(1, min(100, int(body.max_login_attempts)))
     if body.login_lockout_duration is not None:
         updates["login_lockout_duration"] = max(5, min(1440, int(body.login_lockout_duration)))
+    if body.hold_press_enabled is not None:
+        updates["hold_press_enabled"] = bool(body.hold_press_enabled)
+    if body.hold_press_duration_ms is not None:
+        updates["hold_press_duration_ms"] = max(1000, min(5000, int(body.hold_press_duration_ms)))
+    if body.turnstile_enabled is not None:
+        updates["turnstile_enabled"] = bool(body.turnstile_enabled)
+    if body.turnstile_mode is not None:
+        updates["turnstile_mode"] = str(body.turnstile_mode).strip()
+    if body.turnstile_theme is not None:
+        updates["turnstile_theme"] = str(body.turnstile_theme).strip()
+    if body.turnstile_site_key is not None:
+        updates["turnstile_site_key"] = str(body.turnstile_site_key).strip()
+    if body.turnstile_secret_key is not None:
+        updates["turnstile_secret_key"] = str(body.turnstile_secret_key).strip()
 
     updates["updated_at"] = datetime.now()
     db.websites.update_one({"_id": website["_id"]}, {"$set": updates})

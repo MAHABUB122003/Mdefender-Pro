@@ -740,6 +740,13 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     "bot_challenge_mode": ref_ws.get("bot_challenge_mode", "hold_press"),
                     "max_login_attempts": int(ref_ws.get("max_login_attempts", 5)),
                     "login_lockout_duration": int(ref_ws.get("login_lockout_duration", 60)),
+                    "hold_press_enabled": bool(ref_ws.get("hold_press_enabled", u_cfg.get("hold_press_enabled", True))),
+                    "hold_press_duration_ms": int(ref_ws.get("hold_press_duration_ms") or u_cfg.get("hold_press_duration_ms", 2000)),
+                    "turnstile_enabled": bool(ref_ws.get("turnstile_enabled", u_cfg.get("turnstile_enabled", True))),
+                    "turnstile_mode": ref_ws.get("turnstile_mode") or u_cfg.get("turnstile_mode", "forms"),
+                    "turnstile_theme": ref_ws.get("turnstile_theme") or u_cfg.get("turnstile_theme", "auto"),
+                    "turnstile_site_key": ref_ws.get("turnstile_site_key") or u_cfg.get("turnstile_site_key", ""),
+                    "turnstile_secret_key": ref_ws.get("turnstile_secret_key") or u_cfg.get("turnstile_secret_key", ""),
                 },
                 "synced_at": datetime.now().isoformat(),
             }

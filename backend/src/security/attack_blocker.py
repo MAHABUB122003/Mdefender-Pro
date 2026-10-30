@@ -193,6 +193,13 @@ class AttackBlocker:
             'ddos_mitigation_enabled': doc.get('ddos_mitigation_enabled', True),
             'admin_bruteforce_protection': doc.get('admin_bruteforce_protection', True),
             'auto_block_permanent': doc.get('auto_block_permanent', False),
+            'hold_press_enabled': doc.get('hold_press_enabled', True),
+            'hold_press_duration_ms': int(doc.get('hold_press_duration_ms', 2000)),
+            'turnstile_enabled': doc.get('turnstile_enabled', True),
+            'turnstile_mode': doc.get('turnstile_mode', 'forms'),
+            'turnstile_theme': doc.get('turnstile_theme', 'auto'),
+            'turnstile_site_key': doc.get('turnstile_site_key', ''),
+            'turnstile_secret_key': doc.get('turnstile_secret_key', ''),
         }
         self._settings_cache[u_str] = (res, now_ts + 60.0)
         return res
@@ -211,6 +218,13 @@ class AttackBlocker:
             'ddos_mitigation_enabled': bool(data.get('ddos_mitigation_enabled', True)),
             'admin_bruteforce_protection': bool(data.get('admin_bruteforce_protection', True)),
             'auto_block_permanent': bool(data.get('auto_block_permanent', False)),
+            'hold_press_enabled': bool(data.get('hold_press_enabled', True)),
+            'hold_press_duration_ms': int(data.get('hold_press_duration_ms', 2000)),
+            'turnstile_enabled': bool(data.get('turnstile_enabled', True)),
+            'turnstile_mode': str(data.get('turnstile_mode', 'forms')),
+            'turnstile_theme': str(data.get('turnstile_theme', 'auto')),
+            'turnstile_site_key': str(data.get('turnstile_site_key', '')),
+            'turnstile_secret_key': str(data.get('turnstile_secret_key', '')),
             'updated_at': now_dt,
         }
         self.db.settings.update_one(
@@ -227,6 +241,13 @@ class AttackBlocker:
             'ddos_mitigation_enabled': update_data['ddos_mitigation_enabled'],
             'admin_bruteforce_protection': update_data['admin_bruteforce_protection'],
             'auto_block_permanent': update_data['auto_block_permanent'],
+            'hold_press_enabled': update_data['hold_press_enabled'],
+            'hold_press_duration_ms': update_data['hold_press_duration_ms'],
+            'turnstile_enabled': update_data['turnstile_enabled'],
+            'turnstile_mode': update_data['turnstile_mode'],
+            'turnstile_theme': update_data['turnstile_theme'],
+            'turnstile_site_key': update_data['turnstile_site_key'],
+            'turnstile_secret_key': update_data['turnstile_secret_key'],
             'updated_at': now_dt.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
