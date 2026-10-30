@@ -1523,11 +1523,12 @@ const primaryActionButtonStyle = {
 }
 
 const secondaryActionButtonStyle = {
-  background: '#F0F4F2',
+  background: '#ffffff',
   color: '#10201E',
   border: '1px solid #D9E1DC',
   padding: '8px 16px',
   borderRadius: '8px',
+  boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
   fontSize: '12.5px',
   fontWeight: '700',
   display: 'inline-flex',

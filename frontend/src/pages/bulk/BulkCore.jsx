@@ -412,7 +412,7 @@ export default function BulkCore() {
               </div>
               <div style={{ fontSize: '12.5px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>Official WP.org Source:</span>
-                <code style={{ background: '#F0F4F2', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: '#0B2522' }}>
+                <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: '#0B2522' }}>
                   api.wordpress.org/core/checksums/1.0/
                 </code>
               </div>
@@ -446,7 +446,7 @@ export default function BulkCore() {
                               width: '36px',
                               height: '36px',
                               borderRadius: '8px',
-                              background: '#F0F4F2',
+                              background: '#ffffff',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -628,7 +628,7 @@ export default function BulkCore() {
               <div style={modalContentStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', borderBottom: '1px solid #EAEFEB', paddingBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Cpu size={18} color="#0B2522" />
                     </div>
                     <div>
@@ -801,7 +801,7 @@ const primaryFleetButtonStyle = {
 }
 
 const secondaryFleetButtonStyle = {
-  background: '#F0F4F2',
+  background: '#ffffff',
   color: '#0B2522',
   border: '1px solid #D9E1DC',
   padding: '9px 16px',
@@ -816,7 +816,7 @@ const secondaryFleetButtonStyle = {
 }
 
 const actionPrimaryBtnStyle = {
-  background: '#EA580C',
+  background: '#0B2522', border: '1px solid #0B2522',
   color: '#ffffff',
   border: 'none',
   padding: '6px 12px',
@@ -831,7 +831,7 @@ const actionPrimaryBtnStyle = {
 }
 
 const actionSecondaryBtnStyle = {
-  background: '#F0F4F2',
+  background: '#ffffff',
   color: '#10201E',
   border: '1px solid #D9E1DC',
   padding: '6px 12px',

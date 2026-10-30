@@ -435,7 +435,7 @@ const contentCardStyle = {
 }
 
 const primaryButtonStyle = {
-  background: '#2A8B68',
+  background: '#0B2522', border: '1px solid #0B2522',
   color: '#ffffff',
   border: 'none',
   padding: '8px 18px',
@@ -446,13 +446,14 @@ const primaryButtonStyle = {
   alignItems: 'center',
   gap: '8px',
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(42, 139, 104, 0.2)',
+  boxShadow: '0 2px 6px rgba(11, 37, 34, 0.15)',
   transition: 'all 0.15s ease'
 }
 
 const secondaryButtonStyle = {
-  background: '#FAFBF9',
+  background: '#ffffff',
   border: '1px solid #D9E1DC',
+  boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
   color: '#10201E',
   padding: '8px 16px',
   borderRadius: '8px',

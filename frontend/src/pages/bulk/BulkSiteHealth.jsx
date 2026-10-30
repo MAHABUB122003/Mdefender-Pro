@@ -76,51 +76,51 @@ export default function BulkSiteHealth() {
         <>
           {/* 3 Metric Summary Boxes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '24px' }}>
-        <div style={statCardStyle}>
-          <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            PHP Compatibility
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>
-            PHP {phpVer}
-          </div>
-          <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
-            Memory Limit: 512M • OPcache Enabled
-          </div>
-          <div style={{ marginTop: '12px' }}>
-            <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>OPTIMAL</span>
-          </div>
-        </div>
+            <div style={statCardStyle}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                PHP Compatibility
+              </div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>
+                PHP {phpVer}
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+                Memory Limit: 512M • OPcache Active
+              </div>
+              <div style={{ marginTop: '14px' }}>
+                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>OPTIMAL</span>
+              </div>
+            </div>
 
-        <div style={statCardStyle}>
-          <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Vulnerable Plugins
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>
-            0 Vulnerabilities
-          </div>
-          <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
-            Cross-referenced with WPScan &amp; NIST NVD
-          </div>
-          <div style={{ marginTop: '12px' }}>
-            <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>CLEAN</span>
-          </div>
-        </div>
+            <div style={statCardStyle}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Vulnerable Plugins
+              </div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>
+                0 Vulnerabilities
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+                Cross-referenced with WPScan &amp; NIST NVD
+              </div>
+              <div style={{ marginTop: '14px' }}>
+                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>CLEAN</span>
+              </div>
+            </div>
 
-        <div style={statCardStyle}>
-          <div style={{ fontSize: '12px', fontWeight: '800', color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Failed Updates
+            <div style={statCardStyle}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Failed Updates
+              </div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>
+                0 Errors
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+                Deployment pipeline clean with no hung locks
+              </div>
+              <div style={{ marginTop: '14px' }}>
+                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>VERIFIED</span>
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>
-            0 Errors
-          </div>
-          <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
-            Deployment pipeline clean with no hung locks
-          </div>
-          <div style={{ marginTop: '12px' }}>
-            <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>VERIFIED</span>
-          </div>
-        </div>
-      </div>
 
       {/* Health Checklist Table */}
       <div style={contentCardStyle}>

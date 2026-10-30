@@ -433,7 +433,7 @@ export default function UserWebsites() {
             </div>
           </div>
           <a href="/user/settings" style={{
-            padding: '8px 18px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '8px',
+            padding: '8px 18px', background: '#0B2522', color: '#ffffff', border: '1px solid #0B2522', border: 'none', borderRadius: '8px',
             fontSize: '12px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px'
           }}>
             <i className="fas fa-arrow-up"></i> Upgrade to Premium
@@ -543,7 +543,7 @@ export default function UserWebsites() {
               download="mdefender-pro.zip"
               style={{
                 padding: '9px 18px',
-                background: '#15803D',
+                background: '#0B2522',
                 color: '#FFFFFF',
                 borderRadius: '9px',
                 fontSize: '12.5px',
@@ -552,7 +552,7 @@ export default function UserWebsites() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: '0 2px 8px rgba(21, 128, 61, 0.25)',
+                boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -1344,10 +1344,10 @@ export default function UserWebsites() {
                       href="/api/v1/wordpress/download"
                       download="mdefender-pro.zip"
                       style={{
-                        padding: '8px 16px', background: '#15803D',
+                        padding: '8px 16px', background: '#0B2522',
                         color: '#FFFFFF', borderRadius: '8px', fontSize: '12px', fontWeight: '700',
                         textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        boxShadow: '0 2px 6px rgba(21, 128, 61, 0.25)',
+                        boxShadow: '0 2px 6px rgba(11, 37, 34, 0.15)',
                         transition: 'all 0.15s ease'
                       }}
                     >
@@ -1503,7 +1503,7 @@ export default function UserWebsites() {
                 type="button"
                 onClick={() => setShowUpgradeModal(false)}
                 style={{
-                  padding: '10px 20px', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0',
+                  padding: '10px 20px', background: '#FFFFFF', color: '#10201E', border: '1px solid #D9E1DC',
                   borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer'
                 }}
               >

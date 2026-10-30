@@ -424,18 +424,20 @@ export default function BulkHardening() {
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '5px',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      background: '#F1F5F9',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      color: '#0F2C26',
-                      cursor: 'pointer'
+                      gap: '6px',
+                      padding: '7px 14px',
+                      borderRadius: '8px',
+                      background: '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: '#10201E',
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Copy size={13} />
+                    <Copy size={13} color="#60716B" />
                     <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
                   </button>
 
@@ -446,19 +448,21 @@ export default function BulkHardening() {
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '5px',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      background: 'rgba(232, 121, 47, 0.1)',
-                      border: '1px solid rgba(232, 121, 47, 0.3)',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      color: '#E8792F',
+                      gap: '6px',
+                      padding: '7px 14px',
+                      borderRadius: '8px',
+                      background: '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: '#10201E',
                       textDecoration: 'none',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <ExternalLink size={13} />
+                    <ExternalLink size={13} color="#60716B" />
                     <span>Test Gateway</span>
                   </a>
 
@@ -470,15 +474,17 @@ export default function BulkHardening() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      padding: '7px 14px',
-                      borderRadius: '6px',
-                      background: '#2A8B68',
+                      padding: '7px 16px',
+                      borderRadius: '8px',
+                      background: '#0B2522',
                       color: '#FFFFFF',
-                      border: 'none',
+                      border: '1px solid #0B2522',
                       fontSize: '12.5px',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       cursor: saving ? 'not-allowed' : 'pointer',
-                      marginLeft: '6px'
+                      marginLeft: '4px',
+                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.08)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     <Save size={13} />

@@ -336,22 +336,22 @@ export default function UserBlacklist() {
 
   // ── Styles ──────────────────────────────────────────────────────────────────
   const S = {
-    page: { maxWidth: '1200px', margin: '0 auto', padding: '20px 20px 60px', color: '#10201E' },
-    card: { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
-    cardPad: { background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' },
-    th: { padding: '11px 16px', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' },
-    td: { padding: '13px 16px', fontSize: '13px', color: '#334155', borderBottom: '1px solid #F1F5F9' },
-    badge: (bg, color, border) => ({ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', background: bg, color, border: `1px solid ${border}` }),
+    page: { maxWidth: '1440px', margin: '0 auto', padding: '10px 0 60px', color: '#10201E' },
+    card: { background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' },
+    cardPad: { background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '24px 28px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' },
+    th: { padding: '12px 16px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em', background: '#FBFCFA', borderBottom: '1px solid #D9E1DC' },
+    td: { padding: '14px 16px', fontSize: '13px', color: '#10201E', borderBottom: '1px solid #ECEFEF' },
+    badge: (bg, color, border) => ({ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', background: bg, color, border: `1px solid ${border}` }),
     btn: (bg, color, border = 'transparent') => ({
       padding: '8px 16px', borderRadius: '8px', border: `1px solid ${border}`, background: bg, color,
-      fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.15s'
+      fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s ease'
     }),
     btnSm: (bg, color, border = 'transparent') => ({
-      padding: '5px 12px', borderRadius: '7px', border: `1px solid ${border}`, background: bg, color,
-      fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px'
+      padding: '5px 12px', borderRadius: '6px', border: `1px solid ${border}`, background: bg, color,
+      fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', transition: 'all 0.15s ease'
     }),
-    input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#F8FAFC', fontSize: '13px', color: '#10201E', boxSizing: 'border-box', outline: 'none' },
-    label: { display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '5px' }
+    input: { width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #D9E1DC', background: '#FFFFFF', fontSize: '13px', color: '#10201E', boxSizing: 'border-box', outline: 'none' },
+    label: { display: 'block', fontSize: '12px', fontWeight: '600', color: '#60716B', marginBottom: '5px' }
   }
 
   return (
@@ -425,7 +425,7 @@ export default function UserBlacklist() {
             </div>
 
             <button
-              style={S.btn('#F8FAFC', '#475569', '#E2E8F0')}
+              style={S.btn('#FFFFFF', '#10201E', '#D9E1DC')}
               onClick={() => { fetchBlacklist(true, selectedWebsite); fetchCountryBlocks(true, selectedWebsite) }}
               disabled={refreshing}
             >
@@ -434,7 +434,7 @@ export default function UserBlacklist() {
             </button>
             {activeTab === 'ip' && (
               <button
-                style={S.btn('#DC2626', '#FFFFFF')}
+                style={S.btn('#0B2522', '#FFFFFF', '#0B2522')}
                 onClick={() => { setForm({ ip: '', reason: '', duration: '1d', website_id: selectedWebsite }); setShowModal(true) }}
               >
                 <Plus size={14} /> Block IP
@@ -444,7 +444,7 @@ export default function UserBlacklist() {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '3px', borderRadius: '10px', width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: '4px', background: '#E8EEE8', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
           {[
             { id: 'ip', icon: <Ban size={14} />, label: 'IP Blacklist', count: entries.length },
             { id: 'country', icon: <Globe size={14} />, label: 'Country Block', count: countryBlocks.length }
@@ -508,7 +508,7 @@ export default function UserBlacklist() {
                   style={{ ...S.input, paddingLeft: '33px' }}
                 />
               </div>
-              <div style={{ display: 'flex', gap: '3px', background: '#F1F5F9', padding: '3px', borderRadius: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '3px', background: '#E8EEE8', padding: '4px', borderRadius: '8px', flexWrap: 'wrap' }}>
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'permanent', label: 'Permanent' },
@@ -534,13 +534,13 @@ export default function UserBlacklist() {
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {selectedIps.length > 0 && (
-                <button style={S.btn('#FEF2F2', '#DC2626', '#FECACA')} onClick={handleBulkUnblock} disabled={bulkUnblocking}>
+                <button style={S.btn('#FFFFFF', '#DC2626', '#D9E1DC')} onClick={handleBulkUnblock} disabled={bulkUnblocking}>
                   <Trash2 size={13} />
                   {bulkUnblocking ? 'Unblocking...' : `Unblock ${selectedIps.length}`}
                 </button>
               )}
               {expiredEntries.length > 0 && selectedIps.length === 0 && (
-                <button style={S.btn('#F8FAFC', '#64748B', '#E2E8F0')} onClick={handleFlushExpired} disabled={flushingExpired}>
+                <button style={S.btn('#FFFFFF', '#10201E', '#D9E1DC')} onClick={handleFlushExpired} disabled={flushingExpired}>
                   <Trash2 size={13} />
                   {flushingExpired ? 'Purging...' : `Purge ${expiredEntries.length} Expired`}
                 </button>
@@ -651,7 +651,7 @@ export default function UserBlacklist() {
                         <td style={{ ...S.td, textAlign: 'right' }}>
                           <button
                             onClick={() => handleUnblock(entry.ip, entry.website_id)}
-                            style={S.btnSm('#FFFFFF', '#DC2626', '#FECACA')}
+                            style={S.btnSm('#FFFFFF', '#10201E', '#D9E1DC')}
                             onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
                             onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
                           >
@@ -726,7 +726,7 @@ export default function UserBlacklist() {
                 <Shield size={15} color="#DC2626" />
                 <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>Block a Country</span>
               </div>
-              <div style={{ display: 'flex', gap: '3px', background: '#F1F5F9', padding: '3px', borderRadius: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '3px', background: '#E8EEE8', padding: '4px', borderRadius: '8px', flexWrap: 'wrap' }}>
                 {['All', 'Asia', 'Europe', 'Americas', 'Middle East', 'Africa'].map(reg => (
                   <button
                     key={reg}
@@ -813,7 +813,7 @@ export default function UserBlacklist() {
               <button
                 type="submit"
                 disabled={savingCountry || blockedCodesSet.has(selectedCountry)}
-                style={{ ...S.btn('#DC2626', '#FFFFFF'), height: '39px', opacity: blockedCodesSet.has(selectedCountry) ? 0.5 : 1 }}
+                style={{ ...S.btn('#0B2522', '#FFFFFF', '#0B2522'), height: '39px', opacity: blockedCodesSet.has(selectedCountry) ? 0.5 : 1 }}
               >
                 {savingCountry
                   ? <><RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} />Blocking...</>
@@ -912,7 +912,7 @@ export default function UserBlacklist() {
                           <td style={{ ...S.td, textAlign: 'right' }}>
                             <button
                               onClick={() => handleRemoveCountryBlock(code, displayName, block.website_id)}
-                              style={S.btnSm('#FFFFFF', '#DC2626', '#FECACA')}
+                              style={S.btnSm('#FFFFFF', '#10201E', '#D9E1DC')}
                               onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
                               onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
                             >
@@ -992,10 +992,10 @@ export default function UserBlacklist() {
                   style={S.input} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={S.btn('#F8FAFC', '#64748B', '#E2E8F0')}>
+                <button type="button" onClick={() => setShowModal(false)} style={S.btn('#FFFFFF', '#10201E', '#D9E1DC')}>
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} style={S.btn('#DC2626', '#FFFFFF')}>
+                <button type="submit" disabled={submitting} style={S.btn('#0B2522', '#FFFFFF', '#0B2522')}>
                   {submitting ? 'Blocking...' : 'Confirm Block'}
                 </button>
               </div>
