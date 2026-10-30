@@ -1370,6 +1370,7 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
 
         active_countries = []
         active_ips = []
+        active_whitelists = []
         if full_sync:
             try:
                 for item in db.country_blocks.find():
@@ -1387,9 +1388,15 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
                         continue
                     if ip_v not in active_ips:
                         active_ips.append(ip_v)
+
+                for item in db.whitelist.find():
+                    w_ip = (item.get('ip') or '').strip()
+                    if w_ip and w_ip not in active_whitelists:
+                        active_whitelists.append(w_ip)
             except Exception:
                 active_countries = []
                 active_ips = []
+                active_whitelists = []
 
         for s in target_sites:
             raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
@@ -1410,6 +1417,7 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
             if full_sync:
                 send_payload['blocked_countries'] = active_countries
                 send_payload['blacklist'] = active_ips
+                send_payload['whitelist'] = active_whitelists
 
             try:
                 requests.post(remote_url, json=send_payload, headers=headers, timeout=8.0, verify=False)
@@ -1740,6 +1748,7 @@ async def user_unblock_batch_blacklist(request: Request, user: dict = Depends(ve
 
 
 @app.get("/api/user/whitelist")
+@app.get("/api/v1/user/whitelist")
 async def user_get_whitelist(user: dict = Depends(verify_user_token_compat)):
     user_id = str(user['_id'])
     whitelist = []
@@ -1753,7 +1762,9 @@ async def user_get_whitelist(user: dict = Depends(verify_user_token_compat)):
         })
     return whitelist
 
+
 @app.post("/api/user/whitelist")
+@app.post("/api/v1/user/whitelist")
 async def user_add_whitelist(request: Request, user: dict = Depends(verify_user_token_compat)):
     import requests
     import urllib3
@@ -1782,66 +1793,73 @@ async def user_add_whitelist(request: Request, user: dict = Depends(verify_user_
     # Remove from blacklist if present
     db.blacklist.delete_many({'ip': ip, '$or': [{'user_id': user_id_str}, {'added_by_user_id': user_id_str}]})
 
-    # 2. Push to connected WordPress fleet nodes
+    # 2. Asynchronously push to connected WordPress fleet nodes
     sites = get_user_connected_wordpress_sites(user)
-    for s in sites:
-        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
-        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
-        site_key = s.get('api_key') or ''
-        try:
-            remote_url = f"{site_url}/?waf_cloud_sync=1"
-            headers = {
-                'Authorization': f'Bearer {site_key}',
-                'X-API-Key': site_key,
-                'Content-Type': 'application/json',
-                'User-Agent': 'MDefender-Cloud/2.0'
+    push_to_fleet_async(sites, {'action': 'add_whitelist', 'ip': ip, 'reason': reason}, full_sync=True)
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str)
+    except Exception:
+        pass
+
+    try:
+        audit_svc.log(
+            user_id=user_id_str,
+            action="ip_whitelisted",
+            ip_address=ip,
+            details={
+                "ip": ip,
+                "reason": reason,
+                "category": "security"
             }
-            body = {'action': 'add_whitelist', 'ip': ip, 'reason': reason}
-            try:
-                requests.post(remote_url, json=body, headers=headers, timeout=3.0, verify=False)
-            except Exception:
-                if site_url.startswith('https://'):
-                    clean_host = raw_url.replace('https://', '').replace('http://', '')
-                    requests.post(f"http://{clean_host}/?waf_cloud_sync=1", json=body, headers=headers, timeout=3.0, verify=False)
-        except Exception:
-            pass
+        )
+    except Exception:
+        pass
 
     return {'status': 'success', 'message': f'IP {ip} whitelisted successfully across security nodes'}
 
+
 @app.delete("/api/user/whitelist")
+@app.delete("/api/v1/user/whitelist")
 async def user_delete_whitelist(request: Request, user: dict = Depends(verify_user_token_compat)):
     import requests
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    ip = request.query_params.get('ip', '')
+    ip = request.query_params.get('ip', '').strip() if hasattr(request, 'query_params') else ''
+    if not ip:
+        try:
+            body = await request.json()
+            ip = (body.get('ip') or body.get('id') or '').strip()
+        except Exception:
+            pass
+
     if not ip:
         return {'status': 'error', 'message': 'IP is required'}
+
     user_id_str = str(user['_id'])
     db.whitelist.delete_many({'ip': ip, '$or': [{'added_by_user_id': user_id_str}, {'user_id': user_id_str}]})
 
     sites = get_user_connected_wordpress_sites(user)
-    for s in sites:
-        raw_url = str(s.get('url') or s.get('domain') or '').strip().rstrip('/')
-        site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url
-        site_key = s.get('api_key') or ''
-        try:
-            remote_url = f"{site_url}/?waf_cloud_sync=1"
-            headers = {
-                'Authorization': f'Bearer {site_key}',
-                'X-API-Key': site_key,
-                'Content-Type': 'application/json',
-                'User-Agent': 'MDefender-Cloud/2.0'
+    push_to_fleet_async(sites, {'action': 'delete_whitelist', 'ip': ip}, full_sync=True)
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user_id_str)
+    except Exception:
+        pass
+
+    try:
+        audit_svc.log(
+            user_id=user_id_str,
+            action="ip_whitelist_removed",
+            ip_address=ip,
+            details={
+                "ip": ip,
+                "category": "security"
             }
-            body = {'action': 'delete_whitelist', 'ip': ip}
-            try:
-                requests.post(remote_url, json=body, headers=headers, timeout=3.0, verify=False)
-            except Exception:
-                if site_url.startswith('https://'):
-                    clean_host = raw_url.replace('https://', '').replace('http://', '')
-                    requests.post(f"http://{clean_host}/?waf_cloud_sync=1", json=body, headers=headers, timeout=3.0, verify=False)
-        except Exception:
-            pass
+        )
+    except Exception:
+        pass
 
     return {'status': 'success', 'message': f'IP {ip} removed from whitelist'}
 

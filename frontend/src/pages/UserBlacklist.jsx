@@ -23,7 +23,8 @@ import { ALL_COUNTRIES, POPULAR_THREAT_COUNTRIES, getFlagEmoji, getFlagUrl } fro
 
 export default function UserBlacklist() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') === 'country' ? 'country' : 'ip'
+  const rawTab = searchParams.get('tab')
+  const activeTab = rawTab === 'country' ? 'country' : (rawTab === 'whitelist' ? 'whitelist' : 'ip')
   const setActiveTab = (tab) => setSearchParams({ tab })
 
   // ── IP Blacklist State ──────────────────────────────────────────────────────
@@ -50,6 +51,14 @@ export default function UserBlacklist() {
       return []
     }
   })
+
+  // ── IP Whitelist State ──────────────────────────────────────────────────────
+  const [whitelistEntries, setWhitelistEntries] = useState([])
+  const [whitelistLoading, setWhitelistLoading] = useState(false)
+  const [showWhitelistModal, setShowWhitelistModal] = useState(false)
+  const [whitelistForm, setWhitelistForm] = useState({ ip: '', reason: '', website_id: 'all' })
+  const [submittingWhitelist, setSubmittingWhitelist] = useState(false)
+  const [whitelistSearch, setWhitelistSearch] = useState('')
 
   // ── Country Blacklist State ─────────────────────────────────────────────────
   const [countryBlocks, setCountryBlocks] = useState([])
@@ -98,6 +107,21 @@ export default function UserBlacklist() {
     }
   }, [selectedWebsite])
 
+  const fetchWhitelist = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true)
+    setWhitelistLoading(true)
+    try {
+      const data = await api.getUserWhitelist()
+      const list = Array.isArray(data) ? data : (data?.whitelist || [])
+      setWhitelistEntries(list)
+    } catch (err) {
+      console.error('Failed to load whitelist:', err)
+    } finally {
+      setWhitelistLoading(false)
+      if (manual) setTimeout(() => setRefreshing(false), 300)
+    }
+  }, [])
+
   const fetchCountryBlocks = useCallback(async (manual = false, siteId = selectedWebsite) => {
     if (manual) setRefreshing(true)
     setCountryLoading(true)
@@ -116,7 +140,8 @@ export default function UserBlacklist() {
     fetchWebsites()
     fetchBlacklist(false, selectedWebsite)
     fetchCountryBlocks(false, selectedWebsite)
-  }, [fetchWebsites, fetchBlacklist, fetchCountryBlocks, selectedWebsite])
+    fetchWhitelist(false)
+  }, [fetchWebsites, fetchBlacklist, fetchCountryBlocks, fetchWhitelist, selectedWebsite])
 
   const blockedCodesSet = useMemo(() =>
     new Set(countryBlocks.map(b => (b.country_code || '').toUpperCase().trim()))
@@ -184,6 +209,46 @@ export default function UserBlacklist() {
       (b.reason || '').toLowerCase().includes(q)
     )
   }, [countryBlocks, countrySearch])
+
+  // ── Whitelist Handlers & Computation ───────────────────────────────────────
+  const filteredWhitelistEntries = useMemo(() => {
+    if (!whitelistSearch.trim()) return whitelistEntries
+    const q = whitelistSearch.toLowerCase().trim()
+    return whitelistEntries.filter(item =>
+      (item.ip || '').toLowerCase().includes(q) ||
+      (item.reason || '').toLowerCase().includes(q) ||
+      (item.added_by || '').toLowerCase().includes(q)
+    )
+  }, [whitelistEntries, whitelistSearch])
+
+  const handleAddWhitelistSubmit = async (e) => {
+    e.preventDefault()
+    if (!whitelistForm.ip.trim()) return
+    setSubmittingWhitelist(true)
+    try {
+      await api.addUserWhitelist(whitelistForm)
+      showToast(`IP ${whitelistForm.ip} whitelisted successfully across all nodes.`)
+      setShowWhitelistModal(false)
+      setWhitelistForm({ ip: '', reason: '', website_id: selectedWebsite })
+      fetchWhitelist(true)
+      fetchBlacklist(true, selectedWebsite)
+    } catch (err) {
+      showToast(err.message || 'Failed to whitelist IP', 'error')
+    } finally {
+      setSubmittingWhitelist(false)
+    }
+  }
+
+  const handleRemoveWhitelist = async (ip) => {
+    if (!confirm(`Remove IP ${ip} from whitelist?`)) return
+    try {
+      await api.removeUserWhitelist(ip)
+      showToast(`IP ${ip} removed from whitelist.`)
+      fetchWhitelist(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to remove IP from whitelist', 'error')
+    }
+  }
 
   // ── IP Handlers ─────────────────────────────────────────────────────────────
   const handleUnblock = async (ip, siteId) => {
@@ -440,6 +505,14 @@ export default function UserBlacklist() {
                 <Plus size={14} /> Block IP
               </button>
             )}
+            {activeTab === 'whitelist' && (
+              <button
+                style={S.btn('#0B2522', '#FFFFFF', '#0B2522')}
+                onClick={() => { setWhitelistForm({ ip: '', reason: '', website_id: selectedWebsite }); setShowWhitelistModal(true) }}
+              >
+                <Plus size={14} /> Whitelist IP
+              </button>
+            )}
           </div>
         </div>
 
@@ -447,6 +520,7 @@ export default function UserBlacklist() {
         <div style={{ display: 'flex', gap: '4px', background: '#E8EEE8', padding: '4px', borderRadius: '10px', border: '1px solid #D9E1DC', width: 'fit-content' }}>
           {[
             { id: 'ip', icon: <Ban size={14} />, label: 'IP Blacklist', count: entries.length },
+            { id: 'whitelist', icon: <ShieldCheck size={14} />, label: 'IP Whitelist', count: whitelistEntries.length },
             { id: 'country', icon: <Globe size={14} />, label: 'Country Block', count: countryBlocks.length }
           ].map(tab => (
             <button
@@ -934,6 +1008,137 @@ export default function UserBlacklist() {
         </div>
       )}
 
+      {/* ════ SECTION C: IP WHITELIST ════ */}
+      {activeTab === 'whitelist' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            <div style={{ ...S.cardPad, padding: '16px 20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Whitelisted IPs
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#2A8B68', marginTop: '4px' }}>
+                {whitelistEntries.length} Trusted
+              </div>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
+                Allowed to bypass all WAF inspection
+              </div>
+            </div>
+
+            <div style={{ ...S.cardPad, padding: '16px 20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Enforcement Scope
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>
+                Global Fleet
+              </div>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
+                Instant edge synchronization
+              </div>
+            </div>
+
+            <div style={{ ...S.cardPad, padding: '16px 20px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Bypass Priority
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: '800', color: '#0B2522', marginTop: '4px' }}>
+                Level 0 (Zero-Drop)
+              </div>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
+                Pre-flight bootstrap allowlist
+              </div>
+            </div>
+          </div>
+
+          {/* Whitelist Table Card */}
+          <div style={{ ...S.cardPad, padding: '20px 24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ position: 'relative', width: '280px' }}>
+                <Search size={14} color="#60716B" style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  placeholder="Search whitelisted IP or reason..."
+                  value={whitelistSearch}
+                  onChange={e => setWhitelistSearch(e.target.value)}
+                  style={{ ...S.input, paddingLeft: '32px' }}
+                />
+              </div>
+
+              <button
+                style={S.btn('#0B2522', '#FFFFFF', '#0B2522')}
+                onClick={() => { setWhitelistForm({ ip: '', reason: '', website_id: selectedWebsite }); setShowWhitelistModal(true) }}
+              >
+                <Plus size={14} /> Add Whitelist IP
+              </button>
+            </div>
+
+            {filteredWhitelistEntries.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 16px', color: '#60716B' }}>
+                <ShieldCheck size={32} color="#2A8B68" style={{ margin: '0 auto 10px', display: 'block' }} />
+                <div style={{ fontWeight: '700', color: '#10201E', fontSize: '14.5px' }}>
+                  {whitelistSearch ? 'No whitelisted IPs match your search' : 'No Whitelisted IPs Yet'}
+                </div>
+                <div style={{ fontSize: '12.5px', marginTop: '4px', maxWidth: '380px', margin: '4px auto 0' }}>
+                  Add your office IP, monitoring servers, or developer machines to ensure legitimate administrative traffic is never blocked.
+                </div>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Whitelisted IP</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Reason & Description</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Added By</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700' }}>Date Added</th>
+                      <th style={{ padding: '10px 12px', fontWeight: '700', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredWhitelistEntries.map(item => (
+                      <tr key={item.id || item.ip} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                        <td style={{ padding: '14px 12px', fontFamily: 'monospace', fontWeight: '700', color: '#10201E' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ShieldCheck size={15} color="#2A8B68" />
+                            <span>{item.ip}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 12px', color: '#40514B' }}>
+                          {item.reason || 'Trusted bypass IP'}
+                        </td>
+                        <td style={{ padding: '14px 12px', color: '#60716B', fontSize: '12px' }}>
+                          {item.added_by || 'Dashboard'}
+                        </td>
+                        <td style={{ padding: '14px 12px', color: '#60716B', fontSize: '12px' }}>
+                          {item.added_at || 'Recent'}
+                        </td>
+                        <td style={{ padding: '14px 12px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => handleRemoveWhitelist(item.ip)}
+                            style={{
+                              background: '#FFF1F2',
+                              border: '1px solid #FECDD3',
+                              color: '#BE123C',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              fontSize: '11.5px',
+                              fontWeight: '700',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Add IP Modal ── */}
       {showModal && (
         <div
@@ -1001,6 +1206,53 @@ export default function UserBlacklist() {
                 </button>
                 <button type="submit" disabled={submitting} style={S.btn('#0B2522', '#FFFFFF', '#0B2522')}>
                   {submitting ? 'Blocking...' : 'Confirm Block'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ── Add Whitelist IP Modal ── */}
+      {showWhitelistModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}
+          onClick={() => setShowWhitelistModal(false)}
+        >
+          <div
+            style={{ background: '#FFFFFF', borderRadius: '16px', maxWidth: '440px', width: '100%', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #D9E1DC' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#E8F3EC', color: '#2A8B68', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShieldCheck size={16} />
+                </div>
+                <span style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A' }}>Whitelist IP Address</span>
+              </div>
+              <button onClick={() => setShowWhitelistModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddWhitelistSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={S.label}>IP Address to Trust</label>
+                <input type="text" required placeholder="e.g. 198.51.100.5"
+                  value={whitelistForm.ip} onChange={e => setWhitelistForm({ ...whitelistForm, ip: e.target.value.trim() })}
+                  style={S.input} />
+              </div>
+              <div>
+                <label style={S.label}>Reason / Label</label>
+                <input type="text" placeholder="e.g. Corporate Office Static IP"
+                  value={whitelistForm.reason} onChange={e => setWhitelistForm({ ...whitelistForm, reason: e.target.value })}
+                  style={S.input} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                <button type="button" onClick={() => setShowWhitelistModal(false)} style={S.btn('#FFFFFF', '#10201E', '#D9E1DC')}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={submittingWhitelist} style={S.btn('#0B2522', '#FFFFFF', '#0B2522')}>
+                  {submittingWhitelist ? 'Whitelisting...' : 'Trust & Whitelist IP'}
                 </button>
               </div>
             </form>

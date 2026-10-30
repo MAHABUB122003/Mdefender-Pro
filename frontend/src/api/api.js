@@ -518,6 +518,9 @@ export const api = {
   updateUserRule: (id, data) => apiCall(`/api/user/rules?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteUserRule: (id) => apiCall(`/api/user/rules?id=${id}`, { method: 'DELETE' }),
   userBlockIP: (ip, reason) => apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify({ ip, reason }) }),
+  getUserWhitelist: () => apiCall('/api/user/whitelist'),
+  addUserWhitelist: (data) => apiCall('/api/user/whitelist', { method: 'POST', body: JSON.stringify(data) }),
+  removeUserWhitelist: (ip) => apiCall(`/api/user/whitelist?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
   getUserBlacklist: (params = {}) => {
     const siteId = typeof params === 'string' ? params : (params?.website_id || '');
     const q = siteId && siteId !== 'all' ? `?website_id=${encodeURIComponent(siteId)}` : '';
