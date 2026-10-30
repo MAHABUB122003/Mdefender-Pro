@@ -1616,8 +1616,8 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    ip = request.query_params.get('ip', '').strip()
-    website_id = request.query_params.get('website_id', '').strip()
+    ip = request.query_params.get('ip', '').strip() if hasattr(request, 'query_params') else ''
+    website_id = request.query_params.get('website_id', '').strip() if hasattr(request, 'query_params') else ''
     if not ip:
         try:
             body = await request.json()

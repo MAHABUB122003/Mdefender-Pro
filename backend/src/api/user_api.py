@@ -1513,11 +1513,11 @@ class UserAPI:
                     }
                     resp = None
                     try:
-                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=6.0, verify=False)
+                        resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.5, verify=False)
                     except Exception:
                         if site_url.startswith('https://'):
                             clean_host = raw_url.replace('https://', '').replace('http://', '')
-                            resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=6.0, verify=False)
+                            resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=2.5, verify=False)
                     if resp and resp.status_code == 200:
                         r_data = resp.json()
                         if isinstance(r_data, dict) and 'logs' in r_data and isinstance(r_data['logs'], list):
@@ -1623,11 +1623,11 @@ class UserAPI:
                         }
                         resp = None
                         try:
-                            resp = requests.get(remote_url, params=req_params, headers=headers, timeout=6.0, verify=False)
+                            resp = requests.get(remote_url, params=req_params, headers=headers, timeout=2.5, verify=False)
                         except Exception:
                             if site_url.startswith('https://'):
                                 clean_host = raw_url.replace('https://', '').replace('http://', '')
-                                resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=6.0, verify=False)
+                                resp = requests.get(f"http://{clean_host}/?waf_cloud_sync=1&action=get_logs&api_key={site_key}&site_token={site_key}", params=req_params, headers=headers, timeout=2.5, verify=False)
                         if resp and resp.status_code == 200:
                             data = resp.json()
                             logs_list = data.get('logs', []) if isinstance(data, dict) else []
@@ -2105,11 +2105,11 @@ class UserAPI:
                     try:
                         cr = None
                         try:
-                            cr = requests.post(clean_endpoint, json=clean_payload, headers=headers, timeout=6.0, verify=False)
+                            cr = requests.post(clean_endpoint, json=clean_payload, headers=headers, timeout=2.5, verify=False)
                         except Exception:
                             if s_url.startswith('https://'):
                                 clean_host = raw_u.replace('https://', '').replace('http://', '')
-                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs&api_key={s_key}&site_token={s_key}", json=clean_payload, headers=headers, timeout=6.0, verify=False)
+                                cr = requests.post(f"http://{clean_host}/?waf_cloud_sync=1&action=clear_logs&api_key={s_key}&site_token={s_key}", json=clean_payload, headers=headers, timeout=2.5, verify=False)
                         if cr and cr.status_code == 200:
                             remote_cleaned += 1
                             # Update target site counters immediately
