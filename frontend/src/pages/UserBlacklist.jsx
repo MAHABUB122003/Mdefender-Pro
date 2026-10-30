@@ -395,7 +395,7 @@ export default function UserBlacklist() {
               border: '1px solid #D9E1DC',
               boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
             }}>
-              <Globe size={14} color="#0284C7" />
+              <Globe size={14} color="#10201E" />
               <select
                 value={selectedWebsite}
                 onChange={(e) => {
@@ -466,8 +466,8 @@ export default function UserBlacklist() {
               {tab.label}
               <span style={{
                 fontSize: '11px', padding: '1px 7px', borderRadius: '999px', fontWeight: '800',
-                background: activeTab === tab.id ? '#FEF2F2' : '#E2E8F0',
-                color: activeTab === tab.id ? '#DC2626' : '#64748B'
+                background: activeTab === tab.id ? '#E8EEE8' : '#F1F5F3',
+                color: activeTab === tab.id ? '#0B2522' : '#60716B'
               }}>
                 {tab.count}
               </span>
@@ -479,18 +479,18 @@ export default function UserBlacklist() {
       {/* ════ SECTION A: IP BLACKLIST ════ */}
       {activeTab === 'ip' && (
         <>
-          {/* Stats row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          {/* Stats row — Clean Enterprise Standard */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', marginBottom: '18px' }}>
             {[
-              { label: 'Total Blocked', value: entries.length, color: '#0F172A' },
-              { label: 'Permanent', value: permCount, color: '#DC2626' },
-              { label: 'Temporary', value: tempCount, color: '#F59E0B' },
-              { label: 'Auto-Blocked', value: autoCount, color: '#6366F1' },
-              { label: 'Expired', value: expiredEntries.length, color: '#94A3B8' }
+              { label: 'Total Blocked', value: entries.length },
+              { label: 'Permanent', value: permCount },
+              { label: 'Temporary', value: tempCount },
+              { label: 'Auto-Blocked', value: autoCount },
+              { label: 'Expired', value: expiredEntries.length }
             ].map(s => (
-              <div key={s.label} style={{ ...S.cardPad, padding: '14px 18px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: s.color, marginTop: '2px' }}>{s.value}</div>
+              <div key={s.label} style={{ ...S.cardPad, padding: '16px 20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
+                <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -617,7 +617,7 @@ export default function UserBlacklist() {
                           {entry.reason || '—'}
                         </td>
                         <td style={S.td}>
-                          <span style={S.badge(isPerm ? '#FEF2F2' : '#F0F9FF', isPerm ? '#DC2626' : '#0284C7', isPerm ? '#FECACA' : '#BAE6FD')}>
+                          <span style={S.badge(isPerm ? '#FEF2F2' : '#FBFCFA', isPerm ? '#DC2626' : '#10201E', isPerm ? '#FECACA' : '#D9E1DC')}>
                             <Clock size={10} />
                             {entry.duration || entry.type || (isPerm ? 'Permanent' : 'Temp')}
                           </span>
@@ -630,7 +630,7 @@ export default function UserBlacklist() {
                               : <span style={{ color: '#15803D' }}>{entry.expires_at}</span>}
                         </td>
                         <td style={S.td}>
-                          <span style={S.badge(entry.auto_blocked ? '#FFF7ED' : '#F0FDF4', entry.auto_blocked ? '#C2410C' : '#15803D', entry.auto_blocked ? '#FED7AA' : '#DCFCE7')}>
+                          <span style={S.badge('#FBFCFA', '#60716B', '#D9E1DC')}>
                             {entry.auto_blocked ? 'Auto' : 'Manual'}
                           </span>
                         </td>
@@ -640,9 +640,9 @@ export default function UserBlacklist() {
                             fontWeight: '700',
                             padding: '3px 8px',
                             borderRadius: '6px',
-                            background: entry.website_id && entry.website_id !== 'all' ? '#E0F2FE' : '#F1F5F9',
-                            color: entry.website_id && entry.website_id !== 'all' ? '#0369A1' : '#475569',
-                            border: `1px solid ${entry.website_id && entry.website_id !== 'all' ? '#BAE6FD' : '#E2E8F0'}`,
+                            background: '#FBFCFA',
+                            color: '#10201E',
+                            border: '1px solid #D9E1DC',
                             display: 'inline-block'
                           }}>
                             {entry.website_domain || (entry.website_id && entry.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}

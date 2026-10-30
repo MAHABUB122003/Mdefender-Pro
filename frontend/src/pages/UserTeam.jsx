@@ -244,7 +244,7 @@ export default function UserTeam() {
                 ENTERPRISE RBAC
               </span>
             </div>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0', maxWidth: '680px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13px', color: '#60716B', margin: '4px 0 0', maxWidth: '680px', lineHeight: '1.5' }}>
               Delegate granular access to SecOps leads, DevOps engineers, and compliance auditors. Control who can modify WAF rules, manage Anycast DNS records, or view sensitive security telemetry.
             </p>
           </div>
@@ -254,7 +254,7 @@ export default function UserTeam() {
           onClick={() => setShowInviteModal(true)}
           style={{
             padding: '10px 22px', borderRadius: '9px', border: 'none',
-            background: '#10201E', color: '#FFFFFF', fontSize: '13px',
+            background: '#0B2522', border: '1px solid #0B2522', color: '#FFFFFF', fontSize: '13px',
             fontWeight: '700', cursor: 'pointer', display: 'inline-flex',
             alignItems: 'center', gap: '8px', boxShadow: '0 2px 10px rgba(16, 32, 30, 0.18)',
             transition: 'all 0.15s ease'
@@ -373,7 +373,7 @@ export default function UserTeam() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Filter Role:</span>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: '#60716B' }}>Filter Role:</span>
                 <select
                   value={roleFilter}
                   onChange={e => setRoleFilter(e.target.value)}
@@ -395,7 +395,7 @@ export default function UserTeam() {
             {/* Members Table */}
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr style={{ background: '#FAFBF9', borderBottom: '1px solid #D9E1DC', color: '#64748B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <tr style={{ background: '#FAFBF9', borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   <th style={{ padding: '12px 20px' }}>Team Member</th>
                   <th style={{ padding: '12px 16px' }}>Assigned Role</th>
                   <th style={{ padding: '12px 16px' }}>Domain Access Scope</th>
@@ -435,7 +435,7 @@ export default function UserTeam() {
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>{m.email}</div>
+                            <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{m.email}</div>
                           </div>
                         </div>
                       </td>
@@ -454,7 +454,7 @@ export default function UserTeam() {
                       {/* Scope */}
                       <td style={{ padding: '16px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Globe size={13} style={{ color: '#64748B' }} />
+                          <Globe size={13} style={{ color: '#60716B' }} />
                           <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#10201E' }}>
                             {m.scope}
                           </span>
@@ -483,7 +483,7 @@ export default function UserTeam() {
                       </td>
 
                       {/* Last Active */}
-                      <td style={{ padding: '16px 16px', fontSize: '12px', color: '#64748B' }}>
+                      <td style={{ padding: '16px 16px', fontSize: '12px', color: '#60716B' }}>
                         {m.lastActive}
                       </td>
 
@@ -495,7 +495,7 @@ export default function UserTeam() {
                             onClick={() => handleDeleteMember(m.id, m.name)}
                             style={{
                               padding: '6px 12px', borderRadius: '7px',
-                              background: '#FEF2F2', border: '1px solid #FECACA',
+                              background: '#FFFFFF', border: '1px solid #D9E1DC',
                               color: '#DC2626', fontSize: '11.5px', fontWeight: '700',
                               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
                               transition: 'all 0.12s ease'
@@ -520,7 +520,7 @@ export default function UserTeam() {
         {activeTab === 'invites' && (
           <div style={{ padding: '24px' }}>
             {pendingInvites.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748B' }}>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#60716B' }}>
                 <Mail size={32} style={{ color: '#94A3B8', marginBottom: '8px' }} />
                 <div style={{ fontWeight: '700', color: '#10201E' }}>No pending invitations</div>
                 <div style={{ fontSize: '12.5px', marginTop: '4px' }}>All invited colleagues have accepted their workspace access links.</div>
@@ -540,7 +540,7 @@ export default function UserTeam() {
                           {inv.roleTitle}
                         </span>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+                      <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
                         Invited by {inv.invitedBy} • Scope: {inv.scope} • Link expires in {inv.expiresIn}
                       </div>
                     </div>
@@ -564,7 +564,7 @@ export default function UserTeam() {
                         onClick={() => handleRevokeInvite(inv.id, inv.email)}
                         style={{
                           padding: '7px 14px', borderRadius: '8px', border: '1px solid #FECACA',
-                          background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: '700',
+                          background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E', fontSize: '12px', fontWeight: '700',
                           cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
                         }}
                       >
@@ -586,7 +586,7 @@ export default function UserTeam() {
               <h3 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
                 International SaaS Role-Based Security Matrix
               </h3>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
                 MDefender Pro enforces enterprise principle of least privilege (PoLP) across your multi-domain fleet.
               </p>
             </div>
@@ -610,7 +610,7 @@ export default function UserTeam() {
                   </p>
 
                   <div style={{ borderTop: `1px solid ${role.border}`, paddingTop: '12px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.4px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '800', color: '#60716B', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.4px' }}>
                       Allowed Operations:
                     </div>
                     <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#334155', lineHeight: '1.7' }}>
@@ -629,7 +629,7 @@ export default function UserTeam() {
         {activeTab === 'audit' && (
           <div style={{ padding: '20px 24px' }}>
             {auditLogs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748B' }}>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#60716B' }}>
                 <Activity size={32} style={{ color: '#94A3B8', marginBottom: '8px' }} />
                 <div style={{ fontWeight: '700', color: '#10201E' }}>No Audit Events Yet</div>
                 <div style={{ fontSize: '12.5px', marginTop: '4px' }}>Administrative actions and team changes will be securely logged here.</div>
@@ -650,12 +650,12 @@ export default function UserTeam() {
                         <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
                           <strong style={{ color: '#0284C7' }}>{log.user}:</strong> {log.action}
                         </div>
-                        <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '2px' }}>
                           Logged from client IP: <span style={{ fontFamily: 'monospace' }}>{log.ip}</span>
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>{log.timestamp}</span>
+                    <span style={{ fontSize: '12px', color: '#60716B', fontWeight: '600' }}>{log.timestamp}</span>
                   </div>
                 ))}
               </div>
@@ -689,7 +689,7 @@ export default function UserTeam() {
               <button
                 type="button"
                 onClick={() => setShowInviteModal(false)}
-                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#60716B', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>

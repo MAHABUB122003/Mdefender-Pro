@@ -62,9 +62,9 @@ export default function UserAlerts() {
       severity: 'CRITICAL',
       icon: Flame,
       enabled: true,
-      color: '#DC2626',
-      bg: '#FEF2F2',
-      border: '#FECACA'
+      color: '#10201E',
+      bg: '#FBFCFA',
+      border: '#D9E1DC'
     },
     {
       id: 'bruteforce',
@@ -73,9 +73,9 @@ export default function UserAlerts() {
       severity: 'HIGH',
       icon: ShieldAlert,
       enabled: true,
-      color: '#D97706',
-      bg: '#FFFBEB',
-      border: '#FDE68A'
+      color: '#10201E',
+      bg: '#FBFCFA',
+      border: '#D9E1DC'
     },
     {
       id: 'exploit',
@@ -84,9 +84,9 @@ export default function UserAlerts() {
       severity: 'CRITICAL',
       icon: Bug,
       enabled: true,
-      color: '#DC2626',
-      bg: '#FEF2F2',
-      border: '#FECACA'
+      color: '#10201E',
+      bg: '#FBFCFA',
+      border: '#D9E1DC'
     },
     {
       id: 'ssl',
@@ -95,9 +95,9 @@ export default function UserAlerts() {
       severity: 'WARNING',
       icon: Lock,
       enabled: true,
-      color: '#0284C7',
-      bg: '#F0F9FF',
-      border: '#BAE6FD'
+      color: '#10201E',
+      bg: '#FBFCFA',
+      border: '#D9E1DC'
     },
     {
       id: 'origin_down',
@@ -106,9 +106,9 @@ export default function UserAlerts() {
       severity: 'CRITICAL',
       icon: Server,
       enabled: true,
-      color: '#DC2626',
-      bg: '#FEF2F2',
-      border: '#FECACA'
+      color: '#10201E',
+      bg: '#FBFCFA',
+      border: '#D9E1DC'
     },
     {
       id: 'wp_admin',
@@ -117,9 +117,9 @@ export default function UserAlerts() {
       severity: 'HIGH',
       icon: ShieldCheck,
       enabled: true,
-      color: '#D97706',
-      bg: '#FFFBEB',
-      border: '#FDE68A'
+      color: '#10201E',
+      bg: '#FBFCFA',
+      border: '#D9E1DC'
     }
   ])
 
@@ -299,14 +299,14 @@ export default function UserAlerts() {
                 Alerts &amp; Incident Notifications
               </h1>
               <span style={{
-                background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7',
+                background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC',
                 padding: '3px 10px', borderRadius: '20px', fontSize: '11px',
                 fontWeight: '700', letterSpacing: '0.5px'
               }}>
                 REAL-TIME SOC DISPATCH
               </span>
             </div>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0', maxWidth: '680px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13px', color: '#60716B', margin: '4px 0 0', maxWidth: '680px', lineHeight: '1.5' }}>
               Configure corporate security notifications. Receive instant email alerts for volumetric DDoS attacks, zero-day WAF block events, origin server downtime, and SSL certificate expiration notices.
             </p>
           </div>
@@ -317,7 +317,7 @@ export default function UserAlerts() {
           disabled={sendingTest}
           style={{
             padding: '10px 22px', borderRadius: '9px', border: 'none',
-            background: sendingTest ? '#64748B' : '#10201E', color: '#FFFFFF', fontSize: '13px',
+            background: sendingTest ? '#60716B' : '#0B2522', color: '#FFFFFF', fontSize: '13px', border: '1px solid #0B2522', borderRadius: '8px',
             fontWeight: '700', cursor: sendingTest ? 'not-allowed' : 'pointer', display: 'inline-flex',
             alignItems: 'center', gap: '8px', boxShadow: '0 2px 10px rgba(16, 32, 30, 0.18)',
             transition: 'all 0.15s ease'
@@ -333,32 +333,32 @@ export default function UserAlerts() {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
         gap: '14px', marginBottom: '24px'
       }}>
-        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Watchdogs</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Watchdogs</div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
             {alertPolicies.filter(p => p.enabled).length} of {alertPolicies.length} Active
           </div>
-          <div style={{ fontSize: '11.5px', color: '#15803D', marginTop: '4px' }}>Multi-vector threat monitoring</div>
+          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Multi-vector threat monitoring</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Primary Destination</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Primary Destination</div>
           <div style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', marginTop: '10px', wordBreak: 'break-all' }}>
             {emailSettings.primaryEmail}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#15803D', marginTop: '4px' }}>Verified Corporate Email</div>
+          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Verified Corporate Email</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delivery SLA</div>
-          <div style={{ fontSize: '24px', fontWeight: '800', color: '#15803D', marginTop: '6px' }}>&lt; 15 Seconds</div>
-          <div style={{ fontSize: '11.5px', color: '#16A34A', marginTop: '4px' }}>High-priority Anycast SMTP pipeline</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delivery SLA</div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>&lt; 15 Seconds</div>
+          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>High-priority Anycast SMTP pipeline</div>
         </div>
 
-        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recorded Dispatches</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recorded Dispatches</div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>{recentDispatches.length} Events</div>
-          <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>Logged in security audit trail</div>
+          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Logged in security audit trail</div>
         </div>
       </div>
 
@@ -372,7 +372,7 @@ export default function UserAlerts() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Incident Dispatch Channels
             </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
               Manage corporate notification destinations for critical security alerts.
             </p>
           </div>
@@ -403,12 +403,12 @@ export default function UserAlerts() {
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>Corporate Email Dispatch</div>
-                  <div style={{ fontSize: '11.5px', color: '#64748B' }}>Primary incident escalation channel</div>
+                  <div style={{ fontSize: '11.5px', color: '#60716B' }}>Primary incident escalation channel</div>
                 </div>
               </div>
               <span style={{
-                padding: '3px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: '800',
-                background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7'
+                padding: '3px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: '700',
+                background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC'
               }}>
                 ACTIVE (DEFAULT)
               </span>
@@ -438,25 +438,25 @@ export default function UserAlerts() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#FFFFFF', border: '1px solid #D9E1DC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284C7' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#FFFFFF', border: '1px solid #D9E1DC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10201E' }}>
                   <Terminal size={18} />
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>SOC JSON Webhook</div>
-                  <div style={{ fontSize: '11.5px', color: '#64748B' }}>Slack, Microsoft Teams, PagerDuty, Splunk</div>
+                  <div style={{ fontSize: '11.5px', color: '#60716B' }}>Slack, Microsoft Teams, PagerDuty, Splunk</div>
                 </div>
               </div>
               <span style={{
-                padding: '3px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: '800',
-                background: webhookSettings.enabled ? '#F0FDF4' : '#F1F5F9',
-                color: webhookSettings.enabled ? '#15803D' : '#64748B',
-                border: `1px solid ${webhookSettings.enabled ? '#DCFCE7' : '#E2E8F0'}`
+                padding: '3px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: '700',
+                background: webhookSettings.enabled ? '#E8EEE8' : '#FAFBF9',
+                color: webhookSettings.enabled ? '#0B2522' : '#60716B',
+                border: '1px solid #D9E1DC'
               }}>
                 {webhookSettings.enabled ? 'ACTIVE' : 'OPTIONAL'}
               </span>
             </div>
 
-            <div style={{ fontSize: '12.5px', color: '#64748B', lineHeight: '1.5', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
+            <div style={{ fontSize: '12.5px', color: '#60716B', lineHeight: '1.5', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
               {webhookSettings.enabled && webhookSettings.url ? (
                 <div>Endpoint: <strong style={{ color: '#10201E', fontFamily: 'monospace' }}>{webhookSettings.url}</strong></div>
               ) : (
@@ -469,11 +469,12 @@ export default function UserAlerts() {
                 type="button"
                 onClick={handleToggleWebhook}
                 style={{
-                  padding: '6px 14px', borderRadius: '7px',
-                  background: webhookSettings.enabled ? '#FEF2F2' : '#10201E',
-                  border: `1px solid ${webhookSettings.enabled ? '#FECACA' : '#10201E'}`,
-                  color: webhookSettings.enabled ? '#DC2626' : '#FFFFFF',
-                  fontSize: '11.5px', fontWeight: '700', cursor: 'pointer'
+                  padding: '7px 14px', borderRadius: '8px',
+                  background: webhookSettings.enabled ? '#FFFFFF' : '#0B2522',
+                  border: webhookSettings.enabled ? '1px solid #D9E1DC' : '1px solid #0B2522',
+                  color: webhookSettings.enabled ? '#10201E' : '#FFFFFF',
+                  fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 {webhookSettings.enabled ? 'Disable Webhook' : 'Enable Webhook Endpoint'}
@@ -482,9 +483,10 @@ export default function UserAlerts() {
                 type="button"
                 onClick={() => setShowWebhookEdit(true)}
                 style={{
-                  padding: '6px 12px', borderRadius: '7px',
+                  padding: '7px 14px', borderRadius: '8px',
                   background: '#FFFFFF', border: '1px solid #D9E1DC',
-                  color: '#10201E', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer'
+                  color: '#10201E', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 Edit URL &amp; Secret
@@ -503,7 +505,7 @@ export default function UserAlerts() {
           <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
             Security Threat Watchdogs &amp; Trigger Thresholds
           </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
             Define which security anomalies dispatch immediate notifications to your operations team.
           </p>
         </div>
@@ -536,9 +538,9 @@ export default function UserAlerts() {
                         {policy.title}
                       </h4>
                       <span style={{
-                        fontSize: '9.5px', fontWeight: '800', padding: '1px 6px',
-                        borderRadius: '4px', background: policy.bg, color: policy.color,
-                        border: `1px solid ${policy.border}`, display: 'inline-block', marginTop: '3px'
+                        fontSize: '10px', fontWeight: '700', padding: '1px 7px',
+                        borderRadius: '6px', background: '#E8EEE8', color: '#0B2522',
+                        border: '1px solid #D9E1DC', display: 'inline-block', marginTop: '3px'
                       }}>
                         {policy.severity}
                       </span>
@@ -555,7 +557,7 @@ export default function UserAlerts() {
                     />
                     <span style={{
                       position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-                      background: policy.enabled ? '#10201E' : '#CBD5E1', borderRadius: '22px',
+                      background: policy.enabled ? '#0B2522' : '#CBD5E1', borderRadius: '22px',
                       transition: '0.2s'
                     }}>
                       <span style={{
@@ -566,7 +568,7 @@ export default function UserAlerts() {
                   </label>
                 </div>
 
-                <p style={{ margin: 0, fontSize: '12px', color: '#64748B', lineHeight: '1.5' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: '#60716B', lineHeight: '1.5' }}>
                   {policy.desc}
                 </p>
               </div>
@@ -585,7 +587,7 @@ export default function UserAlerts() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Recent Security Incident Dispatches
             </h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
               Audit trail of alerts delivered to corporate channels in the last 30 days.
             </p>
           </div>
@@ -595,7 +597,7 @@ export default function UserAlerts() {
           <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FAFBF9', border: '1px dashed #D9E1DC', borderRadius: '12px' }}>
             <ShieldCheck size={36} style={{ color: '#15803D', margin: '0 auto 10px' }} />
             <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: '800', color: '#10201E' }}>No Security Alerts Dispatched Yet</h4>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ margin: 0, fontSize: '12.5px', color: '#60716B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
               All connected domains are clean and protected with zero critical incidents. Click "Send Test Alert" to verify delivery to your inbox.
             </p>
           </div>
@@ -613,24 +615,24 @@ export default function UserAlerts() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{
                     padding: '3px 8px', borderRadius: '5px', fontSize: '10px', fontWeight: '800',
-                    background: item.severity === 'CRITICAL' ? '#FEF2F2' : item.severity === 'HIGH' ? '#FFFBEB' : '#F0F9FF',
-                    color: item.severity === 'CRITICAL' ? '#DC2626' : item.severity === 'HIGH' ? '#D97706' : '#0284C7',
-                    border: `1px solid ${item.severity === 'CRITICAL' ? '#FECACA' : item.severity === 'HIGH' ? '#FDE68A' : '#BAE6FD'}`
+                    background: '#E8EEE8',
+                    color: '#0B2522',
+                    border: '1px solid #D9E1DC'
                   }}>
                     {item.severity}
                   </span>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>
-                      {item.title} <span style={{ color: '#64748B', fontWeight: '500' }}>on {item.target}</span>
+                      {item.title} <span style={{ color: '#60716B', fontWeight: '500' }}>on {item.target}</span>
                     </div>
-                    <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '2px' }}>
                       {item.details} • Dispatched via {item.destination}
                     </div>
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC' }}>
                     {item.status}
                   </span>
                   <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{item.time}</div>
@@ -666,7 +668,7 @@ export default function UserAlerts() {
               <button
                 type="button"
                 onClick={() => setShowEmailEdit(false)}
-                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#60716B', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -721,7 +723,7 @@ export default function UserAlerts() {
                 <button
                   type="submit"
                   style={{
-                    padding: '9px 20px', background: '#10201E', border: 'none',
+                    padding: '9px 20px', background: '#0B2522', border: '1px solid #0B2522',
                     borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
                     cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                     boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'
@@ -753,7 +755,7 @@ export default function UserAlerts() {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAFBF9'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Terminal size={18} style={{ color: '#0284C7' }} />
+                <Terminal size={18} style={{ color: '#10201E' }} />
                 <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', margin: 0 }}>
                   Configure SOC Webhook
                 </h3>
@@ -761,7 +763,7 @@ export default function UserAlerts() {
               <button
                 type="button"
                 onClick={() => setShowWebhookEdit(false)}
-                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#60716B', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -825,7 +827,7 @@ export default function UserAlerts() {
                 <button
                   type="submit"
                   style={{
-                    padding: '9px 20px', background: '#10201E', border: 'none',
+                    padding: '9px 20px', background: '#0B2522', border: '1px solid #0B2522',
                     borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
                     cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                     boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'

@@ -514,7 +514,7 @@ export default function UserDomains() {
               padding: '9px 20px',
               borderRadius: '9px',
               border: 'none',
-              background: isLimitReached ? '#D97706' : '#10201E',
+              background: '#0B2522', border: '1px solid #0B2522',
               color: '#FFFFFF',
               fontSize: '13px',
               fontWeight: '700',
@@ -645,22 +645,22 @@ export default function UserDomains() {
           background: '#FFFFFF', border: '1px solid #D9E1DC',
           borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
         }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Edge WAF Armed</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#15803D', marginTop: '6px' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Edge WAF Armed</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
             {websites.length === 0 ? 0 : (overview?.active_protected_domains ?? stats.active)}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#16A34A', marginTop: '4px' }}>Traffic proxied through edge</div>
+          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Traffic proxied through edge</div>
         </div>
 
         <div style={{
           background: '#FFFFFF', border: '1px solid #D9E1DC',
           borderRadius: '12px', padding: '18px 20px', boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
         }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pending Delegation</div>
-          <div style={{ fontSize: '26px', fontWeight: '800', color: '#D97706', marginTop: '6px' }}>
+          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pending Delegation</div>
+          <div style={{ fontSize: '26px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
             {websites.length === 0 ? 0 : (overview?.pending_delegation ?? stats.pending)}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#B45309', marginTop: '4px' }}>Awaiting registrar update</div>
+          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Awaiting registrar update</div>
         </div>
 
         <div style={{
@@ -763,8 +763,8 @@ export default function UserDomains() {
                 onClick={() => setShowOnboardingModal(true)}
                 style={{
                   padding: '10px 24px', borderRadius: '9px', border: 'none',
-                  background: '#10201E',
-                  color: '#FFFFFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+                  background: '#0B2522',
+                  border: '1px solid #0B2522', color: '#FFFFFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: '8px',
                   boxShadow: '0 2px 10px rgba(16, 32, 30, 0.2)'
                 }}
@@ -838,16 +838,16 @@ export default function UserDomains() {
                         {/* Status Badge */}
                         {w.verified ? (
                           <span style={{
-                            fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                            background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7',
+                            fontSize: '10.5px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px',
+                            background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}>
                             <ShieldCheck size={11} /> Active &amp; Protected
                           </span>
                         ) : (
                           <span style={{
-                            fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                            background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A',
+                            fontSize: '10.5px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px',
+                            background: '#FAFBF9', color: '#60716B', border: '1px solid #D9E1DC',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}>
                             <Clock size={11} /> Pending Nameservers
@@ -857,8 +857,8 @@ export default function UserDomains() {
                         {/* Turnstile Bot Badge */}
                         {w.bot_challenge_enabled && (
                           <span style={{
-                            fontSize: '10.5px', fontWeight: '800', padding: '2px 8px', borderRadius: '6px',
-                            background: '#F0FDF4', color: '#15803D', border: '1px solid #DCFCE7',
+                            fontSize: '10.5px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px',
+                            background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC',
                             display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}>
                             <Bot size={11} /> Turnstile Shield ON
@@ -891,9 +891,9 @@ export default function UserDomains() {
                       disabled={togglingBotId === siteId}
                       style={{
                         padding: '7px 12px', borderRadius: '8px',
-                        border: `1px solid ${w.bot_challenge_enabled ? '#DCFCE7' : '#D9E1DC'}`,
-                        background: w.bot_challenge_enabled ? '#F0FDF4' : '#FAFBF9',
-                        color: w.bot_challenge_enabled ? '#15803D' : '#64748B',
+                        border: '1px solid #D9E1DC',
+                        background: w.bot_challenge_enabled ? '#E8EEE8' : '#FFFFFF',
+                        color: w.bot_challenge_enabled ? '#0B2522' : '#60716B',
                         fontSize: '12px', fontWeight: '700',
                         cursor: togglingBotId === siteId ? 'not-allowed' : 'pointer',
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -912,9 +912,9 @@ export default function UserDomains() {
                       disabled={isVerifying}
                       style={{
                         padding: '7px 12px', borderRadius: '8px',
-                        border: `1px solid ${w.verified ? '#DCFCE7' : '#FDE68A'}`,
-                        background: w.verified ? '#F0FDF4' : '#FFFBEB',
-                        color: w.verified ? '#15803D' : '#B45309',
+                        border: '1px solid #D9E1DC',
+                        background: '#FFFFFF',
+                        color: '#10201E',
                         fontSize: '12px', fontWeight: '700',
                         cursor: isVerifying ? 'not-allowed' : 'pointer',
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -1004,7 +1004,7 @@ export default function UserDomains() {
                             onMouseEnter={e => e.currentTarget.style.background = '#FAFBF9'}
                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                           >
-                            <Activity size={14} style={{ color: '#0284C7' }} />
+                            <Activity size={14} style={{ color: '#10201E' }} />
                             <span>View Traffic Logs</span>
                           </button>
 
@@ -1023,7 +1023,7 @@ export default function UserDomains() {
                             onMouseEnter={e => e.currentTarget.style.background = '#FAFBF9'}
                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                           >
-                            <ShieldCheck size={14} style={{ color: '#15803D' }} />
+                            <ShieldCheck size={14} style={{ color: '#10201E' }} />
                             <span>Configure WAF Rules</span>
                           </button>
 

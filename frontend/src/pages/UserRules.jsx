@@ -279,17 +279,17 @@ export default function UserRules() {
     }
   }
 
-  // 10 Vector Cards Data with Rich Multi-Color Palette
+  // 10 Vector Cards Data with Unified Enterprise Tokens
   const HYPERSCALE_VECTORS = [
     {
       name: 'SQL Injection (SQLi)',
       count: '400,000',
       badge: 'OWASP #1 AST',
       icon: Database,
-      color: '#0284C7',
-      bgLight: '#F0F9FF',
-      borderLight: '#BAE6FD',
-      gradient: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'Union-based, blind, time-based, out-of-band & stacked query mutations.',
       sample: "' UNION SELECT 1, user(), database(), version()-- -"
     },
@@ -298,10 +298,10 @@ export default function UserRules() {
       count: '350,000',
       badge: 'POLYGLOT AST',
       icon: Code,
-      color: '#7C3AED',
-      bgLight: '#F5F3FF',
-      borderLight: '#DDD6FE',
-      gradient: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'DOM-based, reflected, stored, SVG wrappers & HTML5 event polyglots.',
       sample: '<img src=x onerror="alert(document.cookie)">'
     },
@@ -310,10 +310,10 @@ export default function UserRules() {
       count: '300,000',
       badge: 'RASP PRE-WRITE',
       icon: Terminal,
-      color: '#DC2626',
-      bgLight: '#FEF2F2',
-      borderLight: '#FECACA',
-      gradient: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'PHP eval(), system(), passthru(), backticks & base64 wrapper exploits.',
       sample: "<?php eval(base64_decode($_POST['cmd'])); ?>"
     },
@@ -322,10 +322,10 @@ export default function UserRules() {
       count: '250,000',
       badge: '0-DAY VIRTUAL PATCH',
       icon: Globe2,
-      color: '#059669',
-      bgLight: '#ECFDF5',
-      borderLight: '#A7F3D0',
-      gradient: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'Unauthenticated AJAX endpoints, privilege escalations & known 0-days.',
       sample: '/wp-admin/admin-ajax.php?action=wp_file_manager_upload'
     },
@@ -334,10 +334,10 @@ export default function UserRules() {
       count: '200,000',
       badge: 'PATH SANITIZER',
       icon: FolderGit2,
-      color: '#D97706',
-      bgLight: '#FFFBEB',
-      borderLight: '#FDE68A',
-      gradient: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'Path traversal (../../), wrapper protocols (php://input) & null bytes.',
       sample: '../../../../../../etc/passwd'
     },
@@ -346,10 +346,10 @@ export default function UserRules() {
       count: '150,000',
       badge: 'RFC1918 SHIELD',
       icon: Cloud,
-      color: '#0D9488',
-      bgLight: '#F0FDFA',
-      borderLight: '#99F6E4',
-      gradient: 'linear-gradient(135deg, #0D9488 0%, #0F766E 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'AWS IMDSv1/v2, GCP compute metadata, Azure IMDS & internal networks.',
       sample: 'http://169.254.169.254/latest/meta-data/'
     },
@@ -358,10 +358,10 @@ export default function UserRules() {
       count: '150,000',
       badge: 'BEHAVIORAL IP',
       icon: Bot,
-      color: '#4F46E5',
-      bgLight: '#EEF2FF',
-      borderLight: '#C7D2FE',
-      gradient: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'sqlmap, Nikto, Nuclei, Masscan, Dirbuster, and credential stuffers.',
       sample: 'User-Agent: sqlmap/1.6#stable (https://sqlmap.org)'
     },
@@ -370,10 +370,10 @@ export default function UserRules() {
       count: '100,000',
       badge: 'SCHEMA DEFENSE',
       icon: Layers,
-      color: '#DB2777',
-      bgLight: '#FDF2F8',
-      borderLight: '#FBCFE8',
-      gradient: 'linear-gradient(135deg, #DB2777 0%, #BE185D 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'MongoDB $where, $ne injections, GraphQL abuse & XML external entities.',
       sample: '<!DOCTYPE test [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>'
     },
@@ -382,10 +382,10 @@ export default function UserRules() {
       count: '50,000',
       badge: 'RFC 7230 PIPELINE',
       icon: Flame,
-      color: '#0891B2',
-      bgLight: '#ECFEFF',
-      borderLight: '#A5F3FC',
-      gradient: 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'CL.TE, TE.CL header anomalies, pipeline desync & transfer encoding.',
       sample: 'Transfer-Encoding: chunked\r\nTransfer-Encoding: x'
     },
@@ -394,54 +394,34 @@ export default function UserRules() {
       count: '50,000',
       badge: 'BYTECODE SHIELD',
       icon: Bug,
-      color: '#991B1B',
-      bgLight: '#FEF2F2',
-      borderLight: '#FCA5A5',
-      gradient: 'linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%)',
+      color: '#10201E',
+      bgLight: '#FFFFFF',
+      borderLight: '#D9E1DC',
+      gradient: '#FAFBF9',
       desc: 'c99, r57, b374k, Weevely, China Chopper, and RASP pre-write shields.',
       sample: 'b374k_auth_login_override_bypass'
     }
   ]
 
-  // Category Badge Color Mapping
+  // Category Badge Color Mapping (Clean Enterprise 2-Color Design)
   const getCategoryBadgeStyle = (cat) => {
-    switch (cat) {
-      case 'SQL Injection':
-        return { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', icon: Database }
-      case 'XSS':
-        return { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE', icon: Code }
-      case 'RCE & WebShells':
-        return { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA', icon: Terminal }
-      case 'LFI / Path Traversal':
-        return { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', icon: FolderGit2 }
-      case 'CMS Vulnerabilities':
-        return { bg: '#ECFDF5', text: '#047857', border: '#A7F3D0', icon: Globe2 }
-      case 'Bots & Scanners':
-        return { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE', icon: Bot }
-      case 'SSRF & XXE':
-        return { bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4', icon: Cloud }
-      case 'Custom':
-        return { bg: '#FDF2F8', text: '#BE185D', border: '#FBCFE8', icon: SlidersHorizontal }
-      default:
-        return { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: Shield }
+    const iconMap = {
+      'SQL Injection': Database,
+      'XSS': Code,
+      'RCE & WebShells': Terminal,
+      'LFI / Path Traversal': FolderGit2,
+      'CMS Vulnerabilities': Globe2,
+      'Bots & Scanners': Bot,
+      'SSRF & XXE': Cloud,
+      'Custom': SlidersHorizontal
     }
+    return { bg: '#FBFCFA', text: '#10201E', border: '#D9E1DC', icon: iconMap[cat] || Shield }
   }
 
   // Severity Badge Styling
   const getSeverityBadgeStyle = (sev) => {
     const s = String(sev || 'high').toLowerCase()
-    switch (s) {
-      case 'critical':
-        return { bg: '#FEF2F2', text: '#991B1B', border: '#FCA5A5', label: 'CRITICAL' }
-      case 'high':
-        return { bg: '#FFF7ED', text: '#C2410C', border: '#FFEDD5', label: 'HIGH' }
-      case 'medium':
-        return { bg: '#FEFCE8', text: '#A16207', border: '#FEF08A', label: 'MEDIUM' }
-      case 'low':
-        return { bg: '#F1F5F9', text: '#475569', border: '#E2E8F0', label: 'LOW' }
-      default:
-        return { bg: '#F8FAFC', text: '#64748B', border: '#E2E8F0', label: s.toUpperCase() }
-    }
+    return { bg: '#E8EEE8', text: '#0B2522', border: '#D9E1DC', label: s.toUpperCase() }
   }
 
   return (
@@ -458,15 +438,7 @@ export default function UserRules() {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* Top 3D Accent Line with Multi-Color Cybersecurity Pillars */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          background: 'linear-gradient(90deg, #0284C7 0%, #6366F1 30%, #059669 60%, #DC2626 100%)'
-        }} />
+
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
           {/* Engine Header Left */}
@@ -475,13 +447,13 @@ export default function UserRules() {
               width: '52px',
               height: '52px',
               borderRadius: '14px',
-              background: 'linear-gradient(135deg, #EFF6FF 0%, #EEF2FF 100%)',
-              border: '1.5px solid #BFDBFE',
-              color: '#0284C7',
+              background: '#FAFBF9',
+              border: '1.5px solid #D9E1DC',
+              color: '#10201E',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.15)',
+              boxShadow: '0 2px 8px rgba(16, 32, 30, 0.06)',
               flexShrink: 0
             }}>
               <Cpu size={26} />
@@ -506,16 +478,16 @@ export default function UserRules() {
                   fontSize: '11px',
                   padding: '3px 10px',
                   borderRadius: '999px',
-                  background: '#ECFDF5',
-                  color: '#059669',
-                  border: '1px solid #A7F3D0',
-                  fontWeight: '800',
+                  background: '#E8EEE8',
+                  color: '#0B2522',
+                  border: '1px solid #D9E1DC',
+                  fontWeight: '700',
                   letterSpacing: '0.4px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px #10B981' }} />
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10201E' }} />
                   SINGLE-PASS RADIX TRIE O(1) ACTIVE
                 </span>
 
@@ -523,10 +495,10 @@ export default function UserRules() {
                   fontSize: '11px',
                   padding: '3px 10px',
                   borderRadius: '999px',
-                  background: '#EFF6FF',
-                  color: '#0284C7',
-                  border: '1px solid #BAE6FD',
-                  fontWeight: '800',
+                  background: '#E8EEE8',
+                  color: '#0B2522',
+                  border: '1px solid #D9E1DC',
+                  fontWeight: '700',
                   letterSpacing: '0.4px'
                 }}>
                   LIVE EDGE SYNCHRONIZED
@@ -539,85 +511,85 @@ export default function UserRules() {
             </div>
           </div>
 
-          {/* Telemetry Stat Cards Right (4 Distinct Cybersecurity Color Pillars) */}
+          {/* Telemetry Stat Cards Right (Unified 2-Color Standard) */}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Card 1: Sky Blue Edge Vectors */}
+            {/* Card 1: Edge Vectors */}
             <div style={{
-              background: '#F0F9FF',
-              border: '1px solid #BAE6FD',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               padding: '8px 14px',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.06)'
+              boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
             }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#E0F2FE', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Cpu size={15} />
               </div>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '900', color: '#0284C7', lineHeight: 1.1 }}>2,000,000+</div>
-                <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Edge Vectors</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', lineHeight: 1.1 }}>2,000,000+</div>
+                <div style={{ fontSize: '10px', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Edge Vectors</div>
               </div>
             </div>
 
-            {/* Card 2: Emerald Mint Latency */}
+            {/* Card 2: Latency */}
             <div style={{
-              background: '#ECFDF5',
-              border: '1px solid #A7F3D0',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               padding: '8px 14px',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              boxShadow: '0 2px 6px rgba(5, 150, 105, 0.06)'
+              boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
             }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#D1FAE5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Zap size={15} />
               </div>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '900', color: '#059669', lineHeight: 1.1 }}>&lt;0.20ms</div>
-                <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Radix Latency</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', lineHeight: 1.1 }}>&lt;0.20ms</div>
+                <div style={{ fontSize: '10px', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Radix Latency</div>
               </div>
             </div>
 
-            {/* Card 3: Threat Crimson Live Quarantines */}
+            {/* Card 3: Live Quarantines */}
             <div style={{
-              background: '#FEF2F2',
-              border: '1px solid #FECACA',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               padding: '8px 14px',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.06)'
+              boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
             }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShieldAlert size={15} />
               </div>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '900', color: '#DC2626', lineHeight: 1.1 }}>53,817</div>
-                <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Threat IPs</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', lineHeight: 1.1 }}>53,817</div>
+                <div style={{ fontSize: '10px', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Threat IPs</div>
               </div>
             </div>
 
-            {/* Card 4: Electric Indigo ML Core */}
+            {/* Card 4: ML Core */}
             <div style={{
-              background: '#EEF2FF',
-              border: '1px solid #C7D2FE',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               padding: '8px 14px',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              boxShadow: '0 2px 6px rgba(99, 102, 241, 0.06)'
+              boxShadow: '0 2px 6px rgba(16, 32, 30, 0.02)'
             }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#E0E7FF', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Sparkles size={15} />
               </div>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: '900', color: '#6366F1', lineHeight: 1.1 }}>6.5M+</div>
-                <div style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Deep ML Core</div>
+                <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', lineHeight: 1.1 }}>6.5M+</div>
+                <div style={{ fontSize: '10px', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: '700' }}>Deep ML Core</div>
               </div>
             </div>
 
@@ -665,14 +637,13 @@ export default function UserRules() {
       {/* 2. MODERN SEGMENTED TABS (Global, HyperScale 2M+, Custom)                  */}
       {/* ========================================================================= */}
       <div style={{
-        background: '#FFFFFF',
-        borderRadius: '16px',
-        border: '1px solid #E2E8F0',
-        padding: '6px',
+        background: '#E8EEE8',
+        borderRadius: '12px',
+        border: '1px solid #D9E1DC',
+        padding: '5px',
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
         overflowX: 'auto'
       }}>
         {/* Tab 1: Global Default Rules */}
@@ -682,30 +653,32 @@ export default function UserRules() {
           style={{
             flex: '1 1 0%',
             minWidth: '200px',
-            padding: '11px 18px',
-            borderRadius: '12px',
-            border: activeTab === 'global' ? '1px solid #93C5FD' : '1px solid transparent',
-            background: activeTab === 'global' ? '#EFF6FF' : 'transparent',
-            color: activeTab === 'global' ? '#1D4ED8' : '#64748B',
-            fontWeight: activeTab === 'global' ? '800' : '600',
-            fontSize: '13.5px',
+            padding: '10px 18px',
+            borderRadius: '8px',
+            border: activeTab === 'global' ? '1px solid #0B2522' : 'none',
+            background: activeTab === 'global' ? '#0B2522' : 'transparent',
+            color: activeTab === 'global' ? '#FFFFFF' : '#60716B',
+            fontWeight: activeTab === 'global' ? '700' : '600',
+            fontSize: '13px',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            transition: 'all 0.2s ease'
+            boxShadow: activeTab === 'global' ? '0 2px 8px rgba(11, 37, 34, 0.15)' : 'none',
+            transition: 'all 0.15s ease'
           }}
         >
-          <ShieldCheck size={18} style={{ color: activeTab === 'global' ? '#2563EB' : '#94A3B8' }} />
+          <ShieldCheck size={16} style={{ color: activeTab === 'global' ? '#FFFFFF' : '#60716B' }} />
           <span>Global Default Rules</span>
           <span style={{
-            fontSize: '11.5px',
+            fontSize: '11px',
             fontWeight: '700',
             padding: '2px 8px',
             borderRadius: '999px',
-            background: activeTab === 'global' ? '#DBEAFE' : '#F1F5F9',
-            color: activeTab === 'global' ? '#1E40AF' : '#64748B'
+            background: activeTab === 'global' ? '#1D3B37' : '#FAFBF9',
+            color: activeTab === 'global' ? '#FFFFFF' : '#60716B',
+            border: `1px solid ${activeTab === 'global' ? '#2A4F4A' : '#D9E1DC'}`
           }}>
             {globalRules.length.toLocaleString()}
           </span>
@@ -718,31 +691,32 @@ export default function UserRules() {
           style={{
             flex: '1 1 0%',
             minWidth: '230px',
-            padding: '11px 18px',
-            borderRadius: '12px',
-            border: activeTab === 'hyperscale' ? '1px solid #C7D2FE' : '1px solid transparent',
-            background: activeTab === 'hyperscale' ? '#EEF2FF' : 'transparent',
-            color: activeTab === 'hyperscale' ? '#4338CA' : '#64748B',
-            fontWeight: activeTab === 'hyperscale' ? '800' : '600',
-            fontSize: '13.5px',
+            padding: '10px 18px',
+            borderRadius: '8px',
+            border: activeTab === 'hyperscale' ? '1px solid #0B2522' : 'none',
+            background: activeTab === 'hyperscale' ? '#0B2522' : 'transparent',
+            color: activeTab === 'hyperscale' ? '#FFFFFF' : '#60716B',
+            fontWeight: activeTab === 'hyperscale' ? '700' : '600',
+            fontSize: '13px',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            transition: 'all 0.2s ease'
+            boxShadow: activeTab === 'hyperscale' ? '0 2px 8px rgba(11, 37, 34, 0.15)' : 'none',
+            transition: 'all 0.15s ease'
           }}
         >
-          <Cpu size={18} style={{ color: activeTab === 'hyperscale' ? '#4F46E5' : '#94A3B8' }} />
+          <Cpu size={16} style={{ color: activeTab === 'hyperscale' ? '#FFFFFF' : '#60716B' }} />
           <span>Hyper-Scale Vectors</span>
           <span style={{
             fontSize: '11px',
-            fontWeight: '800',
-            padding: '2px 9px',
+            fontWeight: '700',
+            padding: '2px 8px',
             borderRadius: '999px',
-            background: 'linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%)',
-            color: '#FFFFFF',
-            boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)'
+            background: activeTab === 'hyperscale' ? '#1D3B37' : '#FAFBF9',
+            color: activeTab === 'hyperscale' ? '#FFFFFF' : '#60716B',
+            border: `1px solid ${activeTab === 'hyperscale' ? '#2A4F4A' : '#D9E1DC'}`
           }}>
             2,000,000+ CORE
           </span>
@@ -755,35 +729,37 @@ export default function UserRules() {
           style={{
             flex: '1 1 0%',
             minWidth: '190px',
-            padding: '11px 18px',
-            borderRadius: '12px',
-            border: activeTab === 'custom' ? '1px solid #FBCFE8' : '1px solid transparent',
-            background: activeTab === 'custom' ? '#FDF2F8' : 'transparent',
-            color: activeTab === 'custom' ? '#BE185D' : '#64748B',
-            fontWeight: activeTab === 'custom' ? '800' : '600',
-            fontSize: '13.5px',
+            padding: '10px 18px',
+            borderRadius: '8px',
+            border: activeTab === 'custom' ? '1px solid #0B2522' : 'none',
+            background: activeTab === 'custom' ? '#0B2522' : 'transparent',
+            color: activeTab === 'custom' ? '#FFFFFF' : '#60716B',
+            fontWeight: activeTab === 'custom' ? '700' : '600',
+            fontSize: '13px',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            transition: 'all 0.2s ease'
+            boxShadow: activeTab === 'custom' ? '0 2px 8px rgba(11, 37, 34, 0.15)' : 'none',
+            transition: 'all 0.15s ease'
           }}
         >
-          <SlidersHorizontal size={18} style={{ color: activeTab === 'custom' ? '#DB2777' : '#94A3B8' }} />
+          <SlidersHorizontal size={16} style={{ color: activeTab === 'custom' ? '#FFFFFF' : '#60716B' }} />
           <span>My Custom Rules</span>
           <span style={{
-            fontSize: '11.5px',
+            fontSize: '11px',
             fontWeight: '700',
             padding: '2px 8px',
             borderRadius: '999px',
-            background: activeTab === 'custom' ? '#FCE7F3' : '#F1F5F9',
-            color: activeTab === 'custom' ? '#9D174D' : '#64748B'
+            background: activeTab === 'custom' ? '#1D3B37' : '#FAFBF9',
+            color: activeTab === 'custom' ? '#FFFFFF' : '#60716B',
+            border: `1px solid ${activeTab === 'custom' ? '#2A4F4A' : '#D9E1DC'}`
           }}>
             {customRules.length}
           </span>
           {!canUseCustomRules && (
-            <Crown size={14} style={{ color: '#D97706', marginLeft: '2px' }} title="Paid Plan Feature" />
+            <Crown size={13} style={{ color: activeTab === 'custom' ? '#FFFFFF' : '#60716B', marginLeft: '2px' }} title="Paid Plan Feature" />
           )}
         </button>
       </div>
@@ -797,9 +773,9 @@ export default function UserRules() {
           <div style={{
             background: '#FFFFFF',
             borderRadius: '16px',
-            border: '1px solid #E2E8F0',
+            border: '1px solid #D9E1DC',
             padding: '22px 26px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
               <div>
@@ -919,9 +895,9 @@ export default function UserRules() {
                           fontWeight: '700',
                           padding: '4px 10px',
                           borderRadius: '6px',
-                          border: `1px solid ${vec.borderLight}`,
-                          background: vec.bgLight,
-                          color: vec.color,
+                          border: '1px solid #D9E1DC',
+                          background: '#FFFFFF',
+                          color: '#10201E',
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -945,9 +921,9 @@ export default function UserRules() {
             style={{
               background: '#FFFFFF',
               borderRadius: '16px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid #D9E1DC',
               padding: '24px 28px',
-              boxShadow: '0 6px 24px rgba(0,0,0,0.04)'
+              boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
@@ -970,48 +946,26 @@ export default function UserRules() {
                 <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', marginRight: '4px' }}>
                   Presets:
                 </span>
-                <button
-                  type="button"
-                  onClick={() => triggerVectorTest("' UNION SELECT 1, user(), version()-- -")}
-                  style={{ padding: '5px 11px', fontSize: '11.5px', fontWeight: '700', borderRadius: '7px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', cursor: 'pointer' }}
-                >
-                  SQLi Injection
-                </button>
-                <button
-                  type="button"
-                  onClick={() => triggerVectorTest('<script>alert(document.cookie)</script>')}
-                  style={{ padding: '5px 11px', fontSize: '11.5px', fontWeight: '700', borderRadius: '7px', border: '1px solid #DDD6FE', background: '#F5F3FF', color: '#6D28D9', cursor: 'pointer' }}
-                >
-                  XSS Script
-                </button>
-                <button
-                  type="button"
-                  onClick={() => triggerVectorTest("<?php eval(base64_decode($_POST['cmd'])); ?>")}
-                  style={{ padding: '5px 11px', fontSize: '11.5px', fontWeight: '700', borderRadius: '7px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', cursor: 'pointer' }}
-                >
-                  RCE / WebShell
-                </button>
-                <button
-                  type="button"
-                  onClick={() => triggerVectorTest('../../../../../../../../etc/passwd')}
-                  style={{ padding: '5px 11px', fontSize: '11.5px', fontWeight: '700', borderRadius: '7px', border: '1px solid #FDE68A', background: '#FFFBEB', color: '#B45309', cursor: 'pointer' }}
-                >
-                  LFI Traversal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => triggerVectorTest('http://169.254.169.254/latest/meta-data/')}
-                  style={{ padding: '5px 11px', fontSize: '11.5px', fontWeight: '700', borderRadius: '7px', border: '1px solid #99F6E4', background: '#F0FDFA', color: '#0F766E', cursor: 'pointer' }}
-                >
-                  SSRF Cloud
-                </button>
-                <button
-                  type="button"
-                  onClick={() => triggerVectorTest('GET /api/v1/user/profile?ref=google_search')}
-                  style={{ padding: '5px 11px', fontSize: '11.5px', fontWeight: '700', borderRadius: '7px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#047857', cursor: 'pointer' }}
-                >
-                  Clean Traffic
-                </button>
+                {['SQLi Injection', 'XSS Script', 'RCE / WebShell', 'LFI Traversal', 'SSRF Cloud', 'Clean Traffic'].map((name, i) => {
+                  const samples = [
+                    "' UNION SELECT 1, user(), version()-- -",
+                    '<script>alert(document.cookie)</script>',
+                    "<?php eval(base64_decode($_POST['cmd'])); ?>",
+                    '../../../../../../../../etc/passwd',
+                    'http://169.254.169.254/latest/meta-data/',
+                    'GET /api/v1/user/profile?ref=google_search'
+                  ]
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => triggerVectorTest(samples[i])}
+                      style={{ padding: '5px 12px', fontSize: '11.5px', fontWeight: '700', borderRadius: '6px', border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E', cursor: 'pointer' }}
+                    >
+                      {name}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -1045,19 +999,19 @@ export default function UserRules() {
                   onClick={() => handleTestPayload()}
                   disabled={testing || !testPayload.trim()}
                   style={{
-                    padding: '14px 26px',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    background: '#0B2522',
                     color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '13.5px',
-                    fontWeight: '800',
+                    border: '1px solid #0B2522',
+                    fontSize: '13px',
+                    fontWeight: '700',
                     cursor: testing ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
-                    height: '52px',
+                    boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
+                    height: '46px',
                     whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease'
                   }}
@@ -1130,7 +1084,7 @@ export default function UserRules() {
                     padding: '5px 12px',
                     borderRadius: '8px',
                     background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
+                    border: '1px solid #D9E1DC',
                     color: '#0F172A',
                     fontWeight: '800',
                     display: 'inline-flex',
@@ -1146,7 +1100,7 @@ export default function UserRules() {
                     padding: '5px 12px',
                     borderRadius: '8px',
                     background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
+                    border: '1px solid #D9E1DC',
                     color: '#475569',
                     fontWeight: '700',
                     display: 'inline-flex',
@@ -1170,7 +1124,7 @@ export default function UserRules() {
           <div style={{
             background: '#FFFFFF',
             borderRadius: '16px',
-            border: '1px solid #E2E8F0',
+            border: '1px solid #D9E1DC',
             padding: '16px 20px',
             display: 'flex',
             justifyContent: 'space-between',
@@ -1244,14 +1198,14 @@ export default function UserRules() {
                     alignItems: 'center',
                     gap: '7px',
                     padding: '10px 20px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                    borderRadius: '8px',
+                    background: '#0B2522',
                     color: '#FFFFFF',
-                    border: 'none',
+                    border: '1px solid #0B2522',
                     fontSize: '13px',
-                    fontWeight: '800',
+                    fontWeight: '700',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                    boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
                     transition: 'all 0.15s ease'
                   }}
                 >
@@ -1266,13 +1220,14 @@ export default function UserRules() {
                     alignItems: 'center',
                     gap: '7px',
                     padding: '10px 20px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                    borderRadius: '8px',
+                    background: '#0B2522',
                     color: '#FFFFFF',
                     textDecoration: 'none',
                     fontSize: '13px',
-                    fontWeight: '800',
-                    boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)',
+                    fontWeight: '700',
+                    border: '1px solid #0B2522',
+                    boxShadow: '0 2px 8px rgba(11, 37, 34, 0.15)',
                     transition: 'all 0.15s ease'
                   }}
                 >
@@ -1348,8 +1303,8 @@ export default function UserRules() {
           <div style={{
             background: '#FFFFFF',
             borderRadius: '16px',
-            border: '1px solid #E2E8F0',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            border: '1px solid #D9E1DC',
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
             overflow: 'hidden'
           }}>
             <div style={{ overflowX: 'auto' }}>
@@ -1456,7 +1411,7 @@ export default function UserRules() {
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', maxWidth: '100%' }}>
                               <code style={{
                                 background: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
+                                border: '1px solid #D9E1DC',
                                 borderRadius: '8px',
                                 padding: '6px 10px',
                                 fontSize: '11.5px',
@@ -1729,7 +1684,7 @@ export default function UserRules() {
             style={{
               background: '#FFFFFF',
               borderRadius: '20px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid #D9E1DC',
               padding: '28px',
               maxWidth: '540px',
               width: '100%',

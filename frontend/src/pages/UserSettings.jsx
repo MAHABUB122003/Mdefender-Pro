@@ -266,7 +266,7 @@ export default function UserSettings() {
 
   if (loading && !profile) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#64748B' }}>
+      <div style={{ textAlign: 'center', padding: '80px 20px', color: '#60716B' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: '600' }}>
           <RotateCw size={20} style={{ animation: 'spin 1s linear infinite', color: '#E8792F' }} />
           <span>Loading Account &amp; Security Settings...</span>
@@ -376,7 +376,7 @@ export default function UserSettings() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', fontSize: '13px', color: '#64748B' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', fontSize: '13px', color: '#60716B' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Mail size={13} color="#87948D" />
                 <span>{profile?.email || '—'}</span>
@@ -501,7 +501,7 @@ export default function UserSettings() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Personal Details
             </h3>
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#60716B' }}>
               Update your account name and identity details.
             </p>
 
@@ -544,7 +544,7 @@ export default function UserSettings() {
                     border: '1px solid #E2E8F0',
                     background: '#F1F5F9',
                     fontSize: '13.5px',
-                    color: '#64748B',
+                    color: '#60716B',
                     boxSizing: 'border-box',
                     cursor: 'not-allowed'
                   }}
@@ -560,7 +560,7 @@ export default function UserSettings() {
                 style={{
                   padding: '9px 20px',
                   borderRadius: '8px',
-                  background: '#10201E',
+                  background: '#0B2522', border: '1px solid #0B2522',
                   color: '#FFFFFF',
                   border: 'none',
                   fontSize: '13px',
@@ -588,30 +588,30 @@ export default function UserSettings() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Account Metadata
             </h3>
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#60716B' }}>
               Overview of your MDefender credentials and active tier.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
-                <span style={{ fontSize: '13px', color: '#64748B' }}>Account Tier:</span>
+                <span style={{ fontSize: '13px', color: '#60716B' }}>Account Tier:</span>
                 <strong style={{ fontSize: '13px', color: '#10201E' }}>{planName}</strong>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
-                <span style={{ fontSize: '13px', color: '#64748B' }}>Username:</span>
+                <span style={{ fontSize: '13px', color: '#60716B' }}>Username:</span>
                 <strong style={{ fontSize: '13px', color: '#10201E' }}>{profile?.username || '—'}</strong>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
-                <span style={{ fontSize: '13px', color: '#64748B' }}>Member Since:</span>
+                <span style={{ fontSize: '13px', color: '#60716B' }}>Member Since:</span>
                 <span style={{ fontSize: '13px', color: '#10201E', fontWeight: '600' }}>
                   {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recently'}
                 </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0' }}>
-                <span style={{ fontSize: '13px', color: '#64748B' }}>Account Status:</span>
+                <span style={{ fontSize: '13px', color: '#60716B' }}>Account Status:</span>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: '700',
@@ -644,7 +644,7 @@ export default function UserSettings() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Change Account Password
             </h3>
-            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#60716B' }}>
               Ensure your account uses a strong, unique password to prevent unauthorized access.
             </p>
 
@@ -742,7 +742,7 @@ export default function UserSettings() {
                 style={{
                   padding: '10px 22px',
                   borderRadius: '8px',
-                  background: '#10201E',
+                  background: '#0B2522', border: '1px solid #0B2522',
                   color: '#FFFFFF',
                   border: 'none',
                   fontSize: '13px',
@@ -778,7 +778,7 @@ export default function UserSettings() {
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
                   Two-Factor Authentication (TOTP)
                 </h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
                   Protect your account with Google Authenticator, Authy, or 1Password.
                 </p>
               </div>
@@ -808,9 +808,9 @@ export default function UserSettings() {
                   style={{
                     padding: '9px 20px',
                     borderRadius: '8px',
-                    background: '#059669',
+                    background: '#0B2522',
                     color: '#FFFFFF',
-                    border: 'none',
+                    border: '1px solid #0B2522',
                     fontSize: '13px',
                     fontWeight: '700',
                     cursor: mfaLoading ? 'not-allowed' : 'pointer',
@@ -932,9 +932,9 @@ export default function UserSettings() {
                     style={{
                       padding: '8px 16px',
                       borderRadius: '6px',
-                      background: '#DC2626',
-                      color: '#FFFFFF',
-                      border: 'none',
+                      background: '#FFFFFF',
+                      color: '#10201E',
+                      border: '1px solid #D9E1DC',
                       fontSize: '12.5px',
                       fontWeight: '700',
                       cursor: 'pointer'
@@ -964,7 +964,7 @@ export default function UserSettings() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Update Registered Email
             </h3>
-            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#60716B' }}>
               We will send a confirmation link to your new email address to complete verification.
             </p>
 
@@ -1023,7 +1023,7 @@ export default function UserSettings() {
                 style={{
                   padding: '10px 22px',
                   borderRadius: '8px',
-                  background: '#10201E',
+                  background: '#0B2522', border: '1px solid #0B2522',
                   color: '#FFFFFF',
                   border: 'none',
                   fontSize: '13px',
@@ -1057,7 +1057,7 @@ export default function UserSettings() {
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
               Master Account API Key
             </h3>
-            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#64748B' }}>
+            <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#60716B' }}>
               Used for programmatic management, custom CI/CD pipelines, and high-throughput microservice protection.
             </p>
 
@@ -1069,7 +1069,7 @@ export default function UserSettings() {
               marginBottom: '18px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11.5px', fontWeight: '700', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.4px' }}>
+                <span style={{ fontSize: '11.5px', fontWeight: '700', textTransform: 'uppercase', color: '#60716B', letterSpacing: '0.4px' }}>
                   Secret Key
                 </span>
 
@@ -1099,7 +1099,7 @@ export default function UserSettings() {
                     type="button"
                     onClick={handleCopyApiKey}
                     style={{
-                      background: '#10201E',
+                      background: '#0B2522', border: '1px solid #0B2522',
                       border: 'none',
                       color: '#FFFFFF',
                       borderRadius: '6px',
@@ -1135,7 +1135,7 @@ export default function UserSettings() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-              <span style={{ fontSize: '12.5px', color: '#64748B' }}>
+              <span style={{ fontSize: '12.5px', color: '#60716B' }}>
                 Need to invalidate your existing key? Regenerating creates a new live token immediately.
               </span>
 
