@@ -1536,6 +1536,115 @@ class SaveScheduleRequest(BaseModel):
     retention: int = 5
 
 
+@router.get("/fleet/activity")
+async def get_fleet_activity_logs(
+    limit: int = 100,
+    skip: int = 0,
+    category: str | None = None,
+    website_id: str | None = None,
+    user=Depends(get_current_user)
+):
+    """Retrieve immutable audit trail and fleet administrative activity logs for the current tenant."""
+    db = MongoDB()
+    from bson import ObjectId
+    u_id = str(user["id"])
+    u_email = user.get("email", "")
+
+    # Multi-tenant isolation: strictly query records belonging to this user
+    u_cond = [{"user_id": u_id}]
+    if ObjectId.is_valid(u_id):
+        u_cond.append({"user_id": ObjectId(u_id)})
+    if u_email:
+        u_cond.append({"user_email": u_email})
+        u_cond.append({"user_id": u_email})
+
+    query = {"$or": u_cond}
+
+    cursor = db.audit_logs.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+    raw_logs = list(cursor)
+
+    formatted_logs = []
+    for log in raw_logs:
+        act = str(log.get("action", ""))
+        det = log.get("details") or {}
+        if not isinstance(det, dict):
+            det = {}
+
+        # Categorize
+        cat = det.get("category")
+        if not cat:
+            if any(k in act.lower() for k in ["backup", "snapshot", "restore"]):
+                cat = "backup"
+            elif any(k in act.lower() for k in ["plugin", "theme", "update", "core"]):
+                cat = "update"
+            elif any(k in act.lower() for k in ["block", "quarantine", "attack", "blacklist", "whitelist", "security", "threat", "mitigat"]):
+                cat = "security"
+            elif any(k in act.lower() for k in ["login", "logout", "auth", "session", "mfa", "password", "register", "key", "token"]):
+                cat = "security"
+            else:
+                cat = "config"
+
+        # Apply category filter if provided
+        if category and category != "all" and cat != category:
+            continue
+
+        # Target website filter
+        target_site = det.get("target") or det.get("domain") or det.get("website_id") or "Global Fleet"
+        if website_id and website_id != "all":
+            if det.get("website_id") != website_id and det.get("domain") != website_id:
+                continue
+
+        # Human-readable title
+        title_map = {
+            "login": "User Session Authenticated",
+            "logout": "User Session Terminated",
+            "ip_quarantined": f"IP {det.get('ip', '')} Quarantined to Blacklist",
+            "ip_blacklisted": f"IP {det.get('ip', '')} Blacklisted ({det.get('duration', 'Permanent')})",
+            "ip_unblocked": f"IP {det.get('ip', '')} Restored & Unblocked",
+            "website_under_attack_toggled": f"DDoS Shield {'Activated (PoW Challenge)' if det.get('under_attack_mode') else 'Disengaged (Standby)'}",
+            "under_attack_mode_activated": "DDoS Emergency Shield Activated (PoW Challenge)",
+            "under_attack_mode_standby": "DDoS Under Attack Mode Disengaged (Standby)",
+            "backup_created": f"Backup Snapshot Created ({det.get('type', 'Full')})",
+            "backup_restored": f"Disaster Recovery: Backup Restored ({det.get('filename', '')})",
+            "backup_deleted": f"Backup Archive Purged ({det.get('filename', '')})",
+            "api_key_created": "Scoped Edge API Token Issued",
+            "api_key_rotated": "Edge API Key Rotated",
+            "website_security_updated": "WAF & Security Hardening Policy Dispatched",
+        }
+        human_action = title_map.get(act) or act.replace("_", " ").title()
+
+        badge_map = {
+            "config": "CONFIG",
+            "backup": "BACKUP",
+            "update": "UPDATE",
+            "security": "SECURITY",
+        }
+        badge = badge_map.get(cat, "AUDIT")
+
+        ts = log.get("timestamp") or log.get("created_at")
+        time_str = ts.strftime("%Y-%m-%d %H:%M:%S") if isinstance(ts, datetime) else str(ts or "Recent")
+
+        formatted_logs.append({
+            "id": str(log.get("_id", "")),
+            "action": human_action,
+            "raw_action": act,
+            "type": cat,
+            "badge": badge,
+            "user": det.get("operator") or log.get("user_email") or u_email or "Operator",
+            "target": target_site,
+            "ip_address": log.get("ip_address") or "127.0.0.1",
+            "time": time_str,
+            "timestamp": time_str,
+            "status": log.get("status", "success"),
+            "details": det
+        })
+
+    return success({
+        "logs": formatted_logs,
+        "total": len(formatted_logs)
+    })
+
+
 @router.get("/fleet/backups")
 async def get_fleet_backups(user=Depends(get_current_user)):
     """Aggregate backup catalog and storage metrics across all user WordPress sites."""
@@ -1580,6 +1689,23 @@ async def create_website_backup(website_id: str, body: CreateBackupRequest, user
     website = get_owned_website(user, website_id)
     svc = BackupService()
     res = svc.create_backup(website, backup_type=body.type, components=body.components, note=body.note or "")
+    try:
+        from src.auth.audit_service import AuditService
+        AuditService().log(
+            user_id=str(user["id"]),
+            action="backup_created",
+            ip_address="system",
+            details={
+                "website_id": website_id,
+                "domain": website.get("domain", ""),
+                "target": website.get("domain", website_id),
+                "type": body.type,
+                "note": body.note or "Manual snapshot",
+                "category": "backup"
+            }
+        )
+    except Exception:
+        pass
     return success(res)
 
 
@@ -1598,6 +1724,22 @@ async def restore_website_backup(website_id: str, filename: str, user=Depends(ge
     svc = BackupService()
     try:
         res = svc.restore_backup(website, filename)
+        try:
+            from src.auth.audit_service import AuditService
+            AuditService().log(
+                user_id=str(user["id"]),
+                action="backup_restored",
+                ip_address="system",
+                details={
+                    "website_id": website_id,
+                    "domain": website.get("domain", ""),
+                    "target": website.get("domain", website_id),
+                    "filename": filename,
+                    "category": "backup"
+                }
+            )
+        except Exception:
+            pass
         return success(res)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1609,6 +1751,22 @@ async def delete_website_backup(website_id: str, filename: str, user=Depends(get
     website = get_owned_website(user, website_id)
     svc = BackupService()
     res = svc.delete_backup(website, filename)
+    try:
+        from src.auth.audit_service import AuditService
+        AuditService().log(
+            user_id=str(user["id"]),
+            action="backup_deleted",
+            ip_address="system",
+            details={
+                "website_id": website_id,
+                "domain": website.get("domain", ""),
+                "target": website.get("domain", website_id),
+                "filename": filename,
+                "category": "backup"
+            }
+        )
+    except Exception:
+        pass
     return success(res)
 
 

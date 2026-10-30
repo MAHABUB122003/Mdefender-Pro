@@ -473,6 +473,10 @@ export const api = {
     apiCall(`/api/v1/websites/${websiteId}/ssl/probe`),
   getWebsiteHealthAudit: (websiteId) =>
     apiCall(`/api/v1/websites/${websiteId}/health-audit`),
+  getFleetActivityLogs: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/websites/fleet/activity${qs ? '?' + qs : ''}`)
+  },
   toggleBotChallenge: (websiteId, enabled, mode = 'interactive_turnstile') =>
     apiCall(`/api/v1/websites/${websiteId}/bot-challenge`, {
       method: 'POST',

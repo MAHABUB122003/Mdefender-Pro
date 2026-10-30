@@ -1605,6 +1605,23 @@ async def user_add_blacklist(request: Request, user: dict = Depends(verify_user_
     except Exception:
         pass
             
+    try:
+        audit_svc.log(
+            user_id=user_id_str,
+            action="ip_quarantined",
+            ip_address=ip,
+            details={
+                "ip": ip,
+                "reason": reason,
+                "duration": duration_label,
+                "website_id": website_id,
+                "target": website_domain if website_id != 'all' else 'Global Fleet',
+                "category": "security"
+            }
+        )
+    except Exception:
+        pass
+
     scope_txt = f" on {website_domain}" if website_id != 'all' else " across security fleet"
     return {'status': 'success', 'message': f'IP {ip} blacklisted successfully{scope_txt} ({duration_label})'}
 
@@ -1645,6 +1662,21 @@ async def user_delete_blacklist(request: Request, user: dict = Depends(verify_us
     try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
         push_instant_sync_to_wordpress(user_id=user_id_str, website_id=website_id if website_id != 'all' else None)
+    except Exception:
+        pass
+
+    try:
+        audit_svc.log(
+            user_id=user_id_str,
+            action="ip_unblocked",
+            ip_address=ip,
+            details={
+                "ip": ip,
+                "website_id": website_id,
+                "target": website_id if website_id != 'all' else 'Global Fleet',
+                "category": "security"
+            }
+        )
     except Exception:
         pass
 
