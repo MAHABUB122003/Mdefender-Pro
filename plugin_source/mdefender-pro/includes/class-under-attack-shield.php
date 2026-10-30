@@ -36,7 +36,78 @@ class WAF_FW_Under_Attack_Shield {
      * Checks if Under Attack Mode is currently active.
      */
     public function is_active() {
-        return get_option('waf_fw_under_attack_mode', 'no') === 'yes' || get_option('waf_under_attack_mode', 'no') === 'yes';
+        if (get_option('waf_fw_under_attack_mode', 'no') === 'yes' || get_option('waf_under_attack_mode', 'no') === 'yes') {
+            return true;
+        }
+
+        // Auto-Adaptive DDoS Detection (Active flood window)
+        $auto_active_until = (int) get_transient('waf_fw_auto_under_attack_until');
+        if ($auto_active_until > time()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Autonomous Global DDoS Surge Detector.
+     * Tracks site-wide ingress volume across 3-second micro-windows.
+     * If aggregate unauthenticated traffic surges past safe origin capacity (e.g. 60 req/3s),
+     * automatically trips the Under Attack PoW shield for 10 minutes to protect MySQL & PHP-FPM.
+     */
+    public function check_autonomous_surge($ip) {
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0' ||
+            strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
+            return false;
+        }
+
+        if (get_option('waf_fw_auto_ddos_protection', 'yes') === 'no') {
+            return false;
+        }
+
+        $slice = floor(time() / 3);
+        $key = 'waf_global_surge_' . $slice;
+        $surge_threshold = (int) get_option('waf_fw_surge_threshold', 60);
+
+        if (function_exists('apcu_inc')) {
+            $count = apcu_inc($key, 1, $success, 6);
+            if ($count >= $surge_threshold) {
+                $this->trigger_auto_under_attack($count, 600);
+                return true;
+            }
+            return false;
+        }
+
+        $count = (int) get_transient($key);
+        if ($count >= $surge_threshold) {
+            $this->trigger_auto_under_attack($count, 600);
+            return true;
+        }
+        set_transient($key, $count + 1, 6);
+        return false;
+    }
+
+    public function trigger_auto_under_attack($surge_count, $duration_seconds = 600) {
+        $existing = (int) get_transient('waf_fw_auto_under_attack_until');
+        if ($existing < time()) {
+            set_transient('waf_fw_auto_under_attack_until', time() + $duration_seconds, $duration_seconds);
+            set_transient('waf_fw_auto_under_attack_reason', 'Volumetric L7 flood surge detected: ' . $surge_count . ' reqs/3s', $duration_seconds);
+
+            if (class_exists('WAF_FW_Logger')) {
+                WAF_FW_Logger::instance()->log_attack([
+                    'ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+                    'url' => $_SERVER['REQUEST_URI'] ?? '/',
+                    'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+                    'attack_type' => 'DDoS Flood Protection',
+                    'rule_matched' => 'Autonomous Anti-DDoS Surge Trigger',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Botnet Cluster',
+                    'status' => 'blocked',
+                    'action' => 'Auto-Adaptive Under Attack Shield Activated (10m)',
+                    'score' => 1.0,
+                    'created_at' => current_time('mysql')
+                ]);
+            }
+        }
     }
 
     /**

@@ -232,6 +232,7 @@ class WAF_FW_Engine {
             // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield
             if (class_exists('WAF_FW_Under_Attack_Shield')) {
                 $shield = WAF_FW_Under_Attack_Shield::instance();
+                $shield->check_autonomous_surge($ip);
                 if ($shield->is_active() && !$shield->has_valid_clearance($ip)) {
                     $shield->render_challenge_screen($ip);
                     exit;
