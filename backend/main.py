@@ -4,6 +4,7 @@ import sys
 import json
 import secrets
 import asyncio
+import traceback
 from datetime import datetime, timedelta
 from typing import Optional
 

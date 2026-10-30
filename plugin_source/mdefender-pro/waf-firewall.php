@@ -471,8 +471,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                 if (!function_exists('get_plugins')) {
                     require_once ABSPATH . 'wp-admin/includes/plugin.php';
                 }
-                $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? '');
-                $target_status = sanitize_text_field($_REQUEST['status'] ?? $pushed_data['status'] ?? '');
+                $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? $_REQUEST['plugin'] ?? $pushed_data['plugin'] ?? '');
+                $target_status = sanitize_text_field($_REQUEST['status'] ?? $pushed_data['status'] ?? $pushed_data['action_status'] ?? $pushed_data['action_type'] ?? '');
+                if (!$target_status && isset($pushed_data['action']) && in_array($pushed_data['action'], ['activate', 'deactivate'])) { $target_status = $pushed_data['action']; }
                 if (!$plugin_file) {
                     $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
                     if ($pid) {
@@ -1065,8 +1066,9 @@ add_action('rest_api_init', function() {
                 if (!function_exists('get_plugins')) {
                     require_once ABSPATH . 'wp-admin/includes/plugin.php';
                 }
-                $plugin_file = sanitize_text_field($pushed_data['plugin_file'] ?? $_REQUEST['plugin_file'] ?? '');
-                $target_status = sanitize_text_field($pushed_data['status'] ?? $_REQUEST['status'] ?? '');
+                $plugin_file = sanitize_text_field($pushed_data['plugin_file'] ?? $_REQUEST['plugin_file'] ?? $pushed_data['plugin'] ?? $_REQUEST['plugin'] ?? '');
+                $target_status = sanitize_text_field($pushed_data['status'] ?? $_REQUEST['status'] ?? $pushed_data['action_status'] ?? $pushed_data['action_type'] ?? '');
+                if (!$target_status && isset($pushed_data['action']) && in_array($pushed_data['action'], ['activate', 'deactivate'])) { $target_status = $pushed_data['action']; }
                 if (!$plugin_file) {
                     $pid = sanitize_text_field($pushed_data['plugin_id'] ?? $_REQUEST['plugin_id'] ?? '');
                     if ($pid) {
