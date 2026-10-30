@@ -248,6 +248,9 @@ class BackupService:
                     comps = ["Database (SQL)"] if rb_type == "database" else (["Plugins", "Themes", "Uploads"] if rb_type == "files" else ["Database", "Plugins", "Themes", "Uploads", "Core"])
                     
                     approx_bytes = self.parse_size_to_bytes(rsize_str)
+                    # Filter out empty or broken dummy archives (under 5KB)
+                    if approx_bytes < 5000 and "KB" not in rsize_str and "MB" not in rsize_str and "GB" not in rsize_str:
+                        continue
                     total_size_bytes += approx_bytes
 
                     fresh_backups.append({
