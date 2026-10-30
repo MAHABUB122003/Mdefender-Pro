@@ -164,8 +164,15 @@ class WAF_FW_RASP_Engine {
             // Create function backdoor
             '/create_function\s*\([^,]+,\s*(?:\$_(?:GET|POST|REQUEST)|base64_decode)/i',
             // Unauthorized WordPress Administrator Account Backdoor
-            '/(?:wp_create_user|wp_insert_user)[\s\S]{0,150}(?:set_role\s*\(\s*[\'"]administrator[\'"]|[\'"]role[\'"]\s*=>\s*[\'"]administrator[\'"])/i',
-            // Heavy chr() ASCII concatenation obfuscation
+            // Unauthorized WordPress Administrator Account Backdoor
+            // Unauthorized WordPress Administrator Account Backdoor
+            '/(?:wp_create_user|wp_insert_user|add_user_meta)[\s\S]{0,300}(?:administrator|manage_options|super_admin)/i',
+            // Stealth Auth Cookie Bypass Backdoor
+            '/wp_set_auth_cookie\s*\([\s\S]{0,80}\$_(?:GET|POST|COOKIE|REQUEST)/i',
+            '/wp_set_current_user\s*\([\s\S]{0,80}\$_(?:GET|POST|COOKIE|REQUEST)/i',
+            // Search Engine Cloaking & Japanese Keyword Spammer
+            '/(?:strpos|preg_match)[\s\S]{0,60}HTTP_USER_AGENT[\s\S]{0,80}(?:googlebot|bingbot|yahoo|baiduspider)/i',
+// Heavy chr() ASCII concatenation obfuscation
             '/chr\s*\(\s*\d+\s*\)\s*\.\s*chr/i',
             // In-browser cryptominer / keylogger
             '/CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot/i',
