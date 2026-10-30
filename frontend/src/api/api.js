@@ -608,6 +608,31 @@ export const api = {
   setCoreAutoUpdatePolicy: (websiteId, policy) => apiCall(`/api/v1/wordpress/core/${websiteId}/auto-update-policy`, { method: 'POST', body: JSON.stringify({ policy }) }),
   updateWordpressCore: (websiteId) => apiCall(`/api/v1/wordpress/core/${websiteId}/update`, { method: 'POST' }),
   updateAllWordpressCore: () => apiCall('/api/v1/wordpress/core/update-all', { method: 'POST' }),
+
+  // Enterprise Backup & Disaster Recovery APIs
+  getFleetBackups: () => apiCall('/api/v1/websites/fleet/backups'),
+  getWebsiteBackups: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/backups`),
+  createWebsiteBackup: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/backups`, { method: 'POST', body: JSON.stringify(data) }),
+  restoreWebsiteBackup: (websiteId, filename) => apiCall(`/api/v1/websites/${websiteId}/backups/${encodeURIComponent(filename)}/restore`, { method: 'POST' }),
+  deleteWebsiteBackup: (websiteId, filename) => apiCall(`/api/v1/websites/${websiteId}/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' }),
+  uploadWebsiteBackup: async (websiteId, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const headers = {}
+    const accessToken = getAccessToken()
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    const csrf = getCsrfToken()
+    if (csrf) headers['X-CSRF-Token'] = csrf
+    const response = await fetch(`${API_BASE}/api/v1/websites/${websiteId}/backups/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: formData
+    })
+    return response.json()
+  },
+  saveWebsiteBackupSchedule: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/backups/schedule`, { method: 'POST', body: JSON.stringify(data) }),
+  getWebsiteBackupDownloadUrl: (websiteId, filename) => `${API_BASE}/api/v1/websites/${websiteId}/backups/${encodeURIComponent(filename)}/download`,
 }
 
 export default api

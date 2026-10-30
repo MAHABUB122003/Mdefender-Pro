@@ -1252,3 +1252,152 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
         "results": results,
         "websites": fresh_websites,
     })
+
+
+# -----------------------------------------------------------------------------
+# Enterprise Backup & Disaster Recovery Endpoints
+# -----------------------------------------------------------------------------
+from fastapi import File, UploadFile
+from fastapi.responses import FileResponse
+from src.services.backup_service import BackupService
+
+
+class CreateBackupRequest(BaseModel):
+    type: str = "full"
+    components: list[str] | None = None
+    note: str | None = None
+
+
+class SaveScheduleRequest(BaseModel):
+    enabled: bool = False
+    frequency: str = "daily"
+    type: str = "full"
+    retention: int = 5
+
+
+@router.get("/fleet/backups")
+async def get_fleet_backups(user=Depends(get_current_user)):
+    """Aggregate backup catalog and storage metrics across all user WordPress sites."""
+    db = MongoDB()
+    from bson import ObjectId
+    u_cond = [{"user_id": str(user["id"])}]
+    if ObjectId.is_valid(str(user["id"])):
+        u_cond.append({"user_id": ObjectId(str(user["id"]))})
+
+    sites = list(db.websites.find({"$or": u_cond}))
+    svc = BackupService()
+    all_backups = []
+    total_bytes = 0
+
+    for s in sites:
+        res = svc.get_website_backups(s)
+        all_backups.extend(res.get("backups", []))
+        total_bytes += res.get("total_bytes", 0)
+
+    all_backups.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
+    return success({
+        "total_backups": len(all_backups),
+        "total_size": BackupService.format_size(total_bytes),
+        "total_bytes": total_bytes,
+        "latest_backup": all_backups[0] if all_backups else None,
+        "backups": all_backups
+    })
+
+
+@router.get("/{website_id}/backups")
+async def get_website_backups(website_id: str, user=Depends(get_current_user)):
+    """List all disaster recovery backups and schedule settings for a specific website."""
+    website = get_owned_website(user, website_id)
+    svc = BackupService()
+    data = svc.get_website_backups(website)
+    return success(data)
+
+
+@router.post("/{website_id}/backups")
+async def create_website_backup(website_id: str, body: CreateBackupRequest, user=Depends(get_current_user)):
+    """Create a new full, database, files, or custom disaster recovery snapshot."""
+    website = get_owned_website(user, website_id)
+    svc = BackupService()
+    res = svc.create_backup(website, backup_type=body.type, components=body.components, note=body.note or "")
+    return success(res)
+
+
+@router.get("/{website_id}/backups/{filename}/download")
+async def download_website_backup(website_id: str, filename: str, user=Depends(get_current_user)):
+    """Directly stream and download the physical backup archive (.zip or .sql)."""
+    website = get_owned_website(user, website_id)
+    svc = BackupService()
+    clean_fn = os.path.basename(filename)
+    bdir = svc.get_backup_dir(website)
+    fpath = os.path.join(bdir, clean_fn)
+
+    if not os.path.isfile(fpath):
+        bks = website.get("backups") or []
+        rec = next((b for b in bks if b.get("filename") == clean_fn), None)
+        if not rec:
+            raise HTTPException(status_code=404, detail=f"Backup file '{clean_fn}' not found")
+        wp_root = svc.get_wordpress_root(website)
+        svc._generate_sql_dump(wp_root, fpath, website.get("domain") or "wordpress")
+
+    media_type = "application/zip" if clean_fn.endswith(".zip") else "application/sql"
+    return FileResponse(
+        path=fpath,
+        filename=clean_fn,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{clean_fn}"'}
+    )
+
+
+@router.post("/{website_id}/backups/{filename}/restore")
+async def restore_website_backup(website_id: str, filename: str, user=Depends(get_current_user)):
+    """1-Click Disaster Recovery: Reconstitute database and files from backup archive."""
+    website = get_owned_website(user, website_id)
+    svc = BackupService()
+    try:
+        res = svc.restore_backup(website, filename)
+        return success(res)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{website_id}/backups/{filename}")
+async def delete_website_backup(website_id: str, filename: str, user=Depends(get_current_user)):
+    """Permanently delete a backup archive from server storage and catalog."""
+    website = get_owned_website(user, website_id)
+    svc = BackupService()
+    res = svc.delete_backup(website, filename)
+    return success(res)
+
+
+@router.post("/{website_id}/backups/upload")
+async def upload_website_backup(
+    website_id: str,
+    file: UploadFile = File(...),
+    user=Depends(get_current_user)
+):
+    """Upload a .zip, .sql, or .sql.gz archive for site migration, cloning, or cataloging."""
+    website = get_owned_website(user, website_id)
+    clean_fn = os.path.basename(file.filename)
+    ext = os.path.splitext(clean_fn)[1].lower()
+    if ext not in (".zip", ".sql", ".gz"):
+        raise HTTPException(status_code=400, detail="Only .zip, .sql, or compressed .sql.gz backup archives are supported.")
+
+    file_bytes = await file.read()
+    svc = BackupService()
+    res = svc.save_uploaded_archive(website, clean_fn, file_bytes)
+    return success(res)
+
+
+@router.post("/{website_id}/backups/schedule")
+async def save_website_backup_schedule(website_id: str, body: SaveScheduleRequest, user=Depends(get_current_user)):
+    """Configure automated WP-Cron recurring backup policies (frequency, type, retention)."""
+    website = get_owned_website(user, website_id)
+    svc = BackupService()
+    res = svc.save_schedule_settings(
+        website,
+        enabled=body.enabled,
+        frequency=body.frequency,
+        backup_type=body.type,
+        retention=body.retention
+    )
+    return success(res)
