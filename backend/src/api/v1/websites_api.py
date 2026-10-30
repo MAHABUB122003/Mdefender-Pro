@@ -503,6 +503,7 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
     })
 
 
+@router.post("/{website_id}/security-settings")
 @router.patch("/{website_id}/security-settings")
 async def update_security_settings(website_id: str, body: SecuritySettingsUpdate, user=Depends(get_current_user)):
     website = get_owned_website(user, website_id)

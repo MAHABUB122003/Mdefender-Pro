@@ -229,6 +229,25 @@ class WAF_FW_Engine {
                 return $this->do_block($ip, $url, $method, 'Country Blocked', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Access denied: Traffic from your country is restricted by security policy.', 'GeoIP Rule');
             }
 
+            // Security Hardening Suite Enforcement
+            if (get_option('waf_fw_disable_xmlrpc', 'yes') === 'yes' || get_option('waf_harden_xmlrpc_mode') === 'complete') {
+                if (stripos($url, 'xmlrpc.php') !== false) {
+                    return $this->do_block($ip, $url, $method, 'XML-RPC Access Denied', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'XML-RPC protocol is disabled by MDefender Pro security hardening policy.', 'Security Hardening: Disable XML-RPC');
+                }
+            }
+
+            if (get_option('waf_harden_block_uploads_php', 'yes') === 'yes') {
+                if (stripos($url, 'wp-content/uploads') !== false && preg_match('/\.(?:php\d*|phtml|phar|inc)\b/i', $url)) {
+                    return $this->do_block($ip, $url, $method, 'Uploads PHP Execution Blocked', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Direct PHP script execution inside uploads directory is strictly forbidden.', 'Security Hardening: Block Uploads PHP');
+                }
+            }
+
+            if (get_option('waf_fw_prevent_user_enumeration', 'yes') === 'yes' || get_option('waf_harden_user_enumeration') === 'enabled') {
+                if ((isset($_GET['author']) && is_numeric($_GET['author'])) || (stripos($url, 'wp-json/wp/v2/users') !== false && !is_user_logged_in())) {
+                    return $this->do_block($ip, $url, $method, 'User Enumeration Blocked', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Author ID user enumeration attempt blocked by security hardening.', 'Security Hardening: Prevent User Enumeration');
+                }
+            }
+
             // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield
             if (class_exists('WAF_FW_Under_Attack_Shield')) {
                 $shield = WAF_FW_Under_Attack_Shield::instance();

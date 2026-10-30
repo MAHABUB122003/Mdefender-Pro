@@ -831,6 +831,15 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                         hold_ms = str(sync_payload["config"].get("hold_press_duration_ms", 2000))
                         turn_en = "yes" if sync_payload["config"].get("turnstile_enabled") else "no"
                         turn_mode = str(sync_payload["config"].get("turnstile_mode", "forms"))
+                        xmlrpc_val = "yes" if sync_payload["config"].get("disable_xmlrpc") else "no"
+                        xmlrpc_mode = "complete" if sync_payload["config"].get("disable_xmlrpc") else "off"
+                        file_edit_val = "yes" if sync_payload["config"].get("disable_file_editing") else "no"
+                        user_enum_val = "yes" if sync_payload["config"].get("prevent_user_enumeration") else "no"
+                        wp_ver_val = "yes" if sync_payload["config"].get("hide_wp_version") else "no"
+                        uploads_php_val = "yes" if sync_payload["config"].get("block_uploads_php") else "no"
+                        sec_headers_val = "enabled" if sync_payload["config"].get("security_headers") else "disabled"
+                        login_slug_val = str(sync_payload["config"].get("custom_login_slug", "")).strip()
+                        hide_login_val = "yes" if sync_payload["config"].get("hide_login_url") else "no" 
                         php_code = f"""
                         $c = @mysqli_connect('127.0.0.1', 'root', '', 'mahabub');
                         if ($c) {{
@@ -854,6 +863,22 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hold_press_duration_ms', '$hold_ms', 'yes') ON DUPLICATE KEY UPDATE option_value = '$hold_ms'");
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_turnstile_enabled', '$turn_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_en'");
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_turnstile_mode', '$turn_mode', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_mode'");
+                            
+                            // Security Hardening Suite Options Sync
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_disable_xmlrpc', '{xmlrpc_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{xmlrpc_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_xmlrpc_mode', '{xmlrpc_mode}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{xmlrpc_mode}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_disable_file_editing', '{file_edit_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{file_edit_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_disable_file_editor', '{file_edit_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{file_edit_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_prevent_user_enumeration', '{user_enum_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{user_enum_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_user_enumeration', '{'enabled' if xmlrpc_val == 'yes' else 'disabled'}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{'enabled' if xmlrpc_val == 'yes' else 'disabled'}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_hide_wp_version', '{wp_ver_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{wp_ver_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_block_uploads_php', '{uploads_php_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{uploads_php_val}'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_security_headers', '{sec_headers_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{sec_headers_val}'");
+                            if (!empty('{login_slug_val}') && '{hide_login_val}' === 'yes') {{
+                                mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_login_rename', '{login_slug_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{login_slug_val}'");
+                            }} else {{
+                                mysqli_query($c, "DELETE FROM wp_options WHERE option_name = 'waf_harden_login_rename'");
+                            }}
                             
                             // Synchronize wp_waf_blacklist MySQL table
                             if (empty($bl)) {{
