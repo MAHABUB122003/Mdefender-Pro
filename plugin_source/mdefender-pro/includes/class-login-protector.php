@@ -365,16 +365,25 @@ class WAF_FW_Login_Protector {
         // Store active seed in transient with 300s expiration
         set_transient("mdf_hp_{$seed_nonce}", $client_ip, 300);
         ?>
-        <div class="mdf-hold-press-wrapper" style="margin: 16px 0; padding: 14px; background: #0c1615; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; user-select: none;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
-                <span style="font-size: 11px; font-weight: 800; color: #E8792F; text-transform: uppercase; letter-spacing: 0.5px;">MDefender Pro Defense</span>
-                <span id="mdfHoldStatus" style="font-size: 11px; color: #94a3b8;">Biometric Human Verification</span>
+        <div class="mdf-hold-press-wrapper" style="margin: 18px 0; padding: 14px 16px; background: #081412; border: 1px solid #1a3832; border-radius: 12px; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; user-select: none; box-shadow: 0 4px 16px rgba(0,0,0,0.25);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px;">
+                <span style="font-size: 11px; font-weight: 700; color: #87a49e; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2A8B68" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    MDEFENDER PRO
+                </span>
+                <span id="mdfHoldStatus" style="font-size: 10.5px; font-weight: 600; color: #53756e;">Verification Gateway</span>
             </div>
-            <button type="button" id="mdfHoldButton" style="width: 100%; height: 44px; position: relative; overflow: hidden; border: 1.5px solid #E8792F; background: rgba(232, 121, 47, 0.12); color: #FFFFFF; font-weight: 700; font-size: 13px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #E8792F; transition: width 0.05s linear; opacity: 0.85;"></span>
-                <span id="mdfHoldText" style="position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    Press &amp; Hold for <?php echo round($duration_ms / 1000, 1); ?>s to Verify
+            <button type="button" id="mdfHoldButton" style="width: 100%; height: 48px; position: relative; overflow: hidden; border: 1.5px solid #234d44; background: #0c1e1b; color: #FFFFFF; font-weight: 700; font-size: 13.5px; border-radius: 10px; cursor: pointer; transition: border-color 0.2s, background 0.2s; outline: none;">
+                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #184e44, #2A8B68); opacity: 0.85; transition: width 0.04s linear; pointer-events: none;"></span>
+                <span id="mdfHoldText" style="position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 9px; pointer-events: none;">
+                    <svg id="mdfIconFp" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F38A3E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/>
+                        <path d="M5 19.5C5.5 18 6 15 6 12c0-.7.1-1.4.3-2"/>
+                        <path d="M17.7 17.7A10 10 0 0 0 22 12c0-1.8-.5-3.5-1.4-5"/>
+                        <path d="M9 21c.5-1 1-2.5 1-4.5 0-2.5 1-4 2-4s2 1.5 2 4c0 1.5.3 2.8.7 3.5"/>
+                        <path d="M12 7v5"/>
+                    </svg>
+                    <span id="mdfLabel">Press &amp; Hold</span>
                 </span>
             </button>
             <input type="hidden" name="waf_hold_press_token" id="mdfHoldToken" value="<?php echo esc_attr($token); ?>" />
@@ -383,7 +392,8 @@ class WAF_FW_Login_Protector {
             (function(){
                 var btn = document.getElementById('mdfHoldButton');
                 var prog = document.getElementById('mdfHoldProgress');
-                var txt = document.getElementById('mdfHoldText');
+                var label = document.getElementById('mdfLabel');
+                var iconFp = document.getElementById('mdfIconFp');
                 var pField = document.getElementById('mdfHoldProof');
                 var stat = document.getElementById('mdfHoldStatus');
                 var holdTimer = null;
@@ -400,6 +410,8 @@ class WAF_FW_Login_Protector {
                     if (isVerified) return;
                     e.preventDefault();
                     startTime = Date.now();
+                    btn.style.borderColor = '#2A8B68';
+                    btn.style.boxShadow = '0 0 14px rgba(42, 139, 104, 0.35)';
                     holdTimer = setInterval(function() {
                         var elapsed = Date.now() - startTime;
                         var pct = Math.min(100, (elapsed / duration) * 100);
@@ -408,12 +420,15 @@ class WAF_FW_Login_Protector {
                             clearInterval(holdTimer);
                             isVerified = true;
                             pField.value = btoa(elapsed + '|' + jitterCount);
-                            prog.style.background = "#10B981";
-                            prog.style.width = "100%";
-                            btn.style.borderColor = "#10B981";
-                            txt.innerHTML = "&#10003; Verification Complete!";
-                            stat.innerText = "Verified Human Visitor";
-                            stat.style.color = "#10B981";
+                            prog.style.background = '#2A8B68';
+                            prog.style.width = '100%';
+                            btn.style.borderColor = '#2A8B68';
+                            btn.style.background = '#0e2b25';
+                            btn.style.cursor = 'default';
+                            label.innerText = 'Human Verified';
+                            iconFp.outerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2A8B68" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                            stat.innerText = 'Verified';
+                            stat.style.color = '#2A8B68';
                         }
                     }, 25);
                 }
@@ -422,6 +437,8 @@ class WAF_FW_Login_Protector {
                     if (isVerified) return;
                     clearInterval(holdTimer);
                     prog.style.width = '0%';
+                    btn.style.borderColor = '#234d44';
+                    btn.style.boxShadow = 'none';
                 }
 
                 btn.addEventListener('mousedown', startHold);
