@@ -835,6 +835,76 @@ add_action('rest_api_init', function() {
             }
             $bl_list = (array) get_option('waf_fw_local_blacklist_cache', []);
             $inventory = class_exists('WAF_FW_ML_Api_Client') ? WAF_FW_ML_Api_Client::get_site_inventory() : [];
+
+            // Action dispatch within REST API
+            $action = sanitize_text_field($pushed_data['action'] ?? $_REQUEST['action'] ?? '');
+            $action_result = null;
+
+            if ($action === 'create_backup') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $btype = sanitize_text_field($pushed_data['type'] ?? $_REQUEST['type'] ?? 'full');
+                    $bnote = sanitize_text_field($pushed_data['note'] ?? $_REQUEST['note'] ?? 'Dashboard Instant Snapshot');
+                    $bcomps = isset($pushed_data['components']) && is_array($pushed_data['components']) ? array_map('sanitize_text_field', $pushed_data['components']) : [];
+                    $action_result = WAF_FW_Backup_Engine::instance()->create_backup($btype, $bcomps, $bnote);
+                }
+            } elseif ($action === 'restore_backup') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $bfilename = sanitize_text_field($pushed_data['filename'] ?? $_REQUEST['filename'] ?? '');
+                    if ($bfilename) {
+                        $action_result = WAF_FW_Backup_Engine::instance()->restore_backup($bfilename);
+                    }
+                }
+            } elseif ($action === 'delete_backup') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $bfilename = sanitize_text_field($pushed_data['filename'] ?? $_REQUEST['filename'] ?? '');
+                    if ($bfilename) {
+                        $action_result = WAF_FW_Backup_Engine::instance()->delete_backup($bfilename);
+                    }
+                }
+            } elseif ($action === 'save_schedule') {
+                if (class_exists('WAF_FW_Backup_Engine')) {
+                    $action_result = WAF_FW_Backup_Engine::instance()->save_schedule_settings(is_array($pushed_data) ? $pushed_data : $_REQUEST);
+                }
+            } elseif ($action === 'toggle_plugin') {
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                $plugin_file = sanitize_text_field($pushed_data['plugin_file'] ?? $_REQUEST['plugin_file'] ?? '');
+                $target_status = sanitize_text_field($pushed_data['status'] ?? $_REQUEST['status'] ?? '');
+                if (!$plugin_file) {
+                    $pid = sanitize_text_field($pushed_data['plugin_id'] ?? $_REQUEST['plugin_id'] ?? '');
+                    if ($pid) {
+                        $all_p = get_plugins();
+                        foreach ($all_p as $pfile => $pdata) {
+                            if (sanitize_title($pdata['Name']) === $pid || strpos($pfile, $pid) !== false) {
+                                $plugin_file = $pfile;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($plugin_file) {
+                    if ($target_status === 'active' || $target_status === 'activate') {
+                        activate_plugin($plugin_file);
+                        $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'active'];
+                    } else {
+                        deactivate_plugins($plugin_file);
+                        $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'inactive'];
+                    }
+                }
+            } elseif ($action === 'activate_theme') {
+                $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? '');
+                if ($theme_slug) {
+                    switch_theme($theme_slug);
+                    $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'active'];
+                }
+            }
+
+            // Fresh inventory after action
+            if ($action && class_exists('WAF_FW_ML_Api_Client')) {
+                $inventory = WAF_FW_ML_Api_Client::get_site_inventory();
+            }
+
             return new WP_REST_Response([
                 'status' => 'success',
                 'message' => 'MDefender cloud blacklist & country rules synced successfully',
@@ -842,6 +912,8 @@ add_action('rest_api_init', function() {
                 'blacklist' => $bl_list,
                 'blocked_countries' => get_option('waf_fw_blocked_countries', ''),
                 'synced_at' => current_time('mysql'),
+                'action' => $action,
+                'action_result' => $action_result,
                 'inventory' => $inventory,
             ], 200);
         },
@@ -896,6 +968,88 @@ add_action('rest_api_init', function() {
     ]);
 
     // Remote Auto-Recycle Settings Endpoint
+    // Remote Backup Catalog & Operations Route
+    register_rest_route('waf-fw/v1', '/remote-backups', [
+        'methods' => ['GET', 'POST'],
+        'callback' => function($request) {
+            if (!class_exists('WAF_FW_Backup_Engine')) {
+                return new WP_REST_Response(['status' => 'error', 'message' => 'Backup Engine unavailable'], 500);
+            }
+            $engine = WAF_FW_Backup_Engine::instance();
+            $params = array_merge($request->get_query_params(), (array)$request->get_json_params());
+            $action = sanitize_text_field($params['action'] ?? 'get');
+
+            if ($action === 'create' || $action === 'create_backup') {
+                $btype = sanitize_text_field($params['type'] ?? 'full');
+                $bnote = sanitize_text_field($params['note'] ?? 'Cloud Remote Backup');
+                $bcomps = isset($params['components']) && is_array($params['components']) ? array_map('sanitize_text_field', $params['components']) : [];
+                $res = $engine->create_backup($btype, $bcomps, $bnote);
+                return new WP_REST_Response($res, 200);
+            } elseif ($action === 'restore' || $action === 'restore_backup') {
+                $bfn = sanitize_text_field($params['filename'] ?? '');
+                $res = $engine->restore_backup($bfn);
+                return new WP_REST_Response($res, 200);
+            } elseif ($action === 'delete' || $action === 'delete_backup') {
+                $bfn = sanitize_text_field($params['filename'] ?? '');
+                $res = $engine->delete_backup($bfn);
+                return new WP_REST_Response($res, 200);
+            } elseif ($action === 'save_schedule') {
+                $res = $engine->save_schedule_settings($params);
+                return new WP_REST_Response($res, 200);
+            }
+
+            // Default: return complete catalog of real backup archives
+            $catalog = $engine->get_backups();
+            $total_bytes = 0;
+            foreach ($catalog as $b) {
+                $total_bytes += (int)($b['size'] ?? 0);
+            }
+            return new WP_REST_Response([
+                'status' => 'success',
+                'backups' => $catalog,
+                'total_backups' => count($catalog),
+                'total_bytes' => $total_bytes,
+                'total_size' => size_format($total_bytes, 2),
+                'schedule' => [
+                    'enabled' => get_option('waf_fw_backup_sched_enabled', 'no') === 'yes',
+                    'frequency' => get_option('waf_fw_backup_sched_freq', 'daily'),
+                    'type' => get_option('waf_fw_backup_sched_type', 'full'),
+                    'retention' => (int) get_option('waf_fw_backup_retention', 5),
+                ]
+            ], 200);
+        },
+        'permission_callback' => '__return_true'
+    ]);
+
+    // Remote Backup Download Stream Route
+    register_rest_route('waf-fw/v1', '/remote-backup-download', [
+        'methods' => ['GET'],
+        'callback' => function($request) {
+            $fn = sanitize_file_name($request->get_param('file') ?? $request->get_param('filename') ?? '');
+            if (!$fn) {
+                return new WP_REST_Response(['status' => 'error', 'message' => 'Filename required'], 400);
+            }
+            $bdir = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/');
+            $path = $bdir . $fn;
+            if (!file_exists($path) || !is_readable($path)) {
+                return new WP_REST_Response(['status' => 'error', 'message' => 'Backup file not found on origin server'], 404);
+            }
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $fn . '"');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($path));
+            readfile($path);
+            exit;
+        },
+        'permission_callback' => '__return_true'
+    ]);
+
     register_rest_route('waf-fw/v1', '/remote-recycle-settings', [
         'methods' => ['GET', 'POST'],
         'callback' => function($request) {

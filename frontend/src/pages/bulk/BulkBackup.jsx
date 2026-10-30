@@ -217,17 +217,32 @@ export default function BulkBackup() {
     }
   }
 
-  // Handle Download File (Direct browser trigger)
-  const handleDownload = (bk) => {
+  // Handle Download File (Authenticated streaming download)
+  const handleDownload = async (bk) => {
     const siteId = bk.site_id || (activeTargetSite.id || activeTargetSite._id)
-    const downloadUrl = api.getWebsiteBackupDownloadUrl(siteId, bk.filename)
     showToast(`Downloading backup archive "${bk.filename}"...`)
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = bk.filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    try {
+      const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token') || ''
+      const downloadUrl = api.getWebsiteBackupDownloadUrl(siteId, bk.filename) + (token ? `?token=${encodeURIComponent(token)}` : '')
+      const res = await fetch(downloadUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`)
+      }
+      const blob = await res.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = bk.filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(blobUrl)
+      document.body.removeChild(a)
+      showToast(`Backup archive "${bk.filename}" downloaded successfully!`)
+    } catch (err) {
+      showToast(`Download failed: ${err.message}`, true)
+    }
   }
 
   // Handle Upload Archive (Migration & Cloning)
