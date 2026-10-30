@@ -16,7 +16,7 @@ if (defined('MDEFENDER_BOOTSTRAP_EXECUTED')) {
 }
 define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
 // Auto-heal missing root index.php and wp-blog-header.php
-$mdefender_wp_root = dirname(__DIR__, 2);
+$mdefender_wp_root = defined('ABSPATH') ? ABSPATH : dirname(__DIR__, 3);
 if (@file_exists($mdefender_wp_root . '/wp-load.php')) {
     if (!@file_exists($mdefender_wp_root . '/index.php') || @filesize($mdefender_wp_root . '/index.php') === 0) {
         @file_put_contents($mdefender_wp_root . '/index.php', "<?php\ndefine( 'WP_USE_THEMES', true );\nrequire __DIR__ . '/wp-blog-header.php';\n");

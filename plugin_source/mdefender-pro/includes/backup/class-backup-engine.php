@@ -708,133 +708,101 @@ class WAF_FW_Backup_Engine {
                 require_once ABSPATH . 'wp-admin/includes/class-pclzip.php';
             }
         }
-
-        $staging_dir = $this->backup_dir . 'mdf_stage_' . uniqid() . '/';
-        wp_mkdir_p($staging_dir);
-
-        // Extract archive to staging area
-        $extract_success = false;
-        if (class_exists('ZipArchive')) {
-            $zip = new ZipArchive();
-            if ($zip->open($file_path) === true) {
-                $extract_success = $zip->extractTo($staging_dir);
-                $zip->close();
-            }
-        }
-
-        if (!$extract_success && class_exists('PclZip')) {
-            $archive = new PclZip($file_path);
-            $extract_success = ($archive->extract(PCLZIP_OPT_PATH, $staging_dir) !== 0);
-        }
-
-        if (!$extract_success) {
-            $this->delete_directory($staging_dir);
-            return ['success' => false, 'message' => 'Failed to unpack backup ZIP archive. Verify archive integrity and disk permissions.'];
-        }
-
         $actions_log = [];
-
-        // 3. Database Restoration
-        $sql_candidates = [
-            $staging_dir . 'database.sql',
-            $staging_dir . 'db/database.sql',
-            $staging_dir . 'db_dump.sql',
-        ];
-        // Scan for any .sql file in staging root or db/ folder
-        foreach (glob($staging_dir . '*.sql') ?: [] as $s) {
-            $sql_candidates[] = $s;
-        }
-
-        $sql_found = '';
-        foreach ($sql_candidates as $cand) {
-            if (file_exists($cand) && filesize($cand) > 0) {
-                $sql_found = $cand;
-                break;
-            }
-        }
-
-        if ($sql_found) {
-            $db_res = $this->import_database_file($sql_found);
-            if (empty($db_res['success'])) {
-                $this->delete_directory($staging_dir);
-                return [
-                    'success' => false,
-                    'message' => 'Database restoration failed; file restoration was stopped to avoid reporting a partial restore as successful. ' . ($db_res['message'] ?? ''),
-                ];
-            }
-            $actions_log[] = 'Database reconstructed (' . ($db_res['queries'] ?? 0) . ' queries executed)';
-            @unlink($sql_found);
-        }
-
-        // Remove manifest & SQL files from staging before file deployment
-        if (file_exists($staging_dir . 'mdefender-manifest.json')) {
-            @unlink($staging_dir . 'mdefender-manifest.json');
-        }
-        if (is_dir($staging_dir . 'db')) {
-            $this->delete_directory($staging_dir . 'db');
-        }
-
-        // 4. Component-Based File Deployment
         $total_files_restored = 0;
 
-        // A. Plugins Directory
-        if (is_dir($staging_dir . 'plugins')) {
-            $count = $this->copy_directory($staging_dir . 'plugins', WP_PLUGIN_DIR);
-            $actions_log[] = $count . ' plugin files restored';
-            $total_files_restored += $count;
-            $this->delete_directory($staging_dir . 'plugins');
-        }
+        if (class_exists('ZipArchive')) {
+            $zip = new ZipArchive();
+            if ($zip->open($file_path) !== true) {
+                return ['success' => false, 'message' => 'Cannot open backup ZIP archive: ' . $filename];
+            }
 
-        // B. Themes Directory
-        if (is_dir($staging_dir . 'themes')) {
-            $count = $this->copy_directory($staging_dir . 'themes', get_theme_root());
-            $actions_log[] = $count . ' theme files restored';
-            $total_files_restored += $count;
-            $this->delete_directory($staging_dir . 'themes');
-        }
+            // 1. Direct Database Extraction & Reconstitution
+            $temp_sql = $this->backup_dir . 'mdf_sql_' . uniqid() . '.sql';
+            $db_stream = $zip->getStream('database.sql');
+            if (!$db_stream) {
+                $db_stream = $zip->getStream('db/database.sql');
+            }
+            if ($db_stream) {
+                $sql_handle = fopen($temp_sql, 'wb');
+                while (!feof($db_stream)) {
+                    fwrite($sql_handle, fread($db_stream, 65536));
+                }
+                fclose($sql_handle);
+                fclose($db_stream);
 
-        // C. Uploads Directory
-        if (is_dir($staging_dir . 'uploads')) {
+                $db_res = $this->import_database_file($temp_sql);
+                @unlink($temp_sql);
+                if (empty($db_res['success'])) {
+                    $zip->close();
+                    return [
+                        'success' => false,
+                        'message' => 'Database restoration failed: ' . ($db_res['message'] ?? 'SQL execution error.'),
+                    ];
+                }
+                $actions_log[] = 'Database reconstructed (' . ($db_res['queries'] ?? 0) . ' queries executed)';
+            }
+
+            // 2. High-Performance Direct Stream File Extraction
             $upload_dir = wp_upload_dir();
-            $count = $this->copy_directory($staging_dir . 'uploads', $upload_dir['basedir']);
-            $actions_log[] = $count . ' media uploads restored';
-            $total_files_restored += $count;
-            $this->delete_directory($staging_dir . 'uploads');
-        }
+            $uploads_base = $upload_dir['basedir'];
+            $theme_root = get_theme_root();
+            $plugin_root = WP_PLUGIN_DIR;
+            $content_root = WP_CONTENT_DIR;
+            $abs_path = ABSPATH;
 
-        // D. Others Directory
-        if (is_dir($staging_dir . 'others')) {
-            $count = $this->copy_directory($staging_dir . 'others', WP_CONTENT_DIR);
-            $actions_log[] = $count . ' wp-content files restored';
-            $total_files_restored += $count;
-            $this->delete_directory($staging_dir . 'others');
-        }
+            $num_files = $zip->numFiles;
+            for ($i = 0; $i < $num_files; $i++) {
+                $stat = $zip->statIndex($i);
+                $entry_name = $stat['name'];
 
-        // E. Core Directory
-        if (is_dir($staging_dir . 'core')) {
-            $count = $this->copy_directory($staging_dir . 'core', ABSPATH);
-            $actions_log[] = $count . ' WordPress core files restored';
-            $total_files_restored += $count;
-            $this->delete_directory($staging_dir . 'core');
-        }
+                // Skip directories, database dumps, manifest, and backup storage itself
+                if (substr($entry_name, -1) === '/' || $entry_name === 'database.sql' || $entry_name === 'db/database.sql' || $entry_name === 'mdefender-manifest.json' || strpos($entry_name, 'mdefender-backups') !== false) {
+                    continue;
+                }
 
-        // F. Root / Standard WordPress Hierarchy Deployment (for legacy backups)
-        $remaining_items = scandir($staging_dir);
-        $has_remaining = false;
-        foreach ($remaining_items as $item) {
-            if ($item !== '.' && $item !== '..') {
-                $has_remaining = true;
-                break;
+                // Determine target physical file path
+                $target_file = '';
+                if (strpos($entry_name, 'plugins/') === 0) {
+                    $target_file = $plugin_root . '/' . substr($entry_name, 8);
+                } elseif (strpos($entry_name, 'themes/') === 0) {
+                    $target_file = $theme_root . '/' . substr($entry_name, 7);
+                } elseif (strpos($entry_name, 'uploads/') === 0) {
+                    $target_file = $uploads_base . '/' . substr($entry_name, 8);
+                } elseif (strpos($entry_name, 'core/') === 0) {
+                    $target_file = $abs_path . substr($entry_name, 5);
+                } elseif (strpos($entry_name, 'others/') === 0) {
+                    $target_file = $content_root . '/' . substr($entry_name, 7);
+                } else {
+                    $target_file = $abs_path . $entry_name;
+                }
+
+                // High-speed smart skip: if target file already matches byte-for-byte in size, skip disk write
+                if (file_exists($target_file) && filesize($target_file) === $stat['size']) {
+                    $total_files_restored++;
+                    continue;
+                }
+
+                $target_dir = dirname($target_file);
+                if (!is_dir($target_dir)) {
+                    @wp_mkdir_p($target_dir);
+                }
+
+                $in = $zip->getStream($entry_name);
+                if ($in) {
+                    $out = @fopen($target_file, 'wb');
+                    if ($out) {
+                        while (!feof($in)) {
+                            fwrite($out, fread($in, 65536));
+                        }
+                        fclose($out);
+                        $total_files_restored++;
+                    }
+                    fclose($in);
+                }
             }
-        }
-
-        if ($has_remaining) {
-            // Deploy remaining root files & wp-content directly to ABSPATH
-            $count = $this->copy_directory($staging_dir, ABSPATH);
-            if ($count > 0) {
-                $actions_log[] = $count . ' root files deployed';
-                $total_files_restored += $count;
-            }
+            $zip->close();
+            $actions_log[] = $total_files_restored . ' files reconstituted';
         }
 
         // G. ULTRA-CRITICAL DISASTER RECOVERY GUARANTEE:
@@ -862,7 +830,6 @@ class WAF_FW_Backup_Engine {
             $actions_log[] = 'Emergency self-heal: verified & restored root .htaccess';
         }
 
-        // 5. Clean up temporary staging directory
         $this->delete_directory($staging_dir);
 
         // 6. Reset all caches
@@ -1160,6 +1127,10 @@ class WAF_FW_Backup_Engine {
             if (is_dir($src_path)) {
                 $count += $this->copy_directory($src_path, $dst_path);
             } else {
+                if (file_exists($dst_path) && filesize($dst_path) === filesize($src_path)) {
+                    $count++;
+                    continue;
+                }
                 if (@copy($src_path, $dst_path)) {
                     $count++;
                 }

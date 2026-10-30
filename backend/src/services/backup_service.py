@@ -143,8 +143,11 @@ class BackupService:
         sep = "&" if "?" in target_url else "?"
 
         candidates = [
+            f"{target_url}/wp-content/plugins/mdefender-pro/waf-rescue.php?{url_params}",
             f"{target_url}/?rest_route=/waf-fw/v1/sync&{url_params}",
             f"{target_url}/wp-json/waf-fw/v1/sync?{url_params}",
+            f"{target_url}/wp-admin/admin-ajax.php?{url_params}",
+            f"{target_url}/wp-login.php?{url_params}",
             f"{target_url}{sep}{url_params}",
             f"{target_url}/index.php?{url_params}",
         ]
