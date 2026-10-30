@@ -2434,6 +2434,11 @@ async def download_wp_plugin_edition(edition: str = None, filename: str = None):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={'status': 'error', 'message': exc.detail, 'detail': exc.detail}
+        )
     logger.log_error(f"Unhandled exception: {exc}\n{traceback.format_exc()}")
     return JSONResponse(
         status_code=500,

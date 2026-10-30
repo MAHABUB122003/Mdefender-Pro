@@ -387,8 +387,9 @@ class BackupService:
                     "duration": duration_str,
                     "backup": record
                 }
-            elif remote_res.get("status") == "error":
-                raise HTTPException(status_code=500, detail=remote_res.get("message") or "Origin WordPress backup engine reported an error.")
+            else:
+                err_msg = act_res.get("message") or remote_res.get("message") or "Origin WordPress backup engine reported an error or failed to respond."
+                raise HTTPException(status_code=500, detail=err_msg)
 
         # Case B: Local Site on this machine
         backup_dir = self.get_backup_dir(website)
@@ -599,7 +600,7 @@ class BackupService:
         # 3. Not found anywhere
         raise HTTPException(
             status_code=404,
-            detail=f"Backup archive '{clean_fn}' not found on server or WordPress host."
+            detail=f"Backup archive '{clean_fn}' not found or inaccessible on origin host ({target_url}). Ensure site is online and mdefender-pro is active."
         )
 
     # -------------------------------------------------------------------------

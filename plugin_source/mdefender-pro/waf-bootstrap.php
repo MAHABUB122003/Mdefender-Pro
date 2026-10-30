@@ -15,6 +15,17 @@ if (defined('MDEFENDER_BOOTSTRAP_EXECUTED')) {
     return;
 }
 define('MDEFENDER_BOOTSTRAP_EXECUTED', true);
+// Auto-heal missing root index.php and wp-blog-header.php
+$mdefender_wp_root = dirname(__DIR__, 2);
+if (@file_exists($mdefender_wp_root . '/wp-load.php')) {
+    if (!@file_exists($mdefender_wp_root . '/index.php') || @filesize($mdefender_wp_root . '/index.php') === 0) {
+        @file_put_contents($mdefender_wp_root . '/index.php', "<?php\ndefine( 'WP_USE_THEMES', true );\nrequire __DIR__ . '/wp-blog-header.php';\n");
+    }
+    if (!@file_exists($mdefender_wp_root . '/wp-blog-header.php') || @filesize($mdefender_wp_root . '/wp-blog-header.php') === 0) {
+        @file_put_contents($mdefender_wp_root . '/wp-blog-header.php', "<?php\nif ( ! isset( \$wp_did_header ) ) {\n\t\$wp_did_header = true;\n\trequire_once __DIR__ . '/wp-load.php';\n\twp();\n\trequire_once ABSPATH . WPINC . '/template-loader.php';\n}\n");
+    }
+}
+
 
 // Bypass bootstrap for cloud synchronization webhooks & internal API endpoints
 if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || 

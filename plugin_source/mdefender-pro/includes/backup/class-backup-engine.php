@@ -167,20 +167,19 @@ class WAF_FW_Backup_Engine {
 
         $start_time = microtime(true);
         $timestamp = date('Ymd_His');
-        $site_name = sanitize_title(get_bloginfo('name')) ?: 'wp_site';
-        
-        if (empty($components)) {
-            if ($type === 'database') {
-                $components = ['db'];
-            } elseif ($type === 'files') {
-                $components = ['plugins', 'themes', 'uploads', 'core', 'wp_config'];
-            } else {
-                $type = 'full';
-                $components = ['db', 'plugins', 'themes', 'uploads', 'core', 'wp_config'];
+        $domain = '';
+        if (!empty($_SERVER['HTTP_HOST'])) {
+            $domain = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower($_SERVER['HTTP_HOST']));
+        }
+        if (!$domain) {
+            $home_host = parse_url(home_url(), PHP_URL_HOST);
+            if ($home_host) {
+                $domain = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower($home_host));
             }
         }
+        $site_identifier = $domain ?: (sanitize_title(get_bloginfo('name')) ?: 'site');
 
-        $backup_id = 'mdf_' . $type . '_' . $site_name . '_' . $timestamp;
+        $backup_id = 'mdf_' . $type . '_' . $site_identifier . '_' . $timestamp;
         $zip_filename = $backup_id . '.zip';
         $zip_path = $this->backup_dir . $zip_filename;
 
@@ -528,16 +527,13 @@ class WAF_FW_Backup_Engine {
         $backup_dir_norm = wp_normalize_path($this->backup_dir);
         $file_count = 0;
 
-        // 1. wp-config.php and .htaccess
-        if (in_array('wp_config', $components) || in_array('core', $components)) {
-            if (file_exists(ABSPATH . 'wp-config.php')) {
-                $zip->addFile(ABSPATH . 'wp-config.php', 'wp-config.php');
-                $zip->addFile(ABSPATH . 'wp-config.php', 'core/wp-config.php');
-                $file_count++;
-            }
-            if (file_exists(ABSPATH . '.htaccess')) {
-                $zip->addFile(ABSPATH . '.htaccess', '.htaccess');
-                $zip->addFile(ABSPATH . '.htaccess', 'core/.htaccess');
+        // 1. Critical Root Bootstrappers (wp-config.php, index.php, wp-blog-header.php, .htaccess)
+        $critical_roots = ['wp-config.php', 'index.php', 'wp-blog-header.php', '.htaccess'];
+        foreach ($critical_roots as $cr) {
+            $cr_path = ABSPATH . $cr;
+            if (file_exists($cr_path)) {
+                $zip->addFile($cr_path, $cr);
+                $zip->addFile($cr_path, 'core/' . $cr);
                 $file_count++;
             }
         }
@@ -826,6 +822,31 @@ class WAF_FW_Backup_Engine {
                 $actions_log[] = $count . ' root files deployed';
                 $total_files_restored += $count;
             }
+        }
+
+        // G. ULTRA-CRITICAL DISASTER RECOVERY GUARANTEE:
+        // Ensure index.php ALWAYS exists in ABSPATH so LiteSpeed / Apache never throws 403 Forbidden
+        $root_index = ABSPATH . 'index.php';
+        if (!file_exists($root_index) || filesize($root_index) === 0) {
+            $standard_index = "<?php\n/**\n * Front to the WordPress application.\n */\ndefine( 'WP_USE_THEMES', true );\nrequire __DIR__ . '/wp-blog-header.php';\n";
+            @file_put_contents($root_index, $standard_index);
+            $actions_log[] = 'Emergency self-heal: verified & restored root index.php';
+        }
+
+        // Ensure wp-blog-header.php exists in ABSPATH
+        $root_blog_header = ABSPATH . 'wp-blog-header.php';
+        if (!file_exists($root_blog_header) || filesize($root_blog_header) === 0) {
+            $standard_blog_header = "<?php\n/**\n * Loads the WordPress environment and template.\n */\nif ( ! isset( \$wp_did_header ) ) {\n\t\$wp_did_header = true;\n\trequire_once __DIR__ . '/wp-load.php';\n\twp();\n\trequire_once ABSPATH . WPINC . '/template-loader.php';\n}\n";
+            @file_put_contents($root_blog_header, $standard_blog_header);
+            $actions_log[] = 'Emergency self-heal: verified & restored root wp-blog-header.php';
+        }
+
+        // Ensure .htaccess exists in ABSPATH
+        $root_htaccess = ABSPATH . '.htaccess';
+        if (!file_exists($root_htaccess) || filesize($root_htaccess) === 0) {
+            $standard_htaccess = "# BEGIN WordPress\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n# END WordPress\n";
+            @file_put_contents($root_htaccess, $standard_htaccess);
+            $actions_log[] = 'Emergency self-heal: verified & restored root .htaccess';
         }
 
         // 5. Clean up temporary staging directory
