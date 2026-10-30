@@ -34,6 +34,9 @@ class WAF_FW_Backup_Engine {
      * Lift PHP execution and memory limits to prevent timeouts on large sites.
      */
     private function raise_execution_limits() {
+        if (function_exists('ignore_user_abort')) {
+            @ignore_user_abort(true);
+        }
         if (function_exists('set_time_limit')) {
             @set_time_limit(900);
         }

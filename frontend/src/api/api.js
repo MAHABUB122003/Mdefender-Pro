@@ -83,8 +83,9 @@ async function apiCall(endpoint, options = {}) {
     headers['X-CSRF-Token'] = csrf;
   }
 
-  const isAuthOrHeavy = endpoint.includes('/auth/') || endpoint.includes('/scan') || endpoint.includes('/blacklist') || endpoint.includes('/sync');
-  const defaultTimeout = isAuthOrHeavy ? 35000 : 25000;
+  const isBackupOp = endpoint.includes('/backups');
+  const isAuthOrHeavy = isBackupOp || endpoint.includes('/auth/') || endpoint.includes('/scan') || endpoint.includes('/blacklist') || endpoint.includes('/sync');
+  const defaultTimeout = isBackupOp ? 300000 : (isAuthOrHeavy ? 60000 : 25000);
   const { skipAuthRedirect, timeout = defaultTimeout, ...fetchOptions } = options;
 
   const controller = new AbortController();

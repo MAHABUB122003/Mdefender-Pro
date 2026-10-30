@@ -179,20 +179,20 @@ export default function BulkBackup() {
   const handleConfirmRestore = async () => {
     if (!restoreModalData) return
     setRestoring(true)
-    setProgressMsg(`Restoring website from snapshot "${restoreModalData.filename}"... Overwriting database and files...`)
+    setProgressMsg(`Restoring website from snapshot "${restoreModalData.filename}"... Reconstituting database tables and WordPress files...`)
     try {
       const siteId = restoreModalData.site_id || (activeTargetSite.id || activeTargetSite._id)
       const res = await api.restoreWebsiteBackup(siteId, restoreModalData.filename)
       if (res?.data?.success) {
-        showToast(`Disaster Recovery complete! Website restored from ${restoreModalData.filename}!`)
+        showToast(res.data.message || `Disaster Recovery complete! Website restored from ${restoreModalData.filename}!`)
       } else {
-        showToast('Restoration completed. Site operational.', false)
+        showToast(res?.data?.message || 'Restoration completed. Site operational.', false)
       }
       setRestoreModalData(null)
       loadBackups()
       fetchFleet(true)
     } catch (err) {
-      showToast('Disaster Recovery restoration completed.', false)
+      showToast(err.message || 'Restoration completed. Site operational.', false)
       setRestoreModalData(null)
     } finally {
       setRestoring(false)
@@ -217,29 +217,23 @@ export default function BulkBackup() {
     }
   }
 
-  // Handle Download File (Authenticated streaming download)
-  const handleDownload = async (bk) => {
+  // Handle Download File (Instant native browser streaming download)
+  const handleDownload = (bk) => {
     const siteId = bk.site_id || (activeTargetSite.id || activeTargetSite._id)
-    showToast(`Downloading backup archive "${bk.filename}"...`)
+    showToast(`Starting instant download for "${bk.filename}"...`)
     try {
       const token = localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_user_token') || ''
       const downloadUrl = api.getWebsiteBackupDownloadUrl(siteId, bk.filename) + (token ? `?token=${encodeURIComponent(token)}` : '')
-      const res = await fetch(downloadUrl, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      })
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`)
-      }
-      const blob = await res.blob()
-      const blobUrl = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = bk.filename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(blobUrl)
-      document.body.removeChild(a)
-      showToast(`Backup archive "${bk.filename}" downloaded successfully!`)
+      
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.setAttribute('download', bk.filename)
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      setTimeout(() => {
+        document.body.removeChild(link)
+      }, 1500)
     } catch (err) {
       showToast(`Download failed: ${err.message}`, true)
     }

@@ -131,6 +131,10 @@ class BackupService:
 
         action_name = action_payload.get("action", "")
         url_params = f"waf_cloud_sync=1&action={action_name}"
+        if "filename" in action_payload and action_payload["filename"]:
+            url_params += f"&filename={action_payload['filename']}"
+        if "type" in action_payload and action_payload["type"]:
+            url_params += f"&type={action_payload['type']}"
         if api_key:
             url_params += f"&api_key={api_key}"
         if site_token:
@@ -573,7 +577,7 @@ class BackupService:
 
                     def stream_chunks():
                         try:
-                            for chunk in resp.iter_content(chunk_size=65536):
+                            for chunk in resp.iter_content(chunk_size=131072):
                                 if chunk:
                                     yield chunk
                         finally:
