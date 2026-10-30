@@ -444,7 +444,7 @@ export default function UserBlacklist() {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: '4px', background: '#E8EEE8', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: '4px', background: '#E8EEE8', padding: '4px', borderRadius: '10px', border: '1px solid #D9E1DC', width: 'fit-content' }}>
           {[
             { id: 'ip', icon: <Ban size={14} />, label: 'IP Blacklist', count: entries.length },
             { id: 'country', icon: <Globe size={14} />, label: 'Country Block', count: countryBlocks.length }
@@ -453,21 +453,23 @@ export default function UserBlacklist() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 18px', borderRadius: '8px', border: 'none',
-                background: activeTab === tab.id ? '#FFFFFF' : 'transparent',
-                color: activeTab === tab.id ? '#0F172A' : '#64748B',
+                padding: '8px 18px', borderRadius: '8px',
+                border: activeTab === tab.id ? '1px solid #0B2522' : 'none',
+                background: activeTab === tab.id ? '#0B2522' : 'transparent',
+                color: activeTab === tab.id ? '#FFFFFF' : '#60716B',
                 fontSize: '13px', fontWeight: '700', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '7px',
-                boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 0.15s'
+                boxShadow: activeTab === tab.id ? '0 2px 8px rgba(11, 37, 34, 0.15)' : 'none',
+                transition: 'all 0.15s ease'
               }}
             >
-              {tab.icon}
-              {tab.label}
+              <span style={{ color: activeTab === tab.id ? '#FFFFFF' : '#60716B', display: 'flex' }}>{tab.icon}</span>
+              <span>{tab.label}</span>
               <span style={{
-                fontSize: '11px', padding: '1px 7px', borderRadius: '999px', fontWeight: '800',
-                background: activeTab === tab.id ? '#E8EEE8' : '#F1F5F3',
-                color: activeTab === tab.id ? '#0B2522' : '#60716B'
+                fontSize: '11px', padding: '1px 7px', borderRadius: '999px', fontWeight: '700',
+                background: activeTab === tab.id ? '#1D3B37' : '#FAFBF9',
+                color: activeTab === tab.id ? '#FFFFFF' : '#60716B',
+                border: `1px solid ${activeTab === tab.id ? '#2A4F4A' : '#D9E1DC'}`
               }}>
                 {tab.count}
               </span>
@@ -675,13 +677,13 @@ export default function UserBlacklist() {
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
             {[
-              { label: 'Blocked Countries', value: countryBlocks.length, color: countryBlocks.length > 0 ? '#DC2626' : '#15803D' },
-              { label: 'Available Regions', value: '250+', color: '#6366F1' },
-              { label: 'Block Response', value: 'HTTP 444', color: '#F59E0B' }
+              { label: 'Blocked Countries', value: countryBlocks.length },
+              { label: 'Available Regions', value: '250+' },
+              { label: 'Block Response', value: 'HTTP 444' }
             ].map(s => (
-              <div key={s.label} style={{ ...S.cardPad, padding: '14px 18px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-                <div style={{ fontSize: '22px', fontWeight: '800', color: s.color, marginTop: '2px' }}>{s.value}</div>
+              <div key={s.label} style={{ ...S.cardPad, padding: '16px 20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+                <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -689,10 +691,10 @@ export default function UserBlacklist() {
           {/* Quick Threat Presets */}
           <div style={S.cardPad}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '12px' }}>
-              <Flame size={14} color="#DC2626" />
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quick Block Presets</span>
+              <Flame size={14} color="#10201E" />
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#10201E', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quick Block Presets</span>
             </div>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {POPULAR_THREAT_COUNTRIES.map(preset => {
                 const isBlocked = blockedCodesSet.has(preset.code)
                 return (
@@ -700,19 +702,19 @@ export default function UserBlacklist() {
                     key={preset.code}
                     onClick={() => handleQuickPresetToggle(preset)}
                     style={{
-                      background: isBlocked ? '#FEF2F2' : '#F8FAFC',
-                      border: `1px solid ${isBlocked ? '#FECACA' : '#E2E8F0'}`,
-                      color: isBlocked ? '#DC2626' : '#334155',
-                      fontSize: '12.5px', padding: '5px 12px', borderRadius: '8px',
+                      background: isBlocked ? '#E8EEE8' : '#FFFFFF',
+                      border: '1px solid #D9E1DC',
+                      color: '#10201E',
+                      fontSize: '12.5px', padding: '6px 14px', borderRadius: '8px',
                       cursor: 'pointer', fontWeight: '600',
-                      display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s'
+                      display: 'inline-flex', alignItems: 'center', gap: '7px', transition: 'all 0.15s ease'
                     }}
                   >
                     <img src={getFlagUrl(preset.code, '20x15')} alt={preset.code}
                       onError={e => { e.target.style.display = 'none' }}
                       style={{ width: '16px', height: '11px', borderRadius: '2px', objectFit: 'cover' }} />
-                    {preset.name}
-                    {isBlocked && <span style={{ fontSize: '10px', background: '#DC2626', color: '#FFF', padding: '1px 5px', borderRadius: '4px' }}>Blocked</span>}
+                    <span>{preset.name}</span>
+                    {isBlocked && <span style={{ fontSize: '10px', background: '#0B2522', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>Blocked</span>}
                   </button>
                 )
               })}
@@ -723,20 +725,22 @@ export default function UserBlacklist() {
           <div id="country-block-form" style={S.cardPad}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <Shield size={15} color="#DC2626" />
-                <span style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>Block a Country</span>
+                <Shield size={15} color="#10201E" />
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>Block a Country</span>
               </div>
-              <div style={{ display: 'flex', gap: '3px', background: '#E8EEE8', padding: '4px', borderRadius: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '4px', background: '#E8EEE8', padding: '4px', borderRadius: '8px', border: '1px solid #D9E1DC', flexWrap: 'wrap' }}>
                 {['All', 'Asia', 'Europe', 'Americas', 'Middle East', 'Africa'].map(reg => (
                   <button
                     key={reg}
                     onClick={() => setSelectedRegion(reg)}
                     style={{
-                      padding: '4px 9px', borderRadius: '6px', border: 'none',
-                      background: selectedRegion === reg ? '#FFFFFF' : 'transparent',
-                      color: selectedRegion === reg ? '#0F172A' : '#64748B',
-                      fontSize: '11.5px', fontWeight: '600', cursor: 'pointer',
-                      boxShadow: selectedRegion === reg ? '0 1px 3px rgba(0,0,0,0.07)' : 'none'
+                      padding: '5px 10px', borderRadius: '6px',
+                      border: selectedRegion === reg ? '1px solid #0B2522' : 'none',
+                      background: selectedRegion === reg ? '#0B2522' : 'transparent',
+                      color: selectedRegion === reg ? '#FFFFFF' : '#60716B',
+                      fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
+                      boxShadow: selectedRegion === reg ? '0 2px 6px rgba(11, 37, 34, 0.15)' : 'none',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     {reg}
@@ -749,7 +753,7 @@ export default function UserBlacklist() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <label style={S.label}>Country ({pickerFilteredCountries.length} available)</label>
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: selectedWebsite !== 'all' ? '#0284C7' : '#64748B' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B' }}>
                     Scope: {selectedWebsite !== 'all' ? (websites.find(w => (w.id || w._id) === selectedWebsite)?.domain || 'Selected Site') : 'Global Fleet'}
                   </span>
                 </div>
@@ -851,13 +855,13 @@ export default function UserBlacklist() {
                 Loading...
               </div>
             ) : countryBlocks.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #E2E8F0' }}>
+              <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8', background: '#FAFBF9', borderRadius: '12px', border: '1px dashed #D9E1DC' }}>
                 <Globe size={30} style={{ display: 'block', margin: '0 auto 10px', color: '#CBD5E1' }} />
                 <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No countries blocked</div>
                 <div style={{ fontSize: '12.5px' }}>Use the form above or click a preset to block a country.</div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr>
@@ -883,13 +887,13 @@ export default function UserBlacklist() {
                               <img src={flagUrl} alt={code}
                                 onError={e => { e.target.style.display = 'none' }}
                                 style={{ width: '20px', height: '14px', borderRadius: '2px', objectFit: 'cover' }} />
-                              <span style={{ fontWeight: '700', color: '#0F172A' }}>{displayName}</span>
+                              <span style={{ fontWeight: '700', color: '#10201E' }}>{displayName}</span>
                             </div>
                           </td>
                           <td style={S.td}>
-                            <span style={S.badge('#F1F5F9', '#475569', '#E2E8F0')}>{code}</span>
+                            <span style={S.badge('#FBFCFA', '#10201E', '#D9E1DC')}>{code}</span>
                           </td>
-                          <td style={{ ...S.td, color: '#64748B', fontSize: '12.5px', maxWidth: '280px' }}>
+                          <td style={{ ...S.td, color: '#60716B', fontSize: '12.5px', maxWidth: '280px' }}>
                             {block.reason || '—'}
                           </td>
                           <td style={S.td}>
@@ -898,23 +902,23 @@ export default function UserBlacklist() {
                               fontWeight: '700',
                               padding: '3px 8px',
                               borderRadius: '6px',
-                              background: block.website_id && block.website_id !== 'all' ? '#E0F2FE' : '#F1F5F9',
-                              color: block.website_id && block.website_id !== 'all' ? '#0369A1' : '#475569',
-                              border: `1px solid ${block.website_id && block.website_id !== 'all' ? '#BAE6FD' : '#E2E8F0'}`,
+                              background: '#FBFCFA',
+                              color: '#10201E',
+                              border: '1px solid #D9E1DC',
                               display: 'inline-block'
                             }}>
                               {block.website_domain || (block.website_id && block.website_id !== 'all' ? 'Single Site' : 'Global Fleet')}
                             </span>
                           </td>
                           <td style={S.td}>
-                            <span style={S.badge('#FEF2F2', '#DC2626', '#FECACA')}>Blocked</span>
+                            <span style={S.badge('#E8EEE8', '#0B2522', '#D9E1DC')}>Blocked</span>
                           </td>
                           <td style={{ ...S.td, textAlign: 'right' }}>
                             <button
                               onClick={() => handleRemoveCountryBlock(code, displayName, block.website_id)}
                               style={S.btnSm('#FFFFFF', '#10201E', '#D9E1DC')}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.color = '#FFFFFF' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#DC2626' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#FAFBF9'; e.currentTarget.style.borderColor = '#0B2522' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#D9E1DC' }}
                             >
                               Unblock
                             </button>
@@ -937,7 +941,7 @@ export default function UserBlacklist() {
           onClick={() => setShowModal(false)}
         >
           <div
-            style={{ background: '#FFFFFF', borderRadius: '16px', maxWidth: '440px', width: '100%', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #E2E8F0' }}
+            style={{ background: '#FFFFFF', borderRadius: '16px', maxWidth: '440px', width: '100%', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #D9E1DC' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
