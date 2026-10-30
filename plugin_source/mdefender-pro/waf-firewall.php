@@ -407,6 +407,13 @@ function waf_fw_handle_cloud_sync_webhook() {
                     if (isset($config['login_two_factor'])) {
                         $l2f_val = $config['login_two_factor'] ? 'enabled' : 'disabled';
                         update_option('waf_harden_login_guard', $l2f_val);
+                        update_option('waf_2fa_enforced', (!empty($config['two_factor_enabled']) || $l2f_val === 'enabled') ? 'yes' : 'no');
+                        if (isset($config['two_factor_roles'])) {
+                            update_option('waf_2fa_roles', sanitize_text_field($config['two_factor_roles']));
+                        }
+                        if (isset($config['two_factor_max_attempts'])) {
+                            update_option('waf_2fa_max_attempts', intval($config['two_factor_max_attempts']));
+                        }
                     }
                 }
                 if (class_exists('WAF_FW_Engine')) {

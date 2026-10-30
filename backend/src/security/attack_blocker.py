@@ -200,6 +200,16 @@ class AttackBlocker:
             'turnstile_theme': doc.get('turnstile_theme', 'auto'),
             'turnstile_site_key': doc.get('turnstile_site_key', ''),
             'turnstile_secret_key': doc.get('turnstile_secret_key', ''),
+            'two_factor_enabled': bool(doc.get('two_factor_enabled', True)),
+            'two_factor_scope': str(doc.get('two_factor_scope', 'all')),
+            'two_factor_roles': str(doc.get('two_factor_roles', 'admins')),
+            'two_factor_method_totp': bool(doc.get('two_factor_method_totp', True)),
+            'two_factor_method_email': bool(doc.get('two_factor_method_email', True)),
+            'two_factor_method_backup': bool(doc.get('two_factor_method_backup', True)),
+            'two_factor_max_attempts': int(doc.get('two_factor_max_attempts', 3)),
+            'two_factor_lockout_hours': int(doc.get('two_factor_lockout_hours', 24)),
+            'two_factor_remember_days': int(doc.get('two_factor_remember_days', 0)),
+            'two_factor_domain_overrides': doc.get('two_factor_domain_overrides', {}),
         }
         self._settings_cache[u_str] = (res, now_ts + 60.0)
         return res
@@ -225,6 +235,16 @@ class AttackBlocker:
             'turnstile_theme': str(data.get('turnstile_theme', 'auto')),
             'turnstile_site_key': str(data.get('turnstile_site_key', '')),
             'turnstile_secret_key': str(data.get('turnstile_secret_key', '')),
+            'two_factor_enabled': bool(data.get('two_factor_enabled', True)),
+            'two_factor_scope': str(data.get('two_factor_scope', 'all')),
+            'two_factor_roles': str(data.get('two_factor_roles', 'admins')),
+            'two_factor_method_totp': bool(data.get('two_factor_method_totp', True)),
+            'two_factor_method_email': bool(data.get('two_factor_method_email', True)),
+            'two_factor_method_backup': bool(data.get('two_factor_method_backup', True)),
+            'two_factor_max_attempts': max(1, int(data.get('two_factor_max_attempts', 3))),
+            'two_factor_lockout_hours': max(1, int(data.get('two_factor_lockout_hours', 24))),
+            'two_factor_remember_days': int(data.get('two_factor_remember_days', 0)),
+            'two_factor_domain_overrides': data.get('two_factor_domain_overrides', {}),
             'updated_at': now_dt,
         }
         self.db.settings.update_one(
@@ -232,6 +252,21 @@ class AttackBlocker:
             {'$set': update_data},
             upsert=True
         )
+
+        # Synchronize per-domain or global 2FA settings to websites collection
+        scope = update_data['two_factor_scope']
+        tf_enabled = update_data['two_factor_enabled']
+        if scope == 'all':
+            self.db.websites.update_many(
+                {'$or': [{'user_id': u_str}, {'added_by_user_id': u_str}]},
+                {'$set': {'login_two_factor': tf_enabled, 'two_factor_roles': update_data['two_factor_roles']}}
+            )
+        else:
+            self.db.websites.update_one(
+                {'$and': [{'$or': [{'_id': scope}, {'domain': scope}, {'id': scope}]}, {'$or': [{'user_id': u_str}, {'added_by_user_id': u_str}]}]},
+                {'$set': {'login_two_factor': tf_enabled, 'two_factor_roles': update_data['two_factor_roles']}}
+            )
+
         return {
             'auto_block_enabled': update_data['auto_block_enabled'],
             'auto_block_threshold': update_data['auto_block_threshold'],
@@ -248,6 +283,16 @@ class AttackBlocker:
             'turnstile_theme': update_data['turnstile_theme'],
             'turnstile_site_key': update_data['turnstile_site_key'],
             'turnstile_secret_key': update_data['turnstile_secret_key'],
+            'two_factor_enabled': update_data['two_factor_enabled'],
+            'two_factor_scope': update_data['two_factor_scope'],
+            'two_factor_roles': update_data['two_factor_roles'],
+            'two_factor_method_totp': update_data['two_factor_method_totp'],
+            'two_factor_method_email': update_data['two_factor_method_email'],
+            'two_factor_method_backup': update_data['two_factor_method_backup'],
+            'two_factor_max_attempts': update_data['two_factor_max_attempts'],
+            'two_factor_lockout_hours': update_data['two_factor_lockout_hours'],
+            'two_factor_remember_days': update_data['two_factor_remember_days'],
+            'two_factor_domain_overrides': update_data['two_factor_domain_overrides'],
             'updated_at': now_dt.strftime("%Y-%m-%d %H:%M:%S"),
         }
 

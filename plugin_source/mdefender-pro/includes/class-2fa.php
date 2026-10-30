@@ -23,16 +23,20 @@ class WAF_FW_2FA {
 
     public function render_login_field() {
         global $wpdb;
+        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes' || get_option('waf_harden_login_guard', 'disabled') === 'enabled';
         $has_active_2fa = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = '_waf_2fa_enabled' AND meta_value = 'yes'");
-        if (!$has_active_2fa) {
-            return; // 100% hidden unless 2FA is set up!
+        if (!$has_active_2fa && !$is_enforced) {
+            return; // hidden unless 2FA is set up or enforced!
         }
         ?>
         <p class="waf-2fa-login-wrap" style="margin-bottom:16px;">
-            <label for="waf_2fa_code" style="font-weight:600;font-size:12px;color:#475569;">
-                2FA Code (Google Authenticator)
+            <label for="waf_2fa_code" style="font-weight:600;font-size:12px;color:#10201E;">
+                <span style="display:inline-flex;align-items:center;gap:6px;">
+                    <strong style="color:#0B2522;">Two-Factor Authentication (2FA)</strong>
+                    <span style="font-size:10px;background:#E8EEE8;color:#0B2522;padding:1px 6px;border-radius:4px;font-weight:700;">REQUIRED</span>
+                </span>
                 <br />
-                <input type="text" name="waf_2fa_code" id="waf_2fa_code" class="input" value="" size="20" placeholder="6-digit code" autocomplete="off" style="letter-spacing:2px;font-weight:700;margin-top:4px;" />
+                <input type="text" name="waf_2fa_code" id="waf_2fa_code" class="input" value="" size="20" placeholder="6-digit Authenticator / Email OTP" autocomplete="off" style="letter-spacing:3px;font-weight:800;font-size:15px;margin-top:6px;border:1.5px solid #D9E1DC;border-radius:8px;padding:8px 12px;width:100%;box-sizing:border-box;" />
             </label>
         </p>
         <?php
@@ -46,27 +50,78 @@ class WAF_FW_2FA {
         $enabled = get_user_meta($user->ID, '_waf_2fa_enabled', true);
         $secret = get_user_meta($user->ID, '_waf_2fa_secret', true);
 
-        // Strict Bypass: If 2FA is NOT explicitly enabled or secret is empty, let user log in freely!
-        if ($enabled !== 'yes' || empty($secret)) {
+        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes' || get_option('waf_harden_login_guard', 'disabled') === 'enabled';
+        $roles = (array)($user->roles ?? []);
+        $role_target = get_option('waf_2fa_roles', 'admins');
+
+        $must_verify = false;
+        if ($enabled === 'yes' && !empty($secret)) {
+            $must_verify = true;
+        } elseif ($is_enforced) {
+            if ($role_target === 'all_users') {
+                $must_verify = true;
+            } elseif ($role_target === 'editors') {
+                $must_verify = in_array('administrator', $roles) || in_array('editor', $roles);
+            } else { // default 'admins'
+                $must_verify = in_array('administrator', $roles) || empty($roles);
+            }
+        }
+
+        if (!$must_verify) {
             return $user;
         }
 
         $code = sanitize_text_field($_POST['waf_2fa_code'] ?? '');
         $code = preg_replace('/\s+/', '', $code);
 
-        // If no code submitted, or invalid code
         $valid = false;
         if (!empty($code)) {
-            $valid = $this->verify_totp($secret, $code);
-            if (!$valid) {
-                $valid = $this->verify_and_consume_recovery_code($user->ID, $code);
+            if (!empty($secret)) {
+                $valid = $this->verify_totp($secret, $code);
+                if (!$valid) {
+                    $valid = $this->verify_and_consume_recovery_code($user->ID, $code);
+                }
+            }
+            // Check email OTP if generated
+            $email_otp = get_transient('waf_2fa_email_otp_' . $user->ID);
+            if (!$valid && $email_otp && $email_otp === $code) {
+                $valid = true;
+                delete_transient('waf_2fa_email_otp_' . $user->ID);
             }
         }
 
         if (!$valid) {
-            return new WP_Error('waf_2fa_invalid', '<strong>MDefender-Pro Security</strong>: Invalid or missing 2FA code.');
+            // Track failed 2FA attempts by IP to prevent brute-forcing
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $transient_key = 'waf_2fa_fails_' . md5($ip);
+            $fails = intval(get_transient($transient_key)) + 1;
+            set_transient($transient_key, $fails, 3600);
+
+            $max_fails = intval(get_option('waf_2fa_max_attempts', 3));
+            if ($fails >= $max_fails) {
+                if (class_exists('WAF_FW_IP_Filter')) {
+                    WAF_FW_IP_Filter::instance()->add_to_blacklist($ip, 'Brute-force 2FA Bypass Attempt Locked Out', 'temporary', 86400);
+                }
+                wp_die('<div style="font-family:sans-serif;max-width:500px;margin:80px auto;padding:30px;border:1px solid #D9E1DC;border-radius:12px;background:#FFF;text-align:center;"><h2 style="color:#10201E;margin-top:0;">Access Quarantined (HTTP 403)</h2><p style="color:#60716B;">Too many failed 2FA verification attempts. Your IP has been temporarily quarantined by MDefender Pro Edge Protection.</p></div>', '2FA Lockout', ['response' => 403]);
+            }
+
+            // If user has no TOTP secret yet and no code provided, generate instant email OTP
+            if (empty($secret) && empty($code)) {
+                $new_otp = strval(rand(100000, 999999));
+                set_transient('waf_2fa_email_otp_' . $user->ID, $new_otp, 600);
+                @wp_mail(
+                    $user->user_email,
+                    '[' . get_bloginfo('name') . '] Your MDefender 2FA Security Code',
+                    "Hello {$user->display_name},\n\nA login attempt requires Two-Factor Authentication. Your single-use 6-digit security code is:\n\n{$new_otp}\n\nThis code expires in 10 minutes.\n\nSecured by MDefender Pro."
+                );
+                return new WP_Error('waf_2fa_required', '<strong>MDefender Pro 2FA Required</strong>: Enter your 6-digit Authenticator code (or check ' . esc_html($user->user_email) . ' for your verification OTP). Attempts remaining: ' . ($max_fails - $fails));
+            }
+
+            return new WP_Error('waf_2fa_invalid', '<strong>MDefender Pro Security</strong>: Invalid or missing 2FA code. Attempts remaining before IP lockout: ' . ($max_fails - $fails));
         }
 
+        // On successful verification, clear failed count
+        delete_transient('waf_2fa_fails_' . md5($_SERVER['REMOTE_ADDR'] ?? ''));
         return $user;
     }
 
