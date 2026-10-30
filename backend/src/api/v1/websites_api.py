@@ -5190,9 +5190,32 @@ class RemoteActionRequest(BaseModel):
 
 
 
+    theme: str | None = None
+
+
+
+    slug: str | None = None
+
+
+
     status: str | None = None
 
 
+
+
+@router.get("/{website_id}/themes")
+async def get_website_themes(website_id: str, user=Depends(get_current_user)):
+    """Retrieve verified theme inventory and active template details for a website."""
+    website = get_owned_website(user, website_id)
+    themes = website.get("themes", [])
+    active_theme = website.get("theme", "")
+    return success({
+        "website_id": website_id,
+        "domain": website.get("domain", ""),
+        "active_theme": active_theme,
+        "themes": themes,
+        "total": len(themes)
+    })
 
 @router.post("/{website_id}/remote-action")
 
@@ -5328,8 +5351,9 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
             url_params += f"&plugin_file={p_file}&plugin={p_file}"
         if body.status:
             url_params += f"&status={body.status}"
-        if body.theme_slug:
-            url_params += f"&theme_slug={body.theme_slug}&theme={body.theme_slug}"
+        if body.theme_slug or body.theme or body.slug:
+            t_slug = body.theme_slug or body.theme or body.slug
+            url_params += f"&theme_slug={t_slug}&theme={t_slug}&slug={t_slug}"
         if body.filename:
             url_params += f"&filename={body.filename}"
         if body.type:
@@ -5535,19 +5559,27 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
 
 
 
-        elif "update" in body.action:
-
-
-
-            audit_act = "plugin_updated"
-
-
-
-        elif body.action == "activate_theme":
+        elif body.action in ("activate_theme", "switch_theme"):
 
 
 
             audit_act = "theme_activated"
+
+
+
+        elif "theme" in body.action:
+
+
+
+            audit_act = "theme_updated"
+
+
+
+        elif "plugin" in body.action or "update" in body.action:
+
+
+
+            audit_act = "plugin_updated"
 
 
 

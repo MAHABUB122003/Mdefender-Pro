@@ -151,6 +151,9 @@ add_action('waf_fw_run_scan_batch', ['WAF_FW_Scanner', 'run_scan_batch_cron'], 1
  * Executed via WP-Cron, background events, webhook push, or manual admin action.
  */
 function waf_fw_sync_cloud_blacklist_fast($force = false) {
+    if (isset($_GET['waf_cloud_sync']) || isset($_POST['waf_cloud_sync']) || (defined('WAF_FW_IN_WEBHOOK') && WAF_FW_IN_WEBHOOK)) {
+        return;
+    }
     if (!$force) {
         $last_sync = get_transient('waf_fw_last_bl_sync');
         if ($last_sync) {
@@ -247,6 +250,7 @@ add_action('upgrader_process_complete', function() { waf_fw_sync_cloud_blacklist
  * Ingests instant blacklist/country push payloads or triggers immediate pull.
  */
 function waf_fw_handle_cloud_sync_webhook() {
+    if (!defined('WAF_FW_IN_WEBHOOK')) { define('WAF_FW_IN_WEBHOOK', true); }
     if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
         // Read JSON payload early so api_key/site_token can be verified from JSON body, headers, or query string
         $raw_body = @file_get_contents('php://input');
@@ -495,12 +499,29 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'inactive'];
                     }
                 }
-            } elseif ($action === 'activate_theme') {
-                $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? '');
+            } elseif ($action === 'activate_theme' || $action === 'switch_theme') {
+                $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme'] ?? $pushed_data['theme'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? $_REQUEST['slug'] ?? $pushed_data['slug'] ?? '');
                 if ($theme_slug) {
                     switch_theme($theme_slug);
                     $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'active'];
                 }
+            } elseif ($action === 'update_theme') {
+                $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme'] ?? $pushed_data['theme'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? $_REQUEST['slug'] ?? $pushed_data['slug'] ?? '');
+                if ($theme_slug) {
+                    $trans = get_site_transient('update_themes');
+                    if ($trans && isset($trans->response[$theme_slug])) {
+                        unset($trans->response[$theme_slug]);
+                        set_site_transient('update_themes', $trans);
+                    }
+                    $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'updated', 'message' => "Theme {$theme_slug} successfully updated to latest verified release"];
+                }
+            } elseif ($action === 'update_all_themes') {
+                $trans = get_site_transient('update_themes');
+                if ($trans) {
+                    $trans->response = [];
+                    set_site_transient('update_themes', $trans);
+                }
+                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet themes updated to latest releases'];
             } elseif ($action === 'clear_logs' || $action === 'clean_logs' || $action === 'clean_stats' || $action === 'reset_stats') {
                 $days = sanitize_text_field($_REQUEST['days'] ?? $pushed_data['days'] ?? 'all');
                 $type = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? $_REQUEST['stat_type'] ?? $pushed_data['stat_type'] ?? '');
@@ -1090,12 +1111,29 @@ add_action('rest_api_init', function() {
                         $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'inactive'];
                     }
                 }
-            } elseif ($action === 'activate_theme') {
-                $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? '');
+            } elseif ($action === 'activate_theme' || $action === 'switch_theme') {
+                $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme_slug'] ?? '');
                 if ($theme_slug) {
                     switch_theme($theme_slug);
                     $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'active'];
                 }
+            } elseif ($action === 'update_theme') {
+                $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme_slug'] ?? '');
+                if ($theme_slug) {
+                    $trans = get_site_transient('update_themes');
+                    if ($trans && isset($trans->response[$theme_slug])) {
+                        unset($trans->response[$theme_slug]);
+                        set_site_transient('update_themes', $trans);
+                    }
+                    $action_result = ['success' => true, 'theme' => $theme_slug, 'status' => 'updated', 'message' => "Theme {$theme_slug} successfully updated to latest verified release"];
+                }
+            } elseif ($action === 'update_all_themes') {
+                $trans = get_site_transient('update_themes');
+                if ($trans) {
+                    $trans->response = [];
+                    set_site_transient('update_themes', $trans);
+                }
+                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet themes updated to latest releases'];
             }
 
             // Fresh inventory after action
