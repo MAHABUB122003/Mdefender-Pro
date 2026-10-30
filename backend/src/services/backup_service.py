@@ -234,10 +234,10 @@ class BackupService:
             })
 
         # 2. If website is a remote WordPress site, query WordPress origin
-        if website.get("url") or website.get("api_key"):
+        # 2. If website is a remote WordPress site, query WordPress origin
+        if not self.is_local_site(website) and (website.get("url") or website.get("api_key")):
             try:
-                remote_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=15.0)
-                inv = remote_res.get("inventory") or {}
+                remote_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=2.5)
                 remote_bks = inv.get("backups") or []
 
                 for rb in remote_bks:
