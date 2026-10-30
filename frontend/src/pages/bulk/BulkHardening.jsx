@@ -120,8 +120,8 @@ export default function BulkHardening() {
     }
   }
 
-  // Save Custom Login & Advanced Bot Defense settings
-  const handleSaveAdvancedPolicy = async (e) => {
+  // Save Custom Login Gateway settings
+  const handleSaveLoginGateway = async (e) => {
     if (e) e.preventDefault()
     setSaving(true)
 
@@ -135,11 +135,7 @@ export default function BulkHardening() {
     const payload = {
       hide_login_url: hideLoginUrl,
       custom_login_slug: cleanSlug,
-      login_redirect_type: loginRedirectType,
-      bot_challenge_mode: botChallengeMode,
-      max_login_attempts: maxLoginAttempts,
-      login_lockout_duration: loginLockoutDuration,
-      rate_limit_per_minute: rateLimitPerMinute
+      login_redirect_type: loginRedirectType
     }
 
     try {
@@ -148,10 +144,10 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('WP Admin Shield, Bot Defense & Rate Limiting policies synchronized successfully!')
+      showToast('WP Admin Hide & Custom Secret Login Gateway synchronized successfully!')
       fetchFleet()
     } catch {
-      showToast('Advanced policies saved; background synchronization queued.')
+      showToast('Gateway settings saved; background sync queued.')
     } finally {
       setSaving(false)
     }
@@ -401,7 +397,7 @@ export default function BulkHardening() {
                 </div>
               )}
 
-              {/* Active Login Gateway Live Link */}
+              {/* Active Login Gateway Live Link & Save Button */}
               <div style={{
                 background: '#FFFFFF',
                 border: '1px solid #D9E1DC',
@@ -465,181 +461,32 @@ export default function BulkHardening() {
                     <ExternalLink size={13} />
                     <span>Test Gateway</span>
                   </a>
-                </div>
-              </div>
 
-            </div>
-          </div>
-
-          {/* ========================================================================= */}
-          {/* SECTION 2: BOT DEFENSE & BIOMETRIC HUMAN VERIFICATION (HOLD & PRESS)       */}
-          {/* ========================================================================= */}
-          <div style={contentCardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Fingerprint size={18} />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                      Bot Defense &amp; Human Verification Challenge
-                    </h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#60716B' }}>
-                      Deploy Fiverr-style interactive biometric challenges, Cloudflare Turnstile, and brute-force rate limit shields.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>
-                  {botChallengeMode === 'hold_press' ? 'BIOMETRIC HOLD CHALLENGE' : botChallengeMode.toUpperCase()}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '20px' }}>
-              
-              {/* Challenge Type Selection */}
-              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#10201E', marginBottom: '6px' }}>
-                  <Bot size={15} style={{ display: 'inline', marginRight: '6px', color: '#E8792F' }} />
-                  Bot Challenge Engine
-                </label>
-                <select
-                  value={botChallengeMode}
-                  onChange={(e) => setBotChallengeMode(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '42px',
-                    padding: '0 12px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #CBD5E1',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: '#10201E'
-                  }}
-                >
-                  <option value="hold_press">Fiverr-Style 'Hold &amp; Press' Verification (Recommended)</option>
-                  <option value="turnstile">Cloudflare Turnstile (Silent Cryptographic Challenge)</option>
-                  <option value="interactive_captcha">Visual Image &amp; Mathematical CAPTCHA</option>
-                  <option value="off">Disabled / Standard Login</option>
-                </select>
-                <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
-                  {botChallengeMode === 'hold_press'
-                    ? 'Requires visitor to press and hold for 2 seconds to prove human identity, completely defeating automated bot scripts.'
-                    : 'Select preferred bot mitigation model for protected WordPress login and forms.'}
-                </small>
-              </div>
-
-              {/* Max Login Attempts */}
-              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#10201E', marginBottom: '6px' }}>
-                  <Shield size={15} style={{ display: 'inline', marginRight: '6px', color: '#2A8B68' }} />
-                  Max Failed Login Attempts
-                </label>
-                <select
-                  value={maxLoginAttempts}
-                  onChange={(e) => setMaxLoginAttempts(parseInt(e.target.value, 10))}
-                  style={{
-                    width: '100%',
-                    height: '42px',
-                    padding: '0 12px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #CBD5E1',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: '#10201E'
-                  }}
-                >
-                  <option value={3}>3 Failed Attempts (Strict)</option>
-                  <option value={5}>5 Failed Attempts (Standard Balanced)</option>
-                  <option value={10}>10 Failed Attempts (Permissive)</option>
-                </select>
-                <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
-                  Number of invalid password attempts before temporary IP ban is enforced.
-                </small>
-              </div>
-
-              {/* Lockout Duration & Rate Limit */}
-              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#10201E', marginBottom: '6px' }}>
-                  <Gauge size={15} style={{ display: 'inline', marginRight: '6px', color: '#3B82F6' }} />
-                  Lockout Duration &amp; Rate Limit
-                </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <select
-                    value={loginLockoutDuration}
-                    onChange={(e) => setLoginLockoutDuration(parseInt(e.target.value, 10))}
+                  <button
+                    type="button"
+                    onClick={handleSaveLoginGateway}
+                    disabled={saving}
                     style={{
-                      flex: 1,
-                      height: '42px',
-                      padding: '0 8px',
-                      borderRadius: '8px',
-                      border: '1.5px solid #CBD5E1',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 14px',
+                      borderRadius: '6px',
+                      background: '#2A8B68',
+                      color: '#FFFFFF',
+                      border: 'none',
                       fontSize: '12.5px',
                       fontWeight: 700,
-                      color: '#10201E'
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      marginLeft: '6px'
                     }}
                   >
-                    <option value={15}>15 Minutes</option>
-                    <option value={30}>30 Minutes</option>
-                    <option value={60}>60 Minutes (1 Hour)</option>
-                    <option value={1440}>24 Hours (Full Day)</option>
-                  </select>
-
-                  <select
-                    value={rateLimitPerMinute}
-                    onChange={(e) => setRateLimitPerMinute(parseInt(e.target.value, 10))}
-                    style={{
-                      flex: 1,
-                      height: '42px',
-                      padding: '0 8px',
-                      borderRadius: '8px',
-                      border: '1.5px solid #CBD5E1',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      color: '#10201E'
-                    }}
-                  >
-                    <option value={60}>60 Req / Min</option>
-                    <option value={120}>120 Req / Min (Default)</option>
-                    <option value={300}>300 Req / Min</option>
-                  </select>
+                    <Save size={13} />
+                    <span>{saving ? 'Saving...' : 'Save Secret URL'}</span>
+                  </button>
                 </div>
-                <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
-                  Cooldown ban duration and maximum requests allowed per minute per client IP.
-                </small>
               </div>
 
-            </div>
-
-            {/* Save Policies Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px' }}>
-              <button
-                type="button"
-                onClick={handleSaveAdvancedPolicy}
-                disabled={saving}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '11px 22px',
-                  borderRadius: '9px',
-                  background: '#E8792F',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontSize: '13.5px',
-                  fontWeight: 700,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 10px rgba(232, 121, 47, 0.25)',
-                  transition: 'opacity 0.2s'
-                }}
-              >
-                <Save size={15} />
-                <span>{saving ? 'Synchronizing Policies...' : 'Save & Deploy Security Policies'}</span>
-              </button>
             </div>
           </div>
 

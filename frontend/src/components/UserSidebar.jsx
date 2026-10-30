@@ -192,22 +192,11 @@ export default function UserSidebar({ isOpen, onClose }) {
             </span>
             <span style={{ pointerEvents: 'none' }}>Access Control &amp; Geo</span>
           </NavLink>
-          <NavLink to="/user/rules" onClick={handleLinkClick} onMouseEnter={() => prefetch('rules')} style={getNavLinkStyle}>
+          <NavLink to="/user/bulk/tools" onClick={handleLinkClick} onMouseEnter={() => prefetch('tools')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <ShieldCheck size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Firewall Rules</span>
-            {!isCustomRulesAllowed && (
-              <span className="pro-badge" style={{ background: '#E8792F', color: '#FFFFFF', fontSize: '9px', fontWeight: '800', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', pointerEvents: 'none' }}>
-                CORE
-              </span>
-            )}
-          </NavLink>
-          <NavLink to="/user/bulk/tools" onClick={handleLinkClick} onMouseEnter={() => prefetch('tools')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Wrench size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Rate Limit &amp; Tools</span>
+            <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limit</span>
           </NavLink>
 
           {/* 3. SECURITY & RECOVERY */}

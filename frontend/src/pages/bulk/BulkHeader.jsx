@@ -255,45 +255,6 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
           </div>
         </div>
 
-        {/* QUICK JUMP HORIZONTAL TABS BAR */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          overflowX: 'auto',
-          paddingTop: '16px',
-          borderTop: '1px solid #ECEFEF'
-        }}>
-          {bulkNavItems.map(item => {
-            const isActive = currentPath === item.path
-            const ItemIcon = item.icon
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '7px',
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  fontSize: '12.5px',
-                  fontWeight: isActive ? 700 : 600,
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease',
-                  background: isActive ? '#0B2522' : '#FBFCFA',
-                  color: isActive ? '#FFFFFF' : '#60716B',
-                  border: isActive ? '1px solid #0B2522' : '1px solid #D9E1DC',
-                  boxShadow: isActive ? '0 2px 8px rgba(11, 37, 34, 0.15)' : 'none'
-                }}
-              >
-                <ItemIcon size={14} color={isActive ? '#E8792F' : '#889895'} />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </div>
       </div>
     </>
   )
