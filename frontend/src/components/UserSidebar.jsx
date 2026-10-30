@@ -3,38 +3,30 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   FileText,
-  ShieldCheck,
-  Link2,
-  Tag,
-  Ban,
-  Globe,
-  Layers,
-  Boxes,
-  Users,
-  Bell,
-  ChevronDown,
-  Wrench,
-  Settings,
-  LogOut,
-  Sparkles,
+  HeartPulse,
   Activity,
-  Sliders,
-  Palette,
-  Cpu,
-  HardDrive,
+  Globe,
+  ShieldCheck,
+  Wrench,
   Bug,
   Shield,
-  HeartPulse
+  HardDrive,
+  Layers,
+  Cpu,
+  Boxes,
+  Palette,
+  Sparkles,
+  Users,
+  Bell,
+  Tag,
+  Settings,
+  LogOut
 } from 'lucide-react'
 import userStore from '../utils/userStore'
 
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const isBulkActive = location.pathname.startsWith('/user/bulk') || location.pathname === '/user/tools'
-
-  // Auto-expand if currently on a bulk route, otherwise default to open for clear discovery
-  const [bulkExpanded, setBulkExpanded] = useState(() => true)
 
   const [selectedDomain, setSelectedDomain] = useState(() => {
     return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || 'all') : 'all'
@@ -48,21 +40,6 @@ export default function UserSidebar({ isOpen, onClose }) {
     window.addEventListener('mdf_bulk_domain_changed', handleDomainSync)
     return () => window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync)
   }, [])
-
-  const handleDomainChange = (e) => {
-    const val = e.target.value
-    setSelectedDomain(val)
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('mdf_bulk_selected_site', val)
-      window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
-    }
-  }
-
-  // Get connected sites list
-  const cachedDashboard = userStore.get('dashboard') || userStore.get('websites')
-  const siteList = cachedDashboard?.websites || [
-    { id: 'site-1', domain: 'mahabub.shop' }
-  ]
 
   const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
@@ -79,18 +56,11 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (onClose) onClose()
   }
 
-  const toggleBulkDropdown = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setBulkExpanded(prev => !prev)
-  }
-
   const prefetch = (page) => {
     try {
       if (page === 'dashboard') import('../pages/UserDashboard')
       else if (page === 'logs') import('../pages/UserLogs')
       else if (page === 'rules') import('../pages/UserRules')
-      else if (page === 'connect') import('../pages/UserConnect')
       else if (page === 'pricing') import('../pages/UserPricing')
       else if (page === 'blacklist') import('../pages/UserBlacklist')
       else if (page === 'domains') import('../pages/UserDomains')
@@ -99,6 +69,14 @@ export default function UserSidebar({ isOpen, onClose }) {
       else if (page === 'alerts') import('../pages/UserAlerts')
       else if (page === 'tools') import('../pages/UserTools')
       else if (page === 'settings') import('../pages/UserSettings')
+      else if (page === 'scanner') import('../pages/bulk/BulkScanner')
+      else if (page === 'backup') import('../pages/bulk/BulkBackup')
+      else if (page === 'plugins') import('../pages/bulk/BulkPlugins')
+      else if (page === 'themes') import('../pages/bulk/BulkThemes')
+      else if (page === 'hardening') import('../pages/bulk/BulkHardening')
+      else if (page === 'health') import('../pages/bulk/BulkSiteHealth')
+      else if (page === 'activity') import('../pages/bulk/BulkActivity')
+      else if (page === 'core') import('../pages/bulk/BulkCore')
     } catch {}
   }
 
@@ -106,39 +84,37 @@ export default function UserSidebar({ isOpen, onClose }) {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '10px 14px',
+    padding: '9px 14px',
     borderRadius: '9px',
     marginBottom: '2px',
     textDecoration: 'none',
     cursor: 'pointer',
     userSelect: 'none',
+    fontSize: '13.5px',
     transition: 'all 0.15s ease',
     ...(isActive
       ? { background: 'rgba(232, 121, 47, 0.14)', color: '#F38A3E', fontWeight: 600 }
       : { color: '#94a3b8' })
   })
 
-  const getSubNavLinkStyle = ({ isActive }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '7px 12px 7px 22px',
-    borderRadius: '7px',
-    marginBottom: '2px',
-    textDecoration: 'none',
-    cursor: 'pointer',
-    userSelect: 'none',
-    fontSize: '12.5px',
-    fontWeight: isActive ? 700 : 500,
-    transition: 'all 0.15s ease',
-    ...(isActive
-      ? { background: 'rgba(232, 121, 47, 0.15)', color: '#F38A3E' }
-      : { color: '#889895' })
+  const getCategoryHeaderStyle = (isFirst = false) => ({
+    color: '#6A7D78',
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    marginTop: isFirst ? '2px' : '18px',
+    marginBottom: '6px',
+    paddingLeft: '14px',
+    userSelect: 'none'
   })
 
   return (
     <>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} id="sidebar" style={{ background: '#0c1615', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* ========================================================================= */}
+        {/* BRAND LOGO HEADER                                                         */}
+        {/* ========================================================================= */}
         <div className="sidebar-brand" style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <Link
             to="/"
@@ -176,8 +152,13 @@ export default function UserSidebar({ isOpen, onClose }) {
           </Link>
         </div>
 
-        <nav className="sidebar-nav" style={{ padding: '16px 12px' }}>
-          <div className="nav-label" style={{ color: '#6A7D78', fontSize: '10px', fontWeight: 700, letterSpacing: '1px' }}>Security Ops</div>
+        {/* ========================================================================= */}
+        {/* NAVIGATION LIST (ORGANIZED BY ENTERPRISE CATEGORIES)                     */}
+        {/* ========================================================================= */}
+        <nav className="sidebar-nav" style={{ padding: '14px 12px 20px', overflowY: 'auto' }}>
+          
+          {/* 1. OVERVIEW & MONITORING */}
+          <div style={getCategoryHeaderStyle(true)}>Overview &amp; Monitoring</div>
           <NavLink to="/user/dashboard" onClick={handleLinkClick} onMouseEnter={() => prefetch('dashboard')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <LayoutDashboard size={17} />
@@ -188,177 +169,120 @@ export default function UserSidebar({ isOpen, onClose }) {
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <FileText size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Logs</span>
+            <span style={{ pointerEvents: 'none' }}>Live Traffic Logs</span>
+          </NavLink>
+          <NavLink to="/user/bulk/site-health" onClick={handleLinkClick} onMouseEnter={() => prefetch('health')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <HeartPulse size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Site Health &amp; Uptime</span>
+          </NavLink>
+          <NavLink to="/user/bulk/activity" onClick={handleLinkClick} onMouseEnter={() => prefetch('activity')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Activity size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Activity Audit Log</span>
+          </NavLink>
+
+          {/* 2. WAF & THREAT DEFENSE */}
+          <div style={getCategoryHeaderStyle()}>WAF &amp; Threat Defense</div>
+          <NavLink to="/user/blacklist" onClick={handleLinkClick} onMouseEnter={() => prefetch('blacklist')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Globe size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Access Control &amp; Geo</span>
           </NavLink>
           <NavLink to="/user/rules" onClick={handleLinkClick} onMouseEnter={() => prefetch('rules')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <ShieldCheck size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Rules</span>
+            <span style={{ pointerEvents: 'none' }}>Firewall Rules</span>
             {!isCustomRulesAllowed && (
               <span className="pro-badge" style={{ background: '#E8792F', color: '#FFFFFF', fontSize: '9px', fontWeight: '800', padding: '1px 6px', borderRadius: '4px', marginLeft: 'auto', pointerEvents: 'none' }}>
                 CORE
               </span>
             )}
           </NavLink>
+          <NavLink to="/user/bulk/tools" onClick={handleLinkClick} onMouseEnter={() => prefetch('tools')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Wrench size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Rate Limit &amp; Tools</span>
+          </NavLink>
 
-          <div className="nav-label" style={{ color: '#6A7D78', fontSize: '10px', fontWeight: 700, letterSpacing: '1px', marginTop: '16px' }}>Edge &amp; Config</div>
-          <NavLink to="/user/connect" onClick={handleLinkClick} onMouseEnter={() => prefetch('connect')} style={getNavLinkStyle}>
+          {/* 3. SECURITY & RECOVERY */}
+          <div style={getCategoryHeaderStyle()}>Security &amp; Recovery</div>
+          <NavLink to="/user/bulk/scanner" onClick={handleLinkClick} onMouseEnter={() => prefetch('scanner')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Link2 size={17} />
+              <Bug size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Connect</span>
+            <span style={{ pointerEvents: 'none' }}>Malware Scanner</span>
           </NavLink>
-          <NavLink to="/user/pricing" onClick={handleLinkClick} onMouseEnter={() => prefetch('pricing')} style={getNavLinkStyle}>
+          <NavLink to="/user/bulk/hardening" onClick={handleLinkClick} onMouseEnter={() => prefetch('hardening')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Tag size={17} />
+              <Shield size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Pricing &amp; Plans</span>
+            <span style={{ pointerEvents: 'none' }}>Security Hardening</span>
           </NavLink>
-          <NavLink to="/user/blacklist" onClick={handleLinkClick} onMouseEnter={() => prefetch('blacklist')} style={getNavLinkStyle}>
+          <NavLink to="/user/bulk/backup" onClick={handleLinkClick} onMouseEnter={() => prefetch('backup')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Ban size={17} />
+              <HardDrive size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Blacklist &amp; Geo</span>
+            <span style={{ pointerEvents: 'none' }}>Backup &amp; Disaster Rec.</span>
           </NavLink>
-          <NavLink to="/user/domains" onClick={handleLinkClick} onMouseEnter={() => prefetch('domains')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Globe size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Domains</span>
-          </NavLink>
+
+          {/* 4. FLEET ASSET MANAGEMENT */}
+          <div style={getCategoryHeaderStyle()}>Fleet Asset Management</div>
           <NavLink to="/user/websites" onClick={handleLinkClick} onMouseEnter={() => prefetch('websites')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Layers size={17} />
             </span>
             <span style={{ pointerEvents: 'none' }}>WordPress Sites</span>
           </NavLink>
+          <NavLink to="/user/domains" onClick={handleLinkClick} onMouseEnter={() => prefetch('domains')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Cpu size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Custom Domains</span>
+          </NavLink>
+          <NavLink to="/user/bulk/plugins" onClick={handleLinkClick} onMouseEnter={() => prefetch('plugins')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Boxes size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Plugins Management</span>
+          </NavLink>
+          <NavLink to="/user/bulk/themes" onClick={handleLinkClick} onMouseEnter={() => prefetch('themes')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Palette size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Themes Management</span>
+          </NavLink>
+          <NavLink to="/user/bulk/core" onClick={handleLinkClick} onMouseEnter={() => prefetch('core')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Sparkles size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Core &amp; Safe Updates</span>
+          </NavLink>
 
-          {/* ========================================================================= */}
-          {/* BULK MANAGEMENT ACCORDION WITH DOMAIN SELECTOR & 10 SUB-ACTIONS           */}
-          {/* ========================================================================= */}
-          <div style={{ marginTop: '4px', marginBottom: '4px' }}>
-            <div
-              onClick={toggleBulkDropdown}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '10px 14px',
-                borderRadius: '9px',
-                cursor: 'pointer',
-                userSelect: 'none',
-                transition: 'all 0.15s ease',
-                background: isBulkActive ? 'rgba(232, 121, 47, 0.12)' : 'transparent',
-                color: isBulkActive ? '#F38A3E' : '#94a3b8'
-              }}
-              onMouseEnter={e => {
-                if (!isBulkActive) e.currentTarget.style.color = '#F38A3E'
-              }}
-              onMouseLeave={e => {
-                if (!isBulkActive) e.currentTarget.style.color = '#94a3b8'
-              }}
-            >
-              <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Boxes size={17} />
-              </span>
-              <span style={{ fontWeight: isBulkActive ? 700 : 600 }}>Bulk Management</span>
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: '#6A7D78',
-                  transform: bulkExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s ease'
-                }}
-              >
-                <ChevronDown size={15} />
-              </span>
-            </div>
-
-            {/* EXPANDED ACCORDION PANEL */}
-            {bulkExpanded && (
-              <div
-                style={{
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  borderLeft: '2px solid rgba(232, 121, 47, 0.4)',
-                  borderRadius: '0 8px 8px 0',
-                  margin: '4px 0 6px 6px',
-                  padding: '6px 4px 6px 2px'
-                }}
-              >
-
-                {/* 10 Sub-actions */}
-                <NavLink to="/user/bulk/monitoring" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Activity size={14} />
-                  <span>Monitoring</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/plugins" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Sliders size={14} />
-                  <span>Plugins</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/themes" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Palette size={14} />
-                  <span>Themes</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/core" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Cpu size={14} />
-                  <span>WordPress Core</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/backup" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <HardDrive size={14} />
-                  <span>Backup &amp; Restore</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/scanner" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Bug size={14} />
-                  <span>Malware Scanner</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/hardening" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Shield size={14} />
-                  <span>Hardening</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/safe-updates" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Sparkles size={14} />
-                  <span>Safe Updates</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/site-health" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <HeartPulse size={14} />
-                  <span>Site Health</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/activity" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <FileText size={14} />
-                  <span>Activity History</span>
-                </NavLink>
-
-                <NavLink to="/user/bulk/tools" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-                  <Wrench size={14} />
-                  <span>Security Tools</span>
-                </NavLink>
-              </div>
-            )}
-          </div>
-
+          {/* 5. WORKSPACE & SETTINGS */}
+          <div style={getCategoryHeaderStyle()}>Workspace &amp; Settings</div>
           <NavLink to="/user/team" onClick={handleLinkClick} onMouseEnter={() => prefetch('team')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Users size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Team</span>
+            <span style={{ pointerEvents: 'none' }}>Team Members</span>
           </NavLink>
           <NavLink to="/user/alerts" onClick={handleLinkClick} onMouseEnter={() => prefetch('alerts')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Bell size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Alerts</span>
+            <span style={{ pointerEvents: 'none' }}>Alerts &amp; Notifications</span>
+          </NavLink>
+          <NavLink to="/user/pricing" onClick={handleLinkClick} onMouseEnter={() => prefetch('pricing')} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Tag size={17} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Pricing &amp; Plans</span>
           </NavLink>
           <NavLink to="/user/settings" onClick={handleLinkClick} onMouseEnter={() => prefetch('settings')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -368,6 +292,9 @@ export default function UserSidebar({ isOpen, onClose }) {
           </NavLink>
         </nav>
 
+        {/* ========================================================================= */}
+        {/* FOOTER (STATUS & LOGOUT)                                                  */}
+        {/* ========================================================================= */}
         <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '16px 14px' }}>
           <div className="sidebar-status" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <span className={`status-dot ${isPaid ? 'online' : ''}`} style={!isPaid ? { background: '#F59E0B' } : { background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }}></span>
