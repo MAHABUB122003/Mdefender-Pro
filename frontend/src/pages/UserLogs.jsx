@@ -640,24 +640,14 @@ export default function UserLogs() {
       {/* 1. CYBER COCKPIT EXECUTIVE HEADER & TELEMETRY KPI CARDS                   */}
       {/* ========================================================================= */}
       <div style={{
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBF9 60%, #F5F9F6 100%)',
-        borderRadius: '20px',
+        background: '#FFFFFF',
+        borderRadius: '16px',
         border: '1px solid #D9E1DC',
         padding: '24px 28px',
         marginBottom: '22px',
-        boxShadow: '0 4px 20px -2px rgba(16, 32, 30, 0.05)',
-        position: 'relative',
-        overflow: 'hidden'
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+        position: 'relative'
       }}>
-        {/* Ambient Top Edge Accent Line */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '3px',
-          background: 'linear-gradient(90deg, #E8792F 0%, #DC2626 40%, #28745D 80%, #10201E 100%)'
-        }} />
 
         <div style={{
           display: 'flex',
@@ -935,7 +925,7 @@ export default function UserLogs() {
                 403 Intercepted Threats
               </div>
               <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
-                {kpiMetrics.blockedCount.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: '700', color: '#DC2626', background: '#FEF2F2', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FECACA' }}>{kpiMetrics.blockedRatio}% Drop</span>
+                {kpiMetrics.blockedCount.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: '700', color: '#0B2522', background: '#E8EEE8', padding: '2px 7px', borderRadius: '4px', border: '1px solid #D9E1DC' }}>{kpiMetrics.blockedRatio}% Drop</span>
               </div>
             </div>
           </div>
@@ -1232,8 +1222,8 @@ export default function UserLogs() {
       {/* ========================================================================= */}
       {!isPaidUser && (
         <div style={{
-          background: 'linear-gradient(135deg, #FEF3EB 0%, #FEE8D8 100%)',
-          border: '1px solid #FCD8BF',
+          background: '#FBFCFA',
+          border: '1px solid #D9E1DC',
           borderRadius: '16px',
           padding: '20px 26px',
           marginBottom: '20px',
@@ -1242,7 +1232,7 @@ export default function UserLogs() {
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '16px',
-          boxShadow: '0 4px 16px rgba(217, 119, 53, 0.08)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
@@ -1379,15 +1369,15 @@ export default function UserLogs() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '7px',
-                            background: '#FEF2F2',
-                            color: '#DC2626',
-                            border: '1px solid #FEE2E2',
+                            background: '#E8EEE8',
+                            color: '#0B2522',
+                            border: '1px solid #D9E1DC',
                             borderRadius: '9999px',
                             padding: '4px 12px',
                             fontSize: '11.5px',
-                            fontWeight: '600'
+                            fontWeight: '700'
                           }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#DC2626', flexShrink: 0 }} />
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0B2522', flexShrink: 0 }} />
                             <span>{attackTitle}</span>
                           </span>
                         ) : (
@@ -1395,15 +1385,15 @@ export default function UserLogs() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '7px',
-                            background: '#ECFDF5',
-                            color: '#059669',
-                            border: '1px solid #A7F3D0',
+                            background: '#FAFBF9',
+                            color: '#10201E',
+                            border: '1px solid #D9E1DC',
                             borderRadius: '9999px',
                             padding: '4px 12px',
                             fontSize: '11.5px',
                             fontWeight: '600'
                           }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#60716B', flexShrink: 0 }} />
                             <span>Clean Traffic</span>
                           </span>
                         )}
@@ -1516,10 +1506,11 @@ export default function UserLogs() {
                       {/* RESPONSE */}
                       <td style={{ padding: '16px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
                         <span style={{
-                          fontSize: '13px',
+                          fontSize: '13.5px',
                           fontWeight: '800',
-                          color: isBlocked ? '#DC2626' : '#059669',
-                          letterSpacing: '0.3px'
+                          color: '#10201E',
+                          letterSpacing: '0.4px',
+                          display: 'inline-block'
                         }}>
                           {isBlocked ? (log?.response_code || '403') : (log?.response_code || '200')}
                         </span>
@@ -1597,12 +1588,12 @@ export default function UserLogs() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 <span style={{
                                   fontSize: '11px',
-                                  fontWeight: '800',
+                                  fontWeight: '700',
                                   padding: '2px 8px',
                                   borderRadius: '6px',
-                                  background: sev.bg,
-                                  color: sev.color,
-                                  border: `1px solid ${sev.border}`
+                                  background: '#E8EEE8',
+                                  color: '#0B2522',
+                                  border: '1px solid #D9E1DC'
                                 }}>
                                   {isBlocked ? '403 QUARANTINED' : '200 PASSED CLEAN'}
                                 </span>
@@ -1620,7 +1611,7 @@ export default function UserLogs() {
                                 <span style={{ fontSize: '11px', color: '#CBD5E1' }}>&bull;</span>
 
                                 <span style={{ fontSize: '11.5px', color: '#64748B' }}>
-                                  Signature: <code style={{ color: isBlocked ? '#DC2626' : '#059669', fontWeight: '700', fontSize: '11px' }}>{log?.rule_matched || (isBlocked ? 'WAF-L7-EXPLOIT-HEURISTIC' : 'CLEAN-ANYCAST-PASS')}</code>
+                                  Signature: <code style={{ color: '#10201E', fontWeight: '700', fontSize: '11px' }}>{log?.rule_matched || (isBlocked ? 'WAF-L7-EXPLOIT-HEURISTIC' : 'CLEAN-ANYCAST-PASS')}</code>
                                 </span>
                               </div>
 
