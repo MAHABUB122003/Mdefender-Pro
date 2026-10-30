@@ -601,6 +601,13 @@ export const api = {
   getWebsiteSslMonitoring: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl`),
   probeWebsiteSsl: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl/probe`, { method: 'POST' }),
   getWebsiteIncidents: (websiteId, limit = 15) => apiCall(`/api/v1/monitoring/${websiteId}/incidents?limit=${limit}`),
+
+  // WordPress Core Engine & Fleet Integrity APIs
+  getWordpressCoreStatus: () => apiCall('/api/v1/wordpress/core/status'),
+  verifyCoreChecksums: (websiteId) => apiCall(`/api/v1/wordpress/core/${websiteId}/verify-checksums`, { method: 'POST' }),
+  setCoreAutoUpdatePolicy: (websiteId, policy) => apiCall(`/api/v1/wordpress/core/${websiteId}/auto-update-policy`, { method: 'POST', body: JSON.stringify({ policy }) }),
+  updateWordpressCore: (websiteId) => apiCall(`/api/v1/wordpress/core/${websiteId}/update`, { method: 'POST' }),
+  updateAllWordpressCore: () => apiCall('/api/v1/wordpress/core/update-all', { method: 'POST' }),
 }
 
 export default api

@@ -944,3 +944,64 @@ def _generate_site_token():
 def _hash_token(token):
     import hashlib
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+# -----------------------------------------------------------------------------
+# WordPress Core Version & Integrity Management Endpoints
+# -----------------------------------------------------------------------------
+from src.services.wordpress_core_service import WordPressCoreService
+
+
+class CorePolicyRequest(BaseModel):
+    policy: str = "minor"
+
+
+@router.get("/core/status")
+async def get_wordpress_core_status(user=Depends(get_current_user)):
+    """Fleet-wide WordPress Core versions, official WP.org release, and checksum integrity."""
+    user_id = str(user.get("id") or user.get("_id") or "")
+    svc = WordPressCoreService()
+    matrix = svc.get_fleet_core_matrix(user_id=user_id)
+    return success(matrix)
+
+
+@router.post("/core/{website_id}/verify-checksums")
+async def verify_site_core_checksums(website_id: str, user=Depends(get_current_user)):
+    """Run real MD5 verification against official WordPress.org SVN release checksums."""
+    get_owned_website(user, website_id)
+    user_id = str(user.get("id") or user.get("_id") or "")
+    svc = WordPressCoreService()
+    try:
+        report = svc.verify_website_core_checksums(website_id=website_id, user_id=user_id)
+        return success(report)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/core/{website_id}/auto-update-policy")
+async def update_core_auto_update_policy(website_id: str, body: CorePolicyRequest, user=Depends(get_current_user)):
+    """Configure auto-update policy (minor, all, disabled)."""
+    get_owned_website(user, website_id)
+    user_id = str(user.get("id") or user.get("_id") or "")
+    svc = WordPressCoreService()
+    res = svc.set_auto_update_policy(website_id=website_id, policy=body.policy, user_id=user_id)
+    return success(res)
+
+
+@router.post("/core/{website_id}/update")
+async def update_site_core(website_id: str, user=Depends(get_current_user)):
+    """Trigger 1-click update to the latest official stable WordPress release."""
+    get_owned_website(user, website_id)
+    user_id = str(user.get("id") or user.get("_id") or "")
+    svc = WordPressCoreService()
+    res = svc.update_core(website_id=website_id, user_id=user_id)
+    return success(res)
+
+
+@router.post("/core/update-all")
+async def update_all_sites_core(user=Depends(get_current_user)):
+    """Trigger bulk upgrade across all fleet sites to latest official stable WordPress release."""
+    user_id = str(user.get("id") or user.get("_id") or "")
+    svc = WordPressCoreService()
+    res = svc.update_all_fleet(user_id=user_id)
+    return success(res)
