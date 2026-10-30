@@ -1327,25 +1327,7 @@ async def download_website_backup(website_id: str, filename: str, user=Depends(g
     """Directly stream and download the physical backup archive (.zip or .sql)."""
     website = get_owned_website(user, website_id)
     svc = BackupService()
-    clean_fn = os.path.basename(filename)
-    bdir = svc.get_backup_dir(website)
-    fpath = os.path.join(bdir, clean_fn)
-
-    if not os.path.isfile(fpath):
-        bks = website.get("backups") or []
-        rec = next((b for b in bks if b.get("filename") == clean_fn), None)
-        if not rec:
-            raise HTTPException(status_code=404, detail=f"Backup file '{clean_fn}' not found")
-        wp_root = svc.get_wordpress_root(website)
-        svc._generate_sql_dump(wp_root, fpath, website.get("domain") or "wordpress")
-
-    media_type = "application/zip" if clean_fn.endswith(".zip") else "application/sql"
-    return FileResponse(
-        path=fpath,
-        filename=clean_fn,
-        media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="{clean_fn}"'}
-    )
+    return svc.get_backup_download_response(website, filename)
 
 
 @router.post("/{website_id}/backups/{filename}/restore")
