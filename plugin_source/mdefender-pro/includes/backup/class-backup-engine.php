@@ -23,11 +23,59 @@ class WAF_FW_Backup_Engine {
     }
 
     public function __construct() {
-        $this->backup_dir = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/');
+        $this->resolve_backup_storage_path();
         $this->ensure_backup_dir();
 
         // Cron Hook for Automated Scheduled Backups
         add_action('waf_fw_automated_backup_cron', [$this, 'run_scheduled_backup']);
+    }
+
+    /**
+     * Resolve resilient backup storage path.
+     * Priority 1: One level outside public web root (e.g. /home/user/mdefender-backups)
+     * Priority 2: Safe fallback to WP_CONTENT_DIR/mdefender-backups/ if root is restricted
+     */
+    private function resolve_backup_storage_path() {
+        $outside_root = wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/');
+        $can_use_outside = false;
+
+        if (is_dir($outside_root) && is_writable($outside_root)) {
+            $can_use_outside = true;
+        } else {
+            // Attempt creation with test probe
+            if (@wp_mkdir_p($outside_root)) {
+                $probe = $outside_root . '.probe_' . uniqid();
+                if (@file_put_contents($probe, 'test') !== false) {
+                    @unlink($probe);
+                    $can_use_outside = true;
+                }
+            }
+        }
+
+        if ($can_use_outside) {
+            $this->backup_dir = $outside_root;
+        } else {
+            $this->backup_dir = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/');
+        }
+    }
+
+    /**
+     * Search all known backup locations for a specific archive.
+     */
+    public function find_backup_file($filename) {
+        $clean_fn = sanitize_file_name($filename);
+        $candidates = [
+            $this->backup_dir . $clean_fn,
+            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $clean_fn),
+            wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/' . $clean_fn),
+            wp_normalize_path(dirname(WP_CONTENT_DIR, 2) . '/mdefender-backups/' . $clean_fn),
+        ];
+        foreach ($candidates as $cand) {
+            if (file_exists($cand) && filesize($cand) > 0) {
+                return $cand;
+            }
+        }
+        return false;
     }
 
     /**
@@ -104,14 +152,22 @@ class WAF_FW_Backup_Engine {
             $stored = [];
         }
 
-        // Scan filesystem to ensure catalog is synchronized
-        $files = glob($this->backup_dir . '*.zip');
-        if (!$files) $files = [];
-        
-        $sql_files = glob($this->backup_dir . '*.sql*');
-        if ($sql_files) {
-            $files = array_merge($files, $sql_files);
+        // Scan filesystem across all resilient storage tiers (outside root & fallback)
+        $search_dirs = array_unique([
+            $this->backup_dir,
+            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/'),
+            wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/'),
+        ]);
+
+        $files = [];
+        foreach ($search_dirs as $sdir) {
+            if (is_dir($sdir)) {
+                $zips = glob($sdir . '*.zip') ?: [];
+                $sqls = glob($sdir . '*.sql*') ?: [];
+                $files = array_merge($files, $zips, $sqls);
+            }
         }
+        $files = array_unique($files);
 
         $catalog = [];
 
@@ -674,9 +730,9 @@ class WAF_FW_Backup_Engine {
         $this->ensure_backup_dir();
 
         $filename = sanitize_file_name($filename);
-        $file_path = $this->backup_dir . $filename;
+        $file_path = $this->find_backup_file($filename);
 
-        if (!file_exists($file_path)) {
+        if (!$file_path || !file_exists($file_path)) {
             return ['success' => false, 'message' => 'Backup archive file not found on server: ' . $filename];
         }
 
@@ -1028,9 +1084,9 @@ class WAF_FW_Backup_Engine {
      */
     public function delete_backup($filename) {
         $filename = sanitize_file_name($filename);
-        $file_path = $this->backup_dir . $filename;
+        $file_path = $this->find_backup_file($filename);
 
-        if (file_exists($file_path)) {
+        if ($file_path && file_exists($file_path)) {
             if (!@unlink($file_path)) {
                 return ['success' => false, 'message' => 'Could not delete backup archive: ' . $filename];
             }

@@ -1033,8 +1033,20 @@ add_action('rest_api_init', function() {
             if (!$fn) {
                 return new WP_REST_Response(['status' => 'error', 'message' => 'Filename required'], 400);
             }
-            $bdir = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/');
-            $path = $bdir . $fn;
+            $engine = class_exists('WAF_FW_Backup_Engine') ? WAF_FW_Backup_Engine::instance() : null;
+            $path = $engine ? $engine->find_backup_file($fn) : false;
+            if (!$path) {
+                $candidates = [
+                    wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/' . $fn),
+                    wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $fn),
+                ];
+                foreach ($candidates as $cand) {
+                    if (file_exists($cand) && filesize($cand) > 0) {
+                        $path = $cand;
+                        break;
+                    }
+                }
+            }
             if (!file_exists($path) || !is_readable($path)) {
                 return new WP_REST_Response(['status' => 'error', 'message' => 'Backup file not found on origin server'], 404);
             }

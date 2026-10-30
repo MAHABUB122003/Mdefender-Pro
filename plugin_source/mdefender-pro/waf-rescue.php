@@ -224,6 +224,10 @@ if (!defined('ABSPATH') && file_exists($wp_root . '/wp-load.php')) {
     require_once $wp_root . '/wp-load.php';
 }
 
+// Re-evaluate action after wp-load in case globals were reset
+$action = mdef_rescue_sanitize($_REQUEST['action'] ?? $_GET['action'] ?? $pushed['action'] ?? 'ping');
+$filename = mdef_rescue_sanitize($_REQUEST['filename'] ?? $_GET['filename'] ?? $pushed['filename'] ?? '');
+
 if ($action === 'ping' || $action === 'self_heal') {
     echo json_encode([
         'status' => 'success',
