@@ -420,6 +420,16 @@ export const api = {
     }),
   getWebsiteScans: (websiteId) =>
     apiCall(`/api/v1/websites/${websiteId}/scans`),
+  quarantineWebsiteFile: (websiteId, file) =>
+    apiCall(`/api/v1/websites/${websiteId}/scan/quarantine`, {
+      method: 'POST',
+      body: JSON.stringify({ file })
+    }),
+  repairWebsiteCoreFile: (websiteId, file) =>
+    apiCall(`/api/v1/websites/${websiteId}/scan/repair-core`, {
+      method: 'POST',
+      body: JSON.stringify({ file })
+    }),
   remoteWebsiteAction: (websiteId, action, payload = {}) =>
     apiCall(`/api/v1/websites/${websiteId}/remote-action`, {
       method: 'POST',
