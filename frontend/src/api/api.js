@@ -471,6 +471,8 @@ export const api = {
     apiCall(`/api/v1/websites/${websiteId}/ssl/reissue`, { method: 'POST' }),
   probeSslHealth: (websiteId) =>
     apiCall(`/api/v1/websites/${websiteId}/ssl/probe`),
+  getWebsiteHealthAudit: (websiteId) =>
+    apiCall(`/api/v1/websites/${websiteId}/health-audit`),
   toggleBotChallenge: (websiteId, enabled, mode = 'interactive_turnstile') =>
     apiCall(`/api/v1/websites/${websiteId}/bot-challenge`, {
       method: 'POST',

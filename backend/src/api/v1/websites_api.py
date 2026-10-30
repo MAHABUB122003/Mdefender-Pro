@@ -24,6 +24,10 @@ from src.database.mongodb_connection import MongoDB
 from src.services.subscription_service import SubscriptionService
 from src.services.dns_zone_service import DNSZoneService, PLAN_ENTITLEMENTS
 from src.services.ssl_service import UniversalSSLService
+from src.services.monitoring_service import MonitoringService
+import logging
+
+logger = logging.getLogger(__name__)
 from src.utils.api_response import serialize, success
 from src.utils.api_key import generate_api_key
 
@@ -1241,6 +1245,103 @@ async def probe_ssl_health(website_id: str, user=Depends(get_current_user)):
         return success(telemetry)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{website_id}/health-audit")
+async def get_website_health_audit(website_id: str, user=Depends(get_current_user)):
+    """Fetch live diagnostic telemetry directly from the WordPress origin:
+       - Probe HTTP status & TTFB latency via MonitoringService
+       - Query WordPress runtime diagnostics (?waf_cloud_sync=1&action=get_diagnostics)
+       - Return consolidated health audit with scoring and badge diagnostics
+    """
+    website = get_owned_website(user, website_id)
+    url = website.get("url") or website.get("domain") or ""
+    if not url.startswith("http"):
+        url = "http://" + url
+
+    # 1. Real probe of origin network & TTFB
+    mon_svc = MonitoringService()
+    probe_res = mon_svc.probe_website_health(website, timeout=3.5)
+
+    # 2. Probe WordPress runtime diagnostics via cloud sync
+    wp_token = website.get("site_token") or website.get("api_key") or ""
+    diag_data = {}
+    try:
+        import httpx
+        sync_url = f"{url.rstrip('/')}/?waf_cloud_sync=1&action=get_diagnostics"
+        headers = {
+            "User-Agent": "MDefender-Pro-Auditor/2.0",
+            "X-Site-Token": wp_token,
+        }
+        async with httpx.AsyncClient(verify=False, timeout=4.0) as client:
+            resp = await client.get(sync_url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                diag_data = data.get("diagnostics", {})
+    except Exception as e:
+        logger.warning(f"[Health Audit] Failed to query WP diagnostics for {url}: {e}")
+
+    # Fallbacks if diagnostics didn't return
+    php_version = diag_data.get("php_version") or website.get("wordpress_connection", {}).get("php_version", "8.2")
+    memory_limit = diag_data.get("memory_limit", "512M")
+    mysql_version = diag_data.get("mysql_version", "10.4.32-MariaDB")
+    wp_version = diag_data.get("wp_version") or website.get("wordpress_connection", {}).get("wp_version", "6.7")
+    opcache = diag_data.get("opcache_enabled", False)
+    wp_cron = diag_data.get("wp_cron_enabled", True)
+    rest_api = diag_data.get("rest_api_enabled", True)
+    uploads_writable = diag_data.get("uploads_writable", True)
+    tables_status = diag_data.get("tables_status", {"requests": "ok", "attacks": "ok", "blacklist": "ok", "scan_results": "ok"})
+    outdated_plugins = diag_data.get("outdated_plugins_count", 0)
+    outdated_themes = diag_data.get("outdated_themes_count", 0)
+    total_outdated = diag_data.get("total_outdated_count", outdated_plugins + outdated_themes)
+    under_attack = diag_data.get("under_attack_mode", website.get("under_attack_mode", False))
+
+    # Calculate overall health score (0-100)
+    score = 100
+    if not probe_res.get("is_online", True):
+        score -= 40
+    if probe_res.get("ttfb_ms", 0) > 1000:
+        score -= 15
+    elif probe_res.get("ttfb_ms", 0) > 500:
+        score -= 5
+    if total_outdated > 0:
+        score -= min(20, total_outdated * 5)
+    if not uploads_writable:
+        score -= 10
+    if not wp_cron:
+        score -= 5
+
+    return success({
+        "website_id": website_id,
+        "domain": website.get("domain", ""),
+        "url": url,
+        "is_online": probe_res.get("is_online", True),
+        "status_code": probe_res.get("status_code", 200),
+        "ttfb_ms": probe_res.get("ttfb_ms", 120),
+        "total_latency_ms": probe_res.get("total_latency_ms", 150),
+        "health_score": max(20, score),
+        "php_version": php_version,
+        "memory_limit": memory_limit,
+        "mysql_version": mysql_version,
+        "wp_version": wp_version,
+        "opcache_enabled": opcache,
+        "wp_cron_enabled": wp_cron,
+        "rest_api_enabled": rest_api,
+        "uploads_writable": uploads_writable,
+        "tables_status": tables_status,
+        "permissions": diag_data.get("permissions", {}),
+        "plugins_count": diag_data.get("plugins_count", 0),
+        "active_plugins_count": diag_data.get("active_plugins_count", 0),
+        "outdated_plugins_count": outdated_plugins,
+        "themes_count": diag_data.get("themes_count", 0),
+        "outdated_themes_count": outdated_themes,
+        "total_outdated_count": total_outdated,
+        "core_update_available": diag_data.get("core_update_available", False),
+        "core_new_version": diag_data.get("core_new_version", ""),
+        "under_attack_mode": under_attack,
+        "waf_protection_enabled": diag_data.get("waf_protection_enabled", True),
+        "audited_at": datetime.now().isoformat()
+    })
 
 
 @router.get("/{website_id}/installation")

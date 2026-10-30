@@ -563,6 +563,135 @@ function waf_fw_handle_cloud_sync_webhook() {
                     echo json_encode($log_data);
                     exit;
                 }
+            } elseif ($action === 'get_diagnostics' || $action === 'site_health') {
+                global $wpdb;
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                $update_plugins = get_site_transient('update_plugins');
+                $update_themes = get_site_transient('update_themes');
+                $update_core = get_site_transient('update_core');
+
+                $all_plugins = get_plugins();
+                $active_plugins_option = get_option('active_plugins', []);
+                $plugin_list = [];
+                $outdated_plugins_count = 0;
+                foreach ($all_plugins as $plugin_file => $data) {
+                    $is_active = in_array($plugin_file, $active_plugins_option);
+                    $has_update = false;
+                    $new_version = '';
+                    if ($update_plugins && isset($update_plugins->response[$plugin_file])) {
+                        $has_update = true;
+                        $new_version = $update_plugins->response[$plugin_file]->new_version ?? '';
+                        $outdated_plugins_count++;
+                    }
+                    $plugin_list[] = [
+                        'name' => $data['Name'],
+                        'version' => $data['Version'],
+                        'author' => strip_tags($data['Author'] ?? ''),
+                        'status' => $is_active ? 'Active' : 'Inactive',
+                        'file' => $plugin_file,
+                        'update_available' => $has_update,
+                        'new_version' => $new_version,
+                    ];
+                }
+
+                $all_themes = function_exists('wp_get_themes') ? wp_get_themes() : [];
+                $active_theme = function_exists('wp_get_theme') ? wp_get_theme() : null;
+                $outdated_themes_count = 0;
+                if ($update_themes && !empty($update_themes->response)) {
+                    $outdated_themes_count = count((array)$update_themes->response);
+                }
+
+                $paths_to_check = [
+                    'ABSPATH' => ABSPATH,
+                    'wp-content' => WP_CONTENT_DIR,
+                    'plugins' => WP_PLUGIN_DIR,
+                    'uploads' => function_exists('wp_upload_dir') ? wp_upload_dir()['basedir'] : WP_CONTENT_DIR . '/uploads',
+                    'wp-config.php' => ABSPATH . 'wp-config.php',
+                    '.htaccess' => ABSPATH . '.htaccess',
+                ];
+                $perms = [];
+                foreach ($paths_to_check as $label => $path) {
+                    if (file_exists($path)) {
+                        $perms[$label] = [
+                            'perms' => substr(sprintf('%o', fileperms($path)), -4),
+                            'writable' => is_writable($path),
+                            'readable' => is_readable($path)
+                        ];
+                    } else {
+                        $perms[$label] = ['perms' => 'N/A', 'writable' => false, 'readable' => false];
+                    }
+                }
+
+                $core_has_update = false;
+                $core_new_version = '';
+                if ($update_core && !empty($update_core->updates)) {
+                    foreach ($update_core->updates as $cu) {
+                        if (isset($cu->response) && $cu->response === 'upgrade') {
+                            $core_has_update = true;
+                            $core_new_version = $cu->version ?? '';
+                            break;
+                        }
+                    }
+                }
+
+                $opcache_active = false;
+                if (function_exists('opcache_get_status')) {
+                    $op_status = @opcache_get_status(false);
+                    $opcache_active = !empty($op_status['opcache_enabled']);
+                }
+
+                $uploads_writable = isset($perms['uploads']['writable']) ? $perms['uploads']['writable'] : false;
+
+                $diag = [
+                    'php_version' => PHP_VERSION,
+                    'sapi' => php_sapi_name(),
+                    'wp_version' => get_bloginfo('version'),
+                    'mysql_version' => $wpdb ? $wpdb->db_version() : 'Unknown',
+                    'memory_limit' => ini_get('memory_limit') ?: '256M',
+                    'max_execution_time' => ini_get('max_execution_time') ?: '30',
+                    'upload_max_filesize' => ini_get('upload_max_filesize') ?: '64M',
+                    'post_max_size' => ini_get('post_max_size') ?: '64M',
+                    'curl_enabled' => function_exists('curl_version'),
+                    'openssl_enabled' => extension_loaded('openssl'),
+                    'opcache_enabled' => $opcache_active,
+                    'wp_cron_enabled' => !defined('DISABLE_WP_CRON') || !DISABLE_WP_CRON,
+                    'rest_api_enabled' => true,
+                    'uploads_writable' => $uploads_writable,
+                    'file_editor_disabled' => defined('DISALLOW_FILE_EDIT') && DISALLOW_FILE_EDIT,
+                    'waf_protection_enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
+                    'under_attack_mode' => (get_option('waf_under_attack_mode', 'no') === 'yes' || get_option('waf_fw_under_attack_mode', 'no') === 'yes'),
+                    'plugins_count' => count($all_plugins),
+                    'active_plugins_count' => count($active_plugins_option),
+                    'outdated_plugins_count' => $outdated_plugins_count,
+                    'themes_count' => count($all_themes),
+                    'outdated_themes_count' => $outdated_themes_count,
+                    'core_update_available' => $core_has_update,
+                    'core_new_version' => $core_new_version,
+                    'total_outdated_count' => $outdated_plugins_count + $outdated_themes_count + ($core_has_update ? 1 : 0),
+                    'theme' => $active_theme ? [
+                        'name' => $active_theme->get('Name'),
+                        'version' => $active_theme->get('Version')
+                    ] : null,
+                    'permissions' => $perms,
+                    'tables_status' => [
+                        'requests' => ($wpdb && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}" . WAF_FW_TABLE_REQUESTS . "'")) ? 'ok' : 'missing',
+                        'attacks' => ($wpdb && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}" . WAF_FW_TABLE_ATTACKS . "'")) ? 'ok' : 'missing',
+                        'blacklist' => ($wpdb && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}" . WAF_FW_TABLE_BLACKLIST . "'")) ? 'ok' : 'missing',
+                        'scan_results' => ($wpdb && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}" . WAF_FW_TABLE_SCAN_RESULTS . "'")) ? 'ok' : 'missing',
+                    ]
+                ];
+
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode([
+                    'status' => 'success',
+                    'success' => true,
+                    'diagnostics' => $diag
+                ]);
+                exit;
             } elseif ($action === 'get_recycle_settings') {
                 $action_result = [
                     'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
