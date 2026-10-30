@@ -281,23 +281,33 @@ class MonitoringService:
             }
 
         try:
+            import hashlib
+            t0 = time.perf_counter()
             ctx = ssl.create_default_context()
             ctx.set_ciphers('DEFAULT')
-            with socket.create_connection((hostname, 443), timeout=5.0) as sock:
+            with socket.create_connection((hostname, 443), timeout=6.0) as sock:
                 with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    handshake_ms = round((time.perf_counter() - t0) * 1000, 2)
                     cert = ssock.getpeercert()
+                    cert_der = ssock.getpeercert(binary_form=True)
                     tls_ver = ssock.version() or "TLSv1.3"
-                    cipher = ssock.cipher()
-                    cipher_str = f"{cipher[0]} ({cipher[1]})" if cipher else "TLS_AES_128_GCM_SHA256"
+                    cipher_info = ssock.cipher()
+                    cipher_name = cipher_info[0] if cipher_info else "TLS_AES_256_GCM_SHA384"
+                    cipher_bits = cipher_info[2] if (cipher_info and len(cipher_info) > 2) else 256
+                    cipher_str = f"{cipher_name} ({cipher_bits}-bit)"
+
+            # Generate real SHA-256 and SHA-1 fingerprints
+            sha256_fp = ":".join([hashlib.sha256(cert_der).hexdigest()[i:i+2].upper() for i in range(0, 64, 2)])
+            sha1_fp = ":".join([hashlib.sha1(cert_der).hexdigest()[i:i+2].upper() for i in range(0, 40, 2)])
 
             # Parse Issuer
-            issuer_parts = []
             issuer_dict = {}
             for item in cert.get("issuer", ()):
                 for k, v in item:
                     issuer_dict[k] = v
-            issuer_cn = issuer_dict.get("commonName") or issuer_dict.get("organizationName") or "Public Certificate Authority"
+            issuer_cn = issuer_dict.get("commonName") or "Public CA"
             issuer_org = issuer_dict.get("organizationName") or issuer_cn
+            issuer_country = issuer_dict.get("countryName") or "US"
 
             # Parse Subject
             subject_dict = {}
@@ -307,13 +317,13 @@ class MonitoringService:
             common_name = subject_dict.get("commonName") or hostname
 
             # Parse Validity dates
-            # Format: 'Dec 21 07:26:44 2026 GMT'
             not_after_str = cert.get("notAfter", "")
             not_before_str = cert.get("notBefore", "")
 
             valid_to_dt = None
             valid_from_dt = None
             days_left = 0
+            total_days = 90
             is_expired = False
 
             if not_after_str:
@@ -330,11 +340,22 @@ class MonitoringService:
                 except Exception:
                     pass
 
+            if valid_to_dt and valid_from_dt:
+                total_days = max(1, (valid_to_dt - valid_from_dt).days)
+
+            # Format Serial Number with colons
+            serial_raw = cert.get("serialNumber", "").upper()
+            serial_number = ":".join([serial_raw[i:i+2] for i in range(0, len(serial_raw), 2)]) if serial_raw else ""
+
             # Extract Subject Alternative Names (SANs)
             sans = []
             for typ, san_val in cert.get("subjectAltName", ()):
                 if typ == "DNS":
                     sans.append(san_val)
+
+            # OCSP & CRL
+            ca_issuers = list(cert.get("caIssuers", ()))
+            crl_points = list(cert.get("crlDistributionPoints", ()))
 
             # Security Grade
             if is_expired:
@@ -355,16 +376,28 @@ class MonitoringService:
                 "status": "active" if not is_expired else "expired",
                 "issuer": issuer_org,
                 "issuer_common_name": issuer_cn,
+                "issuer_country": issuer_country,
                 "common_name": common_name,
-                "serial_number": cert.get("serialNumber", ""),
+                "serial_number": serial_number,
+                "sha256_fingerprint": sha256_fp,
+                "sha1_fingerprint": sha1_fp,
+                "handshake_latency_ms": handshake_ms,
                 "days_remaining": max(0, days_left),
+                "total_validity_days": total_days,
+                "valid_from_raw": not_before_str,
+                "valid_to_raw": not_after_str,
                 "valid_from": valid_from_dt.isoformat() if valid_from_dt else None,
                 "valid_to": valid_to_dt.isoformat() if valid_to_dt else None,
                 "is_expired": is_expired,
                 "expiring_soon": (0 <= days_left <= 20),
                 "tls_protocol": tls_ver,
+                "cipher_name": cipher_name,
+                "cipher_bits": cipher_bits,
                 "cipher_suite": cipher_str,
-                "san_hosts": sans[:10],
+                "ocsp_issuer": ca_issuers[0] if ca_issuers else None,
+                "crl_distribution": crl_points[0] if crl_points else None,
+                "san_hosts": sans if sans else [hostname],
+                "x509_version": f"X.509 v{cert.get('version', 3)}",
                 "grade": grade,
                 "checked_at": now.isoformat()
             }
