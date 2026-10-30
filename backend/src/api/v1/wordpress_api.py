@@ -734,6 +734,12 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     "auto_block_duration": (u_cfg.get("auto_block_duration_hours", 24) or 24) * 3600,
                     "ddos_enabled": u_cfg.get("ddos_mitigation_enabled", True),
                     "under_attack_mode": bool(ref_ws.get("under_attack_mode", False)),
+                    "custom_login_slug": ref_ws.get("custom_login_slug", ""),
+                    "hide_login_url": bool(ref_ws.get("hide_login_url", False)),
+                    "login_redirect_type": ref_ws.get("login_redirect_type", "404"),
+                    "bot_challenge_mode": ref_ws.get("bot_challenge_mode", "hold_press"),
+                    "max_login_attempts": int(ref_ws.get("max_login_attempts", 5)),
+                    "login_lockout_duration": int(ref_ws.get("login_lockout_duration", 60)),
                 },
                 "synced_at": datetime.now().isoformat(),
             }

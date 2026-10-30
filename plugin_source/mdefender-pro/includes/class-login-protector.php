@@ -315,9 +315,85 @@ class WAF_FW_Login_Protector {
        ===================================================================== */
 
     public function render_captcha_form() {
+        $bot_mode = get_option('waf_bot_challenge_mode', 'hold_press');
+        if ($bot_mode === 'hold_press') {
+            $this->render_hold_press_challenge();
+            return;
+        }
         if (get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')) === 'yes') {
             return;
         }
+    public function render_hold_press_challenge() {
+        $salt = wp_salt('nonce');
+        $time = time();
+        $token = hash_hmac('sha256', "mdf_human_{$time}", $salt) . ':' . $time;
+        ?>
+        <div class="mdf-hold-press-wrapper" style="margin: 16px 0; padding: 14px; background: #0c1615; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; user-select: none;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
+                <span style="font-size: 11px; font-weight: 800; color: #E8792F; text-transform: uppercase; letter-spacing: 0.5px;">MDefender Pro Defense</span>
+                <span id="mdfHoldStatus" style="font-size: 11px; color: #94a3b8;">Biometric Human Verification</span>
+            </div>
+            <button type="button" id="mdfHoldButton" style="width: 100%; height: 44px; position: relative; overflow: hidden; border: 1.5px solid #E8792F; background: rgba(232, 121, 47, 0.12); color: #FFFFFF; font-weight: 700; font-size: 13px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #E8792F; transition: width 0.05s linear; opacity: 0.85;"></span>
+                <span id="mdfHoldText" style="position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    Press &amp; Hold for 2s to Verify
+                </span>
+            </button>
+            <input type="hidden" name="waf_hold_press_verified" id="mdfHoldVerified" value="0" />
+            <input type="hidden" name="waf_hold_press_token" id="mdfHoldToken" value="<?php echo esc_attr($token); ?>" />
+            <script>
+            (function(){
+                var btn = document.getElementById('mdfHoldButton');
+                var prog = document.getElementById('mdfHoldProgress');
+                var txt = document.getElementById('mdfHoldText');
+                var vField = document.getElementById('mdfHoldVerified');
+                var stat = document.getElementById('mdfHoldStatus');
+                var holdTimer = null;
+                var startTime = 0;
+                var duration = 2000;
+                var isVerified = false;
+
+                function startHold(e) {
+                    if (isVerified) return;
+                    e.preventDefault();
+                    startTime = Date.now();
+                    holdTimer = setInterval(function() {
+                        var elapsed = Date.now() - startTime;
+                        var pct = Math.min(100, (elapsed / duration) * 100);
+                        prog.style.width = pct + '%';
+                        if (elapsed >= duration) {
+                            clearInterval(holdTimer);
+                            isVerified = true;
+                            vField.value = "1";
+                            prog.style.background = "#10B981";
+                            prog.style.width = "100%";
+                            btn.style.borderColor = "#10B981";
+                            txt.innerHTML = "&#10003; Verification Complete!";
+                            stat.innerText = "Verified Human Visitor";
+                            stat.style.color = "#10B981";
+                        }
+                    }, 30);
+                }
+
+                function stopHold() {
+                    if (isVerified) return;
+                    clearInterval(holdTimer);
+                    prog.style.width = '0%';
+                }
+
+                btn.addEventListener('mousedown', startHold);
+                btn.addEventListener('mouseup', stopHold);
+                btn.addEventListener('mouseleave', stopHold);
+                btn.addEventListener('touchstart', startHold);
+                btn.addEventListener('touchend', stopHold);
+            })();
+            </script>
+        </div>
+        <?php
+    }
+
+
         $site_key = get_option('waf_harden_recaptcha_site_key', '');
         $secret_key = get_option('waf_harden_recaptcha_secret_key', '');
 
@@ -514,6 +590,16 @@ class WAF_FW_Login_Protector {
 
     public function validate_captcha($user, $password) {
         if (is_wp_error($user)) return $user;
+
+        $bot_mode = get_option('waf_bot_challenge_mode', 'hold_press');
+        if ($bot_mode === 'hold_press') {
+            $verified = sanitize_text_field($_POST['waf_hold_press_verified'] ?? '0');
+            $token = sanitize_text_field($_POST['waf_hold_press_token'] ?? '');
+            if ($verified !== '1' || empty($token)) {
+                return new WP_Error('waf_bot_fail', 'Automated Bot Detected. Please press and hold the verification button for 2 seconds to authenticate as a human.');
+            }
+            return $user;
+        }
 
         $honeypot = $_POST['waf_website'] ?? '';
         if (!empty($honeypot)) {

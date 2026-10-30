@@ -10,7 +10,15 @@ import {
   AlertTriangle,
   RotateCcw,
   Check,
-  Sparkles
+  Sparkles,
+  Fingerprint,
+  Link2,
+  ExternalLink,
+  Copy,
+  Gauge,
+  Bot,
+  Zap,
+  Save
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -22,6 +30,7 @@ export default function BulkHardening() {
 
   const targetSite = activeWebsite || wpWebsites[0] || {}
 
+  // 1. Core Hardening Toggles
   const [hardening, setHardening] = useState({
     disableFileEdit: true,
     restrictXmlRpc: true,
@@ -32,6 +41,17 @@ export default function BulkHardening() {
     filePermissionsCheck: true,
     loginTwoFactor: true
   })
+
+  // 2. WP Admin Hide & Custom Login URL
+  const [hideLoginUrl, setHideLoginUrl] = useState(false)
+  const [customLoginSlug, setCustomLoginSlug] = useState('')
+  const [loginRedirectType, setLoginRedirectType] = useState('404')
+
+  // 3. Bot Defense & Rate Limiting
+  const [botChallengeMode, setBotChallengeMode] = useState('hold_press')
+  const [maxLoginAttempts, setMaxLoginAttempts] = useState(5)
+  const [loginLockoutDuration, setLoginLockoutDuration] = useState(60)
+  const [rateLimitPerMinute, setRateLimitPerMinute] = useState(120)
 
   // Synchronize with active site or fleet defaults
   useEffect(() => {
@@ -47,10 +67,19 @@ export default function BulkHardening() {
       filePermissionsCheck: targetSite.file_permissions_check ?? h.file_permissions_check ?? true,
       loginTwoFactor: targetSite.login_two_factor ?? h.login_two_factor ?? true
     })
+
+    setHideLoginUrl(Boolean(targetSite.hide_login_url ?? false))
+    setCustomLoginSlug(targetSite.custom_login_slug || '')
+    setLoginRedirectType(targetSite.login_redirect_type || '404')
+    setBotChallengeMode(targetSite.bot_challenge_mode || 'hold_press')
+    setMaxLoginAttempts(targetSite.max_login_attempts ? parseInt(targetSite.max_login_attempts) : 5)
+    setLoginLockoutDuration(targetSite.login_lockout_duration ? parseInt(targetSite.login_lockout_duration) : 60)
+    setRateLimitPerMinute(targetSite.rate_limit_per_minute ? parseInt(targetSite.rate_limit_per_minute) : 120)
   }, [targetSite?.id, targetSite?._id, selectedSiteId])
 
   const [saving, setSaving] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -82,10 +111,47 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('Hardening policy dispatched and synchronized across connected WordPress sites!')
+      showToast('Hardening policy updated & synchronized across connected WordPress sites!')
       fetchFleet()
     } catch {
       showToast('Hardening policy updated locally; sync queued.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Save Custom Login & Advanced Bot Defense settings
+  const handleSaveAdvancedPolicy = async (e) => {
+    if (e) e.preventDefault()
+    setSaving(true)
+
+    const cleanSlug = customLoginSlug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+    if (hideLoginUrl && (!cleanSlug || ['wp-admin', 'wp-login.php', 'wp-login'].includes(cleanSlug))) {
+      showToast('Please specify a valid custom secret slug (cannot be wp-admin or wp-login).', true)
+      setSaving(false)
+      return
+    }
+
+    const payload = {
+      hide_login_url: hideLoginUrl,
+      custom_login_slug: cleanSlug,
+      login_redirect_type: loginRedirectType,
+      bot_challenge_mode: botChallengeMode,
+      max_login_attempts: maxLoginAttempts,
+      login_lockout_duration: loginLockoutDuration,
+      rate_limit_per_minute: rateLimitPerMinute
+    }
+
+    try {
+      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
+      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
+        const sid = site.id || site._id
+        return api.updateWebsiteSecuritySettings(sid, payload)
+      }))
+      showToast('WP Admin Shield, Bot Defense & Rate Limiting policies synchronized successfully!')
+      fetchFleet()
+    } catch {
+      showToast('Advanced policies saved; background synchronization queued.')
     } finally {
       setSaving(false)
     }
@@ -127,6 +193,27 @@ export default function BulkHardening() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const getSiteBaseUrl = () => {
+    const u = targetSite?.url || `https://${targetSite?.domain || 'mysite.com'}`
+    return u.replace(/\/+$/, '')
+  }
+
+  const getComputedLoginUrl = () => {
+    const base = getSiteBaseUrl()
+    if (hideLoginUrl && customLoginSlug.trim()) {
+      return `${base}/${customLoginSlug.trim().replace(/^\/+/, '')}/`
+    }
+    return `${base}/wp-login.php`
+  }
+
+  const copyLoginUrl = () => {
+    const url = getComputedLoginUrl()
+    navigator.clipboard.writeText(url)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
+    showToast('Secret login URL copied to clipboard!')
   }
 
   const hardeningRules = [
@@ -180,86 +267,467 @@ export default function BulkHardening() {
           featureName="Hardening Engine"
         />
       ) : (
-        <div style={contentCardStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
-                Active Hardening Policies ({activeRulesCount} of {hardeningRules.length} Active)
-              </h3>
-              <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>A+ RATING</span>
-            </div>
-            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#60716B' }}>
-              Changes take effect immediately at the edge and directly inside protected WordPress environments.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={handleRevertDefaults}
-              style={secondaryButtonStyle}
-            >
-              <RotateCcw size={13} />
-              <span>Review &amp; Revert to Safe Baseline</span>
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
-          {hardeningRules.map(item => (
-            <div
-              key={item.key}
-              style={{
-                border: '1px solid #D9E1DC',
-                borderRadius: '12px',
-                padding: '20px 22px',
-                background: '#FBFCFA',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '16px'
-              }}
-            >
-              <div style={{ paddingRight: '10px' }}>
-                <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>{item.label}</div>
-                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', lineHeight: '1.4' }}>{item.desc}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* ========================================================================= */}
+          {/* SECTION 1: WP ADMIN CONCEALMENT & CUSTOM LOGIN URL (FROM PLUGIN TOOLS)    */}
+          {/* ========================================================================= */}
+          <div style={contentCardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(232, 121, 47, 0.12)', color: '#E8792F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Key size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                      WP Admin Hide &amp; Custom Secret Login Gateway
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#60716B' }}>
+                      Conceal <code>/wp-admin</code> and <code>/wp-login.php</code> from botnets, dictionary scanners, and brute-force crawlers.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
-                <input
-                  type="checkbox"
-                  checked={hardening[item.key]}
-                  onChange={() => handleToggle(item.key)}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span style={{
-                  position: 'absolute',
-                  cursor: 'pointer',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: hardening[item.key] ? '#2A8B68' : '#CBD5E1',
-                  borderRadius: '26px',
-                  transition: '0.2s'
-                }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={badgeStyle(hideLoginUrl ? '#E8F3EC' : '#F1F5F9', hideLoginUrl ? '#2A8B68' : '#64748B', hideLoginUrl ? '#CFE2D4' : '#CBD5E1')}>
+                  {hideLoginUrl ? 'GATEWAY OBFUSCATED' : 'STANDARD WP LOGIN'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Toggle Row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>
+                    Enable Stealth Login URL Protection
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px' }}>
+                    When enabled, unauthenticated visitors accessing default WordPress login paths will be blocked with your selected redirect policy.
+                  </div>
+                </div>
+
+                <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={hideLoginUrl}
+                    onChange={(e) => setHideLoginUrl(e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
                   <span style={{
                     position: 'absolute',
-                    content: '""',
-                    height: '20px',
-                    width: '20px',
-                    left: hardening[item.key] ? '23px' : '3px',
-                    bottom: '3px',
-                    backgroundColor: 'white',
-                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: hideLoginUrl ? '#2A8B68' : '#CBD5E1',
+                    borderRadius: '26px',
                     transition: '0.2s'
-                  }} />
-                </span>
-              </label>
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      height: '20px',
+                      width: '20px',
+                      left: hideLoginUrl ? '23px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: '0.2s'
+                    }} />
+                  </span>
+                </label>
+              </div>
+
+              {/* Secret Slug & Redirect Configuration */}
+              {hideLoginUrl && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', paddingTop: '12px', borderTop: '1px solid #E6ECE8' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
+                      Secret Access Slug (Endpoint)
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>/</span>
+                      <input
+                        type="text"
+                        value={customLoginSlug}
+                        onChange={(e) => setCustomLoginSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                        placeholder="e.g. secret-access, my-portal"
+                        style={{
+                          flex: 1,
+                          height: '40px',
+                          padding: '0 12px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #CBD5E1',
+                          fontSize: '13.5px',
+                          fontWeight: 700,
+                          color: '#10201E'
+                        }}
+                      />
+                    </div>
+                    <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
+                      Only visitors with this exact path can reach the login screen.
+                    </small>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
+                      Unauthorized Intruder Response
+                    </label>
+                    <select
+                      value={loginRedirectType}
+                      onChange={(e) => setLoginRedirectType(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '40px',
+                        padding: '0 12px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #CBD5E1',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#10201E'
+                      }}
+                    >
+                      <option value="404">Stealth 404 Not Found (Recommended - Mimics non-existent page)</option>
+                      <option value="home">Redirect to Website Homepage (301 Permanent)</option>
+                    </select>
+                    <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
+                      What unauthorized visitors see when attempting to access /wp-admin or /wp-login.php.
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Login Gateway Live Link */}
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid #D9E1DC',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Link2 size={16} color="#E8792F" />
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#60716B' }}>Active Admin Login URL:</span>
+                  <code style={{ fontSize: '13px', fontWeight: 700, color: '#0F2C26', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
+                    {getComputedLoginUrl()}
+                  </code>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={copyLoginUrl}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      background: '#F1F5F9',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: '#0F2C26',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Copy size={13} />
+                    <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                  </button>
+
+                  <a
+                    href={getComputedLoginUrl()}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      background: 'rgba(232, 121, 47, 0.1)',
+                      border: '1px solid rgba(232, 121, 47, 0.3)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: '#E8792F',
+                      textDecoration: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <ExternalLink size={13} />
+                    <span>Test Gateway</span>
+                  </a>
+                </div>
+              </div>
+
             </div>
-          ))}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* SECTION 2: BOT DEFENSE & BIOMETRIC HUMAN VERIFICATION (HOLD & PRESS)       */}
+          {/* ========================================================================= */}
+          <div style={contentCardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Fingerprint size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                      Bot Defense &amp; Human Verification Challenge
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#60716B' }}>
+                      Deploy Fiverr-style interactive biometric challenges, Cloudflare Turnstile, and brute-force rate limit shields.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>
+                  {botChallengeMode === 'hold_press' ? 'BIOMETRIC HOLD CHALLENGE' : botChallengeMode.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '20px' }}>
+              
+              {/* Challenge Type Selection */}
+              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#10201E', marginBottom: '6px' }}>
+                  <Bot size={15} style={{ display: 'inline', marginRight: '6px', color: '#E8792F' }} />
+                  Bot Challenge Engine
+                </label>
+                <select
+                  value={botChallengeMode}
+                  onChange={(e) => setBotChallengeMode(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: '#10201E'
+                  }}
+                >
+                  <option value="hold_press">Fiverr-Style 'Hold &amp; Press' Verification (Recommended)</option>
+                  <option value="turnstile">Cloudflare Turnstile (Silent Cryptographic Challenge)</option>
+                  <option value="interactive_captcha">Visual Image &amp; Mathematical CAPTCHA</option>
+                  <option value="off">Disabled / Standard Login</option>
+                </select>
+                <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
+                  {botChallengeMode === 'hold_press'
+                    ? 'Requires visitor to press and hold for 2 seconds to prove human identity, completely defeating automated bot scripts.'
+                    : 'Select preferred bot mitigation model for protected WordPress login and forms.'}
+                </small>
+              </div>
+
+              {/* Max Login Attempts */}
+              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#10201E', marginBottom: '6px' }}>
+                  <Shield size={15} style={{ display: 'inline', marginRight: '6px', color: '#2A8B68' }} />
+                  Max Failed Login Attempts
+                </label>
+                <select
+                  value={maxLoginAttempts}
+                  onChange={(e) => setMaxLoginAttempts(parseInt(e.target.value, 10))}
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #CBD5E1',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: '#10201E'
+                  }}
+                >
+                  <option value={3}>3 Failed Attempts (Strict)</option>
+                  <option value={5}>5 Failed Attempts (Standard Balanced)</option>
+                  <option value={10}>10 Failed Attempts (Permissive)</option>
+                </select>
+                <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
+                  Number of invalid password attempts before temporary IP ban is enforced.
+                </small>
+              </div>
+
+              {/* Lockout Duration & Rate Limit */}
+              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '18px 20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#10201E', marginBottom: '6px' }}>
+                  <Gauge size={15} style={{ display: 'inline', marginRight: '6px', color: '#3B82F6' }} />
+                  Lockout Duration &amp; Rate Limit
+                </label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <select
+                    value={loginLockoutDuration}
+                    onChange={(e) => setLoginLockoutDuration(parseInt(e.target.value, 10))}
+                    style={{
+                      flex: 1,
+                      height: '42px',
+                      padding: '0 8px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #CBD5E1',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      color: '#10201E'
+                    }}
+                  >
+                    <option value={15}>15 Minutes</option>
+                    <option value={30}>30 Minutes</option>
+                    <option value={60}>60 Minutes (1 Hour)</option>
+                    <option value={1440}>24 Hours (Full Day)</option>
+                  </select>
+
+                  <select
+                    value={rateLimitPerMinute}
+                    onChange={(e) => setRateLimitPerMinute(parseInt(e.target.value, 10))}
+                    style={{
+                      flex: 1,
+                      height: '42px',
+                      padding: '0 8px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #CBD5E1',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      color: '#10201E'
+                    }}
+                  >
+                    <option value={60}>60 Req / Min</option>
+                    <option value={120}>120 Req / Min (Default)</option>
+                    <option value={300}>300 Req / Min</option>
+                  </select>
+                </div>
+                <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
+                  Cooldown ban duration and maximum requests allowed per minute per client IP.
+                </small>
+              </div>
+
+            </div>
+
+            {/* Save Policies Button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '10px' }}>
+              <button
+                type="button"
+                onClick={handleSaveAdvancedPolicy}
+                disabled={saving}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '11px 22px',
+                  borderRadius: '9px',
+                  background: '#E8792F',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 10px rgba(232, 121, 47, 0.25)',
+                  transition: 'opacity 0.2s'
+                }}
+              >
+                <Save size={15} />
+                <span>{saving ? 'Synchronizing Policies...' : 'Save & Deploy Security Policies'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* SECTION 3: BASELINE CORE HARDENING DIRECTIVES                              */}
+          {/* ========================================================================= */}
+          <div style={contentCardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                    Active Hardening Directives ({activeRulesCount} of {hardeningRules.length} Active)
+                  </h3>
+                  <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>A+ RATING</span>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#60716B' }}>
+                  Directives take effect immediately at the edge and directly inside protected WordPress environments.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  onClick={handleRevertDefaults}
+                  style={secondaryButtonStyle}
+                >
+                  <RotateCcw size={13} />
+                  <span>Review &amp; Revert to Safe Baseline</span>
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
+              {hardeningRules.map(item => (
+                <div
+                  key={item.key}
+                  style={{
+                    border: '1px solid #D9E1DC',
+                    borderRadius: '12px',
+                    padding: '20px 22px',
+                    background: '#FBFCFA',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '16px'
+                  }}
+                >
+                  <div style={{ paddingRight: '10px' }}>
+                    <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>{item.label}</div>
+                    <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', lineHeight: '1.4' }}>{item.desc}</div>
+                  </div>
+
+                  <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={hardening[item.key]}
+                      onChange={() => handleToggle(item.key)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: hardening[item.key] ? '#2A8B68' : '#CBD5E1',
+                      borderRadius: '26px',
+                      transition: '0.2s'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        content: '""',
+                        height: '20px',
+                        width: '20px',
+                        left: hardening[item.key] ? '23px' : '3px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        borderRadius: '50%',
+                        transition: '0.2s'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
-      </div>
       )}
     </div>
   )
@@ -278,22 +746,24 @@ const secondaryButtonStyle = {
   borderRadius: '8px',
   background: '#ffffff',
   border: '1px solid #D9E1DC',
-  color: '#10201E',
-  fontWeight: '600',
   fontSize: '12.5px',
-  cursor: 'pointer',
-  display: 'inline-flex',
+  fontWeight: '700',
+  color: '#10201E',
+  display: 'flex',
   alignItems: 'center',
-  gap: '6px'
+  gap: '6px',
+  cursor: 'pointer'
 }
 
 const badgeStyle = (bg, color, border) => ({
-  padding: '4px 10px',
-  borderRadius: '999px',
-  fontSize: '11px',
-  fontWeight: '800',
-  letterSpacing: '0.04em',
   background: bg,
   color: color,
-  border: `1px solid ${border}`
+  border: `1px solid ${border}`,
+  fontSize: '10.5px',
+  fontWeight: '800',
+  letterSpacing: '0.5px',
+  padding: '3px 10px',
+  borderRadius: '999px',
+  display: 'inline-flex',
+  alignItems: 'center'
 })

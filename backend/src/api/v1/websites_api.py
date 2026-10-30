@@ -127,6 +127,12 @@ class SecuritySettingsUpdate(BaseModel):
     confidence_threshold: float | None = None
     under_attack_mode: bool | None = None
     blocked_countries: list[str] | None = None
+    custom_login_slug: str | None = None
+    hide_login_url: bool | None = None
+    login_redirect_type: str | None = None
+    bot_challenge_mode: str | None = None
+    max_login_attempts: int | None = None
+    login_lockout_duration: int | None = None
 
 
 def _website_out(doc):
@@ -451,6 +457,12 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
             "confidence_threshold": float(website.get("confidence_threshold") or 0.7),
             "under_attack_mode": bool(website.get("under_attack_mode", False)),
             "blocked_countries": website.get("blocked_countries", []),
+            "custom_login_slug": website.get("custom_login_slug", ""),
+            "hide_login_url": bool(website.get("hide_login_url", False)),
+            "login_redirect_type": website.get("login_redirect_type", "404"),
+            "bot_challenge_mode": website.get("bot_challenge_mode", "hold_press"),
+            "max_login_attempts": int(website.get("max_login_attempts", 5)),
+            "login_lockout_duration": int(website.get("login_lockout_duration", 60)),
         }
     })
 
@@ -492,6 +504,18 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
         updates["under_attack_mode"] = bool(body.under_attack_mode)
     if body.blocked_countries is not None:
         updates["blocked_countries"] = [str(c).upper().strip() for c in body.blocked_countries if len(str(c).strip()) == 2]
+    if body.custom_login_slug is not None:
+        updates["custom_login_slug"] = str(body.custom_login_slug).strip()
+    if body.hide_login_url is not None:
+        updates["hide_login_url"] = bool(body.hide_login_url)
+    if body.login_redirect_type is not None:
+        updates["login_redirect_type"] = str(body.login_redirect_type).strip()
+    if body.bot_challenge_mode is not None:
+        updates["bot_challenge_mode"] = str(body.bot_challenge_mode).strip()
+    if body.max_login_attempts is not None:
+        updates["max_login_attempts"] = max(1, min(100, int(body.max_login_attempts)))
+    if body.login_lockout_duration is not None:
+        updates["login_lockout_duration"] = max(5, min(1440, int(body.login_lockout_duration)))
 
     updates["updated_at"] = datetime.now()
     db.websites.update_one({"_id": website["_id"]}, {"$set": updates})

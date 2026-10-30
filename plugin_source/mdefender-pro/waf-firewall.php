@@ -294,6 +294,35 @@ function waf_fw_handle_cloud_sync_webhook() {
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
                     update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);
                 }
+                if (isset($pushed_data['config']) && is_array($pushed_data['config'])) {
+                    $cfg = $pushed_data['config'];
+                    if (isset($cfg['custom_login_slug'])) {
+                        $slug = sanitize_title($cfg['custom_login_slug']);
+                        if (!empty($cfg['hide_login_url']) && !empty($slug) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
+                            update_option('waf_harden_login_rename', $slug);
+                        } else {
+                            delete_option('waf_harden_login_rename');
+                        }
+                    }
+                    if (isset($cfg['login_redirect_type'])) {
+                        update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));
+                    }
+                    if (isset($cfg['bot_challenge_mode'])) {
+                        update_option('waf_bot_challenge_mode', sanitize_text_field($cfg['bot_challenge_mode']));
+                    }
+                    if (isset($cfg['max_login_attempts'])) {
+                        update_option('waf_fw_login_lockout_threshold', intval($cfg['max_login_attempts']));
+                    }
+                    if (isset($cfg['login_lockout_duration'])) {
+                        update_option('waf_fw_login_lockout_duration', intval($cfg['login_lockout_duration']));
+                    }
+                    if (isset($cfg['rate_limit'])) {
+                        update_option('waf_rate_limit_per_minute', intval($cfg['rate_limit']));
+                    }
+                    if (isset($cfg['under_attack_mode'])) {
+                        update_option('waf_under_attack_mode', !empty($cfg['under_attack_mode']) ? 'yes' : 'no');
+                    }
+                }
                 if (!empty($pushed_data['config']) && is_array($pushed_data['config'])) {
                     $config = $pushed_data['config'];
                     if (isset($config['rate_limit'])) {
