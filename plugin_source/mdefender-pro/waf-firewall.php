@@ -320,7 +320,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                         update_option('waf_rate_limit_per_minute', intval($cfg['rate_limit']));
                     }
                     if (isset($cfg['under_attack_mode'])) {
-                        update_option('waf_under_attack_mode', !empty($cfg['under_attack_mode']) ? 'yes' : 'no');
+                        $uam_val = !empty($cfg['under_attack_mode']) ? 'yes' : 'no';
+                        update_option('waf_under_attack_mode', $uam_val);
+                        update_option('waf_fw_under_attack_mode', $uam_val);
                     }
                     if (isset($cfg['hold_press_enabled'])) {
                         update_option('waf_hold_press_enabled', !empty($cfg['hold_press_enabled']) ? 'yes' : 'no');

@@ -1088,6 +1088,36 @@ async def user_remove_website(request: Request, user: dict = Depends(verify_user
         return JSONResponse(status_code=400, content={'status': 'error', 'message': str(e)})
 
 @app.get("/api/user/dashboard")
+
+@app.get("/api/user/ddos-status")
+async def user_ddos_status(request: Request, user: dict = Depends(verify_user_token_compat)):
+    try:
+        from src.security.attack_blocker import AttackBlocker
+        db = MongoDB()
+        user_id = str(user.get("id") or user.get("_id") or "")
+        u_cfg = AttackBlocker(db).get_user_settings(user_id)
+        return JSONResponse(status_code=200, content={"status": "success", "ddos_enabled": bool(u_cfg.get("ddos_mitigation_enabled", True))})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+@app.post("/api/user/ddos-toggle")
+async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_token_compat)):
+    try:
+        from src.security.attack_blocker import AttackBlocker
+        data = await request.json()
+        enabled = bool(data.get("enabled", True))
+        db = MongoDB()
+        user_id = str(user.get("id") or user.get("_id") or "")
+        AttackBlocker(db).update_user_settings(user_id, {"ddos_mitigation_enabled": enabled})
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=user_id)
+        except Exception:
+            pass
+        return JSONResponse(status_code=200, content={"status": "success", "ddos_enabled": enabled})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
 async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
         website_id = request.query_params.get('website_id')

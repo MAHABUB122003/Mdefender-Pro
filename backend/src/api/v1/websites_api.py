@@ -433,6 +433,24 @@ async def toggle_under_attack_mode(website_id: str, body: UnderAttackToggle, use
         {"_id": website["_id"]},
         {"$set": {"under_attack_mode": enabled, "updated_at": datetime.now()}}
     )
+
+    from src.auth.audit_service import AuditService
+    try:
+        AuditService().log(
+            user_id=str(user["id"]),
+            action="website_under_attack_toggled",
+            ip_address="system",
+            details={"website_id": str(website["_id"]), "under_attack_mode": enabled}
+        )
+    except Exception:
+        pass
+
+    # Instant zero-latency push to connected WordPress sites
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=user["id"], website_id=website["_id"])
+    except Exception:
+        pass
     return success({
         "website_id": str(website["_id"]),
         "domain": website.get("domain") or website.get("url"),

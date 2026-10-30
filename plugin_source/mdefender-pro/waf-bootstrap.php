@@ -169,6 +169,7 @@ foreach ($candidates as $cand) {
 $mdf_uri_check = urldecode($_SERVER['REQUEST_URI'] ?? '');
 $mdf_query_check = urldecode($_SERVER['QUERY_STRING'] ?? '');
 $has_attack_marker = (strpbrk($mdf_uri_check, "'\"<>`();$\\") !== false || strpbrk($mdf_query_check, "'\"<>`();$\\") !== false || strpos($mdf_uri_check, '..') !== false || strpos($mdf_query_check, '..') !== false || !empty($_GET['waf_test']));
+$has_country_test = !empty($_GET['country_test']) || !empty($_GET['test_country']) || !empty($_SERVER['HTTP_CF_IPCOUNTRY']);
 if (!$is_blocked && !$has_attack_marker && empty($_GET['test_ip']) && empty($_GET['ip_test']) && !$has_country_test) {
     if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0' || $mdefender_ip === 'localhost') {
         $local_c = !empty($mdefender_cache_data['local_server_country']) ? strtoupper($mdefender_cache_data['local_server_country']) : '';

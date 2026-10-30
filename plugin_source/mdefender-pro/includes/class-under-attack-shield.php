@@ -36,7 +36,7 @@ class WAF_FW_Under_Attack_Shield {
      * Checks if Under Attack Mode is currently active.
      */
     public function is_active() {
-        return get_option('waf_fw_under_attack_mode', 'no') === 'yes';
+        return get_option('waf_fw_under_attack_mode', 'no') === 'yes' || get_option('waf_under_attack_mode', 'no') === 'yes';
     }
 
     /**

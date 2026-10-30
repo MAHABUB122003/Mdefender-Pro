@@ -35,7 +35,9 @@ import {
   Terminal,
   Zap,
   Lock,
-  Crown
+  Crown,
+  Flame,
+  Power
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
@@ -275,16 +277,67 @@ export default function UserDashboard() {
     return () => clearInterval(interval);
   }, [fetchData, selectedWebsite]);
 
-  const handleDdosToggle = async () => {
+  const websitesList = data?.websites || [];
+  const [ddosFeedback, setDdosFeedback] = useState(null);
+
+  // Determine Under Attack status for currently selected scope
+  const currentSiteObj = selectedWebsite !== 'all' ? websitesList.find(w => (w.id || w._id) === selectedWebsite) : null;
+  const isSelectedSiteAttacked = currentSiteObj 
+    ? Boolean(currentSiteObj.under_attack_mode) 
+    : (websitesList.length > 0 ? websitesList.some(w => Boolean(w.under_attack_mode)) : !ddosEnabled);
+
+  const handleUnderAttackToggle = async () => {
     setDdosToggling(true);
     try {
-      const newState = !ddosEnabled;
-      await api.toggleDdos(newState);
-      setDdosEnabled(newState);
+      if (selectedWebsite !== 'all' && currentSiteObj) {
+        const nextState = !isSelectedSiteAttacked;
+        await api.toggleWebsiteUnderAttack(selectedWebsite, nextState);
+        // Optimistic update
+        setData(prev => {
+          if (!prev) return prev;
+          const updated = (prev.websites || []).map(w => {
+            if ((w.id || w._id) === selectedWebsite) {
+              return { ...w, under_attack_mode: nextState };
+            }
+            return w;
+          });
+          return { ...prev, websites: updated };
+        });
+        setDdosFeedback({
+          type: 'success',
+          msg: nextState
+            ? `⚡ "I'm Under Attack" Mode ACTIVATED for ${currentSiteObj.domain || currentSiteObj.name || 'site'}! Proof-of-Work (PoW) cryptographic challenge is active on origin.`
+            : `✅ "I'm Under Attack" Mode DEACTIVATED for ${currentSiteObj.domain || currentSiteObj.name || 'site'}. Standard passive WAF protection resumed.`
+        });
+      } else {
+        const nextState = !isSelectedSiteAttacked;
+        await api.toggleDdos(!nextState);
+        setDdosEnabled(!nextState);
+        // Batch push to all connected sites
+        if (websitesList.length > 0) {
+          for (const w of websitesList) {
+            try {
+              await api.toggleWebsiteUnderAttack(w.id || w._id, nextState);
+            } catch {}
+          }
+        }
+        setDdosFeedback({
+          type: 'success',
+          msg: nextState
+            ? `⚡ Fleet DDoS & Under Attack Shield ACTIVATED across all connected WordPress origins! Real-time PoW puzzle is now shielding all traffic.`
+            : `✅ Fleet DDoS Protection returned to Standard Passive Rate-Limiting mode.`
+        });
+      }
+      userStore.clear();
+      await fetchData(true, selectedWebsite);
     } catch (err) {
-      alert(err.message || 'Failed to toggle DDoS protection');
+      setDdosFeedback({
+        type: 'error',
+        msg: `Failed to toggle DDoS protection: ${err.message || 'Server error'}`
+      });
     } finally {
       setDdosToggling(false);
+      setTimeout(() => setDdosFeedback(null), 6000);
     }
   };
 
@@ -468,8 +521,6 @@ export default function UserDashboard() {
     ? (((totalReq - totalBlk) / totalReq) * 100).toFixed(1)
     : '100.0';
 
-  const websitesList = data?.websites || [];
-
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '0 0 60px' }}>
       
@@ -551,70 +602,201 @@ export default function UserDashboard() {
           </p>
         </div>
 
-        {/* Right Controls: Domain Scope Selector Card (Matching UserPricing Account Status Box) */}
+        {/* Right Controls: Cluster with DDoS Shield & Domain Scope */}
         <div style={{
-          background: brandTokens.subCardBg,
-          border: brandTokens.cardBorder,
-          borderRadius: '12px',
-          padding: '16px 20px',
-          minWidth: '260px'
+          display: 'flex',
+          gap: '14px',
+          alignItems: 'stretch',
+          flexWrap: 'wrap'
         }}>
+          {/* 1. DDoS & Under Attack Shield Card */}
           <div style={{
-            fontSize: '11px',
-            color: brandTokens.bodyColor,
-            textTransform: 'uppercase',
-            fontWeight: '700',
-            letterSpacing: '0.08em',
-            marginBottom: '6px',
+            background: isSelectedSiteAttacked ? 'linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)' : brandTokens.subCardBg,
+            border: isSelectedSiteAttacked ? '1.5px solid #FCA5A5' : brandTokens.cardBorder,
+            borderRadius: '12px',
+            padding: '14px 18px',
+            minWidth: '280px',
+            boxShadow: isSelectedSiteAttacked ? '0 4px 14px rgba(239, 68, 68, 0.12)' : 'none',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            transition: 'all 0.25s ease'
           }}>
-            <span>Domain Scope</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <Flame size={14} color={isSelectedSiteAttacked ? '#DC2626' : brandTokens.brandEmerald} />
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.07em',
+                  color: isSelectedSiteAttacked ? '#DC2626' : brandTokens.headingColor
+                }}>
+                  DDoS &amp; Under Attack Shield
+                </span>
+              </div>
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: '999px',
+                fontSize: '10px',
+                fontWeight: '800',
+                letterSpacing: '0.05em',
+                background: isSelectedSiteAttacked ? '#DC2626' : '#E8F3EC',
+                color: isSelectedSiteAttacked ? '#FFFFFF' : brandTokens.brandEmerald,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <span style={{
+                  width: '5px',
+                  height: '5px',
+                  borderRadius: '50%',
+                  background: isSelectedSiteAttacked ? '#FFFFFF' : brandTokens.brandEmerald,
+                  boxShadow: isSelectedSiteAttacked ? '0 0 6px #FFFFFF' : 'none'
+                }} />
+                {isSelectedSiteAttacked ? 'ACTIVE' : 'STANDBY'}
+              </span>
+            </div>
+
+            <div style={{ fontSize: '11.5px', color: isSelectedSiteAttacked ? '#991B1B' : brandTokens.bodyColor, lineHeight: '1.4', marginBottom: '10px' }}>
+              {isSelectedSiteAttacked
+                ? '⚡ Proof-of-Work JS challenge active. Dropping 100% L7 floods.'
+                : '🛡️ Sliding rate limit active. 1-click PoW mitigation standby.'}
+            </div>
+
             <button
-              onClick={() => fetchData(true, selectedWebsite)}
-              disabled={refreshing}
-              title="Refresh telemetry"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: brandTokens.bodyColor, display: 'inline-flex', alignItems: 'center', padding: 0 }}
+              type="button"
+              onClick={handleUnderAttackToggle}
+              disabled={ddosToggling}
+              style={{
+                width: '100%',
+                padding: '7px 12px',
+                borderRadius: '8px',
+                border: isSelectedSiteAttacked ? '1px solid #DC2626' : '1px solid #D9E1DC',
+                background: isSelectedSiteAttacked ? '#DC2626' : '#FFFFFF',
+                color: isSelectedSiteAttacked ? '#FFFFFF' : brandTokens.headingColor,
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: ddosToggling ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: isSelectedSiteAttacked ? '0 2px 8px rgba(220, 38, 38, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease'
+              }}
             >
-              <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+              {ddosToggling ? (
+                <>
+                  <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>Synchronizing Fleet...</span>
+                </>
+              ) : isSelectedSiteAttacked ? (
+                <>
+                  <Power size={12} />
+                  <span>Deactivate Under Attack Mode</span>
+                </>
+              ) : (
+                <>
+                  <Flame size={12} color="#DC2626" />
+                  <span>Activate "I'm Under Attack"</span>
+                </>
+              )}
             </button>
           </div>
 
-          <select
-            value={selectedWebsite}
-            onChange={(e) => {
-              const siteId = e.target.value;
-              setSelectedWebsite(siteId);
-              fetchData(true, siteId);
-            }}
-            style={{
-              width: '100%',
-              padding: '6px 8px',
-              borderRadius: '6px',
-              border: '1px solid #D9E1DC',
-              background: '#ffffff',
-              color: brandTokens.headingColor,
-              fontSize: '13px',
+          {/* 2. Domain Scope Selector Card (Matching UserPricing Account Status Box) */}
+          <div style={{
+            background: brandTokens.subCardBg,
+            border: brandTokens.cardBorder,
+            borderRadius: '12px',
+            padding: '16px 20px',
+            minWidth: '240px'
+          }}>
+            <div style={{
+              fontSize: '11px',
+              color: brandTokens.bodyColor,
+              textTransform: 'uppercase',
               fontWeight: '700',
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            <option value="all">All Connected Sites ({websitesList.length})</option>
-            {websitesList.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.domain || w.name || w.id}
-              </option>
-            ))}
-          </select>
+              letterSpacing: '0.08em',
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span>Domain Scope</span>
+              <button
+                onClick={() => fetchData(true, selectedWebsite)}
+                disabled={refreshing}
+                title="Refresh telemetry"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: brandTokens.bodyColor, display: 'inline-flex', alignItems: 'center', padding: 0 }}
+              >
+                <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+              </button>
+            </div>
 
-          <div style={{ fontSize: '11px', color: brandTokens.brandEmerald, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-            <span>Synced: {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}</span>
+            <select
+              value={selectedWebsite}
+              onChange={(e) => {
+                const siteId = e.target.value;
+                setSelectedWebsite(siteId);
+                fetchData(true, siteId);
+              }}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                borderRadius: '6px',
+                border: '1px solid #D9E1DC',
+                background: '#ffffff',
+                color: brandTokens.headingColor,
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="all">All Connected Sites ({websitesList.length})</option>
+              {websitesList.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.domain || w.name || w.id}
+                </option>
+              ))}
+            </select>
+
+            <div style={{ fontSize: '11px', color: brandTokens.brandEmerald, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+              <span>Synced: {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* DDoS & Status Feedback Alert */}
+      {ddosFeedback && (
+        <div style={{
+          padding: '12px 18px',
+          borderRadius: '10px',
+          background: ddosFeedback.type === 'success' ? '#ECFDF5' : '#FEF2F2',
+          border: `1px solid ${ddosFeedback.type === 'success' ? '#A7F3D0' : '#FECACA'}`,
+          color: ddosFeedback.type === 'success' ? '#065F46' : '#991B1B',
+          fontSize: '13px',
+          fontWeight: '600',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>{ddosFeedback.msg}</span>
+          </div>
+          <button
+            onClick={() => setDdosFeedback(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: '800' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Onboarding Banner if 0 Sites */}
       {!loading && websitesList.length === 0 && (
