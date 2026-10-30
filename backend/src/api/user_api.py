@@ -1069,6 +1069,7 @@ class UserAPI:
                 'security_headers': bool(w.get('security_headers', True)),
                 'file_permissions_check': bool(w.get('file_permissions_check', True)),
                 'login_two_factor': bool(w.get('login_two_factor', True)),
+                'under_attack_mode': bool(w.get('under_attack_mode', False)),
             })
 
         # -------------------------------------------------------------
