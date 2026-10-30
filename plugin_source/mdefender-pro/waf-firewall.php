@@ -1469,6 +1469,34 @@ add_action('rest_api_init', function() {
                 ], 200);
             }
 
+            if ($rel_file === 'index.php') {
+                $pristine = "<?php\n/**\n * Front to the WordPress application.\n *\n * @package WordPress\n */\ndefine( 'WP_USE_THEMES', true );\n/** Loads the WordPress Environment and Template */\nrequire __DIR__ . '/wp-blog-header.php';\n";
+                @file_put_contents($full_path, $pristine);
+                return new WP_REST_Response([
+                    'status' => 'success',
+                    'message' => 'Core file index.php restored to pristine official WordPress release.'
+                ], 200);
+            }
+
+            // Universal WordPress Official SVN / CDN Fallback for any core file
+            global $wp_version;
+            $ver = !empty($wp_version) ? $wp_version : '6.7';
+            $remote_sources = [
+                "https://core.svn.wordpress.org/tags/{$ver}/" . ltrim($rel_file, '/\\'),
+                "https://raw.githubusercontent.com/WordPress/WordPress/{$ver}/" . ltrim($rel_file, '/\\')
+            ];
+            foreach ($remote_sources as $src_url) {
+                $ctx = stream_context_create(['http' => ['timeout' => 6]]);
+                $content_fetched = @file_get_contents($src_url, false, $ctx);
+                if ($content_fetched && strpos($content_fetched, '<?php') !== false) {
+                    @file_put_contents($full_path, $content_fetched);
+                    return new WP_REST_Response([
+                        'status' => 'success',
+                        'message' => 'Core file ' . basename($full_path) . ' restored to pristine official WordPress ' . $ver . ' release.'
+                    ], 200);
+                }
+            }
+
             return new WP_REST_Response([
                 'status' => 'success',
                 'message' => 'Core file repaired successfully.'

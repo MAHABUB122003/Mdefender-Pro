@@ -199,7 +199,7 @@ export default function BulkScanner() {
     return findings.filter(f => {
       const pathStr = (f.file || f.path || '').toLowerCase()
       if (activeFilter === 'quarantined') return f.status === 'quarantined'
-      if (activeFilter === 'core') return f.type?.toLowerCase().includes('core') || pathStr.includes('wp-admin') || pathStr.includes('wp-includes') || pathStr.endsWith('wp-blog-header.php') || pathStr.endsWith('index.php')
+      if (activeFilter === 'core') return f.category === 'WordPress Core' || f.type?.toLowerCase().includes('core') || f.threat_name?.toLowerCase().includes('core') || pathStr.includes('wp-admin') || pathStr.includes('wp-includes') || pathStr.endsWith('wp-blog-header.php') || pathStr.endsWith('index.php') || pathStr.endsWith('xmlrpc.php') || pathStr.startsWith('wp-')
       if (activeFilter === 'plugins') return pathStr.includes('plugins') || pathStr.includes('themes')
       if (activeFilter === 'uploads') return pathStr.includes('uploads')
       return true
@@ -209,7 +209,7 @@ export default function BulkScanner() {
   const stats = useMemo(() => {
     const total = findings.length
     const quarantined = findings.filter(f => f.status === 'quarantined').length
-    const coreTampered = findings.filter(f => f.type?.toLowerCase().includes('core') || (f.file || '').includes('wp-blog-header')).length
+    const coreTampered = findings.filter(f => f.category === 'WordPress Core' || f.type?.toLowerCase().includes('core') || f.threat_name?.toLowerCase().includes('core') || (f.file || '').startsWith('wp-') || (f.file || '').includes('wp-blog-header') || (f.file || '').includes('index.php') || (f.file || '').includes('xmlrpc.php')).length
     const activeThreats = total - quarantined
     return { total, quarantined, coreTampered, activeThreats }
   }, [findings])
@@ -561,7 +561,7 @@ export default function BulkScanner() {
                           {fileName}
                         </span>
 
-                        {finding.line && (
+                        {(finding.line_number || finding.line) && (
                           <span style={{
                             fontSize: '11px',
                             fontWeight: 800,
@@ -570,7 +570,7 @@ export default function BulkScanner() {
                             background: '#10201E',
                             color: '#FFFFFF'
                           }}>
-                            Line {finding.line}
+                            Line {finding.line_number || finding.line}
                           </span>
                         )}
 
@@ -583,7 +583,7 @@ export default function BulkScanner() {
                           color: '#0B2522',
                           border: '1px solid #D9E1DC'
                         }}>
-                          {finding.type || 'AST Malicious Vector'}
+                          {finding.threat_name || finding.type || finding.category || 'AST Malicious Vector'}
                         </span>
 
                         {isQuarantined && (
@@ -663,7 +663,7 @@ export default function BulkScanner() {
                 </div>
 
                 {/* Code Snippet Box */}
-                {(finding.snippet || finding.matched_line) && (
+                {(finding.code_snippet || finding.snippet || finding.matched_line) && (
                   <div style={{
                     marginTop: '12px',
                     background: '#090D16',
@@ -681,7 +681,7 @@ export default function BulkScanner() {
                       [AST MATCH]
                     </span>
                     <code style={{ color: '#F1F5F9', whiteSpace: 'pre' }}>
-                      {finding.snippet || finding.matched_line}
+                      {finding.code_snippet || finding.snippet || finding.matched_line}
                     </code>
                   </div>
                 )}

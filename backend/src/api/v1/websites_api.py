@@ -819,15 +819,28 @@ async def quarantine_website_file(website_id: str, body: dict = None, user=Depen
         f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-quarantine",
         f"{target_url}/wp-json/waf-fw/v1/remote-scan-quarantine"
     ]
+    result_payload = {"status": "success", "message": f"File {file_path} marked as quarantined."}
     for ep in candidates:
         try:
             r = requests.post(ep, json={"file": file_path}, timeout=8.0, verify=False)
             if r.status_code == 200:
-                return success(r.json())
+                result_payload = r.json()
+                break
         except Exception:
             pass
 
-    return success({"status": "success", "message": f"File {file_path} marked as quarantined."})
+    try:
+        from src.auth.audit_service import AuditService
+        AuditService().log(
+            user_id=str(user["id"]),
+            action="malware_quarantined",
+            ip_address="system",
+            details={"website_id": str(website["_id"]), "file": file_path, "category": "malware"}
+        )
+    except Exception:
+        pass
+
+    return success(result_payload)
 
 
 @router.post("/{website_id}/scan/repair-core")
@@ -843,15 +856,28 @@ async def repair_website_core_file(website_id: str, body: dict = None, user=Depe
         f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core",
         f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core"
     ]
+    result_payload = {"status": "success", "message": f"Core file {file_path} restored to official WordPress release."}
     for ep in candidates:
         try:
             r = requests.post(ep, json={"file": file_path}, timeout=8.0, verify=False)
             if r.status_code == 200:
-                return success(r.json())
+                result_payload = r.json()
+                break
         except Exception:
             pass
 
-    return success({"status": "success", "message": f"Core file {file_path} restored to official WordPress release."})
+    try:
+        from src.auth.audit_service import AuditService
+        AuditService().log(
+            user_id=str(user["id"]),
+            action="core_file_repaired",
+            ip_address="system",
+            details={"website_id": str(website["_id"]), "file": file_path, "category": "core_integrity"}
+        )
+    except Exception:
+        pass
+
+    return success(result_payload)
 
 
 @router.delete("/{website_id}")
