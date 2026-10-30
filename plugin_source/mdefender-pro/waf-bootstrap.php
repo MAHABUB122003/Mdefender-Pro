@@ -165,8 +165,11 @@ foreach ($candidates as $cand) {
 }
 
 // If not explicitly blacklisted, allow safe loopback traffic unless country/test simulation is provided
-$has_country_test = (!empty($_GET['country_test']) || !empty($_GET['test_country']) || !empty($_GET['country']) || !empty($_GET['geo_country']) || !empty($_SERVER['HTTP_CF_IPCOUNTRY']) || !empty($_SERVER['CF_IPCOUNTRY']) || !empty($_SERVER['GEOIP_COUNTRY_CODE']));
-if (!$is_blocked && empty($_GET['test_ip']) && empty($_GET['ip_test']) && !$has_country_test) {
+// If not explicitly blacklisted, allow safe loopback traffic unless an attack payload or test simulation is provided
+$mdf_uri_check = urldecode($_SERVER['REQUEST_URI'] ?? '');
+$mdf_query_check = urldecode($_SERVER['QUERY_STRING'] ?? '');
+$has_attack_marker = (strpbrk($mdf_uri_check, "'\"<>`();$\\") !== false || strpbrk($mdf_query_check, "'\"<>`();$\\") !== false || strpos($mdf_uri_check, '..') !== false || strpos($mdf_query_check, '..') !== false || !empty($_GET['waf_test']));
+if (!$is_blocked && !$has_attack_marker && empty($_GET['test_ip']) && empty($_GET['ip_test']) && !$has_country_test) {
     if ($mdefender_ip === '127.0.0.1' || $mdefender_ip === '::1' || $mdefender_ip === '0.0.0.0' || $mdefender_ip === 'localhost') {
         $local_c = !empty($mdefender_cache_data['local_server_country']) ? strtoupper($mdefender_cache_data['local_server_country']) : '';
         $raw_b = (array)($mdefender_cache_data['blocked_countries'] ?? []);
@@ -295,8 +298,10 @@ if (!$is_blocked) {
     $query = $_SERVER['QUERY_STRING'] ?? '';
     
     // Quick heuristic: If neither URI nor query contains any attack markers, skip in 0.001ms
-    if (strpbrk($uri, "'\"<>`();$\\") !== false || strpbrk($query, "'\"<>`();$\\") !== false || !empty($_GET['waf_test'])) {
-        $raw_payload = urldecode($uri) . ' ' . urldecode($query);
+    $decoded_uri = urldecode($uri);
+    $decoded_query = urldecode($query);
+    if (strpbrk($decoded_uri, "'\"<>`();$\\") !== false || strpbrk($decoded_query, "'\"<>`();$\\") !== false || strpos($decoded_uri, '..') !== false || strpos($decoded_query, '..') !== false || !empty($_GET['waf_test'])) {
+        $raw_payload = $decoded_uri . ' ' . $decoded_query;
         if (!empty($_GET['waf_test'])) {
             $raw_payload .= ' ' . (is_string($_GET['waf_test']) ? $_GET['waf_test'] : '');
         }
@@ -316,7 +321,7 @@ if (!$is_blocked) {
             $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
         }
         // Check Path Traversal / LFI
-        elseif (preg_match('/(?:\.\.[\/\\]){2,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\/\\]windows|php:\/\/(?:filter|input|memory)|(?:\.env|\.git\/|\.htaccess|\.user\.ini|wp-config\.php(?:\.bak|~|\.old))/i', $raw_payload)) {
+        elseif (preg_match('#(?:\.\.[\\\\/]){2,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\\\\/]windows|php:\/\/(?:filter|input|memory)|(?:\.env|\.git\/|\.htaccess|\.user\.ini|wp-config\.php(?:\.bak|~|\.old))#i', $raw_payload)) {
             $is_blocked = true;
             $attack_name = 'Path Traversal';
             $rule_name = 'Pre-Flight WAAP: Directory Traversal & LFI Guard';
