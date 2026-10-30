@@ -24,8 +24,6 @@ import {
   RefreshCw,
   Clock,
   ArrowRight,
-  Lock,
-  Crown,
   CheckCircle2,
   Crosshair,
   Ban,
@@ -36,21 +34,39 @@ import {
   BarChart3,
   Terminal,
   Zap,
-  Sliders
+  Lock,
+  Crown
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
 
 // =========================================================================
-// 1. REFINED MONOCHROME & SEMANTIC THREAT PALETTE (Cloudflare / Stripe Standard)
+// DESIGN TOKENS — HARMONIZED WITH UserPricing & UserBulkManagement
 // =========================================================================
+const brandTokens = {
+  cardBg: '#ffffff',
+  cardBorder: '1px solid #D9E1DC',
+  cardRadius: '16px',
+  cardShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+  
+  subCardBg: '#FBFCFA',
+  pillBg: '#E8EEE8',
+  
+  headingColor: '#10201E',
+  bodyColor: '#60716B',
+  brandForest: '#0B2522',
+  brandEmerald: '#2A8B68',
+  brandAmber: '#E8792F',
+  dangerRed: '#DC2626'
+};
+
 const securityPalette = [
   '#DC2626', // Critical Threats (SQLi / RCE)
   '#E8792F', // High Severity (XSS / CSRF)
-  '#2A8B68', // Behavioral / Bot Mitigations (Forest Emerald)
-  '#475569', // Scanners & Web Crawlers (Slate)
-  '#64748B', // Path Traversal & Probes (Muted Slate)
-  '#0B2522'  // Core Ingress
+  '#2A8B68', // Behavioral / Bot Mitigations
+  '#0B2522', // Ingress Edge Neutral
+  '#60716B', // Muted Scanner Probes
+  '#87948D'  // Low Severity
 ];
 
 const severityConfig = {
@@ -62,13 +78,13 @@ const severityConfig = {
   lfi: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
   path: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
   traversal: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
-  bot: { label: 'BLOCKED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
-  scanner: { label: 'BLOCKED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
-  probe: { label: 'DETECTED', color: '#475569', bg: '#F1F5F9', border: '#CBD5E1' },
-  clean: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
-  allowed: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
-  ingress: { label: 'PASSED', color: '#15803D', bg: '#F0FDF4', border: '#DCFCE7' },
-  default: { label: 'MITIGATED', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' }
+  bot: { label: 'BLOCKED', color: '#60716B', bg: '#E8EEE8', border: '#D9E1DC' },
+  scanner: { label: 'BLOCKED', color: '#60716B', bg: '#E8EEE8', border: '#D9E1DC' },
+  probe: { label: 'DETECTED', color: '#60716B', bg: '#E8EEE8', border: '#D9E1DC' },
+  clean: { label: 'PASSED', color: '#2A8B68', bg: '#E8F3EC', border: '#CFE2D4' },
+  allowed: { label: 'PASSED', color: '#2A8B68', bg: '#E8F3EC', border: '#CFE2D4' },
+  ingress: { label: 'PASSED', color: '#2A8B68', bg: '#E8F3EC', border: '#CFE2D4' },
+  default: { label: 'MITIGATED', color: '#E8792F', bg: '#FFF4ED', border: '#FCD3B6' }
 };
 
 function getSeverity(type = '') {
@@ -98,7 +114,7 @@ function formatRelativeTime(timestamp) {
 }
 
 // =========================================================================
-// 2. UNIFIED ENTERPRISE KPI STAT CARD (Consistent & Clean)
+// KPI STAT CARD — MATCHING UserPricing CARD SPECIFICATIONS
 // =========================================================================
 function StatCard({
   icon: Icon,
@@ -107,63 +123,69 @@ function StatCard({
   sublabel,
   actionLink,
   actionText,
-  isThreat = false
+  isThreat = false,
+  badgeText
 }) {
-  const displayVal = Number(value || 0).toLocaleString();
+  const displayVal = typeof value === 'string'
+    ? value
+    : Number(value || 0).toLocaleString();
 
   return (
     <div style={{
-      background: '#FFFFFF',
-      borderRadius: '12px',
-      border: '1px solid #E2E8F0',
-      padding: '20px 22px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+      background: brandTokens.cardBg,
+      borderRadius: brandTokens.cardRadius,
+      border: brandTokens.cardBorder,
+      padding: '24px 26px',
+      boxShadow: brandTokens.cardShadow,
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
       position: 'relative'
     }}>
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        {/* Top Header: Label & Icon */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <span style={{
-            fontSize: '11.5px',
-            fontWeight: '700',
-            color: '#64748B',
+            fontSize: '11px',
+            fontWeight: '800',
+            color: brandTokens.bodyColor,
             textTransform: 'uppercase',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.08em'
           }}>
             {label}
           </span>
           <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
-            background: isThreat ? '#FEF2F2' : '#F8FAFC',
-            border: isThreat ? '1px solid #FEE2E2' : '1px solid #E2E8F0',
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: isThreat ? '#FEF2F2' : brandTokens.pillBg,
+            border: isThreat ? '1px solid #FECACA' : '1px solid #D9E1DC',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: isThreat ? '#DC2626' : '#2A8B68'
+            color: isThreat ? brandTokens.dangerRed : brandTokens.brandForest
           }}>
-            {Icon && <Icon size={16} strokeWidth={2.2} />}
+            {Icon && <Icon size={18} strokeWidth={2.4} />}
           </div>
         </div>
 
+        {/* Primary Metric Number */}
         <div style={{
-          fontSize: '26px',
-          fontWeight: '800',
-          color: isThreat && value > 0 ? '#DC2626' : '#0F172A',
-          lineHeight: '1.2',
-          letterSpacing: '-0.03em'
+          fontSize: '32px',
+          fontWeight: '850',
+          color: isThreat && value > 0 ? brandTokens.dangerRed : brandTokens.headingColor,
+          lineHeight: '1.1',
+          letterSpacing: '-0.04em'
         }}>
           {displayVal}
         </div>
 
+        {/* Sublabel / Context */}
         {sublabel && (
           <div style={{
-            fontSize: '12px',
-            color: '#64748B',
-            marginTop: '4px',
+            fontSize: '12.5px',
+            color: brandTokens.bodyColor,
+            marginTop: '6px',
             fontWeight: '500'
           }}>
             {sublabel}
@@ -171,14 +193,15 @@ function StatCard({
         )}
       </div>
 
+      {/* Action Footer */}
       {actionLink && actionText && (
-        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
+        <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid #E8EEE8' }}>
           <Link
             to={actionLink}
             style={{
-              fontSize: '11.5px',
+              fontSize: '12px',
               fontWeight: '700',
-              color: '#0284C7',
+              color: brandTokens.brandEmerald,
               textDecoration: 'none',
               display: 'inline-flex',
               alignItems: 'center',
@@ -195,7 +218,7 @@ function StatCard({
 }
 
 // =========================================================================
-// 3. MAIN ENTERPRISE USER DASHBOARD
+// MAIN USER DASHBOARD
 // =========================================================================
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -214,7 +237,7 @@ export default function UserDashboard() {
 
   const rawPlan = data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free';
   const userPlan = (typeof rawPlan === 'string' ? rawPlan : (rawPlan?.id || rawPlan?.name || 'free')).toLowerCase();
-  const isPremium = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
+  const isPaidActive = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan);
 
   const userName = data?.user?.name || data?.user?.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : '') || 'User';
 
@@ -242,12 +265,12 @@ export default function UserDashboard() {
     fetchData(false, selectedWebsite);
     api.getDdosStatus().then(r => setDdosEnabled(r.ddos_enabled ?? true)).catch(() => {});
 
-    // Polling every 5 seconds for telemetry
+    // Polling every 6 seconds for telemetry
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchData(false, selectedWebsite);
       }
-    }, 5000);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, [fetchData, selectedWebsite]);
@@ -352,16 +375,16 @@ export default function UserDashboard() {
     dailyDatasets.push({
       label: 'Clean Traffic',
       data: dailyCleanCounts,
-      borderColor: '#0F172A',
-      backgroundColor: 'rgba(15, 23, 42, 0.04)',
-      borderWidth: 2,
+      borderColor: brandTokens.brandForest,
+      backgroundColor: 'rgba(11, 37, 34, 0.05)',
+      borderWidth: 2.2,
       fill: true,
       tension: 0.35,
-      pointBackgroundColor: '#0F172A',
+      pointBackgroundColor: brandTokens.brandForest,
       pointBorderColor: '#FFFFFF',
-      pointBorderWidth: 1.5,
-      pointRadius: 3,
-      pointHoverRadius: 5
+      pointBorderWidth: 2,
+      pointRadius: 3.5,
+      pointHoverRadius: 6
     });
   }
 
@@ -369,16 +392,16 @@ export default function UserDashboard() {
     dailyDatasets.push({
       label: 'Mitigated Threats (403)',
       data: dailyThreatCounts,
-      borderColor: '#DC2626',
-      backgroundColor: 'rgba(220, 38, 38, 0.05)',
+      borderColor: brandTokens.dangerRed,
+      backgroundColor: 'rgba(220, 38, 38, 0.06)',
       borderWidth: 2,
       fill: true,
       tension: 0.35,
-      pointBackgroundColor: '#DC2626',
+      pointBackgroundColor: brandTokens.dangerRed,
       pointBorderColor: '#FFFFFF',
-      pointBorderWidth: 1.5,
-      pointRadius: 3,
-      pointHoverRadius: 5
+      pointBorderWidth: 2,
+      pointRadius: 3.5,
+      pointHoverRadius: 6
     });
   }
 
@@ -390,11 +413,11 @@ export default function UserDashboard() {
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '76%',
+    cutout: '74%',
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#0F172A',
+        backgroundColor: brandTokens.brandForest,
         titleFont: { family: 'Inter', weight: '700', size: 12 },
         bodyFont: { family: 'Inter', size: 11.5 },
         padding: 10,
@@ -416,7 +439,7 @@ export default function UserDashboard() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#0F172A',
+        backgroundColor: brandTokens.brandForest,
         titleFont: { family: 'Inter', weight: '700', size: 12 },
         bodyFont: { family: 'Inter', size: 12 },
         padding: 10,
@@ -431,12 +454,12 @@ export default function UserDashboard() {
     scales: {
       y: {
         beginAtZero: true,
-        grid: { color: 'rgba(226, 232, 240, 0.6)', drawBorder: false },
-        ticks: { font: { size: 11, family: 'Inter' }, color: '#64748B', padding: 6 }
+        grid: { color: 'rgba(217, 225, 220, 0.55)', drawBorder: false },
+        ticks: { font: { size: 11, family: 'Inter', weight: '600' }, color: brandTokens.bodyColor, padding: 6 }
       },
       x: {
         grid: { display: false },
-        ticks: { font: { size: 11, family: 'Inter' }, color: '#64748B', padding: 6 }
+        ticks: { font: { size: 11, family: 'Inter', weight: '600' }, color: brandTokens.bodyColor, padding: 6 }
       }
     }
   };
@@ -448,138 +471,147 @@ export default function UserDashboard() {
   const websitesList = data?.websites || [];
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '0 0 48px' }}>
+    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '0 0 60px' }}>
       
       {/* ========================================================================= */}
-      {/* 1. QUIET & ENTERPRISE HEADER BANNER (Cloudflare / Stripe Style)           */}
+      {/* 1. HEADER BANNER — MATCHING UserPricing HEADER DESIGN                     */}
       {/* ========================================================================= */}
       <div style={{
-        background: '#FFFFFF',
-        borderRadius: '12px',
-        border: '1px solid #E2E8F0',
-        padding: '20px 24px',
-        marginBottom: '20px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+        background: brandTokens.cardBg,
+        borderRadius: brandTokens.cardRadius,
+        padding: '28px 32px',
+        marginBottom: '28px',
+        border: brandTokens.cardBorder,
+        boxShadow: brandTokens.cardShadow,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '20px'
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <h1 style={{
-                fontSize: '22px',
-                fontWeight: '800',
-                color: '#0F172A',
-                margin: 0,
-                letterSpacing: '-0.02em'
-              }}>
-                Security Overview
-              </h1>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: '#F1F5F9',
-                color: '#475569',
-                border: '1px solid #E2E8F0'
-              }}>
-                {userPlan === 'go' ? 'Pro Plan' : (userPlan === 'pro' || userPlan === 'premium' || userPlan === 'enterprise') ? 'Enterprise Plan' : 'Free Tier'}
-              </span>
-            </div>
-            <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
-              Real-time telemetry, threat mitigation, and health across your connected sites.
-            </p>
+        <div>
+          {/* Top Pill Badges */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '800',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              background: brandTokens.pillBg,
+              color: brandTokens.brandForest,
+              border: '1px solid #D9E1DC',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <Shield size={12} strokeWidth={2.4} style={{ color: brandTokens.brandEmerald }} />
+              <span>Active Security Workspace</span>
+            </span>
+
+            <span style={{
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '800',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              background: isPaidActive ? '#E8F3EC' : '#F7F6F1',
+              color: isPaidActive ? brandTokens.brandEmerald : brandTokens.bodyColor,
+              border: `1px solid ${isPaidActive ? '#CFE2D4' : '#D9E1DC'}`
+            }}>
+              Current Plan: {userPlan.toUpperCase()}
+            </span>
+
+            <span style={{
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '800',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              background: '#E8F3EC',
+              color: brandTokens.brandEmerald,
+              border: '1px solid #CFE2D4',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+              <span>Fleet Online</span>
+            </span>
           </div>
 
-          {/* Right Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            
-            {/* Domain Filter Dropdown */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#F8FAFC',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0'
-            }}>
-              <Globe size={14} color="#64748B" />
-              <select
-                value={selectedWebsite}
-                onChange={(e) => {
-                  const siteId = e.target.value;
-                  setSelectedWebsite(siteId);
-                  fetchData(true, siteId);
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#0F172A',
-                  fontSize: '12.5px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="all">All Sites ({websitesList.length})</option>
-                {websitesList.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.domain || w.name || w.id}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: brandTokens.headingColor, letterSpacing: '-0.03em' }}>
+            Security &amp; Threat Overview
+          </h1>
+          <p style={{ margin: 0, fontSize: '14px', color: brandTokens.bodyColor, maxWidth: '640px', lineHeight: '1.55' }}>
+            Real-time edge telemetry, malicious payload mitigation, and active posture across your connected WordPress fleet.
+          </p>
+        </div>
 
-            {/* Live Sync Timestamp */}
+        {/* Right Controls: Domain Scope Selector Card (Matching UserPricing Account Status Box) */}
+        <div style={{
+          background: brandTokens.subCardBg,
+          border: brandTokens.cardBorder,
+          borderRadius: '12px',
+          padding: '16px 20px',
+          minWidth: '260px'
+        }}>
+          <div style={{
+            fontSize: '11px',
+            color: brandTokens.bodyColor,
+            textTransform: 'uppercase',
+            fontWeight: '700',
+            letterSpacing: '0.08em',
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <span>Domain Scope</span>
             <button
               onClick={() => fetchData(true, selectedWebsite)}
               disabled={refreshing}
               title="Refresh telemetry"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                color: '#475569',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: brandTokens.bodyColor, display: 'inline-flex', alignItems: 'center', padding: 0 }}
             >
               <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-              <span>{lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live'}</span>
             </button>
+          </div>
 
-            {/* DDoS Toggle */}
-            <button
-              onClick={handleDdosToggle}
-              disabled={ddosToggling}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: ddosEnabled ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
-                background: ddosEnabled ? '#F0FDF4' : '#F8FAFC',
-                color: ddosEnabled ? '#15803D' : '#64748B',
-                fontSize: '12px',
-                fontWeight: '700',
-                cursor: ddosToggling ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: ddosEnabled ? '#16A34A' : '#94A3B8' }} />
-              <span>DDoS Shield: {ddosEnabled ? 'Active' : 'Off'}</span>
-            </button>
+          <select
+            value={selectedWebsite}
+            onChange={(e) => {
+              const siteId = e.target.value;
+              setSelectedWebsite(siteId);
+              fetchData(true, siteId);
+            }}
+            style={{
+              width: '100%',
+              padding: '6px 8px',
+              borderRadius: '6px',
+              border: '1px solid #D9E1DC',
+              background: '#ffffff',
+              color: brandTokens.headingColor,
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="all">All Connected Sites ({websitesList.length})</option>
+            {websitesList.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.domain || w.name || w.id}
+              </option>
+            ))}
+          </select>
+
+          <div style={{ fontSize: '11px', color: brandTokens.brandEmerald, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+            <span>Synced: {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}</span>
           </div>
         </div>
       </div>
@@ -587,38 +619,39 @@ export default function UserDashboard() {
       {/* Onboarding Banner if 0 Sites */}
       {!loading && websitesList.length === 0 && (
         <div style={{
-          background: '#F8FAFC',
-          borderRadius: '12px',
-          border: '1.5px dashed #CBD5E1',
-          padding: '20px 24px',
-          marginBottom: '20px',
+          background: brandTokens.cardBg,
+          borderRadius: brandTokens.cardRadius,
+          border: '1.5px dashed #D9E1DC',
+          padding: '24px 28px',
+          marginBottom: '28px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: '16px',
+          boxShadow: brandTokens.cardShadow
         }}>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
-              No Websites Connected
+            <div style={{ fontSize: '16px', fontWeight: '800', color: brandTokens.headingColor }}>
+              No WordPress Websites Connected Yet
             </div>
-            <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
-              Install the MDefender Pro plugin on your WordPress site to start receiving edge telemetry and WAF protection.
+            <div style={{ fontSize: '13.5px', color: brandTokens.bodyColor, marginTop: '4px' }}>
+              Install the MDefender Pro plugin on your WordPress site to activate edge telemetry and two-way threat defense.
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
             <a
               href="/mdefender-pro.zip"
               download="mdefender-pro.zip"
               style={{
-                padding: '8px 14px',
+                padding: '9px 16px',
                 borderRadius: '8px',
-                background: '#FFFFFF',
-                color: '#0F172A',
+                background: '#ffffff',
+                color: brandTokens.headingColor,
                 textDecoration: 'none',
-                fontSize: '12.5px',
-                fontWeight: '600',
-                border: '1px solid #CBD5E1'
+                fontSize: '13px',
+                fontWeight: '700',
+                border: '1px solid #D9E1DC'
               }}
             >
               Download Plugin
@@ -626,13 +659,14 @@ export default function UserDashboard() {
             <Link
               to="/user/websites"
               style={{
-                padding: '8px 16px',
+                padding: '9px 18px',
                 borderRadius: '8px',
-                background: '#0B2522',
-                color: '#FFFFFF',
+                background: brandTokens.brandForest,
+                color: '#ffffff',
                 textDecoration: 'none',
-                fontSize: '12.5px',
-                fontWeight: '700'
+                fontSize: '13px',
+                fontWeight: '700',
+                boxShadow: '0 4px 14px rgba(11, 37, 34, 0.2)'
               }}
             >
               + Connect Site
@@ -642,28 +676,28 @@ export default function UserDashboard() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. UNIFIED 4-METRIC KPI GRID                                              */}
+      {/* 2. 4 STAT CARDS — MATCHING UserPricing CARD COLOR & ELEVATION             */}
       {/* ========================================================================= */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '16px',
-        marginBottom: '20px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: '20px',
+        marginBottom: '28px'
       }}>
         <StatCard
           icon={Activity}
-          label="Total Requests"
+          label="Total Ingress Requests"
           value={data?.total_requests || 0}
-          sublabel="Aggregated edge traffic"
+          sublabel="Aggregated edge network traffic"
           actionLink="/user/logs"
-          actionText="View Traffic Logs"
+          actionText="View Ingress Logs"
         />
 
         <StatCard
           icon={ShieldAlert}
-          label="Threats Blocked"
+          label="Threats Quarantined"
           value={data?.total_blocked || 0}
-          sublabel="403 Forbidden drops"
+          sublabel="Malicious 403 drops"
           isThreat={true}
           actionLink="/user/logs"
           actionText="Inspect Threat Events"
@@ -671,100 +705,104 @@ export default function UserDashboard() {
 
         <StatCard
           icon={ShieldCheck}
-          label="Clean Traffic Rate"
+          label="Traffic Cleanliness"
           value={`${cleanRatio}%`}
           sublabel="Legitimate human visitors"
           actionLink="/user/bulk/tools"
-          actionText="Bot Defense Settings"
+          actionText="Bot Defense Controls"
         />
 
         <StatCard
           icon={Globe}
-          label="Protected Sites"
+          label="Protected Web Fleet"
           value={websitesList.length || data?.active_websites || 0}
-          sublabel="Connected WordPress fleet"
+          sublabel="Connected WordPress origins"
           actionLink="/user/websites"
-          actionText="Manage Sites"
+          actionText="Manage Websites"
         />
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. PRIMARY ANALYTICS ROW: 2D TRAFFIC TIMELINE & THREAT DISTRIBUTION      */}
+      {/* 3. PRIMARY ANALYTICS ROW: 2D TRAFFIC TIMELINE & THREAT BREAKDOWN          */}
       {/* ========================================================================= */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1.25fr 0.75fr',
         gap: '20px',
-        marginBottom: '20px'
+        marginBottom: '28px'
       }} className="responsive-dashboard-grid">
         
         {/* Left: 2D High-Precision Area Chart */}
         <div style={{
-          background: '#FFFFFF',
-          borderRadius: '12px',
-          border: '1px solid #E2E8F0',
-          padding: '22px 24px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+          background: brandTokens.cardBg,
+          borderRadius: brandTokens.cardRadius,
+          border: brandTokens.cardBorder,
+          padding: '26px 28px',
+          boxShadow: brandTokens.cardShadow,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          minHeight: '360px'
+          minHeight: '380px'
         }}>
           <div>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '16px',
+              marginBottom: '18px',
               flexWrap: 'wrap',
-              gap: '10px'
+              gap: '12px'
             }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', color: brandTokens.headingColor, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
                   Traffic &amp; Threat Volume (7 Days)
                 </h3>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
                   Dual-stream comparison of clean visitor traffic vs mitigated threats
                 </div>
               </div>
 
-              {/* Metric Filter Tabs */}
+              {/* Metric Filter Pills — Matching UserPricing Billing Toggle */}
               <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                background: '#F1F5F9',
-                padding: '3px',
-                borderRadius: '8px'
+                background: brandTokens.pillBg,
+                padding: '4px',
+                borderRadius: '999px',
+                display: 'inline-flex',
+                gap: '4px',
+                border: '1px solid #D9E1DC'
               }}>
                 <button
                   type="button"
                   onClick={() => setChartMetric('both')}
                   style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
+                    padding: '5px 14px',
+                    borderRadius: '999px',
                     border: 'none',
-                    background: chartMetric === 'both' ? '#0F172A' : 'transparent',
-                    color: chartMetric === 'both' ? '#FFFFFF' : '#64748B',
-                    fontSize: '11px',
+                    background: chartMetric === 'both' ? brandTokens.brandForest : 'transparent',
+                    color: chartMetric === 'both' ? '#ffffff' : brandTokens.bodyColor,
+                    fontSize: '11.5px',
                     fontWeight: '700',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: chartMetric === 'both' ? '0 2px 6px rgba(11, 37, 34, 0.2)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  All
+                  All Traffic
                 </button>
                 <button
                   type="button"
                   onClick={() => setChartMetric('clean')}
                   style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
+                    padding: '5px 14px',
+                    borderRadius: '999px',
                     border: 'none',
-                    background: chartMetric === 'clean' ? '#0F172A' : 'transparent',
-                    color: chartMetric === 'clean' ? '#FFFFFF' : '#64748B',
-                    fontSize: '11px',
+                    background: chartMetric === 'clean' ? brandTokens.brandForest : 'transparent',
+                    color: chartMetric === 'clean' ? '#ffffff' : brandTokens.bodyColor,
+                    fontSize: '11.5px',
                     fontWeight: '700',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: chartMetric === 'clean' ? '0 2px 6px rgba(11, 37, 34, 0.2)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   Clean
@@ -773,14 +811,16 @@ export default function UserDashboard() {
                   type="button"
                   onClick={() => setChartMetric('threats')}
                   style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
+                    padding: '5px 14px',
+                    borderRadius: '999px',
                     border: 'none',
-                    background: chartMetric === 'threats' ? '#DC2626' : 'transparent',
-                    color: chartMetric === 'threats' ? '#FFFFFF' : '#64748B',
-                    fontSize: '11px',
+                    background: chartMetric === 'threats' ? brandTokens.dangerRed : 'transparent',
+                    color: chartMetric === 'threats' ? '#ffffff' : brandTokens.bodyColor,
+                    fontSize: '11.5px',
                     fontWeight: '700',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: chartMetric === 'threats' ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   Threats
@@ -789,7 +829,7 @@ export default function UserDashboard() {
             </div>
 
             {/* High-Precision 2D Area Chart */}
-            <div style={{ height: '230px', position: 'relative' }}>
+            <div style={{ height: '235px', position: 'relative' }}>
               <Line data={dailyChartData} options={lineOptions} />
             </div>
           </div>
@@ -799,53 +839,62 @@ export default function UserDashboard() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingTop: '14px',
-            marginTop: '10px',
-            borderTop: '1px solid #F1F5F9',
-            fontSize: '11.5px',
-            color: '#64748B',
+            paddingTop: '16px',
+            marginTop: '12px',
+            borderTop: '1px solid #D9E1DC',
+            fontSize: '12px',
+            color: brandTokens.bodyColor,
             flexWrap: 'wrap',
             gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0F172A' }} />
-              <span>Clean: <strong>{dailyCleanCounts.reduce((a, b) => a + b, 0).toLocaleString()}</strong></span>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: brandTokens.brandForest }} />
+              <span>Clean: <strong style={{ color: brandTokens.headingColor }}>{dailyCleanCounts.reduce((a, b) => a + b, 0).toLocaleString()}</strong></span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#DC2626' }} />
-              <span>Mitigated: <strong>{dailyThreatCounts.reduce((a, b) => a + b, 0).toLocaleString()}</strong></span>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: brandTokens.dangerRed }} />
+              <span>Mitigated: <strong style={{ color: brandTokens.dangerRed }}>{dailyThreatCounts.reduce((a, b) => a + b, 0).toLocaleString()}</strong></span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>WAF Status: <strong style={{ color: '#16A34A' }}>Enforcing</strong></span>
+              <ShieldCheck size={14} color={brandTokens.brandEmerald} />
+              <span>WAF Rule Engine: <strong style={{ color: brandTokens.brandEmerald }}>Enforcing</strong></span>
             </div>
           </div>
         </div>
 
         {/* Right: Threat Breakdown Doughnut */}
         <div style={{
-          background: '#FFFFFF',
-          borderRadius: '12px',
-          border: '1px solid #E2E8F0',
-          padding: '22px 24px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+          background: brandTokens.cardBg,
+          borderRadius: brandTokens.cardRadius,
+          border: brandTokens.cardBorder,
+          padding: '26px 28px',
+          boxShadow: brandTokens.cardShadow,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          minHeight: '360px'
+          minHeight: '380px'
         }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
-                Threat Distribution
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', color: brandTokens.headingColor, margin: 0, letterSpacing: '-0.02em' }}>
+                Threat Breakdown
               </h3>
-              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>
-                {totalAttacksCount.toLocaleString()} Total
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '800',
+                padding: '3px 9px',
+                borderRadius: '999px',
+                background: brandTokens.pillBg,
+                color: brandTokens.bodyColor,
+                border: '1px solid #D9E1DC'
+              }}>
+                {totalAttacksCount.toLocaleString()} Total Drops
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', marginTop: '8px' }}>
               {/* Donut Chart */}
-              <div style={{ height: '140px', width: '140px', position: 'relative', margin: '0 auto' }}>
+              <div style={{ height: '145px', width: '145px', position: 'relative', margin: '0 auto' }}>
                 <Doughnut data={attackChartData} options={doughnutOptions} />
                 <div style={{
                   position: 'absolute',
@@ -856,17 +905,17 @@ export default function UserDashboard() {
                   justifyContent: 'center',
                   pointerEvents: 'none'
                 }}>
-                  <span style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', lineHeight: '1' }}>
+                  <span style={{ fontSize: '20px', fontWeight: '850', color: brandTokens.headingColor, lineHeight: '1' }}>
                     {totalAttacksCount.toLocaleString()}
                   </span>
-                  <span style={{ fontSize: '9px', color: '#64748B', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em', marginTop: '2px' }}>
-                    BLOCKED
+                  <span style={{ fontSize: '9.5px', color: brandTokens.bodyColor, textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.06em', marginTop: '3px' }}>
+                    QUARANTINED
                   </span>
                 </div>
               </div>
 
               {/* Breakdown List */}
-              <div style={{ flex: 1, minWidth: '170px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ flex: 1, minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
                 {rawAttackTypes.slice(0, 5).map((type, tIdx) => {
                   const count = rawAttackCounts[tIdx] || 0;
                   const pct = totalAttacksCount > 0 ? ((count / totalAttacksCount) * 100).toFixed(0) : '0';
@@ -879,24 +928,25 @@ export default function UserDashboard() {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        fontSize: '11.5px',
-                        padding: '6px 8px',
-                        borderRadius: '6px',
-                        background: '#F8FAFC',
+                        fontSize: '12px',
+                        padding: '7px 10px',
+                        borderRadius: '8px',
+                        background: brandTokens.subCardBg,
                         textDecoration: 'none',
-                        border: '1px solid #E2E8F0',
-                        color: '#0F172A'
+                        border: '1px solid #D9E1DC',
+                        color: brandTokens.headingColor,
+                        transition: 'border-color 0.15s ease'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: securityPalette[tIdx], flexShrink: 0 }} />
-                        <span style={{ fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: securityPalette[tIdx], flexShrink: 0 }} />
+                        <span style={{ fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {type}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}>
-                        <span style={{ fontWeight: '700' }}>{count}</span>
-                        <span style={{ fontSize: '10px', color: '#64748B' }}>({pct}%)</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
+                        <span style={{ fontWeight: '800' }}>{count}</span>
+                        <span style={{ fontSize: '10.5px', color: brandTokens.bodyColor }}>({pct}%)</span>
                       </div>
                     </Link>
                   );
@@ -909,13 +959,13 @@ export default function UserDashboard() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingTop: '12px',
-            marginTop: '10px',
-            borderTop: '1px solid #F1F5F9',
-            fontSize: '11.5px'
+            paddingTop: '14px',
+            marginTop: '12px',
+            borderTop: '1px solid #D9E1DC',
+            fontSize: '12px'
           }}>
-            <span style={{ color: '#64748B' }}>WAF Rule Engine Active</span>
-            <Link to="/user/bulk/tools" style={{ color: '#0284C7', fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <span style={{ color: brandTokens.bodyColor }}>Automated Offender Defense Active</span>
+            <Link to="/user/bulk/tools" style={{ color: brandTokens.brandEmerald, fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
               <span>Configure Defense</span>
               <ArrowRight size={11} />
             </Link>
@@ -924,41 +974,41 @@ export default function UserDashboard() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. SECURITY OPERATIONS: TOP ATTACKERS & LIVE RECENT EVENTS               */}
+      {/* 4. SECURITY OPERATIONS: TOP ATTACKERS & RECENT BLOCKED EVENTS             */}
       {/* ========================================================================= */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
         gap: '20px',
-        marginBottom: '20px'
+        marginBottom: '28px'
       }}>
         {/* Left: Top Hostile IPs */}
         <div style={{
-          background: '#FFFFFF',
-          borderRadius: '12px',
-          border: '1px solid #E2E8F0',
-          padding: '22px 24px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+          background: brandTokens.cardBg,
+          borderRadius: brandTokens.cardRadius,
+          border: brandTokens.cardBorder,
+          padding: '26px 28px',
+          boxShadow: brandTokens.cardShadow,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between'
         }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', color: brandTokens.headingColor, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
                   Top Attacking IPs
                 </h3>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                  Most aggressive hostile sources detected in recent sampling windows
+                <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
+                  Most aggressive hostile origins detected in sampling windows
                 </div>
               </div>
               <Link
                 to="/user/logs"
                 style={{
-                  fontSize: '11.5px',
+                  fontSize: '12px',
                   fontWeight: '700',
-                  color: '#0284C7',
+                  color: brandTokens.brandEmerald,
                   textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
@@ -966,19 +1016,19 @@ export default function UserDashboard() {
                 }}
               >
                 <span>All Logs</span>
-                <ArrowRight size={11} />
+                <ArrowRight size={12} />
               </Link>
             </div>
 
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12.5px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
                   <tr style={{
-                    borderBottom: '1px solid #E2E8F0',
-                    color: '#64748B',
-                    fontSize: '10.5px',
+                    borderBottom: '1px solid #D9E1DC',
+                    color: brandTokens.bodyColor,
+                    fontSize: '11px',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
+                    letterSpacing: '0.06em',
                     fontWeight: '700'
                   }}>
                     <th style={{ padding: '8px 6px' }}>Rank</th>
@@ -994,38 +1044,38 @@ export default function UserDashboard() {
                     const isBanned = bannedIps.has(attacker.ip);
 
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '10px 6px', color: '#64748B', fontWeight: '700', fontSize: '11px' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid #E8EEE8' }}>
+                        <td style={{ padding: '12px 6px', color: brandTokens.bodyColor, fontWeight: '700', fontSize: '11.5px' }}>
                           #{i + 1}
                         </td>
-                        <td style={{ padding: '10px 12px' }}>
+                        <td style={{ padding: '12px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#0F172A', fontSize: '12.5px' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: '700', color: brandTokens.headingColor, fontSize: '13px' }}>
                               {attacker.ip}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleCopyIp(attacker.ip)}
                               title="Copy IP"
-                              style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: '1px 3px' }}
+                              style={{ background: 'none', border: 'none', color: brandTokens.bodyColor, cursor: 'pointer', padding: '1px 3px' }}
                             >
-                              {copiedIp === attacker.ip ? <Check size={11} color="#16A34A" /> : <Copy size={11} />}
+                              {copiedIp === attacker.ip ? <Check size={11} color={brandTokens.brandEmerald} /> : <Copy size={11} />}
                             </button>
                           </div>
                         </td>
-                        <td style={{ padding: '10px 12px' }}>
+                        <td style={{ padding: '12px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: '60px', height: '5px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                              <div style={{ width: `${ratio}%`, height: '100%', background: '#DC2626' }} />
+                            <div style={{ width: '65px', height: '6px', background: brandTokens.pillBg, borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ width: `${ratio}%`, height: '100%', background: brandTokens.dangerRed }} />
                             </div>
-                            <span style={{ fontWeight: '700', color: '#0F172A', fontSize: '12px' }}>
+                            <span style={{ fontWeight: '800', color: brandTokens.headingColor, fontSize: '12.5px' }}>
                               {attacker.count}
                             </span>
                           </div>
                         </td>
-                        <td style={{ padding: '10px 6px', textAlign: 'right' }}>
+                        <td style={{ padding: '12px 6px', textAlign: 'right' }}>
                           {isBanned ? (
-                            <span style={{ fontSize: '11px', fontWeight: '700', color: '#D97706', background: '#FEF3EB', padding: '3px 8px', borderRadius: '5px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: brandTokens.brandAmber, background: '#FFF4ED', padding: '3px 8px', borderRadius: '6px', border: '1px solid #FCD3B6' }}>
                               Blocked
                             </span>
                           ) : (
@@ -1033,17 +1083,17 @@ export default function UserDashboard() {
                               type="button"
                               onClick={() => blockTopIP(attacker.ip)}
                               style={{
-                                padding: '4px 9px',
+                                padding: '5px 12px',
                                 borderRadius: '6px',
                                 background: '#FEF2F2',
-                                color: '#DC2626',
-                                border: '1px solid #FEE2E2',
-                                fontSize: '11px',
+                                color: brandTokens.dangerRed,
+                                border: '1px solid #FECACA',
+                                fontSize: '11.5px',
                                 fontWeight: '700',
                                 cursor: 'pointer'
                               }}
                             >
-                              Block
+                              Block IP
                             </button>
                           )}
                         </td>
@@ -1051,8 +1101,8 @@ export default function UserDashboard() {
                     );
                   }) || (
                     <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', color: '#64748B', padding: '24px' }}>
-                        No hostile IPs recorded
+                      <td colSpan="4" style={{ textAlign: 'center', color: brandTokens.bodyColor, padding: '24px' }}>
+                        No hostile IPs recorded in current sampling window
                       </td>
                     </tr>
                   )}
@@ -1062,39 +1112,39 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Right: Live Ingress Feed */}
+        {/* Right: Recent Blocked Events Feed */}
         <div style={{
-          background: '#FFFFFF',
-          borderRadius: '12px',
-          border: '1px solid #E2E8F0',
-          padding: '22px 24px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+          background: brandTokens.cardBg,
+          borderRadius: brandTokens.cardRadius,
+          border: brandTokens.cardBorder,
+          padding: '26px 28px',
+          boxShadow: brandTokens.cardShadow,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between'
         }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', color: brandTokens.headingColor, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
                   Recent Blocked Events
                 </h3>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
                   Quarantined malicious requests intercepted at origin edge
                 </div>
               </div>
 
               {/* Filter Tabs */}
-              <div style={{ display: 'flex', gap: '3px', background: '#F1F5F9', padding: '3px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', gap: '4px', background: brandTokens.pillBg, padding: '3px', borderRadius: '999px', border: '1px solid #D9E1DC' }}>
                 <button
                   type="button"
                   onClick={() => setStreamFilter('all')}
                   style={{
-                    padding: '3px 8px',
-                    borderRadius: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
                     border: 'none',
-                    background: streamFilter === 'all' ? '#0F172A' : 'transparent',
-                    color: streamFilter === 'all' ? '#FFFFFF' : '#64748B',
+                    background: streamFilter === 'all' ? brandTokens.brandForest : 'transparent',
+                    color: streamFilter === 'all' ? '#ffffff' : brandTokens.bodyColor,
                     fontSize: '11px',
                     fontWeight: '700',
                     cursor: 'pointer'
@@ -1106,11 +1156,11 @@ export default function UserDashboard() {
                   type="button"
                   onClick={() => setStreamFilter('critical')}
                   style={{
-                    padding: '3px 8px',
-                    borderRadius: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
                     border: 'none',
-                    background: streamFilter === 'critical' ? '#DC2626' : 'transparent',
-                    color: streamFilter === 'critical' ? '#FFFFFF' : '#64748B',
+                    background: streamFilter === 'critical' ? brandTokens.dangerRed : 'transparent',
+                    color: streamFilter === 'critical' ? '#ffffff' : brandTokens.bodyColor,
                     fontSize: '11px',
                     fontWeight: '700',
                     cursor: 'pointer'
@@ -1122,7 +1172,7 @@ export default function UserDashboard() {
             </div>
 
             {/* Event List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', maxHeight: '290px', overflowY: 'auto' }}>
               {filteredRecentActivity?.slice(0, 5).map((log, i) => {
                 const sev = getSeverity(log.attack_type);
                 const method = (log.method || (log.url?.includes('login') ? 'POST' : 'GET')).toUpperCase();
@@ -1131,19 +1181,19 @@ export default function UserDashboard() {
                   <div
                     key={i}
                     style={{
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: '#F8FAFC',
-                      border: '1px solid #E2E8F0',
-                      fontSize: '12px'
+                      padding: '11px 13px',
+                      borderRadius: '10px',
+                      background: brandTokens.subCardBg,
+                      border: '1px solid #D9E1DC',
+                      fontSize: '12.5px'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                         <span style={{
                           fontSize: '10px',
                           fontWeight: '800',
-                          padding: '1px 5px',
+                          padding: '2px 6px',
                           borderRadius: '4px',
                           background: sev.bg,
                           color: sev.color,
@@ -1151,28 +1201,28 @@ export default function UserDashboard() {
                         }}>
                           {log.attack_type || 'Malicious Payload'}
                         </span>
-                        <code style={{ fontSize: '11.5px', color: '#0F172A', fontWeight: '700', fontFamily: 'monospace' }}>
+                        <code style={{ fontSize: '12px', color: brandTokens.headingColor, fontWeight: '700', fontFamily: 'monospace' }}>
                           {log.ip}
                         </code>
                       </div>
-                      <span style={{ fontSize: '11px', color: '#64748B' }}>
+                      <span style={{ fontSize: '11px', color: brandTokens.bodyColor }}>
                         {formatRelativeTime(log.timestamp || log.time)}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <span style={{ color: '#475569', fontSize: '11.5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: brandTokens.bodyColor, fontSize: '11.5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {method} {log.url || '/'}
                       </span>
-                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#DC2626', background: '#FEF2F2', padding: '1px 6px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: brandTokens.dangerRed, background: '#FEF2F2', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FECACA' }}>
                         Blocked
                       </span>
                     </div>
                   </div>
                 );
               }) || (
-                <div style={{ textAlign: 'center', color: '#64748B', padding: '28px' }}>
-                  No recent threat events
+                <div style={{ textAlign: 'center', color: brandTokens.bodyColor, padding: '30px' }}>
+                  No recent threat events recorded
                 </div>
               )}
             </div>
@@ -1181,46 +1231,46 @@ export default function UserDashboard() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. SYSTEM POSTURE & ENGINE STATUS DOCK                                    */}
+      {/* 5. SYSTEM POSTURE DOCK — MATCHING UserPricing FOOTER DOCK                */}
       {/* ========================================================================= */}
       <div style={{
-        background: '#FFFFFF',
-        borderRadius: '12px',
-        border: '1px solid #E2E8F0',
-        padding: '16px 22px',
+        background: brandTokens.cardBg,
+        borderRadius: brandTokens.cardRadius,
+        border: brandTokens.cardBorder,
+        padding: '18px 26px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '14px',
-        fontSize: '12.5px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+        gap: '16px',
+        fontSize: '13px',
+        boxShadow: brandTokens.cardShadow
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '22px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A' }} />
-            <span style={{ color: '#64748B' }}>Edge WAF:</span>
-            <strong style={{ color: '#0F172A' }}>Active</strong>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+            <span style={{ color: brandTokens.bodyColor }}>Edge WAF:</span>
+            <strong style={{ color: brandTokens.headingColor }}>Active</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A' }} />
-            <span style={{ color: '#64748B' }}>Bot Defense:</span>
-            <strong style={{ color: '#0F172A' }}>Enforcing</strong>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+            <span style={{ color: brandTokens.bodyColor }}>Bot Shield:</span>
+            <strong style={{ color: brandTokens.headingColor }}>Enforcing</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A' }} />
-            <span style={{ color: '#64748B' }}>Rate Limiting:</span>
-            <strong style={{ color: '#0F172A' }}>Active</strong>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+            <span style={{ color: brandTokens.bodyColor }}>Rate Limiting:</span>
+            <strong style={{ color: brandTokens.headingColor }}>Active</strong>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <Link to="/user/websites" style={{ color: '#0F172A', textDecoration: 'none', fontWeight: '700', fontSize: '12px' }}>
-            Websites ({websitesList.length})
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Link to="/user/websites" style={{ color: brandTokens.headingColor, textDecoration: 'none', fontWeight: '700', fontSize: '12.5px' }}>
+            WordPress Sites ({websitesList.length})
           </Link>
-          <span style={{ color: '#CBD5E1' }}>|</span>
-          <Link to="/user/bulk/tools" style={{ color: '#0284C7', textDecoration: 'none', fontWeight: '700', fontSize: '12px' }}>
-            Threat Defense Settings →
+          <span style={{ color: '#D9E1DC' }}>|</span>
+          <Link to="/user/bulk/tools" style={{ color: brandTokens.brandEmerald, textDecoration: 'none', fontWeight: '700', fontSize: '12.5px' }}>
+            Bot Defense &amp; Rate Limit Settings →
           </Link>
         </div>
       </div>

@@ -668,36 +668,41 @@ export default function UserLogs() {
           marginBottom: '20px'
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '9px',
-                background: '#FEF3EB',
-                border: '1px solid #FCD8BF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#D97735'
-              }}>
-                <Radio size={17} />
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{
                 fontSize: '11px',
-                fontWeight: '800',
-                letterSpacing: '0.6px',
+                fontWeight: '700',
+                letterSpacing: '0.04em',
                 textTransform: 'uppercase',
-                color: '#D97735',
-                background: '#FEF3EB',
-                border: '1px solid #FCD8BF',
-                padding: '2px 9px',
-                borderRadius: '999px',
+                color: '#0B2522',
+                background: '#E8EEE8',
+                border: '1px solid #D9E1DC',
+                padding: '4px 10px',
+                borderRadius: '20px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px'
+                gap: '6px'
               }}>
-                <span className="cyber-radar-ping" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8792F' }} />
-                <span>ANYCAST EDGE ACTIVE (38 POPs)</span>
+                <Radio size={12} style={{ color: '#2A8B68' }} />
+                <span>Traffic &amp; Incident Feed</span>
+              </span>
+
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '700',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                color: '#2A8B68',
+                background: '#E8F3EC',
+                border: '1px solid #CFE2D4',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+                <span>Live Edge Synchronized</span>
               </span>
             </div>
             <h1 style={{
@@ -710,28 +715,29 @@ export default function UserLogs() {
               Global Ingress Traffic &amp; Security Incident Logs
             </h1>
             <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
-              Real-time deep packet inspection feed, behavioral L7 heuristics, and forensic quarantine audit trail.
+              Real-time ingress telemetry, blocked brute-force login attempts, and WAF inspection audit trail.
             </p>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions — Clean Unified Enterprise Secondary Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {/* Auto Poll Toggle */}
             <button
               type="button"
               onClick={() => setAutoPoll(!autoPoll)}
               style={{
-                fontSize: '12px',
-                fontWeight: '700',
+                fontSize: '13px',
+                fontWeight: '600',
                 padding: '8px 14px',
-                borderRadius: '10px',
-                border: autoPoll ? '1px solid #FCD8BF' : '1px solid #D9E1DC',
-                background: autoPoll ? '#FEF3EB' : '#FFFFFF',
-                color: autoPoll ? '#D97735' : '#64748B',
+                borderRadius: '8px',
+                border: '1px solid #D9E1DC',
+                background: '#FFFFFF',
+                color: '#10201E',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
+                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
                 transition: 'all 0.15s ease'
               }}
               title="Toggle automatic 4-second stream polling"
@@ -740,8 +746,7 @@ export default function UserLogs() {
                 width: '7px',
                 height: '7px',
                 borderRadius: '50%',
-                background: autoPoll ? '#E8792F' : '#94A3B8',
-                boxShadow: autoPoll ? '0 0 6px #E8792F' : 'none'
+                background: autoPoll ? '#10B981' : '#94A3B8'
               }} />
               <span>{autoPoll ? 'Live Feed (4s)' : 'Feed Paused'}</span>
             </button>
@@ -752,59 +757,52 @@ export default function UserLogs() {
               onClick={() => fetchLogs(true)}
               disabled={refreshing}
               style={{
-                fontSize: '12px',
-                fontWeight: '700',
+                fontSize: '13px',
+                fontWeight: '600',
                 padding: '8px 14px',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px solid #D9E1DC',
                 background: '#FFFFFF',
                 color: '#10201E',
                 cursor: refreshing ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 1px 3px rgba(16, 32, 30, 0.04)'
+                gap: '8px',
+                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
+                transition: 'all 0.15s ease'
               }}
             >
-              <RotateCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+              <RotateCw size={13} color="#60716B" style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
               <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
             </button>
 
-            {/* Export CSV Logs Button */}
+            {/* Export CSV Logs Button — Clean Enterprise Secondary */}
             <button
               type="button"
               onClick={handleExportCSV}
+              disabled={exportingCsv}
               style={{
-                fontSize: '12px',
-                fontWeight: '700',
+                fontSize: '13px',
+                fontWeight: '600',
                 padding: '8px 14px',
-                borderRadius: '10px',
-                border: '1px solid #BFDBFE',
-                background: '#EFF6FF',
-                color: '#1D4ED8',
-                cursor: 'pointer',
+                borderRadius: '8px',
+                border: '1px solid #D9E1DC',
+                background: '#FFFFFF',
+                color: '#10201E',
+                cursor: exportingCsv ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 1px 3px rgba(29, 78, 216, 0.08)'
+                gap: '8px',
+                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
+                transition: 'all 0.15s ease'
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#1D4ED8';
-                e.currentTarget.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#EFF6FF';
-                e.currentTarget.style.color = '#1D4ED8';
-              }}
-              disabled={exportingCsv}
               title="Export all logs to a CSV spreadsheet"
             >
-              {exportingCsv ? <RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} />}
-              <span>{exportingCsv ? 'Exporting All Logs...' : 'Export CSV'}</span>
+              {exportingCsv ? <RotateCw size={13} color="#60716B" style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} color="#60716B" />}
+              <span>{exportingCsv ? 'Exporting...' : 'Export CSV'}</span>
             </button>
 
-            {/* Auto-Recycle Status / Settings Button */}
+            {/* Auto-Recycle Status / Settings Button — Clean Enterprise Secondary */}
             <button
               type="button"
               onClick={() => {
@@ -812,56 +810,58 @@ export default function UserLogs() {
                 setShowRecycleModal(true);
               }}
               style={{
-                fontSize: '12px',
-                fontWeight: '700',
+                fontSize: '13px',
+                fontWeight: '600',
                 padding: '8px 14px',
-                borderRadius: '10px',
-                border: recycleSettings.auto_recycle ? '1px solid #A7F3D0' : '1px solid #D9E1DC',
-                background: recycleSettings.auto_recycle ? '#ECFDF5' : '#F8FAFC',
-                color: recycleSettings.auto_recycle ? '#065F46' : '#64748B',
+                borderRadius: '8px',
+                border: '1px solid #D9E1DC',
+                background: '#FFFFFF',
+                color: '#10201E',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 1px 3px rgba(16, 32, 30, 0.04)'
+                gap: '8px',
+                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
+                transition: 'all 0.15s ease'
               }}
               title="Configure automated rolling log recycling to keep WordPress database lightweight"
             >
-              <SlidersHorizontal size={13} color={recycleSettings.auto_recycle ? '#059669' : '#64748B'} />
-              <span>{recycleSettings.auto_recycle ? `Auto-Recycle: ON (${recycleSettings.max_logs ? recycleSettings.max_logs.toLocaleString() : '10K'} / ${recycleSettings.retention_days}d)` : 'Auto-Recycle: OFF'}</span>
+              <SlidersHorizontal size={13} color="#60716B" />
+              <span>{recycleSettings.auto_recycle ? `Auto-Recycle: ON (${recycleSettings.max_logs ? recycleSettings.max_logs.toLocaleString() : '10K'})` : 'Auto-Recycle: OFF'}</span>
             </button>
 
-            {/* Clear Logs Button */}
+            {/* Clear Logs Button — Clean Enterprise Secondary */}
             <button
               type="button"
               onClick={() => setShowCleanModal(true)}
               disabled={cleaningLogs}
               style={{
-                fontSize: '12px',
-                fontWeight: '800',
+                fontSize: '13px',
+                fontWeight: '600',
                 padding: '8px 14px',
-                borderRadius: '10px',
-                border: '1px solid #FECACA',
-                background: '#FEF2F2',
-                color: '#DC2626',
-                cursor: 'pointer',
+                borderRadius: '8px',
+                border: '1px solid #D9E1DC',
+                background: '#FFFFFF',
+                color: '#60716B',
+                cursor: cleaningLogs ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
+                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = '#DC2626';
-                e.currentTarget.style.color = '#FFFFFF';
+                e.currentTarget.style.color = '#DC2626';
+                e.currentTarget.style.borderColor = '#FECACA';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = '#FEF2F2';
-                e.currentTarget.style.color = '#DC2626';
+                e.currentTarget.style.color = '#60716B';
+                e.currentTarget.style.borderColor = '#D9E1DC';
               }}
+              title="Manually purge historical logs to recover disk space"
             >
               <Trash2 size={13} />
-              <span>Clear Retention Logs</span>
+              <span>Clear Logs</span>
             </button>
           </div>
         </div>
@@ -870,36 +870,37 @@ export default function UserLogs() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '14px'
+          gap: '16px'
         }}>
           {/* KPI 1: Total Logs */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '14px',
-            border: '1px solid #EAEFEA',
-            padding: '14px 16px',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            padding: '18px 20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '14px',
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
           }}>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '10px',
-              background: '#F1F5F9',
-              border: '1px solid #CBD5E1',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#10201E'
             }}>
-              <Server size={18} />
+              <Server size={18} color="#0B2522" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Total Ingress Logs
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#10201E', marginTop: '1px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
                 {kpiMetrics.total.toLocaleString()}
               </div>
             </div>
@@ -908,32 +909,33 @@ export default function UserLogs() {
           {/* KPI 2: Blocked Threats (403) */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '14px',
-            border: '1px solid #EAEFEA',
-            padding: '14px 16px',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            padding: '18px 20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '14px',
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
           }}>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '10px',
-              background: '#FEF2F2',
-              border: '1px solid #FECACA',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#DC2626'
             }}>
-              <ShieldAlert size={18} />
+              <ShieldAlert size={18} color="#DC2626" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 403 Intercepted Threats
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#DC2626', marginTop: '1px' }}>
-                {kpiMetrics.blockedCount.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: '700', color: '#DC2626', background: '#FEF2F2', padding: '1px 6px', borderRadius: '4px' }}>{kpiMetrics.blockedRatio}% Drop</span>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
+                {kpiMetrics.blockedCount.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: '700', color: '#DC2626', background: '#FEF2F2', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FECACA' }}>{kpiMetrics.blockedRatio}% Drop</span>
               </div>
             </div>
           </div>
@@ -941,31 +943,32 @@ export default function UserLogs() {
           {/* KPI 3: Allowed Clean Traffic */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '14px',
-            border: '1px solid #EAEFEA',
-            padding: '14px 16px',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            padding: '18px 20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '14px',
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
           }}>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '10px',
-              background: '#ECFDF5',
-              border: '1px solid #A7F3D0',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#065F46'
+              color: '#2A8B68'
             }}>
-              <ShieldCheck size={18} />
+              <ShieldCheck size={18} color="#2A8B68" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 200 Clean Ingress
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#065F46', marginTop: '1px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
                 {kpiMetrics.allowedCount.toLocaleString()}
               </div>
             </div>
@@ -974,32 +977,33 @@ export default function UserLogs() {
           {/* KPI 4: Unique Hostile Origins */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '14px',
-            border: '1px solid #EAEFEA',
-            padding: '14px 16px',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            padding: '18px 20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '14px',
+            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
           }}>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '10px',
-              background: '#FEF3EB',
-              border: '1px solid #FCD8BF',
+              background: '#FBFCFA',
+              border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#D97735'
+              color: '#60716B'
             }}>
-              <Crosshair size={18} />
+              <Crosshair size={18} color="#60716B" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Unique Source IPs
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: '#10201E', marginTop: '1px' }}>
-                {kpiMetrics.uniqueIps} <span style={{ fontSize: '11px', fontWeight: '600', color: '#87948D' }}>distinct</span>
+              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
+                {kpiMetrics.uniqueIps} <span style={{ fontSize: '11px', fontWeight: '600', color: '#60716B' }}>distinct</span>
               </div>
             </div>
           </div>
@@ -1183,16 +1187,17 @@ export default function UserLogs() {
             type="submit"
             style={{
               padding: '9px 18px',
-              background: '#10201E',
+              background: '#0B2522',
               color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '10px',
-              fontWeight: '700',
+              border: '1px solid #0B2522',
+              borderRadius: '8px',
+              fontWeight: '600',
               cursor: 'pointer',
               fontSize: '13px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
+              boxShadow: '0 1px 3px rgba(11, 37, 34, 0.08)',
               transition: 'all 0.15s ease'
             }}
           >
@@ -1206,13 +1211,14 @@ export default function UserLogs() {
               onClick={handleResetFilters}
               style={{
                 padding: '9px 14px',
-                background: '#F1F5F9',
-                color: '#64748B',
-                border: '1px solid #CBD5E1',
-                borderRadius: '10px',
+                background: '#FFFFFF',
+                color: '#10201E',
+                border: '1px solid #D9E1DC',
+                borderRadius: '8px',
                 fontWeight: '600',
                 cursor: 'pointer',
-                fontSize: '12.5px'
+                fontSize: '13px',
+                transition: 'all 0.15s ease'
               }}
             >
               Reset
@@ -1288,11 +1294,11 @@ export default function UserLogs() {
       {/* ========================================================================= */}
       <div style={{
         background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderRadius: '12px',
+        border: '1px solid #D9E1DC',
+        borderRadius: '16px',
         overflow: 'hidden',
         position: 'relative',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
         filter: 'none',
         pointerEvents: 'auto',
         userSelect: 'auto'
@@ -1301,12 +1307,12 @@ export default function UserLogs() {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
               <tr style={{
-                background: '#F8FAFC',
-                borderBottom: '1px solid #E2E8F0',
-                color: '#475569',
+                background: '#FBFCFA',
+                borderBottom: '1px solid #D9E1DC',
+                color: '#60716B',
                 fontSize: '11px',
                 textTransform: 'uppercase',
-                letterSpacing: '0.6px',
+                letterSpacing: '0.04em',
                 fontWeight: '700'
               }}>
                 <th style={{ padding: '16px 20px', textAlign: 'left' }}>TYPE</th>
@@ -1618,46 +1624,46 @@ export default function UserLogs() {
                                 </span>
                               </div>
 
-                              {/* Action Buttons */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {/* Action Buttons — Clean Enterprise Secondary Buttons */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <button
                                   type="button"
                                   onClick={() => handleCopyJson(log)}
                                   style={{
-                                    fontSize: '11px',
-                                    fontWeight: '700',
-                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    padding: '5px 11px',
                                     borderRadius: '6px',
-                                    border: '1px solid #CBD5E1',
+                                    border: '1px solid #D9E1DC',
                                     background: '#FFFFFF',
-                                    color: '#334155',
+                                    color: '#10201E',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '5px'
                                   }}
                                 >
-                                  {copiedItem === `json-${log?.id || log?.ip}` ? <Check size={11} color="#059669" /> : <FileCode size={11} />}
+                                  {copiedItem === `json-${log?.id || log?.ip}` ? <Check size={12} color="#10B981" /> : <FileCode size={12} color="#60716B" />}
                                   <span>{copiedItem === `json-${log?.id || log?.ip}` ? 'Copied' : 'JSON'}</span>
                                 </button>
 
                                 <Link
                                   to={`/user/tools?ip=${encodeURIComponent(log?.ip || '')}`}
                                   style={{
-                                    fontSize: '11px',
-                                    fontWeight: '700',
-                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    padding: '5px 11px',
                                     borderRadius: '6px',
-                                    border: '1px solid #FCD8BF',
-                                    background: '#FEF3EB',
-                                    color: '#D97735',
+                                    border: '1px solid #D9E1DC',
+                                    background: '#FFFFFF',
+                                    color: '#10201E',
                                     textDecoration: 'none',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '5px'
                                   }}
                                 >
-                                  <Compass size={11} />
+                                  <Compass size={12} color="#60716B" />
                                   <span>WHOIS</span>
                                 </Link>
 
@@ -1665,20 +1671,20 @@ export default function UserLogs() {
                                   type="button"
                                   onClick={() => handleWhitelistIp(log?.ip)}
                                   style={{
-                                    fontSize: '11px',
-                                    fontWeight: '800',
-                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    padding: '5px 11px',
                                     borderRadius: '6px',
-                                    border: '1px solid #BBF7D0',
-                                    background: '#F0FDF4',
-                                    color: '#15803D',
+                                    border: '1px solid #D9E1DC',
+                                    background: '#FFFFFF',
+                                    color: '#10201E',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '5px'
                                   }}
                                 >
-                                  <ShieldCheck size={11} />
+                                  <ShieldCheck size={12} color="#2A8B68" />
                                   <span>Whitelist IP</span>
                                 </button>
 
@@ -1686,20 +1692,22 @@ export default function UserLogs() {
                                   type="button"
                                   onClick={() => handleOpenBlockModal(log?.ip, log)}
                                   style={{
-                                    fontSize: '11px',
-                                    fontWeight: '800',
-                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    padding: '5px 11px',
                                     borderRadius: '6px',
-                                    border: '1px solid #FECACA',
-                                    background: '#FEF2F2',
-                                    color: '#DC2626',
+                                    border: '1px solid #D9E1DC',
+                                    background: '#FFFFFF',
+                                    color: '#60716B',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '5px'
                                   }}
+                                  onMouseEnter={e => { e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FECACA'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.color = '#60716B'; e.currentTarget.style.borderColor = '#D9E1DC'; }}
                                 >
-                                  <Ban size={11} />
+                                  <Ban size={12} />
                                   <span>Block IP</span>
                                 </button>
                               </div>
