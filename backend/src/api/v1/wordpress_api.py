@@ -848,7 +848,10 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
         "file_permissions_check": bool(website.get("file_permissions_check", True)),
 
-        "login_two_factor": bool(website.get("login_two_factor", False)),
+        "login_two_factor": bool(website.get("login_two_factor", website.get("two_factor_enabled", False))),
+        "two_factor_enabled": bool(website.get("two_factor_enabled", website.get("login_two_factor", False))),
+        "two_factor_secret": str(website.get("two_factor_secret") or u_cfg.get("two_factor_secret") or ""),
+        "two_factor_recovery_codes": website.get("two_factor_recovery_codes") or u_cfg.get("two_factor_recovery_codes") or [],
 
         "rate_limit": int(website.get("rate_limit_per_minute") or u_cfg.get("rate_limit_per_minute", 120)),
 
@@ -1480,6 +1483,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     "two_factor_enabled": bool(ref_ws.get("login_two_factor", u_cfg.get("two_factor_enabled", False))),
 
                     "two_factor_roles": str(u_cfg.get("two_factor_roles", "admins")),
+                    "two_factor_secret": str(ref_ws.get("two_factor_secret") or u_cfg.get("two_factor_secret") or ""),
+                    "two_factor_recovery_codes": ref_ws.get("two_factor_recovery_codes") or u_cfg.get("two_factor_recovery_codes") or [],
 
                     "two_factor_method_totp": bool(u_cfg.get("two_factor_method_totp", True)),
 

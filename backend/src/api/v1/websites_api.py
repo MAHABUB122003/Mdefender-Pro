@@ -921,6 +921,10 @@ class SecuritySettingsUpdate(BaseModel):
     turnstile_secret_key: str | None = None
     admin_ip_whitelist_enabled: bool | None = None
     admin_ip_whitelist: list[str] | None = None
+    two_factor_enabled: bool | None = None
+    login_two_factor: bool | None = None
+    two_factor_secret: str | None = None
+    two_factor_recovery_codes: list[str] | None = None
 
 
 
@@ -3483,6 +3487,10 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
             "turnstile_secret_key": website.get("turnstile_secret_key", ""),
             "admin_ip_whitelist_enabled": bool(website.get("admin_ip_whitelist_enabled", False)),
             "admin_ip_whitelist": website.get("admin_ip_whitelist", []),
+            "two_factor_enabled": bool(website.get("two_factor_enabled", website.get("login_two_factor", False))),
+            "login_two_factor": bool(website.get("login_two_factor", website.get("two_factor_enabled", False))),
+            "two_factor_secret": website.get("two_factor_secret", ""),
+            "two_factor_recovery_codes": website.get("two_factor_recovery_codes", []),
 
 
 
@@ -4010,6 +4018,17 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
         if body.admin_ip_whitelist is not None:
             updates["admin_ip_whitelist"] = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
+
+        if body.two_factor_enabled is not None:
+            updates["two_factor_enabled"] = bool(body.two_factor_enabled)
+            updates["login_two_factor"] = bool(body.two_factor_enabled)
+        if body.login_two_factor is not None:
+            updates["login_two_factor"] = bool(body.login_two_factor)
+            updates["two_factor_enabled"] = bool(body.login_two_factor)
+        if body.two_factor_secret is not None:
+            updates["two_factor_secret"] = str(body.two_factor_secret).strip()
+        if body.two_factor_recovery_codes is not None:
+            updates["two_factor_recovery_codes"] = [str(c).strip() for c in body.two_factor_recovery_codes if str(c).strip()]
 
 
 
@@ -12631,3 +12650,220 @@ async def save_website_backup_schedule(website_id: str, body: SaveScheduleReques
 
 
 
+
+
+# =====================================================================
+# ENTERPRISE TWO-FACTOR AUTHENTICATION (2FA / TOTP) MANAGEMENT
+# =====================================================================
+import pyotp
+import secrets
+
+class Verify2FARequest(BaseModel):
+    website_id: str | None = "all"
+    domain: str | None = None
+    secret: str
+    code: str
+    recovery_codes: list[str] | None = None
+
+class Disable2FARequest(BaseModel):
+    website_id: str | None = "all"
+    domain: str | None = None
+
+@router.get("/security/2fa/config")
+async def get_2fa_config(website_id: str = "all", user=Depends(get_current_user)):
+    db = MongoDB()
+    u_id = user["id"]
+    u_str = str(u_id)
+
+    # Find target website or fleet
+    website = None
+    if website_id and website_id != "all":
+        website = db.websites.find_one({"$or": [{"_id": website_id}, {"id": website_id}, {"domain": website_id}]})
+        if not website and ObjectId.is_valid(website_id):
+            website = db.websites.find_one({"_id": ObjectId(website_id)})
+
+    # Also check user security config
+    u_cfg = db.user_security_config.find_one({"user_id": u_str}) or {}
+
+    enabled = False
+    secret = ""
+    recovery_codes = []
+    domain_label = "All Connected Domains"
+
+    if website:
+        domain_label = website.get("domain", "Domain")
+        enabled = bool(website.get("two_factor_enabled", website.get("login_two_factor", False)))
+        secret = website.get("two_factor_secret") or ""
+        recovery_codes = website.get("two_factor_recovery_codes") or []
+    else:
+        enabled = bool(u_cfg.get("two_factor_enabled", False))
+        secret = u_cfg.get("two_factor_secret") or ""
+        recovery_codes = u_cfg.get("two_factor_recovery_codes") or []
+
+    if not secret:
+        # Generate genuine 16-character RFC 3548 Base32 secret key
+        secret = pyotp.random_base32(16)
+
+    if not recovery_codes or len(recovery_codes) < 8:
+        # Generate 8 single-use recovery codes
+        recovery_codes = [f"{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}" for _ in range(8)]
+
+    return success({
+        "enabled": enabled,
+        "secret": secret,
+        "recovery_codes": recovery_codes,
+        "domain": domain_label,
+        "website_id": website_id
+    })
+
+@router.post("/security/2fa/verify")
+async def verify_and_enable_2fa(body: Verify2FARequest, user=Depends(get_current_user)):
+    db = MongoDB()
+    u_id = user["id"]
+    u_str = str(u_id)
+
+    code = (body.code or "").strip().replace(" ", "")
+    secret = (body.secret or "").strip().upper()
+
+    if len(code) != 6 or not code.isdigit():
+        raise HTTPException(status_code=400, detail="Please enter a valid 6-digit verification code from your authenticator app.")
+
+    if not secret:
+        raise HTTPException(status_code=400, detail="Missing TOTP secret key.")
+
+    # Cryptographic TOTP RFC 6238 Verification
+    totp = pyotp.TOTP(secret)
+    # Check current time slice and +/- 1 time window (30s)
+    is_valid = totp.verify(code, valid_window=1)
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid 6-digit authentication code. Please check your authenticator app (Google Authenticator, Authy, etc.) and enter the current code."
+        )
+
+    recovery_codes = body.recovery_codes or [f"{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}" for _ in range(8)]
+
+    # Update database
+    w_id = body.website_id or "all"
+    if w_id == "all":
+        # Enable across all websites owned by user
+        db.websites.update_many(
+            {"$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]},
+            {"$set": {
+                "two_factor_enabled": True,
+                "login_two_factor": True,
+                "two_factor_secret": secret,
+                "two_factor_recovery_codes": recovery_codes,
+                "updated_at": datetime.now()
+            }}
+        )
+        db.user_security_config.update_one(
+            {"user_id": u_str},
+            {"$set": {
+                "user_id": u_str,
+                "two_factor_enabled": True,
+                "two_factor_secret": secret,
+                "two_factor_recovery_codes": recovery_codes,
+                "updated_at": datetime.now()
+            }},
+            upsert=True
+        )
+    else:
+        w_query = {"$or": [{"_id": w_id}, {"id": w_id}, {"domain": w_id}]}
+        if ObjectId.is_valid(w_id):
+            w_query["$or"].append({"_id": ObjectId(w_id)})
+        db.websites.update_one(
+            w_query,
+            {"$set": {
+                "two_factor_enabled": True,
+                "login_two_factor": True,
+                "two_factor_secret": secret,
+                "two_factor_recovery_codes": recovery_codes,
+                "updated_at": datetime.now()
+            }}
+        )
+
+    # Immediately push zero-latency sync to connected WordPress sites
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=u_id, website_id=None if w_id == "all" else w_id)
+    except Exception as e:
+        pass
+
+    return success({
+        "success": True,
+        "message": "Two-Factor Authentication verified and activated successfully! Your administrator login is now strictly protected with TOTP.",
+        "enabled": True,
+        "secret": secret,
+        "recovery_codes": recovery_codes
+    })
+
+@router.post("/security/2fa/disable")
+async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
+    db = MongoDB()
+    u_id = user["id"]
+    u_str = str(u_id)
+    w_id = body.website_id or "all"
+
+    if w_id == "all":
+        db.websites.update_many(
+            {"$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]},
+            {"$set": {
+                "two_factor_enabled": False,
+                "login_two_factor": False,
+                "updated_at": datetime.now()
+            }}
+        )
+        db.user_security_config.update_one(
+            {"user_id": u_str},
+            {"$set": {
+                "user_id": u_str,
+                "two_factor_enabled": False,
+                "updated_at": datetime.now()
+            }},
+            upsert=True
+        )
+    else:
+        w_query = {"$or": [{"_id": w_id}, {"id": w_id}, {"domain": w_id}]}
+        if ObjectId.is_valid(w_id):
+            w_query["$or"].append({"_id": ObjectId(w_id)})
+        db.websites.update_one(
+            w_query,
+            {"$set": {
+                "two_factor_enabled": False,
+                "login_two_factor": False,
+                "updated_at": datetime.now()
+            }}
+        )
+
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(user_id=u_id, website_id=None if w_id == "all" else w_id)
+    except Exception:
+        pass
+
+    return success({
+        "success": True,
+        "message": "Two-Factor Authentication disabled.",
+        "enabled": False
+    })
+
+@router.post("/user/security-config")
+async def update_user_security_config_endpoint(body: dict, user=Depends(get_current_user)):
+    db = MongoDB()
+    u_str = str(user["id"])
+    body["updated_at"] = datetime.now()
+    db.user_security_config.update_one({"user_id": u_str}, {"$set": body}, upsert=True)
+    if "two_factor_enabled" in body:
+        is_on = bool(body["two_factor_enabled"])
+        db.websites.update_many(
+            {"$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]},
+            {"$set": {"two_factor_enabled": is_on, "login_two_factor": is_on}}
+        )
+        try:
+            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+            push_instant_sync_to_wordpress(user_id=user["id"])
+        except Exception:
+            pass
+    return success({"saved": True})

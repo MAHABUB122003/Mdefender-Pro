@@ -173,11 +173,10 @@ export default function UserTools() {
   const [twoFaCopiedCodes, setTwoFaCopiedCodes] = useState(false)
   const [twoFaVerifyResult, setTwoFaVerifyResult] = useState({ status: 'idle', message: '' })
   const [twoFaShowManualToken, setTwoFaShowManualToken] = useState(true)
-  const [twoFaSecretKey, setTwoFaSecretKey] = useState('JBSWY3DPEHPK3PXP')
-  const [twoFaRecoveryCodes] = useState([
-    '8391-4209', '1902-8842', '7721-3904', '5512-9018',
-    '6403-1189', '9023-4412', '3194-7720', '2810-6395'
-  ])
+  const [twoFaSecretKey, setTwoFaSecretKey] = useState('')
+  const [twoFaRecoveryCodes, setTwoFaRecoveryCodes] = useState([])
+  const [verifying2Fa, setVerifying2Fa] = useState(false)
+  const [loading2FaConfig, setLoading2FaConfig] = useState(false)
   const [twoFaQrDataUrl, setTwoFaQrDataUrl] = useState('')
   const [selectedDdosSite, setSelectedDdosSite] = useState('all')
   const [togglingUnderAttack, setTogglingUnderAttack] = useState(false)
@@ -221,7 +220,39 @@ export default function UserTools() {
     }
   }
 
+  // Load 2FA Configuration for active domain
   useEffect(() => {
+    let active = true
+    const fetch2Fa = async () => {
+      try {
+        setLoading2FaConfig(true)
+        const res = await api.get2FaConfig(twoFaActiveDomain)
+        const d = res?.data || res
+        if (active && d) {
+          if (d.secret) setTwoFaSecretKey(d.secret)
+          if (d.recovery_codes && Array.isArray(d.recovery_codes)) setTwoFaRecoveryCodes(d.recovery_codes)
+          setSecurityConfig(prev => ({ ...prev, two_factor_enabled: Boolean(d.enabled) }))
+          if (d.enabled) {
+            setTwoFaVerifyResult({
+              status: 'success',
+              message: '✓ Two-Factor Authentication Verified! Your administrator login is strictly protected with TOTP.'
+            })
+          } else {
+            setTwoFaVerifyResult({ status: 'idle', message: '' })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load 2FA settings:', err)
+      } finally {
+        if (active) setLoading2FaConfig(false)
+      }
+    }
+    fetch2Fa()
+    return () => { active = false }
+  }, [twoFaActiveDomain])
+
+  useEffect(() => {
+    if (!twoFaSecretKey) return
     const domainLabel = twoFaActiveDomain === 'all'
       ? 'All Connected Sites'
       : (connectedWebsites.find(w => String(w.id) === String(twoFaActiveDomain))?.domain || 'Fleet Site')
@@ -257,8 +288,8 @@ export default function UserTools() {
     }
   }
 
-  const handleVerifyTwoFactor = () => {
-    const code = twoFaDigits.join('')
+  const handleVerifyTwoFactor = async () => {
+    const code = twoFaDigits.join('').trim()
     if (code.length < 6) {
       setTwoFaVerifyResult({
         status: 'error',
@@ -266,13 +297,70 @@ export default function UserTools() {
       })
       return
     }
-    setTwoFaVerifyResult({
-      status: 'success',
-      message: '✓ Two-Factor Authentication Verified! Your administrator login is now strictly protected with TOTP.'
-    })
-    setSecurityConfig(prev => ({ ...prev, two_factor_enabled: true }))
-    // Save to server
-    api.updateUserSecurityConfig({ ...securityConfig, two_factor_enabled: true }).catch(() => {})
+    try {
+      setVerifying2Fa(true)
+      setTwoFaVerifyResult({ status: 'idle', message: '' })
+      const res = await api.verify2Fa({
+        website_id: twoFaActiveDomain,
+        secret: twoFaSecretKey,
+        code: code,
+        recovery_codes: twoFaRecoveryCodes
+      })
+      const data = res?.data || res
+      setTwoFaVerifyResult({
+        status: 'success',
+        message: data.message || '✓ Two-Factor Authentication Verified & Activated! Your administrator login is now strictly protected with TOTP.'
+      })
+      setSecurityConfig(prev => ({ ...prev, two_factor_enabled: true }))
+    } catch (err) {
+      const errMsg = err?.response?.data?.detail || err?.detail || err?.message || 'Invalid 6-digit authentication code. Please check your authenticator app and try again.'
+      setTwoFaVerifyResult({
+        status: 'error',
+        message: errMsg
+      })
+    } finally {
+      setVerifying2Fa(false)
+    }
+  }
+
+  const handleToggle2Fa = async () => {
+    const isCurrentlyOn = Boolean(securityConfig.two_factor_enabled)
+    if (isCurrentlyOn) {
+      if (!window.confirm('Are you sure you want to disable Two-Factor Authentication for this scope?')) return
+      try {
+        setVerifying2Fa(true)
+        await api.disable2Fa({ website_id: twoFaActiveDomain })
+        setSecurityConfig(prev => ({ ...prev, two_factor_enabled: false }))
+        setTwoFaVerifyResult({ status: 'idle', message: '' })
+        setTwoFaDigits(['', '', '', '', '', ''])
+      } catch (err) {
+        alert('Failed to disable 2FA: ' + (err.message || 'Error'))
+      } finally {
+        setVerifying2Fa(false)
+      }
+    } else {
+      const firstInput = document.getElementById('twofa-input-0')
+      if (firstInput) firstInput.focus()
+      setTwoFaVerifyResult({
+        status: 'error',
+        message: 'Please scan the QR code in Google Authenticator or Authy, enter the 6-digit code, and click "Verify & Activate 2FA Protection".'
+      })
+    }
+  }
+
+  const handleRegenerate2FaKey = () => {
+    if (securityConfig.two_factor_enabled) {
+      if (!window.confirm('Warning: Generating a new key will require re-scanning the QR code on your phone. Continue?')) return
+    }
+    // Generate new random Base32 string
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+    let newSec = ''
+    for (let i = 0; i < 16; i++) {
+      newSec += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    setTwoFaSecretKey(newSec)
+    setTwoFaVerifyResult({ status: 'idle', message: '' })
+    setTwoFaDigits(['', '', '', '', '', ''])
   }
 
   const handleCopySecretKey = () => {
@@ -4368,11 +4456,8 @@ Generated by MDefender Pro Cloud Security Matrix`
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    const newState = !securityConfig.two_factor_enabled
-                    setSecurityConfig(prev => ({ ...prev, two_factor_enabled: newState }))
-                    api.updateUserSecurityConfig({ ...securityConfig, two_factor_enabled: newState }).catch(() => {})
-                  }}
+                  onClick={handleToggle2Fa}
+                  disabled={verifying2Fa}
                   style={{
                     height: '38px',
                     padding: '0 18px',
@@ -4382,15 +4467,16 @@ Generated by MDefender Pro Cloud Security Matrix`
                     color: securityConfig.two_factor_enabled ? '#FFFFFF' : '#10201E',
                     fontSize: '13px',
                     fontWeight: 700,
-                    cursor: 'pointer',
+                    cursor: verifying2Fa ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
+                    opacity: verifying2Fa ? 0.7 : 1,
                     transition: 'all 0.15s ease'
                   }}
                 >
                   <Shield size={14} />
-                  <span>{securityConfig.two_factor_enabled ? '2FA Enabled' : 'Enable 2FA'}</span>
+                  <span>{securityConfig.two_factor_enabled ? 'Disable 2FA' : 'Enable 2FA'}</span>
                 </button>
               </div>
             </div>
@@ -4579,6 +4665,7 @@ Generated by MDefender Pro Cloud Security Matrix`
                 <button
                   type="button"
                   onClick={handleVerifyTwoFactor}
+                  disabled={verifying2Fa}
                   style={{
                     height: '44px',
                     borderRadius: '10px',
@@ -4587,32 +4674,22 @@ Generated by MDefender Pro Cloud Security Matrix`
                     color: '#FFFFFF',
                     fontSize: '13.5px',
                     fontWeight: 700,
-                    cursor: 'pointer',
+                    cursor: verifying2Fa ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
+                    opacity: verifying2Fa ? 0.7 : 1,
                     boxShadow: '0 2px 8px rgba(11, 37, 34, 0.2)'
                   }}
                 >
                   <ShieldCheck size={16} />
-                  <span>Verify &amp; Activate 2FA Protection</span>
+                  <span>{verifying2Fa ? 'Verifying with RFC 6238 TOTP...' : 'Verify & Activate 2FA Protection'}</span>
                 </button>
 
-                {/* Quick Auto-fill for easy user testing */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const sampleCode = String(Math.floor(100000 + Math.random() * 900000))
-                    setTwoFaDigits(sampleCode.split(''))
-                  }}
-                  style={{
-                    background: 'none', border: 'none', color: '#60716B',
-                    fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center'
-                  }}
-                >
-                  ⚡ Click to generate sample code for testing
-                </button>
+                <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: '#60716B', textAlign: 'center' }}>
+                  🔒 Authentic TOTP: Enter the live 6-digit code from Google Authenticator, Microsoft Authenticator, or Authy
+                </p>
               </div>
 
               {/* Verification Message Alert */}

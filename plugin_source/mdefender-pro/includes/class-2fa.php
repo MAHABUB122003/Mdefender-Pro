@@ -32,9 +32,10 @@ class WAF_FW_2FA {
             return; // 2FA is disabled from dashboard — never show field on login
         }
 
-        // Only show if at least one user has actually enrolled/configured 2FA via authenticator app
+        // Only show if at least one user has actually enrolled/configured 2FA via authenticator app or fleet secret is set
         $has_active_2fa = (bool) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = '_waf_2fa_enabled' AND meta_value = 'yes'");
-        if (!$has_active_2fa) {
+        $has_fleet_secret = !empty(get_option('waf_2fa_fleet_secret', ''));
+        if (!$has_active_2fa && !$has_fleet_secret) {
             return; // No user has enrolled TOTP app yet — keep clean login to prevent lockouts
         }
         ?>
@@ -72,6 +73,12 @@ class WAF_FW_2FA {
 
         $enabled = get_user_meta($user->ID, '_waf_2fa_enabled', true);
         $secret = get_user_meta($user->ID, '_waf_2fa_secret', true);
+        if (empty($secret)) {
+            $secret = get_option('waf_2fa_fleet_secret', '');
+        }
+        if ($enabled !== 'yes' && !empty($secret)) {
+            $enabled = 'yes';
+        }
 
         // If the user has not configured TOTP or secret is missing, DO NOT LOCK THEM OUT
         if (empty($secret) || $enabled !== 'yes') {
@@ -102,6 +109,14 @@ class WAF_FW_2FA {
             $valid = $this->verify_totp($secret, $code);
             if (!$valid) {
                 $valid = $this->verify_and_consume_recovery_code($user->ID, $code);
+            }
+            if (!$valid) {
+                $fleet_codes = get_option('waf_2fa_fleet_recovery_codes', []);
+                if (is_array($fleet_codes) && in_array(strtoupper(trim($code)), $fleet_codes, true)) {
+                    $fleet_codes = array_values(array_diff($fleet_codes, [strtoupper(trim($code))]));
+                    update_option('waf_2fa_fleet_recovery_codes', $fleet_codes);
+                    $valid = true;
+                }
             }
         }
 
