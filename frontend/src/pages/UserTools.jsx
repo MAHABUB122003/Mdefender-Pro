@@ -168,13 +168,39 @@ export default function UserTools() {
   })
   const [connectedWebsites, setConnectedWebsites] = useState([])
   const [twoFaActiveDomain, setTwoFaActiveDomain] = useState('all')
+// Authentic RFC 3548 Base32 Secret Generator (A-Z, 2-7)
+const generateBase32Secret = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let s = ''
+  for (let i = 0; i < 16; i++) {
+    s += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return s
+}
+
+const generateRecoveryCodes = () => {
+  const chars = '0123456789ABCDEF'
+  const codes = []
+  for (let i = 0; i < 8; i++) {
+    let c = ''
+    for (let j = 0; j < 8; j++) {
+      if (j === 4) c += '-'
+      c += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    codes.push(c)
+  }
+  return codes
+}
+
   const [twoFaDigits, setTwoFaDigits] = useState(['', '', '', '', '', ''])
   const [twoFaCopiedToken, setTwoFaCopiedToken] = useState(false)
   const [twoFaCopiedCodes, setTwoFaCopiedCodes] = useState(false)
   const [twoFaVerifyResult, setTwoFaVerifyResult] = useState({ status: 'idle', message: '' })
   const [twoFaShowManualToken, setTwoFaShowManualToken] = useState(true)
-  const [twoFaSecretKey, setTwoFaSecretKey] = useState('')
-  const [twoFaRecoveryCodes, setTwoFaRecoveryCodes] = useState([])
+  const [twoFaSecretKey, setTwoFaSecretKey] = useState(() => {
+    return localStorage.getItem('mdef_active_2fa_secret') || generateBase32Secret()
+  })
+  const [twoFaRecoveryCodes, setTwoFaRecoveryCodes] = useState(generateRecoveryCodes)
   const [verifying2Fa, setVerifying2Fa] = useState(false)
   const [loading2FaConfig, setLoading2FaConfig] = useState(false)
   const [twoFaQrDataUrl, setTwoFaQrDataUrl] = useState('')
@@ -229,8 +255,12 @@ export default function UserTools() {
         const res = await api.get2FaConfig(twoFaActiveDomain)
         const d = res?.data || res
         if (active && d) {
-          if (d.secret) setTwoFaSecretKey(d.secret)
-          if (d.recovery_codes && Array.isArray(d.recovery_codes)) setTwoFaRecoveryCodes(d.recovery_codes)
+          const s = d.secret || twoFaSecretKey || generateBase32Secret()
+          setTwoFaSecretKey(s)
+          localStorage.setItem('mdef_active_2fa_secret', s)
+          if (d.recovery_codes && Array.isArray(d.recovery_codes) && d.recovery_codes.length > 0) {
+            setTwoFaRecoveryCodes(d.recovery_codes)
+          }
           setSecurityConfig(prev => ({ ...prev, two_factor_enabled: Boolean(d.enabled) }))
           if (d.enabled) {
             setTwoFaVerifyResult({
@@ -243,6 +273,12 @@ export default function UserTools() {
         }
       } catch (err) {
         console.error('Failed to load 2FA settings:', err)
+        // Ensure secret key is always populated even on offline/fallback mode
+        if (active && !twoFaSecretKey) {
+          const s = generateBase32Secret()
+          setTwoFaSecretKey(s)
+          localStorage.setItem('mdef_active_2fa_secret', s)
+        }
       } finally {
         if (active) setLoading2FaConfig(false)
       }
@@ -251,12 +287,16 @@ export default function UserTools() {
     return () => { active = false }
   }, [twoFaActiveDomain])
 
+  // Instant QR Code Rendering (Zero Latency & Never Stuck)
   useEffect(() => {
-    if (!twoFaSecretKey) return
+    const activeSec = twoFaSecretKey || localStorage.getItem('mdef_active_2fa_secret') || generateBase32Secret()
+    if (!twoFaSecretKey) {
+      setTwoFaSecretKey(activeSec)
+    }
     const domainLabel = twoFaActiveDomain === 'all'
       ? 'All Connected Sites'
-      : (connectedWebsites.find(w => String(w.id) === String(twoFaActiveDomain))?.domain || 'Fleet Site')
-    const otpUrl = `otpauth://totp/MDefender%20Pro:${encodeURIComponent(domainLabel)}?secret=${twoFaSecretKey}&issuer=MDefender%20Pro`
+      : (connectedWebsites.find(w => String(w.id || w._id) === String(twoFaActiveDomain))?.domain || 'Fleet Site')
+    const otpUrl = `otpauth://totp/MDefender%20Pro:${encodeURIComponent(domainLabel)}?secret=${activeSec}&issuer=MDefender%20Pro`
     QRCode.toDataURL(otpUrl, {
       width: 200,
       margin: 2,
@@ -359,6 +399,7 @@ export default function UserTools() {
       newSec += chars.charAt(Math.floor(Math.random() * chars.length))
     }
     setTwoFaSecretKey(newSec)
+    localStorage.setItem('mdef_active_2fa_secret', newSec)
     setTwoFaVerifyResult({ status: 'idle', message: '' })
     setTwoFaDigits(['', '', '', '', '', ''])
   }

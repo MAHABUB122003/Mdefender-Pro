@@ -22,6 +22,13 @@ from src.api.v1 import (
 
 v1_router = APIRouter(prefix="/api/v1")
 
+# Dedicated router for 2FA security endpoints at /api/v1/security/2fa/*
+security_2fa_router = APIRouter(prefix="/security/2fa", tags=["Security 2FA"])
+security_2fa_router.add_api_route("/config", websites_api.get_2fa_config, methods=["GET"])
+security_2fa_router.add_api_route("/verify", websites_api.verify_and_enable_2fa, methods=["POST"])
+security_2fa_router.add_api_route("/disable", websites_api.disable_2fa, methods=["POST"])
+
+v1_router.include_router(security_2fa_router)
 v1_router.include_router(monitoring_api.router)
 v1_router.include_router(domains_api.router)
 v1_router.include_router(websites_api.router)

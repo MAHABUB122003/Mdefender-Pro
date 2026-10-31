@@ -2317,6 +2317,34 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
     return {'status': 'success', 'message': 'Security policy updated and synchronized across all protected websites.', 'config': saved}
 
 
+@app.get("/api/security/2fa/config")
+@app.get("/api/v1/security/2fa/config")
+@app.get("/api/user/2fa/config")
+@app.get("/api/v1/user/2fa/config")
+async def app_get_2fa_config(request: Request, website_id: str = "all", user: dict = Depends(verify_user_token_compat)):
+    from src.api.v1.websites_api import get_2fa_config
+    return await get_2fa_config(website_id=website_id, user=user)
+
+@app.post("/api/security/2fa/verify")
+@app.post("/api/v1/security/2fa/verify")
+@app.post("/api/user/2fa/verify")
+@app.post("/api/v1/user/2fa/verify")
+async def app_verify_2fa(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.api.v1.websites_api import verify_and_enable_2fa, Verify2FARequest
+    data = await request.json()
+    req = Verify2FARequest(**data)
+    return await verify_and_enable_2fa(body=req, user=user)
+
+@app.post("/api/security/2fa/disable")
+@app.post("/api/v1/security/2fa/disable")
+@app.post("/api/user/2fa/disable")
+@app.post("/api/v1/user/2fa/disable")
+async def app_disable_2fa(request: Request, user: dict = Depends(verify_user_token_compat)):
+    from src.api.v1.websites_api import disable_2fa, Disable2FARequest
+    data = await request.json()
+    req = Disable2FARequest(**data)
+    return await disable_2fa(body=req, user=user)
+
 @app.post("/api/user/2fa/verify-test")
 @app.post("/api/v1/user/2fa/verify-test")
 async def user_verify_test_2fa(request: Request, user: dict = Depends(verify_user_token_compat)):
