@@ -2302,7 +2302,7 @@ function waf_fw_analyze_request() {
     // EDGE ACCESS CONTROL: Country Restrictions & IP Blacklist MUST strictly take precedence!
     // No request from a blocked country or blacklisted IP can ever access ANY part of the domain (including wp-admin)
     $eval_ip = $engine->get_client_ip();
-    if ($engine->is_ip_blacklisted($eval_ip)) {
+    if (class_exists('WAF_FW_IP_Filter') && WAF_FW_IP_Filter::instance()->is_blacklisted($eval_ip)) {
         http_response_code(403);
         include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
         exit;

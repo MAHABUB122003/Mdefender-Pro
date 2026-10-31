@@ -568,6 +568,13 @@ class WAF_FW_Engine {
 
     private static $geo_memory_cache = [];
 
+    public function is_ip_blacklisted($ip) {
+        if (class_exists('WAF_FW_IP_Filter')) {
+            return WAF_FW_IP_Filter::instance()->is_blacklisted($ip);
+        }
+        return false;
+    }
+
     public function check_country_block($ip) {
         $raw = get_option('waf_fw_blocked_countries', '');
         if (empty($raw)) return false;
