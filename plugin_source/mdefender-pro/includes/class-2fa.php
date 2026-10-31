@@ -23,21 +23,20 @@ class WAF_FW_2FA {
 
     public function render_login_field() {
         global $wpdb;
-        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes' || get_option('waf_harden_login_guard', 'disabled') === 'enabled';
-        $has_active_2fa = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = '_waf_2fa_enabled' AND meta_value = 'yes'");
+        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
+        $has_active_2fa = (bool) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = '_waf_2fa_enabled' AND meta_value = 'yes'");
         if (!$has_active_2fa && !$is_enforced) {
             return; // hidden unless 2FA is set up or enforced!
         }
         ?>
-        <p class="waf-2fa-login-wrap" style="margin-bottom:16px;">
-            <label for="waf_2fa_code" style="font-weight:600;font-size:12px;color:#10201E;">
-                <span style="display:inline-flex;align-items:center;gap:6px;">
-                    <strong style="color:#0B2522;">Two-Factor Authentication (2FA)</strong>
-                    <span style="font-size:10px;background:#E8EEE8;color:#0B2522;padding:1px 6px;border-radius:4px;font-weight:700;">REQUIRED</span>
-                </span>
-                <br />
-                <input type="text" name="waf_2fa_code" id="waf_2fa_code" class="input" value="" size="20" placeholder="6-digit Authenticator / Email OTP" autocomplete="off" style="letter-spacing:3px;font-weight:800;font-size:15px;margin-top:6px;border:1.5px solid #D9E1DC;border-radius:8px;padding:8px 12px;width:100%;box-sizing:border-box;" />
+        <p class="waf-2fa-login-wrap" style="margin-bottom: 16px;">
+            <label for="waf_2fa_code" style="display: block; font-weight: 600; font-size: 13px; color: #2c3338; margin-bottom: 6px;">
+                <?php esc_html_e('Two-Factor Authentication (2FA)', 'mdefender-pro'); ?>
             </label>
+            <input type="text" name="waf_2fa_code" id="waf_2fa_code" class="input" value="" maxlength="8" placeholder="000000" autocomplete="one-time-code" style="letter-spacing: 10px; font-weight: 700; font-size: 18px; text-align: center; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; border: 1px solid #8c8f94; border-radius: 6px; padding: 6px 12px; width: 100%; box-sizing: border-box; background: #ffffff; color: #2c3338;" />
+            <span style="display: block; font-size: 11px; color: #64748b; margin-top: 4px;">
+                <?php esc_html_e('Enter 6-digit authenticator or email code', 'mdefender-pro'); ?>
+            </span>
         </p>
         <?php
     }
@@ -50,20 +49,27 @@ class WAF_FW_2FA {
         $enabled = get_user_meta($user->ID, '_waf_2fa_enabled', true);
         $secret = get_user_meta($user->ID, '_waf_2fa_secret', true);
 
-        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes' || get_option('waf_harden_login_guard', 'disabled') === 'enabled';
+        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
         $roles = (array)($user->roles ?? []);
         $role_target = get_option('waf_2fa_roles', 'admins');
 
+        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
         $must_verify = false;
         if ($enabled === 'yes' && !empty($secret)) {
             $must_verify = true;
         } elseif ($is_enforced) {
-            if ($role_target === 'all_users') {
-                $must_verify = true;
-            } elseif ($role_target === 'editors') {
-                $must_verify = in_array('administrator', $roles) || in_array('editor', $roles);
-            } else { // default 'admins'
-                $must_verify = in_array('administrator', $roles) || empty($roles);
+            // Only enforce if the user has actually enrolled or a secret exists
+            if (!empty($secret)) {
+                if ($role_target === 'all_users') {
+                    $must_verify = true;
+                } elseif ($role_target === 'editors') {
+                    $must_verify = in_array('administrator', $roles) || in_array('editor', $roles);
+                } else { // default 'admins'
+                    $must_verify = in_array('administrator', $roles) || empty($roles);
+                }
+            } else {
+                // User hasn't configured 2FA yet - do not lock them out!
+                return $user;
             }
         }
 

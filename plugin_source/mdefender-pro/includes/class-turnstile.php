@@ -20,7 +20,7 @@ class WAF_FW_Turnstile {
         }
 
         $mode = get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'forms'));
-        $hold_press_active = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        $hold_press_active = get_option('waf_hold_press_enabled', 'no') === 'yes';
 
         // 1. Hook into WordPress Login Form ONLY IF Biometric Press & Hold is NOT enabled
         if (!$hold_press_active && ($mode === 'login_only' || $mode === 'all')) {

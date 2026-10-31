@@ -40,7 +40,7 @@ class WAF_FW_Login_Protector {
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
 
-        $hold_press_active = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        $hold_press_active = get_option('waf_hold_press_enabled', 'no') === 'yes';
         $captcha_active = get_option('waf_harden_login_captcha', 'no') === 'yes';
         if ($hold_press_active || $captcha_active) {
             add_action('login_form', [$this, 'render_captcha_form'], 20);
@@ -330,7 +330,7 @@ class WAF_FW_Login_Protector {
        ===================================================================== */
 
     public function render_captcha_form() {
-        $hold_press_enabled = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        $hold_press_enabled = get_option('waf_hold_press_enabled', 'no') === 'yes';
         if ($hold_press_enabled) {
             $this->render_hold_press_challenge();
             return;
@@ -376,27 +376,24 @@ class WAF_FW_Login_Protector {
         // Store active seed in transient with 300s expiration
         set_transient("mdf_hp_{$seed_nonce}", $client_ip, 300);
         ?>
-        <div class="mdf-hold-press-wrapper" style="margin: 18px 0; padding: 14px 16px; background: #081412; border: 1px solid #1a3832; border-radius: 12px; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; user-select: none; box-shadow: 0 4px 16px rgba(0,0,0,0.25);">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px;">
-                <span style="font-size: 11px; font-weight: 700; color: #87a49e; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2A8B68" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    MDEFENDER PRO
-                </span>
-                <span id="mdfHoldStatus" style="font-size: 10.5px; font-weight: 600; color: #53756e;">Verification Gateway</span>
-            </div>
-            <button type="button" id="mdfHoldButton" style="width: 100%; height: 48px; position: relative; overflow: hidden; border: 1.5px solid #234d44; background: #0c1e1b; color: #FFFFFF; font-weight: 700; font-size: 13.5px; border-radius: 10px; cursor: pointer; transition: border-color 0.2s, background 0.2s; outline: none;">
-                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #184e44, #2A8B68); opacity: 0.85; transition: width 0.04s linear; pointer-events: none;"></span>
-                <span id="mdfHoldText" style="position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 9px; pointer-events: none;">
-                    <svg id="mdfIconFp" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F38A3E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/>
-                        <path d="M5 19.5C5.5 18 6 15 6 12c0-.7.1-1.4.3-2"/>
-                        <path d="M17.7 17.7A10 10 0 0 0 22 12c0-1.8-.5-3.5-1.4-5"/>
-                        <path d="M9 21c.5-1 1-2.5 1-4.5 0-2.5 1-4 2-4s2 1.5 2 4c0 1.5.3 2.8.7 3.5"/>
-                        <path d="M12 7v5"/>
+        <div class="mdf-hold-press-wrapper" style="margin: 16px 0 18px 0; user-select: none;">
+            <button type="button" id="mdfHoldButton" style="width: 100%; height: 46px; position: relative; overflow: hidden; border: 1.5px solid #dcdcde; background: #f8fafc; color: #1e293b; font-weight: 600; font-size: 13.5px; border-radius: 8px; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;">
+                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #10b981, #059669); opacity: 0.9; transition: width 0.04s linear; pointer-events: none;"></span>
+                <span id="mdfHoldText" style="position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none;">
+                    <svg id="mdfIconFp" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a10 10 0 0 0-10 10c0 3.2 1.5 6 3.8 7.8"/>
+                        <path d="M12 6a6 6 0 0 0-6 6c0 1.8.8 3.5 2.1 4.6"/>
+                        <path d="M12 10a2 2 0 0 0-2 2c0 .6.3 1.2.7 1.6"/>
+                        <path d="M12 14v4"/>
+                        <path d="M12 18v2"/>
                     </svg>
-                    <span id="mdfLabel">Press &amp; Hold</span>
+                    <span id="mdfLabel" style="font-weight: 700; font-size: 13.5px; color: #1e293b;">Press &amp; Hold to Verify</span>
                 </span>
             </button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding: 0 4px;">
+                <span style="font-size: 11px; color: #64748b; font-weight: 500;">Biometric Verification</span>
+                <span id="mdfHoldStatus" style="font-size: 11px; font-weight: 600; color: #64748b;">Hold 2s</span>
+            </div>
             <input type="hidden" name="waf_hold_press_token" id="mdfHoldToken" value="<?php echo esc_attr($token); ?>" />
             <input type="hidden" name="waf_hold_press_proof" id="mdfHoldProof" value="" />
             <script>
@@ -421,8 +418,9 @@ class WAF_FW_Login_Protector {
                     if (isVerified) return;
                     e.preventDefault();
                     startTime = Date.now();
-                    btn.style.borderColor = '#2A8B68';
-                    btn.style.boxShadow = '0 0 14px rgba(42, 139, 104, 0.35)';
+                    btn.style.borderColor = '#10b981';
+                    btn.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
+                    label.style.color = '#ffffff';
                     holdTimer = setInterval(function() {
                         var elapsed = Date.now() - startTime;
                         var pct = Math.min(100, (elapsed / duration) * 100);
@@ -431,15 +429,16 @@ class WAF_FW_Login_Protector {
                             clearInterval(holdTimer);
                             isVerified = true;
                             pField.value = btoa(elapsed + '|' + jitterCount);
-                            prog.style.background = '#2A8B68';
+                            prog.style.background = '#059669';
                             prog.style.width = '100%';
-                            btn.style.borderColor = '#2A8B68';
-                            btn.style.background = '#0e2b25';
+                            btn.style.borderColor = '#059669';
+                            btn.style.background = '#059669';
                             btn.style.cursor = 'default';
-                            label.innerText = 'Human Verified';
-                            iconFp.outerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2A8B68" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                            label.innerText = 'Verified Human';
+                            label.style.color = '#ffffff';
+                            iconFp.outerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
                             stat.innerText = 'Verified';
-                            stat.style.color = '#2A8B68';
+                            stat.style.color = '#059669';
                         }
                     }, 25);
                 }
@@ -448,8 +447,9 @@ class WAF_FW_Login_Protector {
                     if (isVerified) return;
                     clearInterval(holdTimer);
                     prog.style.width = '0%';
-                    btn.style.borderColor = '#234d44';
-                    btn.style.boxShadow = 'none';
+                    btn.style.borderColor = '#dcdcde';
+                    btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+                    label.style.color = '#1e293b';
                 }
 
                 btn.addEventListener('mousedown', startHold);
@@ -651,7 +651,7 @@ class WAF_FW_Login_Protector {
         }
         if (is_wp_error($user)) return $user;
 
-        $hold_press_enabled = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        $hold_press_enabled = get_option('waf_hold_press_enabled', 'no') === 'yes';
         if ($hold_press_enabled) {
             $token_raw = sanitize_text_field($_POST['waf_hold_press_token'] ?? '');
             $proof_raw = sanitize_text_field($_POST['waf_hold_press_proof'] ?? '');
@@ -715,7 +715,7 @@ class WAF_FW_Login_Protector {
     public function validate_captcha($user, $password) {
         if (is_wp_error($user)) return $user;
 
-        $hold_press_enabled = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        $hold_press_enabled = get_option('waf_hold_press_enabled', 'no') === 'yes';
         if ($hold_press_enabled) {
             return $user; // Handled strictly in validate_login_challenge on authenticate filter
         }

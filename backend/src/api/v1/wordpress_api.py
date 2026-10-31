@@ -1534,11 +1534,11 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     "login_lockout_duration": int(ref_ws.get("login_lockout_duration", 60)),
 
-                    "hold_press_enabled": bool(ref_ws.get("hold_press_enabled", u_cfg.get("hold_press_enabled", True))),
+                    "hold_press_enabled": bool(ref_ws.get("hold_press_enabled", u_cfg.get("hold_press_enabled", False))),
 
                     "hold_press_duration_ms": int(ref_ws.get("hold_press_duration_ms") or u_cfg.get("hold_press_duration_ms", 2000)),
 
-                    "turnstile_enabled": bool(ref_ws.get("turnstile_enabled", u_cfg.get("turnstile_enabled", True))),
+                    "turnstile_enabled": bool(ref_ws.get("turnstile_enabled", u_cfg.get("turnstile_enabled", False))),
 
                     "turnstile_mode": ref_ws.get("turnstile_mode") or u_cfg.get("turnstile_mode", "forms"),
 
