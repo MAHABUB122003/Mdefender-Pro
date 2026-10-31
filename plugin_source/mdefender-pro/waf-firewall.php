@@ -2227,6 +2227,24 @@ function waf_fw_analyze_request() {
         exit;
     }
 
+    if (!$engine) {
+        $engine = WAF_FW_Engine::instance();
+    }
+
+    // EDGE ACCESS CONTROL: Country Restrictions & IP Blacklist MUST strictly take precedence!
+    // No request from a blocked country or blacklisted IP can ever access ANY part of the domain (including wp-admin)
+    $eval_ip = $engine->get_client_ip();
+    if ($engine->is_ip_blacklisted($eval_ip)) {
+        http_response_code(502);
+        include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
+        exit;
+    }
+    if ($engine->check_country_block($eval_ip)) {
+        http_response_code(502);
+        include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
+        exit;
+    }
+
     // In wp-admin panel, authenticated administrators are bypassed for routine administrative tasks
     // BUT file editing (theme/plugin editor) and file uploads are ALWAYS inspected to prevent backdoor persistence
     if (is_admin() && function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {

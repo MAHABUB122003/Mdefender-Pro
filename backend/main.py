@@ -530,9 +530,11 @@ async def waf_self_protection_middleware(request: Request, call_next):
             content=block_html,
             status_code=502 if is_stealth else 403,
             headers={
+                "Server": "nginx",
                 "X-WAF-Eval-Time": f"{waf_eval_ms:.2f}ms",
                 "X-WAF-Status": "BLOCKED",
-                "Connection": "close"
+                "Connection": "close",
+                "Cache-Control": "no-cache, no-store, must-revalidate"
             }
         )
 

@@ -448,6 +448,94 @@ class WAFAPI:
         headers = request_data.get("headers") or {}
         user_agent = headers.get("User-Agent", "") or headers.get("user-agent", "")
 
+        is_whitelisted = self.ip_filter.is_whitelisted(ip)
+        if is_whitelisted:
+            decision = {
+                'decision': 'ALLOW',
+                'action': 'allow',
+                'confidence': 0.0,
+                'reason': 'Whitelisted IP (Instant Edge Bypass)',
+                'attack_type': None,
+                'risk_score': 0,
+                'risk_level': 'low',
+                'status': 'allowed',
+                'reference_id': 'WL-PASS',
+            }
+            log_entry = {
+                'ip': ip, 'url': url, 'attack_type': 'Normal', 'status': 'allowed',
+                'confidence': 0.0, 'timestamp': datetime.now(),
+                'details': {'reason': 'Whitelisted IP'},
+                'user_id': user_id or '', 'domain': domain or '', 'website_id': website_id or ''
+            }
+            event = {
+                'user_id': user_id or '', 'website_id': website_id or '',
+                'timestamp': datetime.now(), 'source_ip': ip, 'method': method,
+                'endpoint': url, 'attack_type': None, 'detection_source': 'whitelist',
+                'risk_score': 0, 'action': 'allow', 'status': 'allowed',
+                'reference_id': 'WL-PASS', 'user_agent': user_agent
+            }
+            return decision, log_entry, event, False, ip
+
+        # EDGE ACCESS CONTROL 1: Check Geo / Country Blocking FIRST (Takes precedence over all routes)
+        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id, headers=headers)
+        if is_geo_blocked:
+            c_name = geo_info.get('country_name', 'Unknown Country')
+            c_code = geo_info.get('country_code', '')
+            decision = {
+                'decision': 'BLOCK',
+                'action': 'block',
+                'confidence': 1.0,
+                'reason': f"Access restricted from {c_name} ({c_code})",
+                'attack_type': 'Country Block (Geo-Restriction)',
+                'risk_score': 100,
+                'risk_level': 'critical',
+                'status': 'blocked',
+                'reference_id': 'GEO-BLOCK',
+            }
+            log_entry = {
+                'ip': ip, 'url': url, 'attack_type': 'Country Block (Geo-Restriction)', 'status': 'blocked',
+                'confidence': 1.0, 'timestamp': datetime.now(),
+                'details': {'reason': f"Access restricted from {c_name} ({c_code})", 'country_code': c_code, 'geo_block': True},
+                'user_id': user_id or '', 'domain': domain or '', 'website_id': website_id or ''
+            }
+            event = {
+                'user_id': user_id or '', 'website_id': website_id or '',
+                'timestamp': datetime.now(), 'source_ip': ip, 'method': method,
+                'endpoint': url, 'attack_type': 'Country Block (Geo-Restriction)', 'detection_source': 'geo_filter',
+                'risk_score': 100, 'action': 'block', 'status': 'blocked',
+                'reference_id': 'GEO-BLOCK', 'user_agent': user_agent
+            }
+            return decision, log_entry, event, True, ip
+
+        # EDGE ACCESS CONTROL 2: Check IP Blacklist
+        is_blacklisted = self.attack_blocker.is_blacklisted(ip, user_id=user_id)
+        if is_blacklisted:
+            decision = {
+                'decision': 'BLOCK',
+                'action': 'block',
+                'confidence': 1.0,
+                'reason': 'IP is blacklisted',
+                'attack_type': 'Blacklisted IP',
+                'risk_score': 100,
+                'risk_level': 'critical',
+                'status': 'blocked',
+                'reference_id': 'BL-BLOCK',
+            }
+            log_entry = {
+                'ip': ip, 'url': url, 'attack_type': 'Blacklisted IP', 'status': 'blocked',
+                'confidence': 1.0, 'timestamp': datetime.now(),
+                'details': {'reason': 'IP is blacklisted'},
+                'user_id': user_id or '', 'domain': domain or '', 'website_id': website_id or ''
+            }
+            event = {
+                'user_id': user_id or '', 'website_id': website_id or '',
+                'timestamp': datetime.now(), 'source_ip': ip, 'method': method,
+                'endpoint': url, 'attack_type': 'Blacklisted IP', 'detection_source': 'blacklist',
+                'risk_score': 100, 'action': 'block', 'status': 'blocked',
+                'reference_id': 'BL-BLOCK', 'user_agent': user_agent
+            }
+            return decision, log_entry, event, True, ip
+
         # Static Asset Fast-Path: CSS, JS, Images, Fonts with clean queries pass in 0.0001ms (Zero DB queries)
         if method == 'GET':
             lower_url = url.lower().split('?')[0]
@@ -482,56 +570,9 @@ class WAFAPI:
 
         u_cfg = self.attack_blocker.get_user_settings(user_id) if user_id else {}
         user_rate_limit = u_cfg.get('rate_limit_per_minute', 120)
-
-        is_whitelisted = self.ip_filter.is_whitelisted(ip)
-        if is_whitelisted:
-            decision = {
-                'decision': 'ALLOW',
-                'action': 'allow',
-                'confidence': 0.0,
-                'reason': 'Whitelisted IP (Instant Edge Bypass)',
-                'attack_type': None,
-                'risk_score': 0,
-                'risk_level': 'low',
-                'status': 'allowed',
-                'reference_id': 'WL-PASS',
-            }
-            log_entry = {
-                'ip': ip, 'url': url, 'attack_type': 'Normal', 'status': 'allowed',
-                'confidence': 0.0, 'timestamp': datetime.now(),
-                'details': {'reason': 'Whitelisted IP'},
-                'user_id': user_id or '', 'domain': domain or '', 'website_id': website_id or ''
-            }
-            event = {
-                'user_id': user_id or '', 'website_id': website_id or '',
-                'timestamp': datetime.now(), 'source_ip': ip, 'method': method,
-                'endpoint': url, 'attack_type': None, 'detection_source': 'whitelist',
-                'risk_score': 0, 'action': 'allow', 'status': 'allowed',
-                'reference_id': 'WL-PASS', 'user_agent': user_agent
-            }
-            return decision, log_entry, event, False, ip
-
-        is_blacklisted = self.attack_blocker.is_blacklisted(ip, user_id=user_id)
         is_rate_limited = self.rate_limiter.is_rate_limited(ip, max_requests=user_rate_limit)
 
-        # Check Geo / Country Blocking
-        is_geo_blocked, geo_info = self.ip_filter.is_country_blocked(ip, user_id=user_id, headers=headers)
-        if is_geo_blocked and not is_whitelisted:
-            c_name = geo_info.get('country_name', 'Unknown Country')
-            c_code = geo_info.get('country_code', '')
-            decision = {
-                'decision': 'BLOCK',
-                'action': 'block',
-                'confidence': 1.0,
-                'reason': f"Access restricted from {c_name} ({c_code})",
-                'attack_type': 'Country Block (Geo-Restriction)',
-                'risk_score': 100,
-                'risk_level': 'critical',
-                'status': 'blocked',
-                'reference_id': 'GEO-BLOCK',
-            }
-        else:
-            decision = self.decision_engine.evaluate(
+        decision = self.decision_engine.evaluate(
                 request_data,
                 ip=ip,
                 is_blacklisted=is_blacklisted,
