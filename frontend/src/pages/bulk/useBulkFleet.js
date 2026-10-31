@@ -57,6 +57,18 @@ export default function useBulkFleet() {
     return wpWebsites.find(w => (w.id || w._id) === selectedSiteId) || null
   }, [selectedSiteId, wpWebsites])
 
+  // Directly update fleet websites without waiting for re-fetch
+  const updateFleetWebsites = useCallback((freshWebsites) => {
+    if (!Array.isArray(freshWebsites)) return
+    setData(prev => ({ ...(prev || {}), websites: freshWebsites }))
+    try {
+      const curDash = userStore.get('dashboard') || {}
+      userStore.set('dashboard', { ...curDash, websites: freshWebsites })
+      const curWebs = userStore.get('websites') || {}
+      userStore.set('websites', { ...curWebs, websites: freshWebsites })
+    } catch {}
+  }, [])
+
   return {
     data,
     wpWebsites,
@@ -65,6 +77,7 @@ export default function useBulkFleet() {
     activeWebsite,
     loading,
     refreshing,
-    fetchFleet
+    fetchFleet,
+    updateFleetWebsites
   }
 }

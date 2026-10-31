@@ -523,7 +523,14 @@ export const api = {
   createUserRule: (data) => apiCall('/api/user/rules', { method: 'POST', body: JSON.stringify(data) }),
   updateUserRule: (id, data) => apiCall(`/api/user/rules?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteUserRule: (id) => apiCall(`/api/user/rules?id=${id}`, { method: 'DELETE' }),
-  userBlockIP: (ip, reason) => apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify({ ip, reason }) }),
+  userBlockIP: (ip, reason = 'Automated IP Quarantine via Dashboard', duration = 0, websiteId = '') => {
+    const payload = typeof ip === 'object' ? ip : { ip, reason, duration, website_id: websiteId };
+    return apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  userBlockIp: (ip, reason = 'Automated IP Quarantine via Dashboard', duration = 0, websiteId = '') => {
+    const payload = typeof ip === 'object' ? ip : { ip, reason, duration, website_id: websiteId };
+    return apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify(payload) });
+  },
   getUserWhitelist: () => apiCall('/api/user/whitelist'),
   addUserWhitelist: (data) => apiCall('/api/user/whitelist', { method: 'POST', body: JSON.stringify(data) }),
   removeUserWhitelist: (ip) => apiCall(`/api/user/whitelist?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),

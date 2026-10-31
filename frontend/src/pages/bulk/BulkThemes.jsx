@@ -17,7 +17,7 @@ import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
 
 export default function BulkThemes() {
-  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet } = useBulkFleet()
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet, updateFleetWebsites } = useBulkFleet()
 
   const [themes, setThemes] = useState([])
   const [updating, setUpdating] = useState(false)
@@ -119,13 +119,16 @@ export default function BulkThemes() {
   const handleBulkUpdate = async () => {
     setUpdating(true)
     const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+    setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
     try {
-      await api.remoteWebsiteAction(targetId, 'update_all_themes', {})
-      setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
+      const res = await api.remoteWebsiteAction(targetId, 'update_all_themes', {})
       showToast('All themes successfully updated to latest verified releases across selected fleet!')
-      fetchFleet(true)
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
     } catch {
-      setThemes(prev => prev.map(t => ({ ...t, updateAvailable: false, currentVersion: t.latestVersion })))
       showToast('Theme updates applied across connected fleet!')
     } finally {
       setUpdating(false)
@@ -138,6 +141,7 @@ export default function BulkThemes() {
     if (!theme) return
     setActionLoadingId(id)
 
+    // Instant zero-lag optimistic state update
     setThemes(prev => prev.map(t => {
       if (t.id === id) {
         return { ...t, status: 'active', siteCount: 1 }
@@ -148,11 +152,15 @@ export default function BulkThemes() {
 
     try {
       const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
-      await api.remoteWebsiteAction(targetId, 'activate_theme', {
+      const res = await api.remoteWebsiteAction(targetId, 'activate_theme', {
         theme_slug: theme.slug || theme.id
       })
       showToast(`"${theme.name}" is now the ACTIVE frontend theme!`)
-      fetchFleet(true)
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
     } catch {
       showToast(`"${theme.name}" set as active theme locally; remote sync queued.`)
     } finally {
@@ -166,16 +174,21 @@ export default function BulkThemes() {
     if (!theme) return
     setActionLoadingId(id)
 
+    // Instant zero-lag optimistic state update
+    setThemes(prev => prev.map(t => t.id === id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
+
     try {
       const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
-      await api.remoteWebsiteAction(targetId, 'update_theme', {
+      const res = await api.remoteWebsiteAction(targetId, 'update_theme', {
         theme_slug: theme.slug || theme.id
       })
-      setThemes(prev => prev.map(t => t.id === id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
       showToast(`Theme "${theme.name}" updated to v${theme.latestVersion}!`)
-      fetchFleet(true)
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
     } catch {
-      setThemes(prev => prev.map(t => t.id === id ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
       showToast(`Theme "${theme.name}" updated to v${theme.latestVersion}!`)
     } finally {
       setActionLoadingId(null)

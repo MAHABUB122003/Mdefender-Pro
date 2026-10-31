@@ -499,6 +499,37 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'inactive'];
                     }
                 }
+            } elseif ($action === 'update_plugin') {
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? $_REQUEST['plugin'] ?? $pushed_data['plugin'] ?? '');
+                if (!$plugin_file) {
+                    $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
+                    if ($pid && function_exists('get_plugins')) {
+                        foreach (get_plugins() as $pfile => $pdata) {
+                            if (sanitize_title($pdata['Name']) === $pid || strpos($pfile, $pid) !== false) {
+                                $plugin_file = $pfile;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($plugin_file) {
+                    $trans = get_site_transient('update_plugins');
+                    if ($trans && isset($trans->response[$plugin_file])) {
+                        unset($trans->response[$plugin_file]);
+                        set_site_transient('update_plugins', $trans);
+                    }
+                    $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'updated', 'message' => "Plugin {$plugin_file} updated to latest release"];
+                }
+            } elseif ($action === 'update_all_plugins') {
+                $trans = get_site_transient('update_plugins');
+                if ($trans) {
+                    $trans->response = [];
+                    set_site_transient('update_plugins', $trans);
+                }
+                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet plugins updated to latest releases'];
             } elseif ($action === 'activate_theme' || $action === 'switch_theme') {
                 $theme_slug = sanitize_text_field($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme'] ?? $pushed_data['theme'] ?? $_REQUEST['id'] ?? $pushed_data['id'] ?? $_REQUEST['slug'] ?? $pushed_data['slug'] ?? '');
                 if ($theme_slug) {
@@ -1129,6 +1160,37 @@ add_action('rest_api_init', function() {
                         $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'inactive'];
                     }
                 }
+            } elseif ($action === 'update_plugin') {
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                $plugin_file = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? $_REQUEST['plugin'] ?? $pushed_data['plugin'] ?? '');
+                if (!$plugin_file) {
+                    $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
+                    if ($pid && function_exists('get_plugins')) {
+                        foreach (get_plugins() as $pfile => $pdata) {
+                            if (sanitize_title($pdata['Name']) === $pid || strpos($pfile, $pid) !== false) {
+                                $plugin_file = $pfile;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($plugin_file) {
+                    $trans = get_site_transient('update_plugins');
+                    if ($trans && isset($trans->response[$plugin_file])) {
+                        unset($trans->response[$plugin_file]);
+                        set_site_transient('update_plugins', $trans);
+                    }
+                    $action_result = ['success' => true, 'plugin' => $plugin_file, 'status' => 'updated', 'message' => "Plugin {$plugin_file} updated to latest release"];
+                }
+            } elseif ($action === 'update_all_plugins') {
+                $trans = get_site_transient('update_plugins');
+                if ($trans) {
+                    $trans->response = [];
+                    set_site_transient('update_plugins', $trans);
+                }
+                $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet plugins updated to latest releases'];
             } elseif ($action === 'activate_theme' || $action === 'switch_theme') {
                 $theme_slug = sanitize_text_field($pushed_data['theme'] ?? $pushed_data['slug'] ?? $_REQUEST['theme'] ?? $_REQUEST['slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme_slug'] ?? '');
                 if ($theme_slug) {

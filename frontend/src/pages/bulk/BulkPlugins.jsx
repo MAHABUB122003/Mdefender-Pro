@@ -17,7 +17,7 @@ import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
 
 export default function BulkPlugins() {
-  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet } = useBulkFleet()
+  const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet, updateFleetWebsites } = useBulkFleet()
 
   const [plugins, setPlugins] = useState([])
   const [updating, setUpdating] = useState(false)
@@ -81,10 +81,11 @@ export default function BulkPlugins() {
           }
 
           const key = pFile || pId
+          const pStatus = p.status ? String(p.status).toLowerCase() : (p.active ? 'active' : 'inactive')
           if (pluginsMap.has(key)) {
             const existing = pluginsMap.get(key)
             existing.siteCount = (existing.siteCount || 1) + 1
-            if (p.status === 'active') existing.status = 'active'
+            if (pStatus === 'active') existing.status = 'active'
             if (p.update_available) existing.updateAvailable = true
           } else {
             pluginsMap.set(key, {
@@ -94,7 +95,7 @@ export default function BulkPlugins() {
               currentVersion: p.version || '1.0.0',
               latestVersion: p.new_version || p.latest_version || p.version || '1.0.0',
               updateAvailable: !!p.update_available,
-              status: (p.status || 'active').toLowerCase(),
+              status: pStatus,
               siteCount: 1,
               author: p.author || 'WordPress Community',
               verified: false
@@ -116,13 +117,16 @@ export default function BulkPlugins() {
   const handleBulkUpdate = async () => {
     setUpdating(true)
     const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+    setPlugins(prev => prev.map(p => ({ ...p, updateAvailable: false, currentVersion: p.latestVersion })))
     try {
-      await api.remoteWebsiteAction(targetId, 'update_all_plugins', {})
-      setPlugins(prev => prev.map(p => ({ ...p, updateAvailable: false, currentVersion: p.latestVersion })))
+      const res = await api.remoteWebsiteAction(targetId, 'update_all_plugins', {})
       showToast('All plugins successfully updated to latest verified releases across selected fleet!')
-      fetchFleet(true)
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
     } catch {
-      setPlugins(prev => prev.map(p => ({ ...p, updateAvailable: false, currentVersion: p.latestVersion })))
       showToast('All plugins updated across connected sites!')
     } finally {
       setUpdating(false)
@@ -136,18 +140,23 @@ export default function BulkPlugins() {
     const nextStatus = plugin.status === 'active' ? 'inactive' : 'active'
     setActionLoadingId(id)
 
+    // Instant zero-lag optimistic UI update
     setPlugins(prev => prev.map(p => p.id === id ? { ...p, status: nextStatus } : p))
     showToast(`${plugin.name} toggled to ${nextStatus.toUpperCase()}...`)
 
     try {
       const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
-      await api.remoteWebsiteAction(targetId, 'toggle_plugin', {
+      const res = await api.remoteWebsiteAction(targetId, 'toggle_plugin', {
         plugin_file: plugin.file || plugin.id,
         plugin_id: plugin.id,
         status: nextStatus
       })
       showToast(`${plugin.name} successfully updated to ${nextStatus.toUpperCase()}!`)
-      fetchFleet(true)
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
     } catch {
       showToast(`${plugin.name} status updated locally; remote sync queued.`)
     } finally {
@@ -161,17 +170,22 @@ export default function BulkPlugins() {
     if (!plugin) return
     setActionLoadingId(id)
 
+    // Instant zero-lag optimistic UI update
+    setPlugins(prev => prev.map(p => p.id === id ? { ...p, updateAvailable: false, currentVersion: p.latestVersion } : p))
+
     try {
       const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
-      await api.remoteWebsiteAction(targetId, 'update_plugin', {
+      const res = await api.remoteWebsiteAction(targetId, 'update_plugin', {
         plugin_file: plugin.file || plugin.id,
         plugin_id: plugin.id
       })
-      setPlugins(prev => prev.map(p => p.id === id ? { ...p, updateAvailable: false, currentVersion: p.latestVersion } : p))
       showToast(`${plugin.name} updated to v${plugin.latestVersion}!`)
-      fetchFleet(true)
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
     } catch {
-      setPlugins(prev => prev.map(p => p.id === id ? { ...p, updateAvailable: false, currentVersion: p.latestVersion } : p))
       showToast(`${plugin.name} updated to v${plugin.latestVersion}!`)
     } finally {
       setActionLoadingId(null)

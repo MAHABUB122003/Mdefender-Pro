@@ -311,8 +311,8 @@ export default function UserDashboard() {
         });
       } else {
         const nextState = !isSelectedSiteAttacked;
-        await api.toggleDdos(!nextState);
-        setDdosEnabled(!nextState);
+        await api.toggleDdos(nextState);
+        setDdosEnabled(nextState);
         // Batch push to all connected sites
         if (websitesList.length > 0) {
           for (const w of websitesList) {
@@ -756,11 +756,14 @@ export default function UserDashboard() {
               }}
             >
               <option value="all">All Connected Sites ({websitesList.length})</option>
-              {websitesList.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.domain || w.name || w.id}
-                </option>
-              ))}
+              {websitesList.map((w) => {
+                const sId = w.id || w._id;
+                return (
+                  <option key={sId} value={sId}>
+                    {w.domain || w.name || sId}
+                  </option>
+                );
+              })}
             </select>
 
             <div style={{ fontSize: '11px', color: brandTokens.brandEmerald, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
@@ -1386,6 +1389,14 @@ export default function UserDashboard() {
                         <code style={{ fontSize: '12px', color: brandTokens.headingColor, fontWeight: '700', fontFamily: 'monospace' }}>
                           {log.ip}
                         </code>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyIp(log.ip)}
+                          title="Copy IP"
+                          style={{ background: 'none', border: 'none', color: brandTokens.bodyColor, cursor: 'pointer', padding: '1px 3px' }}
+                        >
+                          {copiedIp === log.ip ? <Check size={11} color={brandTokens.brandEmerald} /> : <Copy size={11} />}
+                        </button>
                       </div>
                       <span style={{ fontSize: '11px', color: brandTokens.bodyColor }}>
                         {formatRelativeTime(log.timestamp || log.time)}
@@ -1396,9 +1407,34 @@ export default function UserDashboard() {
                       <span style={{ color: brandTokens.bodyColor, fontSize: '11.5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {method} {log.url || '/'}
                       </span>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: brandTokens.dangerRed, background: '#FEF2F2', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FECACA' }}>
-                        Blocked
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {bannedIps.has(log.ip) ? (
+                          <span style={{ fontSize: '10px', fontWeight: '700', color: brandTokens.brandAmber, background: '#FFF4ED', padding: '2px 6px', borderRadius: '4px', border: '1px solid #FCD3B6' }}>
+                            Quarantined
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => blockTopIP(log.ip)}
+                            title={`Ban IP ${log.ip}`}
+                            style={{
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              background: '#FEF2F2',
+                              color: brandTokens.dangerRed,
+                              border: '1px solid #FECACA',
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Ban IP
+                          </button>
+                        )}
+                        <span style={{ fontSize: '10px', fontWeight: '800', color: brandTokens.dangerRed, background: '#FEF2F2', padding: '2px 7px', borderRadius: '4px', border: '1px solid #FECACA' }}>
+                          Blocked
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
