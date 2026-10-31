@@ -111,7 +111,18 @@ class WAF_FW_Login_Protector {
         $is_login_path = (strpos($raw_path, 'wp-login.php') !== false);
         $is_admin_path = ($trimmed_path === 'wp-admin' || strpos($trimmed_path, 'wp-admin/') === 0);
 
-        if ($is_login_path || ($is_admin_path && !is_user_logged_in())) {
+        // SAFETY: At plugins_loaded hook, WordPress pluggable.php is not loaded yet.
+        // Never inspect wp-admin or call user auth functions until 'init' action fires.
+        if ($is_admin_path && !did_action('init')) {
+            return;
+        }
+
+        $user_logged_in = false;
+        if (function_exists('is_user_logged_in')) {
+            $user_logged_in = is_user_logged_in();
+        }
+
+        if ($is_login_path || ($is_admin_path && !$user_logged_in)) {
             $is_ajax = (defined('DOING_AJAX') && DOING_AJAX) || (strpos($request_uri, 'admin-ajax.php') !== false);
             $is_cron = (defined('DOING_CRON') && DOING_CRON);
             $is_admin_post = (strpos($request_uri, 'admin-post.php') !== false);

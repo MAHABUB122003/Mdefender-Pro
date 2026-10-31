@@ -304,3 +304,4 @@ $cooldown_reason = !empty($cooldown_reason) ? $cooldown_reason : 'Multiple faile
     </script>
 </body>
 </html>
+

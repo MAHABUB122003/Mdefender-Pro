@@ -2240,9 +2240,14 @@ function waf_fw_analyze_request() {
     }
 
     // Early Gateway-Only Lockout Intercept (< 0.001ms)
+    $eval_ip = $engine ? $engine->get_client_ip() : (
+        !empty($_SERVER['HTTP_CF_CONNECTING_IP']) ? trim($_SERVER['HTTP_CF_CONNECTING_IP']) :
+        (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) ? trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]) :
+        trim($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'))
+    );
     if (class_exists('WAF_FW_Login_Protector')) {
         $lp = WAF_FW_Login_Protector::instance();
-        if (method_exists($lp, 'is_gateway_locked') && $lp->is_gateway_locked($ip)) {
+        if (method_exists($lp, 'is_gateway_locked') && $lp->is_gateway_locked($eval_ip)) {
             $req_path = strtolower(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
             $custom_slug = strtolower(trim(get_option('waf_harden_login_rename', '')));
             $is_admin_or_login = (
@@ -2252,13 +2257,13 @@ function waf_fw_analyze_request() {
                 (!empty($custom_slug) && (trim($req_path, '/') === $custom_slug || strpos($req_path, '/' . $custom_slug) !== false))
             );
             if ($is_admin_or_login) {
-                $remaining_seconds = max(5, $lp->get_gateway_remaining_seconds($ip));
+                $remaining_seconds = max(5, $lp->get_gateway_remaining_seconds($eval_ip));
                 $cooldown_reason = "Too many failed login attempts detected. Access to the login portal is temporarily restricted for your account security. Public pages remain accessible.";
-                $client_ip = $ip;
+                $client_ip = $eval_ip;
                 $result = [
-                    'ip' => $ip,
+                    'ip' => $eval_ip,
                     'attack_type' => 'Login Brute-Force Rate Limited',
-                    'reference_id' => 'GW-' . strtoupper(substr(md5($ip . time()), 0, 8))
+                    'reference_id' => 'GW-' . strtoupper(substr(md5($eval_ip . time()), 0, 8))
                 ];
                 include WAF_FW_PLUGIN_DIR . 'rate-limit-template.php';
                 exit;

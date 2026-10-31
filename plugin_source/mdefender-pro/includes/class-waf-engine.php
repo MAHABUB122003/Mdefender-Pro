@@ -243,7 +243,8 @@ class WAF_FW_Engine {
             }
 
             if (get_option('waf_fw_prevent_user_enumeration', 'yes') === 'yes' || get_option('waf_harden_user_enumeration') === 'enabled') {
-                if ((isset($_GET['author']) && is_numeric($_GET['author'])) || (stripos($url, 'wp-json/wp/v2/users') !== false && !is_user_logged_in())) {
+                $is_logged_in_user = function_exists('is_user_logged_in') && is_user_logged_in();
+                if ((isset($_GET['author']) && is_numeric($_GET['author'])) || (stripos($url, 'wp-json/wp/v2/users') !== false && !$is_logged_in_user)) {
                     return $this->do_block($ip, $url, $method, 'User Enumeration Blocked', 1.0, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['HTTP_REFERER'] ?? '', '', 'Author ID user enumeration attempt blocked by security hardening.', 'Security Hardening: Prevent User Enumeration');
                 }
             }
