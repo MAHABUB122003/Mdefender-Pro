@@ -570,6 +570,7 @@ export const api = {
   // User Security Configuration & Attack Auto-Block Policies
   getUserSecurityConfig: () => apiCall('/api/user/security-config'),
   updateUserSecurityConfig: (data) => apiCall('/api/user/security-config', { method: 'POST', body: JSON.stringify(data) }),
+  verifyTest2FaCode: (data) => apiCall('/api/user/2fa/verify-test', { method: 'POST', body: JSON.stringify(data) }),
   getUserAutoBlocks: () => apiCall('/api/user/auto-blocks'),
   deleteUserAutoBlock: (ip) => apiCall(`/api/user/auto-blocks?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' }),
   promoteUserAutoBlock: (ip) => apiCall('/api/user/auto-blocks/promote', { method: 'POST', body: JSON.stringify({ ip }) }),

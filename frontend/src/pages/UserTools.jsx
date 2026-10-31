@@ -625,19 +625,34 @@ Report Generated: ${new Date().toISOString()}`
     }
   }
 
-  const handleTest2FaVerification = () => {
+  const handleTest2FaVerification = async () => {
     if (!test2FaCode || test2FaCode.trim().length !== 6) {
       setTest2FaStatus('failed')
       setTest2FaMsg('Please enter a 6-digit verification code.')
       return
     }
-    setTest2FaStatus('success')
-    setTest2FaMsg('✓ 2FA Token Cryptographically Verified! Access Granted.')
+    setTest2FaStatus('verifying')
+    try {
+      const res = await api.verifyTest2FaCode({
+        code: test2FaCode.trim(),
+        secret: twoFaSecretKey
+      })
+      if (res?.status === 'success') {
+        setTest2FaStatus('success')
+        setTest2FaMsg(res.message || '✓ Cryptographic RFC 6238 TOTP Verified! Access Granted.')
+      } else {
+        setTest2FaStatus('failed')
+        setTest2FaMsg(res?.message || 'Verification failed: Invalid or expired 6-digit code.')
+      }
+    } catch (err) {
+      setTest2FaStatus('failed')
+      setTest2FaMsg(err?.message || 'Verification error connecting to server.')
+    }
     setTimeout(() => {
       setTest2FaStatus('idle')
       setTest2FaCode('')
       setTest2FaMsg('')
-    }, 4000)
+    }, 4500)
   }
 
   const handleResetDemo = () => {

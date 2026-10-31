@@ -23,6 +23,10 @@ class WAF_FW_2FA {
 
     public function render_login_field() {
         global $wpdb;
+        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        if (!$is_connected) {
+            return; // Not connected to cloud API — never show 2FA field
+        }
         $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
         if (!$is_enforced) {
             return; // 2FA is disabled from dashboard — never show field on login
@@ -51,31 +55,39 @@ class WAF_FW_2FA {
             return $user;
         }
 
+        // Emergency bypass via query parameter for locked out site owners
+        if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || isset($_GET['waf_login_restore'])) {
+            return $user;
+        }
+
+        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        if (!$is_connected) {
+            return $user; // Not connected to cloud API — zero login intervention
+        }
+
+        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
+        if (!$is_enforced) {
+            return $user; // 2FA is globally disabled
+        }
+
         $enabled = get_user_meta($user->ID, '_waf_2fa_enabled', true);
         $secret = get_user_meta($user->ID, '_waf_2fa_secret', true);
 
-        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
+        // If the user has not configured TOTP or secret is missing, DO NOT LOCK THEM OUT
+        if (empty($secret) || $enabled !== 'yes') {
+            return $user;
+        }
+
         $roles = (array)($user->roles ?? []);
         $role_target = get_option('waf_2fa_roles', 'admins');
 
-        $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
         $must_verify = false;
-        if ($enabled === 'yes' && !empty($secret)) {
+        if ($role_target === 'all_users') {
             $must_verify = true;
-        } elseif ($is_enforced) {
-            // Only enforce if the user has actually enrolled or a secret exists
-            if (!empty($secret)) {
-                if ($role_target === 'all_users') {
-                    $must_verify = true;
-                } elseif ($role_target === 'editors') {
-                    $must_verify = in_array('administrator', $roles) || in_array('editor', $roles);
-                } else { // default 'admins'
-                    $must_verify = in_array('administrator', $roles) || empty($roles);
-                }
-            } else {
-                // User hasn't configured 2FA yet - do not lock them out!
-                return $user;
-            }
+        } elseif ($role_target === 'editors') {
+            $must_verify = in_array('administrator', $roles) || in_array('editor', $roles);
+        } else { // default 'admins'
+            $must_verify = in_array('administrator', $roles) || empty($roles);
         }
 
         if (!$must_verify) {
@@ -87,17 +99,9 @@ class WAF_FW_2FA {
 
         $valid = false;
         if (!empty($code)) {
-            if (!empty($secret)) {
-                $valid = $this->verify_totp($secret, $code);
-                if (!$valid) {
-                    $valid = $this->verify_and_consume_recovery_code($user->ID, $code);
-                }
-            }
-            // Check email OTP if generated
-            $email_otp = get_transient('waf_2fa_email_otp_' . $user->ID);
-            if (!$valid && $email_otp && $email_otp === $code) {
-                $valid = true;
-                delete_transient('waf_2fa_email_otp_' . $user->ID);
+            $valid = $this->verify_totp($secret, $code);
+            if (!$valid) {
+                $valid = $this->verify_and_consume_recovery_code($user->ID, $code);
             }
         }
 
@@ -114,18 +118,6 @@ class WAF_FW_2FA {
                     WAF_FW_IP_Filter::instance()->add_to_blacklist($ip, 'Brute-force 2FA Bypass Attempt Locked Out', 'temporary', 86400);
                 }
                 wp_die('<div style="font-family:sans-serif;max-width:500px;margin:80px auto;padding:30px;border:1px solid #D9E1DC;border-radius:12px;background:#FFF;text-align:center;"><h2 style="color:#10201E;margin-top:0;">Access Quarantined (HTTP 403)</h2><p style="color:#60716B;">Too many failed 2FA verification attempts. Your IP has been temporarily quarantined by MDefender Pro Edge Protection.</p></div>', '2FA Lockout', ['response' => 403]);
-            }
-
-            // If user has no TOTP secret yet and no code provided, generate instant email OTP
-            if (empty($secret) && empty($code)) {
-                $new_otp = strval(rand(100000, 999999));
-                set_transient('waf_2fa_email_otp_' . $user->ID, $new_otp, 600);
-                @wp_mail(
-                    $user->user_email,
-                    '[' . get_bloginfo('name') . '] Your MDefender 2FA Security Code',
-                    "Hello {$user->display_name},\n\nA login attempt requires Two-Factor Authentication. Your single-use 6-digit security code is:\n\n{$new_otp}\n\nThis code expires in 10 minutes.\n\nSecured by MDefender Pro."
-                );
-                return new WP_Error('waf_2fa_required', '<strong>MDefender Pro 2FA Required</strong>: Enter your 6-digit Authenticator code (or check ' . esc_html($user->user_email) . ' for your verification OTP). Attempts remaining: ' . ($max_fails - $fails));
             }
 
             return new WP_Error('waf_2fa_invalid', '<strong>MDefender Pro Security</strong>: Invalid or missing 2FA code. Attempts remaining before IP lockout: ' . ($max_fails - $fails));

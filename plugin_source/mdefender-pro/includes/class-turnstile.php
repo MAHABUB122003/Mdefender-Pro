@@ -14,6 +14,11 @@ class WAF_FW_Turnstile {
     }
 
     public function init() {
+        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        if (!$is_connected) {
+            return;
+        }
+
         $enabled = get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no'));
         if ($enabled !== 'yes') {
             return;

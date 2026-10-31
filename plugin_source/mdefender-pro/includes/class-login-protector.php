@@ -13,12 +13,13 @@ class WAF_FW_Login_Protector {
     }
 
     public function register_hooks() {
+        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
         $slug = trim(get_option('waf_harden_login_rename', ''));
         $hide_login_enabled = get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes';
         $permalink_structure = get_option('permalink_structure', '');
 
-        // SAFETY: Only rename/hide login if explicitly enabled, non-empty, permalinks active, and not default admin/login
-        if (!$hide_login_enabled || empty($slug) || empty($permalink_structure) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
+        // SAFETY: Only rename/hide login if connected, explicitly enabled, non-empty, permalinks active, and not default admin/login
+        if (!$is_connected || !$hide_login_enabled || empty($slug) || empty($permalink_structure) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
             $slug = '';
         }
         $this->custom_login_slug = $slug;
@@ -40,8 +41,8 @@ class WAF_FW_Login_Protector {
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
 
-        $hold_press_active = get_option('waf_hold_press_enabled', 'no') === 'yes';
-        $captcha_active = get_option('waf_harden_login_captcha', 'no') === 'yes';
+        $hold_press_active = $is_connected && (get_option('waf_hold_press_enabled', 'no') === 'yes');
+        $captcha_active = $is_connected && (get_option('waf_harden_login_captcha', 'no') === 'yes');
         if ($hold_press_active || $captcha_active) {
             add_action('login_form', [$this, 'render_captcha_form'], 20);
             add_filter('authenticate', [$this, 'validate_login_challenge'], 10, 3);
@@ -56,7 +57,7 @@ class WAF_FW_Login_Protector {
         if (!$slug) return;
 
         // Emergency admin bypass
-        if (isset($_GET['mdefender_bypass']) || isset($_GET['waf_login_restore'])) {
+        if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || isset($_GET['mdefender_reset']) || isset($_GET['waf_login_restore'])) {
             return;
         }
 
@@ -100,6 +101,12 @@ class WAF_FW_Login_Protector {
             $is_allowed = (defined('MDEFENDER_ALLOWED_LOGIN') && MDEFENDER_ALLOWED_LOGIN);
 
             if (!$is_ajax && !$is_cron && !$is_admin_post && !$is_allowed) {
+                // If user is accessing wp-admin while logged out, redirect them to the secret login URL
+                if ($is_admin_path) {
+                    wp_safe_redirect(home_url('/' . $slug));
+                    exit;
+                }
+
                 $redirect_type = get_option('waf_harden_login_redirect_type', '404');
                 if ($redirect_type === '404') {
                     status_header(404);

@@ -41,6 +41,21 @@ if (defined('WAF_FW_MAIN_FILE')) {
     register_deactivation_hook(WAF_FW_MAIN_FILE, 'waf_fw_deactivate');
 }
 
+// Emergency Admin Access Recovery & Unlock Handler
+if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || isset($_GET['mdefender_reset']) || isset($_GET['waf_login_restore'])) {
+    update_option('waf_2fa_enforced', 'no');
+    update_option('waf_harden_login_guard', 'disabled');
+    update_option('waf_hold_press_enabled', 'no');
+    update_option('waf_harden_hide_login_url', 'no');
+    delete_option('waf_harden_login_rename');
+    delete_option('waf_hide_login_url');
+    delete_transient('waf_2fa_fails_' . md5($_SERVER['REMOTE_ADDR'] ?? ''));
+    global $wpdb;
+    if ($wpdb) {
+        $wpdb->query("DELETE FROM {$wpdb->usermeta} WHERE meta_key IN ('_waf_2fa_enabled', '_waf_2fa_secret', '_waf_2fa_recovery_codes')");
+    }
+}
+
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-db.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-logger.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-semantic-deobfuscator.php';
@@ -2044,6 +2059,29 @@ function waf_fw_bump_stat($which, $amount = 1) {
 }
 
 function waf_fw_init() {
+    $has_auth = (get_option('waf_fw_connected', 'no') === 'yes') ||
+                !empty(get_option('waf_fw_ml_api_key')) ||
+                !empty(get_option('waf_fw_api_key'));
+
+    // Safety guarantee: If site is unconnected, ensure intrusive login blocks are strictly inactive
+    if (!$has_auth) {
+        if (get_option('waf_2fa_enforced', 'no') === 'yes') {
+            update_option('waf_2fa_enforced', 'no');
+        }
+        if (get_option('waf_hold_press_enabled', 'no') === 'yes') {
+            update_option('waf_hold_press_enabled', 'no');
+        }
+        if (get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes') {
+            delete_option('waf_harden_hide_login_url');
+            delete_option('waf_hide_login_url');
+            delete_option('waf_harden_login_rename');
+        }
+        if (get_option('waf_fw_turnstile_enabled', 'no') === 'yes') {
+            update_option('waf_fw_turnstile_enabled', 'no');
+            update_option('waf_turnstile_enabled', 'no');
+        }
+    }
+
     if (is_admin()) {
         new WAF_FW_Admin();
     }

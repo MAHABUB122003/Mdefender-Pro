@@ -2262,6 +2262,32 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
     return {'status': 'success', 'message': 'Security policy updated and synchronized across all protected websites.', 'config': saved}
 
 
+@app.post("/api/user/2fa/verify-test")
+@app.post("/api/v1/user/2fa/verify-test")
+async def user_verify_test_2fa(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    code = str(data.get("code") or "").strip().replace(" ", "")
+    secret = str(data.get("secret") or "").strip()
+
+    if not code or len(code) != 6 or not code.isdigit():
+        return {"status": "error", "message": "Invalid format. Please enter a 6-digit numeric security code."}
+
+    import pyotp
+    test_secret = secret or user.get("mfa_secret") or user.get("two_factor_secret") or user.get("totp_secret")
+    if not test_secret:
+        return {"status": "error", "message": "No authenticator secret found. Please scan the QR code first."}
+
+    try:
+        totp = pyotp.TOTP(test_secret)
+        is_valid = totp.verify(code, valid_window=1)
+        if is_valid:
+            return {"status": "success", "message": "✓ Cryptographic RFC 6238 TOTP verified successfully! Access granted."}
+        else:
+            return {"status": "error", "message": "Verification failed: Invalid or expired 6-digit code. Check your authenticator app time."}
+    except Exception as e:
+        return {"status": "error", "message": f"Verification error: {str(e)}"}
+
+
 @app.get("/api/user/auto-blocks")
 @app.get("/api/v1/user/auto-blocks")
 async def user_get_auto_blocks(user: dict = Depends(verify_user_token_compat)):

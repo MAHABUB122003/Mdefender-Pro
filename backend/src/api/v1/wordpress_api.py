@@ -1353,35 +1353,22 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             # Target URLs list: (url, api_key, site_token)
 
             targets = []
-
             for ws in w_sites:
-
                 domain = (ws.get("domain") or "").strip().rstrip("/")
-
                 raw_url = (ws.get("url") or "").strip().rstrip("/")
-
                 k = ws.get("api_key") or user_master_key or ""
-
                 tok = ws.get("site_token") or (ws.get("wordpress_connection") or {}).get("raw_site_token") or ""
-
                 
-
                 if raw_url:
-
+                    if not raw_url.startswith("http://") and not raw_url.startswith("https://"):
+                        raw_url = f"https://{raw_url}"
                     targets.append((raw_url, k, tok))
-
                     if raw_url.startswith("https://"):
-
                         targets.append((raw_url.replace("https://", "http://", 1), k, tok))
-
                     elif raw_url.startswith("http://"):
-
                         targets.append((raw_url.replace("http://", "https://", 1), k, tok))
-
                 elif domain:
-
                     targets.append((f"https://{domain}", k, tok))
-
                     targets.append((f"http://{domain}", k, tok))
 
 
@@ -1427,13 +1414,11 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             unique_targets = []
 
             for u, k, tok in targets:
-
                 clean_u = u.rstrip("/")
-
+                if clean_u and not clean_u.startswith("http://") and not clean_u.startswith("https://"):
+                    clean_u = f"https://{clean_u}"
                 if clean_u and clean_u not in seen:
-
                     seen.add(clean_u)
-
                     unique_targets.append((clean_u, k, tok))
 
 
