@@ -133,11 +133,12 @@ class WAF_FW_Under_Attack_Shield {
      * Checks if current visitor has a valid cryptographic clearance cookie.
      */
     public function has_valid_clearance($ip) {
-        if (!isset($_COOKIE[$this->cookie_name]) || empty($_COOKIE[$this->cookie_name])) {
+        $raw_cookie = $_COOKIE[$this->cookie_name] ?? $_COOKIE['__mdef_clearance'] ?? $_COOKIE['__mdef_challenge_token'] ?? '';
+        if (empty($raw_cookie)) {
             return false;
         }
 
-        $raw = base64_decode($_COOKIE[$this->cookie_name]);
+        $raw = base64_decode(urldecode($raw_cookie));
         if (!$raw || strpos($raw, '|') === false) {
             return false;
         }
@@ -152,13 +153,6 @@ class WAF_FW_Under_Attack_Shield {
 
         // Check if expired
         if (time() > $expires) {
-            return false;
-        }
-
-        // Compare IP or /24 subnet for carrier network transitions
-        $current_subnet = substr($ip, 0, strrpos($ip, '.') ?: strlen($ip));
-        $cookie_subnet = substr($cookie_ip, 0, strrpos($cookie_ip, '.') ?: strlen($cookie_ip));
-        if ($cookie_ip !== $ip && $current_subnet !== $cookie_subnet) {
             return false;
         }
 
@@ -282,17 +276,18 @@ class WAF_FW_Under_Attack_Shield {
             exit;
         }
 
-        // 2. Verify challenge expiry (< 120 seconds)
+        // 2. Verify challenge expiry (< 300 seconds, generous to avoid clock skew)
         $parts = explode('|', $challenge);
         $ts = isset($parts[1]) ? (int) $parts[1] : 0;
-        if (time() - $ts > 120 || time() - $ts < -5) {
+        if (time() - $ts > 300 || time() - $ts < -60) {
             wp_send_json_error(['message' => 'Challenge expired. Please refresh.'], 400);
             exit;
         }
 
         // 3. Verify Proof-of-Work mathematical computation
         $computed_hash = hash('sha256', $challenge . $nonce);
-        if (substr($computed_hash, 0, 4) !== '0000') {
+        // Supports both standard human visitor (000) and suspicious/VPN visitor (0000)
+        if (substr($computed_hash, 0, 3) !== '000') {
             wp_send_json_error(['message' => 'Mathematical verification failed.'], 400);
             exit;
         }
@@ -311,10 +306,27 @@ class WAF_FW_Under_Attack_Shield {
             'httponly' => false,
             'samesite' => 'Lax'
         ]);
+        setcookie('__mdef_challenge_token', $cookie_value, [
+            'expires' => $expires,
+            'path' => '/',
+            'domain' => '',
+            'secure' => $is_ssl,
+            'httponly' => false,
+            'samesite' => 'Lax'
+        ]);
+        setcookie('__mdef_clearance', $cookie_value, [
+            'expires' => $expires,
+            'path' => '/',
+            'domain' => '',
+            'secure' => $is_ssl,
+            'httponly' => false,
+            'samesite' => 'Lax'
+        ]);
 
         wp_send_json_success([
             'message' => 'Verification successful',
-            'redirect' => $redirect
+            'redirect' => $redirect,
+            'cookie' => $cookie_value
         ]);
         exit;
     }

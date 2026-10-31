@@ -390,8 +390,15 @@ $challenge_json = json_encode($challenge_data);
                     body: fd
                 });
 
-                var json = await res.json();
-                if (json.success) {
+                var rawText = await res.text();
+                var json = null;
+                try {
+                    json = JSON.parse(rawText);
+                } catch(pe) {
+                    console.error('Invalid response format:', rawText);
+                }
+
+                if (json && json.success) {
                     isSolved = true;
                     spinner.style.display = 'none';
                     checkSvg.style.display = 'block';
@@ -399,6 +406,15 @@ $challenge_json = json_encode($challenge_data);
                     box.setAttribute('aria-checked', 'true');
                     label.textContent = 'Success!';
                     label.className = 'mdef-cf-text is-success';
+
+                    if (json.data && json.data.cookie) {
+                        var d = new Date();
+                        d.setTime(d.getTime() + (7200 * 1000));
+                        var expStr = d.toUTCString();
+                        document.cookie = "mdf_clearance=" + encodeURIComponent(json.data.cookie) + "; path=/; expires=" + expStr + "; SameSite=Lax";
+                        document.cookie = "__mdef_challenge_token=" + encodeURIComponent(json.data.cookie) + "; path=/; expires=" + expStr + "; SameSite=Lax";
+                        document.cookie = "__mdef_clearance=" + encodeURIComponent(json.data.cookie) + "; path=/; expires=" + expStr + "; SameSite=Lax";
+                    }
 
                     setTimeout(function() {
                         if (json.data && json.data.redirect) {
@@ -408,7 +424,9 @@ $challenge_json = json_encode($challenge_data);
                         }
                     }, 400);
                 } else {
-                    throw new Error('Verification rejected');
+                    var errMsg = (json && json.data && json.data.message) ? json.data.message : 'Verification rejected';
+                    console.warn('PoW rejected by server:', errMsg);
+                    throw new Error(errMsg);
                 }
             } catch(e) {
                 isSolving = false;
