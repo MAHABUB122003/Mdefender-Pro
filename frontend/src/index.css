@@ -301,7 +301,7 @@ body {
 .panel-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
 .panel-icon.critical { background: #fef2f2; color: #ef4444; }
 .panel-icon.warning { background: #fffbeb; color: #f59e0b; }
-.panel-icon.success { background: #ecfdf5; color: #10b981; }
+.panel-icon.success { background: rgba(11, 37, 34, 0.08); color: #0B2522; }
 .panel-body { min-width: 0; }
 .panel-text { font-size: 13px; font-weight: 500; color: #0f172a; }
 .panel-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
@@ -614,7 +614,7 @@ body {
   padding: 4px 12px; border-radius: 20px;
   font-size: 12px; font-weight: 600;
 }
-.status-pill.online { background: #ecfdf5; color: #059669; }
+.status-pill.online { background: #0B2522; color: #FFFFFF; }
 
 /* ===== ML / MALWARE DASHBOARD PANELS ===== */
 .ml-panels {
@@ -769,7 +769,7 @@ body {
 /* ===== BADGES ===== */
 .badge { display: inline-block; padding: 3px 10px; border-radius: 16px; font-size: 11px; font-weight: 600; }
 .badge.danger { background: #fef2f2; color: #dc2626; }
-.badge.success { background: #ecfdf5; color: #059669; }
+.badge.success { background: #0B2522; color: #FFFFFF; }
 .badge.warning { background: #fffbeb; color: #d97706; }
 .badge.info { background: #eff6ff; color: #2563eb; }
 code { font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
@@ -785,7 +785,7 @@ code { font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace
   animation: slideInRight 0.4s ease forwards;
   max-width: 380px;
 }
-.notification-toast.success { background: #059669; }
+.notification-toast.success { background: #0B2522; border-left: 4px solid #E8792F; }
 .notification-toast.error { background: #dc2626; }
 .notification-toast.warning { background: #d97706; }
 .notification-toast.info { background: #2563eb; }
@@ -918,7 +918,7 @@ input:checked + .slider:before { transform: translateX(24px); }
 .arl-saved { font-size: 13px; color: #10b981; display: none; align-items: center; gap: 4px; }
 .arl-status { margin-left: auto; }
 .arl-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-.arl-badge.active { background: #ecfdf5; color: #059669; }
+.arl-badge.active { background: #0B2522; color: #FFFFFF; }
 .arl-badge.active i { font-size: 7px; }
 .arl-badge.inactive { background: #f1f5f9; color: #64748b; }
 .arl-badge.inactive i { font-size: 7px; }
@@ -963,7 +963,7 @@ input:checked + .slider:before { transform: translateX(24px); }
 .method-header h3 { font-size: 15px; font-weight: 600; color: #0f172a; margin: 0; }
 .method-header p { font-size: 12px; color: #94a3b8; margin: 0; }
 .method-badge { margin-left: auto; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
-.method-badge.recommended { background: #ecfdf5; color: #059669; }
+.method-badge.recommended { background: #0B2522; color: #FFFFFF; }
 .method-badge.proxy-badge { background: #f5f3ff; color: #7c3aed; }
 .method-body { padding: 18px 20px; flex: 1; display: flex; flex-direction: column; }
 .method-steps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }

@@ -95,7 +95,7 @@ export default function BulkSafeUpdates() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '28px' }}>
           <div style={stepCardStyle}>
-            <div style={{ ...iconBoxStyle, background: '#E8F3EC', color: '#2A8B68' }}>
+            <div style={{ ...iconBoxStyle, background: '#0B2522', color: '#FFFFFF' }}>
               <CheckCircle2 size={20} />
             </div>
             <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E', marginTop: '14px' }}>
@@ -140,7 +140,7 @@ export default function BulkSafeUpdates() {
               All 1-Click updates initiated from the Bulk Plugins or Themes tab will automatically route through this safe pipeline.
             </div>
           </div>
-          <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>PROTECTION ENABLED</span>
+          <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>PROTECTION ENABLED</span>
         </div>
       </div>
       )}

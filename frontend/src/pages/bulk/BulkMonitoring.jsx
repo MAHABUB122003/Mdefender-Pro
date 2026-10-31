@@ -296,10 +296,10 @@ export default function BulkMonitoring() {
 
             <div style={cardStyle}>
               <div style={headerStyle}>
-                <div style={{ ...iconBoxStyle, color: '#2A8B68', background: '#E8F3EC', border: '1px solid #CFE2D4' }}>
+                <div style={{ ...iconBoxStyle, color: '#0B2522', background: '#F8FAFC', border: '1px solid #CBD5E1' }}>
                   <Lock size={18} />
                 </div>
-                <span style={badgeStyle(validSslCount > 0 ? '#F0FDF4' : '#FEF2F2', validSslCount > 0 ? '#15803D' : '#991B1B', validSslCount > 0 ? '#DCFCE7' : '#FCA5A5')}>
+                <span style={badgeStyle(validSslCount > 0 ? '#0B2522' : '#FEF2F2', validSslCount > 0 ? '#FFFFFF' : '#991B1B', validSslCount > 0 ? '#0B2522' : '#FCA5A5')}>
                   {validSslCount} / {targetWebsites.length} SECURED
                 </span>
               </div>
@@ -754,7 +754,7 @@ export default function BulkMonitoring() {
                               {rec.description}
                             </p>
                           </div>
-                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#2A8B68', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '700', color: '#0B2522', whiteSpace: 'nowrap' }}>
                             {rec.savings}
                           </div>
                         </div>
@@ -850,7 +850,7 @@ export default function BulkMonitoring() {
                             <span style={{ fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
                               {currentSsl.common_name}
                             </span>
-                            <span style={badgeStyle('#ECFDF5', '#059669', '#A7F3D0')}>
+                            <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
                               GRADE {currentSsl.grade} • VALID &amp; ACTIVE
                             </span>
                             {currentSsl.handshake_latency_ms > 0 && (
@@ -905,7 +905,7 @@ export default function BulkMonitoring() {
                     {/* 1. Protocol & Handshake */}
                     <div style={detailBoxStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase' }}>
-                        <Server size={12} color="#2A8B68" />
+                        <Server size={12} color="#0B2522" />
                         <span>TLS Protocol &amp; Socket Version</span>
                       </div>
                       <div style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', marginTop: '5px' }}>
@@ -919,7 +919,7 @@ export default function BulkMonitoring() {
                     {/* 2. Cipher Suite */}
                     <div style={detailBoxStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase' }}>
-                        <Key size={12} color="#2A8B68" />
+                        <Key size={12} color="#0B2522" />
                         <span>Negotiated Cipher Suite</span>
                       </div>
                       <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', marginTop: '5px', wordBreak: 'break-all' }}>
@@ -933,7 +933,7 @@ export default function BulkMonitoring() {
                     {/* 3. SAN Hostnames */}
                     <div style={detailBoxStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase' }}>
-                        <Globe size={12} color="#2A8B68" />
+                        <Globe size={12} color="#0B2522" />
                         <span>Subject Alternative Names (SANs)</span>
                       </div>
                       <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E', marginTop: '5px', wordBreak: 'break-all' }}>
@@ -947,7 +947,7 @@ export default function BulkMonitoring() {
                     {/* 4. Serial Number */}
                     <div style={detailBoxStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase' }}>
-                        <FileCode size={12} color="#2A8B68" />
+                        <FileCode size={12} color="#0B2522" />
                         <span>X.509 Certificate Serial Number</span>
                       </div>
                       <div style={{ marginTop: '5px' }}>
@@ -963,7 +963,7 @@ export default function BulkMonitoring() {
                     {/* 5. SHA-256 Fingerprint */}
                     <div style={detailBoxStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase' }}>
-                        <Fingerprint size={12} color="#2A8B68" />
+                        <Fingerprint size={12} color="#0B2522" />
                         <span>SHA-256 Fingerprint (Thumbprint)</span>
                       </div>
                       <div style={{ marginTop: '5px' }}>
@@ -979,7 +979,7 @@ export default function BulkMonitoring() {
                     {/* 6. Validity Dates & AIA */}
                     <div style={detailBoxStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase' }}>
-                        <Calendar size={12} color="#2A8B68" />
+                        <Calendar size={12} color="#0B2522" />
                         <span>Validity Timeline &amp; AIA OCSP</span>
                       </div>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#10201E', marginTop: '5px' }}>
@@ -1070,7 +1070,7 @@ const secondaryButtonStyle = {
 }
 
 const primaryButtonStyle = {
-  background: '#2A8B68',
+  background: '#0B2522',
   border: 'none',
   color: '#ffffff',
   padding: '8px 18px',
@@ -1085,7 +1085,7 @@ const primaryButtonStyle = {
 }
 
 const tabButtonStyle = (isActive) => ({
-  background: isActive ? '#2A8B68' : 'transparent',
+  background: isActive ? '#0B2522' : 'transparent',
   color: isActive ? '#ffffff' : '#60716B',
   border: 'none',
   padding: '8px 16px',
@@ -1144,7 +1144,7 @@ const detailBoxStyle = {
 
 const cwvBadge = (val, goodThreshold, poorThreshold) => {
   if (val === undefined || val === null) return badgeStyle('#F3F4F6', '#6B7280', '#E5E7EB')
-  if (val <= goodThreshold) return badgeStyle('#ECFDF5', '#059669', '#A7F3D0')
+  if (val <= goodThreshold) return badgeStyle('#0B2522', '#FFFFFF', '#0B2522')
   if (val <= poorThreshold) return badgeStyle('#FFFBEB', '#B45309', '#FCD34D')
   return badgeStyle('#FEF2F2', '#DC2626', '#FECACA')
 }

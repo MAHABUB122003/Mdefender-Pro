@@ -520,8 +520,8 @@ export default function UserPricing() {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: isPaidActive ? '#2A8B68' : '#E8792F',
-              boxShadow: isPaidActive ? '0 0 6px #2A8B68' : 'none'
+              background: isPaidActive ? '#0B2522' : '#E8792F',
+              boxShadow: isPaidActive ? '0 0 6px rgba(11, 37, 34, 0.4)' : 'none'
             }} />
             <span>{currentPlanId === 'go' ? 'Developer Go' : currentPlanId === 'enterprise' ? 'Dedicated Enterprise' : currentPlanId === 'pro' ? 'Enterprise Pro' : 'Starter Free'}</span>
           </div>

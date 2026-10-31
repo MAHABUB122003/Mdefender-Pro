@@ -124,7 +124,7 @@ export default function BulkSiteHealth() {
                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   PHP &amp; Runtime Engine
                 </span>
-                <Cpu size={15} color="#2A8B68" />
+                <Cpu size={15} color="#0B2522" />
               </div>
               <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
                 PHP {phpVer}
@@ -133,7 +133,7 @@ export default function BulkSiteHealth() {
                 Memory: {memLimit} • OPcache: {opcache ? 'Active' : 'Disabled'}
               </div>
               <div style={{ marginTop: '14px' }}>
-                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>OPTIMAL</span>
+                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>OPTIMAL</span>
               </div>
             </div>
 
@@ -142,7 +142,7 @@ export default function BulkSiteHealth() {
                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Origin TTFB &amp; Latency
                 </span>
-                <Zap size={15} color="#059669" />
+                <Zap size={15} color="#E8792F" />
               </div>
               <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
                 {ttfb} ms <span style={{ fontSize: '13px', fontWeight: '500', color: '#60716B' }}>TTFB</span>
@@ -151,7 +151,7 @@ export default function BulkSiteHealth() {
                 Total: {totalLatency} ms • Status: {healthData?.status_code || 200} OK
               </div>
               <div style={{ marginTop: '14px' }}>
-                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>ONLINE (HEALTHY)</span>
+                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>ONLINE (HEALTHY)</span>
               </div>
             </div>
 
@@ -160,7 +160,7 @@ export default function BulkSiteHealth() {
                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Component Updates &amp; CVE
                 </span>
-                <ShieldCheck size={15} color={totalOutdated > 0 ? '#C27803' : '#2A8B68'} />
+                <ShieldCheck size={15} color={totalOutdated > 0 ? '#C27803' : '#0B2522'} />
               </div>
               <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
                 {totalOutdated} {totalOutdated === 1 ? 'Update' : 'Updates'}
@@ -169,7 +169,7 @@ export default function BulkSiteHealth() {
                 {pluginsOutdated} Plugins • {themesOutdated} Themes Outdated
               </div>
               <div style={{ marginTop: '14px' }}>
-                <span style={badgeStyle(totalOutdated > 0 ? '#FEF9C3' : '#E8F3EC', totalOutdated > 0 ? '#854D0E' : '#2A8B68', totalOutdated > 0 ? '#FEF08A' : '#CFE2D4')}>
+                <span style={badgeStyle(totalOutdated > 0 ? '#FEF9C3' : '#0B2522', totalOutdated > 0 ? '#854D0E' : '#FFFFFF', totalOutdated > 0 ? '#FEF08A' : '#0B2522')}>
                   {totalOutdated > 0 ? 'UPDATE RECOMMENDED' : 'ALL CURRENT'}
                 </span>
               </div>
@@ -180,7 +180,7 @@ export default function BulkSiteHealth() {
                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Fleet Health Score
                 </span>
-                <HeartPulse size={15} color="#2A8B68" />
+                <HeartPulse size={15} color="#E8792F" />
               </div>
               <div style={{ fontSize: '22px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
                 {score} / 100
@@ -189,7 +189,7 @@ export default function BulkSiteHealth() {
                 MySQL {mysqlVer} • WP {wpVer}
               </div>
               <div style={{ marginTop: '14px' }}>
-                <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>
+                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
                   {score >= 80 ? 'EXCELLENT' : 'ADEQUATE'}
                 </span>
               </div>
@@ -267,7 +267,7 @@ export default function BulkSiteHealth() {
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckCircle2 size={16} color={check.passed ? '#059669' : '#C27803'} />
+                      <CheckCircle2 size={16} color={check.passed ? '#0B2522' : '#C27803'} />
                       <strong style={{ fontSize: '14px', color: '#10201E' }}>{check.label}</strong>
                     </div>
                     <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', paddingLeft: '24px' }}>
@@ -275,7 +275,7 @@ export default function BulkSiteHealth() {
                     </div>
                   </div>
 
-                  <span style={badgeStyle(check.passed ? '#E8F3EC' : '#FEF9C3', check.passed ? '#2A8B68' : '#854D0E', check.passed ? '#CFE2D4' : '#FEF08A')}>
+                  <span style={badgeStyle(check.passed ? '#0B2522' : '#FEF9C3', check.passed ? '#FFFFFF' : '#854D0E', check.passed ? '#0B2522' : '#FEF08A')}>
                     {check.status.toUpperCase()}
                   </span>
                 </div>
@@ -287,7 +287,7 @@ export default function BulkSiteHealth() {
           {Object.keys(perms).length > 0 && (
             <div style={{ ...contentCardStyle, marginTop: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <FolderCheck size={18} color="#2A8B68" />
+                <FolderCheck size={18} color="#0B2522" />
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
                   Origin Directory &amp; File Permissions Inspector
                 </h3>

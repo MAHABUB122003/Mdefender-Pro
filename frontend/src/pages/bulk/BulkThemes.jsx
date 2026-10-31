@@ -243,7 +243,7 @@ export default function BulkThemes() {
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
                   Installed Themes ({themes.length})
                 </h3>
-                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
                   Scope: {scopeLabel}
                 </span>
               </div>
@@ -302,9 +302,9 @@ export default function BulkThemes() {
                             width: '34px',
                             height: '34px',
                             borderRadius: '8px',
-                            background: isActive ? '#E8F3EC' : '#F1F5F9',
-                            color: isActive ? '#2A8B68' : '#64748B',
-                            border: `1px solid ${isActive ? '#CFE2D4' : '#E2E8F0'}`,
+                            background: isActive ? '#0B2522' : '#F1F5F9',
+                            color: isActive ? '#FFFFFF' : '#64748B',
+                            border: `1px solid ${isActive ? '#0B2522' : '#E2E8F0'}`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -319,7 +319,7 @@ export default function BulkThemes() {
                                 {theme.name}
                               </span>
                               {isActive && (
-                                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
                                   ACTIVE THEME
                                 </span>
                               )}
@@ -360,9 +360,9 @@ export default function BulkThemes() {
                       {/* 5. Status Badge */}
                       <td style={{ padding: '14px' }}>
                         <span style={badgeStyle(
-                          isActive ? '#ECFDF5' : '#F8FAFC',
-                          isActive ? '#059669' : '#64748B',
-                          isActive ? '#A7F3D0' : '#E2E8F0'
+                          isActive ? '#0B2522' : '#F8FAFC',
+                          isActive ? '#FFFFFF' : '#64748B',
+                          isActive ? '#0B2522' : '#E2E8F0'
                         )}>
                           {isActive ? 'ACTIVE' : 'STANDBY'}
                         </span>
@@ -399,14 +399,14 @@ export default function BulkThemes() {
                             onClick={() => handleActivateTheme(theme.id)}
                             disabled={isActionLoading || isActive}
                             style={{
-                              background: isActive ? '#E8F3EC' : 'transparent',
-                              border: `1px solid ${isActive ? '#CFE2D4' : '#D9E1DC'}`,
+                              background: isActive ? '#0B2522' : 'transparent',
+                              border: `1px solid ${isActive ? '#0B2522' : '#D9E1DC'}`,
                               padding: '5px 12px',
                               borderRadius: '6px',
                               fontSize: '11.5px',
                               fontWeight: '700',
                               cursor: isActive ? 'default' : 'pointer',
-                              color: isActive ? '#2A8B68' : '#10201E',
+                              color: isActive ? '#FFFFFF' : '#10201E',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',

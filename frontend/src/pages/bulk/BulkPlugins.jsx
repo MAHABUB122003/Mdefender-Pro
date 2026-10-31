@@ -240,7 +240,7 @@ export default function BulkPlugins() {
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
                   Installed Plugins ({plugins.length})
                 </h3>
-                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
                   Scope: {scopeLabel}
                 </span>
               </div>
@@ -298,9 +298,9 @@ export default function BulkPlugins() {
                             width: '34px',
                             height: '34px',
                             borderRadius: '8px',
-                            background: plugin.status === 'active' ? '#E8F3EC' : '#F1F5F9',
-                            color: plugin.status === 'active' ? '#2A8B68' : '#64748B',
-                            border: `1px solid ${plugin.status === 'active' ? '#CFE2D4' : '#E2E8F0'}`,
+                            background: plugin.status === 'active' ? '#0B2522' : '#F1F5F9',
+                            color: plugin.status === 'active' ? '#FFFFFF' : '#64748B',
+                            border: `1px solid ${plugin.status === 'active' ? '#0B2522' : '#E2E8F0'}`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -315,7 +315,7 @@ export default function BulkPlugins() {
                                 {plugin.name}
                               </span>
                               {plugin.verified && (
-                                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                                <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
                                   OFFICIAL WAF
                                 </span>
                               )}
@@ -356,9 +356,9 @@ export default function BulkPlugins() {
                       {/* 5. Status Badge */}
                       <td style={{ padding: '14px' }}>
                         <span style={badgeStyle(
-                          plugin.status === 'active' ? '#ECFDF5' : '#F8FAFC',
-                          plugin.status === 'active' ? '#059669' : '#64748B',
-                          plugin.status === 'active' ? '#A7F3D0' : '#E2E8F0'
+                          plugin.status === 'active' ? '#0B2522' : '#F8FAFC',
+                          plugin.status === 'active' ? '#FFFFFF' : '#64748B',
+                          plugin.status === 'active' ? '#0B2522' : '#E2E8F0'
                         )}>
                           {plugin.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
                         </span>
@@ -402,7 +402,7 @@ export default function BulkPlugins() {
                               fontSize: '11.5px',
                               fontWeight: '700',
                               cursor: plugin.id === 'mdefender-pro' ? 'not-allowed' : 'pointer',
-                              color: plugin.status === 'active' ? '#B91C1C' : '#059669',
+                              color: plugin.status === 'active' ? '#B91C1C' : '#0B2522',
                               opacity: plugin.id === 'mdefender-pro' ? 0.6 : 1,
                               transition: 'all 0.15s ease'
                             }}

@@ -34,7 +34,7 @@ export default function EmptyFleetState({
         borderRadius: '20px',
         background: '#FAFBF9',
         border: '1.5px solid #D9E1DC',
-        color: '#2A8B68',
+        color: '#E8792F',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -114,7 +114,7 @@ export default function EmptyFleetState({
             transition: 'all 0.15s ease'
           }}
         >
-          <Download size={16} color="#2A8B68" />
+          <Download size={16} color="#E8792F" />
           <span>Download Plugin (.zip)</span>
         </a>
       </div>
@@ -154,7 +154,7 @@ export default function EmptyFleetState({
               height: '28px',
               borderRadius: '8px',
               background: '#0B2522',
-              color: '#2A8B68',
+              color: '#E8792F',
               fontSize: '12px',
               fontWeight: '800',
               display: 'flex',
@@ -168,7 +168,7 @@ export default function EmptyFleetState({
               Add Your Domain
             </div>
             <div style={{ fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
-              Go to <Link to="/user/websites" style={{ color: '#2A8B68', fontWeight: '700', textDecoration: 'none' }}>Websites</Link> and enter your WordPress domain to generate your dedicated API key.
+              Go to <Link to="/user/websites" style={{ color: '#E8792F', fontWeight: '700', textDecoration: 'none' }}>Websites</Link> and enter your WordPress domain to generate your dedicated API key.
             </div>
           </div>
 
@@ -183,7 +183,7 @@ export default function EmptyFleetState({
               height: '28px',
               borderRadius: '8px',
               background: '#0B2522',
-              color: '#2A8B68',
+              color: '#E8792F',
               fontSize: '12px',
               fontWeight: '800',
               display: 'flex',
@@ -212,7 +212,7 @@ export default function EmptyFleetState({
               height: '28px',
               borderRadius: '8px',
               background: '#0B2522',
-              color: '#2A8B68',
+              color: '#E8792F',
               fontSize: '12px',
               fontWeight: '800',
               display: 'flex',
