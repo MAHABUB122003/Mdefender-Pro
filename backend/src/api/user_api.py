@@ -1069,7 +1069,7 @@ class UserAPI:
                 'block_uploads_php': bool(w.get('block_uploads_php', True)),
                 'security_headers': bool(w.get('security_headers', True)),
                 'file_permissions_check': bool(w.get('file_permissions_check', True)),
-                'login_two_factor': bool(w.get('login_two_factor', True)),
+                'login_two_factor': bool(w.get('login_two_factor', False)),
                 'disable_directory_listing': bool(w.get('disable_directory_listing', True)),
             }
             websites.append({
@@ -1107,7 +1107,7 @@ class UserAPI:
                 'hide_wp_version': bool(w.get('hide_wp_version', True)),
                 'security_headers': bool(w.get('security_headers', True)),
                 'file_permissions_check': bool(w.get('file_permissions_check', True)),
-                'login_two_factor': bool(w.get('login_two_factor', True)),
+                'login_two_factor': bool(w.get('login_two_factor', False)),
                 'under_attack_mode': bool(w.get('under_attack_mode', False)),
             })
 

@@ -1014,7 +1014,7 @@ def _website_out(doc):
 
 
 
-        "login_two_factor": bool(doc.get("login_two_factor", True)),
+        "login_two_factor": bool(doc.get("login_two_factor", False)),
 
 
 
@@ -1278,7 +1278,7 @@ def _website_out(doc):
 
 
 
-        "login_two_factor": bool(doc.get("login_two_factor", True)),
+        "login_two_factor": bool(doc.get("login_two_factor", False)),
 
 
 
@@ -3334,7 +3334,7 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
 
 
 
-            "login_two_factor": bool(website.get("login_two_factor", True)),
+            "login_two_factor": bool(website.get("login_two_factor", False)),
 
 
 
@@ -4262,7 +4262,7 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
 
 
-            "login_two_factor": bool(updated_doc.get("login_two_factor", True)),
+            "login_two_factor": bool(updated_doc.get("login_two_factor", False)),
 
 
 

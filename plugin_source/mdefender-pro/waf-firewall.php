@@ -85,6 +85,12 @@ function waf_fw_activate() {
         if (empty(get_option('waf_fw_site_token', ''))) {
             update_option('waf_fw_site_token', wp_generate_password(40, false, false));
         }
+        if (get_option('waf_2fa_enforced') === false) {
+            update_option('waf_2fa_enforced', 'no');
+        }
+        if (get_option('waf_harden_login_guard') === false) {
+            update_option('waf_harden_login_guard', 'disabled');
+        }
         if (get_option('waf_fw_connected', 'no') !== 'yes') {
             update_option('waf_fw_onboarding_pending', 'yes');
             update_option('waf_fw_do_setup_redirect', 'yes');

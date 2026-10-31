@@ -24,9 +24,14 @@ class WAF_FW_2FA {
     public function render_login_field() {
         global $wpdb;
         $is_enforced = get_option('waf_2fa_enforced', 'no') === 'yes';
+        if (!$is_enforced) {
+            return; // 2FA is disabled from dashboard — never show field on login
+        }
+
+        // Only show if at least one user has actually enrolled/configured 2FA via authenticator app
         $has_active_2fa = (bool) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = '_waf_2fa_enabled' AND meta_value = 'yes'");
-        if (!$has_active_2fa && !$is_enforced) {
-            return; // hidden unless 2FA is set up or enforced!
+        if (!$has_active_2fa) {
+            return; // No user has enrolled TOTP app yet — keep clean login to prevent lockouts
         }
         ?>
         <p class="waf-2fa-login-wrap" style="margin-bottom: 16px;">
