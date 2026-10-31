@@ -36,6 +36,14 @@ class WAF_FW_Under_Attack_Shield {
      * Checks if Under Attack Mode is currently active.
      */
     public function is_active() {
+        // Never challenge or intercept WP-Admin administrative tasks or logged-in administrators
+        if (is_admin()) {
+            return false;
+        }
+        if (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options')) {
+            return false;
+        }
+
         if (get_option('waf_fw_under_attack_mode', 'no') === 'yes' || get_option('waf_under_attack_mode', 'no') === 'yes') {
             return true;
         }

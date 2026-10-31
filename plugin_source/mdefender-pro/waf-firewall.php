@@ -2173,6 +2173,12 @@ function waf_fw_analyze_request() {
     if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') return;
     if (defined('DOING_CRON') && DOING_CRON) return;
 
+    // WP-ADMIN SAFETY: Pluggable user authentication is not ready at 'plugins_loaded'.
+    // Defer analysis for admin requests to 'init' so authenticated administrators are never challenged or blocked.
+    if (is_admin() && !did_action('init')) {
+        return;
+    }
+
     // Fast bypass for static files (css, js, media, fonts) (< 0.0001ms)
     $req_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
     if (!empty($req_path)) {

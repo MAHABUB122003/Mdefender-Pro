@@ -251,11 +251,14 @@ class WAF_FW_Engine {
 
             // Enterprise Under Attack Mode - Proof-of-Work (PoW) Shield
             if (class_exists('WAF_FW_Under_Attack_Shield')) {
-                $shield = WAF_FW_Under_Attack_Shield::instance();
-                $shield->check_autonomous_surge($ip);
-                if ($shield->is_active() && !$shield->has_valid_clearance($ip)) {
-                    $shield->render_challenge_screen($ip);
-                    exit;
+                $is_admin_safe = is_admin() || (function_exists('is_user_logged_in') && is_user_logged_in() && function_exists('current_user_can') && current_user_can('manage_options'));
+                if (!$is_admin_safe) {
+                    $shield = WAF_FW_Under_Attack_Shield::instance();
+                    $shield->check_autonomous_surge($ip);
+                    if ($shield->is_active() && !$shield->has_valid_clearance($ip)) {
+                        $shield->render_challenge_screen($ip);
+                        exit;
+                    }
                 }
             }
 
