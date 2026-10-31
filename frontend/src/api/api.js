@@ -288,6 +288,12 @@ export const api = {
 
   getMFAStatus: () => apiCall('/api/auth/mfa/status'),
 
+  regenerateBackupCodes: (password) =>
+    apiCall('/api/auth/mfa/regenerate-backup-codes', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+
   getSessions: () => apiCall('/api/auth/sessions'),
 
   deleteSession: (sessionId) => apiCall(`/api/auth/sessions/${sessionId}`, { method: 'DELETE' }),

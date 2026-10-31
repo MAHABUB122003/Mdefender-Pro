@@ -574,6 +574,15 @@ async def regenerate_backup_codes(request: Request,
     result = mfa_service.regenerate_backup_codes(user['id'], password)
     if not result['success']:
         raise HTTPException(status_code=400, detail=result['error'])
+
+    audit_service.log(
+        user_id=user['id'],
+        action='mfa_backup_codes_regenerated',
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        status='success',
+    )
+
     return {
         'status': 'success',
         'backup_codes': result['backup_codes'],
@@ -645,12 +654,18 @@ async def get_sessions(user: dict = Depends(get_current_user), request: Request 
 
 
 @auth_router.delete('/sessions/{session_id}')
-async def delete_session(session_id: str, user: dict = Depends(get_current_user)):
+async def delete_session(session_id: str, request: Request, user: dict = Depends(get_current_user)):
     session = session_service.get_session(session_id)
     if not session or session.get('user_id') != user['id']:
         raise HTTPException(status_code=404, detail='Session not found')
 
     session_service.invalidate_session(session_id)
+    audit_service.log(
+        user_id=user['id'],
+        action='session_terminated',
+        ip_address=get_client_ip(request),
+        details={'session_id': session_id}
+    )
     return {'status': 'success', 'message': 'Session terminated'}
 
 
@@ -659,6 +674,11 @@ async def delete_all_sessions(request: Request, response: Response,
                               user: dict = Depends(get_current_user)):
     session_service.invalidate_all_user_sessions(user['id'])
     cookie_service.clear_auth_cookies(response)
+    audit_service.log(
+        user_id=user['id'],
+        action='all_sessions_terminated',
+        ip_address=get_client_ip(request)
+    )
     return {'status': 'success', 'message': 'All sessions terminated'}
 
 
