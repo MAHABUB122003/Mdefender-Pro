@@ -24,6 +24,7 @@ import {
   Flame,
   Terminal,
   Settings,
+  Trash2,
   X
 } from 'lucide-react'
 import api from '../api/api'
@@ -230,6 +231,32 @@ export default function UserAlerts() {
     setWebhookSettings(updated)
     await persistPreferences(null, updated)
     showToast(`SOC Webhook ${next ? 'activated' : 'disabled'}!`)
+  }
+
+const handleDeleteDispatch = async (id) => {
+    try {
+      await api.deleteNotification(id)
+      setRecentDispatches(prev => prev.filter(item => item.id !== id))
+      showToast('Incident dispatch record cleared.')
+    } catch (err) {
+      console.error('Failed to delete notification:', err)
+      showToast('Failed to clear dispatch record.', 'error')
+    }
+  }
+
+  const handleClearAllDispatches = async () => {
+    try {
+      if (api.clearAllNotifications) {
+        await api.clearAllNotifications()
+      } else {
+        await api.markAllNotificationsRead()
+      }
+      setRecentDispatches([])
+      showToast('All incident dispatch records cleared.')
+    } catch (err) {
+      console.error('Failed to clear dispatches:', err)
+      showToast('Failed to clear dispatch records.', 'error')
+    }
   }
 
   const handleSendTestAlert = async () => {
@@ -591,6 +618,21 @@ export default function UserAlerts() {
               Audit trail of alerts delivered to corporate channels in the last 30 days.
             </p>
           </div>
+          {recentDispatches.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAllDispatches}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px', borderRadius: '8px', border: '1px solid #D9E1DC',
+                background: '#FFFFFF', color: '#60716B', fontSize: '12px', fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              <Trash2 size={13} />
+              <span>Clear History</span>
+            </button>
+          )}
         </div>
 
         {recentDispatches.length === 0 ? (
@@ -631,11 +673,24 @@ export default function UserAlerts() {
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC' }}>
-                    {item.status}
-                  </span>
-                  <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{item.time}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC' }}>
+                      {item.status}
+                    </span>
+                    <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>{item.time}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDispatch(item.id)}
+                    title="Dismiss alert"
+                    style={{
+                      background: 'none', border: 'none', color: '#94A3B8',
+                      cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center'
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               </div>
             ))}

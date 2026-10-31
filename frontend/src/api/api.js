@@ -605,6 +605,7 @@ export const api = {
   markNotificationRead: (id) => apiCall(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
   markAllNotificationsRead: () => apiCall('/api/v1/notifications/read-all', { method: 'POST' }),
   deleteNotification: (id) => apiCall(`/api/v1/notifications/${id}`, { method: 'DELETE' }),
+  clearAllNotifications: () => apiCall('/api/v1/notifications/clear', { method: 'DELETE' }),
   sendTestNotification: () => apiCall('/api/v1/notifications/test', { method: 'POST' }),
 
   // Team RBAC APIs
