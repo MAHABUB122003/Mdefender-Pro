@@ -1868,6 +1868,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                         f"{clean_url}/wp-json/waf-fw/v1/sync?{url_params}",
 
+                        f"{clean_url}/?rest_route=/waf-fw/v1/sync&{url_params}",
+
                         f"{clean_url}{sep}{url_params}",
 
                         f"{clean_url}/index.php?{url_params}",

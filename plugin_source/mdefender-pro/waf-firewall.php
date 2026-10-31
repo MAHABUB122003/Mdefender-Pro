@@ -298,6 +298,49 @@ function waf_fw_handle_cloud_sync_webhook() {
                 if (isset($pushed_data['user_rules']) && is_array($pushed_data['user_rules'])) {
                     update_option('waf_fw_cloud_rules_cache', $pushed_data['user_rules']);
                 }
+                if (!empty($pushed_data['config']) && is_array($pushed_data['config'])) {
+                    $cfg = $pushed_data['config'];
+                    if (isset($cfg['hold_press_enabled'])) {
+                        update_option('waf_hold_press_enabled', !empty($cfg['hold_press_enabled']) ? 'yes' : 'no');
+                    }
+                    if (isset($cfg['hold_press_duration_ms'])) {
+                        update_option('waf_hold_press_duration_ms', intval($cfg['hold_press_duration_ms']));
+                    }
+                    if (isset($cfg['turnstile_enabled'])) {
+                        $on = !empty($cfg['turnstile_enabled']) ? 'yes' : 'no';
+                        update_option('waf_fw_turnstile_enabled', $on);
+                        update_option('waf_turnstile_enabled', $on);
+                    }
+                    if (isset($cfg['turnstile_mode'])) {
+                        update_option('waf_fw_turnstile_mode', sanitize_text_field($cfg['turnstile_mode']));
+                        update_option('waf_turnstile_mode', sanitize_text_field($cfg['turnstile_mode']));
+                    }
+                    if (isset($cfg['turnstile_theme'])) {
+                        update_option('waf_fw_turnstile_theme', sanitize_text_field($cfg['turnstile_theme']));
+                        update_option('waf_turnstile_theme', sanitize_text_field($cfg['turnstile_theme']));
+                    }
+                    if (isset($cfg['under_attack_mode'])) {
+                        $uam_val = !empty($cfg['under_attack_mode']) ? 'yes' : 'no';
+                        update_option('waf_under_attack_mode', $uam_val);
+                        update_option('waf_fw_under_attack_mode', $uam_val);
+                    }
+                    if (isset($cfg['rate_limit'])) {
+                        update_option('waf_fw_rate_limit', max(10, (int) $cfg['rate_limit']));
+                    }
+                    if (isset($cfg['disable_xmlrpc'])) {
+                        $xmlrpc_val = !empty($cfg['disable_xmlrpc']) ? 'yes' : 'no';
+                        update_option('waf_fw_disable_xmlrpc', $xmlrpc_val);
+                    }
+                    if (isset($cfg['disable_file_editing'])) {
+                        $fe_val = !empty($cfg['disable_file_editing']) ? 'yes' : 'no';
+                        update_option('waf_fw_disable_file_editing', $fe_val);
+                        update_option('waf_harden_disable_file_editor', $fe_val);
+                    }
+                    if (isset($cfg['prevent_user_enumeration'])) {
+                        $ue_val = !empty($cfg['prevent_user_enumeration']) ? 'yes' : 'no';
+                        update_option('waf_fw_prevent_user_enumeration', $ue_val);
+                    }
+                }
                 if (isset($pushed_data['config']) && is_array($pushed_data['config'])) {
                     $cfg = $pushed_data['config'];
                     if (isset($cfg['custom_login_slug'])) {
