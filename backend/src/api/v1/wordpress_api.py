@@ -1515,9 +1515,13 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     "bot_challenge_mode": ref_ws.get("bot_challenge_mode", "hold_press"),
 
-                    "max_login_attempts": int(ref_ws.get("max_login_attempts", 5)),
+                    "max_login_attempts": int(ref_ws.get("max_login_attempts") or u_cfg.get("login_lockout_threshold", 5)),
 
-                    "login_lockout_duration": int(ref_ws.get("login_lockout_duration", 60)),
+                    "login_lockout_duration": int(ref_ws.get("login_lockout_duration") or u_cfg.get("login_lockout_duration_minutes", 60)),
+
+                    "login_lockout_scope": str(ref_ws.get("login_lockout_scope") or u_cfg.get("login_lockout_scope", "gateway_only")),
+
+                    "rate_limit_action": str(ref_ws.get("rate_limit_action") or u_cfg.get("rate_limit_action", "throttle_429")),
 
                     "hold_press_enabled": bool(ref_ws.get("hold_press_enabled", u_cfg.get("hold_press_enabled", False))),
 

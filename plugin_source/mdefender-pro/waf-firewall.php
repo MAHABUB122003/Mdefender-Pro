@@ -387,6 +387,12 @@ function waf_fw_apply_config_payload($cfg) {
     if (isset($cfg['login_lockout_duration'])) {
         update_option('waf_fw_login_lockout_duration', intval($cfg['login_lockout_duration']));
     }
+    if (isset($cfg['login_lockout_scope'])) {
+        update_option('waf_fw_login_lockout_scope', sanitize_text_field($cfg['login_lockout_scope']));
+    }
+    if (isset($cfg['rate_limit_action'])) {
+        update_option('waf_fw_rate_limit_action', sanitize_text_field($cfg['rate_limit_action']));
+    }
     if (isset($cfg['auto_block_enabled'])) {
         update_option('waf_fw_attack_blocker_enabled', $cfg['auto_block_enabled'] ? 'yes' : 'no');
     }
@@ -560,6 +566,12 @@ function waf_fw_handle_cloud_sync_webhook() {
                     }
                     if (isset($cfg['login_lockout_duration'])) {
                         update_option('waf_fw_login_lockout_duration', intval($cfg['login_lockout_duration']));
+                    }
+                    if (isset($cfg['login_lockout_scope'])) {
+                        update_option('waf_fw_login_lockout_scope', sanitize_text_field($cfg['login_lockout_scope']));
+                    }
+                    if (isset($cfg['rate_limit_action'])) {
+                        update_option('waf_fw_rate_limit_action', sanitize_text_field($cfg['rate_limit_action']));
                     }
                     if (isset($cfg['rate_limit'])) {
                         update_option('waf_rate_limit_per_minute', intval($cfg['rate_limit']));
@@ -2202,6 +2214,13 @@ function waf_fw_analyze_request() {
                 $is_ip_bl = ($atype === 'Blacklisted IP' || stripos($atype, 'Blacklist') !== false || stripos($rule_m, 'Blacklist') !== false || stripos($msg, 'blacklist') !== false);
                 $is_country_bl = ($atype === 'Country Blocked' || stripos($atype, 'Country') !== false || stripos($atype, 'Geograph') !== false || stripos($atype, 'GeoIP') !== false || stripos($rule_m, 'Country') !== false || stripos($rule_m, 'GeoIP') !== false || stripos($msg, 'country') !== false);
 
+                $is_rate_limit = ($atype === 'Rate Limiting' || $atype === 'DDoS Flood Protection' || stripos($atype, 'Rate Limit') !== false || stripos($rule_m, 'Rate Limit') !== false);
+                if ($is_rate_limit) {
+                    $remaining_seconds = 60;
+                    $cooldown_reason = !empty($msg) ? $msg : 'Request velocity limit exceeded. Please wait a moment before trying again.';
+                    include WAF_FW_PLUGIN_DIR . 'rate-limit-template.php';
+                    exit;
+                }
                 if ($is_ip_bl) {
                     include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
                     exit;
@@ -2215,6 +2234,33 @@ function waf_fw_analyze_request() {
                 header('X-Protected-By: MDefender-Pro-WAAP');
                 header('Connection: close');
                 include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
+                exit;
+            }
+        }
+    }
+
+    // Early Gateway-Only Lockout Intercept (< 0.001ms)
+    if (class_exists('WAF_FW_Login_Protector')) {
+        $lp = WAF_FW_Login_Protector::instance();
+        if (method_exists($lp, 'is_gateway_locked') && $lp->is_gateway_locked($ip)) {
+            $req_path = strtolower(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
+            $custom_slug = strtolower(trim(get_option('waf_harden_login_rename', '')));
+            $is_admin_or_login = (
+                strpos($req_path, 'wp-login.php') !== false ||
+                strpos($req_path, 'wp-admin') !== false ||
+                strpos($req_path, 'xmlrpc.php') !== false ||
+                (!empty($custom_slug) && (trim($req_path, '/') === $custom_slug || strpos($req_path, '/' . $custom_slug) !== false))
+            );
+            if ($is_admin_or_login) {
+                $remaining_seconds = max(5, $lp->get_gateway_remaining_seconds($ip));
+                $cooldown_reason = "Too many failed login attempts detected. Access to the login portal is temporarily restricted for your account security. Public pages remain accessible.";
+                $client_ip = $ip;
+                $result = [
+                    'ip' => $ip,
+                    'attack_type' => 'Login Brute-Force Rate Limited',
+                    'reference_id' => 'GW-' . strtoupper(substr(md5($ip . time()), 0, 8))
+                ];
+                include WAF_FW_PLUGIN_DIR . 'rate-limit-template.php';
                 exit;
             }
         }
@@ -2291,6 +2337,13 @@ function waf_fw_analyze_request() {
         $is_ip_bl = ($atype === 'Blacklisted IP' || stripos($atype, 'Blacklist') !== false || stripos($rule_m, 'Blacklist') !== false || stripos($msg, 'blacklist') !== false);
         $is_country_bl = ($atype === 'Country Blocked' || stripos($atype, 'Country') !== false || stripos($atype, 'Geograph') !== false || stripos($atype, 'GeoIP') !== false || stripos($rule_m, 'Country') !== false || stripos($rule_m, 'GeoIP') !== false || stripos($msg, 'country') !== false);
 
+        $is_rate_limit = ($atype === 'Rate Limiting' || $atype === 'DDoS Flood Protection' || stripos($atype, 'Rate Limit') !== false || stripos($rule_m, 'Rate Limit') !== false);
+        if ($is_rate_limit) {
+            $remaining_seconds = 60;
+            $cooldown_reason = !empty($msg) ? $msg : 'Request velocity limit exceeded. Please wait a moment before trying again.';
+            include WAF_FW_PLUGIN_DIR . 'rate-limit-template.php';
+            exit;
+        }
         if ($is_ip_bl) {
             include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
             exit;

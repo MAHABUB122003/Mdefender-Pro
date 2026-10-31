@@ -71,6 +71,23 @@ class WAF_FW_Login_Protector {
         }
         $trimmed_path = trim($path, '/');
 
+        // Check gateway lockout for custom login slug
+        $client_ip = $this->get_client_ip();
+        if ($this->is_gateway_locked($client_ip)) {
+            $remaining_seconds = max(5, $this->get_gateway_remaining_seconds($client_ip));
+            $cooldown_reason = "Too many failed login attempts detected. Access to the login portal is temporarily restricted for your account security. Public pages remain accessible.";
+            $result = [
+                'ip' => $client_ip,
+                'attack_type' => 'Login Brute-Force Rate Limited',
+                'reference_id' => 'GW-' . strtoupper(substr(md5($client_ip . time()), 0, 8))
+            ];
+            $tpl = defined('WAF_FW_PLUGIN_DIR') ? (WAF_FW_PLUGIN_DIR . 'rate-limit-template.php') : (dirname(__DIR__) . '/rate-limit-template.php');
+            if (file_exists($tpl)) {
+                include $tpl;
+                exit;
+            }
+        }
+
         // 1. Serving the custom secret login URL
         if ($trimmed_path === $slug) {
             if (!defined('MDEFENDER_ALLOWED_LOGIN')) {
@@ -797,9 +814,21 @@ class WAF_FW_Login_Protector {
         $ip = $this->get_client_ip();
         if (WAF_FW_IP_Filter::instance()->is_whitelisted($ip)) return $user;
 
-        if ($this->is_login_locked($ip)) {
-            $duration = $this->get_lockout_duration();
-            $remaining = $this->get_remaining_block_time($ip);
+        if ($this->is_gateway_locked($ip) || $this->is_login_locked($ip)) {
+            $remaining = max($this->get_gateway_remaining_seconds($ip), $this->get_remaining_block_time($ip));
+            $remaining_seconds = max(5, $remaining);
+            $cooldown_reason = "Too many failed login attempts detected. Access to the login portal is temporarily restricted for your account security. Public pages remain accessible.";
+            $client_ip = $ip;
+            $result = [
+                'ip' => $ip,
+                'attack_type' => 'Login Brute-Force Rate Limited',
+                'reference_id' => 'GW-' . strtoupper(substr(md5($ip . time()), 0, 8))
+            ];
+            $tpl = defined('WAF_FW_PLUGIN_DIR') ? (WAF_FW_PLUGIN_DIR . 'rate-limit-template.php') : (dirname(__DIR__) . '/rate-limit-template.php');
+            if (file_exists($tpl)) {
+                include $tpl;
+                exit;
+            }
             $minutes = ceil($remaining / 60);
             return new WP_Error(
                 'waf_login_locked',
@@ -846,6 +875,7 @@ class WAF_FW_Login_Protector {
     public function on_login_success($user_login, $user) {
         $ip = $this->get_client_ip();
         $this->clear_attempts($ip);
+        $this->clear_gateway_lockout($ip);
 
         // Request is already captured once by the WAF engine upon request ingress.
     }
@@ -925,29 +955,127 @@ class WAF_FW_Login_Protector {
     public function auto_block_ip($ip) {
         $duration = $this->get_lockout_duration();
         $threshold = $this->get_brute_force_threshold();
-        $reason = sprintf(
-            'Auto-blocked after %d failed login attempts',
-            $threshold
-        );
-        WAF_FW_IP_Filter::instance()->add_temporary_block($ip, $reason, $duration);
+        $scope = get_option('waf_fw_login_lockout_scope', 'gateway_only');
+        $reason = sprintf('Auto-blocked after %d failed login attempts (Brute-Force Shield)', $threshold);
+
+        if ($scope === 'gateway_only') {
+            $lock_duration = $duration > 0 ? $duration : (86400 * 365);
+            $this->add_gateway_lockout($ip, $lock_duration, $reason);
+        } else {
+            // Global blacklist across entire fleet
+            if ($duration <= 0) {
+                WAF_FW_IP_Filter::instance()->add_permanent_block($ip, $reason);
+            } else {
+                WAF_FW_IP_Filter::instance()->add_temporary_block($ip, $reason, $duration);
+            }
+        }
+    }
+
+    public function add_gateway_lockout($ip, $duration_seconds = 3600, $reason = '') {
+        $duration_seconds = max(60, intval($duration_seconds));
+        $expires_at = time() + $duration_seconds;
+        $key = 'waf_gw_lock_' . md5($ip);
+        if (function_exists('set_transient')) {
+            set_transient($key, $expires_at, $duration_seconds);
+        }
+        $locks = get_option('waf_fw_gateway_locked_ips', []);
+        if (!is_array($locks)) $locks = [];
+        $locks[$ip] = [
+            'expires_at' => $expires_at,
+            'reason' => $reason,
+            'locked_at' => time()
+        ];
+        // Prune expired
+        $now = time();
+        foreach ($locks as $k => $v) {
+            if (!empty($v['expires_at']) && $v['expires_at'] < $now) {
+                unset($locks[$k]);
+            }
+        }
+        update_option('waf_fw_gateway_locked_ips', $locks);
+    }
+
+    public function is_gateway_locked($ip) {
+        if (empty($ip)) return false;
+        if (class_exists('WAF_FW_IP_Filter') && WAF_FW_IP_Filter::instance()->is_whitelisted($ip)) {
+            return false;
+        }
+
+        $key = 'waf_gw_lock_' . md5($ip);
+        if (function_exists('get_transient')) {
+            $exp = get_transient($key);
+            if ($exp !== false && intval($exp) > time()) {
+                return true;
+            }
+        }
+
+        $locks = get_option('waf_fw_gateway_locked_ips', []);
+        if (is_array($locks) && isset($locks[$ip])) {
+            $exp = intval($locks[$ip]['expires_at'] ?? 0);
+            if ($exp > time()) {
+                return true;
+            } else {
+                unset($locks[$ip]);
+                update_option('waf_fw_gateway_locked_ips', $locks);
+            }
+        }
+        return false;
+    }
+
+    public function get_gateway_remaining_seconds($ip) {
+        $key = 'waf_gw_lock_' . md5($ip);
+        if (function_exists('get_transient')) {
+            $exp = get_transient($key);
+            if ($exp !== false && intval($exp) > time()) {
+                return intval($exp) - time();
+            }
+        }
+        $locks = get_option('waf_fw_gateway_locked_ips', []);
+        if (is_array($locks) && isset($locks[$ip])) {
+            $exp = intval($locks[$ip]['expires_at'] ?? 0);
+            return max(0, $exp - time());
+        }
+        return 0;
+    }
+
+    public function clear_gateway_lockout($ip) {
+        $key = 'waf_gw_lock_' . md5($ip);
+        if (function_exists('delete_transient')) {
+            delete_transient($key);
+        }
+        $locks = get_option('waf_fw_gateway_locked_ips', []);
+        if (is_array($locks) && isset($locks[$ip])) {
+            unset($locks[$ip]);
+            update_option('waf_fw_gateway_locked_ips', $locks);
+        }
     }
 
     public function get_blocked_login_count() {
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
-        return (int) $wpdb->get_var(
+        $bl_count = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM $table WHERE type = 'temporary' AND (block_expires_at IS NULL OR block_expires_at > NOW())"
         );
+        $locks = get_option('waf_fw_gateway_locked_ips', []);
+        $gw_count = is_array($locks) ? count($locks) : 0;
+        return $bl_count + $gw_count;
     }
 
     private function get_brute_force_threshold() {
+        $synced = get_option('waf_fw_login_lockout_threshold', '');
+        if ($synced !== '') return max(1, (int) $synced);
         $harden = get_option('waf_harden_brute_force_threshold', '');
-        return $harden !== '' ? (int) $harden : (int) get_option('waf_fw_login_threshold', 10);
+        return $harden !== '' ? (int) $harden : (int) get_option('waf_fw_login_threshold', 5);
     }
 
     private function get_lockout_duration() {
+        $synced_mins = get_option('waf_fw_login_lockout_duration', '');
+        if ($synced_mins !== '') {
+            $mins = (int) $synced_mins;
+            return $mins > 0 ? ($mins * 60) : 0; // 0 means permanent
+        }
         $harden = get_option('waf_harden_login_lockout_time', '');
-        return $harden !== '' ? (int) $harden : (int) get_option('waf_fw_login_block_duration', 86400);
+        return $harden !== '' ? (int) $harden : (int) get_option('waf_fw_login_block_duration', 3600);
     }
 
     private function get_client_ip() {
