@@ -919,6 +919,8 @@ class SecuritySettingsUpdate(BaseModel):
 
 
     turnstile_secret_key: str | None = None
+    admin_ip_whitelist_enabled: bool | None = None
+    admin_ip_whitelist: list[str] | None = None
 
 
 
@@ -3479,6 +3481,8 @@ async def get_security_settings(website_id: str, user=Depends(get_current_user))
 
 
             "turnstile_secret_key": website.get("turnstile_secret_key", ""),
+            "admin_ip_whitelist_enabled": bool(website.get("admin_ip_whitelist_enabled", False)),
+            "admin_ip_whitelist": website.get("admin_ip_whitelist", []),
 
 
 
@@ -3998,15 +4002,14 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
 
 
-    if body.turnstile_secret_key is not None:
+        if body.turnstile_secret_key is not None:
+            updates["turnstile_secret_key"] = str(body.turnstile_secret_key).strip()
 
+        if body.admin_ip_whitelist_enabled is not None:
+            updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
 
-
-
-
-
-
-        updates["turnstile_secret_key"] = str(body.turnstile_secret_key).strip()
+        if body.admin_ip_whitelist is not None:
+            updates["admin_ip_whitelist"] = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
 
 
 

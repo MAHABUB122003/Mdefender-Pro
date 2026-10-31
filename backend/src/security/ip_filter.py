@@ -56,6 +56,27 @@ class IPFilter:
         return False
 
     @staticmethod
+    def ip_matches(client_ip: str, pattern: str) -> bool:
+        """Robust IPv4/IPv6 and CIDR subnet matcher with wildcard fallback."""
+        client_ip = (client_ip or "").strip()
+        pattern = (pattern or "").strip()
+        if not client_ip or not pattern:
+            return False
+        if client_ip == pattern:
+            return True
+        try:
+            import ipaddress
+            if "/" in pattern:
+                return ipaddress.ip_address(client_ip) in ipaddress.ip_network(pattern, strict=False)
+            return ipaddress.ip_address(client_ip) == ipaddress.ip_address(pattern)
+        except Exception:
+            if "*" in pattern:
+                import re
+                p_regex = "^" + pattern.replace(".", "\.").replace("*", "\d+") + "$"
+                return bool(re.match(p_regex, client_ip))
+            return False
+
+    @staticmethod
     def _sync_linux_firewall(ip, action='add'):
         if not ip or ip in ('127.0.0.1', '::1', 'localhost', '0.0.0.0'):
             return

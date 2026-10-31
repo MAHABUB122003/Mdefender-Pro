@@ -461,6 +461,28 @@ async def waf_self_protection_middleware(request: Request, call_next):
     target_user_id = str(registered_site.get("user_id")) if registered_site else None
     target_site_id = str(registered_site.get("_id")) if registered_site else None
 
+    # Edge Admin & Login Gateway IP Restriction
+    if registered_site and registered_site.get("admin_ip_whitelist_enabled"):
+        allowed_admin_ips = registered_site.get("admin_ip_whitelist") or []
+        if allowed_admin_ips:
+            custom_slug = (registered_site.get("custom_login_slug") or "").strip().lower()
+            normalized_path = path.strip("/").lower()
+            is_admin_req = (
+                path.startswith("/wp-admin")
+                or path.startswith("/wp-login.php")
+                or (custom_slug and (normalized_path == custom_slug or normalized_path.startswith(f"{custom_slug}/")))
+            )
+            if is_admin_req:
+                from src.security.ip_filter import IPFilter
+                is_allowed_admin = any(IPFilter.ip_matches(client_ip, allowed_ip) for allowed_ip in allowed_admin_ips)
+                if not is_allowed_admin:
+                    from src.utils.block_page import render_real_403_forbidden
+                    return HTMLResponse(
+                        content=render_real_403_forbidden(clean_host),
+                        status_code=403,
+                        headers={"Server": "nginx", "Connection": "close", "Cache-Control": "no-cache, no-store"}
+                    )
+
     # Bot Challenge Gate: If domain has Turnstile enabled, ensure visitor has verified clearance cookie
     if registered_site and registered_site.get("bot_challenge_enabled", False):
         clearance_cookie = request.cookies.get("__mdef_challenge_token")
@@ -813,6 +835,10 @@ def verify_user_token_compat(request: Request):
 @app.get("/")
 async def root():
     return {"status": "ok", "service": "MDefender Pro API", "version": "2.0.0", "docs": "/docs"}
+
+@app.get("/api/v1/my-ip")
+async def get_my_client_ip(request: Request):
+    return {"ip": get_client_ip(request)}
 
 @app.get("/health")
 async def health():

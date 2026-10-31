@@ -367,6 +367,14 @@ function waf_fw_apply_config_payload($cfg) {
             delete_option('waf_hide_login_url');
         }
     }
+    if (isset($cfg['admin_ip_whitelist_enabled'])) {
+        update_option('waf_harden_admin_ip_enabled', !empty($cfg['admin_ip_whitelist_enabled']) ? 'enabled' : 'disabled');
+    }
+    if (isset($cfg['admin_ip_whitelist'])) {
+        $wl = $cfg['admin_ip_whitelist'];
+        $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
+        update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
+    }
     if (isset($cfg['login_redirect_type'])) {
         update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));
     }
@@ -533,7 +541,15 @@ function waf_fw_handle_cloud_sync_webhook() {
                             delete_option('waf_harden_login_rename');
                         }
                     }
-                    if (isset($cfg['login_redirect_type'])) {
+                    if (isset($cfg['admin_ip_whitelist_enabled'])) {
+        update_option('waf_harden_admin_ip_enabled', !empty($cfg['admin_ip_whitelist_enabled']) ? 'enabled' : 'disabled');
+    }
+    if (isset($cfg['admin_ip_whitelist'])) {
+        $wl = $cfg['admin_ip_whitelist'];
+        $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
+        update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
+    }
+    if (isset($cfg['login_redirect_type'])) {
                         update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));
                     }
                     if (isset($cfg['bot_challenge_mode'])) {

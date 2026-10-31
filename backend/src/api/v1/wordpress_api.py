@@ -1532,6 +1532,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     "turnstile_site_key": ref_ws.get("turnstile_site_key") or u_cfg.get("turnstile_site_key", ""),
 
                     "turnstile_secret_key": ref_ws.get("turnstile_secret_key") or u_cfg.get("turnstile_secret_key", ""),
+                    "admin_ip_whitelist_enabled": bool(ref_ws.get("admin_ip_whitelist_enabled", False)),
+                    "admin_ip_whitelist": ref_ws.get("admin_ip_whitelist") or [],
 
                 },
 

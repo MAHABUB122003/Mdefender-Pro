@@ -18,7 +18,9 @@ import {
   Gauge,
   Bot,
   Zap,
-  Save
+  Save,
+  Plus,
+  X
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -46,6 +48,12 @@ export default function BulkHardening() {
   const [hideLoginUrl, setHideLoginUrl] = useState(false)
   const [customLoginSlug, setCustomLoginSlug] = useState('')
   const [loginRedirectType, setLoginRedirectType] = useState('404')
+
+  // 2.1 Admin & Login IP Restriction
+  const [adminIpWhitelistEnabled, setAdminIpWhitelistEnabled] = useState(false)
+  const [adminIpWhitelist, setAdminIpWhitelist] = useState([])
+  const [newAdminIpInput, setNewAdminIpInput] = useState('')
+  const [detectedClientIp, setDetectedClientIp] = useState('')
 
   // 3. Bot Defense & Rate Limiting
   const [botChallengeMode, setBotChallengeMode] = useState('hold_press')
@@ -75,6 +83,14 @@ export default function BulkHardening() {
     setMaxLoginAttempts(targetSite.max_login_attempts ? parseInt(targetSite.max_login_attempts) : 5)
     setLoginLockoutDuration(targetSite.login_lockout_duration ? parseInt(targetSite.login_lockout_duration) : 60)
     setRateLimitPerMinute(targetSite.rate_limit_per_minute ? parseInt(targetSite.rate_limit_per_minute) : 120)
+
+    setAdminIpWhitelistEnabled(Boolean(targetSite.admin_ip_whitelist_enabled ?? false))
+    const rawWl = targetSite.admin_ip_whitelist
+    setAdminIpWhitelist(
+      Array.isArray(rawWl)
+        ? rawWl
+        : (rawWl ? String(rawWl).split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean) : [])
+    )
   }, [targetSite?.id, targetSite?._id, selectedSiteId])
 
   const [saving, setSaving] = useState(false)
@@ -115,6 +131,66 @@ export default function BulkHardening() {
       fetchFleet()
     } catch {
       showToast('Hardening policy updated locally; sync queued.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Detect client IP
+  useEffect(() => {
+    let isMounted = true
+    if (api.getMyIp) {
+      api.getMyIp().then(res => {
+        if (isMounted && res && res.ip) setDetectedClientIp(res.ip)
+      }).catch(() => {
+        fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => {
+          if (isMounted && d && d.ip) setDetectedClientIp(d.ip)
+        }).catch(() => {})
+      })
+    }
+    return () => { isMounted = false }
+  }, [])
+
+  const handleAddAllowedIp = (ipCandidate) => {
+    const raw = (ipCandidate || newAdminIpInput).trim()
+    if (!raw) return
+    const isValid = /^([0-9a-fA-F:.]+|\*)+(\/[0-9]{1,3})?$/.test(raw)
+    if (!isValid) {
+      showToast('Please enter a valid IPv4, IPv6, or CIDR subnet (e.g. 103.145.74.22 or 192.168.1.0/24).', true)
+      return
+    }
+    if (adminIpWhitelist.includes(raw)) {
+      showToast('This IP address or subnet is already in the authorized list.', true)
+      return
+    }
+    setAdminIpWhitelist(prev => [...prev, raw])
+    setNewAdminIpInput('')
+  }
+
+  const handleRemoveAllowedIp = (ipToRemove) => {
+    setAdminIpWhitelist(prev => prev.filter(ip => ip !== ipToRemove))
+  }
+
+  const handleSaveAdminIpRestriction = async () => {
+    if (adminIpWhitelistEnabled && adminIpWhitelist.length === 0) {
+      showToast('Please add at least one authorized IP address to prevent locking yourself out.', true)
+      return
+    }
+    setSaving(true)
+    const payload = {
+      admin_ip_whitelist_enabled: adminIpWhitelistEnabled,
+      admin_ip_whitelist: adminIpWhitelist
+    }
+    try {
+      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
+      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
+        const sid = site.id || site._id
+        return api.updateWebsiteSecuritySettings(sid, payload)
+      }))
+      showToast('Admin Panel & Login IP Restriction synchronized successfully across connected sites!')
+      fetchFleet()
+    } catch {
+      showToast('Admin IP settings saved; sync queued.')
     } finally {
       setSaving(false)
     }
@@ -491,6 +567,278 @@ export default function BulkHardening() {
                     <span>{saving ? 'Saving...' : 'Save Secret URL'}</span>
                   </button>
                 </div>
+              </div>
+
+              {/* ================================================================= */}
+              {/* SUBSECTION: RESTRICT ADMIN & LOGIN GATEWAY BY IP (AUTHORIZED ONLY) */}
+              {/* ================================================================= */}
+              <div style={{
+                marginTop: '6px',
+                paddingTop: '20px',
+                borderTop: '1px solid #E6ECE8',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: adminIpWhitelistEnabled ? 'rgba(42, 139, 104, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+                      color: adminIpWhitelistEnabled ? '#2A8B68' : '#64748B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginTop: '2px',
+                      flexShrink: 0
+                    }}>
+                      <ShieldCheck size={17} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>
+                          Restrict Admin Panel &amp; Login Access by IP
+                        </span>
+                        <span style={badgeStyle(adminIpWhitelistEnabled ? '#E8F3EC' : '#F1F5F9', adminIpWhitelistEnabled ? '#2A8B68' : '#64748B', adminIpWhitelistEnabled ? '#CFE2D4' : '#CBD5E1')}>
+                          {adminIpWhitelistEnabled ? `${adminIpWhitelist.length} AUTHORIZED IP${adminIpWhitelist.length === 1 ? '' : 'S'}` : 'DISABLED'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px', maxWidth: '680px', lineHeight: 1.4 }}>
+                        Strictly limit <code>/wp-admin</code>, <code>/wp-login.php</code>, and your secret login URL exclusively to designated IP addresses or CIDR subnets. All unauthorized visitors are immediately rejected with an authentic 403 Forbidden screen.
+                      </div>
+                    </div>
+                  </div>
+
+                  <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={adminIpWhitelistEnabled}
+                      onChange={(e) => setAdminIpWhitelistEnabled(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: adminIpWhitelistEnabled ? '#2A8B68' : '#CBD5E1',
+                      borderRadius: '26px',
+                      transition: '0.2s'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        height: '20px',
+                        width: '20px',
+                        left: adminIpWhitelistEnabled ? '23px' : '3px',
+                        bottom: '3px',
+                        backgroundColor: 'white',
+                        borderRadius: '50%',
+                        transition: '0.2s'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+
+                {adminIpWhitelistEnabled && (
+                  <div style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #D9E1DC',
+                    borderRadius: '10px',
+                    padding: '16px 18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
+                  }}>
+                    {/* Detected Current IP Quick-Add Banner */}
+                    {detectedClientIp && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: '#F0F9F5',
+                        border: '1px solid #CFE2D4'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Sparkles size={15} color="#2A8B68" />
+                          <span style={{ fontSize: '12.5px', color: '#1B4D3E', fontWeight: 600 }}>
+                            Detected Your Current IP: <strong style={{ color: '#0F2C26' }}>{detectedClientIp}</strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddAllowedIp(detectedClientIp)}
+                          disabled={adminIpWhitelist.includes(detectedClientIp)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            background: adminIpWhitelist.includes(detectedClientIp) ? '#D9E1DC' : '#2A8B68',
+                            color: adminIpWhitelist.includes(detectedClientIp) ? '#60716B' : '#FFFFFF',
+                            border: 'none',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: adminIpWhitelist.includes(detectedClientIp) ? 'default' : 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Check size={12} />
+                          <span>{adminIpWhitelist.includes(detectedClientIp) ? 'Current IP Added' : '+ Add My Current IP'}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* IP Input & Add Button */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
+                        Add Authorized IP Address or Subnet (CIDR)
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          value={newAdminIpInput}
+                          onChange={(e) => setNewAdminIpInput(e.target.value.trim())}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAllowedIp(); } }}
+                          placeholder="e.g. 103.145.74.22 or 192.168.1.0/24"
+                          style={{
+                            flex: 1,
+                            height: '38px',
+                            padding: '0 12px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #CBD5E1',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#10201E'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddAllowedIp()}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '0 16px',
+                            borderRadius: '8px',
+                            background: '#0B2522',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Plus size={14} />
+                          <span>Add IP</span>
+                        </button>
+                      </div>
+                      <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
+                        Accepts single IPv4, IPv6, CIDR blocks (e.g. <code>192.168.1.0/24</code>), or wildcard patterns (<code>192.168.1.*</code>).
+                      </small>
+                    </div>
+
+                    {/* Active Allowed IPs List */}
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#60716B', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Authorized IP Whitelist ({adminIpWhitelist.length})
+                      </div>
+
+                      {adminIpWhitelist.length === 0 ? (
+                        <div style={{
+                          padding: '12px 14px',
+                          borderRadius: '8px',
+                          background: '#FFFBEB',
+                          border: '1px solid #FDE68A',
+                          color: '#B45309',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <AlertTriangle size={15} color="#D97706" />
+                          <span><strong>Warning:</strong> No IP addresses added yet. Please add your current IP address to avoid locking yourself out of the admin panel.</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {adminIpWhitelist.map((ip) => (
+                            <div
+                              key={ip}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                background: '#E8F3EC',
+                                border: '1px solid #CFE2D4',
+                                color: '#1B4D3E',
+                                fontSize: '12.5px',
+                                fontWeight: 600
+                              }}
+                            >
+                              <code>{ip}</code>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAllowedIp(ip)}
+                                title="Remove IP"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#2A8B68',
+                                  cursor: 'pointer',
+                                  padding: '2px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  borderRadius: '4px'
+                                }}
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Save Button */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+                      <button
+                        type="button"
+                        onClick={handleSaveAdminIpRestriction}
+                        disabled={saving}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '8px 18px',
+                          borderRadius: '8px',
+                          background: '#2A8B68',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: saving ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 1px 3px rgba(42, 139, 104, 0.2)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Save size={13} />
+                        <span>{saving ? 'Synchronizing...' : 'Save Authorized Admin IPs'}</span>
+                      </button>
+                    </div>
+
+                  </div>
+                )}
               </div>
 
             </div>
