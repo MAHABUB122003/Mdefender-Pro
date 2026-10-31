@@ -79,7 +79,8 @@ class WAF_FW_Turnstile {
         $nonce = bin2hex(random_bytes(16));
         $salt = bin2hex(random_bytes(8));
         $exp = time() + 180;
-        $difficulty = 3; // 3 hex zeroes (average ~2,000 iterations, 30-60ms)
+        $is_under_attack = get_option('waf_fw_under_attack_mode', 'no') === 'yes';
+        $difficulty = $is_under_attack ? 3 : 2; // 2 hex zeros (~256 iterations, <100ms) for normal forms, 3 for under attack
 
         $payload = "{$domain}|{$ip}|{$nonce}|{$salt}|{$difficulty}|{$exp}";
         $sig = hash_hmac('sha256', $payload, $this->get_turnstile_secret());
