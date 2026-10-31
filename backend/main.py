@@ -1088,8 +1088,6 @@ async def user_remove_website(request: Request, user: dict = Depends(verify_user
         print(f"[Error] user_remove_website exception: {e}")
         return JSONResponse(status_code=400, content={'status': 'error', 'message': str(e)})
 
-@app.get("/api/user/dashboard")
-
 @app.get("/api/user/ddos-status")
 async def user_ddos_status(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
@@ -1119,6 +1117,7 @@ async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_to
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
+@app.get("/api/user/dashboard")
 async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
         website_id = request.query_params.get('website_id')
