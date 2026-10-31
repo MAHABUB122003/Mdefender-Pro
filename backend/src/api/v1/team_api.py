@@ -177,6 +177,57 @@ async def invite_team_member(body: InviteMemberRequest, user=Depends(get_current
     })
 
 
+class UpdateMemberRequest(BaseModel):
+    role_id: str | None = None
+    scope: str | None = None
+    require_2fa: bool | None = None
+
+
+@router.put("/members/{member_id}")
+async def update_team_member(member_id: str, body: UpdateMemberRequest, user=Depends(get_current_user)):
+    db = MongoDB()
+    u_id = str(user["id"])
+
+    if member_id == u_id:
+        raise HTTPException(status_code=400, detail="Cannot alter permissions of the workspace owner.")
+
+    query = {"owner_id": u_id, "$or": [{"_id": member_id}, {"id": member_id}]}
+    if ObjectId.is_valid(member_id):
+        query["$or"].append({"_id": ObjectId(member_id)})
+
+    member = db.team_members.find_one(query)
+    if not member:
+        raise HTTPException(status_code=404, detail="Team member not found.")
+
+    updates = {}
+    if body.role_id:
+        role_titles = {
+            "secops": "Security Operations (SecOps)",
+            "devops": "DevOps & Infrastructure Engineer",
+            "auditor": "Security Compliance Auditor",
+        }
+        updates["role_id"] = body.role_id
+        updates["role_title"] = role_titles.get(body.role_id, "Security Operations")
+    if body.scope is not None:
+        updates["scope"] = body.scope if body.scope != "all" else "Global (All Domains & Sites)"
+    if body.require_2fa is not None:
+        updates["two_factor"] = body.require_2fa
+
+    if updates:
+        updates["updated_at"] = datetime.now()
+        db.team_members.update_one({"_id": member["_id"]}, {"$set": updates})
+
+        db.audit_logs.insert_one({
+            "user_id": u_id,
+            "user_email": user.get("email", ""),
+            "action": f"Updated role/permissions for team member {member.get('name')} ({member.get('email')})",
+            "ip": "127.0.0.1",
+            "created_at": datetime.now(),
+        })
+
+    return success(message="Team member permissions updated successfully.")
+
+
 @router.delete("/members/{member_id}")
 async def delete_team_member(member_id: str, user=Depends(get_current_user)):
     db = MongoDB()
@@ -185,7 +236,11 @@ async def delete_team_member(member_id: str, user=Depends(get_current_user)):
     if member_id == u_id:
         raise HTTPException(status_code=400, detail="Cannot remove the workspace owner.")
 
-    member = db.team_members.find_one({"_id": member_id, "owner_id": u_id}) or db.team_members.find_one({"id": member_id, "owner_id": u_id})
+    query = {"owner_id": u_id, "$or": [{"_id": member_id}, {"id": member_id}]}
+    if ObjectId.is_valid(member_id):
+        query["$or"].append({"_id": ObjectId(member_id)})
+
+    member = db.team_members.find_one(query)
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found.")
 
@@ -203,21 +258,52 @@ async def delete_team_member(member_id: str, user=Depends(get_current_user)):
     return success(message="Team member removed successfully.")
 
 
+@router.delete("/invites/{invite_id}")
+async def revoke_team_invite(invite_id: str, user=Depends(get_current_user)):
+    db = MongoDB()
+    u_id = str(user["id"])
+
+    query = {"owner_id": u_id, "$or": [{"_id": invite_id}, {"id": invite_id}]}
+    if ObjectId.is_valid(invite_id):
+        query["$or"].append({"_id": ObjectId(invite_id)})
+
+    inv = db.team_invites.find_one(query)
+    if not inv:
+        # If not in invites collection, check if soft record in team_members
+        raise HTTPException(status_code=404, detail="Invitation not found.")
+
+    db.team_invites.delete_one({"_id": inv["_id"]})
+
+    db.audit_logs.insert_one({
+        "user_id": u_id,
+        "user_email": user.get("email", ""),
+        "action": f"Revoked team invitation for {inv.get('email')}",
+        "ip": "127.0.0.1",
+        "created_at": datetime.now(),
+    })
+
+    return success(message=f"Invitation for {inv.get('email')} revoked successfully.")
+
+
 @router.get("/audit")
 async def list_team_audit_logs(user=Depends(get_current_user)):
     db = MongoDB()
     u_id = str(user["id"])
 
     logs = []
-    for log in db.audit_logs.find({"user_id": u_id}).sort("created_at", -1).limit(20):
-        c_at = log.get("created_at")
+    cursor = db.audit_logs.find({"user_id": u_id}).sort([("created_at", -1), ("timestamp", -1), ("_id", -1)]).limit(30)
+    for log in cursor:
+        c_at = log.get("created_at") or log.get("timestamp")
         time_str = c_at.strftime("%Y-%m-%d %H:%M:%S") if isinstance(c_at, datetime) else str(c_at or "Recent")
+        raw_act = log.get("action", "Security Action")
+        act_display = raw_act.replace("_", " ").title() if "_" in raw_act and not raw_act.startswith("Invited") and not raw_act.startswith("Removed") and not raw_act.startswith("Updated") and not raw_act.startswith("Revoked") else raw_act
         logs.append({
             "id": str(log.get("_id", "")),
-            "user": log.get("user_email") or user.get("name") or "Operator",
-            "action": log.get("action", "Security Action"),
+            "user": log.get("user_email") or user.get("email") or "Operator",
+            "action": act_display,
             "timestamp": time_str,
-            "ip": log.get("ip", "127.0.0.1"),
+            "ip": log.get("ip") or log.get("ip_address") or "127.0.0.1",
+            "details": log.get("details", {})
         })
 
     return success({"logs": logs})

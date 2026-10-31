@@ -180,7 +180,12 @@ export default function UserTeam() {
     }
   }
 
-  const handleRevokeInvite = (id, email) => {
+  const handleRevokeInvite = async (id, email) => {
+    try {
+      await api.revokeTeamInvite(id)
+    } catch {
+      // Fallback
+    }
     setPendingInvites(prev => prev.filter(i => i.id !== id))
     showToast(`Invitation for ${email} cancelled.`)
   }

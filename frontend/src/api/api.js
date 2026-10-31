@@ -610,7 +610,9 @@ export const api = {
   // Team RBAC APIs
   getTeamMembers: () => apiCall('/api/v1/team/members'),
   inviteTeamMember: (data) => apiCall('/api/v1/team/invite', { method: 'POST', body: JSON.stringify(data) }),
+  updateTeamMember: (id, data) => apiCall(`/api/v1/team/members/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteTeamMember: (id) => apiCall(`/api/v1/team/members/${id}`, { method: 'DELETE' }),
+  revokeTeamInvite: (id) => apiCall(`/api/v1/team/invites/${id}`, { method: 'DELETE' }),
   getTeamAuditLogs: () => apiCall('/api/v1/team/audit'),
 
   // Real-Time Fleet Performance, SSL & Uptime Monitoring
