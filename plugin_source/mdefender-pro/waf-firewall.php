@@ -399,13 +399,26 @@ function waf_fw_handle_cloud_sync_webhook() {
         $is_local_req = in_array($remote_ip, ['127.0.0.1', '::1', 'localhost', '0.0.0.0'], true) ||
             strpos($remote_ip, '192.168.') === 0 || strpos($remote_ip, '10.') === 0 || strpos($remote_ip, '172.16.') === 0;
 
-        $is_authorized = (!empty($token) && !empty($stored_token) && (hash_equals($stored_token, $token) || strcasecmp($stored_token, $token) === 0))
-            || (!empty($api_key) && !empty($stored_key) && (strpos($api_key, $stored_key) !== false || strpos($stored_key, $api_key) !== false || hash_equals($stored_key, $api_key) || strcasecmp($stored_key, $api_key) === 0))
-            || empty($stored_key)
-            || $is_local_req
-            || (function_exists('current_user_can') && current_user_can('manage_options'));
+        $is_admin = function_exists('current_user_can') && current_user_can('manage_options');
+        $has_stored_auth = (!empty($stored_key) && strlen($stored_key) >= 16) || (!empty($stored_token) && strlen($stored_token) >= 16);
 
-        if ($is_authorized) {
+        if (!$is_admin && !$has_stored_auth) {
+            status_header(401);
+            wp_send_json_error(['message' => 'Unauthorized: MDefender-Pro is not connected to a cloud API key. Please connect your website API key in Settings.'], 401);
+            exit;
+        }
+
+        $is_authorized = $is_admin
+            || (!empty($stored_token) && !empty($token) && (hash_equals($stored_token, $token) || strcasecmp($stored_token, $token) === 0))
+            || (!empty($stored_key) && !empty($api_key) && (hash_equals($stored_key, $api_key) || strpos($stored_key, $api_key) !== false || hash_equals($api_key, $stored_key)));
+
+        if (!$is_authorized) {
+            status_header(401);
+            wp_send_json_error(['message' => 'Unauthorized: Invalid MDefender API Key or Site Token.'], 401);
+            exit;
+        }
+
+        if (true) {
             delete_transient('waf_fw_last_bl_sync');
             delete_transient('waf_fw_cloud_threat_ips');
 
@@ -1265,6 +1278,25 @@ add_action('plugins_loaded', 'waf_fw_handle_cloud_sync_webhook', 0);
 add_action('rest_api_init', function() {
     register_rest_route('waf-fw/v1', '/sync', [
         'methods' => ['POST', 'GET'],
+        'permission_callback' => function($request) {
+            if (function_exists('current_user_can') && current_user_can('manage_options')) return true;
+            $stored_key = trim((string) get_option('waf_fw_ml_api_key', get_option('waf_fw_api_key', '')));
+            $stored_token = trim((string) get_option('waf_fw_site_token', ''));
+            if (empty($stored_key) && empty($stored_token)) {
+                return new WP_Error('rest_forbidden', 'Site is disconnected. Please connect your MDefender API Key in Settings.', ['status' => 401]);
+            }
+            $raw_auth = $request->get_header('authorization') ?: $request->get_header('x-api-key') ?: $request->get_param('api_key') ?: '';
+            $req_key = trim(str_ireplace('Bearer ', '', sanitize_text_field($raw_auth)));
+            $req_token = sanitize_text_field($request->get_header('x-site-token') ?: $request->get_param('site_token') ?: '');
+
+            if (!empty($stored_key) && !empty($req_key) && (hash_equals($stored_key, $req_key) || strpos($stored_key, $req_key) !== false || hash_equals($req_key, $stored_key))) {
+                return true;
+            }
+            if (!empty($stored_token) && !empty($req_token) && (hash_equals($stored_token, $req_token) || strcasecmp($stored_token, $req_token) === 0)) {
+                return true;
+            }
+            return new WP_Error('rest_forbidden', 'Unauthorized: Invalid MDefender API Key or Site Token.', ['status' => 401]);
+        },
         'callback' => function($request) {
             delete_transient('waf_fw_last_bl_sync');
             delete_transient('waf_fw_cloud_threat_ips');

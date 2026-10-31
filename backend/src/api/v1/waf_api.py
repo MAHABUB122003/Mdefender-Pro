@@ -59,10 +59,26 @@ def _clean_host(host_or_url):
     return h
 
 
+def _domain_matches_site(site, domain):
+    if not domain or not site:
+        return True
+    req_host = _clean_host(domain)
+    if req_host in ("localhost", "127.0.0.1", "::1"):
+        return True
+    site_dom = _clean_host(site.get("domain") or "")
+    site_url = _clean_host(site.get("url") or "")
+    allowed = {site_dom, site_url}
+    allowed = {h for h in allowed if h}
+    if not allowed:
+        return True
+    return req_host in allowed or any(req_host.endswith("." + h) for h in allowed)
+
+
 def verify_api_key(db, api_key, domain=None):
     """Resolve an API key to (user_id, website_id, website). None if invalid.
     
     Hardened against NoSQL regex injection and timing side-channel attacks.
+    Strictly verifies domain match against site registration to enforce SaaS tenant boundaries.
     """
     if not api_key or not isinstance(api_key, str):
         return None
@@ -77,6 +93,8 @@ def verify_api_key(db, api_key, domain=None):
     if record:
         website = db.websites.find_one({"_id": record.get("website_id")})
         if website:
+            if domain and not _domain_matches_site(website, domain):
+                return None
             user_id_str = str(record.get("user_id") or website.get("user_id", ""))
             return {
                 "user_id": user_id_str,
@@ -87,6 +105,8 @@ def verify_api_key(db, api_key, domain=None):
     # 1b. Direct Website API key (from db.websites)
     direct_site = db.websites.find_one({"api_key": api_key})
     if direct_site:
+        if domain and not _domain_matches_site(direct_site, domain):
+            return None
         user_id_str = str(direct_site.get("user_id", ""))
         return {
             "user_id": user_id_str,
@@ -187,26 +207,10 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
     api_key = bearer_key or body.api_key or ""
     auth_data = verify_api_key(db, api_key, body.domain)
     if not auth_data:
-        # Fallback to default website so all frontend beacons and local events are captured on dashboard
-        default_site = db.websites.find_one({"$or": [{"domain": "localhost"}, {"domain": "127.0.0.1"}]}) or db.websites.find_one({})
-        if default_site:
-            auth_data = {
-                "user_id": str(default_site.get("user_id", "")),
-                "website_id": default_site.get("_id"),
-                "website": default_site,
-            }
-        else:
-            # Provide resilient local website context so WAF inspection is never blocked by database network blips
-            auth_data = {
-                "user_id": "local_admin",
-                "website_id": "local_site_default",
-                "website": {
-                    "_id": "local_site_default",
-                    "domain": body.domain or "localhost",
-                    "status": "active",
-                    "protection_enabled": True,
-                }
-            }
+        raise HTTPException(
+            status_code=401,
+            detail="Valid API key matching this domain is required to use MDefender Cloud WAF. Please connect your API key from your dashboard."
+        )
 
     website = auth_data["website"]
     if not website.get("protection_enabled", True):
@@ -379,15 +383,10 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
     api_key = bearer_key or body.api_key or ""
     auth_data = verify_api_key(db, api_key, body.domain)
     if not auth_data:
-        default_site = db.websites.find_one({"$or": [{"domain": "localhost"}, {"domain": "127.0.0.1"}]}) or db.websites.find_one({})
-        if default_site:
-            auth_data = {
-                "user_id": str(default_site.get("user_id", "")),
-                "website_id": default_site.get("_id"),
-                "website": default_site,
-            }
-        else:
-            raise HTTPException(status_code=401, detail="Invalid API key")
+        raise HTTPException(
+            status_code=401,
+            detail="Valid API key matching this domain is required to send telemetry. Connect your API key in MDefender settings."
+        )
 
     user_id_str = str(auth_data.get("user_id", ""))
     website_id_str = str(auth_data.get("website_id", ""))

@@ -1859,7 +1859,7 @@ class UserAPI:
             attack_type_str = raw_atype if raw_atype else ('Blocked Attack' if is_blocked else 'Clean Request')
 
             web_id = str(log.get('website_id', ''))
-            domain_val = log.get('domain') or site_domain_map.get(web_id, '') or 'mahabubur.shop'
+            domain_val = log.get('domain') or site_domain_map.get(web_id, '') or 'Connected Site'
 
             result_logs.append({
                 'id': str(log.get('_id', i)),
