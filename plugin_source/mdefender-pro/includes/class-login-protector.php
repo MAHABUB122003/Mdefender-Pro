@@ -14,7 +14,11 @@ class WAF_FW_Login_Protector {
 
     public function register_hooks() {
         $slug = trim(get_option('waf_harden_login_rename', ''));
-        if (in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
+        $hide_login_enabled = get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes';
+        $permalink_structure = get_option('permalink_structure', '');
+
+        // SAFETY: Only rename/hide login if explicitly enabled, non-empty, permalinks active, and not default admin/login
+        if (!$hide_login_enabled || empty($slug) || empty($permalink_structure) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
             $slug = '';
         }
         $this->custom_login_slug = $slug;
@@ -50,6 +54,11 @@ class WAF_FW_Login_Protector {
     public function handle_custom_login_url() {
         $slug = $this->custom_login_slug;
         if (!$slug) return;
+
+        // Emergency admin bypass
+        if (isset($_GET['mdefender_bypass']) || isset($_GET['waf_login_restore'])) {
+            return;
+        }
 
         $request_uri = $_SERVER['REQUEST_URI'] ?? '';
         $raw_path = parse_url($request_uri, PHP_URL_PATH) ?? '';

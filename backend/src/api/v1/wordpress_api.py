@@ -1878,6 +1878,24 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
 
 
+                    # Match site-specific custom login slug and hide_login_url to prevent cross-site slug pollution
+                    target_payload = dict(sync_payload)
+                    target_config = dict(sync_payload.get("config", {}))
+                    target_ws = None
+                    for ws in w_sites:
+                        dom = (ws.get("domain") or "").strip().rstrip("/")
+                        ru = (ws.get("url") or "").strip().rstrip("/")
+                        if (dom and dom in clean_url) or (ru and ru in clean_url):
+                            target_ws = ws
+                            break
+                    if target_ws:
+                        target_config["custom_login_slug"] = str(target_ws.get("custom_login_slug", "")).strip() if bool(target_ws.get("hide_login_url", False)) else ""
+                        target_config["hide_login_url"] = bool(target_ws.get("hide_login_url", False))
+                    else:
+                        target_config["custom_login_slug"] = ""
+                        target_config["hide_login_url"] = False
+                    target_payload["config"] = target_config
+
                     for target_ep in candidate_endpoints:
 
                         try:
@@ -1886,7 +1904,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                                 target_ep,
 
-                                json=sync_payload,
+                                json=target_payload,
 
                                 headers=headers,
 
