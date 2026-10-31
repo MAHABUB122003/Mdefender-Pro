@@ -217,34 +217,45 @@ class AttackBlocker:
     def save_user_settings(self, user_id, data):
         u_str = str(user_id)
         now_dt = datetime.now()
+        existing = self.get_user_settings(user_id)
+
+        def _val(key, default, cast_fn=None):
+            raw = data[key] if (data and key in data) else existing.get(key, default)
+            if cast_fn:
+                try:
+                    return cast_fn(raw)
+                except Exception:
+                    return default
+            return raw
+
         update_data = {
             '_type': 'user_security_config',
             'user_id': u_str,
-            'auto_block_enabled': bool(data.get('auto_block_enabled', True)),
-            'auto_block_threshold': max(1, int(data.get('auto_block_threshold', 10))),
-            'auto_block_window_hours': max(1, int(data.get('auto_block_window_hours', 24))),
-            'auto_block_duration_hours': int(data.get('auto_block_duration_hours', 24)),
-            'rate_limit_per_minute': max(10, int(data.get('rate_limit_per_minute', 120))),
-            'ddos_mitigation_enabled': bool(data.get('ddos_mitigation_enabled', True)),
-            'admin_bruteforce_protection': bool(data.get('admin_bruteforce_protection', True)),
-            'auto_block_permanent': bool(data.get('auto_block_permanent', False)),
-            'hold_press_enabled': bool(data.get('hold_press_enabled', False)),
-            'hold_press_duration_ms': int(data.get('hold_press_duration_ms', 2000)),
-            'turnstile_enabled': bool(data.get('turnstile_enabled', False)),
-            'turnstile_mode': str(data.get('turnstile_mode', 'forms')),
-            'turnstile_theme': str(data.get('turnstile_theme', 'auto')),
-            'turnstile_site_key': str(data.get('turnstile_site_key', '')),
-            'turnstile_secret_key': str(data.get('turnstile_secret_key', '')),
-            'two_factor_enabled': bool(data.get('two_factor_enabled', False)),
-            'two_factor_scope': str(data.get('two_factor_scope', 'all')),
-            'two_factor_roles': str(data.get('two_factor_roles', 'admins')),
-            'two_factor_method_totp': bool(data.get('two_factor_method_totp', True)),
-            'two_factor_method_email': bool(data.get('two_factor_method_email', True)),
-            'two_factor_method_backup': bool(data.get('two_factor_method_backup', True)),
-            'two_factor_max_attempts': max(1, int(data.get('two_factor_max_attempts', 3))),
-            'two_factor_lockout_hours': max(1, int(data.get('two_factor_lockout_hours', 24))),
-            'two_factor_remember_days': int(data.get('two_factor_remember_days', 0)),
-            'two_factor_domain_overrides': data.get('two_factor_domain_overrides', {}),
+            'auto_block_enabled': bool(_val('auto_block_enabled', True)),
+            'auto_block_threshold': max(1, _val('auto_block_threshold', 10, int)),
+            'auto_block_window_hours': max(1, _val('auto_block_window_hours', 24, int)),
+            'auto_block_duration_hours': _val('auto_block_duration_hours', 24, int),
+            'rate_limit_per_minute': max(10, _val('rate_limit_per_minute', 120, int)),
+            'ddos_mitigation_enabled': bool(_val('ddos_mitigation_enabled', True)),
+            'admin_bruteforce_protection': bool(_val('admin_bruteforce_protection', True)),
+            'auto_block_permanent': bool(_val('auto_block_permanent', False)),
+            'hold_press_enabled': bool(_val('hold_press_enabled', False)),
+            'hold_press_duration_ms': _val('hold_press_duration_ms', 2000, int),
+            'turnstile_enabled': bool(_val('turnstile_enabled', False)),
+            'turnstile_mode': str(_val('turnstile_mode', 'forms')),
+            'turnstile_theme': str(_val('turnstile_theme', 'auto')),
+            'turnstile_site_key': str(_val('turnstile_site_key', '')),
+            'turnstile_secret_key': str(_val('turnstile_secret_key', '')),
+            'two_factor_enabled': bool(_val('two_factor_enabled', False)),
+            'two_factor_scope': str(_val('two_factor_scope', 'all')),
+            'two_factor_roles': str(_val('two_factor_roles', 'admins')),
+            'two_factor_method_totp': bool(_val('two_factor_method_totp', True)),
+            'two_factor_method_email': bool(_val('two_factor_method_email', True)),
+            'two_factor_method_backup': bool(_val('two_factor_method_backup', True)),
+            'two_factor_max_attempts': max(1, _val('two_factor_max_attempts', 3, int)),
+            'two_factor_lockout_hours': max(1, _val('two_factor_lockout_hours', 24, int)),
+            'two_factor_remember_days': _val('two_factor_remember_days', 0, int),
+            'two_factor_domain_overrides': _val('two_factor_domain_overrides', {}),
             'updated_at': now_dt,
         }
         self.db.settings.update_one(
@@ -255,18 +266,27 @@ class AttackBlocker:
         if hasattr(self, '_settings_cache'):
             self._settings_cache.clear()
 
-        # Synchronize per-domain or global 2FA settings to websites collection
+        # Synchronize security settings to user websites collection
         scope = update_data['two_factor_scope']
         tf_enabled = update_data['two_factor_enabled']
+        site_updates = {
+            'login_two_factor': tf_enabled,
+            'two_factor_roles': update_data['two_factor_roles'],
+            'hold_press_enabled': update_data['hold_press_enabled'],
+            'hold_press_duration_ms': update_data['hold_press_duration_ms'],
+            'turnstile_enabled': update_data['turnstile_enabled'],
+            'turnstile_mode': update_data['turnstile_mode'],
+            'turnstile_theme': update_data['turnstile_theme'],
+        }
         if scope == 'all':
             self.db.websites.update_many(
                 {'$or': [{'user_id': u_str}, {'added_by_user_id': u_str}]},
-                {'$set': {'login_two_factor': tf_enabled, 'two_factor_roles': update_data['two_factor_roles']}}
+                {'$set': site_updates}
             )
         else:
             self.db.websites.update_one(
                 {'$and': [{'$or': [{'_id': scope}, {'domain': scope}, {'id': scope}]}, {'$or': [{'user_id': u_str}, {'added_by_user_id': u_str}]}]},
-                {'$set': {'login_two_factor': tf_enabled, 'two_factor_roles': update_data['two_factor_roles']}}
+                {'$set': site_updates}
             )
 
         return {
