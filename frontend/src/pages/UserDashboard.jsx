@@ -611,38 +611,39 @@ export default function UserDashboard() {
         }}>
           {/* 1. DDoS & Under Attack Shield Card */}
           <div style={{
-            background: isSelectedSiteAttacked ? 'linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)' : brandTokens.subCardBg,
-            border: isSelectedSiteAttacked ? '1.5px solid #FCA5A5' : brandTokens.cardBorder,
+            background: brandTokens.subCardBg,
+            border: brandTokens.cardBorder,
             borderRadius: '12px',
-            padding: '14px 18px',
-            minWidth: '280px',
-            boxShadow: isSelectedSiteAttacked ? '0 4px 14px rgba(239, 68, 68, 0.12)' : 'none',
+            padding: '12px 16px',
+            minWidth: '220px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            transition: 'all 0.25s ease'
+            boxShadow: 'none',
+            transition: 'all 0.2s ease'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <Flame size={14} color={isSelectedSiteAttacked ? '#DC2626' : brandTokens.brandEmerald} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Flame size={13} color={isSelectedSiteAttacked ? '#E8792F' : brandTokens.brandEmerald} />
                 <span style={{
                   fontSize: '11px',
                   fontWeight: '800',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.07em',
-                  color: isSelectedSiteAttacked ? '#DC2626' : brandTokens.headingColor
+                  letterSpacing: '0.06em',
+                  color: brandTokens.headingColor
                 }}>
-                  DDoS &amp; Under Attack Shield
+                  Under Attack Shield
                 </span>
               </div>
               <span style={{
-                padding: '2px 8px',
-                borderRadius: '999px',
-                fontSize: '10px',
+                padding: '2px 7px',
+                borderRadius: '6px',
+                fontSize: '9.5px',
                 fontWeight: '800',
-                letterSpacing: '0.05em',
-                background: isSelectedSiteAttacked ? '#DC2626' : '#E8F3EC',
-                color: isSelectedSiteAttacked ? '#FFFFFF' : brandTokens.brandEmerald,
+                letterSpacing: '0.04em',
+                background: isSelectedSiteAttacked ? '#E8F3EC' : '#F1F5F3',
+                color: isSelectedSiteAttacked ? '#2A8B68' : brandTokens.mutedText,
+                border: isSelectedSiteAttacked ? '1px solid #CFE2D4' : '1px solid #D9E1DC',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px'
@@ -651,17 +652,16 @@ export default function UserDashboard() {
                   width: '5px',
                   height: '5px',
                   borderRadius: '50%',
-                  background: isSelectedSiteAttacked ? '#FFFFFF' : brandTokens.brandEmerald,
-                  boxShadow: isSelectedSiteAttacked ? '0 0 6px #FFFFFF' : 'none'
+                  background: isSelectedSiteAttacked ? '#2A8B68' : '#94a3b8'
                 }} />
                 {isSelectedSiteAttacked ? 'ACTIVE' : 'STANDBY'}
               </span>
             </div>
 
-            <div style={{ fontSize: '11.5px', color: isSelectedSiteAttacked ? '#991B1B' : brandTokens.bodyColor, lineHeight: '1.4', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', color: brandTokens.bodyColor, lineHeight: '1.35', marginBottom: '8px' }}>
               {isSelectedSiteAttacked
-                ? '⚡ Proof-of-Work JS challenge active. Dropping 100% L7 floods.'
-                : '🛡️ Sliding rate limit active. 1-click PoW mitigation standby.'}
+                ? 'PoW challenge active on all traffic.'
+                : '1-click PoW mitigation standby.'}
             </div>
 
             <button
@@ -670,36 +670,37 @@ export default function UserDashboard() {
               disabled={ddosToggling}
               style={{
                 width: '100%',
-                padding: '7px 12px',
-                borderRadius: '8px',
-                border: isSelectedSiteAttacked ? '1px solid #DC2626' : '1px solid #D9E1DC',
-                background: isSelectedSiteAttacked ? '#DC2626' : '#FFFFFF',
-                color: isSelectedSiteAttacked ? '#FFFFFF' : brandTokens.headingColor,
-                fontSize: '12px',
+                height: '28px',
+                padding: '0 10px',
+                borderRadius: '6px',
+                border: isSelectedSiteAttacked ? '1px solid #D9E1DC' : 'none',
+                background: isSelectedSiteAttacked ? '#FFFFFF' : '#0B2522',
+                color: isSelectedSiteAttacked ? '#10201E' : '#FFFFFF',
+                fontSize: '11.5px',
                 fontWeight: '700',
                 cursor: ddosToggling ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
-                boxShadow: isSelectedSiteAttacked ? '0 2px 8px rgba(220, 38, 38, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+                boxShadow: 'none',
                 transition: 'all 0.15s ease'
               }}
             >
               {ddosToggling ? (
                 <>
-                  <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} />
-                  <span>Synchronizing Fleet...</span>
+                  <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>Syncing Fleet...</span>
                 </>
               ) : isSelectedSiteAttacked ? (
                 <>
-                  <Power size={12} />
-                  <span>Deactivate Under Attack Mode</span>
+                  <Power size={11} color="#60716B" />
+                  <span>Turn Off Shield</span>
                 </>
               ) : (
                 <>
-                  <Flame size={12} color="#DC2626" />
-                  <span>Activate "I'm Under Attack"</span>
+                  <Flame size={11} color="#F38A3E" />
+                  <span>Activate Under Attack</span>
                 </>
               )}
             </button>
