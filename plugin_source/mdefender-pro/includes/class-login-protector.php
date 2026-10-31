@@ -384,22 +384,22 @@ class WAF_FW_Login_Protector {
         set_transient("mdf_hp_{$seed_nonce}", $client_ip, 300);
         ?>
         <div class="mdf-hold-press-wrapper" style="margin: 16px 0 18px 0; user-select: none;">
-            <button type="button" id="mdfHoldButton" style="width: 100%; height: 46px; position: relative; overflow: hidden; border: 1.5px solid #dcdcde; background: #f8fafc; color: #1e293b; font-weight: 600; font-size: 13.5px; border-radius: 8px; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;">
-                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #10b981, #059669); opacity: 0.9; transition: width 0.04s linear; pointer-events: none;"></span>
+            <button type="button" id="mdfHoldButton" style="width: 100%; height: 48px; position: relative; overflow: hidden; border: 1.5px solid #CBD5E1; background: #FFFFFF; color: #0F172A; font-weight: 700; font-size: 13.5px; border-radius: 9px; cursor: pointer; transition: all 0.2s ease; outline: none; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;">
+                <span id="mdfHoldProgress" style="position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #0B2522, #184841); opacity: 0.95; transition: width 0.04s linear; pointer-events: none;"></span>
                 <span id="mdfHoldText" style="position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none;">
-                    <svg id="mdfIconFp" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg id="mdfIconFp" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B2522" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2a10 10 0 0 0-10 10c0 3.2 1.5 6 3.8 7.8"/>
                         <path d="M12 6a6 6 0 0 0-6 6c0 1.8.8 3.5 2.1 4.6"/>
                         <path d="M12 10a2 2 0 0 0-2 2c0 .6.3 1.2.7 1.6"/>
                         <path d="M12 14v4"/>
                         <path d="M12 18v2"/>
                     </svg>
-                    <span id="mdfLabel" style="font-weight: 700; font-size: 13.5px; color: #1e293b;">Press &amp; Hold to Verify</span>
+                    <span id="mdfLabel" style="font-weight: 700; font-size: 13.5px; color: #0F172A;">Press &amp; Hold to Verify</span>
                 </span>
             </button>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding: 0 4px;">
-                <span style="font-size: 11px; color: #64748b; font-weight: 500;">Biometric Verification</span>
-                <span id="mdfHoldStatus" style="font-size: 11px; font-weight: 600; color: #64748b;">Hold 2s</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 0 4px;">
+                <span style="font-size: 11px; color: #64748B; font-weight: 600;">Biometric Proof-of-Work</span>
+                <span id="mdfHoldStatus" style="font-size: 11px; font-weight: 700; color: #0B2522;">Hold 2s</span>
             </div>
             <input type="hidden" name="waf_hold_press_token" id="mdfHoldToken" value="<?php echo esc_attr($token); ?>" />
             <input type="hidden" name="waf_hold_press_proof" id="mdfHoldProof" value="" />
@@ -425,9 +425,9 @@ class WAF_FW_Login_Protector {
                     if (isVerified) return;
                     e.preventDefault();
                     startTime = Date.now();
-                    btn.style.borderColor = '#10b981';
-                    btn.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
-                    label.style.color = '#ffffff';
+                    btn.style.borderColor = '#0B2522';
+                    btn.style.boxShadow = '0 0 0 3px rgba(11, 37, 34, 0.15)';
+                    label.style.color = '#FFFFFF';
                     holdTimer = setInterval(function() {
                         var elapsed = Date.now() - startTime;
                         var pct = Math.min(100, (elapsed / duration) * 100);
@@ -436,16 +436,16 @@ class WAF_FW_Login_Protector {
                             clearInterval(holdTimer);
                             isVerified = true;
                             pField.value = btoa(elapsed + '|' + jitterCount);
-                            prog.style.background = '#059669';
+                            prog.style.background = '#0B2522';
                             prog.style.width = '100%';
-                            btn.style.borderColor = '#059669';
-                            btn.style.background = '#059669';
+                            btn.style.borderColor = '#0B2522';
+                            btn.style.background = '#0B2522';
                             btn.style.cursor = 'default';
                             label.innerText = 'Verified Human';
-                            label.style.color = '#ffffff';
-                            iconFp.outerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-                            stat.innerText = 'Verified';
-                            stat.style.color = '#059669';
+                            label.style.color = '#FFFFFF';
+                            iconFp.outerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8792F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                            stat.innerText = '✓ Verified';
+                            stat.style.color = '#0B2522';
                         }
                     }, 25);
                 }
@@ -454,9 +454,9 @@ class WAF_FW_Login_Protector {
                     if (isVerified) return;
                     clearInterval(holdTimer);
                     prog.style.width = '0%';
-                    btn.style.borderColor = '#dcdcde';
-                    btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
-                    label.style.color = '#1e293b';
+                    btn.style.borderColor = '#CBD5E1';
+                    btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
+                    label.style.color = '#0F172A';
                 }
 
                 btn.addEventListener('mousedown', startHold);

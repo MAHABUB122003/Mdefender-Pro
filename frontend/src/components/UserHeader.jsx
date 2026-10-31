@@ -104,17 +104,21 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
         <span
           className="header-threat-badge"
           style={isPaid ? {
-            background: '#F0FDF4',
-            borderColor: '#BBF7D0',
-            color: '#15803D'
+            background: '#0B2522',
+            border: '1px solid rgba(232, 121, 47, 0.45)',
+            color: '#FFFFFF',
+            boxShadow: '0 2px 6px rgba(11, 37, 34, 0.15)',
+            fontWeight: 700,
+            letterSpacing: '0.2px'
           } : {
-            background: '#FEF3EB',
-            borderColor: '#FCD8BF',
-            color: '#D97735'
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            color: '#0F172A',
+            fontWeight: 600
           }}
         >
-          {isPaid ? <ShieldCheck size={14} /> : <Crown size={14} />}
-          <span>{planLabel}</span>
+          {isPaid ? <ShieldCheck size={14} color="#E8792F" strokeWidth={2.4} /> : <Crown size={14} color="#E8792F" />}
+          <span style={{ color: isPaid ? '#FFFFFF' : '#0F172A' }}>{planLabel}</span>
         </span>
 
         <div className="header-clock">

@@ -363,7 +363,7 @@ export default function BulkHardening() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={badgeStyle(hideLoginUrl ? '#E8F3EC' : '#F1F5F9', hideLoginUrl ? '#2A8B68' : '#64748B', hideLoginUrl ? '#CFE2D4' : '#CBD5E1')}>
+                <span style={badgeStyle(hideLoginUrl ? '#0B2522' : '#F1F5F9', hideLoginUrl ? '#FFFFFF' : '#64748B', hideLoginUrl ? '#0B2522' : '#CBD5E1')}>
                   {hideLoginUrl ? 'GATEWAY OBFUSCATED' : 'STANDARD WP LOGIN'}
                 </span>
               </div>
@@ -396,7 +396,7 @@ export default function BulkHardening() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: hideLoginUrl ? '#2A8B68' : '#CBD5E1',
+                    backgroundColor: hideLoginUrl ? '#0B2522' : '#CBD5E1',
                     borderRadius: '26px',
                     transition: '0.2s'
                   }}>
@@ -586,8 +586,8 @@ export default function BulkHardening() {
                       width: '32px',
                       height: '32px',
                       borderRadius: '8px',
-                      background: adminIpWhitelistEnabled ? 'rgba(42, 139, 104, 0.12)' : 'rgba(100, 116, 139, 0.12)',
-                      color: adminIpWhitelistEnabled ? '#2A8B68' : '#64748B',
+                      background: adminIpWhitelistEnabled ? '#0B2522' : '#F1F5F9',
+                      color: adminIpWhitelistEnabled ? '#E8792F' : '#64748B',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -601,7 +601,7 @@ export default function BulkHardening() {
                         <span style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>
                           Restrict Admin Panel &amp; Login Access by IP
                         </span>
-                        <span style={badgeStyle(adminIpWhitelistEnabled ? '#E8F3EC' : '#F1F5F9', adminIpWhitelistEnabled ? '#2A8B68' : '#64748B', adminIpWhitelistEnabled ? '#CFE2D4' : '#CBD5E1')}>
+                        <span style={badgeStyle(adminIpWhitelistEnabled ? '#0B2522' : '#F1F5F9', adminIpWhitelistEnabled ? '#FFFFFF' : '#64748B', adminIpWhitelistEnabled ? '#0B2522' : '#CBD5E1')}>
                           {adminIpWhitelistEnabled ? `${adminIpWhitelist.length} AUTHORIZED IP${adminIpWhitelist.length === 1 ? '' : 'S'}` : 'DISABLED'}
                         </span>
                       </div>
@@ -625,7 +625,7 @@ export default function BulkHardening() {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      backgroundColor: adminIpWhitelistEnabled ? '#2A8B68' : '#CBD5E1',
+                      backgroundColor: adminIpWhitelistEnabled ? '#0B2522' : '#CBD5E1',
                       borderRadius: '26px',
                       transition: '0.2s'
                     }}>
@@ -663,12 +663,12 @@ export default function BulkHardening() {
                         gap: '10px',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        background: '#F0F9F5',
-                        border: '1px solid #CFE2D4'
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Sparkles size={15} color="#2A8B68" />
-                          <span style={{ fontSize: '12.5px', color: '#1B4D3E', fontWeight: 600 }}>
+                          <Sparkles size={15} color="#E8792F" />
+                          <span style={{ fontSize: '12.5px', color: '#0F172A', fontWeight: 600 }}>
                             Detected Your Current IP: <strong style={{ color: '#0F2C26' }}>{detectedClientIp}</strong>
                           </span>
                         </div>
@@ -682,8 +682,8 @@ export default function BulkHardening() {
                             gap: '5px',
                             padding: '5px 12px',
                             borderRadius: '6px',
-                            background: adminIpWhitelist.includes(detectedClientIp) ? '#D9E1DC' : '#2A8B68',
-                            color: adminIpWhitelist.includes(detectedClientIp) ? '#60716B' : '#FFFFFF',
+                            background: adminIpWhitelist.includes(detectedClientIp) ? '#F1F5F9' : '#0B2522',
+                            color: adminIpWhitelist.includes(detectedClientIp) ? '#64748B' : '#FFFFFF',
                             border: 'none',
                             fontSize: '11.5px',
                             fontWeight: 700,
@@ -779,9 +779,9 @@ export default function BulkHardening() {
                                 gap: '6px',
                                 padding: '5px 10px',
                                 borderRadius: '6px',
-                                background: '#E8F3EC',
-                                border: '1px solid #CFE2D4',
-                                color: '#1B4D3E',
+                                background: '#F8FAFC',
+                                border: '1px solid #CBD5E1',
+                                color: '#0F172A',
                                 fontSize: '12.5px',
                                 fontWeight: 600
                               }}
@@ -794,7 +794,7 @@ export default function BulkHardening() {
                                 style={{
                                   background: 'none',
                                   border: 'none',
-                                  color: '#2A8B68',
+                                  color: '#E8792F',
                                   cursor: 'pointer',
                                   padding: '2px',
                                   display: 'flex',
@@ -822,13 +822,13 @@ export default function BulkHardening() {
                           gap: '6px',
                           padding: '8px 18px',
                           borderRadius: '8px',
-                          background: '#2A8B68',
+                          background: '#0B2522',
                           color: '#FFFFFF',
                           border: 'none',
                           fontSize: '12.5px',
                           fontWeight: 700,
                           cursor: saving ? 'not-allowed' : 'pointer',
-                          boxShadow: '0 1px 3px rgba(42, 139, 104, 0.2)',
+                          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.15)',
                           transition: 'all 0.15s ease'
                         }}
                       >
@@ -854,7 +854,7 @@ export default function BulkHardening() {
                   <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
                     Active Hardening Directives ({activeRulesCount} of {hardeningRules.length} Active)
                   </h3>
-                  <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>A+ RATING</span>
+                  <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>A+ RATING</span>
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#60716B' }}>
                   Directives take effect immediately at the edge and directly inside protected WordPress environments.
@@ -906,7 +906,7 @@ export default function BulkHardening() {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      backgroundColor: hardening[item.key] ? '#2A8B68' : '#CBD5E1',
+                      backgroundColor: hardening[item.key] ? '#0B2522' : '#CBD5E1',
                       borderRadius: '26px',
                       transition: '0.2s'
                     }}>
