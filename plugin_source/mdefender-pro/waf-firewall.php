@@ -2223,7 +2223,8 @@ function waf_fw_analyze_request() {
                 WAF_FW_IP_Filter::instance()->add_to_blacklist($client_ip, 'Hosting control panel probe (/cpanel or port 2083 redirect)');
             }
         }
-        include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
+        http_response_code(403);
+        include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
         exit;
     }
 
@@ -2235,7 +2236,7 @@ function waf_fw_analyze_request() {
     // No request from a blocked country or blacklisted IP can ever access ANY part of the domain (including wp-admin)
     $eval_ip = $engine->get_client_ip();
     if ($engine->is_ip_blacklisted($eval_ip)) {
-        http_response_code(502);
+        http_response_code(403);
         include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
         exit;
     }

@@ -57,6 +57,17 @@ except Exception:
     pass
 
 
+def render_real_403_forbidden(website_name: str = "This site") -> str:
+    """Authentic, universal standard 403 Forbidden network screen matching Nginx / Chromium."""
+    return """<html>
+<head><title>403 Forbidden</title></head>
+<body>
+<center><h1>403 Forbidden</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>"""
+
+
 def render_real_502_bad_gateway(website_name: str = "This site") -> str:
     """Authentic, universal standard 502 Bad Gateway network screen."""
     return """<!DOCTYPE html>
@@ -127,18 +138,22 @@ def render_block_page(
     """Ultra-fast compiled token replacement block page renderer."""
     atype = str(attack_type).lower()
     
-    # 1. Country Restrictions, Blacklisted IPs, and Server Admin Probes: Stealth Dead Network
-    is_stealth = (
+    # 1. IP Blacklist: Return authentic standard 403 Forbidden
+    if "blacklist" in atype:
+        return render_real_403_forbidden(website_name)
+
+    # 2. Country Restrictions & GeoIP: Authentic 502 Bad Gateway
+    is_geo = (
         "country" in atype
         or "geoip" in atype
         or "geograph" in atype
-        or "probe" in atype
-        or "admin" in atype
-        or "cpanel" in atype
-        or "port" in atype
     )
-    if is_stealth:
-        return render_dead_network_page(website_name)
+    if is_geo:
+        return render_real_502_bad_gateway(website_name)
+
+    # 3. Host Administration / Port / Probe Block: Authentic 403 Forbidden
+    if any(k in atype for k in ["probe", "cpanel", "port", "admin"]):
+        return render_real_403_forbidden(website_name)
 
     global _CHUNKS, _KEYS
     if _CHUNKS is None:

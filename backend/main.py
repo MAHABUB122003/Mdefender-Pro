@@ -362,11 +362,25 @@ async def waf_self_protection_middleware(request: Request, call_next):
         or any(path.lower().startswith(cp) for cp in ["/cpanel", "/whm", "/webmail", "/cpsrvd", "/kpanel", "/2082", "/2083"])
     )
     if is_cpanel_probe:
-        from src.utils.block_page import render_dead_network_page
+        from src.utils.block_page import render_real_403_forbidden, render_real_502_bad_gateway
+        is_bl = waf_api.attack_blocker.is_blacklisted(client_ip)
+        if is_bl:
+            return HTMLResponse(
+                content=render_real_403_forbidden(clean_host),
+                status_code=403,
+                headers={"Server": "nginx", "Connection": "close", "Cache-Control": "no-cache, no-store"}
+            )
+        is_geo, _ = waf_api.ip_filter.is_country_blocked(client_ip, headers=dict(request.headers))
+        if is_geo:
+            return HTMLResponse(
+                content=render_real_502_bad_gateway(clean_host),
+                status_code=502,
+                headers={"Server": "nginx", "Connection": "close", "Cache-Control": "no-cache, no-store"}
+            )
         return HTMLResponse(
-            content=render_dead_network_page(clean_host),
-            status_code=502,
-            headers={"Connection": "close", "Cache-Control": "no-cache, no-store"}
+            content=render_real_403_forbidden(clean_host),
+            status_code=403,
+            headers={"Server": "nginx", "Connection": "close", "Cache-Control": "no-cache, no-store"}
         )
 
     # Fast in-memory lookup for registered site & origin configuration (30s TTL, 0.001ms RAM lookup)
@@ -518,17 +532,30 @@ async def waf_self_protection_middleware(request: Request, call_next):
             pass
             
         atk_type_str = str(decision.get('attack_type', '')).lower()
-        is_stealth = any(k in atk_type_str for k in ['blacklist', 'country', 'geoip', 'geograph', 'probe'])
-        block_html = render_block_page(
-            reference_id=decision.get('reference_id', 'N/A'),
-            client_ip=claimed_ip,
-            attack_type=decision.get('attack_type', 'Security Threat Blocked'),
-            reason=f"Request blocked by MDefender Pro WAF (confidence: {decision.get('confidence', 0):.2f})",
-            website_name=target_domain
-        )
+        is_ip_bl = 'blacklist' in atk_type_str
+        is_geo_or_probe = any(k in atk_type_str for k in ['country', 'geoip', 'geograph', 'probe'])
+
+        if is_ip_bl:
+            from src.utils.block_page import render_real_403_forbidden
+            block_html = render_real_403_forbidden(target_domain)
+            resp_status = 403
+        elif is_geo_or_probe:
+            from src.utils.block_page import render_real_502_bad_gateway
+            block_html = render_real_502_bad_gateway(target_domain)
+            resp_status = 502
+        else:
+            block_html = render_block_page(
+                reference_id=decision.get('reference_id', 'N/A'),
+                client_ip=claimed_ip,
+                attack_type=decision.get('attack_type', 'Security Threat Blocked'),
+                reason=f"Request blocked by MDefender Pro WAF (confidence: {decision.get('confidence', 0):.2f})",
+                website_name=target_domain
+            )
+            resp_status = 403
+
         return HTMLResponse(
             content=block_html,
-            status_code=502 if is_stealth else 403,
+            status_code=resp_status,
             headers={
                 "Server": "nginx",
                 "X-WAF-Eval-Time": f"{waf_eval_ms:.2f}ms",

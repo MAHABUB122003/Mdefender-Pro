@@ -55,10 +55,29 @@ class IPFilter:
             return True
         return False
 
+    @staticmethod
+    def _sync_linux_firewall(ip, action='add'):
+        if not ip or ip in ('127.0.0.1', '::1', 'localhost', '0.0.0.0'):
+            return
+        import sys
+        if not sys.platform.startswith('linux'):
+            return
+        import subprocess
+        try:
+            if action == 'add':
+                check = subprocess.run(['iptables', '-C', 'INPUT', '-s', ip, '-j', 'DROP'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if check.returncode != 0:
+                    subprocess.run(['iptables', '-I', 'INPUT', '-s', ip, '-j', 'DROP'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif action == 'remove':
+                subprocess.run(['iptables', '-D', 'INPUT', '-s', ip, '-j', 'DROP'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
     def add_to_blacklist(self, ip, duration_hours=None):
         if not ip:
             return
         ip = str(ip).strip()
+        IPFilter._sync_linux_firewall(ip, 'add')
         if IPFilter._global_blacklist_set is not None:
             IPFilter._global_blacklist_set.add(ip)
         try:
@@ -80,6 +99,7 @@ class IPFilter:
         if not ip:
             return
         ip = str(ip).strip()
+        IPFilter._sync_linux_firewall(ip, 'remove')
         if IPFilter._global_blacklist_set is not None and ip in IPFilter._global_blacklist_set:
             IPFilter._global_blacklist_set.discard(ip)
         try:
