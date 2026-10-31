@@ -164,10 +164,83 @@ class WAF_FW_Under_Attack_Shield {
     /**
      * Generates a new cryptographic proof-of-work challenge.
      */
+    /**
+     * Detects if the client IP is a known VPN, proxy, datacenter or Tor node.
+     */
+    public function detect_vpn_or_proxy($ip) {
+        if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1') {
+            return false;
+        }
+
+        // 1. Check Proxy / VPN Headers
+        $proxy_headers = [
+            'HTTP_VIA', 'HTTP_FORWARDED_FOR', 'HTTP_X_FORWARDED', 
+            'HTTP_FORWARDED', 'HTTP_CLIENT_IP', 'HTTP_FORWARDED_FOR_IP', 
+            'VIA', 'FORWARDED_FOR', 'X_FORWARDED', 'FORWARDED', 
+            'CLIENT_IP', 'FORWARDED_FOR_IP', 'HTTP_PROXY_CONNECTION'
+        ];
+        foreach ($proxy_headers as $h) {
+            if (!empty($_SERVER[$h])) {
+                return true;
+            }
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && strpos($_SERVER['HTTP_X_FORWARDED_FOR'], ',') !== false) {
+            return true;
+        }
+
+        // 2. Check Tor or Anonymous Proxy flags
+        if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+            $cc = strtoupper(trim($_SERVER['HTTP_CF_IPCOUNTRY']));
+            if (in_array($cc, ['T1', 'A1', 'XX'], true)) {
+                return true;
+            }
+        }
+
+        // 3. Fast PTR Reverse DNS Lookup with 2-hour transient cache
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            $cache_key = 'waf_vpn_' . md5($ip);
+            $cached = get_transient($cache_key);
+            if ($cached !== false) {
+                return $cached === 'yes';
+            }
+
+            $hostname = @gethostbyaddr($ip);
+            if ($hostname && $hostname !== $ip) {
+                $low = strtolower($hostname);
+                $vpn_indicators = [
+                    'vpn', 'proxy', 'tor', 'exit', 'relay', 'node', 'hosting', 'server', 
+                    'compute', 'cloud', 'digitalocean', 'linode', 'aws', 'amazon', 
+                    'googleusercontent', 'ovh', 'hetzner', 'mullvad', 'nordvpn', 
+                    'expressvpn', 'surfshark', 'datacenter', 'choopa', 'vultr', 
+                    'leaseweb', 'quadranet', 'contabo', 'hostkey', 'cyberghost', 'ipvanish',
+                    'privateinternetaccess', 'zenmate', 'hidemyass', 'tunnelbear', 'fastly'
+                ];
+                foreach ($vpn_indicators as $kw) {
+                    if (strpos($low, $kw) !== false) {
+                        set_transient($cache_key, 'yes', 7200);
+                        return true;
+                    }
+                }
+            }
+            set_transient($cache_key, 'no', 7200);
+        }
+
+        // 4. Blacklist / Threat Intel Check
+        if (class_exists('WAF_FW_IP_Filter') && WAF_FW_IP_Filter::instance()->is_blacklisted($ip)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Generates a new cryptographic proof-of-work challenge.
+     */
     public function generate_challenge($ip) {
         $timestamp = time();
         $salt = wp_generate_password(16, false, false);
         $secret = $this->get_signing_secret();
+        $is_vpn = $this->detect_vpn_or_proxy($ip);
 
         $challenge_str = $ip . '|' . $timestamp . '|' . $salt;
         $signature = hash_hmac('sha256', $challenge_str, $secret);
@@ -175,11 +248,12 @@ class WAF_FW_Under_Attack_Shield {
         return [
             'challenge' => $challenge_str,
             'signature' => $signature,
-            'difficulty' => '0000', // 4 leading hex zeros (~1.2s to 1.8s solve time in JS)
+            'difficulty' => $is_vpn ? '0000' : '000',
             'timestamp' => $timestamp,
+            'is_vpn' => $is_vpn,
+            'requires_click' => $is_vpn,
         ];
     }
-
     /**
      * Process client's PoW solution and set clearance cookie if valid.
      */

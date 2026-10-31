@@ -3,10 +3,11 @@
  * MDefender Pro - Enterprise Cloudflare-Grade Interstitial Human Verification Screen
  *
  * Clean, minimal white architecture matching Cloudflare Turnstile:
+ * - Upper-left layout positioning (padding: 12vh 0 0 12vw)
  * - Pure white background (#ffffff)
- * - Clear typography: "We need to confirm you're human."
- * - Minimalist Turnstile capsule widget (Silent auto-verify + Click fallback)
- * - Zero dark screens, zero progress bars
+ * - Executive typography: "We need to confirm you are human."
+ * - VPN & Proxy Detection (enforces manual click verification)
+ * - Graceful timing: clean human visitors see 750ms verification, zero jarring flicker
  *
  * @package MDefender-Pro
  */
@@ -34,34 +35,50 @@ $challenge_json = json_encode($challenge_data);
             color: #111827;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
+            margin: 0;
+            padding: 0;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
             user-select: none;
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Upper-left positioning matching Cloudflare */
         .challenge-container {
             width: 100%;
-            max-width: 520px;
-            padding: 40px 20px;
+            max-width: 580px;
+            padding: 12vh 0 0 12vw;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+            .challenge-container {
+                padding: 48px 24px 32px;
+                max-width: 100%;
+            }
         }
 
         h1.challenge-title {
-            font-size: 28px;
+            font-size: 29px;
             font-weight: 700;
             color: #000000;
-            letter-spacing: -0.02em;
-            margin-bottom: 12px;
+            letter-spacing: -0.025em;
+            margin-bottom: 14px;
             line-height: 1.25;
         }
 
         p.challenge-desc {
             font-size: 15px;
             color: #374151;
-            line-height: 1.5;
-            margin-bottom: 28px;
+            line-height: 1.55;
+            margin-bottom: 30px;
+        }
+
+        p.challenge-desc strong {
+            color: #111827;
+            font-weight: 600;
         }
 
         /* The Minimalist Capsule (Matches Cloudflare Turnstile) */
@@ -69,8 +86,7 @@ $challenge_json = json_encode($challenge_data);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            width: 100%;
-            max-width: 320px;
+            width: 310px;
             height: 68px;
             padding: 0 16px 0 14px;
             border-radius: 6px;
@@ -78,14 +94,15 @@ $challenge_json = json_encode($challenge_data);
             border: 1px solid #dcdfe4;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
             cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 28px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            margin-bottom: 32px;
             position: relative;
         }
 
         .mdef-cf-box:hover {
             background: #f8faf9;
             border-color: #0B2522;
+            box-shadow: 0 2px 8px rgba(11, 37, 34, 0.08);
         }
 
         .mdef-cf-left {
@@ -219,20 +236,33 @@ $challenge_json = json_encode($challenge_data);
             font-size: 13.5px;
             color: #6b7280;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            line-height: 1.6;
+            line-height: 1.7;
+        }
+
+        .challenge-meta code {
+            font-family: inherit;
+            color: #4b5563;
+        }
+
+        .challenge-meta .meta-provider {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #9ca3af;
         }
     </style>
 </head>
 <body>
     <div class="challenge-container">
-        <h1 class="challenge-title">We need to confirm you're human.</h1>
-        <p class="challenge-desc">Thanks for helping us keep the bots away. Check the box and let's get you where you're going.</p>
+        <h1 class="challenge-title">We need to confirm you are human.</h1>
+        <p class="challenge-desc">
+            Please verify you are a human to continue to <strong><?php echo function_exists('esc_html') ? esc_html($site_name) : htmlspecialchars($site_name); ?></strong>. This automated security check helps protect against unauthorized bot traffic.
+        </p>
 
         <!-- Turnstile Capsule Widget -->
-        <div class="mdef-cf-box" id="cfBox">
+        <div class="mdef-cf-box" id="cfBox" role="checkbox" aria-checked="false" tabindex="0">
             <div class="mdef-cf-left">
                 <div class="mdef-cf-checkbox" id="cfCheck">
-                    <!-- High-Tech Spinner -->
+                    <!-- Rotating Spinner -->
                     <svg class="mdef-cf-spinner" id="cfSpinner" viewBox="0 0 24 24">
                         <circle class="sp-track" cx="12" cy="12" r="9"/>
                         <circle class="sp-head" cx="12" cy="12" r="9"/>
@@ -270,8 +300,9 @@ $challenge_json = json_encode($challenge_data);
         </div>
 
         <div class="challenge-meta">
-            <div>Request ID: <?php echo function_exists('esc_html') ? esc_html($ray_id) : htmlspecialchars($ray_id); ?></div>
+            <div>Ray ID: <code><?php echo function_exists('esc_html') ? esc_html($ray_id) : htmlspecialchars($ray_id); ?></code></div>
             <div>IP: <?php echo function_exists('esc_html') ? esc_html($ip) : htmlspecialchars($ip); ?></div>
+            <div class="meta-provider">Performance &amp; security by MDefender Pro</div>
         </div>
     </div>
 
@@ -287,6 +318,21 @@ $challenge_json = json_encode($challenge_data);
 
         var isSolving = false;
         var isSolved = false;
+
+        function inspectClientEnvironment() {
+            var suspicious = false;
+            try {
+                if (navigator.webdriver === true) suspicious = true;
+                if (window._phantom || window.__nightmare || window.callPhantom) suspicious = true;
+                if (window.document.__selenium_unwrapped || window.document.__webdriver_evaluate) suspicious = true;
+                if (!window.crypto || !window.crypto.subtle) suspicious = true;
+                if (!navigator.languages || navigator.languages.length === 0) suspicious = true;
+                if (/Chrome/.test(navigator.userAgent) && !window.chrome) suspicious = true;
+            } catch(e) {
+                suspicious = true;
+            }
+            return suspicious;
+        }
 
         async function sha256(str) {
             var enc = new TextEncoder();
@@ -320,8 +366,17 @@ $challenge_json = json_encode($challenge_data);
             checkSvg.style.display = 'none';
             label.textContent = 'Verifying...';
 
+            var t0 = performance.now();
+
             try {
                 var nonce = await solvePoW();
+                var t1 = performance.now();
+
+                // Ensure smooth professional presentation timing (minimum 600ms visual duration)
+                var elapsed = t1 - t0;
+                if (elapsed < 600) {
+                    await new Promise(function(r) { setTimeout(r, 600 - elapsed); });
+                }
 
                 var fd = new FormData();
                 fd.append('mdf_pow_action', 'verify');
@@ -341,6 +396,7 @@ $challenge_json = json_encode($challenge_data);
                     spinner.style.display = 'none';
                     checkSvg.style.display = 'block';
                     check.className = 'mdef-cf-checkbox state-success';
+                    box.setAttribute('aria-checked', 'true');
                     label.textContent = 'Success!';
                     label.className = 'mdef-cf-text is-success';
 
@@ -350,7 +406,7 @@ $challenge_json = json_encode($challenge_data);
                         } else {
                             window.location.reload();
                         }
-                    }, 350);
+                    }, 400);
                 } else {
                     throw new Error('Verification rejected');
                 }
@@ -362,16 +418,26 @@ $challenge_json = json_encode($challenge_data);
             }
         }
 
-        // 1. Silent Verification: Runs on load automatically in clean browsers (< 150ms)
-        var isSuspicious = navigator.webdriver === true || !window.crypto || !window.crypto.subtle;
-        if (!isSuspicious) {
-            setTimeout(runVerification, 80);
-        }
+        var isClientSuspicious = inspectClientEnvironment();
+        var requiresManualClick = Boolean(challengeData.requires_click || challengeData.is_vpn || isClientSuspicious);
 
-        // 2. Interactive Click Fallback: User can click anytime
-        box.addEventListener('click', function() {
-            runVerification();
-        });
+        if (requiresManualClick) {
+            // VPN, Datacenter, Proxy or Bot Detected:
+            // Do NOT auto-solve! Requires deliberate user click on checkbox.
+            box.addEventListener('click', function() {
+                runVerification();
+            });
+        } else {
+            // Clean Residential Human Visitor:
+            // Wait graceful 700ms so the user sees the clean verification, then smoothly solve & redirect!
+            setTimeout(function() {
+                runVerification();
+            }, 700);
+
+            box.addEventListener('click', function() {
+                runVerification();
+            });
+        }
     })();
     </script>
 </body>

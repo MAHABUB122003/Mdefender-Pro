@@ -76,6 +76,75 @@ class WAF_FW_Turnstile {
     }
 
     /**
+     * Detects if the client IP is a known VPN, proxy, datacenter or Tor node.
+     */
+    public function detect_vpn_or_proxy($ip) {
+        if (empty($ip) || $ip === '127.0.0.1' || $ip === '::1') {
+            return false;
+        }
+
+        // 1. Check Proxy / VPN Headers
+        $proxy_headers = [
+            'HTTP_VIA', 'HTTP_FORWARDED_FOR', 'HTTP_X_FORWARDED', 
+            'HTTP_FORWARDED', 'HTTP_CLIENT_IP', 'HTTP_FORWARDED_FOR_IP', 
+            'VIA', 'FORWARDED_FOR', 'X_FORWARDED', 'FORWARDED', 
+            'CLIENT_IP', 'FORWARDED_FOR_IP', 'HTTP_PROXY_CONNECTION'
+        ];
+        foreach ($proxy_headers as $h) {
+            if (!empty($_SERVER[$h])) {
+                return true;
+            }
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && strpos($_SERVER['HTTP_X_FORWARDED_FOR'], ',') !== false) {
+            return true;
+        }
+
+        // 2. Check Tor or Anonymous Proxy flags
+        if (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
+            $cc = strtoupper(trim($_SERVER['HTTP_CF_IPCOUNTRY']));
+            if (in_array($cc, ['T1', 'A1', 'XX'], true)) {
+                return true;
+            }
+        }
+
+        // 3. Fast PTR Reverse DNS Lookup with 2-hour transient cache
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            $cache_key = 'waf_vpn_' . md5($ip);
+            $cached = get_transient($cache_key);
+            if ($cached !== false) {
+                return $cached === 'yes';
+            }
+
+            $hostname = @gethostbyaddr($ip);
+            if ($hostname && $hostname !== $ip) {
+                $low = strtolower($hostname);
+                $vpn_indicators = [
+                    'vpn', 'proxy', 'tor', 'exit', 'relay', 'node', 'hosting', 'server', 
+                    'compute', 'cloud', 'digitalocean', 'linode', 'aws', 'amazon', 
+                    'googleusercontent', 'ovh', 'hetzner', 'mullvad', 'nordvpn', 
+                    'expressvpn', 'surfshark', 'datacenter', 'choopa', 'vultr', 
+                    'leaseweb', 'quadranet', 'contabo', 'hostkey', 'cyberghost', 'ipvanish',
+                    'privateinternetaccess', 'zenmate', 'hidemyass', 'tunnelbear', 'fastly'
+                ];
+                foreach ($vpn_indicators as $kw) {
+                    if (strpos($low, $kw) !== false) {
+                        set_transient($cache_key, 'yes', 7200);
+                        return true;
+                    }
+                }
+            }
+            set_transient($cache_key, 'no', 7200);
+        }
+
+        // 4. Blacklist / Threat Intel Check
+        if (class_exists('WAF_FW_IP_Filter') && WAF_FW_IP_Filter::instance()->is_blacklisted($ip)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Generates a dynamic PoW challenge
      */
     public function generate_challenge($domain = '') {
@@ -85,7 +154,8 @@ class WAF_FW_Turnstile {
         $salt = bin2hex(random_bytes(8));
         $exp = time() + 180;
         $is_under_attack = get_option('waf_fw_under_attack_mode', 'no') === 'yes';
-        $difficulty = $is_under_attack ? 3 : 2; // 2 hex zeros (~256 iterations, <100ms) for normal forms, 3 for under attack
+        $is_vpn = $this->detect_vpn_or_proxy($ip);
+        $difficulty = ($is_under_attack || $is_vpn) ? 3 : 2;
 
         $payload = "{$domain}|{$ip}|{$nonce}|{$salt}|{$difficulty}|{$exp}";
         $sig = hash_hmac('sha256', $payload, $this->get_turnstile_secret());
@@ -97,10 +167,11 @@ class WAF_FW_Turnstile {
             'nonce' => $nonce,
             'salt' => $salt,
             'difficulty' => $difficulty,
-            'expires_in' => 180
+            'expires_in' => 180,
+            'is_vpn' => $is_vpn,
+            'requires_click' => $is_vpn,
         ];
     }
-
     /**
      * Validates a PoW solution submitted by the client
      */
@@ -779,9 +850,25 @@ class WAF_FW_Turnstile {
                     if (!data1.success) throw new Error(data1.data?.message || 'Challenge failed');
                     var ch = data1.data;
 
+                    // If VPN, Proxy or Datacenter IP detected and this was a silent attempt:
+                    // Stop! Require explicit human click on the checkbox.
+                    if (isSilent && (ch.requires_click || ch.is_vpn)) {
+                        spin.style.display = 'none';
+                        check.className = 'mdef-ts-checkbox state-idle';
+                        label.textContent = 'Verify you are human';
+                        container.dataset.solving = '0';
+                        return;
+                    }
+
                     // 2. Solve PoW in browser WebCrypto
                     var sol = await solveProofOfWork(ch);
                     var t1 = performance.now();
+
+                    // Ensure smooth, professional visual duration (min 600ms)
+                    var elapsed = t1 - t0;
+                    if (elapsed < 600) {
+                        await new Promise(function(r) { setTimeout(r, 600 - elapsed); });
+                    }
 
                     // 3. Submit solution with environmental telemetry
                     var fd2 = new FormData();
@@ -841,11 +928,11 @@ class WAF_FW_Turnstile {
 
                     var env = inspectBrowserEnvironment();
 
-                    // Step 1: Silent Challenge (Automatic background check for clean human browsers)
+                    // Step 1: Silent Challenge (Graceful 700ms check for clean human browsers)
                     if (!env.suspicious) {
                         setTimeout(function() {
                             runChallengeVerification(container, true);
-                        }, 50);
+                        }, 700);
                     }
 
                     // Step 2: Interactive Challenge (When user clicks or if suspicious)
@@ -893,55 +980,80 @@ class WAF_FW_Turnstile {
                     color: #111827;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                     min-height: 100vh;
+                    margin: 0;
+                    padding: 0;
                     display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 24px;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    justify-content: flex-start;
                     user-select: none;
                     -webkit-font-smoothing: antialiased;
                 }
                 .challenge-container {
                     width: 100%;
-                    max-width: 520px;
-                    padding: 40px 20px;
+                    max-width: 580px;
+                    padding: 12vh 0 0 12vw;
+                    box-sizing: border-box;
+                }
+                @media (max-width: 768px) {
+                    .challenge-container {
+                        padding: 48px 24px 32px;
+                        max-width: 100%;
+                    }
                 }
                 h1.challenge-title {
-                    font-size: 28px;
+                    font-size: 29px;
                     font-weight: 700;
                     color: #000000;
-                    letter-spacing: -0.02em;
-                    margin-bottom: 12px;
+                    letter-spacing: -0.025em;
+                    margin-bottom: 14px;
                     line-height: 1.25;
                 }
                 p.challenge-desc {
                     font-size: 15px;
                     color: #374151;
-                    line-height: 1.5;
-                    margin-bottom: 28px;
+                    line-height: 1.55;
+                    margin-bottom: 30px;
+                }
+                p.challenge-desc strong {
+                    color: #111827;
+                    font-weight: 600;
                 }
                 .mdef-widget-host {
-                    margin-bottom: 28px;
+                    margin-bottom: 32px;
                 }
                 .challenge-meta {
                     font-size: 13.5px;
                     color: #6b7280;
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-                    line-height: 1.6;
+                    line-height: 1.7;
+                }
+                .challenge-meta code {
+                    font-family: inherit;
+                    color: #4b5563;
+                }
+                .challenge-meta .meta-provider {
+                    margin-top: 4px;
+                    font-size: 12px;
+                    color: #9ca3af;
                 }
             </style>
         </head>
         <body>
             <div class="challenge-container">
-                <h1 class="challenge-title">We need to confirm you're human.</h1>
-                <p class="challenge-desc">Thanks for helping us keep the bots away. Check the box and let's get you where you're going.</p>
+                <h1 class="challenge-title">We need to confirm you are human.</h1>
+                <p class="challenge-desc">
+                    Please verify you are a human to continue to <strong><?php echo esc_html($domain); ?></strong>. This automated security check helps protect against unauthorized bot traffic.
+                </p>
 
                 <div class="mdef-widget-host">
                     <?php $this->render_widget('interstitial'); ?>
                 </div>
 
                 <div class="challenge-meta">
-                    <div>Request ID: <?php echo esc_html($ray_id); ?></div>
+                    <div>Ray ID: <code><?php echo esc_html($ray_id); ?></code></div>
                     <div>IP: <?php echo esc_html($ip); ?></div>
+                    <div class="meta-provider">Performance &amp; security by MDefender Pro</div>
                 </div>
             </div>
 
@@ -949,7 +1061,7 @@ class WAF_FW_Turnstile {
             window.addEventListener('mdefender:verified', function(e) {
                 setTimeout(function() {
                     window.location.reload();
-                }, 350);
+                }, 400);
             });
             </script>
         </body>
