@@ -1,9 +1,12 @@
 <?php
 /**
- * MDefender Pro - Enterprise Under Attack Mode Interstitial Screen
+ * MDefender Pro - Enterprise Cloudflare-Grade Interstitial Human Verification Screen
  *
- * Automated Proof-of-Work (PoW) verification screen.
- * Resolves transparently in real browsers (~1.5s) while dropping 100% of headless flooders.
+ * Clean, minimal white architecture matching Cloudflare Turnstile:
+ * - Pure white background (#ffffff)
+ * - Clear typography: "We need to confirm you're human."
+ * - Minimalist Turnstile capsule widget (Silent auto-verify + Click fallback)
+ * - Zero dark screens, zero progress bars
  *
  * @package MDefender-Pro
  */
@@ -18,355 +21,358 @@ $challenge_json = json_encode($challenge_data);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checking your browser security — MDefender Pro</title>
+    <title>Just a moment... | <?php echo function_exists('esc_html') ? esc_html($site_name) : htmlspecialchars($site_name); ?></title>
     <style>
-        :root {
-            --bg-color: #061513;
-            --card-bg: rgba(11, 37, 34, 0.88);
-            --border-color: rgba(232, 121, 47, 0.25);
-            --primary-color: #E8792F;
-            --accent-glow: rgba(232, 121, 47, 0.35);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
         body {
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 50% 15%, rgba(232, 121, 47, 0.12) 0%, transparent 60%),
-                radial-gradient(circle at 85% 85%, rgba(22, 78, 72, 0.25) 0%, transparent 50%),
-                radial-gradient(circle at 15% 85%, rgba(11, 37, 34, 0.9) 0%, transparent 60%);
+            background-color: #ffffff;
+            color: #111827;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-main);
-            padding: 20px;
-            overflow: hidden;
+            padding: 24px;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
         }
 
         .challenge-container {
             width: 100%;
             max-width: 520px;
-            background: var(--card-bg);
-            border: 1.5px solid var(--border-color);
-            border-radius: 24px;
-            padding: 44px 36px;
-            box-shadow: 
-                0 25px 60px -15px rgba(0, 0, 0, 0.8),
-                0 0 35px rgba(232, 121, 47, 0.12);
-            backdrop-filter: blur(20px);
-            text-align: center;
-            position: relative;
+            padding: 40px 20px;
         }
 
-        .shield-scanner {
-            width: 88px;
-            height: 88px;
-            margin: 0 auto 28px;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .shield-icon {
-            font-size: 38px;
-            color: var(--primary-color);
-            z-index: 2;
-            filter: drop-shadow(0 0 16px var(--accent-glow));
-        }
-
-        .pulse-ring {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 2px solid var(--primary-color);
-            opacity: 0.8;
-            animation: radarPulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-        }
-
-        .pulse-ring:nth-child(2) {
-            animation-delay: 0.6s;
-        }
-
-        @keyframes radarPulse {
-            0% {
-                transform: scale(0.6);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(1.6);
-                opacity: 0;
-            }
-        }
-
-        h1 {
-            font-size: 23px;
-            font-weight: 800;
-            letter-spacing: -0.4px;
-            margin-bottom: 12px;
-            line-height: 1.3;
-            color: #ffffff;
-        }
-
-        .target-site {
-            color: var(--primary-color);
+        h1.challenge-title {
+            font-size: 28px;
             font-weight: 700;
+            color: #000000;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            line-height: 1.25;
         }
 
-        p.subtitle {
-            font-size: 14.5px;
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-
-        /* Progress & PoW Indicator */
-        .verification-box {
-            background: rgba(8, 20, 18, 0.9);
-            border: 1px solid rgba(232, 121, 47, 0.25);
-            border-radius: 14px;
-            padding: 18px 20px;
+        p.challenge-desc {
+            font-size: 15px;
+            color: #374151;
+            line-height: 1.5;
             margin-bottom: 28px;
         }
 
-        .status-row {
+        /* The Minimalist Capsule (Matches Cloudflare Turnstile) */
+        .mdef-cf-box {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            font-size: 13.5px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            color: #E8792F;
-        }
-
-        .spinner {
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(232, 121, 47, 0.2);
-            border-top-color: #E8792F;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .progress-track {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 4px;
-            overflow: hidden;
+            width: 100%;
+            max-width: 320px;
+            height: 68px;
+            padding: 0 16px 0 14px;
+            border-radius: 6px;
+            background: #fafafa;
+            border: 1px solid #dcdfe4;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 28px;
             position: relative;
         }
 
-        .progress-bar {
-            height: 100%;
-            width: 15%;
-            background: linear-gradient(90deg, #164E48, #E8792F);
-            border-radius: 4px;
-            transition: width 0.2s ease;
-            box-shadow: 0 0 10px rgba(232, 121, 47, 0.4);
+        .mdef-cf-box:hover {
+            background: #f8faf9;
+            border-color: #0B2522;
         }
 
-        .meta-footer {
-            font-size: 12px;
-            color: #64748b;
-            line-height: 1.7;
-            border-top: 1px solid rgba(255, 255, 255, 0.07);
-            padding-top: 20px;
+        .mdef-cf-left {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            align-items: center;
+            gap: 12px;
         }
 
-        .meta-footer strong {
-            color: #cbd5e1;
-            font-family: monospace;
-        }
-
-        .brand-credit {
-            margin-top: 10px;
-            font-size: 11.5px;
-            color: #94a3b8;
+        .mdef-cf-checkbox {
+            width: 26px;
+            height: 26px;
+            border-radius: 4px;
+            border: 2px solid #525252;
+            background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            position: relative;
         }
 
-        .brand-credit span {
-            color: #E8792F;
+        .mdef-cf-box:hover .mdef-cf-checkbox {
+            border-color: #0B2522;
+        }
+
+        .mdef-cf-checkbox.state-loading {
+            border-color: transparent !important;
+            background: transparent !important;
+        }
+
+        .mdef-cf-checkbox.state-success {
+            background: #0B2522 !important;
+            border-color: #0B2522 !important;
+            box-shadow: 0 0 10px rgba(11, 37, 34, 0.35);
+        }
+
+        .mdef-cf-spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            animation: cfSpin 0.75s linear infinite;
+        }
+
+        @keyframes cfSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .mdef-cf-spinner circle.sp-track {
+            fill: none;
+            stroke: rgba(11, 37, 34, 0.12);
+            stroke-width: 3;
+        }
+
+        .mdef-cf-spinner circle.sp-head {
+            fill: none;
+            stroke: #E8792F;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-dasharray: 38 32;
+        }
+
+        .mdef-cf-check {
+            display: none;
+            width: 17px;
+            height: 17px;
+        }
+
+        .mdef-cf-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1f2937;
+            line-height: 1.25;
+            transition: color 0.2s;
+        }
+
+        .mdef-cf-text.is-success {
+            color: #0B2522;
             font-weight: 700;
+        }
+
+        /* Brand on Right */
+        .mdef-cf-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .mdef-brand-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mdef-logo {
+            width: 16px;
+            height: 17px;
+        }
+
+        .mdef-brand-name {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: #0B2522;
+        }
+
+        .mdef-brand-legal {
+            font-size: 9.5px;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 500;
+        }
+
+        .mdef-brand-legal a {
+            color: #6b7280;
+            text-decoration: underline;
+        }
+
+        .mdef-brand-legal a:hover {
+            color: #E8792F;
+        }
+
+        /* Telemetry Footer */
+        .challenge-meta {
+            font-size: 13.5px;
+            color: #6b7280;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
     <div class="challenge-container">
-        <!-- Shield Animation -->
-        <div class="shield-scanner">
-            <div class="pulse-ring"></div>
-            <div class="pulse-ring"></div>
-            <div class="shield-icon">
-                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <path d="m9 12 2 2 4-4"/>
-                </svg>
+        <h1 class="challenge-title">We need to confirm you're human.</h1>
+        <p class="challenge-desc">Thanks for helping us keep the bots away. Check the box and let's get you where you're going.</p>
+
+        <!-- Turnstile Capsule Widget -->
+        <div class="mdef-cf-box" id="cfBox">
+            <div class="mdef-cf-left">
+                <div class="mdef-cf-checkbox" id="cfCheck">
+                    <!-- High-Tech Spinner -->
+                    <svg class="mdef-cf-spinner" id="cfSpinner" viewBox="0 0 24 24">
+                        <circle class="sp-track" cx="12" cy="12" r="9"/>
+                        <circle class="sp-head" cx="12" cy="12" r="9"/>
+                    </svg>
+                    <!-- Flame Checkmark -->
+                    <svg class="mdef-cf-check" id="cfCheckSvg" viewBox="0 0 24 24">
+                        <path d="M4.5 12.5l5 5L19.5 7" fill="none" stroke="#E8792F" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <span class="mdef-cf-text" id="cfText">Verify you are human</span>
+            </div>
+
+            <div class="mdef-cf-brand">
+                <div class="mdef-brand-row">
+                    <svg class="mdef-logo" viewBox="0 0 24 24">
+                        <defs>
+                            <linearGradient id="cfShieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#0B2522"/>
+                                <stop offset="55%" stop-color="#164E48"/>
+                                <stop offset="100%" stop-color="#E8792F"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z" fill="url(#cfShieldGrad)"/>
+                        <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.18"/>
+                        <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
+                    <span class="mdef-brand-name">MDEFENDER</span>
+                </div>
+                <div class="mdef-brand-legal">
+                    <a href="https://mdefender.io" target="_blank" rel="noopener">Privacy</a>
+                    <span>&bull;</span>
+                    <a href="https://mdefender.io" target="_blank" rel="noopener">Help</a>
+                </div>
             </div>
         </div>
 
-        <h1>Checking your browser security before accessing <span class="target-site"><?php echo esc_html($site_name); ?></span></h1>
-        <p class="subtitle">This automated cryptographic verification protects this website against botnets, DDoS attacks, and automated vulnerability scanners.</p>
-
-        <!-- Live PoW Verification Box -->
-        <div class="verification-box">
-            <div class="status-row">
-                <span id="challengeStatus" class="status-badge">
-                    <span class="spinner" id="statusSpinner"></span>
-                    <span id="statusText">Computing cryptographic challenge...</span>
-                </span>
-                <span id="progressPercent" style="color: #94a3b8; font-family: monospace; font-size: 12px;">0%</span>
-            </div>
-            <div class="progress-track">
-                <div class="progress-bar" id="progressBar"></div>
-            </div>
-        </div>
-
-        <!-- Telemetry Footer -->
-        <div class="meta-footer">
-            <div>Ray ID: <strong><?php echo esc_html($ray_id); ?></strong> &bull; IP: <strong><?php echo esc_html($ip); ?></strong></div>
-            <div class="brand-credit">
-                Protected by <span>MDefender Pro Cloud WAAP &amp; DDoS Defense</span>
-            </div>
+        <div class="challenge-meta">
+            <div>Request ID: <?php echo function_exists('esc_html') ? esc_html($ray_id) : htmlspecialchars($ray_id); ?></div>
+            <div>IP: <?php echo function_exists('esc_html') ? esc_html($ip) : htmlspecialchars($ip); ?></div>
         </div>
     </div>
 
     <script>
-        (function() {
-            var challengeData = <?php echo $challenge_json; ?>;
-            var targetUrl = <?php echo json_encode($target_url); ?>;
-            var progressBar = document.getElementById('progressBar');
-            var progressPercent = document.getElementById('progressPercent');
-            var statusText = document.getElementById('statusText');
-            var statusSpinner = document.getElementById('statusSpinner');
+    (function() {
+        var challengeData = <?php echo $challenge_json; ?>;
+        var targetUrl = <?php echo json_encode($target_url); ?>;
+        var box = document.getElementById('cfBox');
+        var check = document.getElementById('cfCheck');
+        var spinner = document.getElementById('cfSpinner');
+        var checkSvg = document.getElementById('cfCheckSvg');
+        var label = document.getElementById('cfText');
 
-            function hexToBuf(hex) {
-                var bytes = new Uint8Array(Math.ceil(hex.length / 2));
-                for (var i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-                return bytes;
-            }
+        var isSolving = false;
+        var isSolved = false;
 
-            async function sha256(str) {
-                var encoder = new TextEncoder();
-                var data = encoder.encode(str);
-                var hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                var hashArray = Array.from(new Uint8Array(hashBuffer));
-                return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-            }
+        async function sha256(str) {
+            var enc = new TextEncoder();
+            var buf = await crypto.subtle.digest('SHA-256', enc.encode(str));
+            return Array.from(new Uint8Array(buf)).map(function(b) {
+                return b.toString(16).padStart(2, '0');
+            }).join('');
+        }
 
-            async function solveChallenge() {
-                var challenge = challengeData.challenge;
-                var targetPrefix = challengeData.difficulty || '0000';
-                var nonce = 0;
-                var batchSize = 1000;
-                var startTime = Date.now();
-
-                function runBatch() {
-                    return new Promise(function(resolve) {
-                        setTimeout(async function() {
-                            for (var i = 0; i < batchSize; i++) {
-                                nonce++;
-                                var candidate = challenge + nonce;
-                                var hash = await sha256(candidate);
-                                if (hash.startsWith(targetPrefix)) {
-                                    resolve(nonce);
-                                    return;
-                                }
-                            }
-                            // Update progress indicator
-                            var elapsed = Date.now() - startTime;
-                            var pct = Math.min(95, Math.floor((elapsed / 1500) * 100));
-                            if (progressBar) progressBar.style.width = pct + '%';
-                            if (progressPercent) progressPercent.innerText = pct + '%';
-                            resolve(null);
-                        }, 0);
-                    });
+        async function solvePoW() {
+            var challenge = challengeData.challenge;
+            var targetPrefix = challengeData.difficulty || '000';
+            var nonce = 0;
+            while (nonce < 2000000) {
+                var candidate = challenge + nonce;
+                var hash = await sha256(candidate);
+                if (hash.startsWith(targetPrefix)) {
+                    return nonce;
                 }
-
-                while (true) {
-                    var solution = await runBatch();
-                    if (solution !== null) {
-                        return solution;
-                    }
-                }
+                nonce++;
             }
+            return nonce;
+        }
 
-            async function init() {
-                if (!window.crypto || !window.crypto.subtle) {
-                    if (statusText) statusText.innerText = 'Browser crypto required. Please upgrade browser.';
-                    return;
+        async function runVerification() {
+            if (isSolving || isSolved) return;
+            isSolving = true;
+
+            check.className = 'mdef-cf-checkbox state-loading';
+            spinner.style.display = 'block';
+            checkSvg.style.display = 'none';
+            label.textContent = 'Verifying...';
+
+            try {
+                var nonce = await solvePoW();
+
+                var fd = new FormData();
+                fd.append('mdf_pow_action', 'verify');
+                fd.append('mdf_pow_nonce', nonce);
+                fd.append('mdf_pow_challenge', challengeData.challenge);
+                fd.append('mdf_pow_sig', challengeData.signature);
+                fd.append('mdf_pow_redirect', targetUrl);
+
+                var res = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: fd
+                });
+
+                var json = await res.json();
+                if (json.success) {
+                    isSolved = true;
+                    spinner.style.display = 'none';
+                    checkSvg.style.display = 'block';
+                    check.className = 'mdef-cf-checkbox state-success';
+                    label.textContent = 'Success!';
+                    label.className = 'mdef-cf-text is-success';
+
+                    setTimeout(function() {
+                        if (json.data && json.data.redirect) {
+                            window.location.href = json.data.redirect;
+                        } else {
+                            window.location.reload();
+                        }
+                    }, 350);
+                } else {
+                    throw new Error('Verification rejected');
                 }
-
-                try {
-                    var nonce = await solveChallenge();
-                    
-                    if (progressBar) progressBar.style.width = '100%';
-                    if (progressPercent) progressPercent.innerText = '100%';
-                    if (statusText) statusText.innerText = 'Verification successful. Redirecting...';
-                    if (statusSpinner) {
-                        statusSpinner.style.border = 'none';
-                        statusSpinner.style.animation = 'none';
-                        statusSpinner.innerHTML = '<span style="color:#E8792F; font-size:16px; font-weight:bold;">✓</span>';
-                    }
-
-                    // Submit solution to server
-                    var formData = new FormData();
-                    formData.append('mdf_pow_action', 'verify');
-                    formData.append('mdf_pow_nonce', nonce);
-                    formData.append('mdf_pow_challenge', challengeData.challenge);
-                    formData.append('mdf_pow_sig', challengeData.signature);
-                    formData.append('mdf_pow_redirect', targetUrl);
-
-                    var res = await fetch(window.location.href, {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    var json = await res.json();
-                    if (json.success && json.data && json.data.redirect) {
-                        window.location.href = json.data.redirect;
-                    } else {
-                        window.location.reload();
-                    }
-                } catch (e) {
-                    console.error('Challenge error:', e);
-                    setTimeout(function() { window.location.reload(); }, 2000);
-                }
+            } catch(e) {
+                isSolving = false;
+                spinner.style.display = 'none';
+                check.className = 'mdef-cf-checkbox';
+                label.textContent = 'Verification required. Click to retry.';
             }
+        }
 
-            // Run verification automatically on load
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-        })();
+        // 1. Silent Verification: Runs on load automatically in clean browsers (< 150ms)
+        var isSuspicious = navigator.webdriver === true || !window.crypto || !window.crypto.subtle;
+        if (!isSuspicious) {
+            setTimeout(runVerification, 80);
+        }
+
+        // 2. Interactive Click Fallback: User can click anytime
+        box.addEventListener('click', function() {
+            runVerification();
+        });
+    })();
     </script>
 </body>
 </html>

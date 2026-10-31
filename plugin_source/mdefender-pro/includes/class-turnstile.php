@@ -881,162 +881,75 @@ class WAF_FW_Turnstile {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Just a moment... | MDefender Pro</title>
+            <title>Just a moment... | <?php echo esc_html($domain); ?></title>
             <style>
-                :root {
-                    --bg-canvas: #061513;
-                    --card-surface: rgba(11, 37, 34, 0.85);
-                    --card-border: rgba(232, 121, 47, 0.25);
-                    --accent-flame: #E8792F;
-                    --accent-teal: #164E48;
-                    --text-heading: #ffffff;
-                    --text-body: #94a3b8;
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
                 }
-                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
-                    background-color: var(--bg-canvas);
-                    background-image: 
-                        radial-gradient(circle at 50% 15%, rgba(232, 121, 47, 0.12) 0%, transparent 60%),
-                        radial-gradient(circle at 85% 85%, rgba(22, 78, 72, 0.25) 0%, transparent 50%),
-                        radial-gradient(circle at 15% 85%, rgba(11, 37, 34, 0.9) 0%, transparent 60%);
-                    color: #f8fafc;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
+                    background-color: #ffffff;
+                    color: #111827;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                     min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                     padding: 24px;
+                    user-select: none;
+                    -webkit-font-smoothing: antialiased;
                 }
-                .challenge-shell {
+                .challenge-container {
                     width: 100%;
-                    max-width: 480px;
-                    background: var(--card-surface);
-                    border: 1.5px solid var(--card-border);
-                    border-radius: 20px;
-                    padding: 38px 32px 28px;
-                    text-align: center;
-                    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(232, 121, 47, 0.08);
-                    backdrop-filter: blur(24px);
-                    -webkit-backdrop-filter: blur(24px);
-                    animation: mdefPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+                    max-width: 520px;
+                    padding: 40px 20px;
                 }
-                @keyframes mdefPop {
-                    from { opacity: 0; transform: translateY(12px) scale(0.98); }
-                    to { opacity: 1; transform: translateY(0) scale(1); }
-                }
-
-                .shield-pulse-wrapper {
-                    position: relative;
-                    width: 64px;
-                    height: 64px;
-                    margin: 0 auto 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .pulse-halo {
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                    border-radius: 50%;
-                    background: radial-gradient(circle, rgba(232, 121, 47, 0.35) 0%, transparent 70%);
-                    animation: haloPulse 2.4s ease-out infinite;
-                }
-                @keyframes haloPulse {
-                    0% { transform: scale(0.9); opacity: 0.8; }
-                    50% { transform: scale(1.4); opacity: 0.2; }
-                    100% { transform: scale(0.9); opacity: 0.8; }
-                }
-                .shield-icon {
-                    width: 48px;
-                    height: 48px;
-                    filter: drop-shadow(0 4px 14px rgba(232, 121, 47, 0.4));
-                }
-
-                h1 {
-                    font-size: 21px;
-                    font-weight: 800;
-                    letter-spacing: -0.02em;
-                    margin-bottom: 8px;
-                    color: var(--text-heading);
-                }
-                p.intro {
-                    font-size: 13.5px;
-                    color: var(--text-body);
-                    line-height: 1.5;
-                    margin-bottom: 24px;
-                }
-                .site-badge {
-                    display: inline-block;
-                    color: #FFFFFF;
+                h1.challenge-title {
+                    font-size: 28px;
                     font-weight: 700;
-                    background: rgba(232, 121, 47, 0.15);
-                    border: 1px solid rgba(232, 121, 47, 0.3);
-                    padding: 2px 8px;
-                    border-radius: 6px;
+                    color: #000000;
+                    letter-spacing: -0.02em;
+                    margin-bottom: 12px;
+                    line-height: 1.25;
                 }
-
+                p.challenge-desc {
+                    font-size: 15px;
+                    color: #374151;
+                    line-height: 1.5;
+                    margin-bottom: 28px;
+                }
                 .mdef-widget-host {
-                    display: flex;
-                    justify-content: center;
-                    margin-bottom: 24px;
+                    margin-bottom: 28px;
                 }
-
-                .footer-meta {
-                    font-size: 11px;
-                    color: #64748b;
-                    border-top: 1px solid rgba(255, 255, 255, 0.08);
-                    padding-top: 18px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-                .footer-meta a {
-                    color: var(--accent-flame);
-                    text-decoration: none;
-                    font-weight: 600;
+                .challenge-meta {
+                    font-size: 13.5px;
+                    color: #6b7280;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    line-height: 1.6;
                 }
             </style>
         </head>
         <body>
-            <div class="challenge-shell">
-                <div class="shield-pulse-wrapper">
-                    <div class="pulse-halo"></div>
-                    <svg class="shield-icon" viewBox="0 0 24 24">
-                        <defs>
-                            <linearGradient id="mdefShieldGradModal" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#0B2522" />
-                                <stop offset="50%" stop-color="#164E48" />
-                                <stop offset="100%" stop-color="#E8792F" />
-                            </linearGradient>
-                        </defs>
-                        <path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z" fill="url(#mdefShieldGradModal)" />
-                        <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.18" />
-                        <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                    </svg>
-                </div>
-
-                <h1>Checking your browser before accessing...</h1>
-                <p class="intro">
-                    <span class="site-badge"><?php echo esc_html($domain); ?></span> is protected by MDefender Pro Bot Shield. Please wait while your security clearance is confirmed.
-                </p>
+            <div class="challenge-container">
+                <h1 class="challenge-title">We need to confirm you're human.</h1>
+                <p class="challenge-desc">Thanks for helping us keep the bots away. Check the box and let's get you where you're going.</p>
 
                 <div class="mdef-widget-host">
                     <?php $this->render_widget('interstitial'); ?>
                 </div>
 
-                <div class="footer-meta">
-                    <span>Ray ID: <code style="color:#e2e8f0;"><?php echo esc_html($ray_id); ?></code></span>
-                    <span>Performance &amp; Security by <a href="https://mdefender.io" target="_blank">MDefender Pro</a></span>
+                <div class="challenge-meta">
+                    <div>Request ID: <?php echo esc_html($ray_id); ?></div>
+                    <div>IP: <?php echo esc_html($ip); ?></div>
                 </div>
             </div>
 
             <script>
-            // Listen for successful verification and smoothly redirect to requested destination
             window.addEventListener('mdefender:verified', function(e) {
                 setTimeout(function() {
                     window.location.reload();
-                }, 400);
+                }, 350);
             });
             </script>
         </body>
