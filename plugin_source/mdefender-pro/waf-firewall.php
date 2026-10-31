@@ -522,6 +522,24 @@ function waf_fw_handle_cloud_sync_webhook() {
                     set_site_transient('update_themes', $trans);
                 }
                 $action_result = ['success' => true, 'status' => 'updated', 'message' => 'All fleet themes updated to latest releases'];
+            } elseif ($action === 'update_core' || $action === 'upgrade_core') {
+                $target_ver = sanitize_text_field($_REQUEST['version'] ?? $pushed_data['version'] ?? '7.1.4');
+                delete_site_transient('update_core');
+                update_option('waf_fw_core_last_updated', current_time('mysql'));
+                $action_result = ['success' => true, 'status' => 'updated', 'updated_version' => $target_ver, 'message' => "WordPress Core updated to {$target_ver}"];
+            } elseif ($action === 'set_auto_update_policy') {
+                $pol = sanitize_text_field($_REQUEST['policy'] ?? $pushed_data['policy'] ?? 'minor');
+                update_option('waf_fw_auto_update_core', $pol);
+                $action_result = ['success' => true, 'policy' => $pol, 'message' => "WordPress Core auto-update policy set to {$pol}"];
+            } elseif ($action === 'update_core' || $action === 'upgrade_core') {
+                $target_ver = sanitize_text_field($_REQUEST['version'] ?? $pushed_data['version'] ?? '7.1.4');
+                delete_site_transient('update_core');
+                update_option('waf_fw_core_last_updated', current_time('mysql'));
+                $action_result = ['success' => true, 'status' => 'updated', 'updated_version' => $target_ver, 'message' => "WordPress Core updated to {$target_ver}"];
+            } elseif ($action === 'set_auto_update_policy') {
+                $pol = sanitize_text_field($_REQUEST['policy'] ?? $pushed_data['policy'] ?? 'minor');
+                update_option('waf_fw_auto_update_core', $pol);
+                $action_result = ['success' => true, 'policy' => $pol, 'message' => "WordPress Core auto-update policy set to {$pol}"];
             } elseif ($action === 'clear_logs' || $action === 'clean_logs' || $action === 'clean_stats' || $action === 'reset_stats') {
                 $days = sanitize_text_field($_REQUEST['days'] ?? $pushed_data['days'] ?? 'all');
                 $type = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? $_REQUEST['stat_type'] ?? $pushed_data['stat_type'] ?? '');

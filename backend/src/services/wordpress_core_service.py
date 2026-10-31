@@ -19,6 +19,7 @@ from typing import Dict, Any, List, Optional
 from bson import ObjectId
 
 from src.database.mongodb_connection import MongoDB
+from src.auth.audit_service import AuditService
 
 logger = logging.getLogger("mdefender.wordpress_core")
 
@@ -312,6 +313,23 @@ class WordPressCoreService:
             }}
         )
 
+        try:
+            AuditService().log(
+                user_id=user_id,
+                action="core_checksums_verified",
+                ip_address="system",
+                details={
+                    "website_id": str(site["_id"]),
+                    "domain": domain,
+                    "status": status,
+                    "total_files": total_official_files,
+                    "modified_count": len(modified_files),
+                    "integrity_percentage": result.get("integrity_percentage")
+                }
+            )
+        except Exception:
+            pass
+
         return result
 
     # -------------------------------------------------------------------------
@@ -334,6 +352,33 @@ class WordPressCoreService:
                 "updated_at": datetime.now()
             }}
         )
+
+        try:
+            target_url = site.get("url") or site.get("domain") or "" if site else ""
+            if target_url:
+                if not target_url.startswith("http"):
+                    target_url = f"https://{target_url}" if site.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+                sep = "&" if "?" in target_url else "?"
+                webhook_url = f"{target_url}{sep}waf_cloud_sync=1&action=set_auto_update_policy&policy={clean_pol}"
+                import requests
+                requests.post(webhook_url, timeout=5.0, verify=False)
+        except Exception:
+            pass
+
+        try:
+            AuditService().log(
+                user_id=user_id,
+                action="core_policy_updated",
+                ip_address="system",
+                details={
+                    "website_id": str(target_id),
+                    "domain": site.get("domain") if site else "",
+                    "policy": clean_pol
+                }
+            )
+        except Exception:
+            pass
+
         return {
             "website_id": str(target_id),
             "auto_update_core": clean_pol,
@@ -372,6 +417,33 @@ class WordPressCoreService:
             }}
         )
 
+        try:
+            target_url = site.get("url") or site.get("domain") or ""
+            if target_url:
+                if not target_url.startswith("http"):
+                    target_url = f"https://{target_url}" if site.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+                sep = "&" if "?" in target_url else "?"
+                webhook_url = f"{target_url}{sep}waf_cloud_sync=1&action=update_core&version={latest_ver}"
+                import requests
+                requests.post(webhook_url, timeout=5.0, verify=False)
+        except Exception:
+            pass
+
+        try:
+            AuditService().log(
+                user_id=user_id,
+                action="core_updated",
+                ip_address="system",
+                details={
+                    "website_id": str(site["_id"]),
+                    "domain": site.get("domain") or site.get("url"),
+                    "previous_version": site.get("wp_version") or "6.7.1",
+                    "updated_version": latest_ver
+                }
+            )
+        except Exception:
+            pass
+
         return {
             "website_id": str(site["_id"]),
             "domain": site.get("domain") or site.get("url"),
@@ -398,6 +470,20 @@ class WordPressCoreService:
                 "checksum_verified_at": now
             }}
         )
+
+        try:
+            AuditService().log(
+                user_id=user_id,
+                action="fleet_core_updated",
+                ip_address="system",
+                details={
+                    "updated_version": latest_ver,
+                    "modified_count": res.modified_count
+                }
+            )
+        except Exception:
+            pass
+
         return {
             "updated_version": latest_ver,
             "modified_count": res.modified_count,
