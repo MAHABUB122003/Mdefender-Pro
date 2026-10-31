@@ -36,9 +36,11 @@ class WAF_FW_Login_Protector {
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
 
-        $turnstile_active = get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no')) === 'yes';
-        if (!$turnstile_active && get_option('waf_harden_login_captcha', 'no') === 'yes') {
-            add_action('login_form', [$this, 'render_captcha_form']);
+        $hold_press_active = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        $captcha_active = get_option('waf_harden_login_captcha', 'no') === 'yes';
+        if ($hold_press_active || $captcha_active) {
+            add_action('login_form', [$this, 'render_captcha_form'], 20);
+            add_filter('authenticate', [$this, 'validate_login_challenge'], 10, 3);
             add_filter('wp_authenticate_user', [$this, 'validate_captcha'], 10, 2);
             add_action('wp_ajax_waf_captcha_image', [$this, 'generate_captcha_image']);
             add_action('wp_ajax_nopriv_waf_captcha_image', [$this, 'generate_captcha_image']);
@@ -628,26 +630,40 @@ class WAF_FW_Login_Protector {
         imagedestroy($img);
     }
 
-        public function validate_captcha($user, $password) {
+        /**
+     * MDefender Pro Unbypassable Biometric 'Press & Hold' Challenge Pre-Validation
+     * Hooks into 'authenticate' filter (priority 10) to block automated brute-force scripts before credentials check
+     */
+    public function validate_login_challenge($user, $username, $password) {
+        if (defined('DOING_CRON') && DOING_CRON) return $user;
+        if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) return $user;
+        if (empty($_POST) || !isset($_POST['log'])) {
+            return $user;
+        }
         if (is_wp_error($user)) return $user;
 
-        // 1. MDefender Pro Biometric 'Press & Hold' Strict Verification
         $hold_press_enabled = get_option('waf_hold_press_enabled', 'yes') === 'yes';
         if ($hold_press_enabled) {
             $token_raw = sanitize_text_field($_POST['waf_hold_press_token'] ?? '');
             $proof_raw = sanitize_text_field($_POST['waf_hold_press_proof'] ?? '');
 
             if (empty($token_raw) || empty($proof_raw)) {
+                remove_filter('authenticate', 'wp_authenticate_username_password', 20);
+                remove_filter('authenticate', 'wp_authenticate_email_password', 20);
                 return new WP_Error('waf_hold_fail', '<strong>Bot Verification Required:</strong> Please press and hold the security button to authenticate as a human.');
             }
 
             $decoded = base64_decode($token_raw);
             if (!$decoded) {
+                remove_filter('authenticate', 'wp_authenticate_username_password', 20);
+                remove_filter('authenticate', 'wp_authenticate_email_password', 20);
                 return new WP_Error('waf_hold_fail', '<strong>Security Verification Failed:</strong> Malformed token.');
             }
 
             $parts = explode('|', $decoded);
             if (count($parts) !== 5) {
+                remove_filter('authenticate', 'wp_authenticate_username_password', 20);
+                remove_filter('authenticate', 'wp_authenticate_email_password', 20);
                 return new WP_Error('waf_hold_fail', '<strong>Security Verification Failed:</strong> Invalid token structure.');
             }
 
@@ -662,7 +678,7 @@ class WAF_FW_Login_Protector {
             }
 
             // Check IP match (anti-token-hijacking)
-            if ($client_ip !== $tok_ip && $tok_ip !== '127.0.0.1') {
+            if ($client_ip !== $tok_ip && $tok_ip !== '127.0.0.1' && $client_ip !== '127.0.0.1' && $client_ip !== '::1') {
                 return new WP_Error('waf_hold_fail', '<strong>Security Verification Failed:</strong> Network mismatch.');
             }
 
@@ -681,7 +697,18 @@ class WAF_FW_Login_Protector {
                 return new WP_Error('waf_hold_fail', '<strong>Bot Detected:</strong> Automated submission was too fast.');
             }
 
-            return $user; // Passed unbypassable human check!
+            return $user; // Biometric Passed!
+        }
+
+        return $user;
+    }
+
+    public function validate_captcha($user, $password) {
+        if (is_wp_error($user)) return $user;
+
+        $hold_press_enabled = get_option('waf_hold_press_enabled', 'yes') === 'yes';
+        if ($hold_press_enabled) {
+            return $user; // Handled strictly in validate_login_challenge on authenticate filter
         }
 
         $honeypot = $_POST['waf_website'] ?? '';

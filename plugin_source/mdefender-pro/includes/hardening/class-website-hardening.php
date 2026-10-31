@@ -53,7 +53,7 @@ class WAF_FW_Website_Hardening {
         if (get_option('waf_fw_prevent_user_enumeration') === 'yes' || get_option('waf_harden_user_enumeration') === 'enabled' || get_option('waf_harden_disable_user_enum') === 'yes' || get_option('waf_harden_rest_disable_users') === 'yes') {
             if (!is_admin()) {
                 // Block ?author=N queries
-                if (isset($_REQUEST['author']) || (isset($_GET['author']) && $_GET['author'] !== '')) {
+                if (isset($_GET['author']) && $_GET['author'] !== '') {
                     status_header(403);
                     wp_die('User enumeration blocked by MDefender-Pro Hardening', 'Access Denied', ['response' => 403]);
                 }
