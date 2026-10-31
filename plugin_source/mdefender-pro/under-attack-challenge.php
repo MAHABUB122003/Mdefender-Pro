@@ -21,11 +21,11 @@ $challenge_json = json_encode($challenge_data);
     <title>Checking your browser security — MDefender Pro</title>
     <style>
         :root {
-            --bg-color: #080c14;
-            --card-bg: rgba(15, 23, 42, 0.75);
-            --border-color: rgba(56, 189, 248, 0.2);
-            --primary-color: #38bdf8;
-            --accent-glow: rgba(56, 189, 248, 0.35);
+            --bg-color: #061513;
+            --card-bg: rgba(11, 37, 34, 0.88);
+            --border-color: rgba(232, 121, 47, 0.25);
+            --primary-color: #E8792F;
+            --accent-glow: rgba(232, 121, 47, 0.35);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
@@ -40,9 +40,9 @@ $challenge_json = json_encode($challenge_data);
         body {
             background-color: var(--bg-color);
             background-image: 
-                radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.8) 0%, #080c14 100%);
+                radial-gradient(circle at 50% 15%, rgba(232, 121, 47, 0.12) 0%, transparent 60%),
+                radial-gradient(circle at 85% 85%, rgba(22, 78, 72, 0.25) 0%, transparent 50%),
+                radial-gradient(circle at 15% 85%, rgba(11, 37, 34, 0.9) 0%, transparent 60%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -56,12 +56,12 @@ $challenge_json = json_encode($challenge_data);
             width: 100%;
             max-width: 520px;
             background: var(--card-bg);
-            border: 1px solid var(--border-color);
+            border: 1.5px solid var(--border-color);
             border-radius: 24px;
             padding: 44px 36px;
             box-shadow: 
-                0 25px 60px -15px rgba(0, 0, 0, 0.7),
-                0 0 35px rgba(14, 165, 233, 0.12);
+                0 25px 60px -15px rgba(0, 0, 0, 0.8),
+                0 0 35px rgba(232, 121, 47, 0.12);
             backdrop-filter: blur(20px);
             text-align: center;
             position: relative;
@@ -132,8 +132,8 @@ $challenge_json = json_encode($challenge_data);
 
         /* Progress & PoW Indicator */
         .verification-box {
-            background: rgba(15, 23, 42, 0.9);
-            border: 1px solid rgba(56, 189, 248, 0.25);
+            background: rgba(8, 20, 18, 0.9);
+            border: 1px solid rgba(232, 121, 47, 0.25);
             border-radius: 14px;
             padding: 18px 20px;
             margin-bottom: 28px;
@@ -152,14 +152,14 @@ $challenge_json = json_encode($challenge_data);
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            color: #38bdf8;
+            color: #E8792F;
         }
 
         .spinner {
             width: 14px;
             height: 14px;
-            border: 2px solid rgba(56, 189, 248, 0.2);
-            border-top-color: #38bdf8;
+            border: 2px solid rgba(232, 121, 47, 0.2);
+            border-top-color: #E8792F;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -179,10 +179,10 @@ $challenge_json = json_encode($challenge_data);
         .progress-bar {
             height: 100%;
             width: 15%;
-            background: linear-gradient(90deg, #0284c7, #38bdf8);
+            background: linear-gradient(90deg, #164E48, #E8792F);
             border-radius: 4px;
             transition: width 0.2s ease;
-            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 10px rgba(232, 121, 47, 0.4);
         }
 
         .meta-footer {
@@ -212,7 +212,7 @@ $challenge_json = json_encode($challenge_data);
         }
 
         .brand-credit span {
-            color: #38bdf8;
+            color: #E8792F;
             font-weight: 700;
         }
     </style>
@@ -332,7 +332,7 @@ $challenge_json = json_encode($challenge_data);
                     if (statusSpinner) {
                         statusSpinner.style.border = 'none';
                         statusSpinner.style.animation = 'none';
-                        statusSpinner.innerHTML = '<span style="color:#10b981; font-size:16px;">✓</span>';
+                        statusSpinner.innerHTML = '<span style="color:#E8792F; font-size:16px; font-weight:bold;">✓</span>';
                     }
 
                     // Submit solution to server

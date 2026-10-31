@@ -72,10 +72,48 @@ async def get_widget_js():
     """Serves the standalone, embeddable MDefender Turnstile JavaScript widget."""
     js_content = """
 /**
- * MDefender Turnstile - Embedded Bot Verification Library v2.2.0
- * Ultra-fast client-side WebCrypto Proof-of-Work & Human Verification
+ * MDefender Turnstile - Embedded Bot Verification Library v3.0.0
+ * Ultra-fast client-side WebCrypto Proof-of-Work & Autonomous Human Verification
+ * Cyber Obsidian & Electric Flame Executive Design
  */
 (function() {
+    function inspectBrowserEnvironment() {
+        var suspicious = false;
+        var reasons = [];
+        try {
+            if (navigator.webdriver === true) { suspicious = true; reasons.push('webdriver'); }
+            if (window._phantom || window.__nightmare || window.callPhantom) { suspicious = true; reasons.push('phantom'); }
+            if (window.document.__selenium_unwrapped || window.document.__webdriver_evaluate) { suspicious = true; reasons.push('selenium'); }
+            if (!window.screen || window.screen.width === 0 || window.screen.height === 0 || window.screen.availWidth === 0) { suspicious = true; reasons.push('screen'); }
+            if (/Chrome/.test(navigator.userAgent) && !window.chrome) { suspicious = true; reasons.push('fake_chrome'); }
+            if (!navigator.languages || navigator.languages.length === 0) { suspicious = true; reasons.push('no_languages'); }
+            if (!window.crypto || !window.crypto.subtle) { suspicious = true; reasons.push('no_crypto'); }
+        } catch(e) {
+            suspicious = true;
+            reasons.push('eval_error');
+        }
+        return { suspicious: suspicious, reasons: reasons };
+    }
+
+    async function solveProofOfWork(ch) {
+        var target = '0'.repeat(ch.difficulty);
+        var count = 0;
+        var enc = new TextEncoder();
+        var sol = '0';
+        while (count < 2000000) {
+            var msg = ch.nonce + ':' + ch.salt + ':' + count;
+            var buf = await crypto.subtle.digest('SHA-256', enc.encode(msg));
+            var arr = Array.from(new Uint8Array(buf));
+            var hex = arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+            if (hex.indexOf(target) === 0) {
+                sol = String(count);
+                break;
+            }
+            count++;
+        }
+        return sol;
+    }
+
     window.mdefenderTurnstile = {
         render: function(targetSelector, options) {
             options = options || {};
@@ -85,29 +123,33 @@ async def get_widget_js():
             var siteKey = options.siteKey || el.getAttribute('data-sitekey') || 'mdef_default';
             var action = options.action || el.getAttribute('data-action') || 'login';
             var apiBase = options.apiBase || '';
-
             var theme = options.theme || el.getAttribute('data-theme') || 'auto';
 
             el.innerHTML = [
                 '<div class="mdef-ts-embed" data-theme="' + theme + '" style="font-family:-apple-system,BlinkMacSystemFont,\\'Segoe UI\\',Roboto,\\'Inter\\',sans-serif;margin:14px 0 16px;user-select:none;max-width:320px;">',
-                '  <div class="mdef-card" style="display:flex;align-items:center;justify-content:space-between;height:65px;padding:0 14px 0 12px;border-radius:8px;background:#ffffff;border:1px solid #dcdfe4;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);box-sizing:border-box;position:relative;overflow:hidden;">',
+                '  <div class="mdef-card" style="display:flex;align-items:center;justify-content:space-between;height:65px;padding:0 14px 0 12px;border-radius:10px;background:#ffffff;border:1.5px solid #dcdfe4;box-shadow:0 2px 8px rgba(11,37,34,0.05);cursor:pointer;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);box-sizing:border-box;position:relative;overflow:hidden;">',
                 '    <div style="display:flex;align-items:center;gap:12px;">',
-                '      <div class="mdef-chk" style="width:28px;height:28px;border-radius:6px;border:2px solid #cbd5e1;background:#ffffff;display:flex;align-items:center;justify-content:center;transition:all 0.22s ease;position:relative;flex-shrink:0;box-sizing:border-box;">',
-                '        <div class="mdef-spinner" style="display:none;width:24px;height:24px;"><svg viewBox="0 0 28 28" style="width:100%;height:100%;animation:mdefSpin 0.75s linear infinite;"><circle cx="14" cy="14" r="11" fill="none" stroke="rgba(37,99,235,0.15)" stroke-width="2.8"/><circle cx="14" cy="14" r="11" fill="none" stroke="#2563eb" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="40 35"/></svg></div>',
-                '        <div class="mdef-check-svg" style="display:none;width:18px;height:18px;"><svg viewBox="0 0 24 24" style="width:100%;height:100%;"><path d="M4.5 12.5l5 5L19.5 7" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="24" stroke-dashoffset="0"/></svg></div>',
+                '      <div class="mdef-chk state-idle" style="width:28px;height:28px;border-radius:7px;border:2px solid #cbd5e1;background:#ffffff;display:flex;align-items:center;justify-content:center;transition:all 0.22s ease;position:relative;flex-shrink:0;box-sizing:border-box;">',
+                '        <div class="mdef-spinner" style="display:none;width:24px;height:24px;"><svg viewBox="0 0 28 28" style="width:100%;height:100%;animation:mdefSpin 0.75s linear infinite;"><circle cx="14" cy="14" r="11" fill="none" stroke="rgba(11,37,34,0.12)" stroke-width="2.8"/><circle cx="14" cy="14" r="11" fill="none" stroke="#E8792F" stroke-width="3" stroke-linecap="round" stroke-dasharray="40 35"/></svg></div>',
+                '        <div class="mdef-check-svg" style="display:none;width:18px;height:18px;"><svg viewBox="0 0 24 24" style="width:100%;height:100%;"><path d="M4.5 12.5l5 5L19.5 7" fill="none" stroke="#E8792F" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="24" stroke-dashoffset="0"/></svg></div>',
                 '      </div>',
                 '      <div style="display:flex;flex-direction:column;justify-content:center;gap:2px;">',
-                '        <div class="mdef-label" style="font-size:13.5px;font-weight:500;color:#1e293b;line-height:1.25;">Verify you are human</div>',
-                '        <div class="mdef-sub" style="font-size:11px;color:#64748b;line-height:1.2;">Cloud security check</div>',
+                '        <div class="mdef-label" style="font-size:13.5px;font-weight:700;color:#10201E;line-height:1.25;">Verify you are human</div>',
+                '        <div class="mdef-sub" style="font-size:11px;color:#60716B;line-height:1.2;font-weight:500;">MDefender Bot Shield</div>',
                 '      </div>',
                 '    </div>',
                 '    <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0;">',
-                '      <div style="display:inline-flex;align-items:center;gap:4.5px;">',
-                '        <svg style="width:15px;height:16px;fill:#2563eb" viewBox="0 0 24 24"><path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z"/></svg>',
-                '        <span style="font-size:11px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:#1e293b;">MDefender</span>',
+                '      <div style="display:inline-flex;align-items:center;gap:5px;">',
+                '        <svg style="width:16px;height:17px;filter:drop-shadow(0 1px 3px rgba(11,37,34,0.25));" viewBox="0 0 24 24">',
+                '          <defs><linearGradient id="mdefGradJs" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0B2522"/><stop offset="55%" stop-color="#164E48"/><stop offset="100%" stop-color="#E8792F"/></linearGradient></defs>',
+                '          <path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z" fill="url(#mdefGradJs)"/>',
+                '          <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.15"/>',
+                '          <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                '        </svg>',
+                '        <span style="font-size:11px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;color:#0B2522;">MDEFENDER</span>',
                 '      </div>',
-                '      <div style="font-size:9px;color:#94a3b8;display:flex;align-items:center;gap:3px;">',
-                '        <span>Turnstile</span><span>&bull;</span><span>Privacy</span><span>&bull;</span><span>Terms</span>',
+                '      <div style="font-size:9.5px;color:#60716B;display:flex;align-items:center;gap:3.5px;font-weight:600;">',
+                '        <span>Bot Shield</span><span>&bull;</span><a href="https://mdefender.io" target="_blank" style="color:#60716B;text-decoration:none;">Privacy</a>',
                 '      </div>',
                 '    </div>',
                 '  </div>',
@@ -116,10 +158,11 @@ async def get_widget_js():
                 '</div>',
                 '<style>',
                 '  @keyframes mdefSpin{to{transform:rotate(360deg)}}',
-                '  .mdef-card:hover{border-color:#2563eb!important;background:#fbfdff!important;box-shadow:0 3px 8px rgba(37,99,235,0.1)!important;}',
-                '  .mdef-ts-embed[data-theme="dark"] .mdef-card{background:#0f172a!important;border-color:rgba(255,255,255,0.12)!important;color:#fff!important;}',
+                '  .mdef-card:hover{border-color:#0B2522!important;background:#fbfdfa!important;box-shadow:0 4px 14px rgba(11,37,34,0.09),0 0 0 1px rgba(232,121,47,0.15)!important;}',
+                '  .mdef-ts-embed[data-theme="dark"] .mdef-card{background:#081412!important;border-color:#1a3832!important;color:#fff!important;box-shadow:0 4px 14px rgba(0,0,0,0.4)!important;}',
+                '  .mdef-ts-embed[data-theme="dark"] .mdef-card:hover{border-color:#E8792F!important;box-shadow:0 0 16px rgba(232,121,47,0.2)!important;}',
                 '  .mdef-ts-embed[data-theme="dark"] .mdef-label{color:#f8fafc!important;}',
-                '  .mdef-ts-embed[data-theme="dark"] .mdef-chk{background:rgba(255,255,255,0.04)!important;border-color:rgba(255,255,255,0.25)!important;}',
+                '  .mdef-ts-embed[data-theme="dark"] .mdef-chk{background:rgba(255,255,255,0.04)!important;border-color:#244840!important;}',
                 '</style>'
             ].join('');
 
@@ -135,52 +178,33 @@ async def get_widget_js():
             var isRunning = false;
             var isSolved = false;
 
-            box.addEventListener('click', async function() {
+            async function runVerification(isSilent) {
                 if (isRunning || isSolved) return;
                 isRunning = true;
 
                 check.style.border = '2px solid transparent';
                 check.style.background = 'transparent';
                 spin.style.display = 'block';
-                text.textContent = 'Verifying...';
-                sub.textContent = 'Cryptographic verification';
+                svg.style.display = 'none';
+                text.textContent = isSilent ? 'Verifying browser...' : 'Verifying...';
 
                 var t0 = performance.now();
 
                 try {
-                    // Fetch challenge
                     var endpoint = (apiBase ? apiBase : '') + '/api/v1/turnstile/challenge';
                     var r1 = await fetch(endpoint);
                     if (!r1.ok) throw new Error('Challenge request failed');
                     var ch = await r1.json();
 
-                    // Solve PoW in browser
-                    var target = '0'.repeat(ch.difficulty);
-                    var count = 0;
-                    var enc = new TextEncoder();
-                    var sol = '0';
-
-                    while (count < 2000000) {
-                        var msg = ch.nonce + ':' + ch.salt + ':' + count;
-                        var buf = await crypto.subtle.digest('SHA-256', enc.encode(msg));
-                        var arr = Array.from(new Uint8Array(buf));
-                        var hex = arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-                        if (hex.indexOf(target) === 0) {
-                            sol = String(count);
-                            break;
-                        }
-                        count++;
-                    }
-
+                    var sol = await solveProofOfWork(ch);
                     var t1 = performance.now();
+
                     var telemetry = {
                         webdriver: navigator.webdriver === true,
-                        screen_width: window.screen ? window.screen.width : 0,
-                        screen_height: window.screen ? window.screen.height : 0,
+                        is_silent: isSilent,
                         duration_ms: Math.round(t1 - t0)
                     };
 
-                    // Submit verification
                     var verifyEndpoint = (apiBase ? apiBase : '') + '/api/v1/turnstile/verify';
                     var r2 = await fetch(verifyEndpoint, {
                         method: 'POST',
@@ -197,15 +221,21 @@ async def get_widget_js():
                         isSolved = true;
                         spin.style.display = 'none';
                         svg.style.display = 'block';
-                        check.style.background = '#10b981';
-                        check.style.borderColor = '#10b981';
-                        check.style.boxShadow = '0 0 10px rgba(16,185,129,0.4)';
-                        text.textContent = 'Success! Verification complete.';
-                        text.style.color = '#059669';
+                        check.style.background = '#0B2522';
+                        check.style.borderColor = '#0B2522';
+                        check.style.boxShadow = '0 0 12px rgba(11, 37, 34, 0.4), 0 2px 6px rgba(232, 121, 47, 0.25)';
+                        text.textContent = 'Success!';
+                        text.style.color = '#0B2522';
                         sub.textContent = '✓ Verification complete';
-                        sub.style.color = '#059669';
+                        sub.style.color = '#E8792F';
+                        sub.style.fontWeight = '700';
                         inputToken.value = verifyData.clearance_token || ch.token;
                         inputSol.value = sol;
+
+                        var tokenVal = verifyData.clearance_token || ch.token;
+                        document.cookie = '__mdef_challenge_token=' + encodeURIComponent(tokenVal) + '; path=/; max-age=86400; SameSite=Lax';
+                        document.cookie = '__mdef_clearance=' + encodeURIComponent(tokenVal) + '; path=/; max-age=86400; SameSite=Lax';
+
                         if (options.onSuccess) options.onSuccess(verifyData);
                     } else {
                         throw new Error(verifyData.reason || 'Verification failed');
@@ -213,17 +243,27 @@ async def get_widget_js():
                 } catch (e) {
                     isRunning = false;
                     spin.style.display = 'none';
-                    check.style.borderColor = '#ef4444';
-                    check.style.background = 'rgba(239,68,68,0.1)';
-                    text.textContent = 'Verification failed. Click to retry.';
-                    text.style.color = '#dc2626';
-                    sub.textContent = e.message || 'Error occurred';
+                    check.style.borderColor = '#E8792F';
+                    check.style.background = 'transparent';
+                    text.textContent = 'Verification Required';
+                    text.style.color = '#10201E';
+                    sub.textContent = 'Click to verify human access';
                 }
+            }
+
+            var env = inspectBrowserEnvironment();
+            if (!env.suspicious) {
+                setTimeout(function() {
+                    runVerification(true);
+                }, 50);
+            }
+
+            box.addEventListener('click', function() {
+                runVerification(false);
             });
         }
     };
 
-    // Auto-mount any elements with class mdefender-turnstile
     document.addEventListener('DOMContentLoaded', function() {
         var targets = document.querySelectorAll('.mdefender-turnstile, #mdefender-turnstile');
         for (var i = 0; i < targets.length; i++) {

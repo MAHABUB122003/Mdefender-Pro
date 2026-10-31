@@ -446,33 +446,33 @@ class WAF_FW_Turnstile {
         $ajax_url = admin_url('admin-ajax.php');
         $theme = get_option('waf_fw_turnstile_theme', get_option('waf_turnstile_theme', 'auto'));
         $is_cleared = $this->is_visitor_cleared();
-        $clearance_cookie = $is_cleared ? ($_COOKIE['__mdef_challenge_token'] ?? '') : '';
+        $clearance_cookie = $is_cleared ? ($_COOKIE['__mdef_challenge_token'] ?? $_COOKIE['__mdef_clearance'] ?? '') : '';
         ?>
-        <div class="mdefender-turnstile-container" data-theme="<?php echo esc_attr($theme); ?>" data-context="<?php echo esc_attr($context); ?>" style="margin: 14px 0 16px; user-select: none;">
+        <div class="mdefender-turnstile-container" data-theme="<?php echo esc_attr($theme); ?>" data-context="<?php echo esc_attr($context); ?>">
             <div class="mdef-ts-card">
                 <div class="mdef-ts-left">
                     <div class="mdef-ts-checkbox <?php echo $is_cleared ? 'state-success' : 'state-idle'; ?>" role="checkbox" aria-checked="<?php echo $is_cleared ? 'true' : 'false'; ?>" tabindex="0">
-                        <!-- Radar Spinner -->
+                        <!-- High-Tech Radar Spinner -->
                         <div class="mdef-ts-spinner">
                             <svg viewBox="0 0 28 28">
                                 <circle class="mdef-track" cx="14" cy="14" r="11" />
                                 <circle class="mdef-head" cx="14" cy="14" r="11" />
                             </svg>
                         </div>
-                        <!-- Animated Checkmark -->
-                        <div class="mdef-ts-check" style="<?php echo $is_cleared ? 'display:block;' : ''; ?>">
+                        <!-- Animated Flame Checkmark -->
+                        <div class="mdef-ts-check" style="<?php echo $is_cleared ? 'display:block;' : 'display:none;'; ?>">
                             <svg viewBox="0 0 24 24">
                                 <path class="mdef-check-path" style="<?php echo $is_cleared ? 'stroke-dashoffset: 0;' : ''; ?>" d="M4.5 12.5l5 5L19.5 7" />
                             </svg>
                         </div>
                     </div>
                     <div class="mdef-ts-text-wrap">
-                        <div class="mdef-ts-title" style="<?php echo $is_cleared ? 'color: #059669;' : ''; ?>">
+                        <div class="mdef-ts-title <?php echo $is_cleared ? 'is-success' : ''; ?>">
                             <?php echo $is_cleared ? 'Success!' : 'Verify you are human'; ?>
                         </div>
                         <div class="mdef-ts-sub">
-                            <span class="mdef-sub-idle" style="<?php echo $is_cleared ? 'display:none;' : ''; ?>">MDefender Bot Shield</span>
-                            <span class="mdef-sub-success" style="<?php echo $is_cleared ? 'display:inline;' : ''; ?>">✓ Verification complete</span>
+                            <span class="mdef-sub-idle" style="<?php echo $is_cleared ? 'display:none;' : 'display:inline;'; ?>">MDefender Bot Shield</span>
+                            <span class="mdef-sub-success" style="<?php echo $is_cleared ? 'display:inline;' : 'display:none;'; ?>">✓ Verification complete</span>
                         </div>
                     </div>
                 </div>
@@ -482,16 +482,16 @@ class WAF_FW_Turnstile {
                         <svg class="mdef-shield-logo" viewBox="0 0 24 24">
                             <defs>
                                 <linearGradient id="mdefShieldGradWp" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#2563eb" />
-                                    <stop offset="60%" stop-color="#3b82f6" />
-                                    <stop offset="100%" stop-color="#06b6d4" />
+                                    <stop offset="0%" stop-color="#0B2522" />
+                                    <stop offset="55%" stop-color="#164E48" />
+                                    <stop offset="100%" stop-color="#E8792F" />
                                 </linearGradient>
                             </defs>
                             <path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z" fill="url(#mdefShieldGradWp)" />
-                            <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.18" />
-                            <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                            <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.15" />
+                            <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                         </svg>
-                        <span class="mdef-brand-text">MDefender</span>
+                        <span class="mdef-brand-text">MDEFENDER</span>
                     </div>
                     <div class="mdef-brand-footer">
                         <span>Bot Shield</span>
@@ -512,6 +512,8 @@ class WAF_FW_Turnstile {
                 max-width: 320px;
                 box-sizing: border-box;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+                margin: 14px 0 16px;
+                user-select: none;
             }
             .mdef-ts-card {
                 display: flex;
@@ -519,10 +521,10 @@ class WAF_FW_Turnstile {
                 justify-content: space-between;
                 height: 65px;
                 padding: 0 14px 0 12px;
-                border-radius: 8px;
+                border-radius: 10px;
                 background: #ffffff;
-                border: 1px solid #dcdfe4;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+                border: 1.5px solid #dcdfe4;
+                box-shadow: 0 2px 8px rgba(11, 37, 34, 0.05);
                 transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
                 cursor: pointer;
                 box-sizing: border-box;
@@ -530,28 +532,19 @@ class WAF_FW_Turnstile {
                 overflow: hidden;
             }
             .mdef-ts-card:hover {
-                border-color: #2563eb;
-                background: #fbfdff;
-                box-shadow: 0 3px 8px rgba(37, 99, 235, 0.1), 0 1px 2px rgba(0,0,0,0.04);
+                border-color: #0B2522;
+                background: #fbfdfa;
+                box-shadow: 0 4px 14px rgba(11, 37, 34, 0.09), 0 0 0 1px rgba(232, 121, 47, 0.15);
             }
-
-            /* Dark Theme Overrides */
             .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card {
                 background: #081412;
                 border-color: #1a3832;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+                box-shadow: 0 4px 14px rgba(0,0,0,0.4);
             }
             .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card:hover {
-                border-color: #2A8B68;
-                box-shadow: 0 0 16px rgba(42, 139, 104, 0.2);
+                border-color: #E8792F;
+                box-shadow: 0 0 16px rgba(232, 121, 47, 0.2);
             }
-            .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-title {
-                color: #f8fafc;
-            }
-            .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-text {
-                color: #f1f5f9;
-            }
-
             .mdef-ts-left {
                 display: flex;
                 align-items: center;
@@ -560,7 +553,7 @@ class WAF_FW_Turnstile {
             .mdef-ts-checkbox {
                 width: 28px;
                 height: 28px;
-                border-radius: 6px;
+                border-radius: 7px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -573,28 +566,45 @@ class WAF_FW_Turnstile {
                 background: #ffffff;
                 border: 2px solid #cbd5e1;
             }
+            .mdef-ts-card:hover .mdef-ts-checkbox.state-idle {
+                border-color: #0B2522;
+                background: #f4f7f5;
+                box-shadow: 0 0 0 3px rgba(11, 37, 34, 0.08);
+            }
             .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-checkbox.state-idle {
                 background: rgba(255,255,255,0.04);
-                border-color: rgba(255,255,255,0.25);
+                border-color: #244840;
             }
-            .mdef-ts-card:hover .mdef-ts-checkbox.state-idle {
-                border-color: #2563eb;
-                background: #eff6ff;
-                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-            }
-
             .mdef-ts-checkbox.state-loading {
                 background: transparent;
                 border: 2px solid transparent;
             }
             .mdef-ts-checkbox.state-success {
-                background: #10b981;
-                border: 2px solid #10b981;
-                box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+                background: #0B2522 !important;
+                border: 2px solid #0B2522 !important;
+                box-shadow: 0 0 12px rgba(11, 37, 34, 0.4), 0 2px 6px rgba(232, 121, 47, 0.25) !important;
                 transform: scale(1.02);
             }
-
-            /* High-tech Radar Spinner */
+            .mdef-ts-check {
+                display: none;
+                width: 18px;
+                height: 18px;
+            }
+            .mdef-ts-check svg {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+            .mdef-check-path {
+                fill: none;
+                stroke: #E8792F !important;
+                stroke-width: 3.2 !important;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                stroke-dasharray: 24;
+                stroke-dashoffset: 0;
+                transition: stroke-dashoffset 0.35s ease-out;
+            }
             .mdef-ts-spinner {
                 display: none;
                 width: 24px;
@@ -607,41 +617,17 @@ class WAF_FW_Turnstile {
             }
             .mdef-track {
                 fill: none;
-                stroke: rgba(37, 99, 235, 0.15);
+                stroke: rgba(11, 37, 34, 0.12);
                 stroke-width: 2.8;
             }
             .mdef-head {
                 fill: none;
-                stroke: #2563eb;
-                stroke-width: 2.8;
+                stroke: #E8792F;
+                stroke-width: 3;
                 stroke-linecap: round;
                 stroke-dasharray: 40 35;
             }
             @keyframes mdefSpinRot { to { transform: rotate(360deg); } }
-
-            /* Animated Checkmark */
-            .mdef-ts-check {
-                display: none;
-                width: 18px;
-                height: 18px;
-            }
-            .mdef-ts-check svg {
-                width: 100%;
-                height: 100%;
-            }
-            .mdef-check-path {
-                fill: none;
-                stroke: #ffffff;
-                stroke-width: 2.8;
-                stroke-linecap: round;
-                stroke-linejoin: round;
-                stroke-dasharray: 24;
-                stroke-dashoffset: 24;
-                animation: mdefDraw 0.35s 0.05s ease-out forwards;
-            }
-            @keyframes mdefDraw { to { stroke-dashoffset: 0; } }
-
-            /* Text Styling */
             .mdef-ts-text-wrap {
                 display: flex;
                 flex-direction: column;
@@ -650,23 +636,32 @@ class WAF_FW_Turnstile {
             }
             .mdef-ts-title {
                 font-size: 13.5px;
-                font-weight: 500;
-                color: #1e293b;
+                font-weight: 700;
+                color: #10201E;
                 line-height: 1.25;
                 transition: color 0.2s;
             }
+            .mdef-ts-title.is-success {
+                color: #0B2522 !important;
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-title {
+                color: #f8fafc;
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-title.is-success {
+                color: #FFFFFF !important;
+            }
             .mdef-ts-sub {
                 font-size: 11px;
-                color: #64748b;
+                color: #60716B;
                 line-height: 1.2;
+                font-weight: 500;
             }
             .mdef-sub-success {
                 display: none;
-                color: #059669;
-                font-weight: 600;
+                color: #E8792F !important;
+                font-weight: 700 !important;
+                font-size: 11.5px !important;
             }
-
-            /* Branding Right */
             .mdef-ts-brand {
                 display: flex;
                 flex-direction: column;
@@ -678,34 +673,38 @@ class WAF_FW_Turnstile {
             .mdef-brand-header {
                 display: inline-flex;
                 align-items: center;
-                gap: 4.5px;
+                gap: 5px;
             }
             .mdef-shield-logo {
-                width: 15px;
-                height: 16px;
-                filter: drop-shadow(0 1px 2px rgba(37,99,235,0.25));
+                width: 16px;
+                height: 17px;
+                filter: drop-shadow(0 1px 3px rgba(11, 37, 34, 0.25));
             }
             .mdef-brand-text {
                 font-size: 11px;
                 font-weight: 800;
-                letter-spacing: 0.5px;
+                letter-spacing: 0.6px;
                 text-transform: uppercase;
-                color: #1e293b;
+                color: #0B2522;
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-text {
+                color: #f1f5f9;
             }
             .mdef-brand-footer {
-                font-size: 9px;
-                color: #94a3b8;
+                font-size: 9.5px;
+                color: #60716B;
                 display: flex;
                 align-items: center;
                 gap: 3.5px;
+                font-weight: 600;
             }
             .mdef-brand-footer a {
-                color: #94a3b8;
+                color: #60716B;
                 text-decoration: none;
                 transition: color 0.2s;
             }
             .mdef-brand-footer a:hover {
-                color: #2563eb;
+                color: #E8792F;
                 text-decoration: underline;
             }
             .mdef-dot { font-size: 7px; opacity: 0.6; }
@@ -713,97 +712,147 @@ class WAF_FW_Turnstile {
 
         <script>
         (function() {
+            function inspectBrowserEnvironment() {
+                var suspicious = false;
+                var reasons = [];
+                try {
+                    if (navigator.webdriver === true) { suspicious = true; reasons.push('webdriver'); }
+                    if (window._phantom || window.__nightmare || window.callPhantom) { suspicious = true; reasons.push('phantom'); }
+                    if (window.document.__selenium_unwrapped || window.document.__webdriver_evaluate) { suspicious = true; reasons.push('selenium'); }
+                    if (!window.screen || window.screen.width === 0 || window.screen.height === 0 || window.screen.availWidth === 0) { suspicious = true; reasons.push('screen'); }
+                    if (/Chrome/.test(navigator.userAgent) && !window.chrome) { suspicious = true; reasons.push('fake_chrome'); }
+                    if (!navigator.languages || navigator.languages.length === 0) { suspicious = true; reasons.push('no_languages'); }
+                    if (!window.crypto || !window.crypto.subtle) { suspicious = true; reasons.push('no_crypto'); }
+                } catch(e) {
+                    suspicious = true;
+                    reasons.push('eval_error');
+                }
+                return { suspicious: suspicious, reasons: reasons };
+            }
+
+            async function solveProofOfWork(ch) {
+                var target = '0'.repeat(ch.difficulty);
+                var count = 0;
+                var enc = new TextEncoder();
+                var sol = '0';
+                while (count < 2000000) {
+                    var msg = ch.nonce + ':' + ch.salt + ':' + count;
+                    var buf = await crypto.subtle.digest('SHA-256', enc.encode(msg));
+                    var arr = Array.from(new Uint8Array(buf));
+                    var hex = arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+                    if (hex.indexOf(target) === 0) {
+                        sol = String(count);
+                        break;
+                    }
+                    count++;
+                }
+                return sol;
+            }
+
+            async function runChallengeVerification(container, isSilent) {
+                var box = container.querySelector('.mdef-ts-card');
+                var check = container.querySelector('.mdef-ts-checkbox');
+                var spin = container.querySelector('.mdef-ts-spinner');
+                var svg = container.querySelector('.mdef-ts-check');
+                var label = container.querySelector('.mdef-ts-title');
+                var subIdle = container.querySelector('.mdef-sub-idle');
+                var subSuccess = container.querySelector('.mdef-sub-success');
+                var inputToken = container.querySelector('.mdef-token-input');
+                var inputSol = container.querySelector('.mdef-solution-input');
+
+                if (container.dataset.solving === '1' || (check && check.classList.contains('state-success'))) return;
+                container.dataset.solving = '1';
+
+                check.className = 'mdef-ts-checkbox state-loading';
+                spin.style.display = 'block';
+                svg.style.display = 'none';
+                label.textContent = isSilent ? 'Verifying browser...' : 'Verifying...';
+
+                var t0 = performance.now();
+
+                try {
+                    // 1. Fetch challenge
+                    var fd = new FormData();
+                    fd.append('action', 'waf_turnstile_challenge');
+                    var r1 = await fetch('<?php echo esc_url($ajax_url); ?>', { method: 'POST', body: fd });
+                    var data1 = await r1.json();
+                    if (!data1.success) throw new Error(data1.data?.message || 'Challenge failed');
+                    var ch = data1.data;
+
+                    // 2. Solve PoW in browser WebCrypto
+                    var sol = await solveProofOfWork(ch);
+                    var t1 = performance.now();
+
+                    // 3. Submit solution with environmental telemetry
+                    var fd2 = new FormData();
+                    fd2.append('action', 'waf_turnstile_verify');
+                    fd2.append('token', ch.token);
+                    fd2.append('solution', sol);
+                    fd2.append('telemetry[webdriver]', navigator.webdriver === true ? '1' : '0');
+                    fd2.append('telemetry[is_silent]', isSilent ? '1' : '0');
+                    fd2.append('telemetry[duration_ms]', Math.round(t1 - t0));
+
+                    var r2 = await fetch('<?php echo esc_url($ajax_url); ?>', { method: 'POST', body: fd2 });
+                    var data2 = await r2.json();
+
+                    if (data2.success) {
+                        spin.style.display = 'none';
+                        svg.style.display = 'block';
+                        check.className = 'mdef-ts-checkbox state-success';
+                        label.textContent = 'Success!';
+                        label.className = 'mdef-ts-title is-success';
+                        if (subIdle) subIdle.style.display = 'none';
+                        if (subSuccess) subSuccess.style.display = 'inline';
+                        if (inputToken) inputToken.value = data2.data.clearance_token;
+                        if (inputSol) inputSol.value = sol;
+                        container.dataset.solved = '1';
+
+                        // Set cookies for 24-hour clearance persistence
+                        var tokenVal = data2.data.clearance_token;
+                        document.cookie = '__mdef_challenge_token=' + encodeURIComponent(tokenVal) + '; path=/; max-age=86400; SameSite=Lax';
+                        document.cookie = '__mdef_clearance=' + encodeURIComponent(tokenVal) + '; path=/; max-age=86400; SameSite=Lax';
+
+                        window.dispatchEvent(new CustomEvent('mdefender:verified', { detail: { token: tokenVal } }));
+                    } else {
+                        throw new Error(data2.data?.message || 'Verification rejected');
+                    }
+                } catch(e) {
+                    spin.style.display = 'none';
+                    check.className = 'mdef-ts-checkbox state-idle';
+                    check.style.borderColor = '#E8792F';
+                    label.textContent = 'Verification Required';
+                    label.className = 'mdef-ts-title';
+                    if (subIdle) subIdle.textContent = 'Click to verify human access';
+                } finally {
+                    container.dataset.solving = '0';
+                }
+            }
+
             function initTurnstileWidgets() {
                 var containers = document.querySelectorAll('.mdefender-turnstile-container:not([data-initialized])');
                 containers.forEach(function(container) {
                     container.setAttribute('data-initialized', '1');
-                    var box = container.querySelector('.mdef-ts-card');
                     var check = container.querySelector('.mdef-ts-checkbox');
-                    var spin = container.querySelector('.mdef-ts-spinner');
-                    var svg = container.querySelector('.mdef-ts-check');
-                    var label = container.querySelector('.mdef-ts-title');
-                    var subIdle = container.querySelector('.mdef-sub-idle');
-                    var subSuccess = container.querySelector('.mdef-sub-success');
-                    var inputToken = container.querySelector('.mdef-token-input');
-                    var inputSol = container.querySelector('.mdef-solution-input');
+                    var isAlreadyCleared = check && check.classList.contains('state-success');
 
-                    var isRunning = false;
-                    var isSolved = check.classList.contains('state-success');
+                    if (isAlreadyCleared) {
+                        return;
+                    }
 
-                    box.addEventListener('click', async function() {
-                        if (isRunning || isSolved) return;
-                        isRunning = true;
+                    var env = inspectBrowserEnvironment();
 
-                        check.className = 'mdef-ts-checkbox state-loading';
-                        spin.style.display = 'block';
-                        svg.style.display = 'none';
-                        label.textContent = 'Verifying...';
+                    // Step 1: Silent Challenge (Automatic background check for clean human browsers)
+                    if (!env.suspicious) {
+                        setTimeout(function() {
+                            runChallengeVerification(container, true);
+                        }, 50);
+                    }
 
-                        var t0 = performance.now();
-
-                        try {
-                            // 1. Fetch challenge
-                            var fd = new FormData();
-                            fd.append('action', 'waf_turnstile_challenge');
-                            var r1 = await fetch('<?php echo esc_url($ajax_url); ?>', { method: 'POST', body: fd });
-                            var data1 = await r1.json();
-                            if (!data1.success) throw new Error(data1.data?.message || 'Challenge failed');
-                            var ch = data1.data;
-
-                            // 2. Solve PoW in browser WebCrypto
-                            var target = '0'.repeat(ch.difficulty);
-                            var count = 0;
-                            var enc = new TextEncoder();
-                            var sol = '0';
-
-                            while (count < 2000000) {
-                                var msg = ch.nonce + ':' + ch.salt + ':' + count;
-                                var buf = await crypto.subtle.digest('SHA-256', enc.encode(msg));
-                                var arr = Array.from(new Uint8Array(buf));
-                                var hex = arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-                                if (hex.indexOf(target) === 0) {
-                                    sol = String(count);
-                                    break;
-                                }
-                                count++;
-                            }
-
-                            var t1 = performance.now();
-
-                            // 3. Submit solution
-                            var fd2 = new FormData();
-                            fd2.append('action', 'waf_turnstile_verify');
-                            fd2.append('token', ch.token);
-                            fd2.append('solution', sol);
-                            fd2.append('telemetry[webdriver]', navigator.webdriver === true ? '1' : '0');
-                            fd2.append('telemetry[duration_ms]', Math.round(t1 - t0));
-
-                            var r2 = await fetch('<?php echo esc_url($ajax_url); ?>', { method: 'POST', body: fd2 });
-                            var data2 = await r2.json();
-
-                            if (data2.success) {
-                                isSolved = true;
-                                spin.style.display = 'none';
-                                svg.style.display = 'block';
-                                check.className = 'mdef-ts-checkbox state-success';
-                                label.textContent = 'Success!';
-                                label.style.color = '#059669';
-                                if (subIdle) subIdle.style.display = 'none';
-                                if (subSuccess) subSuccess.style.display = 'inline';
-                                inputToken.value = data2.data.clearance_token;
-                                inputSol.value = sol;
-                            } else {
-                                throw new Error(data2.data?.message || 'Verification rejected');
-                            }
-                        } catch(e) {
-                            isRunning = false;
-                            spin.style.display = 'none';
-                            check.className = 'mdef-ts-checkbox state-idle';
-                            check.style.borderColor = '#ef4444';
-                            label.textContent = 'Verification Failed';
-                            label.style.color = '#dc2626';
-                            if (subIdle) subIdle.textContent = 'Click to retry verification';
-                        }
+                    // Step 2: Interactive Challenge (When user clicks or if suspicious)
+                    var box = container.querySelector('.mdef-ts-card');
+                    box.addEventListener('click', function() {
+                        if (container.dataset.solved === '1') return;
+                        runChallengeVerification(container, false);
                     });
                 });
             }
@@ -819,9 +868,6 @@ class WAF_FW_Turnstile {
         <?php
     }
 
-    /**
-     * Renders Full-Screen Interstitial Page for WordPress Site-Wide Gate
-     */
     public function render_interstitial_page() {
         $ajax_url = admin_url('admin-ajax.php');
         $domain = $_SERVER['HTTP_HOST'] ?? 'Website';
@@ -838,11 +884,11 @@ class WAF_FW_Turnstile {
             <title>Just a moment... | MDefender Pro</title>
             <style>
                 :root {
-                    --bg-canvas: #070a13;
-                    --card-surface: rgba(15, 23, 42, 0.7);
-                    --card-border: rgba(255, 255, 255, 0.08);
-                    --accent-blue: #2563eb;
-                    --accent-cyan: #06b6d4;
+                    --bg-canvas: #061513;
+                    --card-surface: rgba(11, 37, 34, 0.85);
+                    --card-border: rgba(232, 121, 47, 0.25);
+                    --accent-flame: #E8792F;
+                    --accent-teal: #164E48;
                     --text-heading: #ffffff;
                     --text-body: #94a3b8;
                 }
@@ -850,8 +896,9 @@ class WAF_FW_Turnstile {
                 body {
                     background-color: var(--bg-canvas);
                     background-image: 
-                        radial-gradient(circle at 50% 10%, rgba(37, 99, 235, 0.15) 0%, transparent 55%),
-                        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.08) 0%, transparent 45%);
+                        radial-gradient(circle at 50% 15%, rgba(232, 121, 47, 0.12) 0%, transparent 60%),
+                        radial-gradient(circle at 85% 85%, rgba(22, 78, 72, 0.25) 0%, transparent 50%),
+                        radial-gradient(circle at 15% 85%, rgba(11, 37, 34, 0.9) 0%, transparent 60%);
                     color: #f8fafc;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
                     display: flex;
@@ -862,13 +909,13 @@ class WAF_FW_Turnstile {
                 }
                 .challenge-shell {
                     width: 100%;
-                    max-width: 490px;
+                    max-width: 480px;
                     background: var(--card-surface);
-                    border: 1px solid var(--card-border);
+                    border: 1.5px solid var(--card-border);
                     border-radius: 20px;
-                    padding: 42px 36px 32px;
+                    padding: 38px 32px 28px;
                     text-align: center;
-                    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 50px rgba(37, 99, 235, 0.1);
+                    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(232, 121, 47, 0.08);
                     backdrop-filter: blur(24px);
                     -webkit-backdrop-filter: blur(24px);
                     animation: mdefPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -882,7 +929,7 @@ class WAF_FW_Turnstile {
                     position: relative;
                     width: 64px;
                     height: 64px;
-                    margin: 0 auto 22px;
+                    margin: 0 auto 20px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -892,7 +939,7 @@ class WAF_FW_Turnstile {
                     width: 100%;
                     height: 100%;
                     border-radius: 50%;
-                    background: radial-gradient(circle, rgba(37, 99, 235, 0.35) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(232, 121, 47, 0.35) 0%, transparent 70%);
                     animation: haloPulse 2.4s ease-out infinite;
                 }
                 @keyframes haloPulse {
@@ -903,129 +950,51 @@ class WAF_FW_Turnstile {
                 .shield-icon {
                     width: 48px;
                     height: 48px;
-                    filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.5));
+                    filter: drop-shadow(0 4px 14px rgba(232, 121, 47, 0.4));
                 }
 
                 h1 {
-                    font-size: 22px;
-                    font-weight: 700;
+                    font-size: 21px;
+                    font-weight: 800;
                     letter-spacing: -0.02em;
                     margin-bottom: 8px;
                     color: var(--text-heading);
                 }
                 p.intro {
-                    font-size: 14px;
+                    font-size: 13.5px;
                     color: var(--text-body);
                     line-height: 1.5;
-                    margin-bottom: 28px;
+                    margin-bottom: 24px;
                 }
                 .site-badge {
                     display: inline-block;
-                    color: #e2e8f0;
-                    font-weight: 600;
-                    background: rgba(255, 255, 255, 0.05);
+                    color: #FFFFFF;
+                    font-weight: 700;
+                    background: rgba(232, 121, 47, 0.15);
+                    border: 1px solid rgba(232, 121, 47, 0.3);
                     padding: 2px 8px;
                     border-radius: 6px;
                 }
 
-                .turnstile-card-box {
-                    background: rgba(2, 6, 23, 0.6);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 12px;
-                    padding: 16px 18px;
+                .mdef-widget-host {
                     display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 28px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .turnstile-card-box:hover {
-                    border-color: rgba(37, 99, 235, 0.4);
-                    background: rgba(15, 23, 42, 0.8);
-                }
-                .turnstile-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                }
-                .check-box-holder {
-                    width: 28px;
-                    height: 28px;
-                    border-radius: 6px;
-                    border: 2px solid #334155;
-                    display: flex;
-                    align-items: center;
                     justify-content: center;
-                    transition: all 0.2s;
-                    position: relative;
-                }
-                .check-box-holder.active {
-                    border-color: transparent;
-                }
-                .spinner-rot {
-                    width: 22px;
-                    height: 22px;
-                    border: 2.5px solid rgba(37, 99, 235, 0.2);
-                    border-top-color: #2563eb;
-                    border-radius: 50%;
-                    animation: spin 0.8s linear infinite;
-                    display: none;
-                }
-                @keyframes spin { to { transform: rotate(360deg); } }
-                .check-icon-svg {
-                    display: none;
-                    width: 16px;
-                    height: 16px;
-                    stroke: #10b981;
-                    stroke-width: 3;
-                    fill: none;
-                }
-                .card-labels {
-                    text-align: left;
-                }
-                .main-label {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #f1f5f9;
-                }
-                .sub-label {
-                    font-size: 11.5px;
-                    color: #64748b;
-                }
-
-                .brand-meta {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: flex-end;
-                    gap: 2px;
-                }
-                .brand-title {
-                    font-size: 11px;
-                    font-weight: 800;
-                    letter-spacing: 0.5px;
-                    color: #94a3b8;
-                    display: flex;
-                    align-items: center;
-                    gap: 4px;
-                }
-                .brand-title svg { width: 14px; height: 14px; }
-                .brand-legal {
-                    font-size: 9px;
-                    color: #475569;
+                    margin-bottom: 24px;
                 }
 
                 .footer-meta {
-                    border-top: 1px solid rgba(255, 255, 255, 0.06);
+                    font-size: 11px;
+                    color: #64748b;
+                    border-top: 1px solid rgba(255, 255, 255, 0.08);
                     padding-top: 18px;
                     display: flex;
                     justify-content: space-between;
-                    font-size: 11.5px;
-                    color: #64748b;
+                    align-items: center;
                 }
-                .ray-code {
-                    font-family: monospace;
-                    color: #94a3b8;
+                .footer-meta a {
+                    color: var(--accent-flame);
+                    text-decoration: none;
+                    font-weight: 600;
                 }
             </style>
         </head>
@@ -1035,126 +1004,39 @@ class WAF_FW_Turnstile {
                     <div class="pulse-halo"></div>
                     <svg class="shield-icon" viewBox="0 0 24 24">
                         <defs>
-                            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#2563eb" />
-                                <stop offset="100%" stop-color="#06b6d4" />
+                            <linearGradient id="mdefShieldGradModal" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#0B2522" />
+                                <stop offset="50%" stop-color="#164E48" />
+                                <stop offset="100%" stop-color="#E8792F" />
                             </linearGradient>
                         </defs>
-                        <path d="M12 2L4 5.5v6c0 5.25 3.4 10.15 8 11.5 4.6-1.35 8-6.25 8-11.5v-6L12 2z" fill="url(#shieldGrad)" />
-                        <path d="M12 4.2L5.8 6.9v4.6c0 4.1 2.6 8 6.2 9.1 3.6-1.1 6.2-5 6.2-9.1V6.9L12 4.2z" fill="#070a13" opacity="0.35" />
-                        <path d="M9.5 12l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                        <path d="M12 1.5L3.5 5.2v6.5c0 5.6 3.6 10.8 8.5 12.3 4.9-1.5 8.5-6.7 8.5-12.3V5.2L12 1.5z" fill="url(#mdefShieldGradModal)" />
+                        <path d="M12 4L5.5 6.8v5c0 4.2 2.7 8.2 6.5 9.5 3.8-1.3 6.5-5.3 6.5-9.5v-5L12 4z" fill="#ffffff" fill-opacity="0.18" />
+                        <path d="M9.5 12.2l1.8 1.8 3.5-3.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
                     </svg>
                 </div>
 
-                <h1>Checking your browser</h1>
+                <h1>Checking your browser before accessing...</h1>
                 <p class="intro">
-                    Please stand by while we verify your connection to <span class="site-badge"><?php echo esc_html($domain); ?></span>. This automated process completes in a few moments.
+                    <span class="site-badge"><?php echo esc_html($domain); ?></span> is protected by MDefender Pro Bot Shield. Please wait while your security clearance is confirmed.
                 </p>
 
-                <div class="turnstile-card-box" id="interstitialCard">
-                    <div class="turnstile-left">
-                        <div class="check-box-holder" id="interCheckHolder">
-                            <div class="spinner-rot" id="interSpinner"></div>
-                            <svg class="check-icon-svg" id="interCheck" viewBox="0 0 24 24">
-                                <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                        <div class="card-labels">
-                            <div class="main-label" id="interLabel">Verifying your browser...</div>
-                            <div class="sub-label">MDefender Cryptographic PoW</div>
-                        </div>
-                    </div>
-                    <div class="brand-meta">
-                        <div class="brand-title">
-                            <svg viewBox="0 0 24 24" fill="#3b82f6"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>
-                            MDefender
-                        </div>
-                        <div class="brand-legal">Cloud Defense</div>
-                    </div>
+                <div class="mdef-widget-host">
+                    <?php $this->render_widget('interstitial'); ?>
                 </div>
 
                 <div class="footer-meta">
-                    <div>Ray ID: <span class="ray-code"><?php echo esc_html($ray_id); ?></span></div>
-                    <div>Client IP: <span class="ray-code"><?php echo esc_html($ip); ?></span></div>
+                    <span>Ray ID: <code style="color:#e2e8f0;"><?php echo esc_html($ray_id); ?></code></span>
+                    <span>Performance &amp; Security by <a href="https://mdefender.io" target="_blank">MDefender Pro</a></span>
                 </div>
             </div>
 
             <script>
-            var isRunning = false;
-            async function solveInterstitial() {
-                if (isRunning) return;
-                isRunning = true;
-
-                var card = document.getElementById('interstitialCard');
-                var holder = document.getElementById('interCheckHolder');
-                var spin = document.getElementById('interSpinner');
-                var chk = document.getElementById('interCheck');
-                var label = document.getElementById('interLabel');
-
-                holder.className = 'check-box-holder active';
-                spin.style.display = 'block';
-                label.textContent = 'Verifying connection...';
-
-                var t0 = performance.now();
-
-                try {
-                    var fd = new FormData();
-                    fd.append('action', 'waf_turnstile_challenge');
-                    var r1 = await fetch('<?php echo esc_url($ajax_url); ?>', { method: 'POST', body: fd });
-                    var data1 = await r1.json();
-                    if (!data1.success) throw new Error('Challenge request failed');
-                    var ch = data1.data;
-
-                    var target = '0'.repeat(ch.difficulty);
-                    var count = 0;
-                    var enc = new TextEncoder();
-                    var sol = '0';
-
-                    while (count < 2000000) {
-                        var msg = ch.nonce + ':' + ch.salt + ':' + count;
-                        var buf = await crypto.subtle.digest('SHA-256', enc.encode(msg));
-                        var arr = Array.from(new Uint8Array(buf));
-                        var hex = arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-                        if (hex.indexOf(target) === 0) {
-                            sol = String(count);
-                            break;
-                        }
-                        count++;
-                    }
-
-                    var t1 = performance.now();
-
-                    var fd2 = new FormData();
-                    fd2.append('action', 'waf_turnstile_verify');
-                    fd2.append('token', ch.token);
-                    fd2.append('solution', sol);
-                    fd2.append('telemetry[webdriver]', navigator.webdriver === true ? '1' : '0');
-                    fd2.append('telemetry[duration_ms]', Math.round(t1 - t0));
-
-                    var r2 = await fetch('<?php echo esc_url($ajax_url); ?>', { method: 'POST', body: fd2 });
-                    var data2 = await r2.json();
-
-                    if (data2.success) {
-                        spin.style.display = 'none';
-                        chk.style.display = 'block';
-                        label.textContent = 'Success! Redirecting...';
-                        label.style.color = '#10b981';
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 500);
-                    } else {
-                        throw new Error('Verification rejected');
-                    }
-                } catch(e) {
-                    isRunning = false;
-                    spin.style.display = 'none';
-                    label.textContent = 'Failed. Click to retry.';
-                    label.style.color = '#f87171';
-                }
-            }
-
-            window.addEventListener('DOMContentLoaded', function() {
-                setTimeout(solveInterstitial, 300);
+            // Listen for successful verification and smoothly redirect to requested destination
+            window.addEventListener('mdefender:verified', function(e) {
+                setTimeout(function() {
+                    window.location.reload();
+                }, 400);
             });
             </script>
         </body>
