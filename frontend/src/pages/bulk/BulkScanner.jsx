@@ -42,15 +42,34 @@ import api from '../../api/api'
 export default function BulkScanner() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
 
-  // Selected site
+  // Selected site & manual selector state
+  const [chosenSiteId, setChosenSiteId] = useState(() => {
+    return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || null) : null
+  })
+
   const currentSite = useMemo(() => {
-    if (selectedSiteId === 'all') {
-      return activeWebsite || wpWebsites[0] || null
+    if (chosenSiteId && chosenSiteId !== 'all') {
+      const match = wpWebsites.find(s => (s.id || s._id) === chosenSiteId)
+      if (match) return match
     }
-    return activeWebsite || wpWebsites.find(s => (s.id || s._id) === selectedSiteId) || wpWebsites[0] || null
-  }, [selectedSiteId, activeWebsite, wpWebsites])
+    if (selectedSiteId && selectedSiteId !== 'all') {
+      const match = wpWebsites.find(s => (s.id || s._id) === selectedSiteId)
+      if (match) return match
+    }
+    return activeWebsite || wpWebsites[0] || null
+  }, [chosenSiteId, selectedSiteId, activeWebsite, wpWebsites])
 
   const targetSiteId = currentSite?.id || currentSite?._id
+
+  const handleSelectSite = (newId) => {
+    setChosenSiteId(newId)
+    try {
+      localStorage.setItem('mdf_bulk_selected_site', newId)
+      window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
+    } catch {}
+    setFindings([])
+    loadLatestScans(newId)
+  }
 
   // Scanner state
   const [scanning, setScanning] = useState(false)
@@ -80,6 +99,10 @@ export default function BulkScanner() {
     healthSub: 'No completed scan yet',
     filesScanned: 0,
     componentFilesScanned: 0,
+    usersChecked: null,
+    databaseTables: null,
+    postsScanned: null,
+    commentsScanned: null,
     unresolvedChanges: 0,
     lastDeepAnalysis: 'Not scanned yet',
     durationText: 'Ready to scan',
@@ -129,9 +152,10 @@ export default function BulkScanner() {
           setFindings(latestFindings)
         }
         const score = latest.score ?? (latestFindings.length === 0 ? 100 : Math.max(20, 100 - latestFindings.length * 15))
-        const totalScanned = latest.total_scanned || latest.files_scanned || latest.real_metrics?.total_files || (latestFindings.length > 0 ? 4892 : 0)
-        const pluginFiles = latest.real_metrics?.plugin_files || 842
-        const themeFiles = latest.real_metrics?.theme_files || 186
+        const metrics = latest.real_metrics || {}
+        const totalScanned = latest.total_scanned || latest.files_scanned || metrics.total_files || (latestFindings.length > 0 ? latestFindings.length : 0)
+        const pluginFiles = metrics.plugin_files || 0
+        const themeFiles = metrics.theme_files || 0
         const activeThreatsCount = latestFindings.filter(f => f.status !== 'quarantined').length
 
         setTelemetryMetrics({
@@ -139,6 +163,10 @@ export default function BulkScanner() {
           healthSub: score >= 90 ? 'A+ Pristine Integrity' : (score >= 70 ? 'Good Security Posture' : 'Action Required'),
           filesScanned: totalScanned,
           componentFilesScanned: pluginFiles + themeFiles,
+          usersChecked: metrics.users_checked ?? latest.users_checked ?? null,
+          databaseTables: metrics.database_tables ?? latest.database_tables ?? null,
+          postsScanned: metrics.posts_scanned ?? null,
+          commentsScanned: metrics.comments_scanned ?? null,
           unresolvedChanges: activeThreatsCount,
           lastDeepAnalysis: latest.completed_at || latest.started_at ? 'Just now' : 'Not scanned yet',
           durationText: latest.duration ? `Duration: ${latest.duration}s` : 'Duration: ~5s',
@@ -378,9 +406,9 @@ export default function BulkScanner() {
       const data = res?.data || res || {}
       const rawFindings = data.findings || []
       const metrics = data.real_metrics || {}
-      const totalScanned = metrics.total_files || data.total_scanned || data.files_scanned || 4892
-      const pluginFiles = metrics.plugin_files || 842
-      const themeFiles = metrics.theme_files || 186
+      const totalScanned = metrics.total_files || data.total_scanned || data.files_scanned || (rawFindings.length > 0 ? rawFindings.length : 0)
+      const pluginFiles = metrics.plugin_files || 0
+      const themeFiles = metrics.theme_files || 0
       const score = data.health_score ?? data.score ?? (rawFindings.length === 0 ? 100 : Math.max(20, 100 - rawFindings.length * 15))
 
       setFindings(rawFindings)
@@ -392,6 +420,10 @@ export default function BulkScanner() {
         healthSub: score >= 90 ? 'A+ Pristine Integrity' : (score >= 70 ? 'Good Security Posture' : 'Action Required'),
         filesScanned: totalScanned,
         componentFilesScanned: pluginFiles + themeFiles,
+        usersChecked: metrics.users_checked ?? data.users_checked ?? null,
+        databaseTables: metrics.database_tables ?? data.database_tables ?? null,
+        postsScanned: metrics.posts_scanned ?? null,
+        commentsScanned: metrics.comments_scanned ?? null,
         unresolvedChanges: rawFindings.filter(f => f.status !== 'quarantined').length,
         lastDeepAnalysis: 'Just now',
         durationText: `Duration: ${data.duration || data.duration_seconds || Math.max(2, Math.floor((Date.now() - startTime) / 1000))}s`,
@@ -698,6 +730,143 @@ export default function BulkScanner() {
           <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', letterSpacing: '0.3px' }}>
             Autonomous Radar Armed
           </span>
+        </div>
+      </div>
+
+      {/* TARGET WEBSITE SELECTOR BAR */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '20px',
+        padding: '12px 20px',
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #D9E1DC',
+        boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
+        flexWrap: 'wrap',
+        gap: '14px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#059669',
+            background: '#ECFDF5',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid #A7F3D0',
+            fontSize: '12px',
+            fontWeight: 800
+          }}>
+            <Globe size={15} />
+            <span>SELECT WEBSITE:</span>
+          </div>
+
+          <div style={{ position: 'relative', minWidth: '280px' }}>
+            <select
+              value={targetSiteId || ''}
+              onChange={(e) => handleSelectSite(e.target.value)}
+              disabled={scanning}
+              style={{
+                width: '100%',
+                padding: '9px 36px 9px 14px',
+                borderRadius: '8px',
+                border: '1.5px solid #10B981',
+                background: '#ffffff',
+                color: '#0B2522',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                cursor: scanning ? 'not-allowed' : 'pointer',
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}
+            >
+              {wpWebsites.map((site) => {
+                const sId = site.id || site._id
+                const domain = site.domain || site.url || sId
+                const isConnected = !!(site.api_key || site.site_token || site.wordpress_connection?.connected)
+                const score = site.security_score ?? 100
+                return (
+                  <option key={sId} value={sId}>
+                    {domain} {isConnected ? '● Connected' : '○ Pending'} (Health: {score}%)
+                  </option>
+                )
+              })}
+            </select>
+            <ChevronDown
+              size={16}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#059669',
+                pointerEvents: 'none'
+              }}
+            />
+          </div>
+
+          {currentSite && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                background: '#F0FDF4',
+                color: '#15803D',
+                fontSize: '12px',
+                fontWeight: 700,
+                border: '1px solid #BBF7D0'
+              }}>
+                <CheckCircle2 size={13} />
+                <span>{currentSite.domain || currentSite.url}</span>
+              </span>
+
+              {currentSite.platform && (
+                <span style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: '#EFF6FF',
+                  color: '#1D4ED8',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase'
+                }}>
+                  {currentSite.platform}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={() => targetSiteId && loadLatestScans(targetSiteId)}
+            disabled={scanning}
+            style={{
+              background: '#FAFBF9',
+              border: '1px solid #D9E1DC',
+              color: '#374151',
+              padding: '6px 12px',
+              borderRadius: '7px',
+              fontSize: '12px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer'
+            }}
+            title="Refresh latest scan telemetry from origin"
+          >
+            <RotateCw size={13} className={scanning ? 'animate-spin' : ''} />
+            <span>Sync Origin</span>
+          </button>
         </div>
       </div>
 
@@ -1299,10 +1468,13 @@ export default function BulkScanner() {
           marginBottom: '20px',
           flexWrap: 'wrap'
         }}>
-          <div>Files scanned: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : '—'}</strong></div>
-          <div>Plugin &amp; theme files: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : '—'}</strong></div>
-          <div>Users checked: <strong style={{ color: '#0B2522' }}>1</strong></div>
-          <div>Database tables: <strong style={{ color: '#0B2522' }}>12</strong></div>
+          <div>Files scanned: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
+          <div>Plugin &amp; theme files: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
+          <div>Users checked: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.usersChecked !== null && telemetryMetrics.usersChecked !== undefined ? Number(telemetryMetrics.usersChecked).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
+          <div>Database tables: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.databaseTables !== null && telemetryMetrics.databaseTables !== undefined ? Number(telemetryMetrics.databaseTables).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
+          {telemetryMetrics.postsScanned !== null && telemetryMetrics.postsScanned !== undefined && (
+            <div>Posts audited: <strong style={{ color: '#0B2522' }}>{Number(telemetryMetrics.postsScanned).toLocaleString()}</strong></div>
+          )}
           <div>Results Found: <strong style={{ color: tabCounts.all > 0 ? '#DC2626' : '#059669' }}>{tabCounts.all} Issues</strong></div>
         </div>
 
