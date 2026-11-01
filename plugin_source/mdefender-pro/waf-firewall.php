@@ -214,6 +214,7 @@ function waf_fw_sync_cloud_blacklist_fast($force = false) {
                     update_option('waf_fw_cloud_rules_cache', $p['user_rules']);
                 }
                 if (!empty($p['config']) && is_array($p['config'])) {
+                    waf_fw_apply_config_payload($p['config']);
                     $config = $p['config'];
                     if (isset($config['waf_mode'])) {
                         update_option('waf_fw_cloud_mode', sanitize_text_field($config['waf_mode']));
@@ -382,8 +383,7 @@ function waf_fw_apply_config_payload($cfg) {
     if (isset($cfg['custom_login_slug']) || isset($cfg['hide_login_url'])) {
         $slug = sanitize_title($cfg['custom_login_slug'] ?? '');
         $hide = !empty($cfg['hide_login_url']);
-        $permalink_structure = get_option('permalink_structure', '');
-        if ($hide && !empty($slug) && !empty($permalink_structure) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
+        if ($hide && !empty($slug) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
             update_option('waf_harden_login_rename', $slug);
             update_option('waf_harden_hide_login_url', 'yes');
             update_option('waf_hide_login_url', 'yes');
@@ -2142,6 +2142,9 @@ function waf_fw_init() {
     new WAF_FW_Ajax_Handler();
     WAF_FW_Login_Protector::instance()->register_hooks();
     WAF_FW_2FA::instance();
+    if (class_exists('WAF_FW_Admin_Panel_IP')) {
+        WAF_FW_Admin_Panel_IP::instance();
+    }
     WAF_FW_Core_Integrity::instance();
     WAF_FW_PostHack_Recovery::instance();
     WAF_FW_Website_Hardening::instance();

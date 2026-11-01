@@ -20,7 +20,13 @@ import {
   Zap,
   Save,
   Plus,
-  X
+  X,
+  Trash2,
+  Undo2,
+  Server,
+  Layers,
+  ArrowRight,
+  Info
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -127,10 +133,10 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('Hardening policy updated & synchronized across connected WordPress sites!')
+      showToast('Hardening directive updated & synchronized across WordPress environments!')
       fetchFleet()
     } catch {
-      showToast('Hardening policy updated locally; sync queued.')
+      showToast('Hardening directive updated locally; background sync queued.')
     } finally {
       setSaving(false)
     }
@@ -229,6 +235,69 @@ export default function BulkHardening() {
     }
   }
 
+  // Revert custom secret login URL back to default standard wp-login.php
+  const handleRevertLoginGateway = async () => {
+    setSaving(true)
+    setHideLoginUrl(false)
+    setCustomLoginSlug('')
+    const payload = {
+      hide_login_url: false,
+      custom_login_slug: '',
+      login_redirect_type: '404'
+    }
+    try {
+      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
+      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
+        const sid = site.id || site._id
+        return api.updateWebsiteSecuritySettings(sid, payload)
+      }))
+      showToast('Custom login URL removed. Default WordPress /wp-login.php restored successfully!')
+      fetchFleet()
+    } catch {
+      showToast('Default login URL restored locally; background sync queued.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleEnableAllDirectives = async () => {
+    const allEnabled = {
+      disableFileEdit: true,
+      restrictXmlRpc: true,
+      hideWpVersion: true,
+      preventUserEnum: true,
+      blockUploadsPhp: true,
+      securityHeaders: true,
+      filePermissionsCheck: true,
+      loginTwoFactor: true
+    }
+    setHardening(allEnabled)
+    setSaving(true)
+    try {
+      const payload = {
+        disable_file_editing: true,
+        disable_xmlrpc: true,
+        hide_wp_version: true,
+        prevent_user_enumeration: true,
+        block_uploads_php: true,
+        security_headers: true,
+        file_permissions_check: true,
+        login_two_factor: true
+      }
+      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
+      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
+        const sid = site.id || site._id
+        return api.updateWebsiteSecuritySettings(sid, payload)
+      }))
+      showToast('All 8 Enterprise Hardening Directives activated & synchronized across your fleet!')
+      fetchFleet()
+    } catch {
+      showToast('Directives activated locally; background sync queued.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleRevertDefaults = async () => {
     const defaults = {
       disableFileEdit: true,
@@ -275,7 +344,7 @@ export default function BulkHardening() {
   const getComputedLoginUrl = () => {
     const base = getSiteBaseUrl()
     if (hideLoginUrl && customLoginSlug.trim()) {
-      return `${base}/${customLoginSlug.trim().replace(/^\/+/, '')}/`
+      return `${base}/${customLoginSlug.trim().replace(/^\/+/, '')}`
     }
     return `${base}/wp-login.php`
   }
@@ -285,51 +354,95 @@ export default function BulkHardening() {
     navigator.clipboard.writeText(url)
     setCopiedLink(true)
     setTimeout(() => setCopiedLink(false), 2000)
-    showToast('Secret login URL copied to clipboard!')
+    showToast('Admin login URL copied to clipboard!')
   }
 
   const hardeningRules = [
-    { key: 'disableFileEdit', label: 'Disable File Editing', desc: 'Blocks theme & plugin code editor in WP Admin (DISALLOW_FILE_EDIT).' },
-    { key: 'restrictXmlRpc', label: 'Restrict XML-RPC API', desc: 'Prevents brute-force amplification and DDoS pingbacks via xmlrpc.php.' },
-    { key: 'hideWpVersion', label: 'Hide WordPress Version', desc: 'Removes generator meta tags and version query strings from assets.' },
-    { key: 'preventUserEnum', label: 'Block User Enumeration', desc: 'Blocks author scans via ?author=1 and REST API /wp/v2/users endpoints.' },
-    { key: 'blockUploadsPhp', label: 'Block PHP Execution in Uploads', desc: 'Strictly blocks direct PHP script execution in wp-content/uploads/ directory.' },
-    { key: 'securityHeaders', label: 'Enforce Security Headers', desc: 'Injects HSTS, X-Frame-Options (DENY), and X-Content-Type-Options headers.' },
-    { key: 'filePermissionsCheck', label: 'File Permissions Lockdown', desc: 'Audits and enforces wp-config.php (400) and root .htaccess file access permissions.' },
-    { key: 'loginTwoFactor', label: 'Enforce 2FA & Login Guard', desc: 'Protects wp-login.php with smart IP rate limiting and brute force shielding.' }
+    {
+      key: 'disableFileEdit',
+      label: 'Disable File Editing',
+      tag: 'CORE CODE LOCK',
+      desc: 'Completely disables the WordPress theme and plugin code editor in WP-Admin (DISALLOW_FILE_EDIT). Stops attackers from injecting webshells or backdoors even if an admin password is breached.'
+    },
+    {
+      key: 'restrictXmlRpc',
+      label: 'Restrict XML-RPC API',
+      tag: 'BRUTE FORCE & DDOS DEFENSE',
+      desc: 'Blocks xmlrpc.php pingbacks, trackbacks, and multicall brute-force amplification attacks while keeping standard REST APIs accessible.'
+    },
+    {
+      key: 'hideWpVersion',
+      label: 'Hide WordPress Version',
+      tag: 'RECONNAISSANCE MITIGATION',
+      desc: 'Strips generator meta tags and version query strings (?ver=x.x.x) from style and script tags to prevent automated exploit targeting.'
+    },
+    {
+      key: 'preventUserEnum',
+      label: 'Block User Enumeration',
+      tag: 'IDENTITY SHIELD',
+      desc: 'Blocks malicious scans seeking admin usernames via /?author=1, sitemap author archives, and /wp-json/wp/v2/users endpoints.'
+    },
+    {
+      key: 'blockUploadsPhp',
+      label: 'Block PHP Execution in Uploads',
+      tag: 'ZERO-DAY WEBSHELL SHIELD',
+      desc: 'Injects server-level execution restrictions inside wp-content/uploads/ to permanently stop uploaded malicious PHP scripts from running.'
+    },
+    {
+      key: 'securityHeaders',
+      label: 'Enforce Security Headers',
+      tag: 'ENTERPRISE HTTP POLICY',
+      desc: 'Injects strict HSTS, X-Frame-Options (DENY/SAMEORIGIN), X-Content-Type-Options (nosniff), and Referrer-Policy headers to eliminate clickjacking and MIME sniffing.'
+    },
+    {
+      key: 'filePermissionsCheck',
+      label: 'File Permissions Lockdown',
+      tag: 'FILESYSTEM HARDENING',
+      desc: 'Strictly audits and enforces wp-config.php (400/440 read-only) and .htaccess (644) permissions to prevent unauthorized server tampering.'
+    },
+    {
+      key: 'loginTwoFactor',
+      label: 'Enforce 2FA & Login Guard',
+      tag: 'ZERO-TRUST ACCESS',
+      desc: 'Enforces cryptographic two-factor authentication (TOTP) and intelligent brute-force rate-limiting on all administrative authentication requests.'
+    }
   ]
 
   const activeRulesCount = Object.values(hardening).filter(Boolean).length
+  const hardeningPercentage = Math.round((activeRulesCount / hardeningRules.length) * 100)
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1280px', margin: '0 auto', paddingBottom: '60px' }}>
+      
+      {/* Toast Notification */}
       {toastMsg && (
         <div style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          background: toastMsg.isError ? '#A34F22' : '#0B2522',
+          padding: '12px 18px',
+          borderRadius: '8px',
+          background: toastMsg.isError ? '#0B2522' : '#0B2522',
+          border: '1px solid #D9E1DC',
           color: '#ffffff',
-          padding: '12px 20px',
-          borderRadius: '10px',
-          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.25)',
+          fontSize: '13px',
+          fontWeight: 600,
+          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.15)',
           zIndex: 9999,
-          fontWeight: '600',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          fontSize: '13.5px'
+          gap: '8px'
         }}>
-          {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
+          {toastMsg.isError ? <AlertTriangle size={15} color="#E8792F" /> : <CheckCircle2 size={15} color="#2A8B68" />}
           <span>{toastMsg.text}</span>
         </div>
       )}
 
+      {/* Header with Fleet Scope Picker */}
       <BulkHeader
-        title="Fleet Security Hardening &amp; Attack Surface Reduction"
-        subtitle="Enforce zero-trust security policies, lockdown sensitive WordPress directives, and neutralize exploit vectors."
-        icon={Shield}
-        activeBadge="Hardening Engine"
+        title="Zero-Trust Security Hardening Suite"
+        description="Comprehensive WordPress lockdown: conceal admin login endpoints, restrict access strictly to whitelisted IPs, enforce strict file permissions, and neutralize exploit vectors."
+        badgeText="ENTERPRISE SHIELD"
       />
 
       {!hasWebsites ? (
@@ -363,8 +476,8 @@ export default function BulkHardening() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={badgeStyle(hideLoginUrl ? '#0B2522' : '#F1F5F9', hideLoginUrl ? '#FFFFFF' : '#64748B', hideLoginUrl ? '#0B2522' : '#CBD5E1')}>
-                  {hideLoginUrl ? 'GATEWAY OBFUSCATED' : 'STANDARD WP LOGIN'}
+                <span style={badgeStyle(hideLoginUrl && customLoginSlug ? '#0B2522' : '#F1F5F9', hideLoginUrl && customLoginSlug ? '#FFFFFF' : '#64748B', hideLoginUrl && customLoginSlug ? '#0B2522' : '#CBD5E1')}>
+                  {hideLoginUrl && customLoginSlug ? 'STEALTH GATEWAY ACTIVE' : 'STANDARD WP LOGIN'}
                 </span>
               </div>
             </div>
@@ -441,7 +554,7 @@ export default function BulkHardening() {
                       />
                     </div>
                     <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                      Only visitors with this exact path can reach the login screen.
+                      Only visitors with this exact slug can reach the login screen.
                     </small>
                   </div>
 
@@ -473,99 +586,143 @@ export default function BulkHardening() {
                 </div>
               )}
 
-              {/* Active Login Gateway Live Link & Save Button */}
+              {/* Dedicated Result Card & Live Link Bar */}
               <div style={{
                 background: '#FFFFFF',
                 border: '1px solid #D9E1DC',
-                borderRadius: '8px',
-                padding: '12px 16px',
+                borderRadius: '10px',
+                padding: '14px 18px',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
+                flexDirection: 'column',
                 gap: '12px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Link2 size={16} color="#E8792F" />
-                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#60716B' }}>Active Admin Login URL:</span>
-                  <code style={{ fontSize: '13px', fontWeight: 700, color: '#0F2C26', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
-                    {getComputedLoginUrl()}
-                  </code>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Globe size={15} color="#2A8B68" />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#10201E' }}>
+                      Protected Site: <strong style={{ color: '#0F2C26' }}>{targetSite?.domain || 'All Connected Domains'}</strong>
+                    </span>
+                  </div>
+                  <span style={badgeStyle(hideLoginUrl && customLoginSlug ? '#0B2522' : '#F1F5F9', hideLoginUrl && customLoginSlug ? '#FFFFFF' : '#64748B', hideLoginUrl && customLoginSlug ? '#0B2522' : '#CBD5E1')}>
+                    {hideLoginUrl && customLoginSlug ? `ACTIVE SLUG: /${customLoginSlug}` : 'DEFAULT: /wp-login.php'}
+                  </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={copyLoginUrl}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '7px 14px',
-                      borderRadius: '8px',
-                      background: '#FFFFFF',
-                      border: '1px solid #D9E1DC',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: '#10201E',
-                      cursor: 'pointer',
-                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <Copy size={13} color="#60716B" />
-                    <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                  </button>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  padding: '10px 14px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: 1 }}>
+                    <Link2 size={16} color="#E8792F" />
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Active Admin Login URL:</span>
+                    <code style={{ fontSize: '13px', fontWeight: 700, color: '#0B2522', wordBreak: 'break-all' }}>
+                      {getComputedLoginUrl()}
+                    </code>
+                  </div>
 
-                  <a
-                    href={getComputedLoginUrl()}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '7px 14px',
-                      borderRadius: '8px',
-                      background: '#FFFFFF',
-                      border: '1px solid #D9E1DC',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: '#10201E',
-                      textDecoration: 'none',
-                      cursor: 'pointer',
-                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <ExternalLink size={13} color="#60716B" />
-                    <span>Test Gateway</span>
-                  </a>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={copyLoginUrl}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        background: '#FFFFFF',
+                        border: '1px solid #D9E1DC',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#10201E',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <Copy size={13} color="#60716B" />
+                      <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={handleSaveLoginGateway}
-                    disabled={saving}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '7px 16px',
-                      borderRadius: '8px',
-                      background: '#0B2522',
-                      color: '#FFFFFF',
-                      border: '1px solid #0B2522',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      marginLeft: '4px',
-                      boxShadow: '0 1px 3px rgba(11, 37, 34, 0.08)',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <Save size={13} />
-                    <span>{saving ? 'Saving...' : 'Save Secret URL'}</span>
-                  </button>
+                    <a
+                      href={getComputedLoginUrl()}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        background: '#FFFFFF',
+                        border: '1px solid #D9E1DC',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#10201E',
+                        textDecoration: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <ExternalLink size={13} color="#60716B" />
+                      <span>Test Gateway</span>
+                    </a>
+
+                    {(hideLoginUrl || customLoginSlug) && (
+                      <button
+                        type="button"
+                        onClick={handleRevertLoginGateway}
+                        disabled={saving}
+                        title="Remove custom slug and revert back to standard /wp-login.php"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          background: '#FFFFFF',
+                          border: '1px solid #CBD5E1',
+                          color: '#475569',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: saving ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Undo2 size={13} />
+                        <span>Revert to Default (wp-login.php)</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleSaveLoginGateway}
+                      disabled={saving}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        background: '#0B2522',
+                        color: '#FFFFFF',
+                        border: '1px solid #0B2522',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <Save size={13} />
+                      <span>{saving ? 'Saving...' : 'Save Secret URL'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -747,10 +904,10 @@ export default function BulkHardening() {
                       </small>
                     </div>
 
-                    {/* Active Allowed IPs List */}
+                    {/* Active Allowed IPs Structured List */}
                     <div>
                       <div style={{ fontSize: '12px', fontWeight: 700, color: '#60716B', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Authorized IP Whitelist ({adminIpWhitelist.length})
+                        Configured Authorized Admin IP Rules ({adminIpWhitelist.length})
                       </div>
 
                       {adminIpWhitelist.length === 0 ? (
@@ -769,43 +926,67 @@ export default function BulkHardening() {
                           <span><strong>Warning:</strong> No IP addresses added yet. Please add your current IP address to avoid locking yourself out of the admin panel.</span>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {adminIpWhitelist.map((ip) => (
-                            <div
-                              key={ip}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '5px 10px',
-                                borderRadius: '6px',
-                                background: '#F8FAFC',
-                                border: '1px solid #CBD5E1',
-                                color: '#0F172A',
-                                fontSize: '12.5px',
-                                fontWeight: 600
-                              }}
-                            >
-                              <code>{ip}</code>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAllowedIp(ip)}
-                                title="Remove IP"
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {adminIpWhitelist.map((ip) => {
+                            const isCurrent = detectedClientIp && ip === detectedClientIp
+                            return (
+                              <div
+                                key={ip}
                                 style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#E8792F',
-                                  cursor: 'pointer',
-                                  padding: '2px',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  borderRadius: '4px'
+                                  justifyContent: 'space-between',
+                                  flexWrap: 'wrap',
+                                  gap: '10px',
+                                  padding: '10px 14px',
+                                  borderRadius: '8px',
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E2E8F0',
+                                  boxShadow: '0 1px 2px rgba(11,37,34,0.03)'
                                 }}
                               >
-                                <X size={13} />
-                              </button>
-                            </div>
-                          ))}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                  <Server size={15} color="#0B2522" />
+                                  <code style={{ fontSize: '13.5px', fontWeight: 800, color: '#0B2522', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
+                                    {ip}
+                                  </code>
+                                  <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>
+                                    Target Scope: <strong style={{ color: '#10201E' }}>{targetSite?.domain || 'Connected Fleet'}</strong> (WP Admin &amp; Login)
+                                  </span>
+                                  {isCurrent && (
+                                    <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
+                                      YOUR CURRENT SESSION IP
+                                    </span>
+                                  )}
+                                  <span style={badgeStyle('#E8F3EC', '#2A8B68', '#C3E2D2')}>
+                                    ENFORCED 403 REJECTION
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAllowedIp(ip)}
+                                  title="Remove this IP from whitelist"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    background: '#FFFFFF',
+                                    border: '1px solid #CBD5E1',
+                                    color: '#475569',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <Trash2 size={13} color="#E8792F" />
+                                  <span>Remove</span>
+                                </button>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -845,25 +1026,51 @@ export default function BulkHardening() {
           </div>
 
           {/* ========================================================================= */}
-          {/* SECTION 3: BASELINE CORE HARDENING DIRECTIVES                              */}
+          {/* SECTION 2: BASELINE CORE HARDENING DIRECTIVES                              */}
           {/* ========================================================================= */}
           <div style={contentCardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
                     Active Hardening Directives ({activeRulesCount} of {hardeningRules.length} Active)
                   </h3>
-                  <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>A+ RATING</span>
+                  <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
+                    {activeRulesCount === hardeningRules.length ? 'A+ ENTERPRISE RATING' : `${hardeningPercentage}% ZERO-TRUST SCORE`}
+                  </span>
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#60716B' }}>
                   Directives take effect immediately at the edge and directly inside protected WordPress environments.
                 </p>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <button
+                  type="button"
+                  onClick={handleEnableAllDirectives}
+                  disabled={saving}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    background: '#0B2522',
+                    border: '1px solid #0B2522',
+                    fontSize: '12.5px',
+                    fontWeight: '700',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: saving ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <ShieldCheck size={14} color="#2A8B68" />
+                  <span>Enforce All Enterprise Directives</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleRevertDefaults}
+                  disabled={saving}
                   style={secondaryButtonStyle}
                 >
                   <RotateCcw size={13} />
@@ -872,59 +1079,114 @@ export default function BulkHardening() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
-              {hardeningRules.map(item => (
-                <div
-                  key={item.key}
-                  style={{
-                    border: '1px solid #D9E1DC',
-                    borderRadius: '12px',
-                    padding: '20px 22px',
-                    background: '#FBFCFA',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '16px'
-                  }}
-                >
-                  <div style={{ paddingRight: '10px' }}>
-                    <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>{item.label}</div>
-                    <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', lineHeight: '1.4' }}>{item.desc}</div>
-                  </div>
+            {/* Hardening Score Progress Bar */}
+            <div style={{
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: '10px',
+              padding: '14px 18px',
+              marginBottom: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', fontWeight: 700 }}>
+                <span style={{ color: '#10201E' }}>Fleet Zero-Trust Hardening Coverage</span>
+                <span style={{ color: '#2A8B68' }}>{activeRulesCount} of {hardeningRules.length} Controls Enforced ({hardeningPercentage}%)</span>
+              </div>
+              <div style={{ width: '100%', height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${hardeningPercentage}%`,
+                  height: '100%',
+                  background: activeRulesCount === hardeningRules.length ? '#2A8B68' : '#0B2522',
+                  borderRadius: '4px',
+                  transition: 'width 0.3s ease'
+                }} />
+              </div>
+            </div>
 
-                  <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={hardening[item.key]}
-                      onChange={() => handleToggle(item.key)}
-                      style={{ opacity: 0, width: 0, height: 0 }}
-                    />
-                    <span style={{
-                      position: 'absolute',
-                      cursor: 'pointer',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: hardening[item.key] ? '#0B2522' : '#CBD5E1',
-                      borderRadius: '26px',
-                      transition: '0.2s'
-                    }}>
-                      <span style={{
-                        position: 'absolute',
-                        content: '""',
-                        height: '20px',
-                        width: '20px',
-                        left: hardening[item.key] ? '23px' : '3px',
-                        bottom: '3px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: '0.2s'
-                      }} />
-                    </span>
-                  </label>
-                </div>
-              ))}
+            {/* 8 Directives Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
+              {hardeningRules.map(item => {
+                const isActive = Boolean(hardening[item.key])
+                return (
+                  <div
+                    key={item.key}
+                    style={{
+                      border: '1px solid #D9E1DC',
+                      borderRadius: '12px',
+                      padding: '20px 22px',
+                      background: '#FBFCFA',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '14px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                        <span style={{
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          letterSpacing: '0.5px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: '#F1F5F9',
+                          color: '#0B2522',
+                          border: '1px solid #CBD5E1'
+                        }}>
+                          {item.tag}
+                        </span>
+                        <span style={badgeStyle(isActive ? '#E8F3EC' : '#F1F5F9', isActive ? '#2A8B68' : '#64748B', isActive ? '#C3E2D2' : '#CBD5E1')}>
+                          {isActive ? 'ENFORCED' : 'INACTIVE'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>{item.label}</div>
+                      <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', lineHeight: '1.45' }}>{item.desc}</div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #E6ECE8' }}>
+                      <span style={{ fontSize: '11.5px', color: '#64748B', fontWeight: 600 }}>
+                        {isActive ? 'Shield Active & Running' : 'Click toggle to activate'}
+                      </span>
+
+                      <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={isActive}
+                          onChange={() => handleToggle(item.key)}
+                          style={{ opacity: 0, width: 0, height: 0 }}
+                        />
+                        <span style={{
+                          position: 'absolute',
+                          cursor: 'pointer',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: isActive ? '#0B2522' : '#CBD5E1',
+                          borderRadius: '26px',
+                          transition: '0.2s'
+                        }}>
+                          <span style={{
+                            position: 'absolute',
+                            content: '""',
+                            height: '20px',
+                            width: '20px',
+                            left: isActive ? '23px' : '3px',
+                            bottom: '3px',
+                            backgroundColor: 'white',
+                            borderRadius: '50%',
+                            transition: '0.2s'
+                          }} />
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

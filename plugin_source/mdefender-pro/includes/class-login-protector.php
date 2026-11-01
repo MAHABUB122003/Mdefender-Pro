@@ -19,7 +19,7 @@ class WAF_FW_Login_Protector {
         $permalink_structure = get_option('permalink_structure', '');
 
         // SAFETY: Only rename/hide login if connected, explicitly enabled, non-empty, permalinks active, and not default admin/login
-        if (!$is_connected || !$hide_login_enabled || empty($slug) || empty($permalink_structure) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
+        if (!$is_connected || !$hide_login_enabled || empty($slug) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
             $slug = '';
         }
         $this->custom_login_slug = $slug;

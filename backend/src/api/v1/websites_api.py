@@ -4010,25 +4010,25 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
 
 
-        if body.turnstile_secret_key is not None:
-            updates["turnstile_secret_key"] = str(body.turnstile_secret_key).strip()
+    if body.turnstile_secret_key is not None:
+        updates["turnstile_secret_key"] = str(body.turnstile_secret_key).strip()
 
-        if body.admin_ip_whitelist_enabled is not None:
-            updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
+    if body.admin_ip_whitelist_enabled is not None:
+        updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
 
-        if body.admin_ip_whitelist is not None:
-            updates["admin_ip_whitelist"] = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
+    if body.admin_ip_whitelist is not None:
+        updates["admin_ip_whitelist"] = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
 
-        if body.two_factor_enabled is not None:
-            updates["two_factor_enabled"] = bool(body.two_factor_enabled)
-            updates["login_two_factor"] = bool(body.two_factor_enabled)
-        if body.login_two_factor is not None:
-            updates["login_two_factor"] = bool(body.login_two_factor)
-            updates["two_factor_enabled"] = bool(body.login_two_factor)
-        if body.two_factor_secret is not None:
-            updates["two_factor_secret"] = str(body.two_factor_secret).strip()
-        if body.two_factor_recovery_codes is not None:
-            updates["two_factor_recovery_codes"] = [str(c).strip() for c in body.two_factor_recovery_codes if str(c).strip()]
+    if body.two_factor_enabled is not None:
+        updates["two_factor_enabled"] = bool(body.two_factor_enabled)
+        updates["login_two_factor"] = bool(body.two_factor_enabled)
+    if body.login_two_factor is not None:
+        updates["login_two_factor"] = bool(body.login_two_factor)
+        updates["two_factor_enabled"] = bool(body.login_two_factor)
+    if body.two_factor_secret is not None:
+        updates["two_factor_secret"] = str(body.two_factor_secret).strip()
+    if body.two_factor_recovery_codes is not None:
+        updates["two_factor_recovery_codes"] = [str(c).strip() for c in body.two_factor_recovery_codes if str(c).strip()]
 
 
 

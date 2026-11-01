@@ -1680,6 +1680,12 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                         hide_login_val = "yes" if sync_payload["config"].get("hide_login_url") else "no" 
 
+                        admin_ip_enabled_val = "enabled" if sync_payload["config"].get("admin_ip_whitelist_enabled") else "disabled"
+
+                        admin_ips = sync_payload["config"].get("admin_ip_whitelist") or []
+
+                        admin_ips_str = "\n".join([str(ip).strip() for ip in admin_ips if str(ip).strip()])
+
                         php_code = f"""
 
                         $c = @mysqli_connect('127.0.0.1', 'root', '', 'mahabub');
@@ -1757,12 +1763,19 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             if (!empty('{login_slug_val}') && '{hide_login_val}' === 'yes') {{
 
                                 mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_login_rename', '{login_slug_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{login_slug_val}'");
+                                mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_hide_login_url', 'yes', 'yes') ON DUPLICATE KEY UPDATE option_value = 'yes'");
+                                mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hide_login_url', 'yes', 'yes') ON DUPLICATE KEY UPDATE option_value = 'yes'");
 
                             }} else {{
 
-                                mysqli_query($c, "DELETE FROM wp_options WHERE option_name = 'waf_harden_login_rename'");
+                                mysqli_query($c, "DELETE FROM wp_options WHERE option_name IN ('waf_harden_login_rename', 'waf_harden_hide_login_url', 'waf_hide_login_url')");
 
                             }}
+
+                            $admin_ip_en = '{admin_ip_enabled_val}';
+                            $admin_wl = mysqli_real_escape_string($c, '{admin_ips_str}');
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_admin_ip_enabled', '$admin_ip_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$admin_ip_en'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_admin_whitelist', '$admin_wl', 'yes') ON DUPLICATE KEY UPDATE option_value = '$admin_wl'");
 
                             
 
