@@ -20,8 +20,10 @@ class WAF_FW_Turnstile {
             return;
         }
 
-        $enabled = get_option('waf_fw_turnstile_enabled', get_option('waf_turnstile_enabled', 'no'));
-        if ($enabled !== 'yes') {
+        $en1 = get_option('waf_fw_turnstile_enabled', 'no');
+        $en2 = get_option('waf_turnstile_enabled', 'no');
+        $enabled = ($en1 === 'yes' || $en2 === 'yes');
+        if (!$enabled) {
             return;
         }
 
@@ -59,8 +61,9 @@ class WAF_FW_Turnstile {
         add_action('wp_ajax_waf_turnstile_verify', [$this, 'ajax_verify_solution']);
         add_action('wp_ajax_nopriv_waf_turnstile_verify', [$this, 'ajax_verify_solution']);
 
-        // 4. Site-Wide Visitor Verification Gate (Under Attack / Site-Wide Mode)
-        if ($mode === 'site_wide') {
+        // 4. Site-Wide Visitor Verification Gate (Cloudflare Architecture)
+        // By default runs for all modes (site_wide, forms, all) unless strictly restricted to login_only or forms_only
+        if ($mode !== 'login_only' && $mode !== 'forms_only') {
             add_action('init', [$this, 'handle_sitewide_challenge'], 1);
         }
 
@@ -73,6 +76,23 @@ class WAF_FW_Turnstile {
         ob_start();
         $this->render_widget('shortcode');
         return ob_get_clean();
+    }
+
+    /**
+     * Get client IP address supporting reverse proxies & Cloudflare
+     */
+    public function get_client_ip() {
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            return sanitize_text_field($_SERVER['HTTP_CF_CONNECTING_IP']);
+        }
+        if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+            return sanitize_text_field($_SERVER['HTTP_X_REAL_IP']);
+        }
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            return trim($parts[0]);
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     }
 
     /**
