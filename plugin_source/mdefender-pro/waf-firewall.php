@@ -402,6 +402,9 @@ function waf_fw_apply_config_payload($cfg) {
         $wl = $cfg['admin_ip_whitelist'];
         $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
         update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
+        if (empty($wl_str)) {
+            update_option('waf_harden_admin_ip_enabled', 'disabled');
+        }
     }
     if (isset($cfg['login_redirect_type'])) {
         update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));
@@ -582,6 +585,9 @@ function waf_fw_handle_cloud_sync_webhook() {
         $wl = $cfg['admin_ip_whitelist'];
         $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
         update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
+        if (empty($wl_str)) {
+            update_option('waf_harden_admin_ip_enabled', 'disabled');
+        }
     }
     if (isset($cfg['login_redirect_type'])) {
                         update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));

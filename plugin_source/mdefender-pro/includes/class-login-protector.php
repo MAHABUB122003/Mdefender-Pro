@@ -129,12 +129,6 @@ class WAF_FW_Login_Protector {
             $is_allowed = (defined('MDEFENDER_ALLOWED_LOGIN') && MDEFENDER_ALLOWED_LOGIN);
 
             if (!$is_ajax && !$is_cron && !$is_admin_post && !$is_allowed) {
-                // If user is accessing wp-admin while logged out, redirect them to the secret login URL
-                if ($is_admin_path) {
-                    wp_safe_redirect(home_url('/' . $slug));
-                    exit;
-                }
-
                 $redirect_type = get_option('waf_harden_login_redirect_type', '404');
                 if ($redirect_type === '404') {
                     status_header(404);

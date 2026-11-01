@@ -29,7 +29,11 @@ class WAF_FW_Admin_Panel_IP {
     }
 
     public function is_enabled() {
-        // Check if plugin is connected or has active settings
+        // Bulletproof protection: If no whitelist IPs are configured, NEVER restrict access
+        $whitelist = $this->get_whitelist();
+        if (empty($whitelist)) {
+            return false;
+        }
         $enabled = get_option('waf_harden_admin_ip_enabled', 'disabled');
         return ($enabled === 'enabled' || $enabled === 'yes' || $enabled === '1' || $enabled === true);
     }

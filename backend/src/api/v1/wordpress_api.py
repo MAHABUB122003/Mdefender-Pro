@@ -1900,9 +1900,15 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     if target_ws:
                         target_config["custom_login_slug"] = str(target_ws.get("custom_login_slug", "")).strip() if bool(target_ws.get("hide_login_url", False)) else ""
                         target_config["hide_login_url"] = bool(target_ws.get("hide_login_url", False))
+                        target_config["login_redirect_type"] = str(target_ws.get("login_redirect_type", "404")).strip()
+                        target_config["admin_ip_whitelist_enabled"] = bool(target_ws.get("admin_ip_whitelist_enabled", False))
+                        target_config["admin_ip_whitelist"] = target_ws.get("admin_ip_whitelist") or []
                     else:
                         target_config["custom_login_slug"] = ""
                         target_config["hide_login_url"] = False
+                        target_config["login_redirect_type"] = "404"
+                        target_config["admin_ip_whitelist_enabled"] = False
+                        target_config["admin_ip_whitelist"] = []
                     target_payload["config"] = target_config
 
                     for target_ep in candidate_endpoints:

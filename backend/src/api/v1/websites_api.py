@@ -3819,14 +3819,14 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
 
     if body.custom_login_slug is not None:
-
-
-
-
-
-
-
-        updates["custom_login_slug"] = str(body.custom_login_slug).strip()
+        clean_slug = str(body.custom_login_slug).strip().lower()
+        updates["custom_login_slug"] = clean_slug
+        if not clean_slug or clean_slug in ["wp-admin", "wp-login.php", "wp-login"]:
+            updates["hide_login_url"] = False
+        elif body.hide_login_url is not None:
+            updates["hide_login_url"] = bool(body.hide_login_url)
+        else:
+            updates["hide_login_url"] = True
 
 
 
@@ -4013,12 +4013,17 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
     if body.turnstile_secret_key is not None:
         updates["turnstile_secret_key"] = str(body.turnstile_secret_key).strip()
 
-    if body.admin_ip_whitelist_enabled is not None:
-        updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
-
     if body.admin_ip_whitelist is not None:
-        updates["admin_ip_whitelist"] = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
-
+        cleaned_ips = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
+        updates["admin_ip_whitelist"] = cleaned_ips
+        if not cleaned_ips:
+            updates["admin_ip_whitelist_enabled"] = False
+        elif body.admin_ip_whitelist_enabled is not None:
+            updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
+        else:
+            updates["admin_ip_whitelist_enabled"] = True
+    elif body.admin_ip_whitelist_enabled is not None:
+        updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
     if body.two_factor_enabled is not None:
         updates["two_factor_enabled"] = bool(body.two_factor_enabled)
         updates["login_two_factor"] = bool(body.two_factor_enabled)

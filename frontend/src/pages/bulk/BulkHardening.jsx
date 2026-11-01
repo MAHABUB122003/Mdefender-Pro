@@ -1,32 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
-  Shield,
   ShieldCheck,
-  Lock,
-  FileCode,
-  Globe,
   Key,
+  Globe,
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
   Check,
   Sparkles,
-  Fingerprint,
   Link2,
   ExternalLink,
   Copy,
-  Gauge,
-  Bot,
-  Zap,
   Save,
   Plus,
-  X,
   Trash2,
   Undo2,
-  Server,
-  Layers,
-  ArrowRight,
-  Info
+  Server
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -36,7 +25,23 @@ import api from '../../api/api'
 export default function BulkHardening() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
 
-  const targetSite = activeWebsite || wpWebsites[0] || {}
+  // Selected domain for site-specific configuration
+  const [selectedDomainId, setSelectedDomainId] = useState('')
+
+  useEffect(() => {
+    if (activeWebsite) {
+      setSelectedDomainId(activeWebsite.id || activeWebsite._id)
+    } else if (wpWebsites.length > 0 && !selectedDomainId) {
+      setSelectedDomainId(wpWebsites[0].id || wpWebsites[0]._id)
+    }
+  }, [activeWebsite, wpWebsites])
+
+  const targetSite = useMemo(() => {
+    if (selectedDomainId) {
+      return wpWebsites.find(w => (w.id || w._id) === selectedDomainId) || activeWebsite || wpWebsites[0] || {}
+    }
+    return activeWebsite || wpWebsites[0] || {}
+  }, [selectedDomainId, wpWebsites, activeWebsite])
 
   // 1. Core Hardening Toggles
   const [hardening, setHardening] = useState({
@@ -51,12 +56,10 @@ export default function BulkHardening() {
   })
 
   // 2. WP Admin Hide & Custom Login URL
-  const [hideLoginUrl, setHideLoginUrl] = useState(false)
   const [customLoginSlug, setCustomLoginSlug] = useState('')
   const [loginRedirectType, setLoginRedirectType] = useState('404')
 
   // 2.1 Admin & Login IP Restriction
-  const [adminIpWhitelistEnabled, setAdminIpWhitelistEnabled] = useState(false)
   const [adminIpWhitelist, setAdminIpWhitelist] = useState([])
   const [newAdminIpInput, setNewAdminIpInput] = useState('')
   const [detectedClientIp, setDetectedClientIp] = useState('')
@@ -67,9 +70,9 @@ export default function BulkHardening() {
   const [loginLockoutDuration, setLoginLockoutDuration] = useState(60)
   const [rateLimitPerMinute, setRateLimitPerMinute] = useState(120)
 
-  // Synchronize with active site or fleet defaults
+  // Synchronize state when selected site changes
   useEffect(() => {
-    if (!targetSite) return
+    if (!targetSite || Object.keys(targetSite).length === 0) return
     const h = targetSite.hardening || {}
     setHardening({
       disableFileEdit: targetSite.disable_file_editing ?? h.disable_file_editing ?? true,
@@ -82,7 +85,6 @@ export default function BulkHardening() {
       loginTwoFactor: targetSite.login_two_factor ?? h.login_two_factor ?? true
     })
 
-    setHideLoginUrl(Boolean(targetSite.hide_login_url ?? false))
     setCustomLoginSlug(targetSite.custom_login_slug || '')
     setLoginRedirectType(targetSite.login_redirect_type || '404')
     setBotChallengeMode(targetSite.bot_challenge_mode || 'hold_press')
@@ -90,14 +92,12 @@ export default function BulkHardening() {
     setLoginLockoutDuration(targetSite.login_lockout_duration ? parseInt(targetSite.login_lockout_duration) : 60)
     setRateLimitPerMinute(targetSite.rate_limit_per_minute ? parseInt(targetSite.rate_limit_per_minute) : 120)
 
-    setAdminIpWhitelistEnabled(Boolean(targetSite.admin_ip_whitelist_enabled ?? false))
     const rawWl = targetSite.admin_ip_whitelist
-    setAdminIpWhitelist(
-      Array.isArray(rawWl)
-        ? rawWl
-        : (rawWl ? String(rawWl).split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean) : [])
-    )
-  }, [targetSite?.id, targetSite?._id, selectedSiteId])
+    const parsedWl = Array.isArray(rawWl)
+      ? rawWl
+      : (rawWl ? String(rawWl).split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean) : [])
+    setAdminIpWhitelist(parsedWl)
+  }, [targetSite?.id, targetSite?._id, selectedDomainId])
 
   const [saving, setSaving] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
@@ -134,7 +134,7 @@ export default function BulkHardening() {
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
       showToast('Hardening directive updated & synchronized across WordPress environments!')
-      fetchFleet()
+      fetchFleet(true)
     } catch {
       showToast('Hardening directive updated locally; background sync queued.')
     } finally {
@@ -157,6 +157,84 @@ export default function BulkHardening() {
     return () => { isMounted = false }
   }, [])
 
+  // =========================================================================
+  // ACTIONS FOR CUSTOM SECRET LOGIN GATEWAY
+  // =========================================================================
+  const isCustomLoginActive = Boolean(targetSite?.custom_login_slug && targetSite?.hide_login_url)
+
+  const getComputedLoginUrl = (site = targetSite, slug = customLoginSlug) => {
+    const domain = site?.domain || 'your-domain.com'
+    const scheme = domain.startsWith('localhost') || domain.startsWith('127.0.0.1') ? 'http://' : 'https://'
+    if (slug) {
+      return `${scheme}${domain}/${slug}`
+    }
+    return `${scheme}${domain}/wp-login.php`
+  }
+
+  const copyLoginUrl = () => {
+    const url = getComputedLoginUrl()
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url)
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
+      showToast('Active login URL copied to clipboard!')
+    }
+  }
+
+  const handleSaveLoginGateway = async (siteToSave = targetSite, slugVal = customLoginSlug, redirectVal = loginRedirectType) => {
+    const sid = siteToSave?.id || siteToSave?._id
+    if (!sid) {
+      showToast('Please select a valid WordPress website.', true)
+      return
+    }
+    const cleanSlug = (slugVal || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+    if (!cleanSlug || ['wp-admin', 'wp-login.php', 'wp-login'].includes(cleanSlug)) {
+      showToast('Please specify a valid custom secret slug (cannot be wp-admin or wp-login).', true)
+      return
+    }
+
+    setSaving(true)
+    const payload = {
+      hide_login_url: true,
+      custom_login_slug: cleanSlug,
+      login_redirect_type: redirectVal || '404'
+    }
+
+    try {
+      await api.updateWebsiteSecuritySettings(sid, payload)
+      showToast(`Secret Login Gateway activated for ${siteToSave.domain || 'site'}!`)
+      fetchFleet(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to save secret login URL.', true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemoveLoginGateway = async (siteToRemove = targetSite) => {
+    const sid = siteToRemove?.id || siteToRemove?._id
+    if (!sid) return
+    setSaving(true)
+    setCustomLoginSlug('')
+    const payload = {
+      hide_login_url: false,
+      custom_login_slug: '',
+      login_redirect_type: '404'
+    }
+    try {
+      await api.updateWebsiteSecuritySettings(sid, payload)
+      showToast(`Secret URL removed for ${siteToRemove.domain || 'site'}. Default /wp-login.php restored!`)
+      fetchFleet(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to revert login gateway.', true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // =========================================================================
+  // ACTIONS FOR ADMIN & LOGIN IP RESTRICTION
+  // =========================================================================
   const handleAddAllowedIp = (ipCandidate) => {
     const raw = (ipCandidate || newAdminIpInput).trim()
     if (!raw) return
@@ -166,7 +244,7 @@ export default function BulkHardening() {
       return
     }
     if (adminIpWhitelist.includes(raw)) {
-      showToast('This IP address or subnet is already in the authorized list.', true)
+      showToast('This IP address is already in the authorized list.', true)
       return
     }
     setAdminIpWhitelist(prev => [...prev, raw])
@@ -177,89 +255,56 @@ export default function BulkHardening() {
     setAdminIpWhitelist(prev => prev.filter(ip => ip !== ipToRemove))
   }
 
-  const handleSaveAdminIpRestriction = async () => {
-    if (adminIpWhitelistEnabled && adminIpWhitelist.length === 0) {
-      showToast('Please add at least one authorized IP address to prevent locking yourself out.', true)
+  const handleSaveAdminIpRestriction = async (siteToSave = targetSite, ipsToSave = adminIpWhitelist) => {
+    const sid = siteToSave?.id || siteToSave?._id
+    if (!sid) {
+      showToast('Please select a valid WordPress website.', true)
       return
     }
     setSaving(true)
+    const hasIps = ipsToSave && ipsToSave.length > 0
     const payload = {
-      admin_ip_whitelist_enabled: adminIpWhitelistEnabled,
-      admin_ip_whitelist: adminIpWhitelist
+      admin_ip_whitelist_enabled: hasIps,
+      admin_ip_whitelist: ipsToSave || []
     }
     try {
-      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
-      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
-        const sid = site.id || site._id
-        return api.updateWebsiteSecuritySettings(sid, payload)
-      }))
-      showToast('Admin Panel & Login IP Restriction synchronized successfully across connected sites!')
-      fetchFleet()
-    } catch {
-      showToast('Admin IP settings saved; sync queued.')
+      await api.updateWebsiteSecuritySettings(sid, payload)
+      if (hasIps) {
+        showToast(`Admin IP restriction updated for ${siteToSave.domain || 'site'} (${ipsToSave.length} IP authorized)!`)
+      } else {
+        showToast(`All IP restrictions removed for ${siteToSave.domain || 'site'}. Admin access is open to all IPs!`)
+      }
+      fetchFleet(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to update admin IP restriction.', true)
     } finally {
       setSaving(false)
     }
   }
 
-  // Save Custom Login Gateway settings
-  const handleSaveLoginGateway = async (e) => {
-    if (e) e.preventDefault()
+  const handleRemoveAllAdminIps = async (siteToClear = targetSite) => {
+    const sid = siteToClear?.id || siteToClear?._id
+    if (!sid) return
     setSaving(true)
-
-    const cleanSlug = customLoginSlug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
-    if (hideLoginUrl && (!cleanSlug || ['wp-admin', 'wp-login.php', 'wp-login'].includes(cleanSlug))) {
-      showToast('Please specify a valid custom secret slug (cannot be wp-admin or wp-login).', true)
-      setSaving(false)
-      return
-    }
-
+    setAdminIpWhitelist([])
     const payload = {
-      hide_login_url: hideLoginUrl,
-      custom_login_slug: cleanSlug,
-      login_redirect_type: loginRedirectType
+      admin_ip_whitelist_enabled: false,
+      admin_ip_whitelist: []
     }
-
     try {
-      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
-      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
-        const sid = site.id || site._id
-        return api.updateWebsiteSecuritySettings(sid, payload)
-      }))
-      showToast('WP Admin Hide & Custom Secret Login Gateway synchronized successfully!')
-      fetchFleet()
-    } catch {
-      showToast('Gateway settings saved; background sync queued.')
+      await api.updateWebsiteSecuritySettings(sid, payload)
+      showToast(`IP restrictions removed for ${siteToClear.domain || 'site'}. Admin panel access is now open to all IPs!`)
+      fetchFleet(true)
+    } catch (err) {
+      showToast(err.message || 'Failed to clear IP restrictions.', true)
     } finally {
       setSaving(false)
     }
   }
 
-  // Revert custom secret login URL back to default standard wp-login.php
-  const handleRevertLoginGateway = async () => {
-    setSaving(true)
-    setHideLoginUrl(false)
-    setCustomLoginSlug('')
-    const payload = {
-      hide_login_url: false,
-      custom_login_slug: '',
-      login_redirect_type: '404'
-    }
-    try {
-      const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
-      await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
-        const sid = site.id || site._id
-        return api.updateWebsiteSecuritySettings(sid, payload)
-      }))
-      showToast('Custom login URL removed. Default WordPress /wp-login.php restored successfully!')
-      fetchFleet()
-    } catch {
-      showToast('Default login URL restored locally; background sync queued.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
+  // =========================================================================
+  // CORE DIRECTIVES & DEFAULTS
+  // =========================================================================
   const handleEnableAllDirectives = async () => {
     const allEnabled = {
       disableFileEdit: true,
@@ -289,27 +334,27 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('All 8 Enterprise Hardening Directives activated & synchronized across your fleet!')
-      fetchFleet()
+      showToast('All enterprise zero-trust hardening directives enforced across fleet!')
+      fetchFleet(true)
     } catch {
-      showToast('Directives activated locally; background sync queued.')
+      showToast('Hardening directives updated; queued background sync.')
     } finally {
       setSaving(false)
     }
   }
 
   const handleRevertDefaults = async () => {
-    const defaults = {
+    const safeBaseline = {
       disableFileEdit: true,
       restrictXmlRpc: true,
       hideWpVersion: true,
       preventUserEnum: true,
       blockUploadsPhp: true,
       securityHeaders: true,
-      filePermissionsCheck: true,
-      loginTwoFactor: true
+      filePermissionsCheck: false,
+      loginTwoFactor: false
     }
-    setHardening(defaults)
+    setHardening(safeBaseline)
     setSaving(true)
     try {
       const payload = {
@@ -319,62 +364,77 @@ export default function BulkHardening() {
         prevent_user_enumeration: true,
         block_uploads_php: true,
         security_headers: true,
-        file_permissions_check: true,
-        login_two_factor: true
+        file_permissions_check: false,
+        login_two_factor: false
       }
       const targets = selectedSiteId === 'all' ? wpWebsites : [targetSite]
       await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('Reverted to MDefender Pro Maximum Enterprise Security Baseline across fleet!')
-      fetchFleet()
+      showToast('Hardening directives restored to safe recommended baseline!')
+      fetchFleet(true)
     } catch {
-      showToast('Reverted to MDefender Pro Maximum Enterprise Security Baseline.')
+      showToast('Baseline restored locally; background sync queued.')
     } finally {
       setSaving(false)
     }
   }
 
-  const getSiteBaseUrl = () => {
-    const u = targetSite?.url || `https://${targetSite?.domain || 'mysite.com'}`
-    return u.replace(/\/+$/, '')
+  // Common Card Style
+  const contentCardStyle = {
+    background: '#ffffff',
+    borderRadius: '14px',
+    border: '1px solid #E2E8F0',
+    padding: '24px 28px',
+    boxShadow: '0 2px 10px rgba(15, 23, 42, 0.03)'
   }
 
-  const getComputedLoginUrl = () => {
-    const base = getSiteBaseUrl()
-    if (hideLoginUrl && customLoginSlug.trim()) {
-      return `${base}/${customLoginSlug.trim().replace(/^\/+/, '')}`
-    }
-    return `${base}/wp-login.php`
+  const secondaryButtonStyle = {
+    padding: '8px 14px',
+    borderRadius: '8px',
+    background: '#ffffff',
+    border: '1px solid #CBD5E1',
+    fontSize: '12.5px',
+    fontWeight: '700',
+    color: '#334155',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer'
   }
 
-  const copyLoginUrl = () => {
-    const url = getComputedLoginUrl()
-    navigator.clipboard.writeText(url)
-    setCopiedLink(true)
-    setTimeout(() => setCopiedLink(false), 2000)
-    showToast('Admin login URL copied to clipboard!')
-  }
+  const badgeStyle = (bg, color, border) => ({
+    background: bg,
+    color: color,
+    border: `1px solid ${border}`,
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '0.4px',
+    padding: '3px 9px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center'
+  })
 
   const hardeningRules = [
     {
       key: 'disableFileEdit',
-      label: 'Disable File Editing',
-      tag: 'CORE CODE LOCK',
-      desc: 'Completely disables the WordPress theme and plugin code editor in WP-Admin (DISALLOW_FILE_EDIT). Stops attackers from injecting webshells or backdoors even if an admin password is breached.'
+      label: 'Disable Built-in Theme & Plugin File Editor',
+      tag: 'CODE EXECUTION SHIELD',
+      desc: 'Injects DISALLOW_FILE_EDIT into wp-config.php to prevent administrative account takeover from uploading webshells via Appearance or Plugin editors.'
     },
     {
       key: 'restrictXmlRpc',
-      label: 'Restrict XML-RPC API',
-      tag: 'BRUTE FORCE & DDOS DEFENSE',
-      desc: 'Blocks xmlrpc.php pingbacks, trackbacks, and multicall brute-force amplification attacks while keeping standard REST APIs accessible.'
+      label: 'Disable XML-RPC API Pingbacks & Exploits',
+      tag: 'DDOS & BRUTE FORCE SHIELD',
+      desc: 'Neutralizes xmlrpc.php endpoints to prevent amplification DDoS attacks, pingback reflection, and automated dictionary brute-force exploits.'
     },
     {
       key: 'hideWpVersion',
-      label: 'Hide WordPress Version',
-      tag: 'RECONNAISSANCE MITIGATION',
-      desc: 'Strips generator meta tags and version query strings (?ver=x.x.x) from style and script tags to prevent automated exploit targeting.'
+      label: 'Conceal WordPress Version Tag',
+      tag: 'FINGERPRINTING SHIELD',
+      desc: 'Removes the generator meta tag and WordPress version fingerprints from HTML headers, feeds, scripts, and styles to block vulnerability scanners.'
     },
     {
       key: 'preventUserEnum',
@@ -422,18 +482,18 @@ export default function BulkHardening() {
           right: '24px',
           padding: '12px 18px',
           borderRadius: '8px',
-          background: toastMsg.isError ? '#0B2522' : '#0B2522',
-          border: '1px solid #D9E1DC',
+          background: '#0F172A',
+          border: '1px solid #334155',
           color: '#ffffff',
           fontSize: '13px',
           fontWeight: 600,
-          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.15)',
+          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.2)',
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
           gap: '8px'
         }}>
-          {toastMsg.isError ? <AlertTriangle size={15} color="#E8792F" /> : <CheckCircle2 size={15} color="#2A8B68" />}
+          {toastMsg.isError ? <AlertTriangle size={15} color="#EF4444" /> : <CheckCircle2 size={15} color="#10B981" />}
           <span>{toastMsg.text}</span>
         </div>
       )}
@@ -455,591 +515,636 @@ export default function BulkHardening() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* ========================================================================= */}
-          {/* SECTION 1: WP ADMIN CONCEALMENT & CUSTOM LOGIN URL (FROM PLUGIN TOOLS)    */}
+          {/* SECTION 1: WP ADMIN HIDE & CUSTOM SECRET LOGIN GATEWAY                    */}
           {/* ========================================================================= */}
           <div style={contentCardStyle}>
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(232, 121, 47, 0.12)', color: '#E8792F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Key size={18} />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                      WP Admin Hide &amp; Custom Secret Login Gateway
-                    </h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#60716B' }}>
-                      Conceal <code>/wp-admin</code> and <code>/wp-login.php</code> from botnets, dictionary scanners, and brute-force crawlers.
-                    </p>
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Key size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
+                    WP Admin Hide &amp; Custom Secret Login Gateway
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748B' }}>
+                    Conceal <code>/wp-admin</code> and <code>/wp-login.php</code> behind a private secret directory. Unauthorized requests are blocked.
+                  </p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={badgeStyle(hideLoginUrl && customLoginSlug ? '#0B2522' : '#F1F5F9', hideLoginUrl && customLoginSlug ? '#FFFFFF' : '#64748B', hideLoginUrl && customLoginSlug ? '#0B2522' : '#CBD5E1')}>
-                  {hideLoginUrl && customLoginSlug ? 'STEALTH GATEWAY ACTIVE' : 'STANDARD WP LOGIN'}
+                <span style={badgeStyle(isCustomLoginActive ? '#F0FDF4' : '#F8FAFC', isCustomLoginActive ? '#15803D' : '#64748B', isCustomLoginActive ? '#BBF7D0' : '#E2E8F0')}>
+                  {isCustomLoginActive ? `ACTIVE: /${targetSite.custom_login_slug}` : 'STANDARD: /wp-login.php'}
                 </span>
               </div>
             </div>
 
-            <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               
-              {/* Toggle Row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>
-                    Enable Stealth Login URL Protection
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px' }}>
-                    When enabled, unauthenticated visitors accessing default WordPress login paths will be blocked with your selected redirect policy.
-                  </div>
+              {/* Domain Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Globe size={16} color="#0F172A" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>Select Target Website:</span>
                 </div>
-
-                <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={hideLoginUrl}
-                    onChange={(e) => setHideLoginUrl(e.target.checked)}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    cursor: 'pointer',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: hideLoginUrl ? '#0B2522' : '#CBD5E1',
-                    borderRadius: '26px',
-                    transition: '0.2s'
-                  }}>
-                    <span style={{
-                      position: 'absolute',
-                      height: '20px',
-                      width: '20px',
-                      left: hideLoginUrl ? '23px' : '3px',
-                      bottom: '3px',
-                      backgroundColor: 'white',
-                      borderRadius: '50%',
-                      transition: '0.2s'
-                    }} />
-                  </span>
-                </label>
+                <select
+                  value={selectedDomainId}
+                  onChange={(e) => setSelectedDomainId(e.target.value)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    background: '#FFFFFF',
+                    minWidth: '240px'
+                  }}
+                >
+                  {wpWebsites.map(site => (
+                    <option key={site.id || site._id} value={site.id || site._id}>
+                      {site.domain || site.url || 'Unnamed Website'} {site.custom_login_slug ? `(Secret: /${site.custom_login_slug})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Secret Slug & Redirect Configuration */}
-              {hideLoginUrl && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', paddingTop: '12px', borderTop: '1px solid #E6ECE8' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
-                      Secret Access Slug (Endpoint)
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>/</span>
-                      <input
-                        type="text"
-                        value={customLoginSlug}
-                        onChange={(e) => setCustomLoginSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-                        placeholder="e.g. secret-access, my-portal"
-                        style={{
-                          flex: 1,
-                          height: '40px',
-                          padding: '0 12px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #CBD5E1',
-                          fontSize: '13.5px',
-                          fontWeight: 700,
-                          color: '#10201E'
-                        }}
-                      />
-                    </div>
-                    <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                      Only visitors with this exact slug can reach the login screen.
-                    </small>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
-                      Unauthorized Intruder Response
-                    </label>
-                    <select
-                      value={loginRedirectType}
-                      onChange={(e) => setLoginRedirectType(e.target.value)}
+              {/* Secret Slug & Redirect Configuration Form */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                {/* Field 1: Secret Login Slug */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
+                    Custom Secret Login Directory
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px', overflow: 'hidden' }}>
+                    <span style={{ padding: '0 10px', fontSize: '12.5px', color: '#64748B', fontWeight: 600, background: '#F1F5F9', height: '40px', display: 'flex', alignItems: 'center', borderRight: '1px solid #CBD5E1', whiteSpace: 'nowrap' }}>
+                      {targetSite?.domain || 'domain.com'}/
+                    </span>
+                    <input
+                      type="text"
+                      value={customLoginSlug}
+                      onChange={(e) => setCustomLoginSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                      placeholder="e.g. mahabub, secret-gateway, myportal"
                       style={{
-                        width: '100%',
+                        flex: 1,
                         height: '40px',
                         padding: '0 12px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #CBD5E1',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: '#10201E'
+                        border: 'none',
+                        outline: 'none',
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        color: '#0F172A'
                       }}
-                    >
-                      <option value="404">Stealth 404 Not Found (Recommended - Mimics non-existent page)</option>
-                      <option value="home">Redirect to Website Homepage (301 Permanent)</option>
-                    </select>
-                    <small style={{ color: '#64748b', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                      What unauthorized visitors see when attempting to access /wp-admin or /wp-login.php.
-                    </small>
+                    />
                   </div>
-                </div>
-              )}
-
-              {/* Dedicated Result Card & Live Link Bar */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #D9E1DC',
-                borderRadius: '10px',
-                padding: '14px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Globe size={15} color="#2A8B68" />
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#10201E' }}>
-                      Protected Site: <strong style={{ color: '#0F2C26' }}>{targetSite?.domain || 'All Connected Domains'}</strong>
-                    </span>
-                  </div>
-                  <span style={badgeStyle(hideLoginUrl && customLoginSlug ? '#0B2522' : '#F1F5F9', hideLoginUrl && customLoginSlug ? '#FFFFFF' : '#64748B', hideLoginUrl && customLoginSlug ? '#0B2522' : '#CBD5E1')}>
-                    {hideLoginUrl && customLoginSlug ? `ACTIVE SLUG: /${customLoginSlug}` : 'DEFAULT: /wp-login.php'}
-                  </span>
+                  <small style={{ color: '#64748B', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                    Only requests to this exact directory will display the WordPress login page.
+                  </small>
                 </div>
 
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                  background: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  padding: '10px 14px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: 1 }}>
-                    <Link2 size={16} color="#E8792F" />
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Active Admin Login URL:</span>
-                    <code style={{ fontSize: '13px', fontWeight: 700, color: '#0B2522', wordBreak: 'break-all' }}>
-                      {getComputedLoginUrl()}
-                    </code>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={copyLoginUrl}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        background: '#FFFFFF',
-                        border: '1px solid #D9E1DC',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: '#10201E',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <Copy size={13} color="#60716B" />
-                      <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                    </button>
-
-                    <a
-                      href={getComputedLoginUrl()}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        background: '#FFFFFF',
-                        border: '1px solid #D9E1DC',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: '#10201E',
-                        textDecoration: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <ExternalLink size={13} color="#60716B" />
-                      <span>Test Gateway</span>
-                    </a>
-
-                    {(hideLoginUrl || customLoginSlug) && (
-                      <button
-                        type="button"
-                        onClick={handleRevertLoginGateway}
-                        disabled={saving}
-                        title="Remove custom slug and revert back to standard /wp-login.php"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          background: '#FFFFFF',
-                          border: '1px solid #CBD5E1',
-                          color: '#475569',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: saving ? 'not-allowed' : 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <Undo2 size={13} />
-                        <span>Revert to Default (wp-login.php)</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={handleSaveLoginGateway}
-                      disabled={saving}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        background: '#0B2522',
-                        color: '#FFFFFF',
-                        border: '1px solid #0B2522',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: saving ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <Save size={13} />
-                      <span>{saving ? 'Saving...' : 'Save Secret URL'}</span>
-                    </button>
-                  </div>
+                {/* Field 2: Unauthorized Intruder Action */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
+                    Unauthorized Access Response
+                  </label>
+                  <select
+                    value={loginRedirectType}
+                    onChange={(e) => setLoginRedirectType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '40px',
+                      padding: '0 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      background: '#FFFFFF'
+                    }}
+                  >
+                    <option value="404">Stealth 404 Not Found (Recommended — completely hides login)</option>
+                    <option value="home">Redirect to Website Homepage (301 Permanent)</option>
+                  </select>
+                  <small style={{ color: '#64748B', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                    What unauthorized visitors see when attempting to open /wp-admin or /wp-login.php.
+                  </small>
                 </div>
               </div>
 
-              {/* ================================================================= */}
-              {/* SUBSECTION: RESTRICT ADMIN & LOGIN GATEWAY BY IP (AUTHORIZED ONLY) */}
-              {/* ================================================================= */}
+              {/* Action Buttons & Status Row */}
               <div style={{
-                marginTop: '6px',
-                paddingTop: '20px',
-                borderTop: '1px solid #E6ECE8',
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: '8px',
+                padding: '14px 16px',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '16px'
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '8px',
-                      background: adminIpWhitelistEnabled ? '#0B2522' : '#F1F5F9',
-                      color: adminIpWhitelistEnabled ? '#E8792F' : '#64748B',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginTop: '2px',
-                      flexShrink: 0
-                    }}>
-                      <ShieldCheck size={17} />
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>
-                          Restrict Admin Panel &amp; Login Access by IP
-                        </span>
-                        <span style={badgeStyle(adminIpWhitelistEnabled ? '#0B2522' : '#F1F5F9', adminIpWhitelistEnabled ? '#FFFFFF' : '#64748B', adminIpWhitelistEnabled ? '#0B2522' : '#CBD5E1')}>
-                          {adminIpWhitelistEnabled ? `${adminIpWhitelist.length} AUTHORIZED IP${adminIpWhitelist.length === 1 ? '' : 'S'}` : 'DISABLED'}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px', maxWidth: '680px', lineHeight: 1.4 }}>
-                        Strictly limit <code>/wp-admin</code>, <code>/wp-login.php</code>, and your secret login URL exclusively to designated IP addresses or CIDR subnets. All unauthorized visitors are immediately rejected with an authentic 403 Forbidden screen.
-                      </div>
-                    </div>
-                  </div>
-
-                  <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={adminIpWhitelistEnabled}
-                      onChange={(e) => setAdminIpWhitelistEnabled(e.target.checked)}
-                      style={{ opacity: 0, width: 0, height: 0 }}
-                    />
-                    <span style={{
-                      position: 'absolute',
-                      cursor: 'pointer',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: adminIpWhitelistEnabled ? '#0B2522' : '#CBD5E1',
-                      borderRadius: '26px',
-                      transition: '0.2s'
-                    }}>
-                      <span style={{
-                        position: 'absolute',
-                        height: '20px',
-                        width: '20px',
-                        left: adminIpWhitelistEnabled ? '23px' : '3px',
-                        bottom: '3px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        transition: '0.2s'
-                      }} />
-                    </span>
-                  </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: 1 }}>
+                  <Link2 size={16} color="#0F172A" />
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#64748B' }}>Active Login URL:</span>
+                  <code style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', wordBreak: 'break-all' }}>
+                    {getComputedLoginUrl()}
+                  </code>
                 </div>
 
-                {adminIpWhitelistEnabled && (
-                  <div style={{
-                    background: '#FFFFFF',
-                    border: '1px solid #D9E1DC',
-                    borderRadius: '10px',
-                    padding: '16px 18px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '14px'
-                  }}>
-                    {/* Detected Current IP Quick-Add Banner */}
-                    {detectedClientIp && (
-                      <div style={{
-                        display: 'flex',
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={copyLoginUrl}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '7px 12px',
+                      borderRadius: '6px',
+                      background: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Copy size={13} />
+                    <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                  </button>
+
+                  <a
+                    href={getComputedLoginUrl()}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '7px 12px',
+                      borderRadius: '6px',
+                      background: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      textDecoration: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <ExternalLink size={13} />
+                    <span>Test Gateway</span>
+                  </a>
+
+                  {isCustomLoginActive && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLoginGateway(targetSite)}
+                      disabled={saving}
+                      title="Revert back to standard WordPress /wp-login.php"
+                      style={{
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '10px',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        background: '#F8FAFC',
-                        border: '1px solid #E2E8F0'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Sparkles size={15} color="#E8792F" />
-                          <span style={{ fontSize: '12.5px', color: '#0F172A', fontWeight: 600 }}>
-                            Detected Your Current IP: <strong style={{ color: '#0F2C26' }}>{detectedClientIp}</strong>
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAddAllowedIp(detectedClientIp)}
-                          disabled={adminIpWhitelist.includes(detectedClientIp)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '5px 12px',
-                            borderRadius: '6px',
-                            background: adminIpWhitelist.includes(detectedClientIp) ? '#F1F5F9' : '#0B2522',
-                            color: adminIpWhitelist.includes(detectedClientIp) ? '#64748B' : '#FFFFFF',
-                            border: 'none',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                            cursor: adminIpWhitelist.includes(detectedClientIp) ? 'default' : 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <Check size={12} />
-                          <span>{adminIpWhitelist.includes(detectedClientIp) ? 'Current IP Added' : '+ Add My Current IP'}</span>
-                        </button>
-                      </div>
-                    )}
+                        gap: '5px',
+                        padding: '7px 12px',
+                        borderRadius: '6px',
+                        background: '#FFF1F2',
+                        border: '1px solid #FECDD3',
+                        color: '#BE123C',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: saving ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Remove Secret URL (Reset to Default)</span>
+                    </button>
+                  )}
 
-                    {/* IP Input & Add Button */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
-                        Add Authorized IP Address or Subnet (CIDR)
-                      </label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          value={newAdminIpInput}
-                          onChange={(e) => setNewAdminIpInput(e.target.value.trim())}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAllowedIp(); } }}
-                          placeholder="e.g. 103.145.74.22 or 192.168.1.0/24"
-                          style={{
-                            flex: 1,
-                            height: '38px',
-                            padding: '0 12px',
-                            borderRadius: '8px',
-                            border: '1.5px solid #CBD5E1',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: '#10201E'
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleAddAllowedIp()}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '0 16px',
-                            borderRadius: '8px',
-                            background: '#0B2522',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            fontSize: '12.5px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <Plus size={14} />
-                          <span>Add IP</span>
-                        </button>
-                      </div>
-                      <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                        Accepts single IPv4, IPv6, CIDR blocks (e.g. <code>192.168.1.0/24</code>), or wildcard patterns (<code>192.168.1.*</code>).
-                      </small>
-                    </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveLoginGateway(targetSite, customLoginSlug, loginRedirectType)}
+                    disabled={saving || !customLoginSlug.trim()}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 16px',
+                      borderRadius: '6px',
+                      background: '#0F172A',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: saving || !customLoginSlug.trim() ? 'not-allowed' : 'pointer',
+                      opacity: !customLoginSlug.trim() ? 0.6 : 1
+                    }}
+                  >
+                    <Save size={13} />
+                    <span>{saving ? 'Saving...' : 'Save Secret URL'}</span>
+                  </button>
+                </div>
+              </div>
 
-                    {/* Active Allowed IPs Structured List */}
-                    <div>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#60716B', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Configured Authorized Admin IP Rules ({adminIpWhitelist.length})
-                      </div>
-
-                      {adminIpWhitelist.length === 0 ? (
-                        <div style={{
-                          padding: '12px 14px',
-                          borderRadius: '8px',
-                          background: '#FFFBEB',
-                          border: '1px solid #FDE68A',
-                          color: '#B45309',
-                          fontSize: '12px',
+              {/* Connected Websites Overview Table */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Connected Websites Secret Login Status ({wpWebsites.length})
+                </div>
+                <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden' }}>
+                  {wpWebsites.map((site, index) => {
+                    const isConfigured = Boolean(site.custom_login_slug && site.hide_login_url)
+                    const isSelected = (site.id || site._id) === selectedDomainId
+                    return (
+                      <div
+                        key={site.id || site._id || index}
+                        style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <AlertTriangle size={15} color="#D97706" />
-                          <span><strong>Warning:</strong> No IP addresses added yet. Please add your current IP address to avoid locking yourself out of the admin panel.</span>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {adminIpWhitelist.map((ip) => {
-                            const isCurrent = detectedClientIp && ip === detectedClientIp
-                            return (
-                              <div
-                                key={ip}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  flexWrap: 'wrap',
-                                  gap: '10px',
-                                  padding: '10px 14px',
-                                  borderRadius: '8px',
-                                  background: '#FFFFFF',
-                                  border: '1px solid #E2E8F0',
-                                  boxShadow: '0 1px 2px rgba(11,37,34,0.03)'
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                  <Server size={15} color="#0B2522" />
-                                  <code style={{ fontSize: '13.5px', fontWeight: 800, color: '#0B2522', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
-                                    {ip}
-                                  </code>
-                                  <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>
-                                    Target Scope: <strong style={{ color: '#10201E' }}>{targetSite?.domain || 'Connected Fleet'}</strong> (WP Admin &amp; Login)
-                                  </span>
-                                  {isCurrent && (
-                                    <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
-                                      YOUR CURRENT SESSION IP
-                                    </span>
-                                  )}
-                                  <span style={badgeStyle('#E8F3EC', '#2A8B68', '#C3E2D2')}>
-                                    ENFORCED 403 REJECTION
-                                  </span>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveAllowedIp(ip)}
-                                  title="Remove this IP from whitelist"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '5px',
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    background: '#FFFFFF',
-                                    border: '1px solid #CBD5E1',
-                                    color: '#475569',
-                                    fontSize: '11.5px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <Trash2 size={13} color="#E8792F" />
-                                  <span>Remove</span>
-                                </button>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Save Button */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
-                      <button
-                        type="button"
-                        onClick={handleSaveAdminIpRestriction}
-                        disabled={saving}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '8px 18px',
-                          borderRadius: '8px',
-                          background: '#0B2522',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          fontSize: '12.5px',
-                          fontWeight: 700,
-                          cursor: saving ? 'not-allowed' : 'pointer',
-                          boxShadow: '0 1px 3px rgba(11, 37, 34, 0.15)',
-                          transition: 'all 0.15s ease'
+                          justifyContent: 'space-between',
+                          padding: '10px 16px',
+                          borderBottom: index !== wpWebsites.length - 1 ? '1px solid #F1F5F9' : 'none',
+                          background: isSelected ? '#F8FAFC' : '#FFFFFF',
+                          flexWrap: 'wrap',
+                          gap: '10px'
                         }}
                       >
-                        <Save size={13} />
-                        <span>{saving ? 'Synchronizing...' : 'Save Authorized Admin IPs'}</span>
-                      </button>
-                    </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                          <Globe size={14} color="#64748B" />
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+                            {site.domain || site.url || 'Unnamed Site'}
+                          </span>
+                        </div>
 
-                  </div>
-                )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px' }}>
+                          <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>Active Endpoint:</span>
+                          <code style={{ fontSize: '12.5px', fontWeight: 700, color: isConfigured ? '#15803D' : '#64748B' }}>
+                            {isConfigured ? `/${site.custom_login_slug}` : '/wp-login.php'}
+                          </code>
+                          <span style={badgeStyle(isConfigured ? '#F0FDF4' : '#F8FAFC', isConfigured ? '#15803D' : '#64748B', isConfigured ? '#BBF7D0' : '#E2E8F0')}>
+                            {isConfigured ? 'SECRET URL ACTIVE' : 'STANDARD LOGIN'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {isConfigured ? (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLoginGateway(site)}
+                              disabled={saving}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 10px',
+                                borderRadius: '5px',
+                                background: '#FFF1F2',
+                                border: '1px solid #FECDD3',
+                                color: '#BE123C',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Undo2 size={12} />
+                              <span>Reset to Default</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDomainId(site.id || site._id)
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 10px',
+                                borderRadius: '5px',
+                                background: '#F1F5F9',
+                                border: '1px solid #CBD5E1',
+                                color: '#0F172A',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <span>Configure</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
 
             </div>
           </div>
 
           {/* ========================================================================= */}
-          {/* SECTION 2: BASELINE CORE HARDENING DIRECTIVES                              */}
+          {/* SECTION 2: RESTRICT ADMIN PANEL & LOGIN ACCESS BY IP                      */}
+          {/* ========================================================================= */}
+          <div style={contentCardStyle}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#F1F5F9', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
+                    Restrict Admin Panel &amp; Login Access by IP
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748B' }}>
+                    Limit access to <code>/wp-admin</code> and login gateways strictly to authorized IP addresses or subnets.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={badgeStyle(adminIpWhitelist.length > 0 ? '#F0FDF4' : '#F8FAFC', adminIpWhitelist.length > 0 ? '#15803D' : '#64748B', adminIpWhitelist.length > 0 ? '#BBF7D0' : '#E2E8F0')}>
+                  {adminIpWhitelist.length > 0 ? `${adminIpWhitelist.length} AUTHORIZED IP(S)` : 'ALLOW ALL IPS (UNRESTRICTED)'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Domain Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Globe size={16} color="#0F172A" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>Select Target Website:</span>
+                </div>
+                <select
+                  value={selectedDomainId}
+                  onChange={(e) => setSelectedDomainId(e.target.value)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #CBD5E1',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#0F172A',
+                    background: '#FFFFFF',
+                    minWidth: '240px'
+                  }}
+                >
+                  {wpWebsites.map(site => {
+                    const count = Array.isArray(site.admin_ip_whitelist) ? site.admin_ip_whitelist.length : 0
+                    return (
+                      <option key={site.id || site._id} value={site.id || site._id}>
+                        {site.domain || site.url || 'Unnamed Website'} {count > 0 ? `(${count} IPs)` : '(Unrestricted)'}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+
+              {/* Detected Current IP Quick-Add Banner */}
+              {detectedClientIp && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  background: '#FFFFFF',
+                  border: '1px solid #E2E8F0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={15} color="#0F172A" />
+                    <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600 }}>
+                      Detected Your Current IP: <strong style={{ color: '#0F172A', fontFamily: 'monospace' }}>{detectedClientIp}</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddAllowedIp(detectedClientIp)}
+                    disabled={adminIpWhitelist.includes(detectedClientIp)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      background: adminIpWhitelist.includes(detectedClientIp) ? '#F1F5F9' : '#0F172A',
+                      color: adminIpWhitelist.includes(detectedClientIp) ? '#64748B' : '#FFFFFF',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: adminIpWhitelist.includes(detectedClientIp) ? 'default' : 'pointer'
+                    }}
+                  >
+                    <Check size={12} />
+                    <span>{adminIpWhitelist.includes(detectedClientIp) ? 'Current IP Added' : '+ Add My Current IP'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Add IP Input & Add Button */}
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
+                  Add Authorized IP Address or Subnet (CIDR)
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={newAdminIpInput}
+                    onChange={(e) => setNewAdminIpInput(e.target.value.trim())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAllowedIp(); } }}
+                    placeholder="e.g. 103.120.45.241 or 192.168.1.0/24"
+                    style={{
+                      flex: 1,
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #CBD5E1',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#0F172A',
+                      background: '#FFFFFF'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddAllowedIp()}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '0 16px',
+                      borderRadius: '8px',
+                      background: '#0F172A',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Plus size={14} />
+                    <span>Add IP</span>
+                  </button>
+                </div>
+                <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
+                  Accepts IPv4 (e.g. <code>103.120.45.241</code>), IPv6, or CIDR blocks (e.g. <code>192.168.1.0/24</code>).
+                </small>
+              </div>
+
+              {/* Active Allowed IPs List */}
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Configured Authorized Admin IPs for {targetSite?.domain || 'Selected Website'} ({adminIpWhitelist.length})
+                </div>
+
+                {adminIpWhitelist.length === 0 ? (
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    color: '#64748B',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <ShieldCheck size={16} color="#10B981" />
+                    <span><strong>Unrestricted Access:</strong> No IP whitelist configured. The admin login page can be accessed from any IP address.</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {adminIpWhitelist.map((ip) => {
+                      const isCurrent = detectedClientIp && ip === detectedClientIp
+                      return (
+                        <div
+                          key={ip}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '10px',
+                            padding: '10px 14px',
+                            borderRadius: '8px',
+                            background: '#FFFFFF',
+                            border: '1px solid #E2E8F0'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <Server size={14} color="#64748B" />
+                            <code style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px' }}>
+                              {ip}
+                            </code>
+                            {isCurrent && (
+                              <span style={badgeStyle('#F0FDF4', '#15803D', '#BBF7D0')}>
+                                YOUR CURRENT IP
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAllowedIp(ip)}
+                            title="Remove this IP from whitelist"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              background: '#FFF1F2',
+                              border: '1px solid #FECDD3',
+                              color: '#BE123C',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons Row */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', paddingTop: '10px', borderTop: '1px solid #E2E8F0', flexWrap: 'wrap' }}>
+                {adminIpWhitelist.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAllAdminIps(targetSite)}
+                    disabled={saving}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      background: '#FFF1F2',
+                      border: '1px solid #FECDD3',
+                      color: '#BE123C',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: saving ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    <span>Remove All IP Restrictions (Allow All IPs)</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveAdminIpRestriction(targetSite, adminIpWhitelist)}
+                  disabled={saving}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    background: '#0F172A',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.1)'
+                  }}
+                >
+                  <Save size={13} />
+                  <span>{saving ? 'Synchronizing...' : 'Save Authorized Admin IPs'}</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* SECTION 3: BASELINE CORE HARDENING DIRECTIVES                              */}
           {/* ========================================================================= */}
           <div style={contentCardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
                     Active Hardening Directives ({activeRulesCount} of {hardeningRules.length} Active)
                   </h3>
-                  <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
+                  <span style={badgeStyle('#0F172A', '#FFFFFF', '#0F172A')}>
                     {activeRulesCount === hardeningRules.length ? 'A+ ENTERPRISE RATING' : `${hardeningPercentage}% ZERO-TRUST SCORE`}
                   </span>
                 </div>
-                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#60716B' }}>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B' }}>
                   Directives take effect immediately at the edge and directly inside protected WordPress environments.
                 </p>
               </div>
@@ -1052,8 +1157,8 @@ export default function BulkHardening() {
                   style={{
                     padding: '8px 14px',
                     borderRadius: '8px',
-                    background: '#0B2522',
-                    border: '1px solid #0B2522',
+                    background: '#0F172A',
+                    border: '1px solid #0F172A',
                     fontSize: '12.5px',
                     fontWeight: '700',
                     color: '#FFFFFF',
@@ -1063,7 +1168,7 @@ export default function BulkHardening() {
                     cursor: saving ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  <ShieldCheck size={14} color="#2A8B68" />
+                  <ShieldCheck size={14} color="#10B981" />
                   <span>Enforce All Enterprise Directives</span>
                 </button>
 
@@ -1091,14 +1196,14 @@ export default function BulkHardening() {
               gap: '8px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', fontWeight: 700 }}>
-                <span style={{ color: '#10201E' }}>Fleet Zero-Trust Hardening Coverage</span>
-                <span style={{ color: '#2A8B68' }}>{activeRulesCount} of {hardeningRules.length} Controls Enforced ({hardeningPercentage}%)</span>
+                <span style={{ color: '#0F172A' }}>Fleet Zero-Trust Hardening Coverage</span>
+                <span style={{ color: '#10B981' }}>{activeRulesCount} of {hardeningRules.length} Controls Enforced ({hardeningPercentage}%)</span>
               </div>
               <div style={{ width: '100%', height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{
                   width: `${hardeningPercentage}%`,
                   height: '100%',
-                  background: activeRulesCount === hardeningRules.length ? '#2A8B68' : '#0B2522',
+                  background: activeRulesCount === hardeningRules.length ? '#10B981' : '#0F172A',
                   borderRadius: '4px',
                   transition: 'width 0.3s ease'
                 }} />
@@ -1113,10 +1218,10 @@ export default function BulkHardening() {
                   <div
                     key={item.key}
                     style={{
-                      border: '1px solid #D9E1DC',
+                      border: '1px solid #E2E8F0',
                       borderRadius: '12px',
                       padding: '20px 22px',
-                      background: '#FBFCFA',
+                      background: '#FFFFFF',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
@@ -1133,25 +1238,24 @@ export default function BulkHardening() {
                           padding: '2px 8px',
                           borderRadius: '4px',
                           background: '#F1F5F9',
-                          color: '#0B2522',
+                          color: '#0F172A',
                           border: '1px solid #CBD5E1'
                         }}>
                           {item.tag}
                         </span>
-                        <span style={badgeStyle(isActive ? '#E8F3EC' : '#F1F5F9', isActive ? '#2A8B68' : '#64748B', isActive ? '#C3E2D2' : '#CBD5E1')}>
+                        <span style={badgeStyle(isActive ? '#F0FDF4' : '#F8FAFC', isActive ? '#15803D' : '#64748B', isActive ? '#BBF7D0' : '#E2E8F0')}>
                           {isActive ? 'ENFORCED' : 'INACTIVE'}
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>{item.label}</div>
-                      <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', lineHeight: '1.45' }}>{item.desc}</div>
+                      <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#0F172A' }}>{item.label}</div>
+                      <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px', lineHeight: '1.45' }}>{item.desc}</div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #E6ECE8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
                       <span style={{ fontSize: '11.5px', color: '#64748B', fontWeight: 600 }}>
                         {isActive ? 'Shield Active & Running' : 'Click toggle to activate'}
                       </span>
-
                       <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>
                         <input
                           type="checkbox"
@@ -1166,7 +1270,7 @@ export default function BulkHardening() {
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          backgroundColor: isActive ? '#0B2522' : '#CBD5E1',
+                          backgroundColor: isActive ? '#0F172A' : '#CBD5E1',
                           borderRadius: '26px',
                           transition: '0.2s'
                         }}>
@@ -1195,38 +1299,3 @@ export default function BulkHardening() {
     </div>
   )
 }
-
-const contentCardStyle = {
-  background: '#ffffff',
-  borderRadius: '16px',
-  border: '1px solid #D9E1DC',
-  padding: '28px 32px',
-  boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
-}
-
-const secondaryButtonStyle = {
-  padding: '8px 14px',
-  borderRadius: '8px',
-  background: '#ffffff',
-  border: '1px solid #D9E1DC',
-  fontSize: '12.5px',
-  fontWeight: '700',
-  color: '#10201E',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  cursor: 'pointer'
-}
-
-const badgeStyle = (bg, color, border) => ({
-  background: bg,
-  color: color,
-  border: `1px solid ${border}`,
-  fontSize: '10.5px',
-  fontWeight: '800',
-  letterSpacing: '0.5px',
-  padding: '3px 10px',
-  borderRadius: '999px',
-  display: 'inline-flex',
-  alignItems: 'center'
-})
