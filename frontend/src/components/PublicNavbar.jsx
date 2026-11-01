@@ -110,6 +110,7 @@ export default function PublicNavbar() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+  const handleLogoClick = handleHomeClick;
 
   const handleProductsEnter = () => {
     if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
