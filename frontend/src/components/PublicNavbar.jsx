@@ -326,32 +326,7 @@ export default function PublicNavbar() {
             }}
             className="hidden md:flex"
           >
-            {/* 1. Home Link */}
-            <Link
-              to="/"
-              onClick={handleHomeClick}
-              onMouseEnter={() => prefetch('home')}
-              onFocus={() => prefetch('home')}
-              style={{
-                fontSize: '13.5px',
-                fontWeight: 600,
-                color: loc.pathname === '/' ? '#E8792F' : '#10201E',
-                textDecoration: 'none',
-                padding: '6px 2px',
-                transition: 'color 0.18s ease',
-              }}
-              onMouseEnter={(e) => {
-                prefetch('home');
-                e.currentTarget.style.color = '#E8792F';
-              }}
-              onMouseLeave={(e) => {
-                if (loc.pathname !== '/') e.currentTarget.style.color = '#10201E';
-              }}
-            >
-              Home
-            </Link>
-
-            {/* 2. Products Mega-Dropdown */}
+            {/* Products Mega-Dropdown */}
             <div
               ref={dropdownRef}
               style={{ position: 'relative' }}
@@ -890,26 +865,6 @@ export default function PublicNavbar() {
             borderTop: '1px solid #D9E1DC',
           }}
         >
-          {/* Mobile Home Link */}
-          <Link
-            to="/"
-            onClick={handleHomeClick}
-            onTouchStart={() => prefetch('home')}
-            style={{
-              fontSize: '16px',
-              fontWeight: 700,
-              color: loc.pathname === '/' ? '#E8792F' : '#10201E',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <span>Home</span>
-          </Link>
-
-          <hr style={{ border: 'none', borderTop: '1px solid #D9E1DC', margin: '2px 0' }} />
-
           <div style={{ fontSize: '11px', fontWeight: 800, color: '#E8792F', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
             Products
           </div>
