@@ -163,3 +163,4 @@ class WAF_FW_Engine_Registry {
         do_action('mdefender_register_custom_engines', $container);
     }
 }
+

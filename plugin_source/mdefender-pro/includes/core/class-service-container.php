@@ -176,3 +176,4 @@ class WAF_FW_Service_Container {
         return $report;
     }
 }
+
