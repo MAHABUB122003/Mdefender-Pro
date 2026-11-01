@@ -1049,6 +1049,12 @@ class WAF_FW_Scanner {
                             'transforms' => array_unique($all_transforms),
                             'line' => $t_line
                         ];
+                    } elseif (!empty($transforms) && (in_array('gzinflate', $transforms) || in_array('gzuncompress', $transforms) || count($transforms) >= 2)) {
+                        $tainted_vars[$var_name] = [
+                            'source' => 'ObfuscatedPayload(' . implode('->', $transforms) . ')',
+                            'transforms' => $transforms,
+                            'line' => $t_line
+                        ];
                     }
                 }
             }
@@ -1217,6 +1223,8 @@ class WAF_FW_Scanner {
                 'patterns' => [
                     '/\beval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)/i',
                     '/\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(/i',
+                    '/(?:gzinflate|gzuncompress)\s*\(\s*(?:base64_decode|str_rot13)/i',
+                    '/\beval\s*\(\s*\$(?:[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*\)/i',
                     '/\bassert\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|\$_(?:GET|POST|REQUEST|COOKIE))/i',
                     '/\bsystem\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
                     '/\bexec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',

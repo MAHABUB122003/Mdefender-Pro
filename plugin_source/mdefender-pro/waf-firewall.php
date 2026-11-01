@@ -737,7 +737,189 @@ function waf_fw_handle_cloud_sync_webhook() {
             $action = sanitize_text_field($_REQUEST['action'] ?? $pushed_data['action'] ?? '');
             $action_result = null;
 
-            if ($action === 'create_backup') {
+            if ($action === 'trigger_scan' || $action === 'remote_scan' || $action === 'scan') {
+                $scan_type = sanitize_text_field($_REQUEST['scan_type'] ?? $pushed_data['scan_type'] ?? 'full');
+                $scan_id = sanitize_text_field($_REQUEST['scan_id'] ?? $pushed_data['scan_id'] ?? ('scan_' . time()));
+                
+                $start_time = microtime(true);
+                $scanner = class_exists('WAF_FW_Scanner') ? WAF_FW_Scanner::instance() : null;
+                $findings = [];
+                $scanned_count = 0;
+                $id_counter = 1;
+
+                if ($scanner) {
+                    // 1. WordPress Core Files
+                    $core_files = [
+                        ABSPATH . 'index.php',
+                        ABSPATH . 'wp-blog-header.php',
+                        ABSPATH . 'wp-load.php',
+                        ABSPATH . 'wp-config.php',
+                        ABSPATH . 'wp-settings.php',
+                        ABSPATH . 'wp-login.php',
+                        ABSPATH . 'wp-cron.php',
+                        ABSPATH . 'wp-activate.php',
+                        ABSPATH . 'wp-comments-post.php',
+                        ABSPATH . 'xmlrpc.php'
+                    ];
+
+                    foreach ($core_files as $core_file) {
+                        if (!file_exists($core_file)) continue;
+                        $scanned_count++;
+                        $res = $scanner->scan_file_multi_signal($core_file, 'core');
+                        if ($res && !empty($res['findings'])) {
+                            $findings[] = mdf_format_threat_finding($core_file, $res, $id_counter++);
+                        }
+                    }
+
+                    // 2. Plugins Directory (Scan plugin files & subdirectories)
+                    $plugins_dir = ABSPATH . 'wp-content/plugins/';
+                    if (is_dir($plugins_dir)) {
+                        $files = @scandir($plugins_dir) ?: [];
+                        foreach ($files as $f) {
+                            if ($f === '.' || $f === '..') continue;
+                            $full = $plugins_dir . $f;
+                            if (is_file($full)) {
+                                $ext = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+                                if (in_array($ext, ['php', 'phtml', 'inc'])) {
+                                    $scanned_count++;
+                                    $res = $scanner->scan_file_multi_signal($full, 'plugins');
+                                    if ($res && !empty($res['findings'])) {
+                                        $findings[] = mdf_format_threat_finding($full, $res, $id_counter++);
+                                    }
+                                }
+                            } elseif (is_dir($full) && !in_array($f, ['mdefender-pro', 'mdefender', 'wordfence'])) {
+                                $sub_files = @scandir($full) ?: [];
+                                foreach ($sub_files as $sf) {
+                                    if ($sf === '.' || $sf === '..') continue;
+                                    $sfull = $full . '/' . $sf;
+                                    if (is_file($sfull)) {
+                                        $ext = strtolower(pathinfo($sfull, PATHINFO_EXTENSION));
+                                        if (in_array($ext, ['php', 'phtml', 'inc'])) {
+                                            $scanned_count++;
+                                            $res = $scanner->scan_file_multi_signal($sfull, 'plugins');
+                                            if ($res && !empty($res['findings'])) {
+                                                $findings[] = mdf_format_threat_finding($sfull, $res, $id_counter++);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Themes Directory
+                    $themes_dir = ABSPATH . 'wp-content/themes/';
+                    if (is_dir($themes_dir)) {
+                        $theme_dirs = @scandir($themes_dir) ?: [];
+                        foreach ($theme_dirs as $td) {
+                            if ($td === '.' || $td === '..') continue;
+                            $tpath = $themes_dir . $td;
+                            if (is_dir($tpath)) {
+                                $tfiles = @scandir($tpath) ?: [];
+                                foreach ($tfiles as $tf) {
+                                    $tfpath = $tpath . '/' . $tf;
+                                    if (is_file($tfpath) && in_array(strtolower(pathinfo($tfpath, PATHINFO_EXTENSION)), ['php', 'phtml', 'inc'])) {
+                                        $scanned_count++;
+                                        $res = $scanner->scan_file_multi_signal($tfpath, 'themes');
+                                        if ($res && !empty($res['findings'])) {
+                                            $findings[] = mdf_format_threat_finding($tfpath, $res, $id_counter++);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 4. Uploads Directory (Scan all rogue executable scripts)
+                    $uploads_dir = ABSPATH . 'wp-content/uploads/';
+                    if (is_dir($uploads_dir)) {
+                        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($uploads_dir, RecursiveDirectoryIterator::SKIP_DOTS));
+                        foreach ($it as $file) {
+                            if ($file->isFile()) {
+                                $ext = strtolower($file->getExtension());
+                                if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc', 'cgi', 'asp', 'aspx', 'sh', 'py'])) {
+                                    $scanned_count++;
+                                    $res = $scanner->scan_file_multi_signal($file->getPathname(), 'uploads');
+                                    if ($res && !empty($res['findings'])) {
+                                        $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $duration = round(microtime(true) - $start_time, 2);
+                $threats_count = count($findings);
+                $health_score = max(20, 100 - ($threats_count * 15));
+
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode([
+                    'status'           => 'completed',
+                    'success'          => true,
+                    'scan_id'          => $scan_id,
+                    'timestamp'        => current_time('mysql'),
+                    'duration_seconds' => $duration,
+                    'total_scanned'    => $scanned_count,
+                    'threats_count'    => $threats_count,
+                    'health_score'     => $health_score,
+                    'core_status'      => $threats_count > 0 ? 'tampered' : 'pristine',
+                    'findings'         => $findings,
+                    'summary'          => [
+                        'checks_performed' => $scanned_count,
+                        'issues_found'     => $threats_count,
+                        'score'            => $health_score,
+                        'security_status'  => $threats_count > 0 ? 'Threats Detected' : 'Fleet Clean'
+                    ]
+                ]);
+                exit;
+            } elseif ($action === 'quarantine_file' || $action === 'quarantine') {
+                $rel_file = sanitize_text_field($_REQUEST['file'] ?? $pushed_data['file'] ?? '');
+                if (!$rel_file) {
+                    wp_send_json_error(['message' => 'File path required'], 400);
+                    exit;
+                }
+                $full_path = ABSPATH . ltrim(str_replace('\\', '/', $rel_file), '/');
+                if (!file_exists($full_path)) {
+                    wp_send_json_error(['message' => 'File does not exist: ' . $rel_file], 404);
+                    exit;
+                }
+                $vault_dir = ABSPATH . 'wp-content/uploads/waf-quarantine/';
+                if (!is_dir($vault_dir)) {
+                    wp_mkdir_p($vault_dir);
+                    @file_put_contents($vault_dir . '.htaccess', "Order Deny,Allow\nDeny from all\n");
+                    @file_put_contents($vault_dir . 'index.php', "<?php // Silence is golden.");
+                }
+                $dest = $vault_dir . basename($full_path) . '.' . time() . '.quarantine';
+                if (@rename($full_path, $dest)) {
+                    wp_send_json_success([
+                        'message' => 'File quarantined successfully: ' . basename($full_path),
+                        'quarantine_path' => str_replace(ABSPATH, '', $dest)
+                    ]);
+                    exit;
+                } else {
+                    @file_put_contents($full_path, "<?php /* Neutralized by MDefender Pro: " . date('c') . " */ exit(0);");
+                    wp_send_json_success(['message' => 'File neutralized in place: ' . basename($full_path)]);
+                    exit;
+                }
+            } elseif ($action === 'repair_core_file' || $action === 'repair_core') {
+                $rel_file = sanitize_text_field($_REQUEST['file'] ?? $pushed_data['file'] ?? '');
+                if (!$rel_file) {
+                    wp_send_json_error(['message' => 'File path required'], 400);
+                    exit;
+                }
+                $scanner = class_exists('WAF_FW_Scanner') ? WAF_FW_Scanner::instance() : null;
+                if ($scanner && method_exists($scanner, 'repair_core_file')) {
+                    $rep_res = $scanner->repair_core_file($rel_file);
+                    wp_send_json_success($rep_res);
+                    exit;
+                } else {
+                    wp_send_json_error(['message' => 'Repair engine unavailable'], 500);
+                    exit;
+                }
+            } elseif ($action === 'create_backup') {
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $btype = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? 'full');
                     $bnote = sanitize_text_field($_REQUEST['note'] ?? $pushed_data['note'] ?? 'Dashboard Instant Snapshot');
@@ -1847,7 +2029,7 @@ add_action('rest_api_init', function() {
                 return new WP_REST_Response(['status' => 'error', 'message' => 'File path required'], 400);
             }
 
-            $full_path = ABSPATH . ltrim($rel_file, '/\\');
+                $full_path = ABSPATH . ltrim(str_replace('\\', '/', $rel_file), '/');
             if (!file_exists($full_path)) {
                 return new WP_REST_Response(['status' => 'error', 'message' => 'File does not exist: ' . $rel_file], 404);
             }
@@ -1891,7 +2073,7 @@ add_action('rest_api_init', function() {
                 return new WP_REST_Response(['status' => 'error', 'message' => 'Core file path required'], 400);
             }
 
-            $full_path = ABSPATH . ltrim($rel_file, '/\\');
+                $full_path = ABSPATH . ltrim(str_replace('\\', '/', $rel_file), '/');
             if ($rel_file === 'wp-blog-header.php') {
                 $pristine = "<?php\n/**\n * Loads the WordPress environment and template.\n *\n * @package WordPress\n */\n\nif ( ! isset( \$wp_did_header ) ) {\n\n\t\$wp_did_header = true;\n\n\t// Load the WordPress library.\n\trequire_once __DIR__ . '/wp-load.php';\n\n\t// Set up the WordPress query.\n\twp();\n\n\t// Load the theme template.\n\trequire_once ABSPATH . WPINC . '/template-loader.php';\n\n}\n";
                 @file_put_contents($full_path, $pristine);
@@ -1913,9 +2095,10 @@ add_action('rest_api_init', function() {
             // Universal WordPress Official SVN / CDN Fallback for any core file
             global $wp_version;
             $ver = !empty($wp_version) ? $wp_version : '6.7';
+            $clean_rel = ltrim(str_replace('\\', '/', $rel_file), '/');
             $remote_sources = [
-                "https://core.svn.wordpress.org/tags/{$ver}/" . ltrim($rel_file, '/\\'),
-                "https://raw.githubusercontent.com/WordPress/WordPress/{$ver}/" . ltrim($rel_file, '/\\')
+                "https://core.svn.wordpress.org/tags/{$ver}/" . $clean_rel,
+                "https://raw.githubusercontent.com/WordPress/WordPress/{$ver}/" . $clean_rel
             ];
             foreach ($remote_sources as $src_url) {
                 $ctx = stream_context_create(['http' => ['timeout' => 6]]);
@@ -2176,8 +2359,11 @@ function waf_fw_analyze_request() {
         }
     }
     
-    // Cloud sync and heartbeat endpoints handle their own authentication and must not be blocked
-    if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync')) {
+    // Cloud sync, remote fleet actions, and internal WAF REST endpoints handle their own authentication and must not be blocked
+    if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') ||
+        (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MDefender-Pro-CloudAction') !== false) ||
+        (isset($_GET['rest_route']) && strpos($_GET['rest_route'], '/waf-fw/') !== false) ||
+        (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-json/waf-fw/') !== false)) {
         return;
     }
     
@@ -2503,7 +2689,9 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
         $category = 'Uploads Directory';
     } elseif (strpos($rel_path, 'wp-content/themes/') === 0) {
         $category = 'Theme';
-    } elseif (strpos($rel_path, 'wp-') === 0 || in_array(basename($full_path), ['index.php', 'xmlrpc.php'])) {
+    } elseif (strpos($rel_path, 'wp-content/plugins/') === 0) {
+        $category = 'Plugin';
+    } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array(basename($full_path), ['index.php', 'xmlrpc.php', 'wp-config.php', 'wp-login.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-cron.php', 'wp-activate.php', 'wp-comments-post.php'])) {
         $category = 'WordPress Core';
     }
 

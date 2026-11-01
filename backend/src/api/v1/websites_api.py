@@ -5828,111 +5828,30 @@ async def quarantine_website_file(website_id: str, body: dict = None, user=Depen
 
 
     import requests
-
-
-
-
-
-
-
+    api_key = website.get('api_key') or ''
+    site_token = website.get('site_token') or ''
+    headers = {'Content-Type': 'application/json', 'User-Agent': 'MDefender-Pro-CloudAction/1.0'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+        headers['X-API-Key'] = api_key
+    if site_token:
+        headers['X-Site-Token'] = site_token
+    sep = '&' if '?' in target_url else '?'
     candidates = [
-
-
-
-
-
-
-
-        f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-quarantine",
-
-
-
-
-
-
-
-        f"{target_url}/wp-json/waf-fw/v1/remote-scan-quarantine"
-
-
-
-
-
-
-
+        f"{target_url}{sep}waf_cloud_sync=1&action=quarantine_file&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/index.php?waf_cloud_sync=1&action=quarantine_file&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-quarantine&waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/wp-json/waf-fw/v1/remote-scan-quarantine?waf_cloud_sync=1&api_key={api_key}&site_token={site_token}"
     ]
-
-
-
-
-
-
-
-    result_payload = {"status": "success", "message": f"File {file_path} marked as quarantined."}
-
-
-
-
-
-
-
+    result_payload = {'status': 'success', 'message': f'File {file_path} marked as quarantined.'}
     for ep in candidates:
-
-
-
-
-
-
-
         try:
-
-
-
-
-
-
-
-            r = requests.post(ep, json={"file": file_path}, timeout=8.0, verify=False)
-
-
-
-
-
-
-
+            r = requests.post(ep, json={'file': file_path, 'action': 'quarantine_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=8.0, verify=False)
             if r.status_code == 200:
-
-
-
-
-
-
-
                 result_payload = r.json()
-
-
-
-
-
-
-
                 break
-
-
-
-
-
-
-
         except Exception:
-
-
-
-
-
-
-
             pass
-
 
 
 
@@ -6084,109 +6003,29 @@ async def repair_website_core_file(website_id: str, body: dict = None, user=Depe
 
 
     import requests
-
-
-
-
-
-
-
+    api_key = website.get('api_key') or ''
+    site_token = website.get('site_token') or ''
+    headers = {'Content-Type': 'application/json', 'User-Agent': 'MDefender-Pro-CloudAction/1.0'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+        headers['X-API-Key'] = api_key
+    if site_token:
+        headers['X-Site-Token'] = site_token
+    sep = '&' if '?' in target_url else '?'
     candidates = [
-
-
-
-
-
-
-
-        f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core",
-
-
-
-
-
-
-
-        f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core"
-
-
-
-
-
-
-
+        f"{target_url}{sep}waf_cloud_sync=1&action=repair_core_file&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/index.php?waf_cloud_sync=1&action=repair_core_file&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core&waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core?waf_cloud_sync=1&api_key={api_key}&site_token={site_token}"
     ]
-
-
-
-
-
-
-
-    result_payload = {"status": "success", "message": f"Core file {file_path} restored to official WordPress release."}
-
-
-
-
-
-
-
+    result_payload = {'status': 'success', 'message': f'Core file {file_path} restored to official WordPress release.'}
     for ep in candidates:
-
-
-
-
-
-
-
         try:
-
-
-
-
-
-
-
-            r = requests.post(ep, json={"file": file_path}, timeout=8.0, verify=False)
-
-
-
-
-
-
-
+            r = requests.post(ep, json={'file': file_path, 'action': 'repair_core_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
             if r.status_code == 200:
-
-
-
-
-
-
-
                 result_payload = r.json()
-
-
-
-
-
-
-
                 break
-
-
-
-
-
-
-
         except Exception:
-
-
-
-
-
-
-
             pass
 
 
