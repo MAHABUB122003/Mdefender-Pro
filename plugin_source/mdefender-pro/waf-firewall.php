@@ -56,6 +56,8 @@ if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || iss
     }
 }
 
+require_once WAF_FW_PLUGIN_DIR . 'includes/core/class-service-container.php';
+require_once WAF_FW_PLUGIN_DIR . 'includes/core/class-engine-registry.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-db.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-logger.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-semantic-deobfuscator.php';
@@ -2136,21 +2138,10 @@ function waf_fw_init() {
         }
     }
 
-    if (is_admin()) {
-        new WAF_FW_Admin();
-    }
-    new WAF_FW_Ajax_Handler();
-    WAF_FW_Login_Protector::instance()->register_hooks();
-    WAF_FW_2FA::instance();
-    if (class_exists('WAF_FW_Admin_Panel_IP')) {
-        WAF_FW_Admin_Panel_IP::instance();
-    }
-    WAF_FW_Core_Integrity::instance();
-    WAF_FW_PostHack_Recovery::instance();
-    WAF_FW_Website_Hardening::instance();
-    if (class_exists('WAF_FW_RASP_Engine')) {
-        WAF_FW_RASP_Engine::instance();
-    }
+    // Boot all modular security engines via Service Container with Circuit Breaker isolation
+    $container = WAF_FW_Service_Container::instance();
+    WAF_FW_Engine_Registry::register_all($container);
+    $container->boot();
 }
 add_action('plugins_loaded', 'waf_fw_init');
 
