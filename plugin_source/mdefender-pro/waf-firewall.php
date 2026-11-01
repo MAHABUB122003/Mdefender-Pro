@@ -576,7 +576,10 @@ function waf_fw_handle_cloud_sync_webhook() {
                             update_option('waf_harden_login_rename', $slug);
                         } else {
                             delete_option('waf_harden_login_rename');
-                        }
+        }
+        if (get_option('waf_harden_admin_ip_enabled', 'disabled') !== 'disabled') {
+            update_option('waf_harden_admin_ip_enabled', 'disabled');
+        }
                     }
                     if (isset($cfg['admin_ip_whitelist_enabled'])) {
         update_option('waf_harden_admin_ip_enabled', !empty($cfg['admin_ip_whitelist_enabled']) ? 'enabled' : 'disabled');
@@ -2121,9 +2124,8 @@ function waf_fw_bump_stat($which, $amount = 1) {
 }
 
 function waf_fw_init() {
-    $has_auth = (get_option('waf_fw_connected', 'no') === 'yes') ||
-                !empty(get_option('waf_fw_ml_api_key')) ||
-                !empty(get_option('waf_fw_api_key'));
+    $has_api_key = !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+    $has_auth = (get_option('waf_fw_connected', 'no') === 'yes') && $has_api_key;
 
     // Safety guarantee: If site is unconnected, ensure intrusive login blocks are strictly inactive
     if (!$has_auth) {

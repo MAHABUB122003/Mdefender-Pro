@@ -13,7 +13,8 @@ class WAF_FW_Login_Protector {
     }
 
     public function register_hooks() {
-        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        $has_api_key = !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        $is_connected = (get_option('waf_fw_connected', 'no') === 'yes') && $has_api_key;
         $slug = trim(get_option('waf_harden_login_rename', ''));
         $hide_login_enabled = get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes';
         $permalink_structure = get_option('permalink_structure', '');

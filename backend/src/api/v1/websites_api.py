@@ -1029,6 +1029,11 @@ def _website_out(doc):
 
 
         "disable_directory_listing": bool(doc.get("disable_directory_listing", True)),
+        "custom_login_slug": doc.get("custom_login_slug", ""),
+        "hide_login_url": bool(doc.get("hide_login_url", False)),
+        "login_redirect_type": doc.get("login_redirect_type", "404"),
+        "admin_ip_whitelist": doc.get("admin_ip_whitelist", []),
+        "admin_ip_whitelist_enabled": bool(doc.get("admin_ip_whitelist_enabled", False)),
 
 
 
@@ -1405,6 +1410,14 @@ def _website_out(doc):
 
 
         "nameservers": doc.get("assigned_nameservers") or ["ns1.mdefender-pro.crafix.tech", "ns2.mdefender-pro.crafix.tech"],
+        "custom_login_slug": doc.get("custom_login_slug", ""),
+        "hide_login_url": bool(doc.get("hide_login_url", False)),
+        "login_redirect_type": doc.get("login_redirect_type", "404"),
+        "admin_ip_whitelist": doc.get("admin_ip_whitelist", []),
+        "admin_ip_whitelist_enabled": bool(doc.get("admin_ip_whitelist_enabled", False)),
+        "bot_challenge_mode": doc.get("bot_challenge_mode", "hold_press"),
+        "max_login_attempts": int(doc.get("max_login_attempts") or 5),
+        "login_lockout_duration": int(doc.get("login_lockout_duration") or 60),
 
 
 
@@ -2853,6 +2866,11 @@ async def update_website(website_id: str, body: WebsiteUpdate, user=Depends(get_
 
 
     db.websites.update_one({"_id": website["_id"]}, {"$set": updates})
+    try:
+        from src.api.user_api import UserAPI
+        UserAPI.clear_cache()
+    except Exception:
+        pass
 
 
 

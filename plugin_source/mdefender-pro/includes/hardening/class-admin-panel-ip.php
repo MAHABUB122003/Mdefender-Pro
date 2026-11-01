@@ -29,6 +29,13 @@ class WAF_FW_Admin_Panel_IP {
     }
 
     public function is_enabled() {
+        // SAFETY: Only enforce IP restriction if site is actively connected with an API key
+        $has_api_key = !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        $is_connected = (get_option('waf_fw_connected', 'no') === 'yes') && $has_api_key;
+        if (!$is_connected) {
+            return false;
+        }
+
         // Bulletproof protection: If no whitelist IPs are configured, NEVER restrict access
         $whitelist = $this->get_whitelist();
         if (empty($whitelist)) {

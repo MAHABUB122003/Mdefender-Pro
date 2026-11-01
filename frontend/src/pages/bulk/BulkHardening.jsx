@@ -49,7 +49,7 @@ export default function BulkHardening() {
   const [newAdminIpInput, setNewAdminIpInput] = useState('')
   const [detectedClientIp, setDetectedClientIp] = useState('')
 
-  // Synchronize state when top domain scope changes
+  // Synchronize state when top domain scope changes or fresh fleet data arrives
   useEffect(() => {
     if (!targetSite || Object.keys(targetSite).length === 0) return
     const h = targetSite.hardening || {}
@@ -64,17 +64,22 @@ export default function BulkHardening() {
       loginTwoFactor: targetSite.login_two_factor ?? h.login_two_factor ?? true
     })
 
-    setCustomLoginSlug(targetSite.custom_login_slug || '')
-    setLoginRedirectType(targetSite.login_redirect_type || '404')
+    const effectiveSlug = targetSite.custom_login_slug || h.custom_login_slug || ''
+    setCustomLoginSlug(effectiveSlug)
+    setLoginRedirectType(targetSite.login_redirect_type || h.login_redirect_type || '404')
 
-    const rawWl = targetSite.admin_ip_whitelist
+    const rawWl = targetSite.admin_ip_whitelist || h.admin_ip_whitelist
     const parsedWl = Array.isArray(rawWl)
       ? rawWl
-      : (rawWl ? String(rawWl).split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean) : [])
+      : (rawWl ? String(rawWl).split(/[,\r\n]+/).map(s => s.trim()).filter(Boolean) : [])
     setAdminIpWhitelist(parsedWl)
-  }, [targetSite?.id, targetSite?._id, selectedSiteId])
+  }, [targetSite?.id, targetSite?._id, targetSite?.custom_login_slug, targetSite?.admin_ip_whitelist, selectedSiteId])
 
-  const [saving, setSaving] = useState(false)
+  const [savingSecret, setSavingSecret] = useState(false)
+  const [savingIp, setSavingIp] = useState(false)
+  const [resettingSecretSiteId, setResettingSecretSiteId] = useState(null)
+  const [resettingAllIps, setResettingAllIps] = useState(false)
+  const [togglingHardenKey, setTogglingHardenKey] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
 
@@ -97,7 +102,7 @@ export default function BulkHardening() {
   const handleToggle = async (key) => {
     const nextVal = !hardening[key]
     setHardening(prev => ({ ...prev, [key]: nextVal }))
-    setSaving(true)
+    setTogglingHardenKey(key)
 
     const backendKey = keyToBackendMap[key]
     const payload = { [backendKey]: nextVal }
@@ -113,7 +118,7 @@ export default function BulkHardening() {
     } catch {
       showToast('Hardening directive updated locally; background sync queued.')
     } finally {
-      setSaving(false)
+      setTogglingHardenKey(null)
     }
   }
 
@@ -160,7 +165,7 @@ export default function BulkHardening() {
       return
     }
 
-    setSaving(true)
+    setSavingSecret(true)
     const payload = {
       hide_login_url: true,
       custom_login_slug: cleanSlug,
@@ -173,17 +178,25 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
+
+      targets.forEach(site => {
+        site.custom_login_slug = cleanSlug
+        site.hide_login_url = true
+        site.login_redirect_type = loginRedirectType || '404'
+      })
+
       showToast(`Secret Login Gateway (/${cleanSlug}) saved for ${isAllDomains ? 'All Domains' : (targetSite.domain || 'site')}!`)
       fetchFleet(true)
     } catch (err) {
       showToast(err.message || 'Failed to save secret login gateway.', true)
     } finally {
-      setSaving(false)
+      setSavingSecret(false)
     }
   }
 
   const handleResetLoginGateway = async (siteToReset = null) => {
-    setSaving(true)
+    const siteKey = siteToReset ? (siteToReset.id || siteToReset._id) : (targetSite.id || targetSite._id || 'all')
+    setResettingSecretSiteId(siteKey)
     const payload = {
       hide_login_url: false,
       custom_login_slug: '',
@@ -195,7 +208,13 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('Custom login URL removed. Default /wp-login.php restored successfully!')
+
+      targets.forEach(site => {
+        site.custom_login_slug = ''
+        site.hide_login_url = false
+      })
+
+      showToast('Custom secret URL deleted. Default /wp-login.php restored successfully!')
       if (!siteToReset || siteToReset.id === targetSite.id || siteToReset._id === targetSite._id) {
         setCustomLoginSlug('')
       }
@@ -203,7 +222,7 @@ export default function BulkHardening() {
     } catch (err) {
       showToast(err.message || 'Failed to reset login gateway.', true)
     } finally {
-      setSaving(false)
+      setResettingSecretSiteId(null)
     }
   }
 
@@ -226,16 +245,13 @@ export default function BulkHardening() {
     setNewAdminIpInput('')
   }
 
-  const handleRemoveAllowedIp = (ipToRemove) => {
-    setAdminIpWhitelist(prev => prev.filter(ip => ip !== ipToRemove))
-  }
-
-  const handleSaveAdminIpRestriction = async () => {
-    setSaving(true)
-    const hasIps = adminIpWhitelist && adminIpWhitelist.length > 0
+  const handleSaveAdminIpRestriction = async (overrideList = null) => {
+    setSavingIp(true)
+    const listToSave = Array.isArray(overrideList) ? overrideList : adminIpWhitelist
+    const hasIps = listToSave && listToSave.length > 0
     const payload = {
       admin_ip_whitelist_enabled: hasIps,
-      admin_ip_whitelist: adminIpWhitelist || []
+      admin_ip_whitelist: listToSave || []
     }
     try {
       const targets = isAllDomains ? wpWebsites : [targetSite]
@@ -243,8 +259,14 @@ export default function BulkHardening() {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
+
+      targets.forEach(site => {
+        site.admin_ip_whitelist = listToSave
+        site.admin_ip_whitelist_enabled = hasIps
+      })
+
       if (hasIps) {
-        showToast(`Admin IP restriction saved for ${isAllDomains ? 'All Domains' : (targetSite.domain || 'site')} (${adminIpWhitelist.length} IP authorized)!`)
+        showToast(`Admin IP restriction saved for ${isAllDomains ? 'All Domains' : (targetSite.domain || 'site')} (${listToSave.length} IP authorized)!`)
       } else {
         showToast(`All IP restrictions removed for ${isAllDomains ? 'All Domains' : (targetSite.domain || 'site')}. Admin access is open to all IPs!`)
       }
@@ -252,29 +274,41 @@ export default function BulkHardening() {
     } catch (err) {
       showToast(err.message || 'Failed to save admin IP restriction.', true)
     } finally {
-      setSaving(false)
+      setSavingIp(false)
     }
   }
 
-  const handleRemoveAllAdminIps = async (siteToClear = null) => {
-    setSaving(true)
+  const handleRemoveAllowedIp = async (ipToRemove) => {
+    const updated = adminIpWhitelist.filter(ip => ip !== ipToRemove)
+    setAdminIpWhitelist(updated)
+    await handleSaveAdminIpRestriction(updated)
+  }
+
+  const handleRemoveAllAdminIps = async () => {
+    setResettingAllIps(true)
     setAdminIpWhitelist([])
     const payload = {
       admin_ip_whitelist_enabled: false,
       admin_ip_whitelist: []
     }
     try {
-      const targets = siteToClear ? [siteToClear] : (isAllDomains ? wpWebsites : [targetSite])
+      const targets = isAllDomains ? wpWebsites : [targetSite]
       await Promise.all(targets.filter(t => t && (t.id || t._id)).map(site => {
         const sid = site.id || site._id
         return api.updateWebsiteSecuritySettings(sid, payload)
       }))
-      showToast('IP restrictions completely removed. Admin panel is now accessible from all IPs!')
+
+      targets.forEach(site => {
+        site.admin_ip_whitelist = []
+        site.admin_ip_whitelist_enabled = false
+      })
+
+      showToast(`All IP restrictions removed for ${isAllDomains ? 'All Domains' : (targetSite.domain || 'site')}. Admin access is now 100% open to all IPs!`)
       fetchFleet(true)
     } catch (err) {
       showToast(err.message || 'Failed to clear IP restrictions.', true)
     } finally {
-      setSaving(false)
+      setResettingAllIps(false)
     }
   }
 
@@ -587,7 +621,7 @@ export default function BulkHardening() {
                     <button
                       type="button"
                       onClick={handleSaveLoginGateway}
-                      disabled={saving || !customLoginSlug.trim()}
+                      disabled={savingSecret || !customLoginSlug.trim()}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -600,13 +634,13 @@ export default function BulkHardening() {
                         border: 'none',
                         fontSize: '12.5px',
                         fontWeight: 700,
-                        cursor: saving || !customLoginSlug.trim() ? 'not-allowed' : 'pointer',
+                        cursor: savingSecret || !customLoginSlug.trim() ? 'not-allowed' : 'pointer',
                         opacity: !customLoginSlug.trim() ? 0.6 : 1,
                         whiteSpace: 'nowrap'
                       }}
                     >
                       <Save size={14} />
-                      <span>{saving ? 'Saving...' : 'Save Secret Gateway'}</span>
+                      <span>{savingSecret ? 'Saving Gateway...' : 'Save Secret Gateway'}</span>
                     </button>
                   </div>
                   <small style={{ color: '#64748B', fontSize: '12px', marginTop: '5px', display: 'block' }}>
@@ -623,11 +657,20 @@ export default function BulkHardening() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {displayedSites.map((site, index) => {
-                    const isConfigured = Boolean(site.custom_login_slug && site.hide_login_url)
+                    const isSiteConn = site?.wordpress_connection?.connected !== false && (site?.api_key || site?.status === 'active')
+                    const effectiveSlug = (site.id === targetSite.id || site._id === targetSite._id)
+                      ? (site.custom_login_slug || customLoginSlug)
+                      : site.custom_login_slug
+                    const isConfigured = isSiteConn && Boolean(
+                      effectiveSlug &&
+                      site.hide_login_url !== false &&
+                      !['wp-admin', 'wp-login.php', 'wp-login'].includes(effectiveSlug.toLowerCase())
+                    )
                     const activeUrl = isConfigured
-                      ? getComputedLoginUrl(site, site.custom_login_slug)
+                      ? getComputedLoginUrl(site, effectiveSlug)
                       : getComputedLoginUrl(site, '')
                     const siteKey = site.id || site._id || index
+                    const isResettingThis = resettingSecretSiteId === siteKey
 
                     return (
                       <div
@@ -649,9 +692,19 @@ export default function BulkHardening() {
                           <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
                             {site.domain || site.url || 'Connected Site'}
                           </span>
-                          <span style={badgeStyle(isConfigured ? '#F0FDF4' : '#F8FAFC', isConfigured ? '#15803D' : '#64748B', isConfigured ? '#BBF7D0' : '#E2E8F0')}>
-                            {isConfigured ? `/${site.custom_login_slug}` : 'DEFAULT (/wp-login.php)'}
-                          </span>
+                          {!isSiteConn ? (
+                            <span style={badgeStyle('#FEF3C7', '#92400E', '#FDE68A')}>
+                              DISCONNECTED (API KEY REQUIRED)
+                            </span>
+                          ) : isConfigured ? (
+                            <span style={badgeStyle('#DCFCE7', '#166534', '#86EFAC')}>
+                              SECRET GATEWAY ACTIVE (/{effectiveSlug})
+                            </span>
+                          ) : (
+                            <span style={badgeStyle('#F1F5F9', '#475569', '#CBD5E1')}>
+                              DEFAULT (/wp-login.php)
+                            </span>
+                          )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px' }}>
@@ -710,8 +763,8 @@ export default function BulkHardening() {
                             <button
                               type="button"
                               onClick={() => handleResetLoginGateway(site)}
-                              disabled={saving}
-                              title="Reset back to standard WordPress /wp-login.php"
+                              disabled={isResettingThis}
+                              title="Cancel secret URL and restore default /wp-login.php"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -722,12 +775,12 @@ export default function BulkHardening() {
                                 border: '1px solid #FECDD3',
                                 color: '#BE123C',
                                 fontSize: '12px',
-                                fontWeight: 600,
-                                cursor: saving ? 'not-allowed' : 'pointer'
+                                fontWeight: 700,
+                                cursor: isResettingThis ? 'not-allowed' : 'pointer'
                               }}
                             >
                               <Undo2 size={13} />
-                              <span>Reset to Default</span>
+                              <span>{isResettingThis ? 'Cancelling...' : 'Cancel / Delete Secret URL'}</span>
                             </button>
                           )}
                         </div>
@@ -865,8 +918,8 @@ export default function BulkHardening() {
 
                   <button
                     type="button"
-                    onClick={handleSaveAdminIpRestriction}
-                    disabled={saving}
+                    onClick={() => handleSaveAdminIpRestriction()}
+                    disabled={savingIp}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -879,13 +932,13 @@ export default function BulkHardening() {
                       border: 'none',
                       fontSize: '12.5px',
                       fontWeight: 700,
-                      cursor: saving ? 'not-allowed' : 'pointer',
+                      cursor: savingIp ? 'not-allowed' : 'pointer',
                       boxShadow: '0 1px 2px rgba(15, 23, 42, 0.1)',
                       whiteSpace: 'nowrap'
                     }}
                   >
                     <Save size={14} />
-                    <span>{saving ? 'Synchronizing...' : 'Save Authorized IPs'}</span>
+                    <span>{savingIp ? 'Saving IPs...' : 'Save Authorized IPs'}</span>
                   </button>
                 </div>
                 <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
@@ -982,7 +1035,7 @@ export default function BulkHardening() {
                   <button
                     type="button"
                     onClick={() => handleRemoveAllAdminIps()}
-                    disabled={saving}
+                    disabled={resettingAllIps}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -994,11 +1047,11 @@ export default function BulkHardening() {
                       color: '#BE123C',
                       fontSize: '12px',
                       fontWeight: 600,
-                      cursor: saving ? 'not-allowed' : 'pointer'
+                      cursor: resettingAllIps ? 'not-allowed' : 'pointer'
                     }}
                   >
                     <Trash2 size={13} />
-                    <span>Remove All IP Restrictions (Allow All IPs)</span>
+                    <span>{resettingAllIps ? 'Removing All...' : 'Remove All IP Restrictions (Allow All IPs)'}</span>
                   </button>
                 </div>
               )}
@@ -1029,7 +1082,7 @@ export default function BulkHardening() {
                 <button
                   type="button"
                   onClick={handleEnableAllDirectives}
-                  disabled={saving}
+                  disabled={togglingHardenKey === item.key}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '8px',
@@ -1051,7 +1104,7 @@ export default function BulkHardening() {
                 <button
                   type="button"
                   onClick={handleRevertDefaults}
-                  disabled={saving}
+                  disabled={togglingHardenKey === item.key}
                   style={secondaryButtonStyle}
                 >
                   <RotateCcw size={13} />

@@ -14,12 +14,18 @@ logger = logging.getLogger('mdefender.auth')
 
 
 class UserAPI:
+    _stats_cache = {}
+
+    @classmethod
+    def clear_cache(cls):
+        cls._stats_cache.clear()
+
     def __init__(self):
         self.db = MongoDB()
         self.rule_engine = RuleEngine()
         self.password_service = PasswordService()
         self.email_service = EmailService()
-        self._stats_cache = {}
+        self._stats_cache = UserAPI._stats_cache
         self._stats_cache_ttl = 15
         self._logs_cache = {}
         self._logs_cache_ttl = 1
@@ -1072,6 +1078,13 @@ class UserAPI:
                 'login_two_factor': bool(w.get('login_two_factor', False)),
                 'disable_directory_listing': bool(w.get('disable_directory_listing', True)),
             }
+            if isinstance(hardening_opts, dict):
+                hardening_opts['custom_login_slug'] = w.get('custom_login_slug', '')
+                hardening_opts['hide_login_url'] = bool(w.get('hide_login_url', False))
+                hardening_opts['login_redirect_type'] = w.get('login_redirect_type', '404')
+                hardening_opts['admin_ip_whitelist'] = w.get('admin_ip_whitelist', [])
+                hardening_opts['admin_ip_whitelist_enabled'] = bool(w.get('admin_ip_whitelist_enabled', False))
+
             websites.append({
                 'id': str(w['_id']),
                 'domain': w.get('domain', ''),
@@ -1109,6 +1122,15 @@ class UserAPI:
                 'file_permissions_check': bool(w.get('file_permissions_check', True)),
                 'login_two_factor': bool(w.get('login_two_factor', False)),
                 'under_attack_mode': bool(w.get('under_attack_mode', False)),
+                'custom_login_slug': w.get('custom_login_slug', ''),
+                'hide_login_url': bool(w.get('hide_login_url', False)),
+                'login_redirect_type': w.get('login_redirect_type', '404'),
+                'admin_ip_whitelist': w.get('admin_ip_whitelist', []),
+                'admin_ip_whitelist_enabled': bool(w.get('admin_ip_whitelist_enabled', False)),
+                'bot_challenge_mode': w.get('bot_challenge_mode', 'hold_press'),
+                'max_login_attempts': int(w.get('max_login_attempts') or 5),
+                'login_lockout_duration': int(w.get('login_lockout_duration') or 60),
+                'rate_limit_per_minute': int(w.get('rate_limit_per_minute') or 120),
             })
 
         # -------------------------------------------------------------
