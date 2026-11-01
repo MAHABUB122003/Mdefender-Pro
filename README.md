@@ -11,11 +11,13 @@ Mdefender/
 ├── backend/          # FastAPI Python Server, AI Engine, Threat DB, Reverse Proxy, DNS Daemon
 ├── frontend/         # Modern React + Vite Dashboard & User Management Portal
 ├── plugin_source/    # Enterprise WordPress Security Plugin source code (v4.1.0)
-├── datasets/         # WAF training vectors, threat intelligence feeds, malware samples
+├── datasets/         # WAF training vectors (7.52M), threat intelligence (1.14M), malware checksums (5.24M)
+├── docs/             # Technical specifications, AI architecture, and project proposals
+│   ├── ai_specs/     # AI.md (Machine Learning & WAF Architecture)
+│   ├── architecture/ # PLUGIN_ARCHITECTURE.md (WordPress plugin internals & hooks)
+│   └── proposals/    # MDEFENDER_PROJECT_PROPOSAL.pdf (System design proposal)
 ├── nginx/            # High-performance Nginx reverse proxy and SSL configuration templates
 ├── scripts/          # Operational server automation (SSL automation, cache warming, threat ingestion)
-├── AI.md             # In-depth architectural analysis and machine learning documentation
-├── PLUGIN_ARCHITECTURE.md # WordPress plugin internals, hooks, and sync architecture
 └── docker-compose.yml# Container orchestration for local and multi-service deployment
 ```
 

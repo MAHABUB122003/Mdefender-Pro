@@ -193,13 +193,6 @@ class MongoDB:
     def user_tokens(self):
         return self._db['user_tokens'] if self._db is not None else None
 
-    @property
-    def bank_accounts(self):
-        return self._db['bank_accounts'] if self._db is not None else None
-
-    @property
-    def finance_transactions(self):
-        return self._db['finance_transactions'] if self._db is not None else None
 
     @property
     def notices(self):
@@ -311,8 +304,6 @@ class InMemoryDB:
         self.auto_blocks = InMemoryCollection()
         self.users = InMemoryCollection()
         self.user_tokens = InMemoryCollection()
-        self.bank_accounts = InMemoryCollection()
-        self.finance_transactions = InMemoryCollection()
         self.notices = InMemoryCollection()
         self.email_verification_tokens = InMemoryCollection()
         self.password_reset_tokens = InMemoryCollection()
