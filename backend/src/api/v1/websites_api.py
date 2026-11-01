@@ -5012,101 +5012,21 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
                         db.malware_scans.update_one(
-
-
-
-
-
-
-
                             {"_id": scan_id},
-
-
-
-
-
-
-
                             {"$set": {
-
-
-
-
-
-
-
                                 "status": "completed",
-
-
-
-
-
-
-
                                 "completed_at": datetime.now(),
-
-
-
-
-
-
-
                                 "score": score,
-
-
-
-
-
-
-
                                 "issues_found": threats_count,
-
-
-
-
-
-
-
+                                "total_scanned": resp_json.get("total_scanned", 0),
+                                "files_scanned": resp_json.get("files_scanned", 0),
                                 "duration": resp_json.get("duration_seconds", 0.5),
-
-
-
-
-
-
-
                                 "findings": findings_list,
-
-
-
-
-
-
-
+                                "domains_status": resp_json.get("domains_status", []),
+                                "real_metrics": resp_json.get("real_metrics", {}),
                                 "summary": resp_json.get("summary", {}),
-
-
-
-
-
-
-
                                 "threat_level": threat_level
-
-
-
-
-
-
-
                             }}
-
-
-
-
-
-
-
                         )
 
 
@@ -5188,77 +5108,17 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
                         return success({
-
-
-
-
-
-
-
                             "scan_id": scan_id,
-
-
-
-
-
-
-
                             "status": "completed",
-
-
-
-
-
-
-
                             "score": score,
-
-
-
-
-
-
-
                             "issues_found": threats_count,
-
-
-
-
-
-
-
                             "total_scanned": resp_json.get("total_scanned", 0),
-
-
-
-
-
-
-
+                            "files_scanned": resp_json.get("files_scanned", 0),
                             "findings": findings_list,
-
-
-
-
-
-
-
+                            "domains_status": resp_json.get("domains_status", []),
+                            "real_metrics": resp_json.get("real_metrics", {}),
                             "duration": resp_json.get("duration_seconds", 0.5),
-
-
-
-
-
-
-
                             "message": f"Scan completed successfully. Found {threats_count} threats."
-
-
-
-
-
-
-
                         })
 
 
