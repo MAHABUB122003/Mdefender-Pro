@@ -77,6 +77,7 @@ export default function BulkHardening() {
 
   const [savingSecret, setSavingSecret] = useState(false)
   const [savingIp, setSavingIp] = useState(false)
+  const [savingDirectives, setSavingDirectives] = useState(false)
   const [resettingSecretSiteId, setResettingSecretSiteId] = useState(null)
   const [resettingAllIps, setResettingAllIps] = useState(false)
   const [togglingHardenKey, setTogglingHardenKey] = useState(null)
@@ -327,7 +328,7 @@ export default function BulkHardening() {
       loginTwoFactor: true
     }
     setHardening(allEnabled)
-    setSaving(true)
+    setSavingDirectives(true)
     try {
       const payload = {
         disable_file_editing: true,
@@ -349,7 +350,7 @@ export default function BulkHardening() {
     } catch {
       showToast('Hardening directives updated; queued background sync.')
     } finally {
-      setSaving(false)
+      setSavingDirectives(false)
     }
   }
 
@@ -365,7 +366,7 @@ export default function BulkHardening() {
       loginTwoFactor: false
     }
     setHardening(safeBaseline)
-    setSaving(true)
+    setSavingDirectives(true)
     try {
       const payload = {
         disable_file_editing: true,
@@ -387,7 +388,7 @@ export default function BulkHardening() {
     } catch {
       showToast('Baseline restored locally; background sync queued.')
     } finally {
-      setSaving(false)
+      setSavingDirectives(false)
     }
   }
 
@@ -486,7 +487,7 @@ export default function BulkHardening() {
     ? `All Domains (${wpWebsites.length} Sites)`
     : (targetSite.domain || targetSite.url || 'Selected Site')
 
-  const displayedSites = isAllDomains ? wpWebsites : [targetSite]
+  const displayedSites = isAllDomains ? wpWebsites : (targetSite && (targetSite.id || targetSite._id || targetSite.domain) ? [targetSite] : wpWebsites.slice(0, 1))
 
   return (
     <div style={{ maxWidth: '1280px', margin: '0 auto', paddingBottom: '60px' }}>
@@ -1082,7 +1083,7 @@ export default function BulkHardening() {
                 <button
                   type="button"
                   onClick={handleEnableAllDirectives}
-                  disabled={togglingHardenKey === item.key}
+                  disabled={savingDirectives}
                   style={{
                     padding: '8px 14px',
                     borderRadius: '8px',
@@ -1094,7 +1095,7 @@ export default function BulkHardening() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    cursor: saving ? 'not-allowed' : 'pointer'
+                    cursor: savingDirectives ? 'not-allowed' : 'pointer'
                   }}
                 >
                   <ShieldCheck size={14} color="#10B981" />
@@ -1104,8 +1105,11 @@ export default function BulkHardening() {
                 <button
                   type="button"
                   onClick={handleRevertDefaults}
-                  disabled={togglingHardenKey === item.key}
-                  style={secondaryButtonStyle}
+                  disabled={savingDirectives}
+                  style={{
+                    ...secondaryButtonStyle,
+                    cursor: savingDirectives ? 'not-allowed' : 'pointer'
+                  }}
                 >
                   <RotateCcw size={13} />
                   <span>Review &amp; Revert to Safe Baseline</span>
