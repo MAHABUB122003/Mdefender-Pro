@@ -7,10 +7,51 @@ export default function PublicNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
   const navRef = useRef(null);
   const dropdownRef = useRef(null);
+  const solutionsDropdownRef = useRef(null);
+  const productsTimeoutRef = useRef(null);
+  const solutionsTimeoutRef = useRef(null);
+
+  // Instant prefetch helper for 0ms sub-resource switching
+  const prefetch = (target) => {
+    try {
+      if (target === 'docs') import('../pages/Docs');
+      else if (target === 'pricing') import('../pages/Pricing');
+      else if (target === 'solutions') {
+        import('../pages/Solutions');
+        import('../pages/SolutionDetail');
+      }
+      else if (target === 'products') import('../pages/ProductDetail');
+      else if (target === 'login') import('../pages/UserLogin');
+      else if (target === 'register') import('../pages/Register');
+      else if (target === 'threat') import('../pages/Blog');
+      else if (target === 'dashboard') import('../pages/UserDashboard');
+    } catch {}
+  };
+
+  // Idle prefetch of primary navbar routes on load so all clicks are instantaneous
+  useEffect(() => {
+    const idlePrefetch = () => {
+      prefetch('docs');
+      prefetch('pricing');
+      prefetch('solutions');
+      prefetch('products');
+      prefetch('login');
+      prefetch('register');
+    };
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(idlePrefetch, { timeout: 1500 });
+      } else {
+        setTimeout(idlePrefetch, 250);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -24,7 +65,10 @@ export default function PublicNavbar() {
   }, [loc.pathname]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
+    const onScroll = () => {
+      const isPast = window.scrollY > 10;
+      setScrolled((prev) => (prev !== isPast ? isPast : prev));
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -32,31 +76,12 @@ export default function PublicNavbar() {
   useEffect(() => {
     setMobileOpen(false);
     setProductsOpen(false);
+    setSolutionsOpen(false);
+    if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
+    if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
   }, [loc.pathname]);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setProductsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleLogoClick = (e) => {
-    if (loc.pathname === '/') {
-      e.preventDefault();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    setMobileOpen(false);
-  };
-
-  const [solutionsOpen, setSolutionsOpen] = useState(false);
-  const solutionsDropdownRef = useRef(null);
-
-  // Close dropdowns on outside click
+  // Unified click outside handler
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -67,8 +92,54 @@ export default function PublicNavbar() {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
+      if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
+    };
   }, []);
+
+  const handleHomeClick = (e) => {
+    setMobileOpen(false);
+    setProductsOpen(false);
+    setSolutionsOpen(false);
+    if (loc.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleProductsEnter = () => {
+    if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
+    if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
+    prefetch('products');
+    setProductsOpen(true);
+    setSolutionsOpen(false);
+  };
+
+  const handleProductsLeave = () => {
+    if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
+    productsTimeoutRef.current = setTimeout(() => {
+      setProductsOpen(false);
+    }, 180);
+  };
+
+  const handleSolutionsEnter = () => {
+    if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
+    if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
+    prefetch('solutions');
+    setSolutionsOpen(true);
+    setProductsOpen(false);
+  };
+
+  const handleSolutionsLeave = () => {
+    if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
+    solutionsTimeoutRef.current = setTimeout(() => {
+      setSolutionsOpen(false);
+    }, 180);
+  };
 
   const productCategories = {
     edge: [
@@ -254,20 +325,37 @@ export default function PublicNavbar() {
             }}
             className="hidden md:flex"
           >
-            {/* Products Mega-Dropdown */}
+            {/* 1. Home Link */}
+            <Link
+              to="/"
+              onClick={handleHomeClick}
+              onMouseEnter={() => prefetch('home')}
+              onFocus={() => prefetch('home')}
+              style={{
+                fontSize: '13.5px',
+                fontWeight: 600,
+                color: loc.pathname === '/' ? '#E8792F' : '#10201E',
+                textDecoration: 'none',
+                padding: '6px 2px',
+                transition: 'color 0.18s ease',
+              }}
+              onMouseEnter={(e) => {
+                prefetch('home');
+                e.currentTarget.style.color = '#E8792F';
+              }}
+              onMouseLeave={(e) => {
+                if (loc.pathname !== '/') e.currentTarget.style.color = '#10201E';
+              }}
+            >
+              Home
+            </Link>
+
+            {/* 2. Products Mega-Dropdown */}
             <div
               ref={dropdownRef}
               style={{ position: 'relative' }}
-              onMouseEnter={() => {
-                if (window.navDropdownTimeout) clearTimeout(window.navDropdownTimeout);
-                setProductsOpen(true);
-                setSolutionsOpen(false);
-              }}
-              onMouseLeave={() => {
-                window.navDropdownTimeout = setTimeout(() => {
-                  setProductsOpen(false);
-                }, 220);
-              }}
+              onMouseEnter={handleProductsEnter}
+              onMouseLeave={handleProductsLeave}
             >
               <button
                 type="button"
@@ -276,6 +364,7 @@ export default function PublicNavbar() {
                   setProductsOpen((prev) => !prev);
                   setSolutionsOpen(false);
                 }}
+                onFocus={handleProductsEnter}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -284,7 +373,7 @@ export default function PublicNavbar() {
                   border: 'none',
                   fontSize: '13.5px',
                   fontWeight: 600,
-                  color: productsOpen ? '#E8792F' : '#10201E',
+                  color: (productsOpen || loc.pathname.startsWith('/products')) ? '#E8792F' : '#10201E',
                   cursor: 'pointer',
                   padding: '6px 2px',
                   transition: 'color 0.18s ease',
@@ -295,7 +384,7 @@ export default function PublicNavbar() {
                   size={13}
                   strokeWidth={2.4}
                   style={{
-                    color: productsOpen ? '#E8792F' : '#4A5D5A',
+                    color: (productsOpen || loc.pathname.startsWith('/products')) ? '#E8792F' : '#4A5D5A',
                     transform: productsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s ease, color 0.18s ease',
                   }}
@@ -323,7 +412,7 @@ export default function PublicNavbar() {
                     gap: '24px',
                   }}
                   onMouseEnter={() => {
-                    if (window.navDropdownTimeout) clearTimeout(window.navDropdownTimeout);
+                    if (productsTimeoutRef.current) clearTimeout(productsTimeoutRef.current);
                     setProductsOpen(true);
                   }}
                 >
@@ -410,20 +499,12 @@ export default function PublicNavbar() {
               )}
             </div>
 
-            {/* Solutions Mega-Dropdown */}
+            {/* 3. Solutions Mega-Dropdown */}
             <div
               ref={solutionsDropdownRef}
               style={{ position: 'relative' }}
-              onMouseEnter={() => {
-                if (window.navDropdownTimeout) clearTimeout(window.navDropdownTimeout);
-                setSolutionsOpen(true);
-                setProductsOpen(false);
-              }}
-              onMouseLeave={() => {
-                window.navDropdownTimeout = setTimeout(() => {
-                  setSolutionsOpen(false);
-                }, 220);
-              }}
+              onMouseEnter={handleSolutionsEnter}
+              onMouseLeave={handleSolutionsLeave}
             >
               <button
                 type="button"
@@ -432,6 +513,7 @@ export default function PublicNavbar() {
                   setSolutionsOpen((prev) => !prev);
                   setProductsOpen(false);
                 }}
+                onFocus={handleSolutionsEnter}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -440,7 +522,7 @@ export default function PublicNavbar() {
                   border: 'none',
                   fontSize: '13.5px',
                   fontWeight: 600,
-                  color: solutionsOpen ? '#E8792F' : ((loc.pathname === '/solutions' || loc.pathname === '/about') ? '#E8792F' : '#10201E'),
+                  color: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? '#E8792F' : '#10201E',
                   cursor: 'pointer',
                   padding: '6px 2px',
                   transition: 'color 0.18s ease',
@@ -451,7 +533,7 @@ export default function PublicNavbar() {
                   size={13}
                   strokeWidth={2.4}
                   style={{
-                    color: solutionsOpen ? '#E8792F' : '#4A5D5A',
+                    color: (solutionsOpen || loc.pathname === '/solutions' || loc.pathname === '/about' || loc.pathname.startsWith('/solutions/')) ? '#E8792F' : '#4A5D5A',
                     transform: solutionsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s ease, color 0.18s ease',
                   }}
@@ -479,7 +561,7 @@ export default function PublicNavbar() {
                     gap: '24px',
                   }}
                   onMouseEnter={() => {
-                    if (window.navDropdownTimeout) clearTimeout(window.navDropdownTimeout);
+                    if (solutionsTimeoutRef.current) clearTimeout(solutionsTimeoutRef.current);
                     setSolutionsOpen(true);
                   }}
                 >
@@ -559,16 +641,23 @@ export default function PublicNavbar() {
               )}
             </div>
 
+            {/* 4. Documentation Link */}
             <Link
               to="/docs"
+              onMouseEnter={() => prefetch('docs')}
+              onFocus={() => prefetch('docs')}
               style={{
                 fontSize: '13.5px',
                 fontWeight: 600,
                 color: loc.pathname === '/docs' ? '#E8792F' : '#10201E',
                 textDecoration: 'none',
+                padding: '6px 2px',
                 transition: 'color 0.18s ease',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#E8792F')}
+              onMouseEnter={(e) => {
+                prefetch('docs');
+                e.currentTarget.style.color = '#E8792F';
+              }}
               onMouseLeave={(e) => {
                 if (loc.pathname !== '/docs') e.currentTarget.style.color = '#10201E';
               }}
@@ -576,16 +665,23 @@ export default function PublicNavbar() {
               Documentation
             </Link>
 
+            {/* 5. Pricing Link */}
             <Link
               to="/pricing"
+              onMouseEnter={() => prefetch('pricing')}
+              onFocus={() => prefetch('pricing')}
               style={{
                 fontSize: '13.5px',
                 fontWeight: 600,
                 color: loc.pathname === '/pricing' ? '#E8792F' : '#10201E',
                 textDecoration: 'none',
+                padding: '6px 2px',
                 transition: 'color 0.18s ease',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#E8792F')}
+              onMouseEnter={(e) => {
+                prefetch('pricing');
+                e.currentTarget.style.color = '#E8792F';
+              }}
               onMouseLeave={(e) => {
                 if (loc.pathname !== '/pricing') e.currentTarget.style.color = '#10201E';
               }}
@@ -593,16 +689,23 @@ export default function PublicNavbar() {
               Pricing
             </Link>
 
+            {/* 6. Threat Intelligence Link */}
             <Link
               to="/threat-intelligence"
+              onMouseEnter={() => prefetch('threat')}
+              onFocus={() => prefetch('threat')}
               style={{
                 fontSize: '13.5px',
                 fontWeight: 600,
                 color: (loc.pathname.startsWith('/threat-intelligence') || loc.pathname.startsWith('/blog')) ? '#E8792F' : '#10201E',
                 textDecoration: 'none',
+                padding: '6px 2px',
                 transition: 'color 0.18s ease',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#E8792F')}
+              onMouseEnter={(e) => {
+                prefetch('threat');
+                e.currentTarget.style.color = '#E8792F';
+              }}
               onMouseLeave={(e) => {
                 if (!loc.pathname.startsWith('/threat-intelligence') && !loc.pathname.startsWith('/blog')) {
                   e.currentTarget.style.color = '#10201E';
@@ -688,6 +791,9 @@ export default function PublicNavbar() {
               <>
                 <Link
                   to="/user/login"
+                  onMouseEnter={() => prefetch('login')}
+                  onFocus={() => prefetch('login')}
+                  onTouchStart={() => prefetch('login')}
                   style={{
                     fontSize: '13px',
                     fontWeight: 500,
@@ -697,7 +803,10 @@ export default function PublicNavbar() {
                     borderRadius: '8px',
                     transition: 'color 0.18s ease',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#E8792F')}
+                  onMouseEnter={(e) => {
+                    prefetch('login');
+                    e.currentTarget.style.color = '#E8792F';
+                  }}
                   onMouseLeave={(e) => (e.currentTarget.style.color = '#10201E')}
                 >
                   Sign in
@@ -705,6 +814,9 @@ export default function PublicNavbar() {
 
                 <Link
                   to="/register"
+                  onMouseEnter={() => prefetch('register')}
+                  onFocus={() => prefetch('register')}
+                  onTouchStart={() => prefetch('register')}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -721,6 +833,7 @@ export default function PublicNavbar() {
                     transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => {
+                    prefetch('register');
                     e.currentTarget.style.background = '#133935';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }}
@@ -776,6 +889,26 @@ export default function PublicNavbar() {
             borderTop: '1px solid #D9E1DC',
           }}
         >
+          {/* Mobile Home Link */}
+          <Link
+            to="/"
+            onClick={handleHomeClick}
+            onTouchStart={() => prefetch('home')}
+            style={{
+              fontSize: '16px',
+              fontWeight: 700,
+              color: loc.pathname === '/' ? '#E8792F' : '#10201E',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span>Home</span>
+          </Link>
+
+          <hr style={{ border: 'none', borderTop: '1px solid #D9E1DC', margin: '2px 0' }} />
+
           <div style={{ fontSize: '11px', fontWeight: 800, color: '#E8792F', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
             Products
           </div>
@@ -786,6 +919,7 @@ export default function PublicNavbar() {
                 key={idx}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
+                onTouchStart={() => prefetch('products')}
                 style={{
                   fontSize: '14px',
                   fontWeight: 600,
@@ -807,6 +941,7 @@ export default function PublicNavbar() {
                 key={idx}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
+                onTouchStart={() => prefetch('products')}
                 style={{
                   fontSize: '14px',
                   fontWeight: 600,
@@ -821,13 +956,33 @@ export default function PublicNavbar() {
                 {item.badge && <span style={{ fontSize: '10px', background: '#E8792F', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>{item.badge}</span>}
               </Link>
             ))}
+
+            <Link
+              to="/products"
+              onClick={() => setMobileOpen(false)}
+              onTouchStart={() => prefetch('products')}
+              style={{
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#E8792F',
+                textDecoration: 'none',
+                marginTop: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <span>Explore All Products &amp; Matrix</span>
+              <ArrowRight size={13} strokeWidth={2.2} />
+            </Link>
           </div>
 
-          <hr style={{ border: 'none', borderTop: '1px solid #D9E1DC', margin: '6px 0' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid #D9E1DC', margin: '4px 0' }} />
 
           <Link
             to="/solutions"
             onClick={() => setMobileOpen(false)}
+            onTouchStart={() => prefetch('solutions')}
             style={{
               fontSize: '15px',
               fontWeight: 600,
@@ -840,20 +995,23 @@ export default function PublicNavbar() {
           <Link
             to="/docs"
             onClick={() => setMobileOpen(false)}
-            style={{ fontSize: '15px', fontWeight: 600, color: '#10201E', textDecoration: 'none' }}
+            onTouchStart={() => prefetch('docs')}
+            style={{ fontSize: '15px', fontWeight: 600, color: loc.pathname === '/docs' ? '#E8792F' : '#10201E', textDecoration: 'none' }}
           >
             Documentation
           </Link>
           <Link
             to="/pricing"
             onClick={() => setMobileOpen(false)}
-            style={{ fontSize: '15px', fontWeight: 600, color: '#10201E', textDecoration: 'none' }}
+            onTouchStart={() => prefetch('pricing')}
+            style={{ fontSize: '15px', fontWeight: 600, color: loc.pathname === '/pricing' ? '#E8792F' : '#10201E', textDecoration: 'none' }}
           >
             Pricing
           </Link>
           <Link
             to="/threat-intelligence"
             onClick={() => setMobileOpen(false)}
+            onTouchStart={() => prefetch('threat')}
             style={{ fontSize: '15px', fontWeight: 600, color: (loc.pathname.startsWith('/threat-intelligence') || loc.pathname.startsWith('/blog')) ? '#E8792F' : '#10201E', textDecoration: 'none' }}
           >
             Threat Intelligence

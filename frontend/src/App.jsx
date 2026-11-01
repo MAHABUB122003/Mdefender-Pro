@@ -88,12 +88,20 @@ function PageFallback() {
 function App() {
   const [adminUser, setAdminUser] = useState(() => {
     try {
+      const hasToken = typeof localStorage !== 'undefined' && !!(
+        localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_refresh')
+      )
+      if (!hasToken) return null
       const cached = userStore.get('admin_profile') || userStore.get('profile')
       return (cached && cached.role === 'super_admin') ? cached : null
     } catch { return null }
   })
   const [userState, setUserState] = useState(() => {
     try {
+      const hasToken = typeof localStorage !== 'undefined' && !!(
+        localStorage.getItem('mdefender_access') || localStorage.getItem('mdefender_refresh')
+      )
+      if (!hasToken) return null
       return userStore.get('profile') || null
     } catch { return null }
   })

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 
 /**
  * HeroDashboard3D
@@ -9,18 +9,15 @@ import { useRef, useEffect, useState, useMemo } from 'react';
  * - Perfectly aligned 60 FPS Canvas 3D rotating globe over the central sphere section
  * - Interactive pointer drag rotation with momentum physics
  * - 3D Great-circle laser arcs, traveling photon packets, and radar pulses
- * - Subtle 3D perspective mouse tilt across the entire visual stage
+ * - Ultra-lightweight direct DOM 3D mouse perspective tilt (0ms overhead, zero React re-renders)
  * - Zero artificial button/badge clutter (no Explore Dashboard, no fake counters)
  */
 export default function HeroDashboard3D() {
   const containerRef = useRef(null);
+  const stageRef = useRef(null);
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
-
-  // 3D Perspective Tilt on the hero stage
-  const [stageRotateX, setStageRotateX] = useState(2.5);
-  const [stageRotateY, setStageRotateY] = useState(-3.5);
-  const [isHovered, setIsHovered] = useState(false);
+  const rafTiltId = useRef(null);
 
   // 3D Sphere Interactive Rotation State
   const isDragging = useRef(false);
@@ -79,9 +76,9 @@ export default function HeroDashboard3D() {
     return points;
   }, []);
 
-  // Mouse move perspective tilt across the entire visual card
+  // Direct DOM Mouse move perspective tilt (Zero React re-render overhead)
   const handleMouseMove = (e) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !stageRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -89,14 +86,26 @@ export default function HeroDashboard3D() {
     const normalizedX = (x / rect.width) - 0.5;
     const normalizedY = (y / rect.height) - 0.5;
 
-    setStageRotateY(normalizedX * 10);
-    setStageRotateX(-normalizedY * 8);
+    if (rafTiltId.current) cancelAnimationFrame(rafTiltId.current);
+    rafTiltId.current = requestAnimationFrame(() => {
+      if (stageRef.current) {
+        stageRef.current.style.transform = `rotateX(${-normalizedY * 7}deg) rotateY(${normalizedX * 9}deg) scale(1.012)`;
+      }
+    });
+  };
+
+  const handleMouseEnter = () => {
+    if (stageRef.current) {
+      stageRef.current.style.transition = 'transform 0.12s ease-out';
+    }
   };
 
   const handleMouseLeave = () => {
-    setIsHovered(false);
-    setStageRotateX(2.5);
-    setStageRotateY(-3.5);
+    if (rafTiltId.current) cancelAnimationFrame(rafTiltId.current);
+    if (stageRef.current) {
+      stageRef.current.style.transition = 'transform 0.35s ease-out';
+      stageRef.current.style.transform = 'rotateX(2.5deg) rotateY(-3.5deg) scale(1)';
+    }
   };
 
   // 3D Canvas Rendering Loop
@@ -416,7 +425,7 @@ export default function HeroDashboard3D() {
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{
         position: 'relative',
@@ -431,18 +440,19 @@ export default function HeroDashboard3D() {
     >
       <style>{`
         .hero-visual-stage {
-          transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1);
           transform-style: preserve-3d;
+          will-change: transform;
         }
       `}</style>
 
       {/* Main Visual Stage with 3D Mouse Perspective Tilt */}
       <div
+        ref={stageRef}
         className="hero-visual-stage"
         style={{
           position: 'relative',
           width: '100%',
-          transform: `rotateX(${stageRotateX}deg) rotateY(${stageRotateY}deg) scale(${isHovered ? 1.015 : 1})`,
+          transform: 'rotateX(2.5deg) rotateY(-3.5deg) scale(1)',
           background: 'transparent',
           lineHeight: 0,
           userSelect: 'none',
