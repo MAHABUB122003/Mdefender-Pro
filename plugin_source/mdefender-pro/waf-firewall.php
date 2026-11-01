@@ -2124,28 +2124,6 @@ function waf_fw_bump_stat($which, $amount = 1) {
 }
 
 function waf_fw_init() {
-    $has_api_key = !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
-    $has_auth = (get_option('waf_fw_connected', 'no') === 'yes') && $has_api_key;
-
-    // Safety guarantee: If site is unconnected, ensure intrusive login blocks are strictly inactive
-    if (!$has_auth) {
-        if (get_option('waf_2fa_enforced', 'no') === 'yes') {
-            update_option('waf_2fa_enforced', 'no');
-        }
-        if (get_option('waf_hold_press_enabled', 'no') === 'yes') {
-            update_option('waf_hold_press_enabled', 'no');
-        }
-        if (get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes') {
-            delete_option('waf_harden_hide_login_url');
-            delete_option('waf_hide_login_url');
-            delete_option('waf_harden_login_rename');
-        }
-        if (get_option('waf_fw_turnstile_enabled', 'no') === 'yes') {
-            update_option('waf_fw_turnstile_enabled', 'no');
-            update_option('waf_turnstile_enabled', 'no');
-        }
-    }
-
     // Boot all modular security engines via Service Container with Circuit Breaker isolation
     $container = WAF_FW_Service_Container::instance();
     WAF_FW_Engine_Registry::register_all($container);

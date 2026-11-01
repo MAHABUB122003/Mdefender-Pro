@@ -1729,6 +1729,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hold_press_duration_ms', '$hold_ms', 'yes') ON DUPLICATE KEY UPDATE option_value = '$hold_ms'");
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_turnstile_enabled', '$turn_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_en'");
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_turnstile_enabled', '$turn_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_en'");
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_turnstile_mode', '$turn_mode', 'yes') ON DUPLICATE KEY UPDATE option_value = '$turn_mode'");
 

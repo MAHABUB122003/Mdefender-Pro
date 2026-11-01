@@ -13,9 +13,10 @@ class WAF_FW_Turnstile {
         return self::$_instance;
     }
 
+    private $initialized = false;
+
     public function init() {
-        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
-        if (!$is_connected) {
+        if ($this->initialized) {
             return;
         }
 
@@ -23,6 +24,8 @@ class WAF_FW_Turnstile {
         if ($enabled !== 'yes') {
             return;
         }
+
+        $this->initialized = true;
 
         $mode = get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'forms'));
         $hold_press_active = get_option('waf_hold_press_enabled', 'no') === 'yes';
@@ -60,6 +63,16 @@ class WAF_FW_Turnstile {
         if ($mode === 'site_wide') {
             add_action('init', [$this, 'handle_sitewide_challenge'], 1);
         }
+
+        // 5. Shortcode Support for Custom Pages & Forms: [mdefender_bot_shield] / [mdefender_turnstile]
+        add_shortcode('mdefender_bot_shield', [$this, 'shortcode_widget']);
+        add_shortcode('mdefender_turnstile', [$this, 'shortcode_widget']);
+    }
+
+    public function shortcode_widget($atts = []) {
+        ob_start();
+        $this->render_widget('shortcode');
+        return ob_get_clean();
     }
 
     /**
@@ -240,12 +253,12 @@ class WAF_FW_Turnstile {
      * Verifies if a visitor has a valid clearance token cookie
      */
     public function is_visitor_cleared() {
-        $cookie = $_COOKIE['__mdef_challenge_token'] ?? '';
+        $cookie = $_COOKIE['__mdef_challenge_token'] ?? $_COOKIE['__mdef_clearance'] ?? '';
         if (empty($cookie)) {
             return false;
         }
 
-        $decoded = base64_decode($cookie);
+        $decoded = base64_decode(str_replace(' ', '+', $cookie));
         if (!$decoded) return false;
 
         $parts = explode('|', $decoded);
