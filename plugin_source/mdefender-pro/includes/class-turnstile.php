@@ -546,12 +546,23 @@ class WAF_FW_Turnstile {
             return;
         }
 
+        // CLI, Cron and Background tasks must never be challenged
+        if (php_sapi_name() === 'cli' || defined('WP_CLI') || defined('DOING_CRON')) {
+            return;
+        }
+
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
-        // 1. Allow critical core endpoints and static assets
+        // 1. Allow critical core endpoints, sync webhooks, SaaS cloud actions and static assets
         if (strpos($uri, 'wp-admin/admin-ajax.php') !== false ||
             strpos($uri, 'wp-login.php') !== false ||
             strpos($uri, '/wp-json/mdefender/') !== false ||
+            strpos($uri, '/wp-json/waf-fw/') !== false ||
+            isset($_REQUEST['waf_cloud_sync']) ||
+            isset($_REQUEST['waf_sync']) ||
+            (isset($_GET['action']) && in_array($_GET['action'], ['trigger_scan', 'scan', 'remote_scan', 'waf_cloud_sync'])) ||
+            (isset($_POST['action']) && in_array($_POST['action'], ['trigger_scan', 'scan', 'remote_scan', 'waf_cloud_sync'])) ||
+            (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MDefender-Pro-CloudAction') !== false) ||
             preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|webp|woff2?|ttf|eot|ico|webmanifest|xml)$/i', $uri)) {
             return;
         }

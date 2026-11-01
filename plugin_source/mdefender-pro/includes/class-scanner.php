@@ -1414,7 +1414,7 @@ class WAF_FW_Scanner {
             return ['md5' => $cache, 'source' => 'online-synced'];
         }
         $seed = self::load_known_good_default();
-        if (!empty($seed['md5'])) {
+        if (!empty($seed['md5']) && !empty($seed['version']) && $seed['version'] === $version) {
             return ['md5' => $seed['md5'], 'source' => 'local-seed-' . $seed['version']];
         }
         return ['md5' => [], 'source' => 'none'];
@@ -1427,12 +1427,13 @@ class WAF_FW_Scanner {
         global $wp_version;
         $transient_key = 'mdefender_core_checksums_' . $wp_version;
         $cached = get_transient($transient_key);
-        if ($cached !== false && is_array($cached)) {
+        if ($cached !== false && is_array($cached) && !empty($cached)) {
             $this->core_checksums = $cached;
             $this->core_checksums_source = 'transient';
             return $cached;
         }
 
+        // 1. Check local durable cache matching this specific WP version
         $local = $this->resolve_known_good($wp_version);
         if (!empty($local['md5'])) {
             $this->core_checksums = $local['md5'];
@@ -1440,23 +1441,35 @@ class WAF_FW_Scanner {
             return $this->core_checksums;
         }
 
-        $response = wp_remote_get('https://api.wordpress.org/core/checksums/1.0/?version=' . $wp_version . '&locale=en_US', ['timeout' => 10]);
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-            $this->core_checksums = [];
-            $this->core_checksums_source = 'unreachable';
-            return [];
+        // 2. Fetch canonical checksums directly from WordPress.org API
+        $response = wp_remote_get('https://api.wordpress.org/core/checksums/1.0/?version=' . $wp_version . '&locale=en_US', ['timeout' => 12]);
+        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            $checksums = $body['checksums'] ?? [];
+            if (!empty($checksums) && is_array($checksums)) {
+                set_transient($transient_key, $checksums, 604800); // 7 days
+                $this->sync_known_good_cache($wp_version, $checksums);
+                $this->core_checksums_source = 'online-synced';
+                $this->core_checksums = $checksums;
+                return $checksums;
+            }
         }
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        $checksums = $body['checksums'] ?? [];
-        if (!empty($checksums)) {
-            set_transient($transient_key, $checksums, DAY_IN_SECONDS);
-            $this->sync_known_good_cache($wp_version, $checksums);
-            $this->core_checksums_source = 'online-synced';
-        } else {
-            $this->core_checksums_source = 'no_data';
+
+        // 3. Fallback: check WordPress core native function if available
+        if (function_exists('get_core_checksums')) {
+            $native_checksums = get_core_checksums($wp_version, 'en_US');
+            if (is_array($native_checksums) && !empty($native_checksums)) {
+                set_transient($transient_key, $native_checksums, 604800);
+                $this->core_checksums_source = 'wp-core-native';
+                $this->core_checksums = $native_checksums;
+                return $native_checksums;
+            }
         }
-        $this->core_checksums = $checksums;
-        return $checksums;
+
+        // 4. If checksums cannot be verified for this specific version, do NOT guess or use mismatched seeds
+        $this->core_checksums = [];
+        $this->core_checksums_source = 'unreachable';
+        return [];
     }
 
     public function scan_file_multi_signal($path, $category = 'unknown') {
@@ -1554,6 +1567,9 @@ class WAF_FW_Scanner {
                     $classification = 'MODIFIED';
                     $confidence = 'HIGH';
                 }
+            } else {
+                // If official checksums are not available or this file is not in checksum list, do not flag legitimate core file
+                return null;
             }
         }
 
@@ -1573,7 +1589,7 @@ class WAF_FW_Scanner {
         }
 
         // 5. PHP AST Dataflow Taint Analysis
-        if ($is_php) {
+        if ($is_php && ($file_class !== 'WORDPRESS_CORE' || $is_core_modified)) {
             $ast_result = $this->analyze_php_ast_dataflow($path, $content);
             if ($ast_result['score'] > 0) {
                 // If it's a modified core file or non-core file with high AST score
@@ -1986,7 +2002,7 @@ class WAF_FW_Scanner {
 
         $seo_spam_patterns = [
             '/(?:viagra|cialis|levitra|online-casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol|phentermine)/i',
-            '/(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*0px|visibility\s*:\s*hidden)/i',
+            '/<[a-z0-9_-]+[^>]*style=[\'\"][^\'\"]*(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|visibility\s*:\s*hidden)[^\'\"]*[\'\"][^>]*>.*?(?:viagra|cialis|levitra|casino|payday|replica|http)/is',
             '/(?:[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]{8,}.*?(?:激安|通販|送料無料|人気|正規品))/u',
             '/<iframe\s+[^>]*style=[\'"][^\'"]*display\s*:\s*none/i',
             '/window\.location\.(?:replace|href)\s*=\s*[\'"]https?:\/\/(?!' . preg_quote(parse_url(home_url(), PHP_URL_HOST), '/') . ')/i'
@@ -2014,8 +2030,9 @@ class WAF_FW_Scanner {
             foreach ($columns as $col) {
                 if (!in_array($col->Field, $text_columns)) continue;
 
+                $extra_cond = ($clean_table === $wpdb->options) ? " AND option_name NOT LIKE '_transient_%' AND option_name NOT LIKE '_site_transient_%' " : "";
                 $rows = $wpdb->get_results($wpdb->prepare(
-                    "SELECT `{$col->Field}` FROM $clean_table WHERE LENGTH(`{$col->Field}`) > 60 AND (`{$col->Field}` REGEXP '<[^>]*script|<\\?php|eval|base64_decode|viagra|cialis|casino|payday|-9999px') LIMIT %d",
+                    "SELECT `{$col->Field}` FROM $clean_table WHERE LENGTH(`{$col->Field}`) > 60 {$extra_cond} AND (`{$col->Field}` REGEXP '<[^>]*script|<\\?php|eval|base64_decode|viagra|cialis|casino|payday|-9999px') LIMIT %d",
                     50
                 ));
 
