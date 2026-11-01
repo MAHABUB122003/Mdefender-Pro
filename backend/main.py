@@ -484,7 +484,7 @@ async def waf_self_protection_middleware(request: Request, call_next):
                     )
 
     # Bot Challenge Gate: If domain has Turnstile enabled, ensure visitor has verified clearance cookie
-    if registered_site and registered_site.get("bot_challenge_enabled", False):
+    if registered_site and (registered_site.get("bot_challenge_enabled", False) or registered_site.get("turnstile_enabled", False)):
         clearance_cookie = request.cookies.get("__mdef_challenge_token")
         from src.engine.turnstile_service import TurnstileService
         is_cleared = False

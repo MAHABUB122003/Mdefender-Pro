@@ -1534,7 +1534,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     "turnstile_enabled": bool(ref_ws.get("turnstile_enabled", u_cfg.get("turnstile_enabled", False))),
 
-                    "turnstile_mode": ref_ws.get("turnstile_mode") or u_cfg.get("turnstile_mode", "forms"),
+                    "turnstile_mode": ref_ws.get("turnstile_mode") or u_cfg.get("turnstile_mode", "site_wide"),
 
                     "turnstile_theme": ref_ws.get("turnstile_theme") or u_cfg.get("turnstile_theme", "auto"),
 
@@ -1658,7 +1658,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                         turn_en = "yes" if sync_payload["config"].get("turnstile_enabled") else "no"
 
-                        turn_mode = str(sync_payload["config"].get("turnstile_mode", "forms"))
+                        turn_mode = str(sync_payload["config"].get("turnstile_mode", "site_wide"))
 
                         turn_theme = str(sync_payload["config"].get("turnstile_theme", "auto"))
 

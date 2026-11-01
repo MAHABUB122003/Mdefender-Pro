@@ -27,17 +27,17 @@ class WAF_FW_Turnstile {
 
         $this->initialized = true;
 
-        $mode = get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'forms'));
+        $mode = get_option('waf_fw_turnstile_mode', get_option('waf_turnstile_mode', 'site_wide'));
         $hold_press_active = get_option('waf_hold_press_enabled', 'no') === 'yes';
 
         // 1. Hook into WordPress Login Form ONLY IF Biometric Press & Hold is NOT enabled
-        if (!$hold_press_active && ($mode === 'login_only' || $mode === 'all')) {
+        if (!$hold_press_active && ($mode === 'login_only' || $mode === 'all' || $mode === 'site_wide')) {
             add_action('login_form', [$this, 'render_login_widget']);
             add_filter('authenticate', [$this, 'validate_login_turnstile'], 5, 3);
         }
 
         // 2. Public Form Protections (Comments, Registration, Lost Password)
-        if ($mode === 'forms' || $mode === 'all') {
+        if ($mode === 'forms' || $mode === 'all' || $mode === 'site_wide') {
             // Comments: Classic themes, block themes, logged-in & guest commenters
             add_action('comment_form_after_fields', [$this, 'render_comment_widget']);
             add_action('comment_form_logged_in_after', [$this, 'render_comment_widget']);
@@ -504,8 +504,24 @@ class WAF_FW_Turnstile {
     /**
      * Site-Wide Visitor Challenge Gate
      */
+    public function is_verified_crawler() {
+        $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
+        if (empty($ua)) return false;
+        $crawlers = ['googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'baiduspider', 'applebot'];
+        foreach ($crawlers as $bot) {
+            if (strpos($ua, $bot) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function handle_sitewide_challenge() {
         if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON)) {
+            return;
+        }
+
+        if (is_user_logged_in() && current_user_can('manage_options')) {
             return;
         }
 
@@ -513,7 +529,16 @@ class WAF_FW_Turnstile {
         // Allow static assets, AJAX, and wp-login.php
         if (strpos($uri, 'wp-admin/admin-ajax.php') !== false ||
             strpos($uri, 'wp-login.php') !== false ||
-            preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|woff2?|ico)$/i', $uri)) {
+            preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|woff2?|ico|webmanifest|xml)$/i', $uri)) {
+            return;
+        }
+
+        $secret_slug = get_option('waf_harden_login_rename', get_option('waf_custom_login_slug', ''));
+        if (!empty($secret_slug) && strpos($uri, '/' . trim($secret_slug, '/')) !== false) {
+            return;
+        }
+
+        if ($this->is_verified_crawler()) {
             return;
         }
 
