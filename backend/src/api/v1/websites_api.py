@@ -12867,3 +12867,27 @@ async def update_user_security_config_endpoint(body: dict, user=Depends(get_curr
         except Exception:
             pass
     return success({"saved": True})
+
+
+@router.get("/{website_id}/performance-audit")
+async def get_website_performance_audit(
+    website_id: str,
+    strategy: str = "desktop",
+    force: bool = False,
+    user=Depends(get_current_user)
+):
+    """Run real-time Mobile or Desktop performance audit and Core Web Vitals."""
+    website = get_owned_website(user, website_id)
+    strat = strategy.lower() if strategy in ("mobile", "desktop") else "desktop"
+
+    from src.services.monitoring_service import MonitoringService
+    svc = MonitoringService()
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: svc.run_performance_audit(website, strategy=strat, force=force)
+    )
+
+    return success(result)
+

@@ -175,7 +175,7 @@ export default function UserSidebar({ isOpen, onClose }) {
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <HeartPulse size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Site Health &amp; Uptime</span>
+            <span style={{ pointerEvents: 'none' }}>Site Health &amp; Performance</span>
           </NavLink>
           <NavLink to="/user/bulk/activity" onClick={handleLinkClick} onMouseEnter={() => prefetch('activity')} style={getNavLinkStyle}>
             <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
