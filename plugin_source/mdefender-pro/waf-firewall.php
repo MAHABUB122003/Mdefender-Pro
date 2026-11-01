@@ -2838,11 +2838,12 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
         $lines = @file($full_path) ?: [];
         if ($line_number > 0 && isset($lines[$line_number - 1])) {
             $snippet = trim($lines[$line_number - 1]);
-        } elseif (!$is_core) {
-            foreach ($lines as $idx => $line) {
-                if (preg_match('/(?:eval|system|exec|shell_exec|passthru|assert|wp_create_user)\s*\(/i', $line)) {
-                    $line_number = $idx + 1;
-                    $snippet = trim($line);
+        } else {
+            foreach ( as  => ) {
+                if (preg_match('/(?:eval|system|exec|shell_exec|passthru|assert|proc_open|popen|wp_create_user|base64_decode|gzinflate|str_rot13|hex2bin)\\s*\\(/i', ) ||
+                    preg_match('/(?:\\|\\|\\|\\)\\s*\\[/i', )) {
+                     =  + 1;
+                     = trim();
                     break;
                 }
             }
