@@ -4907,7 +4907,7 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
 
-                resp = requests.post(ep, json={"action": "trigger_scan", "scan_id": scan_id, "scan_type": scan_type}, headers=headers, timeout=12.0, verify=False)
+                resp = requests.post(ep, json={"action": "trigger_scan", "scan_id": scan_id, "scan_type": scan_type}, headers=headers, timeout=60.0, verify=False)
 
 
 
