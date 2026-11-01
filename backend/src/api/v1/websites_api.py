@@ -5946,6 +5946,72 @@ async def quarantine_website_file(website_id: str, body: dict = None, user=Depen
 
 
 
+@router.post("/{website_id}/scan/diff")
+async def diff_website_file(website_id: str, body: dict = None, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    file_path = (body or {}).get("file", "")
+    target_url = website.get("url") or website.get("domain") or ""
+    if target_url and not target_url.startswith("http"):
+        target_url = f"https://{target_url}" if website.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+    import requests
+    api_key = website.get('api_key') or ''
+    site_token = website.get('site_token') or ''
+    headers = {'Content-Type': 'application/json', 'User-Agent': 'MDefender-Pro-CloudAction/1.0'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+        headers['X-API-Key'] = api_key
+    if site_token:
+        headers['X-Site-Token'] = site_token
+    sep = '&' if '?' in target_url else '?'
+    candidates = [
+        f"{target_url}{sep}waf_cloud_sync=1&action=diff_core_file&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/index.php?waf_cloud_sync=1&action=diff_core_file&api_key={api_key}&site_token={site_token}"
+    ]
+    diff_data = {'file': file_path, 'original_code': '', 'local_code': ''}
+    for ep in candidates:
+        try:
+            r = requests.post(ep, json={'file': file_path, 'action': 'diff_core_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
+            if r.status_code == 200:
+                resp_json = r.json()
+                diff_data = resp_json.get('data') or resp_json
+                break
+        except Exception:
+            pass
+    return success(diff_data)
+
+@router.post("/{website_id}/scan/view-file")
+async def view_website_file(website_id: str, body: dict = None, user=Depends(get_current_user)):
+    website = get_owned_website(user, website_id)
+    file_path = (body or {}).get("file", "")
+    target_url = website.get("url") or website.get("domain") or ""
+    if target_url and not target_url.startswith("http"):
+        target_url = f"https://{target_url}" if website.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+    import requests
+    api_key = website.get('api_key') or ''
+    site_token = website.get('site_token') or ''
+    headers = {'Content-Type': 'application/json', 'User-Agent': 'MDefender-Pro-CloudAction/1.0'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+        headers['X-API-Key'] = api_key
+    if site_token:
+        headers['X-Site-Token'] = site_token
+    sep = '&' if '?' in target_url else '?'
+    candidates = [
+        f"{target_url}{sep}waf_cloud_sync=1&action=view_file&api_key={api_key}&site_token={site_token}",
+        f"{target_url}/index.php?waf_cloud_sync=1&action=view_file&api_key={api_key}&site_token={site_token}"
+    ]
+    file_data = {'file': file_path, 'content': '', 'lines': 0}
+    for ep in candidates:
+        try:
+            r = requests.post(ep, json={'file': file_path, 'action': 'view_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
+            if r.status_code == 200:
+                resp_json = r.json()
+                file_data = resp_json.get('data') or resp_json
+                break
+        except Exception:
+            pass
+    return success(file_data)
+
 @router.post("/{website_id}/scan/repair-core")
 
 

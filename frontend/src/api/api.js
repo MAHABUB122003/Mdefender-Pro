@@ -437,6 +437,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ file })
     }),
+  diffWebsiteFile: (websiteId, file) =>
+    apiCall(`/api/v1/websites/${websiteId}/scan/diff`, {
+      method: 'POST',
+      body: JSON.stringify({ file })
+    }),
+  viewWebsiteFile: (websiteId, file) =>
+    apiCall(`/api/v1/websites/${websiteId}/scan/view-file`, {
+      method: 'POST',
+      body: JSON.stringify({ file })
+    }),
   remoteWebsiteAction: (websiteId, action, payload = {}) =>
     apiCall(`/api/v1/websites/${websiteId}/remote-action`, {
       method: 'POST',
