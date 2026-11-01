@@ -517,31 +517,37 @@ class WAF_FW_Turnstile {
     }
 
     public function handle_sitewide_challenge() {
-        if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON)) {
+        if (is_admin() || (defined('DOING_AJAX') && DOING_AJAX) || (defined('DOING_CRON') && DOING_CRON) || (defined('WP_CLI') && WP_CLI)) {
             return;
         }
 
+        // Administrators actively logged in are never stopped at the visitor gate
         if (is_user_logged_in() && current_user_can('manage_options')) {
             return;
         }
 
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
-        // Allow static assets, AJAX, and wp-login.php
+
+        // 1. Allow critical core endpoints and static assets
         if (strpos($uri, 'wp-admin/admin-ajax.php') !== false ||
             strpos($uri, 'wp-login.php') !== false ||
-            preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|woff2?|ico|webmanifest|xml)$/i', $uri)) {
+            strpos($uri, '/wp-json/mdefender/') !== false ||
+            preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|webp|woff2?|ttf|eot|ico|webmanifest|xml)$/i', $uri)) {
             return;
         }
 
+        // 2. Allow custom secret login gateway URL
         $secret_slug = get_option('waf_harden_login_rename', get_option('waf_custom_login_slug', ''));
         if (!empty($secret_slug) && strpos($uri, '/' . trim($secret_slug, '/')) !== false) {
             return;
         }
 
+        // 3. Allow verified search engine crawlers (Google, Bing)
         if ($this->is_verified_crawler()) {
             return;
         }
 
+        // 4. Intercept all unverified visitors at the gate (Cloudflare Architecture)
         if (!$this->is_visitor_cleared()) {
             $this->render_interstitial_page();
             exit;
@@ -995,9 +1001,10 @@ class WAF_FW_Turnstile {
 
     public function render_interstitial_page() {
         $ajax_url = admin_url('admin-ajax.php');
-        $domain = $_SERVER['HTTP_HOST'] ?? 'Website';
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-        $ray_id = bin2hex(random_bytes(6));
+        $raw_host = $_SERVER['HTTP_HOST'] ?? 'Website';
+        $domain = preg_replace('/:\d+$/', '', $raw_host);
+        $ip = $this->get_client_ip();
+        $ray_id = bin2hex(random_bytes(8));
         status_header(403);
         nocache_headers();
         ?>
@@ -1027,6 +1034,35 @@ class WAF_FW_Turnstile {
                     user-select: none;
                     -webkit-font-smoothing: antialiased;
                 }
+                @media (prefers-color-scheme: dark) {
+                    body {
+                        background-color: #0b0f19 !important;
+                        color: #f3f4f6 !important;
+                    }
+                    .domain-badge {
+                        color: #60a5fa !important;
+                        background: rgba(37, 99, 235, 0.12) !important;
+                        border-color: rgba(59, 130, 246, 0.3) !important;
+                    }
+                    h1.challenge-title {
+                        color: #ffffff !important;
+                    }
+                    p.challenge-desc {
+                        color: #94a3b8 !important;
+                    }
+                    p.challenge-desc strong {
+                        color: #f1f5f9 !important;
+                    }
+                    .challenge-meta {
+                        color: #64748b !important;
+                    }
+                    .challenge-meta code {
+                        color: #cbd5e1 !important;
+                    }
+                    .meta-provider {
+                        color: #475569 !important;
+                    }
+                }
                 .challenge-container {
                     width: 100%;
                     max-width: 580px;
@@ -1039,49 +1075,67 @@ class WAF_FW_Turnstile {
                         max-width: 100%;
                     }
                 }
-                h1.challenge-title {
-                    font-size: 29px;
+                .domain-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 13px;
                     font-weight: 700;
-                    color: #000000;
+                    color: #0B2522;
+                    background: #f0fdf4;
+                    border: 1px solid #bbf7d0;
+                    padding: 4px 12px;
+                    border-radius: 999px;
+                    margin-bottom: 16px;
+                }
+                h1.challenge-title {
+                    font-size: 30px;
+                    font-weight: 700;
+                    color: #0f172a;
                     letter-spacing: -0.025em;
-                    margin-bottom: 14px;
+                    margin-bottom: 12px;
                     line-height: 1.25;
                 }
                 p.challenge-desc {
                     font-size: 15px;
-                    color: #374151;
+                    color: #475569;
                     line-height: 1.55;
-                    margin-bottom: 30px;
+                    margin-bottom: 28px;
                 }
                 p.challenge-desc strong {
-                    color: #111827;
+                    color: #0f172a;
                     font-weight: 600;
                 }
                 .mdef-widget-host {
                     margin-bottom: 32px;
                 }
                 .challenge-meta {
-                    font-size: 13.5px;
-                    color: #6b7280;
+                    font-size: 13px;
+                    color: #64748b;
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
                     line-height: 1.7;
                 }
                 .challenge-meta code {
                     font-family: inherit;
-                    color: #4b5563;
+                    color: #334155;
+                    font-weight: 600;
                 }
-                .challenge-meta .meta-provider {
-                    margin-top: 4px;
-                    font-size: 12px;
-                    color: #9ca3af;
+                .meta-provider {
+                    margin-top: 6px;
+                    font-size: 11.5px;
+                    color: #94a3b8;
                 }
             </style>
         </head>
         <body>
             <div class="challenge-container">
-                <h1 class="challenge-title">We need to confirm you are human.</h1>
+                <div class="domain-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    <span><?php echo esc_html($domain); ?></span>
+                </div>
+                <h1 class="challenge-title">Verify you are human</h1>
                 <p class="challenge-desc">
-                    Please verify you are a human to continue to <strong><?php echo esc_html($domain); ?></strong>. This automated security check helps protect against unauthorized bot traffic.
+                    Checking if the site connection is secure. Please verify you are a human to continue to <strong><?php echo esc_html($domain); ?></strong>.
                 </p>
 
                 <div class="mdef-widget-host">
@@ -1090,7 +1144,7 @@ class WAF_FW_Turnstile {
 
                 <div class="challenge-meta">
                     <div>Ray ID: <code><?php echo esc_html($ray_id); ?></code></div>
-                    <div>IP: <?php echo esc_html($ip); ?></div>
+                    <div>Your IP: <code><?php echo esc_html($ip); ?></code></div>
                     <div class="meta-provider">Performance &amp; security by MDefender Pro</div>
                 </div>
             </div>
