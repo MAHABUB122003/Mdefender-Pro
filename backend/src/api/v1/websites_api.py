@@ -9428,470 +9428,86 @@ async def get_website_health_audit(website_id: str, user=Depends(get_current_use
 
 
 
-    # Fallbacks if diagnostics didn't return
-
-
-
-
-
-
-
-    php_version = diag_data.get("php_version") or website.get("wordpress_connection", {}).get("php_version", "8.2")
-
-
-
-
-
-
-
-    memory_limit = diag_data.get("memory_limit", "512M")
-
-
-
-
-
-
-
-    mysql_version = diag_data.get("mysql_version", "10.4.32-MariaDB")
-
-
-
-
-
-
-
-    wp_version = diag_data.get("wp_version") or website.get("wordpress_connection", {}).get("wp_version", "6.7")
-
-
-
-
-
-
-
-    opcache = diag_data.get("opcache_enabled", False)
-
-
-
-
-
-
-
-    wp_cron = diag_data.get("wp_cron_enabled", True)
-
-
-
-
-
-
-
-    rest_api = diag_data.get("rest_api_enabled", True)
-
-
-
-
-
-
-
-    uploads_writable = diag_data.get("uploads_writable", True)
-
-
-
-
-
-
-
-    tables_status = diag_data.get("tables_status", {"requests": "ok", "attacks": "ok", "blacklist": "ok", "scan_results": "ok"})
-
-
-
-
-
-
-
-    outdated_plugins = diag_data.get("outdated_plugins_count", 0)
-
-
-
-
-
-
-
-    outdated_themes = diag_data.get("outdated_themes_count", 0)
-
-
-
-
-
-
-
-    total_outdated = diag_data.get("total_outdated_count", outdated_plugins + outdated_themes)
-
-
-
-
-
-
-
-    under_attack = diag_data.get("under_attack_mode", website.get("under_attack_mode", False))
-
-
-
-
-
-
-
-    # Calculate overall health score (0-100)
-
-
-
-
-
-
-
-    score = 100
-
-
-
-
-
-
-
-    if not probe_res.get("is_online", True):
-
-
-
-
-
-
-
-        score -= 40
-
-
-
-
-
-
-
-    if probe_res.get("ttfb_ms", 0) > 1000:
-
-
-
-
-
-
-
-        score -= 15
-
-
-
-
-
-
-
-    elif probe_res.get("ttfb_ms", 0) > 500:
-
-
-
-
-
-
-
-        score -= 5
-
-
-
-
-
-
-
-    if total_outdated > 0:
-
-
-
-
-
-
-
-        score -= min(20, total_outdated * 5)
-
-
-
-
-
-
-
-    if not uploads_writable:
-
-
-
-
-
-
-
-        score -= 10
-
-
-
-
-
-
-
-    if not wp_cron:
-
-
-
-
-
-
-
-        score -= 5
-
-
-
-
-
-
+    # Check if real diagnostic telemetry was received from WordPress plugin
+    has_plugin_telemetry = bool(diag_data and ("php_version" in diag_data or "tables_status" in diag_data))
+
+    if has_plugin_telemetry:
+        php_version = diag_data.get("php_version")
+        memory_limit = diag_data.get("memory_limit")
+        mysql_version = diag_data.get("mysql_version")
+        wp_version = diag_data.get("wp_version")
+        opcache = diag_data.get("opcache_enabled", False)
+        wp_cron = diag_data.get("wp_cron_enabled", True)
+        rest_api = diag_data.get("rest_api_enabled", True)
+        uploads_writable = diag_data.get("uploads_writable", True)
+        tables_status = diag_data.get("tables_status", {})
+        outdated_plugins = diag_data.get("outdated_plugins_count", 0)
+        outdated_themes = diag_data.get("outdated_themes_count", 0)
+        total_outdated = diag_data.get("total_outdated_count", outdated_plugins + outdated_themes)
+        under_attack = diag_data.get("under_attack_mode", website.get("under_attack_mode", False))
+
+        score = 100
+        if not probe_res.get("is_online", True):
+            score -= 40
+        if probe_res.get("ttfb_ms", 0) > 1000:
+            score -= 15
+        elif probe_res.get("ttfb_ms", 0) > 500:
+            score -= 5
+        if total_outdated > 0:
+            score -= min(20, total_outdated * 5)
+        if not uploads_writable:
+            score -= 10
+        if not wp_cron:
+            score -= 5
+        health_score = max(20, score)
+    else:
+        # Authentic Unconnected / Standby State (NO FAKE DATA)
+        php_version = None
+        memory_limit = None
+        mysql_version = None
+        wp_version = None
+        opcache = None
+        wp_cron = None
+        rest_api = None
+        uploads_writable = None
+        tables_status = {}
+        outdated_plugins = None
+        outdated_themes = None
+        total_outdated = None
+        under_attack = False
+        health_score = None
 
     return success({
-
-
-
-
-
-
-
         "website_id": website_id,
-
-
-
-
-
-
-
         "domain": website.get("domain", ""),
-
-
-
-
-
-
-
         "url": url,
-
-
-
-
-
-
-
-        "is_online": probe_res.get("is_online", True),
-
-
-
-
-
-
-
-        "status_code": probe_res.get("status_code", 200),
-
-
-
-
-
-
-
-        "ttfb_ms": probe_res.get("ttfb_ms", 120),
-
-
-
-
-
-
-
-        "total_latency_ms": probe_res.get("total_latency_ms", 150),
-
-
-
-
-
-
-
-        "health_score": max(20, score),
-
-
-
-
-
-
-
+        "is_connected": has_plugin_telemetry,
+        "is_online": probe_res.get("is_online", False),
+        "status_code": probe_res.get("status_code"),
+        "ttfb_ms": probe_res.get("ttfb_ms") if probe_res.get("is_online") else None,
+        "total_latency_ms": probe_res.get("total_latency_ms") if probe_res.get("is_online") else None,
+        "health_score": health_score,
         "php_version": php_version,
-
-
-
-
-
-
-
         "memory_limit": memory_limit,
-
-
-
-
-
-
-
         "mysql_version": mysql_version,
-
-
-
-
-
-
-
         "wp_version": wp_version,
-
-
-
-
-
-
-
         "opcache_enabled": opcache,
-
-
-
-
-
-
-
         "wp_cron_enabled": wp_cron,
-
-
-
-
-
-
-
         "rest_api_enabled": rest_api,
-
-
-
-
-
-
-
         "uploads_writable": uploads_writable,
-
-
-
-
-
-
-
         "tables_status": tables_status,
-
-
-
-
-
-
-
         "permissions": diag_data.get("permissions", {}),
-
-
-
-
-
-
-
-        "plugins_count": diag_data.get("plugins_count", 0),
-
-
-
-
-
-
-
-        "active_plugins_count": diag_data.get("active_plugins_count", 0),
-
-
-
-
-
-
-
+        "plugins_count": diag_data.get("plugins_count"),
+        "active_plugins_count": diag_data.get("active_plugins_count"),
         "outdated_plugins_count": outdated_plugins,
-
-
-
-
-
-
-
-        "themes_count": diag_data.get("themes_count", 0),
-
-
-
-
-
-
-
+        "themes_count": diag_data.get("themes_count"),
         "outdated_themes_count": outdated_themes,
-
-
-
-
-
-
-
         "total_outdated_count": total_outdated,
-
-
-
-
-
-
-
         "core_update_available": diag_data.get("core_update_available", False),
-
-
-
-
-
-
-
         "core_new_version": diag_data.get("core_new_version", ""),
-
-
-
-
-
-
-
         "under_attack_mode": under_attack,
-
-
-
-
-
-
-
-        "waf_protection_enabled": diag_data.get("waf_protection_enabled", True),
-
-
-
-
-
-
-
+        "waf_protection_enabled": diag_data.get("waf_protection_enabled", False),
         "audited_at": datetime.now().isoformat()
-
-
-
-
-
-
-
     })
 
 
@@ -12883,11 +12499,39 @@ async def get_website_performance_audit(
     from src.services.monitoring_service import MonitoringService
     svc = MonitoringService()
 
+    hostname = website.get("domain") or website.get("url") or ""
+    hostname = hostname.replace("https://", "").replace("http://", "").split("/")[0]
+
+    # If force=False, only return existing real cached audit from database. Do NOT auto-generate if not audited!
+    if not force:
+        cached = svc.db.monitoring_audits.find_one({
+            "domain": hostname,
+            "strategy": strat
+        }, sort=[("audited_at", -1)])
+        if cached:
+            cached.pop("_id", None)
+            cached["audited"] = True
+            return success(cached)
+        else:
+            return success({
+                "site_id": website_id,
+                "domain": hostname,
+                "url": website.get("url") or f"https://{hostname}",
+                "strategy": strat,
+                "audited": False,
+                "score": None,
+                "rating": "NOT_AUDITED",
+                "metrics": {},
+                "page_composition": {},
+                "recommendations": []
+            })
+
+    # If force=True, execute the live audit
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None,
-        lambda: svc.run_performance_audit(website, strategy=strat, force=force)
+        lambda: svc.run_performance_audit(website, strategy=strat, force=True)
     )
-
+    result["audited"] = True
     return success(result)
 

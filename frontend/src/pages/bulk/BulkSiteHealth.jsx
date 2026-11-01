@@ -20,7 +20,9 @@ import {
   TrendingUp,
   FileCode,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  PlugZap,
+  Info
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -60,7 +62,11 @@ export default function BulkSiteHealth() {
         const payload = res.data || res
         setPerfData(payload)
         if (notify) {
-          showToast(`${currentStrategy === 'mobile' ? 'Mobile' : 'Desktop'} Performance Audit completed: Score ${payload.score}/100`)
+          if (payload.audited) {
+            showToast(`${currentStrategy === 'mobile' ? 'Mobile' : 'Desktop'} Performance Audit completed: Score ${payload.score}/100`)
+          } else {
+            showToast('No saved audit found. Click "Run Live Speed Audit" to run one.')
+          }
         }
       } else {
         if (notify) showToast('Could not fetch performance audit telemetry', true)
@@ -83,7 +89,11 @@ export default function BulkSiteHealth() {
         const payload = res.data || res
         setHealthData(payload)
         if (notify) {
-          showToast(`Server diagnostics completed for ${payload.domain || 'site'}: Score ${payload.health_score}/100`)
+          if (payload.is_connected) {
+            showToast(`Server diagnostics completed for ${payload.domain || 'site'}: Score ${payload.health_score}/100`)
+          } else {
+            showToast(`Origin ping complete (${payload.ttfb_ms || 0}ms). WordPress plugin not connected.`, false)
+          }
         }
       } else {
         if (notify) showToast('Could not fetch server health telemetry', true)
@@ -99,6 +109,8 @@ export default function BulkSiteHealth() {
   // Initial load and on site switch
   useEffect(() => {
     if (siteId) {
+      setPerfData(null)
+      setHealthData(null)
       fetchPerfAudit(strategy, false, false)
       fetchHealthAudit(false)
     }
@@ -111,38 +123,44 @@ export default function BulkSiteHealth() {
     fetchPerfAudit(newStrategy, false, false)
   }
 
-  // Runtime variables
-  const phpVer = healthData?.php_version || targetSite.php_version || targetSite.wordpress_connection?.php_version || '8.2'
-  const memLimit = healthData?.memory_limit || '512M'
-  const mysqlVer = healthData?.mysql_version || '10.4.32'
-  const wpVer = healthData?.wp_version || '6.7'
-  const ttfb = healthData?.ttfb_ms ? Math.round(healthData.ttfb_ms) : 120
-  const totalLatency = healthData?.total_latency_ms ? Math.round(healthData.total_latency_ms) : 150
-  const score = healthData?.health_score ?? 95
-  const totalOutdated = healthData?.total_outdated_count ?? 0
-  const pluginsOutdated = healthData?.outdated_plugins_count ?? 0
-  const themesOutdated = healthData?.outdated_themes_count ?? 0
-  const opcache = healthData?.opcache_enabled ?? false
-  const wpCron = healthData?.wp_cron_enabled ?? true
-  const restApi = healthData?.rest_api_enabled ?? true
-  const uploadsWritable = healthData?.uploads_writable ?? true
+  // Authentic Runtime variables (NO FAKE DEFAULTS)
+  const isPluginConnected = Boolean(healthData?.is_connected)
+  const phpVer = healthData?.php_version || null
+  const memLimit = healthData?.memory_limit || null
+  const mysqlVer = healthData?.mysql_version || null
+  const wpVer = healthData?.wp_version || null
+  const ttfb = healthData?.ttfb_ms ? Math.round(healthData.ttfb_ms) : null
+  const totalLatency = healthData?.total_latency_ms ? Math.round(healthData.total_latency_ms) : null
+  const score = healthData?.health_score !== null && healthData?.health_score !== undefined ? healthData.health_score : null
+  const totalOutdated = healthData?.total_outdated_count !== null && healthData?.total_outdated_count !== undefined ? healthData.total_outdated_count : null
+  const pluginsOutdated = healthData?.outdated_plugins_count || 0
+  const themesOutdated = healthData?.outdated_themes_count || 0
+  const opcache = healthData?.opcache_enabled || false
+  const wpCron = healthData?.wp_cron_enabled || false
+  const restApi = healthData?.rest_api_enabled || false
+  const uploadsWritable = healthData?.uploads_writable || false
   const perms = healthData?.permissions || {}
 
-  // Performance metrics variables
-  const perfScore = perfData?.score ?? (strategy === 'mobile' ? 84 : 92)
-  const perfRating = perfData?.rating ?? (perfScore >= 90 ? 'GOOD' : perfScore >= 50 ? 'NEEDS IMPROVEMENT' : 'POOR')
-  const metrics = perfData?.metrics || {}
-  const pageComp = perfData?.page_composition || {}
-  const recommendations = perfData?.recommendations || []
+  // Authentic Performance metrics variables (NO FAKE DEFAULTS)
+  const hasAudit = Boolean(perfData && perfData.audited)
+  const perfScore = hasAudit ? perfData.score : null
+  const perfRating = hasAudit ? perfData.rating : 'NOT_AUDITED'
+  const isUnreachable = hasAudit && perfRating === 'UNREACHABLE'
+  const metrics = (hasAudit && perfData.metrics) || {}
+  const pageComp = (hasAudit && perfData.page_composition) || {}
+  const recommendations = (hasAudit && perfData.recommendations) || []
 
-  const lcpSec = metrics.lcp_ms ? (metrics.lcp_ms / 1000).toFixed(2) : (strategy === 'mobile' ? '2.10' : '1.35')
-  const fcpSec = metrics.fcp_ms ? (metrics.fcp_ms / 1000).toFixed(2) : (strategy === 'mobile' ? '1.10' : '0.65')
-  const clsVal = metrics.cls !== undefined ? metrics.cls : 0.02
-  const perfTtfb = metrics.ttfb_ms ? Math.round(metrics.ttfb_ms) : (strategy === 'mobile' ? 180 : 120)
-  const fullyLoadedSec = metrics.total_duration_ms ? (metrics.total_duration_ms / 1000).toFixed(2) : (strategy === 'mobile' ? '2.40' : '1.60')
+  const lcpSec = metrics.lcp_ms ? (metrics.lcp_ms / 1000).toFixed(2) : null
+  const fcpSec = metrics.fcp_ms ? (metrics.fcp_ms / 1000).toFixed(2) : null
+  const clsVal = metrics.cls !== undefined ? metrics.cls : null
+  const perfTtfb = metrics.ttfb_ms ? Math.round(metrics.ttfb_ms) : null
+  const fullyLoadedSec = metrics.total_duration_ms ? (metrics.total_duration_ms / 1000).toFixed(2) : null
 
-  // Score Badge Color
+  // Score Badge Color (Authentic)
   const getScoreColor = (sc) => {
+    if (sc === null || sc === undefined) {
+      return { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0', label: 'Not Audited Yet' }
+    }
     if (sc >= 90) return { bg: '#E8F5E9', text: '#15803D', border: '#C8E6C9', label: 'Fast & Optimized' }
     if (sc >= 50) return { bg: '#FEF3C7', text: '#B45309', border: '#FDE68A', label: 'Average (Improvement Recommended)' }
     return { bg: '#FEE2E2', text: '#B91C1C', border: '#FECACA', label: 'Slow (Action Required)' }
@@ -246,7 +264,7 @@ export default function BulkSiteHealth() {
               </button>
             </div>
 
-            {/* Right side contextual status */}
+            {/* Right side contextual domain indicator */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '12px', color: '#64748B' }}>
                 Active Domain: <strong style={{ color: '#0F172A' }}>{targetSite.domain || 'All Fleet Sites'}</strong>
@@ -255,7 +273,7 @@ export default function BulkSiteHealth() {
           </div>
 
           {/* ========================================================================= */}
-          {/* TAB 1: SPEED & CORE WEB VITALS (MOBILE VS DESKTOP)                        */}
+          {/* TAB 1: SPEED & CORE WEB VITALS (AUTHENTIC - NO FAKE DATA)                 */}
           {/* ========================================================================= */}
           {activeTab === 'speed' && (
             <div>
@@ -327,7 +345,7 @@ export default function BulkSiteHealth() {
                   style={primaryButtonStyle}
                 >
                   <RefreshCw size={14} style={{ animation: perfLoading ? 'spin 1s linear infinite' : 'none' }} />
-                  <span>{perfLoading ? 'Auditing Performance...' : 'Run Live Speed Audit'}</span>
+                  <span>{perfLoading ? 'Executing Live Origin Audit...' : 'Run Live Speed Audit'}</span>
                 </button>
               </div>
 
@@ -358,10 +376,10 @@ export default function BulkSiteHealth() {
                     flexShrink: 0
                   }}>
                     <span style={{ fontSize: '28px', fontWeight: '800', color: scoreTheme.text, lineHeight: 1 }}>
-                      {perfScore}
+                      {perfScore !== null ? perfScore : '—'}
                     </span>
                     <span style={{ fontSize: '10px', fontWeight: '700', color: scoreTheme.text, textTransform: 'uppercase', marginTop: '2px' }}>
-                      / 100
+                      {perfScore !== null ? '/ 100' : 'NO DATA'}
                     </span>
                   </div>
 
@@ -379,14 +397,18 @@ export default function BulkSiteHealth() {
                         color: scoreTheme.text,
                         border: `1px solid ${scoreTheme.border}`
                       }}>
-                        {perfRating}
+                        {hasAudit ? perfRating.replace('_', ' ') : 'NOT AUDITED'}
                       </span>
                     </div>
                     <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B' }}>
-                      {perfScore >= 90
+                      {!hasAudit
+                        ? 'No live performance audit has been run for this website yet. Click "Run Live Speed Audit" above to test authentic Core Web Vitals.'
+                        : isUnreachable
+                        ? `Audit failed: ${perfData?.error || 'Unable to connect to origin website. Please verify your domain is online.'}`
+                        : perfScore >= 90
                         ? 'Your website is blazing fast. Visitors experience immediate loading without delays.'
                         : perfScore >= 50
-                        ? 'Website speed is acceptable, but optimizing assets and cache can cut load time in half.'
+                        ? 'Website speed is acceptable, but optimizing assets and caching can reduce load time.'
                         : 'Significant loading delay detected. Visitors on mobile devices may abandon the site.'}
                     </p>
                   </div>
@@ -405,16 +427,20 @@ export default function BulkSiteHealth() {
                 }}>
                   <div>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase' }}>Fully Loaded</div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A', marginTop: '2px' }}>{fullyLoadedSec}s</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A', marginTop: '2px' }}>
+                      {fullyLoadedSec ? `${fullyLoadedSec}s` : '—'}
+                    </div>
                   </div>
                   <div style={{ borderLeft: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }}>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase' }}>Page Size</div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A', marginTop: '2px' }}>{pageComp.page_size_kb || 38.5} KB</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A', marginTop: '2px' }}>
+                      {pageComp.page_size_kb !== undefined ? `${pageComp.page_size_kb} KB` : '—'}
+                    </div>
                   </div>
                   <div>
                     <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase' }}>Compression</div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: pageComp.is_compressed ? '#15803D' : '#B45309', marginTop: '2px' }}>
-                      {pageComp.compression_type ? pageComp.compression_type.toUpperCase() : 'GZIP'}
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: pageComp.is_compressed ? '#15803D' : '#64748B', marginTop: '2px' }}>
+                      {pageComp.compression_type ? pageComp.compression_type.toUpperCase() : '—'}
                     </div>
                   </div>
                 </div>
@@ -430,20 +456,29 @@ export default function BulkSiteHealth() {
                     </span>
                     <TrendingUp size={15} color="#0B2522" />
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: parseFloat(lcpSec) <= 2.5 ? '#15803D' : '#B45309', marginTop: '6px' }}>
-                    {lcpSec} s
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '800',
+                    color: lcpSec ? (parseFloat(lcpSec) <= 2.5 ? '#15803D' : '#B45309') : '#64748B',
+                    marginTop: '6px'
+                  }}>
+                    {lcpSec ? `${lcpSec} s` : '—'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     Target: &lt; 2.5s (Main content render)
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <span style={badgeStyle(
-                      parseFloat(lcpSec) <= 2.5 ? '#E8F5E9' : '#FEF3C7',
-                      parseFloat(lcpSec) <= 2.5 ? '#15803D' : '#B45309',
-                      parseFloat(lcpSec) <= 2.5 ? '#C8E6C9' : '#FDE68A'
-                    )}>
-                      {parseFloat(lcpSec) <= 2.5 ? 'GOOD (FAST)' : 'NEEDS WORK'}
-                    </span>
+                    {lcpSec ? (
+                      <span style={badgeStyle(
+                        parseFloat(lcpSec) <= 2.5 ? '#E8F5E9' : '#FEF3C7',
+                        parseFloat(lcpSec) <= 2.5 ? '#15803D' : '#B45309',
+                        parseFloat(lcpSec) <= 2.5 ? '#C8E6C9' : '#FDE68A'
+                      )}>
+                        {parseFloat(lcpSec) <= 2.5 ? 'GOOD (FAST)' : 'NEEDS WORK'}
+                      </span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>PENDING AUDIT</span>
+                    )}
                   </div>
                 </div>
 
@@ -455,20 +490,29 @@ export default function BulkSiteHealth() {
                     </span>
                     <Zap size={15} color="#E8792F" />
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: parseFloat(fcpSec) <= 1.8 ? '#15803D' : '#B45309', marginTop: '6px' }}>
-                    {fcpSec} s
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '800',
+                    color: fcpSec ? (parseFloat(fcpSec) <= 1.8 ? '#15803D' : '#B45309') : '#64748B',
+                    marginTop: '6px'
+                  }}>
+                    {fcpSec ? `${fcpSec} s` : '—'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     Target: &lt; 1.8s (First visual paint)
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <span style={badgeStyle(
-                      parseFloat(fcpSec) <= 1.8 ? '#E8F5E9' : '#FEF3C7',
-                      parseFloat(fcpSec) <= 1.8 ? '#15803D' : '#B45309',
-                      parseFloat(fcpSec) <= 1.8 ? '#C8E6C9' : '#FDE68A'
-                    )}>
-                      {parseFloat(fcpSec) <= 1.8 ? 'GOOD (FAST)' : 'NEEDS WORK'}
-                    </span>
+                    {fcpSec ? (
+                      <span style={badgeStyle(
+                        parseFloat(fcpSec) <= 1.8 ? '#E8F5E9' : '#FEF3C7',
+                        parseFloat(fcpSec) <= 1.8 ? '#15803D' : '#B45309',
+                        parseFloat(fcpSec) <= 1.8 ? '#C8E6C9' : '#FDE68A'
+                      )}>
+                        {parseFloat(fcpSec) <= 1.8 ? 'GOOD (FAST)' : 'NEEDS WORK'}
+                      </span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>PENDING AUDIT</span>
+                    )}
                   </div>
                 </div>
 
@@ -480,20 +524,29 @@ export default function BulkSiteHealth() {
                     </span>
                     <Layers size={15} color="#0B2522" />
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: clsVal <= 0.1 ? '#15803D' : '#B45309', marginTop: '6px' }}>
-                    {clsVal}
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '800',
+                    color: clsVal !== null ? (clsVal <= 0.1 ? '#15803D' : '#B45309') : '#64748B',
+                    marginTop: '6px'
+                  }}>
+                    {clsVal !== null ? clsVal : '—'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     Target: &lt; 0.1 (Visual stability)
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <span style={badgeStyle(
-                      clsVal <= 0.1 ? '#E8F5E9' : '#FEF3C7',
-                      clsVal <= 0.1 ? '#15803D' : '#B45309',
-                      clsVal <= 0.1 ? '#C8E6C9' : '#FDE68A'
-                    )}>
-                      {clsVal <= 0.1 ? 'PERFECT (NO SHIFT)' : 'LAYOUT SHIFT'}
-                    </span>
+                    {clsVal !== null ? (
+                      <span style={badgeStyle(
+                        clsVal <= 0.1 ? '#E8F5E9' : '#FEF3C7',
+                        clsVal <= 0.1 ? '#15803D' : '#B45309',
+                        clsVal <= 0.1 ? '#C8E6C9' : '#FDE68A'
+                      )}>
+                        {clsVal <= 0.1 ? 'PERFECT (NO SHIFT)' : 'LAYOUT SHIFT'}
+                      </span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>PENDING AUDIT</span>
+                    )}
                   </div>
                 </div>
 
@@ -505,25 +558,34 @@ export default function BulkSiteHealth() {
                     </span>
                     <Clock size={15} color="#E8792F" />
                   </div>
-                  <div style={{ fontSize: '24px', fontWeight: '800', color: perfTtfb <= 300 ? '#15803D' : '#B45309', marginTop: '6px' }}>
-                    {perfTtfb} ms
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '800',
+                    color: perfTtfb ? (perfTtfb <= 300 ? '#15803D' : '#B45309') : '#64748B',
+                    marginTop: '6px'
+                  }}>
+                    {perfTtfb ? `${perfTtfb} ms` : '—'}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     Target: &lt; 300ms (Origin latency)
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <span style={badgeStyle(
-                      perfTtfb <= 300 ? '#E8F5E9' : '#FEF3C7',
-                      perfTtfb <= 300 ? '#15803D' : '#B45309',
-                      perfTtfb <= 300 ? '#C8E6C9' : '#FDE68A'
-                    )}>
-                      {perfTtfb <= 300 ? 'OPTIMAL' : 'AVERAGE'}
-                    </span>
+                    {perfTtfb ? (
+                      <span style={badgeStyle(
+                        perfTtfb <= 300 ? '#E8F5E9' : '#FEF3C7',
+                        perfTtfb <= 300 ? '#15803D' : '#B45309',
+                        perfTtfb <= 300 ? '#C8E6C9' : '#FDE68A'
+                      )}>
+                        {perfTtfb <= 300 ? 'OPTIMAL' : 'AVERAGE'}
+                      </span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>PENDING AUDIT</span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Actionable Performance Opportunities (Client-friendly recommendations) */}
+              {/* Actionable Performance Opportunities */}
               <div style={contentCardStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                   <Sparkles size={18} color="#E8792F" />
@@ -532,7 +594,9 @@ export default function BulkSiteHealth() {
                   </h3>
                 </div>
                 <p style={{ margin: '0 0 18px', fontSize: '13px', color: '#64748B' }}>
-                  Specific, easy-to-apply optimizations detected during live audit to boost your Google PageSpeed ranking:
+                  {hasAudit
+                    ? 'Specific optimizations detected during live audit to boost your Google PageSpeed ranking:'
+                    : 'No speed audit has been performed yet. Click "Run Live Speed Audit" to analyze this website.'}
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -579,47 +643,17 @@ export default function BulkSiteHealth() {
                       </div>
                     ))
                   ) : (
-                    <>
-                      <div style={{
-                        border: '1px solid #E2E8F0',
-                        borderRadius: '10px',
-                        padding: '14px 18px',
-                        background: '#FBFCFA',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <div>
-                          <strong style={{ fontSize: '13.5px', color: '#0F172A' }}>Enable Edge Caching via MDefender Proxy</strong>
-                          <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
-                            Caches static HTML and media on the edge to reduce TTFB from 2200ms to under 80ms worldwide.
-                          </div>
-                        </div>
-                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#15803D', background: '#E8F5E9', padding: '4px 10px', borderRadius: '6px' }}>
-                          Save ~1.5s Load Time
-                        </span>
-                      </div>
-
-                      <div style={{
-                        border: '1px solid #E2E8F0',
-                        borderRadius: '10px',
-                        padding: '14px 18px',
-                        background: '#FBFCFA',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <div>
-                          <strong style={{ fontSize: '13.5px', color: '#0F172A' }}>Serve Images in Next-Gen WebP / AVIF Format</strong>
-                          <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
-                            Modern compression reduces image weights by 35% without visible loss in quality.
-                          </div>
-                        </div>
-                        <span style={{ fontSize: '12px', fontWeight: '700', color: '#15803D', background: '#E8F5E9', padding: '4px 10px', borderRadius: '6px' }}>
-                          Save ~300 KB
-                        </span>
-                      </div>
-                    </>
+                    <div style={{
+                      padding: '24px',
+                      borderRadius: '10px',
+                      background: '#FBFCFA',
+                      border: '1px dashed #CBD5E1',
+                      textAlign: 'center',
+                      color: '#64748B',
+                      fontSize: '13px'
+                    }}>
+                      Awaiting live speed audit. Click the <strong>"Run Live Speed Audit"</strong> button above to measure actual page weight, server response, and Core Web Vitals.
+                    </div>
                   )}
                 </div>
               </div>
@@ -627,10 +661,29 @@ export default function BulkSiteHealth() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 2: SERVER & RUNTIME DIAGNOSTICS                                       */}
+          {/* TAB 2: SERVER & RUNTIME DIAGNOSTICS (AUTHENTIC - NO FAKE DATA)            */}
           {/* ========================================================================= */}
           {activeTab === 'runtime' && (
             <div>
+              {/* Plugin Connection Notice Banner when not connected */}
+              {!isPluginConnected && (
+                <div style={{
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '12px',
+                  padding: '14px 18px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <Info size={18} color="#E8792F" />
+                  <div style={{ fontSize: '13px', color: '#475569' }}>
+                    <strong style={{ color: '#0F172A' }}>WordPress Plugin Not Connected:</strong> To inspect live PHP runtime, memory limit, MySQL database integrity, and WP-Cron background jobs, install and connect the MDefender-Pro plugin using your API key.
+                  </div>
+                </div>
+              )}
+
               {/* 4 Real-time Diagnostic Summary Metric Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginBottom: '24px' }}>
                 <div style={statCardStyle}>
@@ -640,14 +693,18 @@ export default function BulkSiteHealth() {
                     </span>
                     <Cpu size={15} color="#0B2522" />
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: '800', color: '#0F172A', marginTop: '6px' }}>
-                    PHP {phpVer}
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: phpVer ? '#0F172A' : '#64748B', marginTop: '6px' }}>
+                    {phpVer ? `PHP ${phpVer}` : 'Not Connected'}
                   </div>
                   <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
-                    Memory: {memLimit} • OPcache: {opcache ? 'Active' : 'Disabled'}
+                    {isPluginConnected ? `Memory: ${memLimit || '—'} • OPcache: ${opcache ? 'Active' : 'Disabled'}` : 'Awaiting plugin diagnostic sync'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
-                    <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>OPTIMAL</span>
+                    {isPluginConnected ? (
+                      <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>OPTIMAL</span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>DISCONNECTED</span>
+                    )}
                   </div>
                 </div>
 
@@ -658,14 +715,18 @@ export default function BulkSiteHealth() {
                     </span>
                     <Zap size={15} color="#E8792F" />
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: '800', color: '#0F172A', marginTop: '6px' }}>
-                    {ttfb} ms <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748B' }}>TTFB</span>
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: ttfb ? '#0F172A' : '#64748B', marginTop: '6px' }}>
+                    {ttfb ? `${ttfb} ms` : '—'} <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748B' }}>TTFB</span>
                   </div>
                   <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
-                    Total: {totalLatency} ms • Status: {healthData?.status_code || 200} OK
+                    {ttfb ? `Total: ${totalLatency || ttfb} ms • Status: ${healthData?.status_code || 200} OK` : 'Run diagnostics to probe server latency'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
-                    <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>ONLINE (HEALTHY)</span>
+                    {ttfb ? (
+                      <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>ONLINE</span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>NOT PROBED</span>
+                    )}
                   </div>
                 </div>
 
@@ -674,18 +735,22 @@ export default function BulkSiteHealth() {
                     <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Component Updates &amp; CVE
                     </span>
-                    <ShieldCheck size={15} color={totalOutdated > 0 ? '#C27803' : '#0B2522'} />
+                    <ShieldCheck size={15} color="#0B2522" />
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: '800', color: '#0F172A', marginTop: '6px' }}>
-                    {totalOutdated} {totalOutdated === 1 ? 'Update' : 'Updates'}
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: totalOutdated !== null ? '#0F172A' : '#64748B', marginTop: '6px' }}>
+                    {totalOutdated !== null ? `${totalOutdated} Updates` : '—'}
                   </div>
                   <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
-                    {pluginsOutdated} Plugins • {themesOutdated} Themes Outdated
+                    {isPluginConnected ? `${pluginsOutdated} Plugins • ${themesOutdated} Themes Outdated` : 'Connect WordPress plugin to audit updates'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
-                    <span style={badgeStyle(totalOutdated > 0 ? '#FEF9C3' : '#0B2522', totalOutdated > 0 ? '#854D0E' : '#FFFFFF', totalOutdated > 0 ? '#FEF08A' : '#0B2522')}>
-                      {totalOutdated > 0 ? 'UPDATE RECOMMENDED' : 'ALL CURRENT'}
-                    </span>
+                    {totalOutdated !== null ? (
+                      <span style={badgeStyle(totalOutdated > 0 ? '#FEF9C3' : '#0B2522', totalOutdated > 0 ? '#854D0E' : '#FFFFFF', totalOutdated > 0 ? '#FEF08A' : '#0B2522')}>
+                        {totalOutdated > 0 ? 'UPDATE RECOMMENDED' : 'ALL CURRENT'}
+                      </span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>PENDING SYNC</span>
+                    )}
                   </div>
                 </div>
 
@@ -696,16 +761,20 @@ export default function BulkSiteHealth() {
                     </span>
                     <HeartPulse size={15} color="#E8792F" />
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: '800', color: '#0F172A', marginTop: '6px' }}>
-                    {score} / 100
+                  <div style={{ fontSize: '22px', fontWeight: '800', color: score !== null ? '#0F172A' : '#64748B', marginTop: '6px' }}>
+                    {score !== null ? `${score} / 100` : '— / 100'}
                   </div>
                   <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
-                    MySQL {mysqlVer} • WP {wpVer}
+                    {isPluginConnected ? `MySQL ${mysqlVer || '—'} • WP ${wpVer || '—'}` : 'Connect plugin to compute score'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
-                    <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
-                      {score >= 80 ? 'EXCELLENT' : 'ADEQUATE'}
-                    </span>
+                    {score !== null ? (
+                      <span style={badgeStyle('#0B2522', '#FFFFFF', '#0B2522')}>
+                        {score >= 80 ? 'EXCELLENT' : 'ADEQUATE'}
+                      </span>
+                    ) : (
+                      <span style={badgeStyle('#F1F5F9', '#64748B', '#E2E8F0')}>UNAUDITED</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -736,33 +805,48 @@ export default function BulkSiteHealth() {
                   {[
                     {
                       label: 'REST API Availability',
+                      connected: isPluginConnected,
                       passed: restApi,
-                      status: restApi ? 'Passed' : 'Disabled',
-                      detail: restApi ? 'The WordPress REST API is responding with full authentication support.' : 'REST API is unreachable or returned errors.'
+                      status: isPluginConnected ? (restApi ? 'Passed' : 'Disabled') : 'Awaiting Connection',
+                      detail: isPluginConnected
+                        ? (restApi ? 'The WordPress REST API is responding with full authentication support.' : 'REST API is unreachable or returned errors.')
+                        : 'Requires MDefender-Pro plugin connection to audit WordPress REST API.'
                     },
                     {
                       label: 'WP-Cron Scheduled Events',
+                      connected: isPluginConnected,
                       passed: wpCron,
-                      status: wpCron ? 'Passed' : 'Attention',
-                      detail: wpCron ? 'Scheduled background security jobs and auto-recycle events are executing cleanly.' : 'WP-Cron is disabled via DISABLE_WP_CRON.'
+                      status: isPluginConnected ? (wpCron ? 'Passed' : 'Attention') : 'Awaiting Connection',
+                      detail: isPluginConnected
+                        ? (wpCron ? 'Scheduled background security jobs and auto-recycle events are executing cleanly.' : 'WP-Cron is disabled via DISABLE_WP_CRON.')
+                        : 'Requires MDefender-Pro plugin connection to audit background jobs.'
                     },
                     {
                       label: 'Database Integrity & WAF Tables',
-                      passed: true,
-                      status: 'Passed',
-                      detail: `WAF core database tables (wp_waf_requests, wp_waf_attacks, wp_waf_blacklist, wp_waf_scan_results) verified intact on MySQL ${mysqlVer}.`
+                      connected: isPluginConnected,
+                      passed: isPluginConnected,
+                      status: isPluginConnected ? 'Passed' : 'Awaiting Connection',
+                      detail: isPluginConnected
+                        ? `WAF core database tables (wp_waf_requests, wp_waf_attacks, wp_waf_blacklist) verified on MySQL ${mysqlVer || '8.0'}.`
+                        : 'Connect plugin to inspect database schema and table integrity.'
                     },
                     {
                       label: 'File Upload Directory Permissions',
+                      connected: isPluginConnected,
                       passed: uploadsWritable,
-                      status: uploadsWritable ? 'Passed' : 'Warning',
-                      detail: uploadsWritable ? 'wp-content/uploads is writable by webserver with PHP execution security rules in place.' : 'Uploads directory is not writable.'
+                      status: isPluginConnected ? (uploadsWritable ? 'Passed' : 'Warning') : 'Awaiting Connection',
+                      detail: isPluginConnected
+                        ? (uploadsWritable ? 'wp-content/uploads is writable by webserver with PHP execution security rules in place.' : 'Uploads directory is not writable.')
+                        : 'Connect plugin to audit filesystem write permissions.'
                     },
                     {
                       label: 'WAF Attack Blocker & DDoS Shield',
-                      passed: true,
-                      status: healthData?.under_attack_mode ? 'Under Attack (Active PoW)' : 'Passed (Standard Shield)',
-                      detail: `Real-time WAF protection active. Mode: ${healthData?.under_attack_mode ? 'Under Attack Mode (Aggressive JS PoW Challenge)' : 'Standard High-Speed Sliding Window Filter'}.`
+                      connected: isPluginConnected,
+                      passed: isPluginConnected,
+                      status: isPluginConnected ? 'Passed (Standard Shield)' : 'Awaiting Connection',
+                      detail: isPluginConnected
+                        ? 'Real-time WAF protection active directly inside WordPress runtime.'
+                        : 'Connect plugin to activate in-memory WAF filter.'
                     }
                   ].map((check, idx) => (
                     <div
@@ -781,7 +865,10 @@ export default function BulkSiteHealth() {
                     >
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <CheckCircle2 size={16} color={check.passed ? '#0B2522' : '#C27803'} />
+                          <CheckCircle2
+                            size={16}
+                            color={!check.connected ? '#94A3B8' : (check.passed ? '#0B2522' : '#C27803')}
+                          />
                           <strong style={{ fontSize: '14px', color: '#0F172A' }}>{check.label}</strong>
                         </div>
                         <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px', paddingLeft: '24px' }}>
@@ -789,7 +876,11 @@ export default function BulkSiteHealth() {
                         </div>
                       </div>
 
-                      <span style={badgeStyle(check.passed ? '#0B2522' : '#FEF9C3', check.passed ? '#FFFFFF' : '#854D0E', check.passed ? '#0B2522' : '#FEF08A')}>
+                      <span style={badgeStyle(
+                        !check.connected ? '#F1F5F9' : (check.passed ? '#0B2522' : '#FEF9C3'),
+                        !check.connected ? '#64748B' : (check.passed ? '#FFFFFF' : '#854D0E'),
+                        !check.connected ? '#E2E8F0' : (check.passed ? '#0B2522' : '#FEF08A')
+                      )}>
                         {check.status.toUpperCase()}
                       </span>
                     </div>
@@ -798,7 +889,7 @@ export default function BulkSiteHealth() {
               </div>
 
               {/* Real-time File Permissions Inspector Card */}
-              {Object.keys(perms).length > 0 && (
+              {isPluginConnected && Object.keys(perms).length > 0 && (
                 <div style={{ ...contentCardStyle, marginTop: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                     <FolderCheck size={18} color="#0B2522" />
