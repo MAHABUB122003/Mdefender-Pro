@@ -731,19 +731,38 @@ class TurnstileService:
             box-shadow: 0 3px 8px rgba(37, 99, 235, 0.1), 0 1px 2px rgba(0,0,0,0.04);
         }}
         .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card {{
-            background: #0f172a;
-            border-color: rgba(255,255,255,0.12);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            background: linear-gradient(180deg, #131d35 0%, #0c1424 100%) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
         }}
         .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card:hover {{
-            border-color: #3b82f6;
-            box-shadow: 0 0 16px rgba(59, 130, 246, 0.2);
+            border-color: rgba(232, 121, 47, 0.75) !important;
+            background: linear-gradient(180deg, #16223d 0%, #0f182b 100%) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(232, 121, 47, 0.25) !important;
         }}
         .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-title {{
-            color: #f8fafc;
+            color: #F8FAFC !important;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-title.is-success {{
+            color: #FFFFFF !important;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-sub {{
+            color: #94A3B8 !important;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-sub-success {{
+            color: #F38A3E !important;
+            text-shadow: 0 0 10px rgba(232, 121, 47, 0.3);
         }}
         .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-text {{
-            color: #f1f5f9;
+            color: #FFFFFF !important;
+            letter-spacing: 0.8px;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-footer,
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-footer a {{
+            color: #94A3B8 !important;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-footer a:hover {{
+            color: #F38A3E !important;
         }}
         .mdef-ts-left {{
             display: flex;
@@ -767,8 +786,22 @@ class TurnstileService:
             border: 2px solid #cbd5e1;
         }}
         .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-checkbox.state-idle {{
-            background: rgba(255,255,255,0.04);
-            border-color: rgba(255,255,255,0.25);
+            background: rgba(255, 255, 255, 0.06) !important;
+            border: 2px solid rgba(255, 255, 255, 0.24) !important;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card:hover .mdef-ts-checkbox.state-idle {{
+            border-color: #E8792F !important;
+            background: rgba(232, 121, 47, 0.12) !important;
+            box-shadow: 0 0 0 3px rgba(232, 121, 47, 0.2) !important;
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-checkbox.state-success {{
+            background: #0a1f1c !important;
+            border: 2px solid #E8792F !important;
+            box-shadow: 0 0 16px rgba(232, 121, 47, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+            transform: scale(1.02);
+        }}
+        .mdefender-turnstile-container[data-theme="dark"] .mdef-track {{
+            stroke: rgba(255, 255, 255, 0.14) !important;
         }}
         .mdef-ts-card:hover .mdef-ts-checkbox.state-idle {{
             border-color: #2563eb;

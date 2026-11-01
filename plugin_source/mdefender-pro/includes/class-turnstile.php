@@ -671,14 +671,16 @@ class WAF_FW_Turnstile {
                 background: #fbfdfa;
                 box-shadow: 0 4px 14px rgba(11, 37, 34, 0.09), 0 0 0 1px rgba(232, 121, 47, 0.15);
             }
+            /* Premium Obsidian Dark Theme */
             .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card {
-                background: #081412;
-                border-color: #1a3832;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+                background: linear-gradient(180deg, #131d35 0%, #0c1424 100%) !important;
+                border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
             }
             .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card:hover {
-                border-color: #E8792F;
-                box-shadow: 0 0 16px rgba(232, 121, 47, 0.2);
+                border-color: rgba(232, 121, 47, 0.75) !important;
+                background: linear-gradient(180deg, #16223d 0%, #0f182b 100%) !important;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(232, 121, 47, 0.25) !important;
             }
             .mdef-ts-left {
                 display: flex;
@@ -707,8 +709,22 @@ class WAF_FW_Turnstile {
                 box-shadow: 0 0 0 3px rgba(11, 37, 34, 0.08);
             }
             .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-checkbox.state-idle {
-                background: rgba(255,255,255,0.04);
-                border-color: #244840;
+                background: rgba(255, 255, 255, 0.06) !important;
+                border: 2px solid rgba(255, 255, 255, 0.24) !important;
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-card:hover .mdef-ts-checkbox.state-idle {
+                border-color: #E8792F !important;
+                background: rgba(232, 121, 47, 0.12) !important;
+                box-shadow: 0 0 0 3px rgba(232, 121, 47, 0.2) !important;
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-ts-checkbox.state-success {
+                background: #0a1f1c !important;
+                border: 2px solid #E8792F !important;
+                box-shadow: 0 0 16px rgba(232, 121, 47, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+                transform: scale(1.02);
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-track {
+                stroke: rgba(255, 255, 255, 0.14) !important;
             }
             .mdef-ts-checkbox.state-loading {
                 background: transparent;
@@ -823,7 +839,8 @@ class WAF_FW_Turnstile {
                 color: #0B2522;
             }
             .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-text {
-                color: #f1f5f9;
+                color: #FFFFFF !important;
+                letter-spacing: 0.8px;
             }
             .mdef-brand-footer {
                 font-size: 9.5px;
@@ -842,7 +859,72 @@ class WAF_FW_Turnstile {
                 color: #E8792F;
                 text-decoration: underline;
             }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-footer,
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-footer a {
+                color: #94A3B8 !important;
+            }
+            .mdefender-turnstile-container[data-theme="dark"] .mdef-brand-footer a:hover {
+                color: #F38A3E !important;
+            }
             .mdef-dot { font-size: 7px; opacity: 0.6; }
+
+            /* =========================================================
+               SYSTEM DARK MODE (AUTOMATIC VIA OS PREFERENCE)
+               ========================================================= */
+            @media (prefers-color-scheme: dark) {
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-card {
+                    background: linear-gradient(180deg, #131d35 0%, #0c1424 100%) !important;
+                    border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+                    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-card:hover {
+                    border-color: rgba(232, 121, 47, 0.75) !important;
+                    background: linear-gradient(180deg, #16223d 0%, #0f182b 100%) !important;
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(232, 121, 47, 0.25) !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-checkbox.state-idle {
+                    background: rgba(255, 255, 255, 0.06) !important;
+                    border: 2px solid rgba(255, 255, 255, 0.24) !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-card:hover .mdef-ts-checkbox.state-idle {
+                    border-color: #E8792F !important;
+                    background: rgba(232, 121, 47, 0.12) !important;
+                    box-shadow: 0 0 0 3px rgba(232, 121, 47, 0.2) !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-checkbox.state-success {
+                    background: #0a1f1c !important;
+                    border: 2px solid #E8792F !important;
+                    box-shadow: 0 0 16px rgba(232, 121, 47, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+                    transform: scale(1.02);
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-track {
+                    stroke: rgba(255, 255, 255, 0.14) !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-title {
+                    color: #F8FAFC !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-title.is-success {
+                    color: #FFFFFF !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-ts-sub {
+                    color: #94A3B8 !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-sub-success {
+                    color: #F38A3E !important;
+                    text-shadow: 0 0 10px rgba(232, 121, 47, 0.3);
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-brand-text {
+                    color: #FFFFFF !important;
+                    letter-spacing: 0.8px;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-brand-footer,
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-brand-footer a {
+                    color: #94A3B8 !important;
+                }
+                .mdefender-turnstile-container[data-theme="auto"] .mdef-brand-footer a:hover {
+                    color: #F38A3E !important;
+                }
+            }
         </style>
 
         <script>
@@ -1021,6 +1103,7 @@ class WAF_FW_Turnstile {
 
     public function render_interstitial_page() {
         $ajax_url = admin_url('admin-ajax.php');
+        $theme = get_option('waf_fw_turnstile_theme', get_option('waf_turnstile_theme', 'auto'));
         $raw_host = $_SERVER['HTTP_HOST'] ?? 'Website';
         $domain = preg_replace('/:\d+$/', '', $raw_host);
         $ip = $this->get_client_ip();
@@ -1054,6 +1137,7 @@ class WAF_FW_Turnstile {
                     user-select: none;
                     -webkit-font-smoothing: antialiased;
                 }
+                body.theme-dark,
                 @media (prefers-color-scheme: dark) {
                     body {
                         background-color: #0b0f19 !important;
@@ -1082,6 +1166,33 @@ class WAF_FW_Turnstile {
                     .meta-provider {
                         color: #475569 !important;
                     }
+                }
+                body.theme-dark {
+                    background-color: #0b0f19 !important;
+                    color: #f3f4f6 !important;
+                }
+                body.theme-dark .domain-badge {
+                    color: #60a5fa !important;
+                    background: rgba(37, 99, 235, 0.12) !important;
+                    border-color: rgba(59, 130, 246, 0.3) !important;
+                }
+                body.theme-dark h1.challenge-title {
+                    color: #ffffff !important;
+                }
+                body.theme-dark p.challenge-desc {
+                    color: #94a3b8 !important;
+                }
+                body.theme-dark p.challenge-desc strong {
+                    color: #f1f5f9 !important;
+                }
+                body.theme-dark .challenge-meta {
+                    color: #64748b !important;
+                }
+                body.theme-dark .challenge-meta code {
+                    color: #cbd5e1 !important;
+                }
+                body.theme-dark .meta-provider {
+                    color: #475569 !important;
                 }
                 .challenge-container {
                     width: 100%;
