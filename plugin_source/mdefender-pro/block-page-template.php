@@ -239,41 +239,41 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
         }
 
         .banner-num-403 {
-            font-size: clamp(56px, 8vw, 76px);
+            font-size: clamp(86px, 11vw, 118px);
             font-weight: 900;
             color: var(--text-num403);
-            line-height: 1;
-            letter-spacing: -1.5px;
-            margin-bottom: 4px;
+            line-height: 0.95;
+            letter-spacing: -3px;
+            margin-bottom: 8px;
         }
 
         .banner-forbidden {
-            font-size: clamp(26px, 4.2vw, 34px);
+            font-size: clamp(28px, 4vw, 36px);
             font-weight: 800;
             color: #1e293b;
             line-height: 1.15;
-            letter-spacing: -0.3px;
+            letter-spacing: -0.5px;
         }
 
         /* Curved Accent Underline Under Forbidden */
         .curved-underline {
             display: block;
-            margin: 4px auto 8px auto;
-            width: 130px;
-            height: 8px;
+            margin: 5px auto 10px auto;
+            width: 145px;
+            height: 9px;
         }
 
         .banner-denied {
-            font-size: 21px;
+            font-size: 23px;
             font-weight: 700;
             color: #1e293b;
-            margin-bottom: 5px;
-            letter-spacing: -0.2px;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
         }
 
         .banner-restricted {
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 14.5px;
+            font-weight: 600;
             color: var(--color-alert);
             letter-spacing: 0.1px;
         }
@@ -433,10 +433,11 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
                 padding: 34px 16px 28px 16px;
             }
             .banner-num-403 {
-                font-size: 58px;
+                font-size: 78px;
+                letter-spacing: -2px;
             }
             .banner-forbidden {
-                font-size: 26px;
+                font-size: 28px;
             }
         }
     </style>
