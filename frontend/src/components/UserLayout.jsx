@@ -88,7 +88,9 @@ export default function UserLayout({ children, onLogout }) {
       <div className="main-content">
         <UserHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} onLogout={onLogout} />
         <Suspense fallback={<InnerContentFallback />}>
-          {children || <Outlet />}
+          <div key={location.pathname} className="dashboard-page-enter">
+            {children || <Outlet />}
+          </div>
         </Suspense>
       </div>
     </>

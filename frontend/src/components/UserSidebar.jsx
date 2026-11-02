@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -30,8 +30,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 
-// Stable Collapsible Dropdown Component defined outside UserSidebar
-// so React NEVER unmounts the DOM nodes on re-render, preserving scroll and DOM integrity.
+// Hardware-accelerated CSS Grid Accordion: never destroys DOM nodes, zero jitter
 function DropdownItem({
   id,
   label,
@@ -48,25 +47,30 @@ function DropdownItem({
         className={`user-dropdown-btn ${isGroupActive ? 'active-group' : ''}`}
         onClick={() => onToggle(id)}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <Icon size={17} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0, pointerEvents: 'none' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+            <Icon size={16} />
           </span>
-          <span style={{ pointerEvents: 'none' }}>{label}</span>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>
+            {label}
+          </span>
         </div>
         <ChevronDown
           size={14}
           style={{
             transform: isOpen ? 'rotate(180deg)' : 'none',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: 'transform 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
             color: isGroupActive ? '#F38A3E' : '#6A7D78',
+            flexShrink: 0,
             pointerEvents: 'none'
           }}
         />
       </button>
 
-      <div className={`user-dropdown-container ${isOpen ? 'is-open' : 'is-collapsed'}`}>
-        {children}
+      <div className={`user-dropdown-wrapper ${isOpen ? 'is-open' : ''}`}>
+        <div className="user-dropdown-inner">
+          {children}
+        </div>
       </div>
     </div>
   )
@@ -74,7 +78,6 @@ function DropdownItem({
 
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
-  const navRef = useRef(null)
 
   const userName = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_name') || 'User Profile') : 'User Profile')
   const userEmail = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_email') || '') : '')
@@ -125,23 +128,6 @@ export default function UserSidebar({ isOpen, onClose }) {
       setOpenDropdowns(prev => prev.securityCenter ? prev : { ...prev, securityCenter: true })
     }
   }, [location.pathname, location.search])
-
-  // Seamless scroll position retention: keeps scroll right where the user clicked
-  useEffect(() => {
-    const nav = navRef.current
-    if (!nav) return
-    const saved = sessionStorage.getItem('mdefender_sidebar_scroll')
-    if (saved !== null) {
-      const top = parseInt(saved, 10)
-      if (!isNaN(top) && nav.scrollTop !== top) {
-        nav.scrollTop = top
-      }
-    }
-  }, [location.pathname, location.search])
-
-  const handleNavScroll = (e) => {
-    sessionStorage.setItem('mdefender_sidebar_scroll', e.currentTarget.scrollTop.toString())
-  }
 
   const toggleDropdown = (key) => {
     setOpenDropdowns(prev => ({
@@ -221,7 +207,7 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* ========================================================================= */}
         {/* BRAND LOGO HEADER                                                         */}
         {/* ========================================================================= */}
-        <div className="sidebar-brand" style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="sidebar-brand" style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <Link
             to="/"
             title="Return to Website Homepage"
@@ -239,9 +225,9 @@ export default function UserSidebar({ isOpen, onClose }) {
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
             <div className="logo-icon" style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '9px',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
@@ -252,8 +238,8 @@ export default function UserSidebar({ isOpen, onClose }) {
               <img src="/assets/mdefender_logo.png" alt="MDefender Pro" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div className="logo-text">
-              <h2 style={{ fontSize: '17px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px', margin: 0, lineHeight: 1.2 }}>MDefender</h2>
-              <span style={{ fontSize: '10.5px', color: '#E8792F', fontWeight: 700, letterSpacing: '0.9px', textTransform: 'uppercase' }}>Enterprise WAF</span>
+              <h2 style={{ fontSize: '16.5px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px', margin: 0, lineHeight: 1.2 }}>MDefender</h2>
+              <span style={{ fontSize: '10px', color: '#E8792F', fontWeight: 700, letterSpacing: '0.9px', textTransform: 'uppercase' }}>Enterprise WAF</span>
             </div>
           </Link>
         </div>
@@ -261,19 +247,16 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* ========================================================================= */}
         {/* NAVIGATION LIST (PRECISE 15-SECTION ARCHITECTURE)                         */}
         {/* ========================================================================= */}
-        <nav
-          className="sidebar-nav"
-          ref={navRef}
-          onScroll={handleNavScroll}
-        >
+        <nav className="sidebar-nav">
+          
           {/* 1. Dashboard */}
           <Link
             to="/user/dashboard"
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/dashboard') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <LayoutDashboard size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <LayoutDashboard size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Dashboard</span>
           </Link>
@@ -284,8 +267,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/logs') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <FileText size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <FileText size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Live Traffic</span>
           </Link>
@@ -304,7 +287,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/uptime') ? 'active' : ''}`}
             >
-              <Clock size={14} style={{ pointerEvents: 'none' }} />
+              <Clock size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Uptime</span>
             </Link>
             <Link
@@ -312,7 +295,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/performance') ? 'active' : ''}`}
             >
-              <Zap size={14} style={{ pointerEvents: 'none' }} />
+              <Zap size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Performance</span>
             </Link>
             <Link
@@ -320,7 +303,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/broken-links') ? 'active' : ''}`}
             >
-              <ExternalLink size={14} style={{ pointerEvents: 'none' }} />
+              <ExternalLink size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Broken Links</span>
             </Link>
           </DropdownItem>
@@ -339,7 +322,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/plugins') ? 'active' : ''}`}
             >
-              <Boxes size={14} style={{ pointerEvents: 'none' }} />
+              <Boxes size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Plugins</span>
             </Link>
             <Link
@@ -347,7 +330,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/themes') ? 'active' : ''}`}
             >
-              <Palette size={14} style={{ pointerEvents: 'none' }} />
+              <Palette size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Themes</span>
             </Link>
             <Link
@@ -355,7 +338,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/core') ? 'active' : ''}`}
             >
-              <Sparkles size={14} style={{ pointerEvents: 'none' }} />
+              <Sparkles size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>WordPress Core</span>
             </Link>
             <Link
@@ -363,7 +346,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/scanner') ? 'active' : ''}`}
             >
-              <Bug size={14} style={{ pointerEvents: 'none' }} />
+              <Bug size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Malware Scanner</span>
             </Link>
             <Link
@@ -371,7 +354,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/hardening') ? 'active' : ''}`}
             >
-              <Shield size={14} style={{ pointerEvents: 'none' }} />
+              <Shield size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Security Hardening</span>
             </Link>
             <Link
@@ -379,7 +362,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/safe-updates') ? 'active' : ''}`}
             >
-              <RotateCw size={14} style={{ pointerEvents: 'none' }} />
+              <RotateCw size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Safe Updates</span>
             </Link>
           </DropdownItem>
@@ -387,7 +370,7 @@ export default function UserSidebar({ isOpen, onClose }) {
           {/* 5. Access Control & Geo-Blocking > (Dropdown) */}
           <DropdownItem
             id="accessControl"
-            label="Access Control & Geo-Blocking"
+            label="Access & Geo-Blocking"
             icon={Globe}
             isOpen={!!openDropdowns.accessControl}
             onToggle={toggleDropdown}
@@ -398,7 +381,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'ip_blacklist') ? 'active' : ''}`}
             >
-              <Ban size={14} style={{ pointerEvents: 'none' }} />
+              <Ban size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>IP Blocklist</span>
             </Link>
             <Link
@@ -406,7 +389,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'ip_allowlist') ? 'active' : ''}`}
             >
-              <ShieldCheck size={14} style={{ pointerEvents: 'none' }} />
+              <ShieldCheck size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>IP Allowlist</span>
             </Link>
             <Link
@@ -414,7 +397,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'country_blocking') ? 'active' : ''}`}
             >
-              <Globe size={14} style={{ pointerEvents: 'none' }} />
+              <Globe size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Country Blocking</span>
             </Link>
           </DropdownItem>
@@ -425,8 +408,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/bulk/backup') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <HardDrive size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <HardDrive size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Backup &amp; Recovery</span>
           </Link>
@@ -445,16 +428,16 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/tools') ? 'active' : ''}`}
             >
-              <Cpu size={14} style={{ pointerEvents: 'none' }} />
-              <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limiting</span>
+              <Cpu size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limits</span>
             </Link>
             <Link
               to="/user/settings?tab=2fa"
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/settings', '2fa') ? 'active' : ''}`}
             >
-              <Key size={14} style={{ pointerEvents: 'none' }} />
-              <span style={{ pointerEvents: 'none' }}>Two-Factor Authentication (2FA)</span>
+              <Key size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Two-Factor Auth (2FA)</span>
             </Link>
           </DropdownItem>
 
@@ -472,7 +455,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/threat-intelligence') ? 'active' : ''}`}
             >
-              <Flame size={14} style={{ pointerEvents: 'none' }} />
+              <Flame size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Threat Intelligence</span>
             </Link>
             <Link
@@ -480,7 +463,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/port-scanner') ? 'active' : ''}`}
             >
-              <Radio size={14} style={{ pointerEvents: 'none' }} />
+              <Radio size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Security &amp; Port Scanner</span>
             </Link>
           </DropdownItem>
@@ -491,8 +474,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/websites') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Layers size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Layers size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>WordPress Sites</span>
           </Link>
@@ -503,8 +486,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/domains') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Cpu size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Cpu size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Custom Domains</span>
           </Link>
@@ -515,8 +498,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/team') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Users size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Users size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Team Members</span>
           </Link>
@@ -527,8 +510,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/alerts') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Bell size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Bell size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Alerts &amp; Notifications</span>
           </Link>
@@ -539,8 +522,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/bulk/activity') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Activity size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Activity size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Activity &amp; Audit Logs</span>
           </Link>
@@ -551,8 +534,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/pricing') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Tag size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Tag size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Pricing &amp; Plans</span>
           </Link>
@@ -563,8 +546,8 @@ export default function UserSidebar({ isOpen, onClose }) {
             onClick={handleLinkClick}
             className={`user-nav-link ${isLinkActive('/user/settings') ? 'active' : ''}`}
           >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Settings size={17} />
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <Settings size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Settings</span>
           </Link>
@@ -573,14 +556,14 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* ========================================================================= */}
         {/* FOOTER (STATUS, PROFILE & LOGOUT)                                         */}
         {/* ========================================================================= */}
-        <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '14px 12px' }}>
+        <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '12px 10px' }}>
           
           {/* Active Plan Pill */}
-          <div className="sidebar-status" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '7px 10px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <div className="sidebar-status" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '6.5px 9px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
             <span className={`status-dot ${isPaid ? 'online' : ''}`} style={!isPaid ? { background: '#F59E0B' } : { background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }}></span>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: '10.5px', color: '#889895', fontWeight: 500, lineHeight: 1.1 }}>Active Tier</span>
-              <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planName}</span>
+              <span style={{ fontSize: '10px', color: '#889895', fontWeight: 500, lineHeight: 1.1 }}>Active Tier</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planName}</span>
             </div>
             {isPaid && <Sparkles size={13} color="#E8792F" />}
           </div>
@@ -592,38 +575,38 @@ export default function UserSidebar({ isOpen, onClose }) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
-              padding: '7px 10px',
+              gap: '9px',
+              padding: '6.5px 9px',
               borderRadius: '8px',
-              marginBottom: '8px',
+              marginBottom: '7px',
               textDecoration: 'none',
               background: 'rgba(255,255,255,0.02)',
               border: '1px solid rgba(255,255,255,0.05)',
-              transition: 'background-color 0.15s ease'
+              transition: 'background-color 0.14s ease'
             }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'}
           >
             <div style={{
-              width: '26px',
-              height: '26px',
+              width: '24px',
+              height: '24px',
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #059669 0%, #0B2522 100%)',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '11px',
+              fontSize: '10.5px',
               fontWeight: 800,
               flexShrink: 0
             }}>
               {userName ? userName[0].toUpperCase() : 'U'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {userName}
               </span>
-              <span style={{ fontSize: '10px', color: '#6A7D78', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '9.5px', color: '#6A7D78', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {userEmail || 'Account Settings'}
               </span>
             </div>
@@ -639,21 +622,21 @@ export default function UserSidebar({ isOpen, onClose }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
-              padding: '8px 12px',
+              gap: '7px',
+              padding: '7px 10px',
               borderRadius: '8px',
               background: 'rgba(220, 38, 38, 0.08)',
               color: '#F87171',
               border: '1px solid rgba(220, 38, 38, 0.18)',
               cursor: 'pointer',
               fontWeight: 600,
-              fontSize: '12px',
-              transition: 'background-color 0.15s ease'
+              fontSize: '11.5px',
+              transition: 'background-color 0.14s ease'
             }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.16)'}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.15)'}
             onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.08)'}
           >
-            <LogOut size={14} style={{ pointerEvents: 'none' }} />
+            <LogOut size={13.5} style={{ pointerEvents: 'none' }} />
             <span style={{ pointerEvents: 'none' }}>Sign Out</span>
           </button>
         </div>

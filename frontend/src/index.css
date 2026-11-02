@@ -18,7 +18,7 @@ body {
 
 /* ===== SIDEBAR ===== */
 .sidebar {
-  width: 260px;
+  width: 272px;
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   color: #e2e8f0;
   display: flex;
@@ -152,42 +152,49 @@ body {
 /* ===== MODERN USER SIDEBAR NAVIGATION ===== */
 .sidebar-nav {
   flex: 1;
-  padding: 14px 12px 20px;
+  padding: 12px 10px 24px;
   overflow-y: auto;
-  scroll-behavior: smooth;
   overscroll-behavior: contain;
 }
 
 .sidebar-nav::-webkit-scrollbar {
-  width: 5px;
+  width: 4px;
 }
 .sidebar-nav::-webkit-scrollbar-track {
   background: transparent;
 }
 .sidebar-nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .user-nav-link {
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
-  padding: 9px 14px !important;
-  border-radius: 9px !important;
+  gap: 11px !important;
+  padding: 8.5px 12px !important;
+  border-radius: 8px !important;
   margin-bottom: 2px !important;
   text-decoration: none !important;
   cursor: pointer !important;
   user-select: none !important;
-  font-size: 13.5px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   color: #94a3b8 !important;
   position: relative !important;
   background: transparent !important;
-  transition: background-color 0.15s ease, color 0.15s ease !important;
+  white-space: nowrap !important;
+  transition: background-color 0.14s ease, color 0.14s ease !important;
+}
+
+.user-nav-link span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  pointer-events: none !important;
 }
 
 .user-nav-link:hover {
@@ -208,7 +215,7 @@ body {
   top: 50% !important;
   transform: translateY(-50%) !important;
   width: 3px !important;
-  height: 20px !important;
+  height: 18px !important;
   background: #E8792F !important;
   border-radius: 0 3px 3px 0 !important;
 }
@@ -218,19 +225,27 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 9px 14px !important;
-  border-radius: 9px !important;
+  padding: 8.5px 12px !important;
+  border-radius: 8px !important;
   background: transparent !important;
   border: none !important;
   color: #94a3b8 !important;
-  font-size: 13.5px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   cursor: pointer !important;
   text-align: left !important;
   user-select: none !important;
   outline: none !important;
   margin-bottom: 2px !important;
-  transition: background-color 0.15s ease, color 0.15s ease !important;
+  white-space: nowrap !important;
+  transition: background-color 0.14s ease, color 0.14s ease !important;
+}
+
+.user-dropdown-btn span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  pointer-events: none !important;
 }
 
 .user-dropdown-btn:hover {
@@ -244,51 +259,53 @@ body {
   font-weight: 600 !important;
 }
 
-.user-dropdown-container {
-  overflow: hidden;
-  transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, margin 0.2s ease;
-  padding-left: 14px;
-  margin-left: 22px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+/* CSS Grid Pure Smooth Accordion */
+.user-dropdown-wrapper {
+  display: grid !important;
+  grid-template-rows: 0fr !important;
+  transition: grid-template-rows 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.user-dropdown-container.is-collapsed {
-  max-height: 0px !important;
-  opacity: 0 !important;
-  margin-top: 0px !important;
-  margin-bottom: 0px !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
+.user-dropdown-wrapper.is-open {
+  grid-template-rows: 1fr !important;
 }
 
-.user-dropdown-container.is-open {
-  max-height: 380px !important;
-  opacity: 1 !important;
-  margin-top: 3px !important;
-  margin-bottom: 4px !important;
-  pointer-events: auto !important;
-  visibility: visible !important;
+.user-dropdown-inner {
+  overflow: hidden !important;
+  padding-left: 9px !important;
+  margin-left: 17px !important;
+  border-left: 1.5px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  padding-top: 2px !important;
+  padding-bottom: 3px !important;
 }
 
 .user-subnav-link {
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
-  padding: 7px 12px !important;
+  gap: 9px !important;
+  padding: 6.5px 10px !important;
   border-radius: 7px !important;
   text-decoration: none !important;
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   cursor: pointer !important;
   user-select: none !important;
   color: #889895 !important;
   background: transparent !important;
   position: relative !important;
-  margin-bottom: 2px !important;
-  transition: background-color 0.15s ease, color 0.15s ease !important;
+  margin-bottom: 1px !important;
+  white-space: nowrap !important;
+  transition: background-color 0.14s ease, color 0.14s ease !important;
+}
+
+.user-subnav-link span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  pointer-events: none !important;
 }
 
 .user-subnav-link:hover {
@@ -306,15 +323,32 @@ body {
   display: none !important;
 }
 
+/* Butter-smooth Dashboard Page Transition */
+@keyframes dashboardFadeIn {
+  0% {
+    opacity: 0.25;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-page-enter {
+  animation: dashboardFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
 .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; }
 
 /* ===== MAIN CONTENT ===== */
 .main-content {
-  margin-left: 260px;
+  margin-left: 272px;
   flex: 1;
   padding: 20px 28px 32px;
   min-height: 100vh;
-  width: calc(100% - 260px);
+  width: calc(100% - 272px);
 }
 
 /* ===== HEADER ===== */
