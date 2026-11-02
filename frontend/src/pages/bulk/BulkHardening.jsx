@@ -321,14 +321,14 @@ export default function BulkHardening() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
                     Active Hardening Directives ({activeRulesCount} of {hardeningRules.length} Active)
                   </h3>
                   <span style={badgeStyle('#0F172A', '#FFFFFF', '#0F172A')}>
                     {activeRulesCount === hardeningRules.length ? 'A+ ENTERPRISE RATING' : `${hardeningPercentage}% ZERO-TRUST SCORE`}
                   </span>
                 </div>
-                <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B' }}>
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
                   Directives take effect immediately at the edge and directly inside protected WordPress environments.
                 </p>
               </div>

@@ -338,10 +338,10 @@ export default function BulkLoginGateway() {
                   <Key size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
                     WP Admin Hide &amp; Custom Secret Login Gateway
                   </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748B' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
                     Conceal <code>/wp-admin</code> and <code>/wp-login.php</code> behind a private secret directory. Unauthorized requests are blocked.
                   </p>
                 </div>
@@ -600,10 +600,10 @@ export default function BulkLoginGateway() {
                   <ShieldCheck size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0F172A' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>
                     Restrict Admin Panel &amp; Login Access by IP
                   </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#64748B' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
                     Limit access to <code>/wp-admin</code> and login gateways strictly to authorized IP addresses.
                   </p>
                 </div>

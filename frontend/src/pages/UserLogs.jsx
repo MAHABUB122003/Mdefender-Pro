@@ -643,7 +643,7 @@ export default function UserLogs() {
         background: '#FFFFFF',
         borderRadius: '16px',
         border: '1px solid #D9E1DC',
-        padding: '24px 28px',
+        padding: '18px 24px',
         marginBottom: '22px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         position: 'relative'
@@ -696,15 +696,15 @@ export default function UserLogs() {
               </span>
             </div>
             <h1 style={{
-              fontSize: '22px',
-              fontWeight: '900',
+              fontSize: '19px',
+              fontWeight: '700',
               color: '#10201E',
               margin: '4px 0 2px',
               letterSpacing: '-0.3px'
             }}>
               Global Ingress Traffic &amp; Security Incident Logs
             </h1>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+            <p style={{ fontSize: '12.5px', color: '#60716B', margin: 0, lineHeight: '1.45' }}>
               Real-time ingress telemetry, blocked brute-force login attempts, and WAF inspection audit trail.
             </p>
           </div>

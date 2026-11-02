@@ -458,7 +458,7 @@ export default function UserBlacklist({ activeMode }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#0F172A' }}>
+              <h1 style={{ margin: 0, fontSize: '19px', fontWeight: '700', color: '#0F172A', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
                 {activeTab === 'whitelist' ? 'IP Allowlist' : (activeTab === 'country' ? 'Country Blocking' : 'IP Blocklist')}
               </h1>
               <span style={{
@@ -564,7 +564,7 @@ export default function UserBlacklist({ activeMode }) {
             ].map(s => (
               <div key={s.label} style={{ ...S.cardPad, padding: '16px 20px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>{s.value}</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#10201E', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -755,7 +755,7 @@ export default function UserBlacklist({ activeMode }) {
             ].map(s => (
               <div key={s.label} style={{ ...S.cardPad, padding: '16px 20px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>{s.value}</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#10201E', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -1015,7 +1015,7 @@ export default function UserBlacklist({ activeMode }) {
               <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Whitelisted IPs
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#2A8B68', marginTop: '4px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#2A8B68', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>
                 {whitelistEntries.length} Trusted
               </div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -1027,7 +1027,7 @@ export default function UserBlacklist({ activeMode }) {
               <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Enforcement Scope
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>
                 Global Fleet
               </div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -1039,7 +1039,7 @@ export default function UserBlacklist({ activeMode }) {
               <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Bypass Priority
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#0B2522', marginTop: '4px' }}>
+              <div style={{ fontSize: '20px', fontWeight: '700', color: '#0B2522', marginTop: '4px' }}>
                 Level 0 (Zero-Drop)
               </div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>

@@ -128,7 +128,7 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        padding: '24px 28px',
+        padding: '18px 24px',
         marginBottom: '18px',
         border: '1px solid #D9E1DC',
         boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
@@ -176,10 +176,10 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
               </span>
             </div>
 
-            <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.03em' }}>
+            <h1 style={{ fontSize: '19px', fontWeight: '700', margin: '0 0 3px', color: '#10201E', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
               {title}
             </h1>
-            <p style={{ margin: 0, fontSize: '13.5px', color: '#60716B', maxWidth: '640px', lineHeight: '1.5' }}>
+            <p style={{ margin: 0, fontSize: '12.5px', color: '#60716B', maxWidth: '680px', lineHeight: '1.45' }}>
               {subtitle}
             </p>
           </div>
