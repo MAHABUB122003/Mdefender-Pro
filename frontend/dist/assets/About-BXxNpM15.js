@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-BKllkxft.js";import t from"./Solutions-DM3dGch9.js";var n=e();function r(){return(0,n.jsx)(t,{})}export{r as default};

@@ -1,5 +1,5 @@
 import QRCode from 'qrcode'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams, useLocation, Link } from 'react-router-dom'
 import { Wrench, Shield, Bot, SlidersHorizontal, ShieldAlert, Globe, Server, Terminal, Copy, Check, ExternalLink, AlertTriangle, Search, Activity, Cpu, Database, Network, ArrowUpRight, Key, Lock, Smartphone, Mail, QrCode, Download, RefreshCw, CheckCircle2, ShieldCheck, Flame, Radio } from 'lucide-react'
 import BulkHeader from './bulk/BulkHeader'
@@ -523,16 +523,20 @@ const generateRecoveryCodes = () => {
     }
   }, [ipInput])
 
+  const lastQueriedIpRef = useRef('')
+
   useEffect(() => {
-    if (queryParamIp) {
+    if (queryParamIp && queryParamIp !== lastQueriedIpRef.current) {
+      lastQueriedIpRef.current = queryParamIp
       setIpInput(queryParamIp)
       setActiveTab('whois')
       handleWhoisLookup(queryParamIp)
-    } else if (queryParamTab === 'whois') {
+    } else if (queryParamTab === 'whois' && !lastQueriedIpRef.current) {
+      lastQueriedIpRef.current = ipInput || '185.220.101.5'
       setActiveTab('whois')
       handleWhoisLookup(ipInput || '185.220.101.5')
     }
-  }, [queryParamIp, queryParamTab, handleWhoisLookup])
+  }, [queryParamIp, queryParamTab, handleWhoisLookup, ipInput])
 
   // Fetch connected websites and initial counts on mount
   useEffect(() => {

@@ -477,7 +477,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/threat-intelligence') ? 'active' : ''}`}
             >
-              <span style={{ pointerEvents: 'none' }}>Threat Intelligence</span>
+              <span style={{ pointerEvents: 'none' }}>Threat Intelligence &amp; WHOIS</span>
             </Link>
             <Link
               to="/user/security/port-scanner"

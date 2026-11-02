@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect, useCallback } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 
 // Instant critical path (Landing page stays eager for instant first-paint)
 import Landing from './pages/Landing'
@@ -63,6 +63,15 @@ const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
 import api from './api/api'
 import userStore from './utils/userStore'
 import adminStore from './utils/adminStore'
+
+function LegacyToolsRedirect() {
+  const [searchParams] = useSearchParams()
+  const ip = searchParams.get('ip')
+  if (ip) {
+    return <Navigate to={`/user/security/threat-intelligence?ip=${encodeURIComponent(ip)}`} replace />
+  }
+  return <Navigate to="/user/security/threat-intelligence" replace />
+}
 
 function PageFallback() {
   return (
@@ -228,10 +237,10 @@ function App() {
           <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />
           <Route path="bulk/site-health" element={<BulkSiteHealth />} />
           <Route path="bulk/activity" element={<BulkActivity />} />
-          <Route path="bulk/tools" element={<UserTools activeMode="autoblock" isBulk={true} />} />
+          <Route path="bulk/tools" element={<LegacyToolsRedirect />} />
           <Route path="team" element={<UserTeam />} />
           <Route path="alerts" element={<UserAlerts />} />
-          <Route path="tools" element={<Navigate to="/user/bulk/tools" replace />} />
+          <Route path="tools" element={<LegacyToolsRedirect />} />
           <Route path="connect" element={<UserConnect />} />
           <Route path="pricing" element={<UserPricing />} />
           <Route path="plans" element={<Navigate to="/user/pricing" replace />} />

@@ -894,7 +894,7 @@ export default function UserDashboard() {
           label="Traffic Cleanliness"
           value={`${cleanRatio}%`}
           sublabel="Legitimate human visitors"
-          actionLink="/user/bulk/tools"
+          actionLink="/user/security/bot-shield"
           actionText="Bot Defense Controls"
         />
 
@@ -1151,7 +1151,7 @@ export default function UserDashboard() {
             fontSize: '12px'
           }}>
             <span style={{ color: brandTokens.bodyColor }}>Automated Offender Defense Active</span>
-            <Link to="/user/bulk/tools" style={{ color: brandTokens.brandEmerald, fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <Link to="/user/security/rate-limits" style={{ color: brandTokens.brandEmerald, fontWeight: '700', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}>
               <span>Configure Defense</span>
               <ArrowRight size={11} />
             </Link>
@@ -1488,7 +1488,7 @@ export default function UserDashboard() {
             WordPress Sites ({websitesList.length})
           </Link>
           <span style={{ color: '#D9E1DC' }}>|</span>
-          <Link to="/user/bulk/tools" style={{ color: brandTokens.brandEmerald, textDecoration: 'none', fontWeight: '700', fontSize: '12.5px' }}>
+          <Link to="/user/security/bot-shield" style={{ color: brandTokens.brandEmerald, textDecoration: 'none', fontWeight: '700', fontSize: '12.5px' }}>
             Bot Defense &amp; Rate Limit Settings →
           </Link>
         </div>

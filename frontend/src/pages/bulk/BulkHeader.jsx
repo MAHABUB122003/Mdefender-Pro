@@ -97,7 +97,7 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
     { path: '/user/bulk/safe-updates', label: 'Safe Updates', icon: Sparkles },
     { path: '/user/bulk/site-health', label: 'Site Health', icon: HeartPulse },
     { path: '/user/bulk/activity', label: 'Activity Log', icon: FileText },
-    { path: '/user/bulk/tools', label: 'Security Tools', icon: Wrench }
+    { path: '/user/security/threat-intelligence', label: 'Threat Intel & WHOIS', icon: Shield }
   ]
 
   return (

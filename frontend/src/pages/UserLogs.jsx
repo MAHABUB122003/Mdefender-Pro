@@ -1639,7 +1639,7 @@ export default function UserLogs() {
                                 </button>
 
                                 <Link
-                                  to={`/user/tools?ip=${encodeURIComponent(log?.ip || '')}`}
+                                  to={`/user/security/threat-intelligence?ip=${encodeURIComponent(log?.ip || '')}`}
                                   style={{
                                     fontSize: '12px',
                                     fontWeight: '600',
