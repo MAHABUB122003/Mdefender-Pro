@@ -254,13 +254,21 @@ export default function BulkUptime() {
                   {primarySite.domain || primarySite.url}
                 </h3>
                 {activeProbe ? (
-                  activeProbe.is_online !== false && activeProbe.status_code > 0 ? (
+                  activeProbe.status_code === 200 ? (
+                    <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                      HTTP 200 OK
+                    </span>
+                  ) : activeProbe.status_code === 403 ? (
+                    <span style={badgeStyle('#EFF6FF', '#1D4ED8', '#DBEAFE')}>
+                      HTTP 403 (BOT SHIELD ACTIVE)
+                    </span>
+                  ) : activeProbe.is_online !== false && activeProbe.status_code > 0 ? (
                     <span style={badgeStyle(
-                      activeProbe.status_code >= 200 && activeProbe.status_code < 400 ? '#F0FDF4' : '#FEF2F2',
-                      activeProbe.status_code >= 200 && activeProbe.status_code < 400 ? '#15803D' : '#B91C1C',
-                      activeProbe.status_code >= 200 && activeProbe.status_code < 400 ? '#DCFCE7' : '#FECACA'
+                      activeProbe.status_code < 400 ? '#F0FDF4' : '#FFFBEB',
+                      activeProbe.status_code < 400 ? '#15803D' : '#B45309',
+                      activeProbe.status_code < 400 ? '#DCFCE7' : '#FEF3C7'
                     )}>
-                      HTTP {activeProbe.status_code} {activeProbe.status_text || 'OK'}
+                      HTTP {activeProbe.status_code} {activeProbe.status_text && !activeProbe.status_text.includes(String(activeProbe.status_code)) ? activeProbe.status_text : ''}
                     </span>
                   ) : (
                     <span style={badgeStyle('#FEF2F2', '#B91C1C', '#FECACA')}>
@@ -356,32 +364,32 @@ export default function BulkUptime() {
               <div>
                 <div style={stageLabelStyle}>DNS Resolution</div>
                 <div style={stageValueStyle}>
-                  {typeof activeProbe?.dns_ms === 'number' ? `${activeProbe.dns_ms} ms` : (activeProbe ? 'Direct' : '--')}
+                  {typeof activeProbe?.dns_ms === 'number' ? `${Math.round(activeProbe.dns_ms)} ms` : (activeProbe ? 'Direct' : '--')}
                 </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>TCP Connect</div>
                 <div style={stageValueStyle}>
-                  {typeof activeProbe?.tcp_ms === 'number' ? `${activeProbe.tcp_ms} ms` : (activeProbe ? 'Connected' : '--')}
+                  {typeof activeProbe?.tcp_ms === 'number' ? `${Math.round(activeProbe.tcp_ms)} ms` : (activeProbe ? 'Connected' : '--')}
                 </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>TLS Handshake</div>
                 <div style={stageValueStyle}>
-                  {typeof activeProbe?.tls_ms === 'number' ? `${activeProbe.tls_ms} ms` : (activeProbe ? 'Secured' : '--')}
+                  {typeof activeProbe?.tls_ms === 'number' ? `${Math.round(activeProbe.tls_ms)} ms` : (activeProbe ? 'Secured' : '--')}
                 </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>TTFB (Time to First Byte)</div>
                 <div style={stageValueStyle}>
-                  {typeof activeProbe?.ttfb_ms === 'number' ? `${activeProbe.ttfb_ms} ms` : (activeProbe ? 'N/A' : '--')}
+                  {typeof activeProbe?.ttfb_ms === 'number' ? `${Math.round(activeProbe.ttfb_ms)} ms` : (activeProbe ? 'N/A' : '--')}
                 </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>Total Latency</div>
                 <div style={{ ...stageValueStyle, color: '#2563EB' }}>
                   {typeof activeProbe?.total_latency_ms === 'number'
-                    ? `${activeProbe.total_latency_ms} ms`
+                    ? `${Math.round(activeProbe.total_latency_ms)} ms`
                     : (activeProbe ? 'N/A' : '--')}
                 </div>
               </div>

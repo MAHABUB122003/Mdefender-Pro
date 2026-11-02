@@ -72,6 +72,7 @@ export default function BulkPerformance() {
 
   const currentAudit = primarySiteId ? (perfData[`${primarySiteId}_${strategy}`] || null) : null
   const hasAudit = currentAudit && typeof currentAudit.score === 'number'
+  const isChallenged = currentAudit?.is_challenged || (hasAudit && currentAudit.score === 0)
 
   // Real metric extraction from backend audit
   const score = hasAudit ? currentAudit.score : null
@@ -79,13 +80,22 @@ export default function BulkPerformance() {
   const composition = currentAudit?.page_composition || {}
   const recommendations = currentAudit?.recommendations || []
 
-  const lcpText = hasAudit && typeof metrics.lcp_ms === 'number' ? (metrics.lcp_ms / 1000).toFixed(2) : '--'
-  const inpText = hasAudit && typeof metrics.inp_ms === 'number' ? `${metrics.inp_ms}` : '--'
-  const clsText = hasAudit && typeof metrics.cls === 'number' ? `${metrics.cls}` : '--'
-  const ttfbText = hasAudit && typeof metrics.ttfb_ms === 'number' ? `${metrics.ttfb_ms}` : '--'
+  const lcpText = hasAudit && !isChallenged && typeof metrics.lcp_ms === 'number' && metrics.lcp_ms > 0
+    ? (metrics.lcp_ms / 1000).toFixed(2)
+    : '--'
+  const inpText = hasAudit && !isChallenged && typeof metrics.inp_ms === 'number' && metrics.inp_ms > 0
+    ? `${metrics.inp_ms}`
+    : '--'
+  const clsText = hasAudit && !isChallenged && typeof metrics.cls === 'number'
+    ? `${metrics.cls}`
+    : '--'
+  const ttfbText = hasAudit && typeof metrics.ttfb_ms === 'number' && metrics.ttfb_ms > 0
+    ? `${Math.round(metrics.ttfb_ms)}`
+    : '--'
 
   const scoreBadge = (s) => {
     if (s === null) return { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0', label: 'PENDING AUDIT' }
+    if (isChallenged) return { bg: '#EFF6FF', text: '#1D4ED8', border: '#DBEAFE', label: 'WAF CHALLENGED (403)' }
     if (s >= 90) return { bg: '#F0FDF4', text: '#15803D', border: '#DCFCE7', label: 'GOOD' }
     if (s >= 50) return { bg: '#FFFBEB', text: '#B45309', border: '#FEF3C7', label: 'NEEDS IMPROVEMENT' }
     return { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA', label: 'POOR' }
@@ -250,13 +260,13 @@ export default function BulkPerformance() {
           <div style={labelStyle}>Largest Contentful Paint (LCP)</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
             <span style={numberStyle}>{lcpText}</span>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{hasAudit ? 's' : ''}</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{lcpText !== '--' ? 's' : ''}</span>
             <span style={badgeStyle(
-              hasAudit && metrics.lcp_ms < 2500 ? '#F0FDF4' : '#FFFBEB',
-              hasAudit && metrics.lcp_ms < 2500 ? '#15803D' : '#B45309',
-              hasAudit && metrics.lcp_ms < 2500 ? '#DCFCE7' : '#FEF3C7'
+              isChallenged ? '#EFF6FF' : hasAudit && metrics.lcp_ms < 2500 ? '#F0FDF4' : '#FFFBEB',
+              isChallenged ? '#1D4ED8' : hasAudit && metrics.lcp_ms < 2500 ? '#15803D' : '#B45309',
+              isChallenged ? '#DBEAFE' : hasAudit && metrics.lcp_ms < 2500 ? '#DCFCE7' : '#FEF3C7'
             )}>
-              {hasAudit ? (metrics.lcp_ms < 2500 ? 'GOOD (< 2.5s)' : 'OPPORTUNITY') : 'BENCHMARK: < 2.5s'}
+              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (metrics.lcp_ms < 2500 ? 'GOOD (< 2.5s)' : 'OPPORTUNITY') : 'BENCHMARK: < 2.5s'}
             </span>
           </div>
           <div style={subLabelStyle}>Time to render primary page content</div>
@@ -267,13 +277,13 @@ export default function BulkPerformance() {
           <div style={labelStyle}>Interaction Latency (INP / FID)</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
             <span style={numberStyle}>{inpText}</span>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{hasAudit ? 'ms' : ''}</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{inpText !== '--' ? 'ms' : ''}</span>
             <span style={badgeStyle(
-              hasAudit && metrics.inp_ms < 200 ? '#F0FDF4' : '#FFFBEB',
-              hasAudit && metrics.inp_ms < 200 ? '#15803D' : '#B45309',
-              hasAudit && metrics.inp_ms < 200 ? '#DCFCE7' : '#FEF3C7'
+              isChallenged ? '#EFF6FF' : hasAudit && metrics.inp_ms < 200 ? '#F0FDF4' : '#FFFBEB',
+              isChallenged ? '#1D4ED8' : hasAudit && metrics.inp_ms < 200 ? '#15803D' : '#B45309',
+              isChallenged ? '#DBEAFE' : hasAudit && metrics.inp_ms < 200 ? '#DCFCE7' : '#FEF3C7'
             )}>
-              {hasAudit ? (metrics.inp_ms < 200 ? 'GOOD (< 200ms)' : 'OPPORTUNITY') : 'BENCHMARK: < 200ms'}
+              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (metrics.inp_ms < 200 ? 'GOOD (< 200ms)' : 'OPPORTUNITY') : 'BENCHMARK: < 200ms'}
             </span>
           </div>
           <div style={subLabelStyle}>Responsiveness to user taps and clicks</div>
@@ -285,11 +295,11 @@ export default function BulkPerformance() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
             <span style={numberStyle}>{clsText}</span>
             <span style={badgeStyle(
-              hasAudit && metrics.cls < 0.1 ? '#F0FDF4' : '#FFFBEB',
-              hasAudit && metrics.cls < 0.1 ? '#15803D' : '#B45309',
-              hasAudit && metrics.cls < 0.1 ? '#DCFCE7' : '#FEF3C7'
+              isChallenged ? '#EFF6FF' : hasAudit && metrics.cls < 0.1 ? '#F0FDF4' : '#FFFBEB',
+              isChallenged ? '#1D4ED8' : hasAudit && metrics.cls < 0.1 ? '#15803D' : '#B45309',
+              isChallenged ? '#DBEAFE' : hasAudit && metrics.cls < 0.1 ? '#DCFCE7' : '#FEF3C7'
             )}>
-              {hasAudit ? (metrics.cls < 0.1 ? 'GOOD (< 0.1)' : 'NEEDS WORK') : 'BENCHMARK: < 0.1'}
+              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (metrics.cls < 0.1 ? 'GOOD (< 0.1)' : 'NEEDS WORK') : 'BENCHMARK: < 0.1'}
             </span>
           </div>
           <div style={subLabelStyle}>Visual stability and layout movement</div>

@@ -342,21 +342,25 @@ export default function BulkBrokenLinks() {
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              background: '#F0FDF4',
-              color: '#16A34A',
+              background: currentReport?.is_challenged ? '#FFFBEB' : '#F0FDF4',
+              color: currentReport?.is_challenged ? '#B45309' : '#16A34A',
               marginBottom: '10px'
             }}>
-              <CheckCircle2 size={20} />
+              {currentReport?.is_challenged ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
             </div>
             <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>
-              {filterMode === 'broken' && totalScanned > 0
+              {currentReport?.is_challenged
+                ? 'Origin Protected by MDefender Bot Shield (HTTP 403)'
+                : filterMode === 'broken' && totalScanned > 0
                 ? 'Zero Broken Links Detected'
                 : totalScanned === 0
                 ? 'Ready to Run Link Integrity Scan'
                 : 'No links match this filter criteria'}
             </div>
-            <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px', maxWidth: '420px', margin: '4px auto 0' }}>
-              {filterMode === 'broken' && totalScanned > 0
+            <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px', maxWidth: '460px', margin: '4px auto 0' }}>
+              {currentReport?.is_challenged
+                ? 'Your website is actively serving a Turnstile challenge to automated requests. Network reachability and origin SSL are 100% verified; to deep crawl internal hyperlinks, temporarily pause Under Attack Mode or whitelist the crawler.'
+                : filterMode === 'broken' && totalScanned > 0
                 ? 'All scanned internal links and external references are fully healthy with valid HTTP response status.'
                 : totalScanned === 0
                 ? 'Click "Scan Site for Broken Links" to start crawling and verify every URL on your website.'

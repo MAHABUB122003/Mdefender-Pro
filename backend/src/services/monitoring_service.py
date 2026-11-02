@@ -43,13 +43,14 @@ class MonitoringService:
             raw_url = site_or_url.get("url") or site_or_url.get("domain") or ""
             domain = site_or_url.get("domain") or site_or_url.get("name") or ""
             site_name = site_or_url.get("name") or domain or "WordPress Site"
+            api_key = site_or_url.get("api_key") or ""
         else:
             raw_url = str(site_or_url)
             domain = str(site_or_url)
+            api_key = ""
 
         raw_url = raw_url.strip()
         if not raw_url.startswith("http://") and not raw_url.startswith("https://"):
-            # Default to https unless localhost or port 80
             if "localhost" in raw_url or "127.0.0.1" in raw_url:
                 target_url = f"http://{raw_url}"
             else:
@@ -63,6 +64,15 @@ class MonitoringService:
         port = parsed.port or (443 if scheme == "https" else 80)
         path = parsed.path or "/"
 
+        # Retrieve site API key from MongoDB if not provided
+        if not api_key:
+            try:
+                doc = self.db.websites.find_one({"$or": [{"_id": site_id}, {"domain": hostname}]})
+                if doc:
+                    api_key = doc.get("api_key") or ""
+            except Exception:
+                pass
+
         return {
             "site_id": site_id,
             "site_name": site_name,
@@ -72,6 +82,7 @@ class MonitoringService:
             "hostname": hostname,
             "port": port,
             "path": path,
+            "api_key": api_key,
         }
 
     # -------------------------------------------------------------------------
@@ -144,15 +155,17 @@ class MonitoringService:
 
         # Phase 3: Real HTTP Request (measure TTFB and payload)
         try:
-            req = urllib.request.Request(
-                url,
-                headers={
-                    "User-Agent": "MDefender-Pro-Watchdog/4.5 (Real-time Origin Uptime & Security Engine)",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "Connection": "close"
-                }
-            )
+            req_headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "close"
+            }
+            if target.get("api_key"):
+                req_headers["X-MDefender-Key"] = target["api_key"]
+                req_headers["X-API-KEY"] = target["api_key"]
+
+            req = urllib.request.Request(url, headers=req_headers)
 
             # SSL context for urllib
             ctx = None
@@ -163,14 +176,18 @@ class MonitoringService:
 
             t_req_start = time.perf_counter()
             with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
-                ttfb_ms = round((time.perf_counter() - t_req_start) * 1000, 2)
+                elapsed_ms = round((time.perf_counter() - t_req_start) * 1000, 1)
+                ttfb_ms = elapsed_ms
                 body = resp.read()
-                total_ms = round((time.perf_counter() - t_req_start) * 1000, 2)
+                total_ms = round((time.perf_counter() - t_req_start) * 1000, 1)
                 status_code = resp.status
                 headers_dict = dict(resp.headers)
                 is_online = (200 <= status_code < 400)
                 error_msg = None
         except urllib.error.HTTPError as e:
+            elapsed_ms = round((time.perf_counter() - t_req_start) * 1000, 1) if 't_req_start' in locals() else (dns_ms + tcp_ms + tls_ms)
+            ttfb_ms = elapsed_ms
+            total_ms = elapsed_ms
             status_code = e.code
             is_online = (status_code < 500)
             headers_dict = dict(e.headers) if hasattr(e, "headers") else {}
@@ -187,6 +204,18 @@ class MonitoringService:
         has_hsts = "strict-transport-security" in [k.lower() for k in headers_dict.keys()]
         has_csp = "content-security-policy" in [k.lower() for k in headers_dict.keys()]
 
+        # Generate clean status text without redundant 'HTTP' prefixes
+        if status_code == 200:
+            status_text = "200 OK"
+        elif status_code == 403:
+            status_text = "403 Protected (Bot Shield)"
+        elif status_code == 503:
+            status_text = "503 Service Unavailable"
+        elif status_code:
+            status_text = f"HTTP {status_code}"
+        else:
+            status_text = "Unreachable"
+
         result = {
             "site_id": site_id,
             "domain": hostname,
@@ -194,12 +223,12 @@ class MonitoringService:
             "ip_address": ip_address,
             "is_online": is_online,
             "status_code": status_code,
-            "status_text": "200 OK" if status_code == 200 else (f"HTTP {status_code}" if status_code else "Unreachable"),
-            "dns_latency_ms": dns_ms,
-            "tcp_latency_ms": tcp_ms,
-            "tls_handshake_ms": tls_ms,
-            "ttfb_ms": ttfb_ms if ttfb_ms > 0 else total_ms,
-            "total_latency_ms": total_ms if total_ms > 0 else (dns_ms + tcp_ms + tls_ms),
+            "status_text": status_text,
+            "dns_latency_ms": round(dns_ms, 1),
+            "tcp_latency_ms": round(tcp_ms, 1),
+            "tls_handshake_ms": round(tls_ms, 1),
+            "ttfb_ms": round(ttfb_ms if ttfb_ms > 0 else (total_ms or 50.0), 1),
+            "total_latency_ms": round(total_ms if total_ms > 0 else (dns_ms + tcp_ms + tls_ms), 1),
             "compression": compression,
             "server_software": server_software,
             "has_hsts": has_hsts,
@@ -473,15 +502,17 @@ class MonitoringService:
             user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 MDefender-Lighthouse-Desktop/4.5"
             screen_label = "Desktop (1920 x 1080 Full HD • Broadband)"
 
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": user_agent,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "close"
-            }
-        )
+        audit_headers = {
+            "User-Agent": user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Connection": "close"
+        }
+        if target.get("api_key"):
+            audit_headers["X-MDefender-Key"] = target["api_key"]
+            audit_headers["X-API-KEY"] = target["api_key"]
+
+        req = urllib.request.Request(url, headers=audit_headers)
 
         ctx = None
         if target["scheme"] == "https" and (hostname in ("localhost", "127.0.0.1") or hostname.endswith(".local")):
@@ -497,6 +528,53 @@ class MonitoringService:
                 total_duration_ms = round((time.perf_counter() - t0) * 1000, 2)
                 headers = dict(resp.headers)
                 status_code = resp.status
+        except urllib.error.HTTPError as e:
+            ttfb_ms = round((time.perf_counter() - t0) * 1000, 1)
+            error_body = ""
+            try:
+                error_body = e.read().decode("utf-8", errors="ignore")
+            except Exception:
+                pass
+            is_turnstile = "mdef" in error_body.lower() or "turnstile" in error_body.lower() or "challenge" in error_body.lower() or e.code == 403
+            return {
+                "site_id": site_id,
+                "domain": hostname,
+                "url": url,
+                "strategy": strategy,
+                "screen_label": screen_label,
+                "score": 0,
+                "rating": "CHALLENGED" if is_turnstile else "ERROR",
+                "grade": "N/A",
+                "badge_color": "#D97706" if is_turnstile else "#B91C1C",
+                "is_challenged": is_turnstile,
+                "status_code": e.code,
+                "metrics": {
+                    "ttfb_ms": ttfb_ms,
+                    "fcp_ms": 0,
+                    "lcp_ms": 0,
+                    "speed_index_ms": 0,
+                    "cls": 0,
+                    "inp_ms": 0,
+                    "total_duration_ms": ttfb_ms
+                },
+                "page_composition": {
+                    "page_size_kb": round(len(error_body) / 1024, 1),
+                    "external_scripts_count": 0,
+                    "stylesheets_count": 0,
+                    "images_count": 0,
+                    "is_compressed": "gzip" in dict(e.headers).get("Content-Encoding", "").lower(),
+                    "compression_type": dict(e.headers).get("Content-Encoding", "None"),
+                    "has_browser_caching": False
+                },
+                "recommendations": [{
+                    "title": "Origin Protected by MDefender Bot Shield (HTTP 403)" if is_turnstile else f"Origin Web Server Returned HTTP {e.code}",
+                    "impact": "HIGH",
+                    "savings": "Pass verification to measure DOM assets",
+                    "description": "Your website origin is currently protected by MDefender Bot Shield / Turnstile challenge. Network connection and TLS speed are verified; temporarily pause Under Attack Mode or add your IP to allowlist to audit deep page assets." if is_turnstile else f"Origin web server returned error {e.code}: {e.reason}"
+                }],
+                "error": "MDefender Bot Shield Challenge Active (HTTP 403)" if is_turnstile else f"HTTP Error {e.code}: {e.reason}",
+                "audited_at": now.isoformat()
+            }
         except Exception as e:
             return {
                 "site_id": site_id,
@@ -818,20 +896,41 @@ class MonitoringService:
 
         # Step 1: Fetch target homepage/entry point
         html_content = ""
+        crawler_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        if target.get("api_key"):
+            crawler_headers["X-MDefender-Key"] = target["api_key"]
+            crawler_headers["X-API-KEY"] = target["api_key"]
+
         try:
-            req = urllib.request.Request(
-                url,
-                headers={
-                    "User-Agent": "MDefender-Pro-LinkCrawler/4.5 (Real-time Enterprise SEO & Broken Link Watchdog)",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-                }
-            )
+            req = urllib.request.Request(url, headers=crawler_headers)
             with urllib.request.urlopen(req, timeout=8.0) as resp:
                 raw_bytes = resp.read()
                 try:
                     html_content = raw_bytes.decode("utf-8", errors="ignore")
                 except Exception:
                     html_content = raw_bytes.decode("latin-1", errors="ignore")
+        except urllib.error.HTTPError as he:
+            is_turnstile = he.code == 403
+            return {
+                "domain": hostname,
+                "site_id": site_id,
+                "has_scanned": True,
+                "scanned_at": now.isoformat(),
+                "is_challenged": is_turnstile,
+                "error": "Origin returned HTTP 403 (MDefender Bot Shield Challenge Active)" if is_turnstile else f"HTTP Error {he.code}: {he.reason}",
+                "message": "Origin web server intercepted crawler with HTTP 403 (MDefender Bot Shield / Turnstile Challenge Active). Temporarily pause Under Attack Mode or add your IP to allowlist to crawl internal URLs." if is_turnstile else f"Server returned error {he.code}",
+                "total_scanned": 0,
+                "healthy_count": 0,
+                "redirect_count": 0,
+                "broken_count": 0,
+                "server_error_count": 0,
+                "broken_links": [],
+                "all_links": []
+            }
         except Exception as e:
             logger.warning(f"[LinkCrawler] Failed to fetch root {url}: {e}")
             return {
