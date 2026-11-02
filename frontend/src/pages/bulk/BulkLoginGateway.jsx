@@ -284,7 +284,7 @@ export default function BulkLoginGateway() {
   const displayedSites = isAllDomains ? wpWebsites : (targetSite && (targetSite.id || targetSite._id || targetSite.domain) ? [targetSite] : wpWebsites.slice(0, 1))
 
   return (
-    <div className="bulk-login-gateway-page dashboard-page-enter" style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div className="bulk-login-gateway-page" style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
       
       {/* Toast Notification Banner */}
       {toastMsg && (
@@ -622,47 +622,46 @@ export default function BulkLoginGateway() {
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               
               {/* Detected Current IP Quick-Add Banner */}
-              {detectedClientIp && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Sparkles size={15} color="#0F172A" />
-                    <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600 }}>
-                      Detected Your Current IP: <strong style={{ color: '#0F172A', fontFamily: 'monospace' }}>{detectedClientIp}</strong>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAddAllowedIp(detectedClientIp)}
-                    disabled={adminIpWhitelist.includes(detectedClientIp)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      background: adminIpWhitelist.includes(detectedClientIp) ? '#F1F5F9' : '#0F172A',
-                      color: adminIpWhitelist.includes(detectedClientIp) ? '#64748B' : '#FFFFFF',
-                      border: 'none',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: adminIpWhitelist.includes(detectedClientIp) ? 'default' : 'pointer'
-                    }}
-                  >
-                    <Check size={12} />
-                    <span>{adminIpWhitelist.includes(detectedClientIp) ? 'Current IP Added' : '+ Add My Current IP'}</span>
-                  </button>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                minHeight: '44px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={15} color="#0F172A" />
+                  <span style={{ fontSize: '13px', color: '#0F172A', fontWeight: 600 }}>
+                    Detected Your Current IP: <strong style={{ color: '#0F172A', fontFamily: 'monospace' }}>{detectedClientIp || 'Detecting...'}</strong>
+                  </span>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => detectedClientIp && handleAddAllowedIp(detectedClientIp)}
+                  disabled={!detectedClientIp || adminIpWhitelist.includes(detectedClientIp)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    background: (!detectedClientIp || adminIpWhitelist.includes(detectedClientIp)) ? '#F1F5F9' : '#0F172A',
+                    color: (!detectedClientIp || adminIpWhitelist.includes(detectedClientIp)) ? '#64748B' : '#FFFFFF',
+                    border: 'none',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: (!detectedClientIp || adminIpWhitelist.includes(detectedClientIp)) ? 'default' : 'pointer'
+                  }}
+                >
+                  <Check size={12} />
+                  <span>{adminIpWhitelist.includes(detectedClientIp) ? 'Current IP Added' : '+ Add My Current IP'}</span>
+                </button>
+              </div>
 
               {/* Add IP Input & Action Buttons */}
               <div>
@@ -861,3 +860,4 @@ export default function BulkLoginGateway() {
     </div>
   )
 }
+

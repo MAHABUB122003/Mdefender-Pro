@@ -326,18 +326,16 @@ body {
 /* Butter-smooth Dashboard Page Transition */
 @keyframes dashboardFadeIn {
   0% {
-    opacity: 0.25;
-    transform: translateY(4px);
+    opacity: 0.4;
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .dashboard-page-enter {
-  animation: dashboardFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: opacity, transform;
+  animation: dashboardFadeIn 0.15s ease-out forwards;
+  will-change: opacity;
 }
 
 .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; }

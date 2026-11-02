@@ -54,17 +54,7 @@ export default function BulkHardening() {
       filePermissionsCheck: targetSite.file_permissions_check ?? h.file_permissions_check ?? true,
       loginTwoFactor: targetSite.login_two_factor ?? h.login_two_factor ?? true
     })
-
-    const effectiveSlug = targetSite.custom_login_slug || h.custom_login_slug || ''
-    setCustomLoginSlug(effectiveSlug)
-    setLoginRedirectType(targetSite.login_redirect_type || h.login_redirect_type || '404')
-
-    const rawWl = targetSite.admin_ip_whitelist || h.admin_ip_whitelist
-    const parsedWl = Array.isArray(rawWl)
-      ? rawWl
-      : (rawWl ? String(rawWl).split(/[,\r\n]+/).map(s => s.trim()).filter(Boolean) : [])
-    setAdminIpWhitelist(parsedWl)
-  }, [targetSite?.id, targetSite?._id, targetSite?.custom_login_slug, targetSite?.admin_ip_whitelist, selectedSiteId])
+  }, [targetSite?.id, targetSite?._id, selectedSiteId])
 
   const [savingDirectives, setSavingDirectives] = useState(false)
   const [togglingHardenKey, setTogglingHardenKey] = useState(null)
@@ -281,7 +271,7 @@ export default function BulkHardening() {
   // Scope Target Display
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', paddingBottom: '60px' }}>
+    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
       
       {/* Toast Notification */}
       {toastMsg && (
