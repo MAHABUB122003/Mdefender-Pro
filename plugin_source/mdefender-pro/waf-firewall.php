@@ -3089,7 +3089,7 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
         $category = 'MU Plugin';
     } elseif (strpos($rel_path, 'wp-content/') === 0) {
         $category = 'Content Directory';
-    } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array(basename($full_path), ['index.php', 'xmlrpc.php', 'wp-config.php', 'wp-login.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-cron.php', 'wp-activate.php', 'wp-comments-post.php'])) {
+    } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($rel_path, ['index.php', 'xmlrpc.php', 'wp-config.php', 'wp-login.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-cron.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php'])) {
         $category = 'WordPress Core';
         $is_core = true;
     }

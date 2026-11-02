@@ -107,7 +107,7 @@ class WAF_FW_Scanner {
             'root'    => ABSPATH,
         ];
         
-        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'md-defender-pro-dedicated/', 'md-defender-pro-go/', 'md-defender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/'];
+        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'md-defender-pro-dedicated/', 'md-defender-pro-go/', 'md-defender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/', 'waf-quarantine/', 'mdefender-backups/'];
         $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'log'];
         
         $bulk_inserts = [];
@@ -127,6 +127,11 @@ class WAF_FW_Scanner {
                 $rel_path = str_replace(wp_normalize_path(ABSPATH), '', $fp);
                 $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
                 
+                // Always exclude quarantine and backup folders from scan queue
+                if (strpos($rel_path, 'waf-quarantine') !== false || strpos($rel_path, 'mdefender-backups') !== false) {
+                    continue;
+                }
+
                 if ($cat === 'content') {
                     // Skip subdirectories that have their own dedicated scan category
                     if (strpos($rel_path, 'wp-content/plugins/') === 0 || 
@@ -1645,11 +1650,13 @@ class WAF_FW_Scanner {
         $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
         $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
 
-        // Self-exclusion (Only exclude MDefender-Pro scanner itself to avoid self-flagging test rules)
+        // Self-exclusion (Exclude scanner plugin and quarantine/backup vaults from self-flagging)
         if (
             strpos($rel_path, 'wp-content/plugins/mdefender-pro/') === 0 ||
             strpos($rel_path, 'wp-content/plugins/mdefender/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/wp-waf-firewall/') === 0
+            strpos($rel_path, 'wp-content/plugins/wp-waf-firewall/') === 0 ||
+            strpos($rel_path, 'waf-quarantine') !== false ||
+            strpos($rel_path, 'mdefender-backups') !== false
         ) {
             return null;
         }
@@ -1665,7 +1672,7 @@ class WAF_FW_Scanner {
             $file_class = 'THEME';
         } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $category === 'uploads') {
             $file_class = 'UPLOAD';
-        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($name, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'])) {
+        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($rel_path, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'])) {
             $file_class = 'WORDPRESS_CORE';
         }
 
@@ -1728,6 +1735,21 @@ class WAF_FW_Scanner {
 
         // 4. Dangerous Executable or Sensitive Data in Uploads directory (Strict rule)
         if ($file_class === 'UPLOAD' || strpos($rel_path, 'wp-content/uploads/') !== false) {
+            // Whitelist benign directory index protection stubs (containing only comments or silence)
+            if ($name === 'index.php') {
+                $trimmed_c = trim($content);
+                if (strpos($trimmed_c, '<?php') === 0) {
+                    $stub_body = trim(substr($trimmed_c, 5));
+                    $stub_body = preg_replace('/\?>$/', '', $stub_body);
+                    $stub_body = preg_replace('#//[^\r\n]*#', '', $stub_body);
+                    $stub_body = preg_replace('#/\*[\s\S]*?\*/#', '', $stub_body);
+                    $stub_body = trim(str_replace([';', ' ', "\t", "\r", "\n"], '', $stub_body));
+                    if (empty($stub_body)) {
+                        return null; // 100% benign directory listing protection stub
+                    }
+                }
+            }
+
             if ($is_php) {
                 $total_score = max($total_score, 90);
                 $confidence = 'HIGH';
@@ -3525,14 +3547,16 @@ public function run_vulnerability_scan() {
             ];
         }
 
-        $upload_perms = fileperms(ABSPATH . 'wp-content/uploads') & 0777;
-        if ($upload_perms === 0777 || $upload_perms === 0755) {
-            $results['known_vulnerabilities'][] = [
-                'type' => 'Uploads Directory Permissions',
-                'severity' => 'warning',
-                'description' => 'wp-content/uploads has overly permissive permissions (' . sprintf('%o', $upload_perms) . '). Consider 755.',
-                'cve' => '',
-            ];
+        if (PHP_OS_FAMILY !== 'Windows') {
+            $upload_perms = @fileperms(ABSPATH . 'wp-content/uploads') & 0777;
+            if ($upload_perms === 0777 || $upload_perms === 0775) {
+                $results['known_vulnerabilities'][] = [
+                    'type' => 'Uploads Directory Permissions',
+                    'severity' => 'warning',
+                    'description' => 'wp-content/uploads has overly permissive permissions (' . sprintf('%o', $upload_perms) . '). Consider 755 or 750.',
+                    'cve' => '',
+                ];
+            }
         }
 
         // Query MDefender Centralized Vulnerability Check API
