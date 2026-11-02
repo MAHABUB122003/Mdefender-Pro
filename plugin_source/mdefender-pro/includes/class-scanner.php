@@ -103,11 +103,12 @@ class WAF_FW_Scanner {
             'themes'  => ABSPATH . 'wp-content/themes/',
             'uploads' => ABSPATH . 'wp-content/uploads/',
             'mu_plugins' => ABSPATH . 'wp-content/mu-plugins/',
+            'content' => ABSPATH . 'wp-content/',
             'root'    => ABSPATH,
         ];
         
         $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'md-defender-pro-dedicated/', 'md-defender-pro-go/', 'md-defender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/'];
-        $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp'];
+        $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'log'];
         
         $bulk_inserts = [];
         $total_files = 0;
@@ -126,14 +127,25 @@ class WAF_FW_Scanner {
                 $rel_path = str_replace(wp_normalize_path(ABSPATH), '', $fp);
                 $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
                 
-                if ($cat === 'root') {
-                    if (strpos($rel_path, 'wp-content/plugins/') === 0 || strpos($rel_path, 'wp-content/themes/') === 0 || strpos($rel_path, 'wp-content/uploads/') === 0 || strpos($rel_path, 'wp-content/mu-plugins/') === 0 || strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0) {
+                if ($cat === 'content') {
+                    // Skip subdirectories that have their own dedicated scan category
+                    if (strpos($rel_path, 'wp-content/plugins/') === 0 || 
+                        strpos($rel_path, 'wp-content/themes/') === 0 || 
+                        strpos($rel_path, 'wp-content/uploads/') === 0 || 
+                        strpos($rel_path, 'wp-content/mu-plugins/') === 0) {
+                        continue;
+                    }
+                } elseif ($cat === 'root') {
+                    // Skip wp-content, wp-admin, and wp-includes (scanned in their own categories)
+                    if (strpos($rel_path, 'wp-content/') === 0 || 
+                        strpos($rel_path, 'wp-admin/') === 0 || 
+                        strpos($rel_path, 'wp-includes/') === 0) {
                         continue;
                     }
                 }
                 
-                // Exclude security scanner plugins and own source code from self-flagging
-                if (preg_match('#wp-content/plugins/(mdefender|md-defender|wp-waf|wordfence)#i', $rel_path)) {
+                // Exclude security scanner plugins directory only (never exclude standalone test files)
+                if (preg_match('#wp-content/plugins/(?:mdefender-pro|mdefender|md-defender-pro-dedicated|md-defender-pro-go|md-defender|wp-waf-firewall|wp-waf-firewall1|wordfence)/#i', $rel_path)) {
                     continue;
                 }
 
@@ -701,7 +713,7 @@ class WAF_FW_Scanner {
 
                         // Pre-filter plugin/theme files with suspicious extensions only (php, phtml)
                         $candidates = $wpdb->get_results($wpdb->prepare(
-                            "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d AND file_type IN ('plugins', 'themes') AND (file_path LIKE '%.php' OR file_path LIKE '%.phtml') LIMIT 200",
+                            "SELECT id, file_path, file_type FROM $files_table WHERE scan_id = %d AND file_type IN ('plugins', 'themes', 'content') AND (file_path LIKE '%.php' OR file_path LIKE '%.phtml') LIMIT 200",
                             $queue_id
                         ));
 
@@ -2007,6 +2019,7 @@ class WAF_FW_Scanner {
             'themes'  => ABSPATH . 'wp-content/themes/',
             'uploads' => ABSPATH . 'wp-content/uploads/',
             'mu_plugins' => ABSPATH . 'wp-content/mu-plugins/',
+            'content' => ABSPATH . 'wp-content/',
             'root'    => ABSPATH,
         ];
 
@@ -3041,6 +3054,7 @@ class WAF_FW_Scanner {
             'themes'  => ABSPATH . 'wp-content/themes/',
             'uploads' => ABSPATH . 'wp-content/uploads/',
             'mu_plugins' => ABSPATH . 'wp-content/mu-plugins/',
+            'content' => ABSPATH . 'wp-content/',
             'root'    => ABSPATH,
         ];
 
@@ -3157,6 +3171,7 @@ class WAF_FW_Scanner {
             'themes'  => ABSPATH . 'wp-content/themes/',
             'uploads' => ABSPATH . 'wp-content/uploads/',
             'mu_plugins' => ABSPATH . 'wp-content/mu-plugins/',
+            'content' => ABSPATH . 'wp-content/',
             'root'    => ABSPATH,
         ];
         $excluded_dirs = ['wp-waf-firewall1/', 'wordfence/'];
