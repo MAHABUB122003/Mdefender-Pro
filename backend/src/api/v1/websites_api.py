@@ -5543,15 +5543,67 @@ async def get_website_scans(website_id: str, limit: int = 10, user=Depends(get_c
 
 
 
+    # Live query WordPress plugin for latest scan telemetry & findings
+    target_url = website.get("url") or website.get("domain") or ""
+    if target_url and not target_url.startswith("http"):
+        target_url = f"https://{target_url}" if website.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+    api_key = website.get("api_key") or ""
+    site_token = website.get("site_token") or ""
+
+    live_scan = None
+    if target_url:
+        import requests
+        sep = "&" if "?" in target_url else "?"
+        url_params = "waf_cloud_sync=1&action=get_scan_results"
+        if api_key:
+            url_params += f"&api_key={api_key}"
+        if site_token:
+            url_params += f"&site_token={site_token}"
+        candidates = [
+            f"{target_url}{sep}{url_params}",
+            f"{target_url}/index.php?{url_params}",
+            f"{target_url}/wp-json/waf-fw/v1/sync?{url_params}",
+        ]
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "MDefender-Pro-CloudAction/1.0"
+        }
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["X-API-Key"] = api_key
+        if site_token:
+            headers["X-Site-Token"] = site_token
+
+        for ep in candidates:
+            try:
+                resp = requests.post(ep, json={"action": "get_scan_results"}, headers=headers, timeout=5.0, verify=False)
+                if resp.status_code == 200:
+                    rj = resp.json()
+                    if rj.get("success") or rj.get("status") == "completed":
+                        live_scan = {
+                            "_id": "live_" + str(int(time.time())),
+                            "website_id": w_id,
+                            "domain": website.get("domain"),
+                            "status": "completed",
+                            "score": rj.get("health_score", 100),
+                            "health_score": rj.get("health_score", 100),
+                            "issues_found": rj.get("issues_found", len(rj.get("findings", []))),
+                            "total_scanned": rj.get("total_scanned", 0),
+                            "files_scanned": rj.get("files_scanned", 0),
+                            "findings": rj.get("findings", []),
+                            "real_metrics": rj.get("real_metrics", {}),
+                            "summary": rj.get("summary", {}),
+                            "duration": rj.get("duration_seconds", 0),
+                            "completed_at": rj.get("timestamp") or datetime.now().isoformat()
+                        }
+                        break
+            except Exception:
+                pass
+
     cursor = db.malware_scans.find({"$or": [{"website_id": w_id}, {"domain": website.get("domain")}]}).sort("started_at", -1).limit(min(limit, 50))
-
-
-
-
-
-
-
     scans = [serialize(s) for s in cursor]
+    if live_scan:
+        scans = [live_scan] + [s for s in scans if str(s.get("_id", "")).startswith("live_") is False]
 
 
 

@@ -1217,9 +1217,14 @@ class WAF_FW_Scanner {
     }
 
     private function get_malware_patterns() {
-        return [
+        static $cached_patterns = null;
+        if ($cached_patterns !== null) {
+            return $cached_patterns;
+        }
+
+        $patterns = [
             'backdoor' => [
-                'weight' => 50,
+                'weight' => 95,
                 'patterns' => [
                     '/\beval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)/i',
                     '/\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(/i',
@@ -1230,21 +1235,27 @@ class WAF_FW_Scanner {
                     '/\bexec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
                     '/\bshell_exec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
                     '/\bpassthru\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/\bassert\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
                     '/call_user_func\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/array_map\s*\(\s*[\'"](?:exec|system|shell_exec|passthru|eval|assert)[\'"]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/preg_replace\s*\(\s*[\'"]\/[^\/]*e[\'"]\s*,/i',
-                    '/\$GLOBALS\[[\'"]\w+[\'"]\]\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot)/i',
-                    '/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i',
-                    '/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i',
-                    '/(?:wp_create_user|wp_insert_user)[\s\S]{0,150}(?:set_role\s*\(\s*[\'"]administrator[\'"]|[\'"]role[\'"]\s*=>\s*[\'"]administrator[\'"])/i',
+                    "/array_map\\s*\\(\\s*['\"](?:exec|system|shell_exec|passthru|eval|assert)['\"]\\s*,\\s*\\\$_(?:GET|POST|REQUEST|COOKIE)/i",
+                    "/preg_replace\\s*\\(\\s*['\"]\\/[^\\/]*e['\"]\\s*,/i",
+                    "/\\\$GLOBALS\\[['\"]\\w+['\"]\\]\\s*=\\s*\\\$_(?:GET|POST|REQUEST|COOKIE)/i",
+                    '/\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot|Godzilla|Behinder|China\s*Chopper|AntSword|IndoXploit|SimAttacker|IronShell)\b/i',
+                    "/\\\$auth_pass\\s*=\\s*['\"][a-f0-9]{32}['\"]/i",
+                    "/\\\$default_action\\s*=\\s*['\"]FilesMan['\"]/i",
+                    "/(?:wp_create_user|wp_insert_user)[\\s\\S]{0,150}(?:set_role\\s*\\(\\s*['\"]administrator['\"]|['\"]role['\"]\\s*=>\\s*['\"]administrator['\"])/i",
                     '/\$(?:GLOBALS|_[A-Z]+)\s*\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/register_shutdown_function\s*\(\s*[\'"](?:assert|system|eval|passthru)[\'"]/i',
-                    '/add_action\s*\(\s*[\'"](?:init|admin_init|wp_head)[\'"]\s*,[\s\S]{0,120}wp_create_user/i',
-                    '/\$[a-zA-Z0-9_]+\s*=\s*[\'"](?:system|exec|passthru|shell_exec|assert)[\'"]\s*;[\s\S]{0,50}\$[a-zA-Z0-9_]+\s*\(/i',
+                    "/register_shutdown_function\\s*\\(\\s*['\"](?:assert|system|eval|passthru)['\"]/i",
+                    "/add_action\\s*\\(\\s*['\"](?:init|admin_init|wp_head)['\"]\\s*,[\\s\\S]{0,120}wp_create_user/i",
+                    "/\\\$[a-zA-Z0-9_]+\\s*=\\s*['\"](?:system|exec|passthru|shell_exec|assert)['\"]\\s*;[\\s\\S]{0,50}\\\$[a-zA-Z0-9_]+\\s*\\(/i",
                     '/(?:auto_prepend_file|auto_append_file)\s*=\s*[^\s;]+/i',
-                    '/move_uploaded_file\s*\(\s*\$_FILES\[[^\]]+\]\[[\'"]tmp_name[\'"]\][\s\S]{0,100}\.(?:php|phtml|ico)/i',
+                    "/move_uploaded_file\\s*\\(\\s*\\\$_FILES\\[[^\\]]+\\]\\[['\"]tmp_name['\"]\\][\\s\\S]{0,100}\\.(?:php|phtml|ico)/i",
+                    '/(?:wp_set_current_user|wp_set_auth_cookie)[\s\S]{0,120}wp_redirect/i',
+                    "/\\\$_(?:POST|GET|REQUEST)\\[['\"](?:pass|password|cmd|key|secret|pass1|pass2)['\"]\\][\\s\\S]{0,80}(?:eval|assert|system|passthru|shell_exec)/i",
+                    "/(?:googlebot|bingbot|yahoo! slurp|baiduspider)[\\s\\S]{0,80}(?:header\\s*\\(\\s*['\"]Location:|wp_redirect)/i",
+                    "/\\\$[a-zA-Z_\\x7f-\\xff][a-zA-Z0-9_\\x7f-\\xff]*\\s*=\\s*['\"](?:sys|ex|pass|eval|asse)['\"]\\s*\\.\\s*['\"][a-z]+['\"]/i",
+                    '/chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)/i',
+                    "/\\bhex2bin\\s*\\(\\s*['\"][0-9a-fA-F]{10,}['\"]\\s*\\)/i",
+                    '/\b(?:wp-vcd\.php|class-wp-cache\.php|wp-tmp\.php)\b/i',
                 ],
             ],
             'crypto' => [
@@ -1254,12 +1265,40 @@ class WAF_FW_Scanner {
                     '/mine\.\w+\.\w+/i',
                     '/Monero|xmr\b/i',
                     '/cryptonight/i',
-                    '/wallet\s*=\s*[\'\"][13][a-km-zA-HJ-NP-Z0-9]{26,33}[\'\"]/i',
+                    "/wallet\\s*=\\s*['\"][13][a-km-zA-HJ-NP-Z0-9]{26,33}['\"]/i",
                     '/CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot|jsecoin/i',
-                    '/addEventListener\s*\(\s*[\'"]key(?:press|down|up)[\'"][\s\S]{0,100}(?:fetch|XMLHttpRequest|\.send)/i',
+                    "/addEventListener\\s*\\(\\s*['\"]key(?:press|down|up)['\"][\\s\\S]{0,100}(?:fetch|XMLHttpRequest|\\.send)/i",
                 ],
             ],
         ];
+
+        // Enrich with scanner_rules.json if present
+        $rules_file = WAF_FW_PLUGIN_DIR . 'includes/scanner_rules.json';
+        if (file_exists($rules_file)) {
+            $extra = json_decode(@file_get_contents($rules_file), true);
+            if (isset($extra['rules']) && is_array($extra['rules'])) {
+                foreach ($extra['rules'] as $cat => $items) {
+                    if (is_array($items) && !empty($items)) {
+                        $p_list = [];
+                        foreach ($items as $item) {
+                            $val = is_string($item) ? trim($item) : '';
+                            if ($val !== '' && strlen($val) >= 4) {
+                                $p_list[] = '/' . preg_quote($val, '/') . '/i';
+                            }
+                        }
+                        if (!empty($p_list)) {
+                            $patterns[$cat] = [
+                                'weight' => in_array($cat, ['shells', 'auto_login_backdoor', 'wp_vcd', 'persistent_admin_creator']) ? 95 : 75,
+                                'patterns' => $p_list,
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        $cached_patterns = $patterns;
+        return $patterns;
     }
 
     private function get_secret_patterns() {
@@ -1485,31 +1524,12 @@ class WAF_FW_Scanner {
         $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
         $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
 
-        // Self-exclusion & Known Safe Security/Management Plugins:
+        // Self-exclusion (Only exclude MDefender-Pro scanner itself to avoid self-flagging test rules)
         if (
             strpos($rel_path, 'wp-content/plugins/mdefender-pro/') === 0 ||
             strpos($rel_path, 'wp-content/plugins/mdefender/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/wp-waf-firewall') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/wordfence/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/wpremote/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/wp-health/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/patchstack/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/woocommerce/') === 0 ||
-            strpos($rel_path, 'wp-content/plugins/akismet/') === 0
+            strpos($rel_path, 'wp-content/plugins/wp-waf-firewall/') === 0
         ) {
-            $known_bad = self::lookup_known_bad_hash($path);
-            if (!empty($known_bad)) {
-                return [
-                    'file'     => $rel_path,
-                    'score'    => 100,
-                    'severity' => 'critical',
-                    'confidence' => 'HIGH',
-                    'classification' => 'CONFIRMED_MALWARE',
-                    'findings' => ['Known-bad hash match: CONFIRMED_MALWARE (family: ' . $known_bad['family'] . ')'],
-                    'size'     => $size,
-                    'hash'     => $known_bad['hash'],
-                ];
-            }
             return null;
         }
 
@@ -1552,24 +1572,35 @@ class WAF_FW_Scanner {
 
         // 3. WordPress Core Verification & Integrity Check (FIRST-PASS FOR CLEAN CORE FILES)
         $is_core_modified = false;
+        $is_core_anomaly = false;
         if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
             $core_hashes = $this->get_core_checksums();
-            if (!empty($core_hashes) && isset($core_hashes[$rel_path])) {
-                $expected_md5 = $core_hashes[$rel_path];
-                $actual_md5 = hash_file('md5', $path);
-                if ($expected_md5 === $actual_md5) {
-                    // Pristine, unmodified official WordPress core file from wordpress.org -> 100% CLEAN
-                    return null;
+            if (!empty($core_hashes)) {
+                if (isset($core_hashes[$rel_path])) {
+                    $expected_md5 = $core_hashes[$rel_path];
+                    $actual_md5 = hash_file('md5', $path);
+                    if ($expected_md5 === $actual_md5) {
+                        // Pristine, unmodified official WordPress core file from wordpress.org -> 100% CLEAN
+                        return null;
+                    } else {
+                        $is_core_modified = true;
+                        $findings[] = "Core Checksum Mismatch: modified official WordPress core file";
+                        $total_score = max($total_score, 50);
+                        $classification = 'MODIFIED';
+                        $confidence = 'HIGH';
+                    }
                 } else {
-                    $is_core_modified = true;
-                    $findings[] = "Core Checksum Mismatch: modified official WordPress core file";
-                    $total_score = max($total_score, 45);
-                    $classification = 'MODIFIED';
-                    $confidence = 'HIGH';
+                    // Unrecognized file in WordPress Core directory (e.g. wp-admin/evil.php or wp-includes/shell.php)
+                    // Official WordPress distributions NEVER ship unexpected arbitrary files in core directories.
+                    $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html'];
+                    if (!in_array($name, $legit_root_extras, true)) {
+                        $is_core_anomaly = true;
+                        $findings[] = "Core Directory Anomaly: Unrecognized non-standard file in WordPress core (" . $rel_path . ")";
+                        $total_score = max($total_score, 75);
+                        $classification = 'SUSPICIOUS';
+                        $confidence = 'HIGH';
+                    }
                 }
-            } else {
-                // If official checksums are not available or this file is not in checksum list, do not flag legitimate core file
-                return null;
             }
         }
 
@@ -1589,7 +1620,7 @@ class WAF_FW_Scanner {
         }
 
         // 5. PHP AST Dataflow Taint Analysis
-        if ($is_php && ($file_class !== 'WORDPRESS_CORE' || $is_core_modified)) {
+        if ($is_php && ($file_class !== 'WORDPRESS_CORE' || $is_core_modified || !empty($is_core_anomaly))) {
             $ast_result = $this->analyze_php_ast_dataflow($path, $content);
             if ($ast_result['score'] > 0) {
                 // If it's a modified core file or non-core file with high AST score
@@ -1630,6 +1661,29 @@ class WAF_FW_Scanner {
                 }
                 foreach ($matches as $m) {
                     $findings[] = $cat_key . ': ' . substr(trim($m), 0, 80);
+                }
+            }
+        }
+
+                // 6b. Dynamic In-Memory De-obfuscation Check
+        if ($is_php && $total_score < 90) {
+            if (preg_match_all("/(?:base64_decode|hex2bin)\\s*\\(\\s*['\"]([A-Za-z0-9+\\/=\\\\x]+)['\"]\\s*\\)/", $content, $encoded_matches)) {
+                foreach ($encoded_matches[1] as $enc_str) {
+                    $decoded = '';
+                    if (strpos($enc_str, '\\x') !== false) {
+                        $decoded = @hex2bin(str_replace('\\x', '', $enc_str));
+                    } else {
+                        $decoded = @base64_decode($enc_str);
+                    }
+                    if ($decoded && strlen($decoded) > 10) {
+                        if (preg_match('/(?:eval|assert|system|exec|shell_exec|passthru|c99|r57|wso|b374k|FilesMan)\b/i', $decoded)) {
+                            $total_score = max($total_score, 98);
+                            $classification = 'CONFIRMED_MALWARE';
+                            $confidence = 'HIGH';
+                            $findings[] = 'Obfuscated Payload Decoded: Hidden execution sink detected inside encoded string';
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -3045,10 +3099,16 @@ class WAF_FW_Scanner {
                 if ($cat === 'uploads') {
                     $is_candidate = true;
                 }
-                // 2. Scan core files ONLY if they are modified
+                // 2. Scan core files if they are modified OR if they are unrecognized non-standard files
                 elseif ($cat === 'root' || strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0) {
                     if (in_array($fp, $modified_core)) {
                         $is_candidate = true;
+                    } else {
+                        $known_core = $this->get_core_checksums();
+                        $clean_rel = ltrim($rel_path, '/');
+                        if (!empty($known_core) && !isset($known_core[$clean_rel]) && !in_array(basename($fp), ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php'])) {
+                            $is_candidate = true;
+                        }
                     }
                 }
                 // 3. Scan plugins/themes if they are new/modified in integrity DB, OR if they fail local heuristic checks
@@ -3244,7 +3304,20 @@ class WAF_FW_Scanner {
         }
     }
 
-    private function run_vulnerability_scan() {
+        private function is_version_affected($installed_ver, $affected_str) {
+        if (empty($affected_str) || $affected_str === '*' || $affected_str === 'all') {
+            return true;
+        }
+        $installed = trim(explode('-', $installed_ver)[0]);
+        if (preg_match('/^(<=|<|>=|>|=)?\s*([0-9]+(?:\.[0-9]+)*)/', trim($affected_str), $m)) {
+            $op = !empty($m[1]) ? $m[1] : '<=';
+            $target = $m[2];
+            return version_compare($installed, $target, $op);
+        }
+        return false;
+    }
+
+public function run_vulnerability_scan() {
         global $wp_version;
         $results = [
             'known_vulnerabilities' => [],
@@ -3363,8 +3436,51 @@ class WAF_FW_Scanner {
             ];
         }
 
+        // 1. Offline CVE Audit against 19,950+ WordPress CVE database (vuln_db.json)
+        $vuln_db_file = WAF_FW_PLUGIN_DIR . 'includes/vuln_db.json';
+        if (file_exists($vuln_db_file)) {
+            $vuln_data = json_decode(@file_get_contents($vuln_db_file), true);
+            if (is_array($vuln_data)) {
+                foreach ($installed_plugins as $p) {
+                    $pslug = $p['slug'];
+                    if (isset($vuln_data[$pslug])) {
+                        foreach ($vuln_data[$pslug] as $item) {
+                            if ($this->is_version_affected($p['version'], $item['v'] ?? '')) {
+                                $vscore = (float)($item['score'] ?? 5.0);
+                                $results['plugin_vulnerabilities'][] = [
+                                    'plugin' => $p['name'],
+                                    'slug' => $pslug,
+                                    'severity' => $vscore >= 8.0 ? 'critical' : ($vscore >= 6.0 ? 'high' : 'medium'),
+                                    'cve' => $item['cve'] ?: 'CVE-WORDPRESS',
+                                    'description' => ($item['title'] ?? '') . ' (Affects: ' . ($item['v'] ?? '') . ') ' . ($item['patch'] ? 'Fix: ' . $item['patch'] : ''),
+                                ];
+                            }
+                        }
+                    }
+                }
+                foreach ($installed_themes as $t) {
+                    $tslug = $t['slug'];
+                    if (isset($vuln_data[$tslug])) {
+                        foreach ($vuln_data[$tslug] as $item) {
+                            if ($this->is_version_affected($t['version'], $item['v'] ?? '')) {
+                                $vscore = (float)($item['score'] ?? 5.0);
+                                $results['theme_vulnerabilities'][] = [
+                                    'theme' => $t['name'],
+                                    'slug' => $tslug,
+                                    'version' => $t['version'],
+                                    'severity' => $vscore >= 8.0 ? 'critical' : ($vscore >= 6.0 ? 'high' : 'medium'),
+                                    'cve' => $item['cve'] ?: 'CVE-WORDPRESS',
+                                    'description' => ($item['title'] ?? '') . ' (Affects: ' . ($item['v'] ?? '') . ') ' . ($item['patch'] ? 'Fix: ' . $item['patch'] : ''),
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         $api_client = WAF_FW_ML_Api_Client::instance();
-        if ($api_client->is_available()) {
+        if ($api_client->is_available() && !defined('WAF_FW_IN_WEBHOOK')) {
             $findings = $api_client->check_vulnerabilities($installed_plugins, $installed_themes);
 
             if (is_array($findings) && !empty($findings)) {

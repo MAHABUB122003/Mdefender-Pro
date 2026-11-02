@@ -147,7 +147,7 @@ export default function BulkScanner() {
     if (!siteId || siteId === 'all') return
     try {
       const res = await api.getWebsiteScans(siteId)
-      const scans = res?.scans || res?.data || (Array.isArray(res) ? res : [])
+      const scans = res?.data?.scans || res?.scans || (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
       if (scans.length > 0) {
         const latest = scans[0]
         const latestFindings = latest.findings || latest.results?.findings || []
@@ -500,12 +500,21 @@ export default function BulkScanner() {
       }
     }, 1000)
 
-    const finalizeScanResults = () => {
+    const finalizeScanResults = async () => {
       setScanProgressPct(100)
       setScanStage('Scan Complete! Compiling Final Threat Report...')
       setStageDetail('Correlating cross-domain risk vectors and updating baseline database.')
 
-      const data = cachedResultRef.current || {}
+      let data = cachedResultRef.current || {}
+      if ((!data.findings || data.status === 'queued') && targetSiteId) {
+        try {
+          const fresh = await api.getWebsiteScans(targetSiteId)
+          const latest = fresh?.data?.scans?.[0] || fresh?.scans?.[0]
+          if (latest && (latest.findings || latest.status === 'completed')) {
+            data = latest
+          }
+        } catch (_) {}
+      }
       const rawFindings = data.findings || []
       const metrics = data.real_metrics || {}
       const totalScanned = metrics.total_files || data.total_scanned || data.files_scanned || totalExpectedFiles
