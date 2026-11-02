@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   FileText,
@@ -29,8 +29,52 @@ import {
   LogOut,
   ChevronDown
 } from 'lucide-react'
+
+// Stable Collapsible Dropdown Component defined outside UserSidebar
+// so React NEVER unmounts the DOM nodes on re-render, preserving scroll and DOM integrity.
+function DropdownItem({
+  id,
+  label,
+  icon: Icon,
+  isOpen,
+  onToggle,
+  isGroupActive,
+  children
+}) {
+  return (
+    <div style={{ marginBottom: '2px' }}>
+      <button
+        type="button"
+        className={`user-dropdown-btn ${isGroupActive ? 'active-group' : ''}`}
+        onClick={() => onToggle(id)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <Icon size={17} />
+          </span>
+          <span style={{ pointerEvents: 'none' }}>{label}</span>
+        </div>
+        <ChevronDown
+          size={14}
+          style={{
+            transform: isOpen ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            color: isGroupActive ? '#F38A3E' : '#6A7D78',
+            pointerEvents: 'none'
+          }}
+        />
+      </button>
+
+      <div className={`user-dropdown-container ${isOpen ? 'is-open' : 'is-collapsed'}`}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
+  const navRef = useRef(null)
 
   const userName = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_name') || 'User Profile') : 'User Profile')
   const userEmail = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_email') || '') : '')
@@ -45,37 +89,59 @@ export default function UserSidebar({ isOpen, onClose }) {
     enterprise: 'Dedicated Enterprise'
   }[userPlan] || (isPaid ? 'Premium Plan' : 'Starter Free')
 
+  // Only close drawer on mobile viewports (< 1024px)
   const handleLinkClick = () => {
-    if (onClose) onClose()
+    if (typeof window !== 'undefined' && window.innerWidth < 1024 && onClose) {
+      onClose()
+    }
   }
 
   // Accordion state for dropdown sections
   const [openDropdowns, setOpenDropdowns] = useState(() => {
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
+    const search = typeof window !== 'undefined' ? window.location.search : ''
     return {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
       accessControl: path.includes('/blacklist'),
-      securityProtection: path.includes('/bulk/tools') || (path.includes('/settings') && path.includes('2fa')),
+      securityProtection: path.includes('/bulk/tools') || (path.includes('/settings') && search.includes('2fa')),
       securityCenter: path.includes('/security') || path.includes('/threat-intel') || path.includes('/port-scanner')
     }
   })
 
-  // Auto-expand parent dropdown when navigating to matching route
+  // Auto-expand parent dropdown when navigating to matching route without closing previously open items
   useEffect(() => {
     const path = location.pathname
+    const search = location.search
     if (path.includes('/monitoring') || path.includes('/site-health')) {
-      setOpenDropdowns(prev => ({ ...prev, monitoring: true }))
+      setOpenDropdowns(prev => prev.monitoring ? prev : { ...prev, monitoring: true })
     } else if (path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates')) {
-      setOpenDropdowns(prev => ({ ...prev, wordpress: true }))
+      setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
     } else if (path.includes('/blacklist')) {
-      setOpenDropdowns(prev => ({ ...prev, accessControl: true }))
-    } else if (path.includes('/bulk/tools')) {
-      setOpenDropdowns(prev => ({ ...prev, securityProtection: true }))
+      setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
+    } else if (path.includes('/bulk/tools') || (path.includes('/settings') && search.includes('2fa'))) {
+      setOpenDropdowns(prev => prev.securityProtection ? prev : { ...prev, securityProtection: true })
     } else if (path.includes('/security') || path.includes('/port-scanner') || path.includes('/threat-intelligence')) {
-      setOpenDropdowns(prev => ({ ...prev, securityCenter: true }))
+      setOpenDropdowns(prev => prev.securityCenter ? prev : { ...prev, securityCenter: true })
     }
-  }, [location.pathname])
+  }, [location.pathname, location.search])
+
+  // Seamless scroll position retention: keeps scroll right where the user clicked
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const saved = sessionStorage.getItem('mdefender_sidebar_scroll')
+    if (saved !== null) {
+      const top = parseInt(saved, 10)
+      if (!isNaN(top) && nav.scrollTop !== top) {
+        nav.scrollTop = top
+      }
+    }
+  }, [location.pathname, location.search])
+
+  const handleNavScroll = (e) => {
+    sessionStorage.setItem('mdefender_sidebar_scroll', e.currentTarget.scrollTop.toString())
+  }
 
   const toggleDropdown = (key) => {
     setOpenDropdowns(prev => ({
@@ -84,106 +150,70 @@ export default function UserSidebar({ isOpen, onClose }) {
     }))
   }
 
-  const getNavLinkStyle = ({ isActive }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '9px 14px',
-    borderRadius: '9px',
-    marginBottom: '2px',
-    textDecoration: 'none',
-    cursor: 'pointer',
-    userSelect: 'none',
-    fontSize: '13.5px',
-    transition: 'all 0.15s ease',
-    ...(isActive
-      ? { background: 'rgba(232, 121, 47, 0.14)', color: '#F38A3E', fontWeight: 600 }
-      : { color: '#94a3b8' })
-  })
+  const currentPath = location.pathname
+  const currentSearch = location.search
 
-  const getSubNavLinkStyle = ({ isActive }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '7px 12px',
-    borderRadius: '7px',
-    textDecoration: 'none',
-    fontSize: '12.5px',
-    cursor: 'pointer',
-    userSelect: 'none',
-    transition: 'all 0.15s ease',
-    ...(isActive
-      ? { background: 'rgba(232, 121, 47, 0.14)', color: '#F38A3E', fontWeight: 600 }
-      : { color: '#889895' })
-  })
-
-  // Helper component for Collapsible Dropdown
-  const DropdownItem = ({ id, label, icon: Icon, activePrefixes = [], children }) => {
-    const isExpanded = !!openDropdowns[id]
-    const isChildActive = activePrefixes.some(prefix => location.pathname.includes(prefix))
-
-    return (
-      <div style={{ marginBottom: '2px' }}>
-        <button
-          type="button"
-          onClick={() => toggleDropdown(id)}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '9px 14px',
-            borderRadius: '9px',
-            background: isChildActive ? 'rgba(232, 121, 47, 0.08)' : 'transparent',
-            border: 'none',
-            color: isChildActive ? '#F38A3E' : '#94a3b8',
-            fontSize: '13.5px',
-            fontWeight: isChildActive ? 600 : 500,
-            cursor: 'pointer',
-            textAlign: 'left',
-            transition: 'all 0.15s ease',
-            userSelect: 'none'
-          }}
-          onMouseEnter={e => {
-            if (!isChildActive) e.currentTarget.style.color = '#FFFFFF'
-          }}
-          onMouseLeave={e => {
-            if (!isChildActive) e.currentTarget.style.color = '#94a3b8'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon size={17} />
-            </span>
-            <span>{label}</span>
-          </div>
-          <ChevronDown
-            size={14}
-            style={{
-              transform: isExpanded ? 'rotate(180deg)' : 'none',
-              transition: 'transform 0.2s ease',
-              color: isChildActive ? '#F38A3E' : '#6A7D78'
-            }}
-          />
-        </button>
-
-        {isExpanded && (
-          <div style={{
-            paddingLeft: '14px',
-            marginTop: '2px',
-            marginBottom: '4px',
-            borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-            marginLeft: '22px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px'
-          }}>
-            {children}
-          </div>
-        )}
-      </div>
-    )
+  // High-accuracy active check for standalone items
+  const isLinkActive = (toPath) => {
+    if (toPath === '/user/dashboard') {
+      return currentPath === '/user/dashboard' || currentPath === '/user'
+    }
+    if (toPath === '/user/logs') {
+      return currentPath === '/user/logs'
+    }
+    if (toPath === '/user/bulk/backup') {
+      return currentPath === '/user/bulk/backup'
+    }
+    if (toPath === '/user/websites') {
+      return currentPath === '/user/websites'
+    }
+    if (toPath === '/user/domains') {
+      return currentPath === '/user/domains'
+    }
+    if (toPath === '/user/team') {
+      return currentPath === '/user/team'
+    }
+    if (toPath === '/user/alerts') {
+      return currentPath === '/user/alerts'
+    }
+    if (toPath === '/user/bulk/activity') {
+      return currentPath === '/user/bulk/activity'
+    }
+    if (toPath === '/user/pricing') {
+      return currentPath === '/user/pricing' || currentPath === '/user/plans'
+    }
+    if (toPath === '/user/settings') {
+      return currentPath === '/user/settings' && !currentSearch.includes('tab=2fa')
+    }
+    return currentPath === toPath
   }
+
+  // High-accuracy active check for dropdown sublinks with tab disambiguation
+  const isSubLinkActive = (toPath, tab = null) => {
+    if (tab) {
+      if (toPath === '/user/blacklist') {
+        if (currentPath !== '/user/blacklist') return false
+        if (tab === 'ip_blacklist') {
+          return !currentSearch || currentSearch.includes('tab=ip_blacklist')
+        }
+        return currentSearch.includes(`tab=${tab}`)
+      }
+      if (toPath === '/user/settings') {
+        return currentPath === '/user/settings' && currentSearch.includes(`tab=${tab}`)
+      }
+    }
+    if (toPath === '/user/monitoring/uptime') {
+      return currentPath === '/user/monitoring/uptime' || currentPath === '/user/monitoring'
+    }
+    return currentPath === toPath
+  }
+
+  // Active status for dropdown parent headers
+  const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
+  const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
+  const isAccessControlGroupActive = currentPath === '/user/blacklist'
+  const isSecurityProtectionGroupActive = currentPath.includes('/bulk/tools') || (currentPath === '/user/settings' && currentSearch.includes('tab=2fa'))
+  const isSecurityCenterGroupActive = currentPath === '/threat-intelligence' || currentPath.includes('/security') || currentPath.includes('/port-scanner')
 
   return (
     <>
@@ -231,43 +261,68 @@ export default function UserSidebar({ isOpen, onClose }) {
         {/* ========================================================================= */}
         {/* NAVIGATION LIST (PRECISE 15-SECTION ARCHITECTURE)                         */}
         {/* ========================================================================= */}
-        <nav className="sidebar-nav" style={{ padding: '14px 12px 20px', overflowY: 'auto' }}>
-          
+        <nav
+          className="sidebar-nav"
+          ref={navRef}
+          onScroll={handleNavScroll}
+        >
           {/* 1. Dashboard */}
-          <NavLink to="/user/dashboard" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/dashboard"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/dashboard') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <LayoutDashboard size={17} />
             </span>
-            <span>Dashboard</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Dashboard</span>
+          </Link>
 
           {/* 2. Live Traffic */}
-          <NavLink to="/user/logs" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/logs"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/logs') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <FileText size={17} />
             </span>
-            <span>Live Traffic</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Live Traffic</span>
+          </Link>
 
           {/* 3. Monitoring > (Dropdown) */}
           <DropdownItem
             id="monitoring"
             label="Monitoring"
             icon={Activity}
-            activePrefixes={['/monitoring', '/bulk/site-health', '/bulk/monitoring']}
+            isOpen={!!openDropdowns.monitoring}
+            onToggle={toggleDropdown}
+            isGroupActive={isMonitoringGroupActive}
           >
-            <NavLink to="/user/monitoring/uptime" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Clock size={14} />
-              <span>Uptime</span>
-            </NavLink>
-            <NavLink to="/user/monitoring/performance" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Zap size={14} />
-              <span>Performance</span>
-            </NavLink>
-            <NavLink to="/user/monitoring/broken-links" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <ExternalLink size={14} />
-              <span>Broken Links</span>
-            </NavLink>
+            <Link
+              to="/user/monitoring/uptime"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/monitoring/uptime') ? 'active' : ''}`}
+            >
+              <Clock size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Uptime</span>
+            </Link>
+            <Link
+              to="/user/monitoring/performance"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/monitoring/performance') ? 'active' : ''}`}
+            >
+              <Zap size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Performance</span>
+            </Link>
+            <Link
+              to="/user/monitoring/broken-links"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/monitoring/broken-links') ? 'active' : ''}`}
+            >
+              <ExternalLink size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Broken Links</span>
+            </Link>
           </DropdownItem>
 
           {/* 4. WordPress Management > (Dropdown) */}
@@ -275,32 +330,58 @@ export default function UserSidebar({ isOpen, onClose }) {
             id="wordpress"
             label="WordPress Management"
             icon={Boxes}
-            activePrefixes={['/bulk/plugins', '/bulk/themes', '/bulk/core', '/bulk/scanner', '/bulk/hardening', '/bulk/safe-updates']}
+            isOpen={!!openDropdowns.wordpress}
+            onToggle={toggleDropdown}
+            isGroupActive={isWordpressGroupActive}
           >
-            <NavLink to="/user/bulk/plugins" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Boxes size={14} />
-              <span>Plugins</span>
-            </NavLink>
-            <NavLink to="/user/bulk/themes" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Palette size={14} />
-              <span>Themes</span>
-            </NavLink>
-            <NavLink to="/user/bulk/core" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Sparkles size={14} />
-              <span>WordPress Core</span>
-            </NavLink>
-            <NavLink to="/user/bulk/scanner" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Bug size={14} />
-              <span>Malware Scanner</span>
-            </NavLink>
-            <NavLink to="/user/bulk/hardening" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Shield size={14} />
-              <span>Security Hardening</span>
-            </NavLink>
-            <NavLink to="/user/bulk/safe-updates" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <RotateCw size={14} />
-              <span>Safe Updates</span>
-            </NavLink>
+            <Link
+              to="/user/bulk/plugins"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/plugins') ? 'active' : ''}`}
+            >
+              <Boxes size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Plugins</span>
+            </Link>
+            <Link
+              to="/user/bulk/themes"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/themes') ? 'active' : ''}`}
+            >
+              <Palette size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Themes</span>
+            </Link>
+            <Link
+              to="/user/bulk/core"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/core') ? 'active' : ''}`}
+            >
+              <Sparkles size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>WordPress Core</span>
+            </Link>
+            <Link
+              to="/user/bulk/scanner"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/scanner') ? 'active' : ''}`}
+            >
+              <Bug size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Malware Scanner</span>
+            </Link>
+            <Link
+              to="/user/bulk/hardening"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/hardening') ? 'active' : ''}`}
+            >
+              <Shield size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Security Hardening</span>
+            </Link>
+            <Link
+              to="/user/bulk/safe-updates"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/safe-updates') ? 'active' : ''}`}
+            >
+              <RotateCw size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Safe Updates</span>
+            </Link>
           </DropdownItem>
 
           {/* 5. Access Control & Geo-Blocking > (Dropdown) */}
@@ -308,45 +389,73 @@ export default function UserSidebar({ isOpen, onClose }) {
             id="accessControl"
             label="Access Control & Geo-Blocking"
             icon={Globe}
-            activePrefixes={['/blacklist']}
+            isOpen={!!openDropdowns.accessControl}
+            onToggle={toggleDropdown}
+            isGroupActive={isAccessControlGroupActive}
           >
-            <NavLink to="/user/blacklist?tab=ip_blacklist" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Ban size={14} />
-              <span>IP Blocklist</span>
-            </NavLink>
-            <NavLink to="/user/blacklist?tab=ip_allowlist" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <ShieldCheck size={14} />
-              <span>IP Allowlist</span>
-            </NavLink>
-            <NavLink to="/user/blacklist?tab=country_blocking" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Globe size={14} />
-              <span>Country Blocking</span>
-            </NavLink>
+            <Link
+              to="/user/blacklist?tab=ip_blacklist"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'ip_blacklist') ? 'active' : ''}`}
+            >
+              <Ban size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>IP Blocklist</span>
+            </Link>
+            <Link
+              to="/user/blacklist?tab=ip_allowlist"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'ip_allowlist') ? 'active' : ''}`}
+            >
+              <ShieldCheck size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>IP Allowlist</span>
+            </Link>
+            <Link
+              to="/user/blacklist?tab=country_blocking"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'country_blocking') ? 'active' : ''}`}
+            >
+              <Globe size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Country Blocking</span>
+            </Link>
           </DropdownItem>
 
           {/* 6. Backup & Recovery */}
-          <NavLink to="/user/bulk/backup" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/bulk/backup"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/bulk/backup') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <HardDrive size={17} />
             </span>
-            <span>Backup &amp; Recovery</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Backup &amp; Recovery</span>
+          </Link>
 
           {/* 7. Security Protection > (Dropdown) */}
           <DropdownItem
             id="securityProtection"
             label="Security Protection"
             icon={ShieldCheck}
-            activePrefixes={['/bulk/tools', 'tab=2fa']}
+            isOpen={!!openDropdowns.securityProtection}
+            onToggle={toggleDropdown}
+            isGroupActive={isSecurityProtectionGroupActive}
           >
-            <NavLink to="/user/bulk/tools" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Cpu size={14} />
-              <span>Bot Defense &amp; Rate Limiting</span>
-            </NavLink>
-            <NavLink to="/user/settings?tab=2fa" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Key size={14} />
-              <span>Two-Factor Authentication (2FA)</span>
-            </NavLink>
+            <Link
+              to="/user/bulk/tools"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/tools') ? 'active' : ''}`}
+            >
+              <Cpu size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limiting</span>
+            </Link>
+            <Link
+              to="/user/settings?tab=2fa"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/settings', '2fa') ? 'active' : ''}`}
+            >
+              <Key size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Two-Factor Authentication (2FA)</span>
+            </Link>
           </DropdownItem>
 
           {/* 8. Security Center > (Dropdown) */}
@@ -354,74 +463,111 @@ export default function UserSidebar({ isOpen, onClose }) {
             id="securityCenter"
             label="Security Center"
             icon={Shield}
-            activePrefixes={['/security', '/threat-intelligence', '/port-scanner']}
+            isOpen={!!openDropdowns.securityCenter}
+            onToggle={toggleDropdown}
+            isGroupActive={isSecurityCenterGroupActive}
           >
-            <NavLink to="/threat-intelligence" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Flame size={14} />
-              <span>Threat Intelligence</span>
-            </NavLink>
-            <NavLink to="/user/security/port-scanner" onClick={handleLinkClick} style={getSubNavLinkStyle}>
-              <Radio size={14} />
-              <span>Security &amp; Port Scanner</span>
-            </NavLink>
+            <Link
+              to="/threat-intelligence"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/threat-intelligence') ? 'active' : ''}`}
+            >
+              <Flame size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Threat Intelligence</span>
+            </Link>
+            <Link
+              to="/user/security/port-scanner"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/port-scanner') ? 'active' : ''}`}
+            >
+              <Radio size={14} style={{ pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Security &amp; Port Scanner</span>
+            </Link>
           </DropdownItem>
 
           {/* 9. WordPress Sites */}
-          <NavLink to="/user/websites" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/websites"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/websites') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Layers size={17} />
             </span>
-            <span>WordPress Sites</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>WordPress Sites</span>
+          </Link>
 
           {/* 10. Custom Domains */}
-          <NavLink to="/user/domains" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/domains"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/domains') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Cpu size={17} />
             </span>
-            <span>Custom Domains</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Custom Domains</span>
+          </Link>
 
           {/* 11. Team Members */}
-          <NavLink to="/user/team" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/team"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/team') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Users size={17} />
             </span>
-            <span>Team Members</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Team Members</span>
+          </Link>
 
           {/* 12. Alerts & Notifications */}
-          <NavLink to="/user/alerts" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/alerts"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/alerts') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Bell size={17} />
             </span>
-            <span>Alerts &amp; Notifications</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Alerts &amp; Notifications</span>
+          </Link>
 
           {/* 13. Activity & Audit Logs */}
-          <NavLink to="/user/bulk/activity" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/bulk/activity"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/bulk/activity') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Activity size={17} />
             </span>
-            <span>Activity &amp; Audit Logs</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Activity &amp; Audit Logs</span>
+          </Link>
 
           {/* 14. Pricing & Plans */}
-          <NavLink to="/user/pricing" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/pricing"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/pricing') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Tag size={17} />
             </span>
-            <span>Pricing &amp; Plans</span>
-          </NavLink>
+            <span style={{ pointerEvents: 'none' }}>Pricing &amp; Plans</span>
+          </Link>
 
           {/* 15. Settings */}
-          <NavLink to="/user/settings" onClick={handleLinkClick} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Link
+            to="/user/settings"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/settings') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <Settings size={17} />
             </span>
-            <span>Settings</span>
-          </NavLink>
-
+            <span style={{ pointerEvents: 'none' }}>Settings</span>
+          </Link>
         </nav>
 
         {/* ========================================================================= */}
@@ -453,10 +599,10 @@ export default function UserSidebar({ isOpen, onClose }) {
               textDecoration: 'none',
               background: 'rgba(255,255,255,0.02)',
               border: '1px solid rgba(255,255,255,0.05)',
-              transition: 'all 0.15s ease'
+              transition: 'background-color 0.15s ease'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'}
           >
             <div style={{
               width: '26px',
@@ -486,6 +632,7 @@ export default function UserSidebar({ isOpen, onClose }) {
           {/* Sign Out Button */}
           <button
             className="logout-btn"
+            type="button"
             onClick={() => window.__doLogout && window.__doLogout()}
             style={{
               width: '100%',
@@ -501,13 +648,13 @@ export default function UserSidebar({ isOpen, onClose }) {
               cursor: 'pointer',
               fontWeight: 600,
               fontSize: '12px',
-              transition: 'all 0.15s ease'
+              transition: 'background-color 0.15s ease'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.15)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.08)'}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.16)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.08)'}
           >
-            <LogOut size={14} />
-            <span>Sign Out</span>
+            <LogOut size={14} style={{ pointerEvents: 'none' }} />
+            <span style={{ pointerEvents: 'none' }}>Sign Out</span>
           </button>
         </div>
       </aside>
