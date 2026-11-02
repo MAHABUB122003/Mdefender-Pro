@@ -1,7 +1,7 @@
 import QRCode from 'qrcode'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
-import { Wrench, Shield, ShieldAlert, Globe, Server, Terminal, Copy, Check, ExternalLink, AlertTriangle, Search, Activity, Cpu, Database, Network, ArrowUpRight, Key, Lock, Smartphone, Mail, QrCode, Download, RefreshCw, CheckCircle2, ShieldCheck, Flame } from 'lucide-react'
+import { useSearchParams, useLocation, Link } from 'react-router-dom'
+import { Wrench, Shield, ShieldAlert, Globe, Server, Terminal, Copy, Check, ExternalLink, AlertTriangle, Search, Activity, Cpu, Database, Network, ArrowUpRight, Key, Lock, Smartphone, Mail, QrCode, Download, RefreshCw, CheckCircle2, ShieldCheck, Flame, Radio } from 'lucide-react'
 import BulkHeader from './bulk/BulkHeader'
 import api from '../api/api'
 

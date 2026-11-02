@@ -107,7 +107,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
-      securityProtection: path.includes('/bulk/tools') || (path.includes('/settings') && search.includes('2fa')),
+      securityProtection: path.includes('/security/bot-defense') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
       securityCenter: path.includes('/security') || path.includes('/threat-intel') || path.includes('/port-scanner')
     }
   })
@@ -193,6 +193,18 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (toPath === '/user/access/country-blocking') {
       return currentPath === '/user/access/country-blocking' || (currentPath === '/user/blacklist' && (currentSearch.includes('country_blocking') || currentSearch.includes('country')))
     }
+    if (toPath === '/user/security/bot-defense') {
+      return currentPath === '/user/security/bot-defense' || currentPath === '/user/bulk/tools'
+    }
+    if (toPath === '/user/security/2fa') {
+      return currentPath === '/user/security/2fa'
+    }
+    if (toPath === '/user/security/threat-intelligence') {
+      return currentPath === '/user/security/threat-intelligence'
+    }
+    if (toPath === '/user/security/port-scanner') {
+      return currentPath === '/user/security/port-scanner'
+    }
     return currentPath === toPath
   }
 
@@ -200,8 +212,8 @@ export default function UserSidebar({ isOpen, onClose }) {
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
   const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
-  const isSecurityProtectionGroupActive = currentPath.includes('/bulk/tools') || (currentPath === '/user/settings' && currentSearch.includes('tab=2fa'))
-  const isSecurityCenterGroupActive = currentPath === '/threat-intelligence' || currentPath.includes('/security') || currentPath.includes('/port-scanner')
+  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-defense') || currentPath.includes('/security/2fa') || currentPath.includes('/bulk/tools')
+  const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath === '/threat-intelligence'
 
   return (
     <>
@@ -426,17 +438,17 @@ export default function UserSidebar({ isOpen, onClose }) {
             isGroupActive={isSecurityProtectionGroupActive}
           >
             <Link
-              to="/user/bulk/tools"
+              to="/user/security/bot-defense"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/bulk/tools') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/bot-defense') ? 'active' : ''}`}
             >
               <Cpu size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limits</span>
             </Link>
             <Link
-              to="/user/settings?tab=2fa"
+              to="/user/security/2fa"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/settings', '2fa') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/2fa') ? 'active' : ''}`}
             >
               <Key size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Two-Factor Auth (2FA)</span>
@@ -453,9 +465,9 @@ export default function UserSidebar({ isOpen, onClose }) {
             isGroupActive={isSecurityCenterGroupActive}
           >
             <Link
-              to="/threat-intelligence"
+              to="/user/security/threat-intelligence"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/threat-intelligence') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/threat-intelligence') ? 'active' : ''}`}
             >
               <Flame size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Threat Intelligence</span>

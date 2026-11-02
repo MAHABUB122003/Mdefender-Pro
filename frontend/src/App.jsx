@@ -221,7 +221,7 @@ function App() {
           <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />
           <Route path="bulk/site-health" element={<BulkSiteHealth />} />
           <Route path="bulk/activity" element={<BulkActivity />} />
-          <Route path="bulk/tools" element={<UserTools isBulk={true} />} />
+          <Route path="bulk/tools" element={<UserTools activeMode="autoblock" isBulk={true} />} />
           <Route path="team" element={<UserTeam />} />
           <Route path="alerts" element={<UserAlerts />} />
           <Route path="tools" element={<Navigate to="/user/bulk/tools" replace />} />
