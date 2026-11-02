@@ -29,10 +29,11 @@ import {
   LogOut,
   ChevronDown
 } from 'lucide-react'
-import userStore from '../utils/userStore'
-
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
+
+  const userName = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_name') || 'User Profile') : 'User Profile')
+  const userEmail = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_email') || '') : '')
 
   const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
@@ -470,14 +471,14 @@ export default function UserSidebar({ isOpen, onClose }) {
               fontWeight: 800,
               flexShrink: 0
             }}>
-              {userStore.getUser()?.name ? userStore.getUser().name[0].toUpperCase() : 'U'}
+              {userName ? userName[0].toUpperCase() : 'U'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
               <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {userStore.getUser()?.name || userStore.getUser()?.email?.split('@')[0] || 'User Profile'}
+                {userName}
               </span>
               <span style={{ fontSize: '10px', color: '#6A7D78', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {userStore.getUser()?.email || 'Account Settings'}
+                {userEmail || 'Account Settings'}
               </span>
             </div>
           </Link>
