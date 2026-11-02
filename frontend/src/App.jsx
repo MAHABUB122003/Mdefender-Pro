@@ -228,7 +228,10 @@ function App() {
           <Route path="connect" element={<UserConnect />} />
           <Route path="pricing" element={<UserPricing />} />
           <Route path="plans" element={<Navigate to="/user/pricing" replace />} />
-          <Route path="blacklist" element={<UserBlacklist />} />
+          <Route path="blacklist" element={<UserBlacklist activeMode="ip" />} />
+          <Route path="access/ip-blocklist" element={<UserBlacklist activeMode="ip" />} />
+          <Route path="access/ip-allowlist" element={<UserBlacklist activeMode="whitelist" />} />
+          <Route path="access/country-blocking" element={<UserBlacklist activeMode="country" />} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="sessions" element={<SessionsPage />} />
         </Route>

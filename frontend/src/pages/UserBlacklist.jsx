@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import {
   Ban,
   Globe,
@@ -21,10 +21,22 @@ import api from '../api/api'
 import userStore from '../utils/userStore'
 import { ALL_COUNTRIES, POPULAR_THREAT_COUNTRIES, getFlagEmoji, getFlagUrl } from '../utils/countries'
 
-export default function UserBlacklist() {
+export default function UserBlacklist({ activeMode }) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const rawTab = searchParams.get('tab')
-  const activeTab = rawTab === 'country' ? 'country' : (rawTab === 'whitelist' ? 'whitelist' : 'ip')
+  const location = useLocation()
+
+  // Determine active view mode (standalone dedicated page)
+  const activeTab = useMemo(() => {
+    if (activeMode) return activeMode
+    const path = location.pathname.toLowerCase()
+    if (path.includes('allowlist') || path.includes('whitelist')) return 'whitelist'
+    if (path.includes('country')) return 'country'
+    if (path.includes('blocklist') || path.includes('blacklist')) return 'ip'
+    const rawTab = (searchParams.get('tab') || '').toLowerCase()
+    if (rawTab.includes('allow') || rawTab.includes('white')) return 'whitelist'
+    if (rawTab.includes('country')) return 'country'
+    return 'ip'
+  }, [activeMode, location.pathname, searchParams])
   const setActiveTab = (tab) => setSearchParams({ tab })
 
   // ── IP Blacklist State ──────────────────────────────────────────────────────
@@ -441,12 +453,33 @@ export default function UserBlacklist() {
         </div>
       )}
 
-      {/* ── Page Header ── */}
+      {/* ── Dedicated Page Header ── */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
-            <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: '800', color: '#0F172A' }}>Access Control</h1>
-            <p style={{ margin: 0, fontSize: '13.5px', color: '#64748B' }}>Block IPs and countries across all your connected websites.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+              <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#0F172A' }}>
+                {activeTab === 'whitelist' ? 'IP Allowlist' : (activeTab === 'country' ? 'Country Blocking' : 'IP Blocklist')}
+              </h1>
+              <span style={{
+                fontSize: '11.5px',
+                fontWeight: '700',
+                padding: '2px 9px',
+                borderRadius: '999px',
+                background: activeTab === 'whitelist' ? '#DCFCE7' : (activeTab === 'country' ? '#FEF3C7' : '#FEE2E2'),
+                color: activeTab === 'whitelist' ? '#166534' : (activeTab === 'country' ? '#92400E' : '#991B1B'),
+                border: `1px solid ${activeTab === 'whitelist' ? '#BBF7D0' : (activeTab === 'country' ? '#FDE68A' : '#FECACA')}`
+              }}>
+                {activeTab === 'whitelist' ? `${whitelistEntries.length} Whitelisted` : (activeTab === 'country' ? `${countryBlocks.length} Blocked Countries` : `${entries.length} Blocked IPs`)}
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '13.5px', color: '#64748B' }}>
+              {activeTab === 'whitelist'
+                ? 'Manage trusted IP addresses exempt from security inspection, challenges, and rate limits.'
+                : (activeTab === 'country'
+                  ? 'Block incoming web traffic originating from specific countries or high-risk geographic territories.'
+                  : 'Prohibit malicious IP addresses, vulnerability scanners, and automated bots across your websites.')}
+            </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Website Selector Dropdown */}
@@ -514,41 +547,6 @@ export default function UserBlacklist() {
               </button>
             )}
           </div>
-        </div>
-
-        {/* ── Tabs ── */}
-        <div style={{ display: 'flex', gap: '4px', background: '#E8EEE8', padding: '4px', borderRadius: '10px', border: '1px solid #D9E1DC', width: 'fit-content' }}>
-          {[
-            { id: 'ip', icon: <Ban size={14} />, label: 'IP Blacklist', count: entries.length },
-            { id: 'whitelist', icon: <ShieldCheck size={14} />, label: 'IP Whitelist', count: whitelistEntries.length },
-            { id: 'country', icon: <Globe size={14} />, label: 'Country Block', count: countryBlocks.length }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '8px 18px', borderRadius: '8px',
-                border: activeTab === tab.id ? '1px solid #0B2522' : 'none',
-                background: activeTab === tab.id ? '#0B2522' : 'transparent',
-                color: activeTab === tab.id ? '#FFFFFF' : '#60716B',
-                fontSize: '13px', fontWeight: '700', cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: '7px',
-                boxShadow: activeTab === tab.id ? '0 2px 8px rgba(11, 37, 34, 0.15)' : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span style={{ color: activeTab === tab.id ? '#FFFFFF' : '#60716B', display: 'flex' }}>{tab.icon}</span>
-              <span>{tab.label}</span>
-              <span style={{
-                fontSize: '11px', padding: '1px 7px', borderRadius: '999px', fontWeight: '700',
-                background: activeTab === tab.id ? '#1D3B37' : '#FAFBF9',
-                color: activeTab === tab.id ? '#FFFFFF' : '#60716B',
-                border: `1px solid ${activeTab === tab.id ? '#2A4F4A' : '#D9E1DC'}`
-              }}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
         </div>
       </div>
 

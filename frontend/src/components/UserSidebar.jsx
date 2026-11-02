@@ -106,7 +106,7 @@ export default function UserSidebar({ isOpen, onClose }) {
     return {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
-      accessControl: path.includes('/blacklist'),
+      accessControl: path.includes('/blacklist') || path.includes('/access/'),
       securityProtection: path.includes('/bulk/tools') || (path.includes('/settings') && search.includes('2fa')),
       securityCenter: path.includes('/security') || path.includes('/threat-intel') || path.includes('/port-scanner')
     }
@@ -120,7 +120,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       setOpenDropdowns(prev => prev.monitoring ? prev : { ...prev, monitoring: true })
     } else if (path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates')) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
-    } else if (path.includes('/blacklist')) {
+    } else if (path.includes('/blacklist') || path.includes('/access/')) {
       setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
     } else if (path.includes('/bulk/tools') || (path.includes('/settings') && search.includes('2fa'))) {
       setOpenDropdowns(prev => prev.securityProtection ? prev : { ...prev, securityProtection: true })
@@ -177,13 +177,6 @@ export default function UserSidebar({ isOpen, onClose }) {
   // High-accuracy active check for dropdown sublinks with tab disambiguation
   const isSubLinkActive = (toPath, tab = null) => {
     if (tab) {
-      if (toPath === '/user/blacklist') {
-        if (currentPath !== '/user/blacklist') return false
-        if (tab === 'ip_blacklist') {
-          return !currentSearch || currentSearch.includes('tab=ip_blacklist')
-        }
-        return currentSearch.includes(`tab=${tab}`)
-      }
       if (toPath === '/user/settings') {
         return currentPath === '/user/settings' && currentSearch.includes(`tab=${tab}`)
       }
@@ -191,13 +184,22 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (toPath === '/user/monitoring/uptime') {
       return currentPath === '/user/monitoring/uptime' || currentPath === '/user/monitoring'
     }
+    if (toPath === '/user/access/ip-blocklist') {
+      return currentPath === '/user/access/ip-blocklist' || (currentPath === '/user/blacklist' && (!currentSearch || currentSearch.includes('ip_blacklist') || currentSearch.includes('tab=ip')))
+    }
+    if (toPath === '/user/access/ip-allowlist') {
+      return currentPath === '/user/access/ip-allowlist' || (currentPath === '/user/blacklist' && (currentSearch.includes('ip_allowlist') || currentSearch.includes('whitelist')))
+    }
+    if (toPath === '/user/access/country-blocking') {
+      return currentPath === '/user/access/country-blocking' || (currentPath === '/user/blacklist' && (currentSearch.includes('country_blocking') || currentSearch.includes('country')))
+    }
     return currentPath === toPath
   }
 
   // Active status for dropdown parent headers
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
   const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
-  const isAccessControlGroupActive = currentPath === '/user/blacklist'
+  const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
   const isSecurityProtectionGroupActive = currentPath.includes('/bulk/tools') || (currentPath === '/user/settings' && currentSearch.includes('tab=2fa'))
   const isSecurityCenterGroupActive = currentPath === '/threat-intelligence' || currentPath.includes('/security') || currentPath.includes('/port-scanner')
 
@@ -377,25 +379,25 @@ export default function UserSidebar({ isOpen, onClose }) {
             isGroupActive={isAccessControlGroupActive}
           >
             <Link
-              to="/user/blacklist?tab=ip_blacklist"
+              to="/user/access/ip-blocklist"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'ip_blacklist') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/access/ip-blocklist') ? 'active' : ''}`}
             >
               <Ban size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>IP Blocklist</span>
             </Link>
             <Link
-              to="/user/blacklist?tab=ip_allowlist"
+              to="/user/access/ip-allowlist"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'ip_allowlist') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/access/ip-allowlist') ? 'active' : ''}`}
             >
               <ShieldCheck size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>IP Allowlist</span>
             </Link>
             <Link
-              to="/user/blacklist?tab=country_blocking"
+              to="/user/access/country-blocking"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/blacklist', 'country_blocking') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/access/country-blocking') ? 'active' : ''}`}
             >
               <Globe size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Country Blocking</span>
