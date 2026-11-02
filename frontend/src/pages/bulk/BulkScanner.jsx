@@ -1853,37 +1853,120 @@ export default function BulkScanner() {
                         <div style={{
                           borderRadius: '8px',
                           overflow: 'hidden',
-                          border: '1px solid #D9E1DC',
-                          marginBottom: '16px'
+                          border: '1px solid #1E293B',
+                          background: '#0F172A',
+                          marginBottom: '16px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                         }}>
+                          {/* IDE Top Window Bar */}
                           <div style={{
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            padding: '6px 14px',
-                            background: '#E2E8F0',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            color: '#334155',
-                            textTransform: 'uppercase'
+                            padding: '8px 14px',
+                            background: '#1E293B',
+                            borderBottom: '1px solid #334155',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#94A3B8'
                           }}>
-                            <span>{f.line_number && !isCore ? `LINE ${f.line_number}: ` : ''}{isCore ? 'CORE DIVERGENCE / INJECTED CODE' : 'MALICIOUS PATTERN / WEBSHELL PAYLOAD'}</span>
-                            <span>{isCore ? 'REPAIRABLE CORE FILE' : 'AST FORENSICS'}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ display: 'inline-flex', gap: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444' }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                              </span>
+                              <span style={{ color: '#E2E8F0', fontFamily: 'monospace' }}>
+                                {filePath || 'Detected Threat File'}
+                              </span>
+                              {f.line_number && (
+                                <span style={{
+                                  background: '#334155',
+                                  color: '#38BDF8',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '10.5px'
+                                }}>
+                                  Line {f.line_number}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{
+                              fontSize: '10.5px',
+                              letterSpacing: '0.04em',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              background: isCore ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                              color: isCore ? '#FBBF24' : '#F87171',
+                              fontWeight: 800
+                            }}>
+                              {isCore ? 'CORE INTEGRITY' : 'MALWARE FORENSICS'}
+                            </span>
                           </div>
-                          <pre style={{
-                            margin: 0,
+
+                          {/* IDE Code Viewer Body */}
+                          <div style={{
                             padding: '12px 14px',
-                            background: '#0B1F1C',
-                            color: '#F87171',
+                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
                             fontSize: '12.5px',
-                            fontFamily: 'monospace',
-                            overflowX: 'auto',
-                            lineHeight: 1.5
+                            lineHeight: 1.6,
+                            overflowX: 'auto'
                           }}>
-                            {isCore && !f.line_number
-                              ? `Core SHA-256 divergence detected on server disk: ${filePath} differs from the pristine release on WordPress.org repository.`
-                              : `[LINE ${f.line_number || '1'}] ${f.code_snippet || f.findings?.[0] || 'Malicious execution sink payload identified.'}`}
-                          </pre>
+                            {isCore && !f.line_number ? (
+                              <div style={{ color: '#94A3B8' }}>
+                                Core SHA-256 divergence detected on server disk: <span style={{ color: '#F1F5F9' }}>{filePath}</span> differs from the pristine release on WordPress.org repository.
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                <span style={{
+                                  userSelect: 'none',
+                                  color: '#64748B',
+                                  fontWeight: 600,
+                                  minWidth: '28px',
+                                  textAlign: 'right'
+                                }}>
+                                  {f.line_number || '1'}
+                                </span>
+                                <div style={{ flex: 1, color: '#E2E8F0', wordBreak: 'break-all' }}>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    background: 'rgba(239, 68, 68, 0.2)',
+                                    color: '#FCA5A5',
+                                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                                    padding: '1px 6px',
+                                    borderRadius: '3px',
+                                    fontSize: '10px',
+                                    fontWeight: 800,
+                                    marginRight: '8px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em'
+                                  }}>
+                                    DETECTED PAYLOAD
+                                  </span>
+                                  <span style={{ color: '#F8FAFC' }}>
+                                    {f.code_snippet || f.snippet || (f.findings && f.findings[0]) || 'Malicious execution sink payload identified.'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Detection Signature Footnote */}
+                          {f.findings && f.findings.length > 0 && (
+                            <div style={{
+                              padding: '8px 14px',
+                              background: '#090D16',
+                              borderTop: '1px solid #1E293B',
+                              fontSize: '11px',
+                              color: '#94A3B8',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{ color: '#38BDF8', fontWeight: 700 }}>Signal:</span>
+                              <span style={{ color: '#CBD5E1' }}>{f.findings[0]}</span>
+                            </div>
+                          )}
                         </div>
                       )}
 

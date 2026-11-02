@@ -127,7 +127,7 @@ class WAF_FW_Scanner {
                 $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
                 
                 if ($cat === 'root') {
-                    if (strpos($rel_path, 'wp-content/') === 0 || strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0) {
+                    if (strpos($rel_path, 'wp-content/plugins/') === 0 || strpos($rel_path, 'wp-content/themes/') === 0 || strpos($rel_path, 'wp-content/uploads/') === 0 || strpos($rel_path, 'wp-content/mu-plugins/') === 0 || strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0) {
                         continue;
                     }
                 }
@@ -1195,6 +1195,9 @@ class WAF_FW_Scanner {
             }
         }
 
+        $code_no_comments = preg_replace('#/\*.*?\*/#s', '', $content);
+        $code_no_comments = preg_replace('#//.*$#m', '', $code_no_comments);
+
         // Structural webshell signatures check
         if (preg_match('/\$auth_pass\s*=\s*[\'"][a-f0-9]{32}[\'"]/i', $content) ||
             preg_match('/\$default_action\s*=\s*[\'"]FilesMan[\'"]/i', $content) ||
@@ -1245,6 +1248,80 @@ class WAF_FW_Scanner {
             $classification = 'CONFIRMED_MALWARE';
             $findings[] = "Obfuscation Exploit: Concatenated chr() execution chain detected";
         }
+
+        // Arbitrary File Upload Backdoor: Unauthenticated file upload sink (move_uploaded_file/copy from $_FILES)
+        if (preg_match('/(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Arbitrary File Upload Backdoor: Unauthenticated upload sink (move_uploaded_file/copy from \$_FILES)";
+        }
+
+        // Arbitrary File Dropper Backdoor
+        if (preg_match('/file_put_contents\s*\(\s*[^,]+,\s*(?:(?:base64_decode|gzinflate|str_rot13|hex2bin)\s*\(\s*)?\$_(?:GET|POST|REQUEST|COOKIE)/i', $content) ||
+            preg_match('/file_put_contents\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i', $content) ||
+            preg_match('/fwrite\s*\(\s*[^,]+,\s*(?:(?:base64_decode|gzinflate|str_rot13|hex2bin)\s*\(\s*)?\$_(?:GET|POST|REQUEST|COOKIE)/i', $content) ||
+            preg_match('/fwrite\s*\(\s*[^,]+,\s*\$_(?:GET|POST|REQUEST|COOKIE)/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Arbitrary File Dropper Backdoor: Writing untrusted external payload to server disk";
+        }
+
+        // File Inclusion Backdoor (LFI/RFI)
+        if (preg_match('/(?:include|require|include_once|require_once)\s*\(?\s*\$_(?:GET|POST|REQUEST|COOKIE)/i', $content) ||
+            preg_match('/\$([a-zA-Z0-9_]+)\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,120}(?:include|require|include_once|require_once)\s*\(?\s*\$\1/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "File Inclusion Backdoor (LFI/RFI): Untrusted user input passed to include/require";
+        }
+
+        // Shell Execution Operator: Backticks with user input or variable
+        if (preg_match('/`[^`\r\n]{0,120}\$_(?:GET|POST|REQUEST|COOKIE)/i', $code_no_comments) ||
+            preg_match('/\$([a-zA-Z0-9_]+)\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,120}`[^`\r\n]{0,120}\$\1/i', $code_no_comments)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Shell Execution Operator: Untrusted input executed via backtick shell command";
+        }
+
+        // Dynamic Regex Code Execution Backdoor (preg_replace /e or dynamic pattern)
+        if (preg_match('#preg_replace\s*\(\s*[\x27\x22]/.*?/e[a-z]*[\x27\x22]\s*,\s*\$#i', $content) ||
+            preg_match('#preg_replace\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i', $content) ||
+            preg_match('#mb_ereg_replace\s*\([^,]+,\s*[^,]+,\s*[\x27\x22]e[\x27\x22]#i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Dynamic Regex Code Execution Backdoor (preg_replace /e or dynamic pattern)";
+        }
+
+        // Array Callback Execution Backdoor
+        if (preg_match('/array_map\s*\(\s*[\x27\x22](?:system|exec|shell_exec|passthru|eval|assert|proc_open)[\x27\x22]\s*,/i', $content) ||
+            preg_match('/array_filter\s*\([^,]+,\s*[\x27\x22](?:system|exec|shell_exec|passthru|eval|assert|proc_open)[\x27\x22]\s*\)/i', $content)) {
+            $score = max($score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Array Callback Execution Backdoor: Dynamic execution sink passed to array function";
+        }
+
+        // Obfuscated Dynamic Execution (Concatenated strings or Hex-encoded execution sinks)
+        if (preg_match('/\$[a-zA-Z0-9_]+\s*=\s*[\x27\x22](?:sys|ex|pass|eval|asse|shell)[\x27\x22]\s*\.\s*[\x27\x22][a-z_]+[\x27\x22]\s*;[\s\S]{0,80}\$[a-zA-Z0-9_]+\s*\(/i', $code_no_comments) ||
+            preg_match('/\$[a-zA-Z0-9_]+\s*=\s*[\x27\x22](?:\\\\x[0-9a-fA-F]{2}){3,}[\x27\x22]\s*;[\s\S]{0,80}\$[a-zA-Z0-9_]+\s*\(/i', $code_no_comments)) {
+            $score = max($score, 90);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Obfuscated Dynamic Execution: Concatenated or hex-encoded execution sink invoked";
+        }
+
+        // Dynamic Variable-Variable Execution: $$var invocation with user input
+        if (preg_match('/\$\$[a-zA-Z0-9_]+\s*(?:\[[^\]]*\])?\s*\(/i', $content) &&
+            preg_match('/\$_(?:GET|POST|REQUEST|COOKIE)/i', $content)) {
+            $score = max($score, 90);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = "Dynamic Variable-Variable Execution: \$\$var invocation with user input";
+        }
         return [
             'score' => $score,
             'confidence' => $confidence,
@@ -1270,7 +1347,11 @@ class WAF_FW_Scanner {
                     '#\b(?:system|exec|shell_exec|passthru|proc_open|popen)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
                     '#call_user_func(?:_array)?\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
                     '#array_map\s*\(\s*[\x27\x22](?:exec|system|shell_exec|passthru|eval|assert)[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
-                    '#preg_replace\s*\(\s*[\x27\x22]/[^/]*e[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#preg_replace\s*\(\s*[\x27\x22]/.*?/e[a-z]*[\x27\x22]\s*,\s*\$#i',
+                    '#(?:move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[#i',
+                    '#file_put_contents\s*\(\s*[^,]+,\s*(?:base64_decode|gzinflate|str_rot13)?\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#(?:include|require|include_once|require_once)\s*\(?\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#(?<![\w`])`[^`\r\n]{1,80}\$_(?:GET|POST|REQUEST|COOKIE)[^`\r\n]{0,80}`(?![\w`])#i',
                     '#\$GLOBALS\s*\[\s*[\x27\x22]\w+[\x27\x22]\s*\]\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
                     '#\$(?:GLOBALS|_[A-Z]+)\s*\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
                     '#register_shutdown_function\s*\(\s*[\x27\x22](?:assert|system|eval|passthru)[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
@@ -3228,8 +3309,10 @@ class WAF_FW_Scanner {
 
     private function check_malware_patterns($content, $patterns) {
         $found = [];
+        $clean = preg_replace('#/\*.*?\*/#s', '', $content);
+        $clean = preg_replace('#//.*$#m', '', $clean);
         foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $content, $m)) {
+            if (preg_match($pattern, $clean, $m)) {
                 $found[] = $m[0];
             }
         }

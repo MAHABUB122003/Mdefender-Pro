@@ -767,6 +767,26 @@ function waf_fw_handle_cloud_sync_webhook() {
                         }
                     }
 
+                    // 1b. Loose files directly in wp-content/ (e.g. wp-content/shell.php, wp-content/test_backdoor.php)
+                    $content_dir = ABSPATH . 'wp-content/';
+                    if (is_dir($content_dir)) {
+                        $content_entries = @scandir($content_dir) ?: [];
+                        foreach ($content_entries as $ce) {
+                            if ($ce === '.' || $ce === '..') continue;
+                            $ce_path = $content_dir . $ce;
+                            if (is_file($ce_path)) {
+                                $ext = strtolower(pathinfo($ce_path, PATHINFO_EXTENSION));
+                                if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'txt'])) {
+                                    $scanned_count++;
+                                    $res = $scanner->scan_file_multi_signal($ce_path, 'content');
+                                    if ($res && !empty($res['findings'])) {
+                                        $findings[] = mdf_format_threat_finding($ce_path, $res, $id_counter++);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Also scan wp-admin/ and wp-includes/ PHP files
                     foreach ([ABSPATH . 'wp-admin/', ABSPATH . 'wp-includes/'] as $core_dir) {
                         if (!is_dir($core_dir)) continue;
@@ -799,14 +819,13 @@ function waf_fw_handle_cloud_sync_webhook() {
                                         $pathname = str_replace('\\', '/', $file->getPathname());
                                         if (strpos($pathname, '/plugins/mdefender-pro/') !== false || strpos($pathname, '/plugins/mdefender/') !== false ||
                                             strpos($pathname, '/vendor/') !== false || strpos($pathname, '/node_modules/') !== false ||
-                                            strpos($pathname, '/languages/') !== false || strpos($pathname, '/i18n/') !== false ||
-                                            strpos($pathname, '/tests/') !== false) {
+                                            strpos($pathname, '/languages/') !== false || strpos($pathname, '/i18n/') !== false) {
                                             continue;
                                         }
-                                        if ($scan_type === 'quick' && $scanned_count >= 150) {
+                                        if ($scan_type === 'quick' && $scanned_count >= 1000) {
                                             break;
                                         }
-                                        if ((microtime(true) - $start_time) > 20) {
+                                        if ((microtime(true) - $start_time) > 180) {
                                             break;
                                         }
                                         $scanned_count++;
@@ -3090,7 +3109,17 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
         $threat_name = 'Privilege Escalation Backdoor (Rogue Admin Creation)';
     } elseif (strpos($findings_str, 'Core Checksum Mismatch') !== false) {
         $threat_name = 'WordPress core file modified: ' . $rel_path;
-    } elseif (strpos($findings_str, 'system(') !== false || strpos($findings_str, 'shell_exec(') !== false) {
+    } elseif (strpos($findings_str, 'Arbitrary File Upload') !== false) {
+        $threat_name = 'Arbitrary File Upload Backdoor';
+    } elseif (strpos($findings_str, 'Arbitrary File Dropper') !== false) {
+        $threat_name = 'Arbitrary File Dropper / Write Backdoor';
+    } elseif (strpos($findings_str, 'File Inclusion') !== false) {
+        $threat_name = 'File Inclusion Backdoor (LFI/RFI)';
+    } elseif (strpos($findings_str, 'Shell Execution Operator') !== false) {
+        $threat_name = 'Shell Execution Backdoor (Backtick Operator)';
+    } elseif (strpos($findings_str, 'Dynamic Regex') !== false) {
+        $threat_name = 'Dynamic Code Execution Backdoor (preg_replace /e)';
+    } elseif (strpos($findings_str, 'system(') !== false || strpos($findings_str, 'shell_exec(') !== false || strpos($findings_str, 'passthru(') !== false) {
         $threat_name = 'Remote Code Execution (RCE) Backdoor';
     }
 
