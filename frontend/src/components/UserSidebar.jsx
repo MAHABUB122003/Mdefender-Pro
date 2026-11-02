@@ -306,7 +306,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/uptime') ? 'active' : ''}`}
             >
-              <Clock size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Uptime</span>
             </Link>
             <Link
@@ -314,7 +313,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/performance') ? 'active' : ''}`}
             >
-              <Zap size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Performance</span>
             </Link>
             <Link
@@ -322,7 +320,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/monitoring/broken-links') ? 'active' : ''}`}
             >
-              <ExternalLink size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Broken Links</span>
             </Link>
           </DropdownItem>
@@ -341,7 +338,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/plugins') ? 'active' : ''}`}
             >
-              <Boxes size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Plugins</span>
             </Link>
             <Link
@@ -349,7 +345,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/themes') ? 'active' : ''}`}
             >
-              <Palette size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Themes</span>
             </Link>
             <Link
@@ -357,7 +352,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/core') ? 'active' : ''}`}
             >
-              <Sparkles size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>WordPress Core</span>
             </Link>
             <Link
@@ -365,7 +359,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/scanner') ? 'active' : ''}`}
             >
-              <Bug size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Malware Scanner</span>
             </Link>
             <Link
@@ -373,7 +366,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/hardening') ? 'active' : ''}`}
             >
-              <Shield size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Security Hardening</span>
             </Link>
             <Link
@@ -381,7 +373,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/bulk/safe-updates') ? 'active' : ''}`}
             >
-              <RotateCw size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Safe Updates</span>
             </Link>
           </DropdownItem>
@@ -400,7 +391,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/access/ip-blocklist') ? 'active' : ''}`}
             >
-              <Ban size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>IP Blocklist</span>
             </Link>
             <Link
@@ -408,7 +398,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/access/ip-allowlist') ? 'active' : ''}`}
             >
-              <ShieldCheck size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>IP Allowlist</span>
             </Link>
             <Link
@@ -416,7 +405,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/access/country-blocking') ? 'active' : ''}`}
             >
-              <Globe size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Country Blocking</span>
             </Link>
           </DropdownItem>
@@ -447,7 +435,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/bot-shield') ? 'active' : ''}`}
             >
-              <Bot size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Biometric &amp; Bot Shield</span>
             </Link>
             <Link
@@ -455,7 +442,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/rate-limits') ? 'active' : ''}`}
             >
-              <SlidersHorizontal size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Rate Limiting &amp; DDoS</span>
             </Link>
             <Link
@@ -463,7 +449,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/2fa') ? 'active' : ''}`}
             >
-              <Key size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Two-Factor Auth (2FA)</span>
             </Link>
           </DropdownItem>
@@ -482,7 +467,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/threat-intelligence') ? 'active' : ''}`}
             >
-              <Flame size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Threat Intelligence</span>
             </Link>
             <Link
@@ -490,7 +474,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               onClick={handleLinkClick}
               className={`user-subnav-link ${isSubLinkActive('/user/security/port-scanner') ? 'active' : ''}`}
             >
-              <Radio size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
               <span style={{ pointerEvents: 'none' }}>Security &amp; Port Scanner</span>
             </Link>
           </DropdownItem>
