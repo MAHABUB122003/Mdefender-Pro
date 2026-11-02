@@ -37,6 +37,9 @@ const UserConnect = lazy(() => import('./pages/UserConnect'))
 const UserBlacklist = lazy(() => import('./pages/UserBlacklist'))
 const UserBulkManagement = lazy(() => import('./pages/UserBulkManagement'))
 const BulkMonitoring = lazy(() => import('./pages/bulk/BulkMonitoring'))
+const BulkUptime = lazy(() => import('./pages/bulk/BulkUptime'))
+const BulkPerformance = lazy(() => import('./pages/bulk/BulkPerformance'))
+const BulkBrokenLinks = lazy(() => import('./pages/bulk/BulkBrokenLinks'))
 const BulkPlugins = lazy(() => import('./pages/bulk/BulkPlugins'))
 const BulkThemes = lazy(() => import('./pages/bulk/BulkThemes'))
 const BulkCore = lazy(() => import('./pages/bulk/BulkCore'))
@@ -214,13 +217,13 @@ function App() {
           <Route path="rules" element={<UserRules />} />
           <Route path="domains" element={<UserDomains />} />
           <Route path="websites" element={<UserWebsites />} />
-          <Route path="bulk-management" element={<Navigate to="/user/bulk/monitoring" replace />} />
-          <Route path="bulk" element={<Navigate to="/user/bulk/monitoring" replace />} />
-          <Route path="bulk/monitoring" element={<BulkMonitoring />} />
-          <Route path="monitoring" element={<BulkMonitoring />} />
-          <Route path="monitoring/uptime" element={<BulkMonitoring initialTab="uptime" />} />
-          <Route path="monitoring/performance" element={<BulkSiteHealth />} />
-          <Route path="monitoring/broken-links" element={<BulkMonitoring initialTab="broken-links" />} />
+          <Route path="bulk-management" element={<Navigate to="/user/monitoring/uptime" replace />} />
+          <Route path="bulk" element={<Navigate to="/user/monitoring/uptime" replace />} />
+          <Route path="bulk/monitoring" element={<Navigate to="/user/monitoring/uptime" replace />} />
+          <Route path="monitoring" element={<Navigate to="/user/monitoring/uptime" replace />} />
+          <Route path="monitoring/uptime" element={<BulkUptime />} />
+          <Route path="monitoring/performance" element={<BulkPerformance />} />
+          <Route path="monitoring/broken-links" element={<BulkBrokenLinks />} />
           <Route path="security/bot-shield" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
           <Route path="security/bot-defense" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
           <Route path="security/login-gateway" element={<BulkLoginGateway />} />

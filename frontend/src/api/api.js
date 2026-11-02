@@ -654,6 +654,8 @@ export const api = {
   getWebsiteSslMonitoring: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl`),
   probeWebsiteSsl: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl/probe`, { method: 'POST' }),
   getWebsiteIncidents: (websiteId, limit = 15) => apiCall(`/api/v1/monitoring/${websiteId}/incidents?limit=${limit}`),
+  getBrokenLinksScan: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/broken-links`),
+  runBrokenLinksScan: (websiteId, maxLinks = 100) => apiCall(`/api/v1/monitoring/${websiteId}/broken-links/scan`, { method: 'POST', body: JSON.stringify({ max_links: maxLinks }) }),
 
   // WordPress Core Engine & Fleet Integrity APIs
   getWordpressCoreStatus: () => apiCall('/api/v1/wordpress/core/status'),

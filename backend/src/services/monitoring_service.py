@@ -13,8 +13,10 @@ import socket
 import logging
 import re
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import urllib.request
+import urllib.error
+import concurrent.futures
 from typing import Dict, Any, Optional, List
 
 from src.database.mongodb_connection import MongoDB
@@ -776,3 +778,215 @@ class MonitoringService:
             if isinstance(inc.get("resolved_at"), datetime):
                 inc["resolved_at"] = inc["resolved_at"].isoformat()
         return incidents
+
+    # -------------------------------------------------------------------------
+    # 6. Broken Links & Dead Reference Crawler
+    # -------------------------------------------------------------------------
+    def get_broken_links_report(self, domain_or_site_id: str) -> Dict[str, Any]:
+        """Fetch the latest broken links crawl report from database."""
+        clean_d = domain_or_site_id.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
+        query = {"$or": [{"site_id": domain_or_site_id}, {"domain": clean_d}]}
+        report = self.db.broken_link_scans.find_one(query, sort=[("scanned_at", -1)])
+        if report:
+            report.pop("_id", None)
+            if isinstance(report.get("scanned_at"), datetime):
+                report["scanned_at"] = report["scanned_at"].isoformat()
+            return report
+
+        return {
+            "domain": clean_d,
+            "site_id": domain_or_site_id,
+            "has_scanned": False,
+            "total_scanned": 0,
+            "healthy_count": 0,
+            "redirect_count": 0,
+            "broken_count": 0,
+            "server_error_count": 0,
+            "broken_links": [],
+            "all_links": [],
+            "scanned_at": None,
+            "message": "No scan performed yet. Click 'Scan Site for Broken Links' to begin."
+        }
+
+    def scan_broken_links(self, site_or_url: Any, max_links: int = 100) -> Dict[str, Any]:
+        """Crawl the website, discover hyperlinks, probe each asynchronously, and generate an enterprise link integrity report."""
+        target = self._normalize_target(site_or_url)
+        url = target["url"]
+        hostname = target["hostname"]
+        site_id = target["site_id"]
+        now = datetime.now()
+
+        # Step 1: Fetch target homepage/entry point
+        html_content = ""
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "MDefender-Pro-LinkCrawler/4.5 (Real-time Enterprise SEO & Broken Link Watchdog)",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=8.0) as resp:
+                raw_bytes = resp.read()
+                try:
+                    html_content = raw_bytes.decode("utf-8", errors="ignore")
+                except Exception:
+                    html_content = raw_bytes.decode("latin-1", errors="ignore")
+        except Exception as e:
+            logger.warning(f"[LinkCrawler] Failed to fetch root {url}: {e}")
+            return {
+                "domain": hostname,
+                "site_id": site_id,
+                "has_scanned": True,
+                "scanned_at": now.isoformat(),
+                "error": f"Failed to connect to origin: {str(e)}",
+                "total_scanned": 0,
+                "healthy_count": 0,
+                "redirect_count": 0,
+                "broken_count": 0,
+                "server_error_count": 0,
+                "broken_links": [],
+                "all_links": []
+            }
+
+        # Step 2: Extract links using regex
+        discovered = []
+        seen_urls = set()
+
+        link_matches = re.findall(r'<a\s+(?:[^>]*?\s+)?href=(["\'])(.*?)\1[^>]*>(.*?)</a>', html_content, re.IGNORECASE | re.DOTALL)
+        for _, raw_href, raw_text in link_matches:
+            raw_href = raw_href.strip()
+            if not raw_href or raw_href.startswith(('#', 'javascript:', 'mailto:', 'tel:', 'data:')):
+                continue
+            full_url = urljoin(url, raw_href)
+            full_url = full_url.split('#')[0].strip()
+            if not full_url.startswith(('http://', 'https://')):
+                continue
+            if full_url in seen_urls:
+                continue
+            seen_urls.add(full_url)
+
+            clean_text = re.sub(r'<[^>]+>', '', raw_text).strip()
+            clean_text = ' '.join(clean_text.split())
+            discovered.append({
+                "target_url": full_url,
+                "anchor_text": clean_text[:80] if clean_text else "Direct Link",
+                "source_url": url
+            })
+            if len(discovered) >= max_links:
+                break
+
+        # Fallback to test standard WordPress entry paths if minimal links on landing page
+        if not discovered:
+            for test_path in ["/wp-login.php", "/wp-admin/", "/feed/"]:
+                discovered.append({
+                    "target_url": urljoin(url, test_path),
+                    "anchor_text": f"WP Path ({test_path})",
+                    "source_url": url
+                })
+
+        # Step 3: Concurrently probe discovered links
+        healthy = []
+        redirects = []
+        broken = []
+        server_errors = []
+
+        def probe_single_link(item):
+            t_url = item["target_url"]
+            p_target = urlparse(t_url)
+            link_type = "internal" if (p_target.hostname == hostname or not p_target.hostname) else "external"
+            status_code = 200
+            status_text = "OK"
+            latency_ms = 0.0
+
+            t0 = time.perf_counter()
+            try:
+                h_req = urllib.request.Request(
+                    t_url,
+                    headers={"User-Agent": "MDefender-Pro-LinkCrawler/4.5 (Integrity Probe)"},
+                    method="HEAD"
+                )
+                with urllib.request.urlopen(h_req, timeout=5.0) as resp:
+                    status_code = resp.status
+                    status_text = resp.reason or "OK"
+            except urllib.error.HTTPError as he:
+                status_code = he.code
+                status_text = he.reason or f"HTTP {he.code}"
+                if status_code == 405:
+                    try:
+                        g_req = urllib.request.Request(
+                            t_url,
+                            headers={"User-Agent": "MDefender-Pro-LinkCrawler/4.5 (Integrity Probe)"}
+                        )
+                        with urllib.request.urlopen(g_req, timeout=5.0) as g_resp:
+                            status_code = g_resp.status
+                            status_text = g_resp.reason or "OK"
+                    except urllib.error.HTTPError as ghe:
+                        status_code = ghe.code
+                        status_text = ghe.reason or f"HTTP {ghe.code}"
+                    except Exception:
+                        pass
+            except urllib.error.URLError as ue:
+                status_code = 0
+                status_text = "Unreachable / Host Not Found"
+            except socket.timeout:
+                status_code = 504
+                status_text = "Connection Timeout"
+            except Exception as e:
+                status_code = 0
+                status_text = f"Failed ({type(e).__name__})"
+
+            latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+
+            return {
+                "target_url": t_url,
+                "source_url": item["source_url"],
+                "anchor_text": item["anchor_text"] or "Link",
+                "status_code": status_code,
+                "status_text": status_text,
+                "link_type": link_type,
+                "latency_ms": latency_ms,
+                "first_detected": now.isoformat()
+            }
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = [executor.submit(probe_single_link, it) for it in discovered]
+            for f in concurrent.futures.as_completed(futures):
+                res = f.result()
+                code = res["status_code"]
+                if code in (200, 201, 204):
+                    healthy.append(res)
+                elif code in (301, 302, 307, 308):
+                    redirects.append(res)
+                elif code in (404, 410):
+                    broken.append(res)
+                elif code >= 500 or code == 0:
+                    server_errors.append(res)
+                else:
+                    healthy.append(res)
+
+        all_links = broken + server_errors + redirects + healthy
+        report_payload = {
+            "domain": hostname,
+            "site_id": site_id,
+            "has_scanned": True,
+            "scanned_at": now.isoformat(),
+            "total_scanned": len(discovered),
+            "healthy_count": len(healthy),
+            "redirect_count": len(redirects),
+            "broken_count": len(broken),
+            "server_error_count": len(server_errors),
+            "broken_links": broken + server_errors,
+            "all_links": all_links[:150]
+        }
+
+        try:
+            self.db.broken_link_scans.update_one(
+                {"$or": [{"site_id": site_id}, {"domain": hostname}]},
+                {"$set": report_payload},
+                upsert=True
+            )
+        except Exception as dbe:
+            logger.warning(f"[LinkCrawler] Failed to save DB scan: {dbe}")
+
+        return report_payload

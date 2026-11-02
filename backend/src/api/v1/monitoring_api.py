@@ -97,3 +97,28 @@ async def get_incidents_log(website_id: str, limit: int = Query(15, ge=1, le=50)
     incidents = monitoring_svc.get_incidents(domain, limit=limit)
     return success(incidents)
 
+
+class BrokenLinkScanRequest(BaseModel):
+    max_links: int = Field(100, ge=10, le=200, description="Maximum links to extract and probe")
+
+
+@router.get("/{website_id}/broken-links")
+async def get_broken_links_report(website_id: str, user=Depends(get_current_user)):
+    """Fetch the latest broken links audit report for target website."""
+    website = get_owned_website(user, website_id)
+    report = monitoring_svc.get_broken_links_report(website_id)
+    return success(report)
+
+
+@router.post("/{website_id}/broken-links/scan")
+async def run_broken_links_scan(
+    website_id: str,
+    body: BrokenLinkScanRequest = BrokenLinkScanRequest(),
+    user=Depends(get_current_user)
+):
+    """Run an on-demand async crawl and link integrity audit against target website."""
+    website = get_owned_website(user, website_id)
+    report = monitoring_svc.scan_broken_links(website, max_links=body.max_links)
+    return success(report)
+
+
