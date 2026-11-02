@@ -108,7 +108,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
       securityProtection: path.includes('/security/bot-defense') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
-      securityCenter: path.includes('/security') || path.includes('/threat-intel') || path.includes('/port-scanner')
+      securityCenter: path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')
     }
   })
 
@@ -122,9 +122,9 @@ export default function UserSidebar({ isOpen, onClose }) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
     } else if (path.includes('/blacklist') || path.includes('/access/')) {
       setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
-    } else if (path.includes('/bulk/tools') || (path.includes('/settings') && search.includes('2fa'))) {
+    } else if (path.includes('/security/bot-defense') || path.includes('/security/2fa') || path.includes('/bulk/tools')) {
       setOpenDropdowns(prev => prev.securityProtection ? prev : { ...prev, securityProtection: true })
-    } else if (path.includes('/security') || path.includes('/port-scanner') || path.includes('/threat-intelligence')) {
+    } else if (path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')) {
       setOpenDropdowns(prev => prev.securityCenter ? prev : { ...prev, securityCenter: true })
     }
   }, [location.pathname, location.search])
