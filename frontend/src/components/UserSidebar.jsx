@@ -109,7 +109,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
-      securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
+      securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
       securityCenter: path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')
     }
   })
@@ -124,7 +124,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
     } else if (path.includes('/blacklist') || path.includes('/access/')) {
       setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
-    } else if (path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools')) {
+    } else if (path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools')) {
       setOpenDropdowns(prev => prev.securityProtection ? prev : { ...prev, securityProtection: true })
     } else if (path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')) {
       setOpenDropdowns(prev => prev.securityCenter ? prev : { ...prev, securityCenter: true })
@@ -198,6 +198,9 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (toPath === '/user/security/bot-shield') {
       return currentPath === '/user/security/bot-shield' || currentPath === '/user/security/bot-defense'
     }
+    if (toPath === '/user/security/login-gateway') {
+      return currentPath === '/user/security/login-gateway'
+    }
     if (toPath === '/user/security/rate-limits') {
       return currentPath === '/user/security/rate-limits' || currentPath === '/user/bulk/tools'
     }
@@ -217,7 +220,7 @@ export default function UserSidebar({ isOpen, onClose }) {
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
   const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
-  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/bulk/tools')
+  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/login-gateway') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/bulk/tools')
   const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath === '/threat-intelligence'
 
   return (
@@ -436,6 +439,13 @@ export default function UserSidebar({ isOpen, onClose }) {
               className={`user-subnav-link ${isSubLinkActive('/user/security/bot-shield') ? 'active' : ''}`}
             >
               <span style={{ pointerEvents: 'none' }}>Biometric &amp; Bot Shield</span>
+            </Link>
+            <Link
+              to="/user/security/login-gateway"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/login-gateway') ? 'active' : ''}`}
+            >
+              <span style={{ pointerEvents: 'none' }}>Login Gateway Security</span>
             </Link>
             <Link
               to="/user/security/rate-limits"

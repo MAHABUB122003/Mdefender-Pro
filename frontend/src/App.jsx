@@ -43,6 +43,7 @@ const BulkCore = lazy(() => import('./pages/bulk/BulkCore'))
 const BulkBackup = lazy(() => import('./pages/bulk/BulkBackup'))
 const BulkScanner = lazy(() => import('./pages/bulk/BulkScanner'))
 const BulkHardening = lazy(() => import('./pages/bulk/BulkHardening'))
+const BulkLoginGateway = lazy(() => import('./pages/bulk/BulkLoginGateway'))
 const BulkSafeUpdates = lazy(() => import('./pages/bulk/BulkSafeUpdates'))
 const BulkSiteHealth = lazy(() => import('./pages/bulk/BulkSiteHealth'))
 const BulkActivity = lazy(() => import('./pages/bulk/BulkActivity'))
@@ -213,6 +214,7 @@ function App() {
           <Route path="monitoring/broken-links" element={<BulkMonitoring initialTab="broken-links" />} />
           <Route path="security/bot-shield" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
           <Route path="security/bot-defense" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
+          <Route path="security/login-gateway" element={<BulkLoginGateway />} />
           <Route path="security/rate-limits" element={<UserTools activeMode="rate_limits" isBulk={true} />} />
           <Route path="security/2fa" element={<UserTools activeMode="twofactor" isBulk={true} />} />
           <Route path="security/threat-intelligence" element={<UserTools activeMode="whois" isBulk={true} />} />
