@@ -1,49 +1,41 @@
 import { useState, useEffect } from 'react'
-import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   FileText,
-  HeartPulse,
   Activity,
-  Globe,
-  ShieldCheck,
-  Wrench,
-  Bug,
-  Shield,
-  HardDrive,
-  Layers,
-  Cpu,
+  Clock,
+  Zap,
+  ExternalLink,
   Boxes,
   Palette,
   Sparkles,
+  Bug,
+  Shield,
+  RotateCw,
+  Globe,
+  Ban,
+  ShieldCheck,
+  HardDrive,
+  Cpu,
+  Key,
+  Flame,
+  Radio,
+  Layers,
   Users,
   Bell,
   Tag,
   Settings,
-  LogOut
+  LogOut,
+  ChevronDown
 } from 'lucide-react'
 import userStore from '../utils/userStore'
 
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
-  const navigate = useNavigate()
-
-  const [selectedDomain, setSelectedDomain] = useState(() => {
-    return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || 'all') : 'all'
-  })
-
-  // Synchronize domain selector state with BulkHeader across pages
-  useEffect(() => {
-    const handleDomainSync = () => {
-      setSelectedDomain(localStorage.getItem('mdf_bulk_selected_site') || 'all')
-    }
-    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync)
-    return () => window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync)
-  }, [])
 
   const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
-  const isCustomRulesAllowed = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
 
   const planName = {
     free: 'Starter Free',
@@ -56,28 +48,39 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (onClose) onClose()
   }
 
-  const prefetch = (page) => {
-    try {
-      if (page === 'dashboard') import('../pages/UserDashboard')
-      else if (page === 'logs') import('../pages/UserLogs')
-      else if (page === 'rules') import('../pages/UserRules')
-      else if (page === 'pricing') import('../pages/UserPricing')
-      else if (page === 'blacklist') import('../pages/UserBlacklist')
-      else if (page === 'domains') import('../pages/UserDomains')
-      else if (page === 'websites') import('../pages/UserWebsites')
-      else if (page === 'team') import('../pages/UserTeam')
-      else if (page === 'alerts') import('../pages/UserAlerts')
-      else if (page === 'tools') import('../pages/UserTools')
-      else if (page === 'settings') import('../pages/UserSettings')
-      else if (page === 'scanner') import('../pages/bulk/BulkScanner')
-      else if (page === 'backup') import('../pages/bulk/BulkBackup')
-      else if (page === 'plugins') import('../pages/bulk/BulkPlugins')
-      else if (page === 'themes') import('../pages/bulk/BulkThemes')
-      else if (page === 'hardening') import('../pages/bulk/BulkHardening')
-      else if (page === 'health') import('../pages/bulk/BulkSiteHealth')
-      else if (page === 'activity') import('../pages/bulk/BulkActivity')
-      else if (page === 'core') import('../pages/bulk/BulkCore')
-    } catch {}
+  // Accordion state for dropdown sections
+  const [openDropdowns, setOpenDropdowns] = useState(() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : ''
+    return {
+      monitoring: path.includes('/monitoring') || path.includes('/site-health'),
+      wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
+      accessControl: path.includes('/blacklist'),
+      securityProtection: path.includes('/bulk/tools') || (path.includes('/settings') && path.includes('2fa')),
+      securityCenter: path.includes('/security') || path.includes('/threat-intel') || path.includes('/port-scanner')
+    }
+  })
+
+  // Auto-expand parent dropdown when navigating to matching route
+  useEffect(() => {
+    const path = location.pathname
+    if (path.includes('/monitoring') || path.includes('/site-health')) {
+      setOpenDropdowns(prev => ({ ...prev, monitoring: true }))
+    } else if (path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates')) {
+      setOpenDropdowns(prev => ({ ...prev, wordpress: true }))
+    } else if (path.includes('/blacklist')) {
+      setOpenDropdowns(prev => ({ ...prev, accessControl: true }))
+    } else if (path.includes('/bulk/tools')) {
+      setOpenDropdowns(prev => ({ ...prev, securityProtection: true }))
+    } else if (path.includes('/security') || path.includes('/port-scanner') || path.includes('/threat-intelligence')) {
+      setOpenDropdowns(prev => ({ ...prev, securityCenter: true }))
+    }
+  }, [location.pathname])
+
+  const toggleDropdown = (key) => {
+    setOpenDropdowns(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
   }
 
   const getNavLinkStyle = ({ isActive }) => ({
@@ -97,17 +100,89 @@ export default function UserSidebar({ isOpen, onClose }) {
       : { color: '#94a3b8' })
   })
 
-  const getCategoryHeaderStyle = (isFirst = false) => ({
-    color: '#6A7D78',
-    fontSize: '10px',
-    fontWeight: 700,
-    letterSpacing: '1px',
-    textTransform: 'uppercase',
-    marginTop: isFirst ? '2px' : '18px',
-    marginBottom: '6px',
-    paddingLeft: '14px',
-    userSelect: 'none'
+  const getSubNavLinkStyle = ({ isActive }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '7px 12px',
+    borderRadius: '7px',
+    textDecoration: 'none',
+    fontSize: '12.5px',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'all 0.15s ease',
+    ...(isActive
+      ? { background: 'rgba(232, 121, 47, 0.14)', color: '#F38A3E', fontWeight: 600 }
+      : { color: '#889895' })
   })
+
+  // Helper component for Collapsible Dropdown
+  const DropdownItem = ({ id, label, icon: Icon, activePrefixes = [], children }) => {
+    const isExpanded = !!openDropdowns[id]
+    const isChildActive = activePrefixes.some(prefix => location.pathname.includes(prefix))
+
+    return (
+      <div style={{ marginBottom: '2px' }}>
+        <button
+          type="button"
+          onClick={() => toggleDropdown(id)}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '9px 14px',
+            borderRadius: '9px',
+            background: isChildActive ? 'rgba(232, 121, 47, 0.08)' : 'transparent',
+            border: 'none',
+            color: isChildActive ? '#F38A3E' : '#94a3b8',
+            fontSize: '13.5px',
+            fontWeight: isChildActive ? 600 : 500,
+            cursor: 'pointer',
+            textAlign: 'left',
+            transition: 'all 0.15s ease',
+            userSelect: 'none'
+          }}
+          onMouseEnter={e => {
+            if (!isChildActive) e.currentTarget.style.color = '#FFFFFF'
+          }}
+          onMouseLeave={e => {
+            if (!isChildActive) e.currentTarget.style.color = '#94a3b8'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon size={17} />
+            </span>
+            <span>{label}</span>
+          </div>
+          <ChevronDown
+            size={14}
+            style={{
+              transform: isExpanded ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.2s ease',
+              color: isChildActive ? '#F38A3E' : '#6A7D78'
+            }}
+          />
+        </button>
+
+        {isExpanded && (
+          <div style={{
+            paddingLeft: '14px',
+            marginTop: '2px',
+            marginBottom: '4px',
+            borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
+            marginLeft: '22px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px'
+          }}>
+            {children}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -153,146 +228,261 @@ export default function UserSidebar({ isOpen, onClose }) {
         </div>
 
         {/* ========================================================================= */}
-        {/* NAVIGATION LIST (ORGANIZED BY ENTERPRISE CATEGORIES)                     */}
+        {/* NAVIGATION LIST (PRECISE 15-SECTION ARCHITECTURE)                         */}
         {/* ========================================================================= */}
         <nav className="sidebar-nav" style={{ padding: '14px 12px 20px', overflowY: 'auto' }}>
           
-          {/* 1. OVERVIEW & MONITORING */}
-          <div style={getCategoryHeaderStyle(true)}>Overview &amp; Monitoring</div>
-          <NavLink to="/user/dashboard" onClick={handleLinkClick} onMouseEnter={() => prefetch('dashboard')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          {/* 1. Dashboard */}
+          <NavLink to="/user/dashboard" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <LayoutDashboard size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Dashboard</span>
+            <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/user/logs" onClick={handleLinkClick} onMouseEnter={() => prefetch('logs')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+
+          {/* 2. Live Traffic */}
+          <NavLink to="/user/logs" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FileText size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Live Traffic Logs</span>
-          </NavLink>
-          <NavLink to="/user/bulk/site-health" onClick={handleLinkClick} onMouseEnter={() => prefetch('health')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <HeartPulse size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Site Health &amp; Performance</span>
-          </NavLink>
-          <NavLink to="/user/bulk/activity" onClick={handleLinkClick} onMouseEnter={() => prefetch('activity')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Activity size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Activity Audit Log</span>
+            <span>Live Traffic</span>
           </NavLink>
 
-          {/* 2. WAF & THREAT DEFENSE */}
-          <div style={getCategoryHeaderStyle()}>WAF &amp; Threat Defense</div>
-          <NavLink to="/user/blacklist" onClick={handleLinkClick} onMouseEnter={() => prefetch('blacklist')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Globe size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Access Control &amp; Geo</span>
-          </NavLink>
-          <NavLink to="/user/bulk/tools" onClick={handleLinkClick} onMouseEnter={() => prefetch('tools')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <ShieldCheck size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limit</span>
-          </NavLink>
+          {/* 3. Monitoring > (Dropdown) */}
+          <DropdownItem
+            id="monitoring"
+            label="Monitoring"
+            icon={Activity}
+            activePrefixes={['/monitoring', '/bulk/site-health', '/bulk/monitoring']}
+          >
+            <NavLink to="/user/monitoring/uptime" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Clock size={14} />
+              <span>Uptime</span>
+            </NavLink>
+            <NavLink to="/user/monitoring/performance" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Zap size={14} />
+              <span>Performance</span>
+            </NavLink>
+            <NavLink to="/user/monitoring/broken-links" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <ExternalLink size={14} />
+              <span>Broken Links</span>
+            </NavLink>
+          </DropdownItem>
 
-          {/* 3. SECURITY & RECOVERY */}
-          <div style={getCategoryHeaderStyle()}>Security &amp; Recovery</div>
-          <NavLink to="/user/bulk/scanner" onClick={handleLinkClick} onMouseEnter={() => prefetch('scanner')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Bug size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Malware Scanner</span>
-          </NavLink>
-          <NavLink to="/user/bulk/hardening" onClick={handleLinkClick} onMouseEnter={() => prefetch('hardening')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Shield size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Security Hardening</span>
-          </NavLink>
-          <NavLink to="/user/bulk/backup" onClick={handleLinkClick} onMouseEnter={() => prefetch('backup')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          {/* 4. WordPress Management > (Dropdown) */}
+          <DropdownItem
+            id="wordpress"
+            label="WordPress Management"
+            icon={Boxes}
+            activePrefixes={['/bulk/plugins', '/bulk/themes', '/bulk/core', '/bulk/scanner', '/bulk/hardening', '/bulk/safe-updates']}
+          >
+            <NavLink to="/user/bulk/plugins" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Boxes size={14} />
+              <span>Plugins</span>
+            </NavLink>
+            <NavLink to="/user/bulk/themes" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Palette size={14} />
+              <span>Themes</span>
+            </NavLink>
+            <NavLink to="/user/bulk/core" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Sparkles size={14} />
+              <span>WordPress Core</span>
+            </NavLink>
+            <NavLink to="/user/bulk/scanner" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Bug size={14} />
+              <span>Malware Scanner</span>
+            </NavLink>
+            <NavLink to="/user/bulk/hardening" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Shield size={14} />
+              <span>Security Hardening</span>
+            </NavLink>
+            <NavLink to="/user/bulk/safe-updates" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <RotateCw size={14} />
+              <span>Safe Updates</span>
+            </NavLink>
+          </DropdownItem>
+
+          {/* 5. Access Control & Geo-Blocking > (Dropdown) */}
+          <DropdownItem
+            id="accessControl"
+            label="Access Control & Geo-Blocking"
+            icon={Globe}
+            activePrefixes={['/blacklist']}
+          >
+            <NavLink to="/user/blacklist?tab=ip_blacklist" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Ban size={14} />
+              <span>IP Blocklist</span>
+            </NavLink>
+            <NavLink to="/user/blacklist?tab=ip_allowlist" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <ShieldCheck size={14} />
+              <span>IP Allowlist</span>
+            </NavLink>
+            <NavLink to="/user/blacklist?tab=country_blocking" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Globe size={14} />
+              <span>Country Blocking</span>
+            </NavLink>
+          </DropdownItem>
+
+          {/* 6. Backup & Recovery */}
+          <NavLink to="/user/bulk/backup" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <HardDrive size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Backup &amp; Disaster Rec.</span>
+            <span>Backup &amp; Recovery</span>
           </NavLink>
 
-          {/* 4. FLEET ASSET MANAGEMENT */}
-          <div style={getCategoryHeaderStyle()}>Fleet Asset Management</div>
-          <NavLink to="/user/websites" onClick={handleLinkClick} onMouseEnter={() => prefetch('websites')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          {/* 7. Security Protection > (Dropdown) */}
+          <DropdownItem
+            id="securityProtection"
+            label="Security Protection"
+            icon={ShieldCheck}
+            activePrefixes={['/bulk/tools', 'tab=2fa']}
+          >
+            <NavLink to="/user/bulk/tools" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Cpu size={14} />
+              <span>Bot Defense &amp; Rate Limiting</span>
+            </NavLink>
+            <NavLink to="/user/settings?tab=2fa" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Key size={14} />
+              <span>Two-Factor Authentication (2FA)</span>
+            </NavLink>
+          </DropdownItem>
+
+          {/* 8. Security Center > (Dropdown) */}
+          <DropdownItem
+            id="securityCenter"
+            label="Security Center"
+            icon={Shield}
+            activePrefixes={['/security', '/threat-intelligence', '/port-scanner']}
+          >
+            <NavLink to="/threat-intelligence" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Flame size={14} />
+              <span>Threat Intelligence</span>
+            </NavLink>
+            <NavLink to="/user/security/port-scanner" onClick={handleLinkClick} style={getSubNavLinkStyle}>
+              <Radio size={14} />
+              <span>Security &amp; Port Scanner</span>
+            </NavLink>
+          </DropdownItem>
+
+          {/* 9. WordPress Sites */}
+          <NavLink to="/user/websites" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Layers size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>WordPress Sites</span>
-          </NavLink>
-          <NavLink to="/user/domains" onClick={handleLinkClick} onMouseEnter={() => prefetch('domains')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Cpu size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Custom Domains</span>
-          </NavLink>
-          <NavLink to="/user/bulk/plugins" onClick={handleLinkClick} onMouseEnter={() => prefetch('plugins')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Boxes size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Plugins Management</span>
-          </NavLink>
-          <NavLink to="/user/bulk/themes" onClick={handleLinkClick} onMouseEnter={() => prefetch('themes')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Palette size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Themes Management</span>
-          </NavLink>
-          <NavLink to="/user/bulk/core" onClick={handleLinkClick} onMouseEnter={() => prefetch('core')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <Sparkles size={17} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Core &amp; Safe Updates</span>
+            <span>WordPress Sites</span>
           </NavLink>
 
-          {/* 5. WORKSPACE & SETTINGS */}
-          <div style={getCategoryHeaderStyle()}>Workspace &amp; Settings</div>
-          <NavLink to="/user/team" onClick={handleLinkClick} onMouseEnter={() => prefetch('team')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          {/* 10. Custom Domains */}
+          <NavLink to="/user/domains" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Cpu size={17} />
+            </span>
+            <span>Custom Domains</span>
+          </NavLink>
+
+          {/* 11. Team Members */}
+          <NavLink to="/user/team" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Users size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Team Members</span>
+            <span>Team Members</span>
           </NavLink>
-          <NavLink to="/user/alerts" onClick={handleLinkClick} onMouseEnter={() => prefetch('alerts')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+
+          {/* 12. Alerts & Notifications */}
+          <NavLink to="/user/alerts" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Alerts &amp; Notifications</span>
+            <span>Alerts &amp; Notifications</span>
           </NavLink>
-          <NavLink to="/user/pricing" onClick={handleLinkClick} onMouseEnter={() => prefetch('pricing')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+
+          {/* 13. Activity & Audit Logs */}
+          <NavLink to="/user/bulk/activity" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Activity size={17} />
+            </span>
+            <span>Activity &amp; Audit Logs</span>
+          </NavLink>
+
+          {/* 14. Pricing & Plans */}
+          <NavLink to="/user/pricing" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Tag size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Pricing &amp; Plans</span>
+            <span>Pricing &amp; Plans</span>
           </NavLink>
-          <NavLink to="/user/settings" onClick={handleLinkClick} onMouseEnter={() => prefetch('settings')} style={getNavLinkStyle}>
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+
+          {/* 15. Settings */}
+          <NavLink to="/user/settings" onClick={handleLinkClick} style={getNavLinkStyle}>
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Settings size={17} />
             </span>
-            <span style={{ pointerEvents: 'none' }}>Settings</span>
+            <span>Settings</span>
           </NavLink>
+
         </nav>
 
         {/* ========================================================================= */}
-        {/* FOOTER (STATUS & LOGOUT)                                                  */}
+        {/* FOOTER (STATUS, PROFILE & LOGOUT)                                         */}
         {/* ========================================================================= */}
-        <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '16px 14px' }}>
-          <div className="sidebar-status" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '14px 12px' }}>
+          
+          {/* Active Plan Pill */}
+          <div className="sidebar-status" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '7px 10px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span className={`status-dot ${isPaid ? 'online' : ''}`} style={!isPaid ? { background: '#F59E0B' } : { background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }}></span>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: '11px', color: '#889895', fontWeight: 500, lineHeight: 1.1 }}>Active Tier</span>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planName}</span>
+              <span style={{ fontSize: '10.5px', color: '#889895', fontWeight: 500, lineHeight: 1.1 }}>Active Tier</span>
+              <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planName}</span>
             </div>
-            {isPaid && <Sparkles size={14} color="#E8792F" />}
+            {isPaid && <Sparkles size={13} color="#E8792F" />}
           </div>
+
+          {/* Profile / Username */}
+          <Link
+            to="/user/settings"
+            onClick={handleLinkClick}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '7px 10px',
+              borderRadius: '8px',
+              marginBottom: '8px',
+              textDecoration: 'none',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+          >
+            <div style={{
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #059669 0%, #0B2522 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '11px',
+              fontWeight: 800,
+              flexShrink: 0
+            }}>
+              {userStore.getUser()?.name ? userStore.getUser().name[0].toUpperCase() : 'U'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {userStore.getUser()?.name || userStore.getUser()?.email?.split('@')[0] || 'User Profile'}
+              </span>
+              <span style={{ fontSize: '10px', color: '#6A7D78', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {userStore.getUser()?.email || 'Account Settings'}
+              </span>
+            </div>
+          </Link>
+
+          {/* Sign Out Button */}
           <button
             className="logout-btn"
             onClick={() => window.__doLogout && window.__doLogout()}
@@ -302,18 +492,20 @@ export default function UserSidebar({ isOpen, onClose }) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              padding: '9px 12px',
+              padding: '8px 12px',
               borderRadius: '8px',
-              background: 'rgba(220, 38, 38, 0.1)',
+              background: 'rgba(220, 38, 38, 0.08)',
               color: '#F87171',
-              border: '1px solid rgba(220, 38, 38, 0.2)',
+              border: '1px solid rgba(220, 38, 38, 0.18)',
               cursor: 'pointer',
               fontWeight: 600,
-              fontSize: '12.5px',
+              fontSize: '12px',
               transition: 'all 0.15s ease'
             }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.08)'}
           >
-            <LogOut size={15} />
+            <LogOut size={14} />
             <span>Sign Out</span>
           </button>
         </div>

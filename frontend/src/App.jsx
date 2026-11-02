@@ -207,6 +207,11 @@ function App() {
           <Route path="bulk-management" element={<Navigate to="/user/bulk/monitoring" replace />} />
           <Route path="bulk" element={<Navigate to="/user/bulk/monitoring" replace />} />
           <Route path="bulk/monitoring" element={<BulkMonitoring />} />
+          <Route path="monitoring" element={<BulkMonitoring />} />
+          <Route path="monitoring/uptime" element={<BulkMonitoring initialTab="uptime" />} />
+          <Route path="monitoring/performance" element={<BulkSiteHealth />} />
+          <Route path="monitoring/broken-links" element={<BulkMonitoring initialTab="broken-links" />} />
+          <Route path="security/port-scanner" element={<Navigate to="/user/bulk/scanner" replace />} />
           <Route path="bulk/plugins" element={<BulkPlugins />} />
           <Route path="bulk/themes" element={<BulkThemes />} />
           <Route path="bulk/core" element={<BulkCore />} />
