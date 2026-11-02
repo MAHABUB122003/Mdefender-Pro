@@ -511,3 +511,4 @@ const badgeStyle = (bg, text, border) => ({
   color: text,
   border: `1px solid ${border}`
 })
+

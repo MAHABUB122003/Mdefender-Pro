@@ -1,16 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Zap,
-  Gauge,
   Smartphone,
   Monitor,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
-  Info,
-  Layers,
-  ArrowUpRight,
-  Sparkles
+  FileCode,
+  Layers
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -58,7 +55,7 @@ export default function BulkPerformance() {
         [`${siteId}_${currentStrategy}`]: data
       }))
       if (notify) {
-        showToast(`${currentStrategy === 'mobile' ? 'Mobile' : 'Desktop'} audit complete: Score ${data?.score || 92}/100`)
+        showToast(`${currentStrategy === 'mobile' ? 'Mobile' : 'Desktop'} audit complete: Score ${data?.score || 0}/100`)
       }
     } catch (err) {
       if (notify) showToast(`Performance audit failed: ${err.message}`, true)
@@ -74,15 +71,21 @@ export default function BulkPerformance() {
   }, [primarySiteId, strategy, fetchAudit])
 
   const currentAudit = primarySiteId ? (perfData[`${primarySiteId}_${strategy}`] || null) : null
+  const hasAudit = currentAudit && typeof currentAudit.score === 'number'
 
-  // Metric helpers
-  const score = currentAudit?.score || 94
-  const lcp = currentAudit?.lcp_seconds || currentAudit?.metrics?.lcp || '1.8'
-  const inp = currentAudit?.fid_ms || currentAudit?.metrics?.inp || '42'
-  const cls = currentAudit?.cls || currentAudit?.metrics?.cls || '0.01'
-  const ttfb = currentAudit?.ttfb_ms || currentAudit?.metrics?.ttfb || '64'
+  // Real metric extraction from backend audit
+  const score = hasAudit ? currentAudit.score : null
+  const metrics = currentAudit?.metrics || {}
+  const composition = currentAudit?.page_composition || {}
+  const recommendations = currentAudit?.recommendations || []
+
+  const lcpText = hasAudit && typeof metrics.lcp_ms === 'number' ? (metrics.lcp_ms / 1000).toFixed(2) : '--'
+  const inpText = hasAudit && typeof metrics.inp_ms === 'number' ? `${metrics.inp_ms}` : '--'
+  const clsText = hasAudit && typeof metrics.cls === 'number' ? `${metrics.cls}` : '--'
+  const ttfbText = hasAudit && typeof metrics.ttfb_ms === 'number' ? `${metrics.ttfb_ms}` : '--'
 
   const scoreBadge = (s) => {
+    if (s === null) return { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0', label: 'PENDING AUDIT' }
     if (s >= 90) return { bg: '#F0FDF4', text: '#15803D', border: '#DCFCE7', label: 'GOOD' }
     if (s >= 50) return { bg: '#FFFBEB', text: '#B45309', border: '#FEF3C7', label: 'NEEDS IMPROVEMENT' }
     return { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA', label: 'POOR' }
@@ -135,7 +138,7 @@ export default function BulkPerformance() {
         </div>
       )}
 
-      {/* CLOUDFLARE MINIMALIST TOP CONTROLS (DEVICE STRATEGY + AUDIT TRIGGER) */}
+      {/* TOP CONTROLS (DEVICE STRATEGY + AUDIT TRIGGER) */}
       <div style={{
         ...cardStyle,
         padding: '14px 20px',
@@ -221,7 +224,7 @@ export default function BulkPerformance() {
           }}
         >
           <RefreshCw size={14} style={{ animation: loadingAudit ? 'spin 1s linear infinite' : 'none' }} />
-          <span>Run Fresh Speed Audit</span>
+          <span>{loadingAudit ? 'Auditing Origin Speed...' : 'Run Fresh Speed Audit'}</span>
         </button>
       </div>
 
@@ -235,7 +238,7 @@ export default function BulkPerformance() {
         <div style={cardStyle}>
           <div style={labelStyle}>Overall Performance Score</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
-            <span style={numberStyle}>{score}</span>
+            <span style={numberStyle}>{score !== null ? score : '--'}</span>
             <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>/ 100</span>
             <span style={badgeStyle(badge.bg, badge.text, badge.border)}>{badge.label}</span>
           </div>
@@ -246,9 +249,15 @@ export default function BulkPerformance() {
         <div style={cardStyle}>
           <div style={labelStyle}>Largest Contentful Paint (LCP)</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
-            <span style={numberStyle}>{lcp}</span>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>s</span>
-            <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>GOOD (&lt; 2.5s)</span>
+            <span style={numberStyle}>{lcpText}</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{hasAudit ? 's' : ''}</span>
+            <span style={badgeStyle(
+              hasAudit && metrics.lcp_ms < 2500 ? '#F0FDF4' : '#FFFBEB',
+              hasAudit && metrics.lcp_ms < 2500 ? '#15803D' : '#B45309',
+              hasAudit && metrics.lcp_ms < 2500 ? '#DCFCE7' : '#FEF3C7'
+            )}>
+              {hasAudit ? (metrics.lcp_ms < 2500 ? 'GOOD (< 2.5s)' : 'OPPORTUNITY') : 'BENCHMARK: < 2.5s'}
+            </span>
           </div>
           <div style={subLabelStyle}>Time to render primary page content</div>
         </div>
@@ -257,9 +266,15 @@ export default function BulkPerformance() {
         <div style={cardStyle}>
           <div style={labelStyle}>Interaction Latency (INP / FID)</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
-            <span style={numberStyle}>{inp}</span>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>ms</span>
-            <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>GOOD (&lt; 200ms)</span>
+            <span style={numberStyle}>{inpText}</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{hasAudit ? 'ms' : ''}</span>
+            <span style={badgeStyle(
+              hasAudit && metrics.inp_ms < 200 ? '#F0FDF4' : '#FFFBEB',
+              hasAudit && metrics.inp_ms < 200 ? '#15803D' : '#B45309',
+              hasAudit && metrics.inp_ms < 200 ? '#DCFCE7' : '#FEF3C7'
+            )}>
+              {hasAudit ? (metrics.inp_ms < 200 ? 'GOOD (< 200ms)' : 'OPPORTUNITY') : 'BENCHMARK: < 200ms'}
+            </span>
           </div>
           <div style={subLabelStyle}>Responsiveness to user taps and clicks</div>
         </div>
@@ -268,128 +283,185 @@ export default function BulkPerformance() {
         <div style={cardStyle}>
           <div style={labelStyle}>Cumulative Layout Shift (CLS)</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
-            <span style={numberStyle}>{cls}</span>
-            <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>GOOD (&lt; 0.1)</span>
+            <span style={numberStyle}>{clsText}</span>
+            <span style={badgeStyle(
+              hasAudit && metrics.cls < 0.1 ? '#F0FDF4' : '#FFFBEB',
+              hasAudit && metrics.cls < 0.1 ? '#15803D' : '#B45309',
+              hasAudit && metrics.cls < 0.1 ? '#DCFCE7' : '#FEF3C7'
+            )}>
+              {hasAudit ? (metrics.cls < 0.1 ? 'GOOD (< 0.1)' : 'NEEDS WORK') : 'BENCHMARK: < 0.1'}
+            </span>
           </div>
-          <div style={subLabelStyle}>Visual stability and unexpected layout movement</div>
+          <div style={subLabelStyle}>Visual stability and layout movement</div>
         </div>
       </div>
 
-      {/* RESOURCE BREAKDOWN & DIAGNOSTIC LAB */}
+      {/* RESOURCE BREAKDOWN & ORIGIN VELOCITY */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
-        {/* Page Resource Weight */}
+        {/* Real Page Resource Composition */}
         <div style={cardStyle}>
           <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
-            Asset Transfer Breakdown
+            Origin Asset Composition (Live Discovery)
           </div>
           <div style={{ fontSize: '12.5px', color: '#64748B', marginBottom: '16px' }}>
-            Payload breakdown for modern HTML, CSS, JavaScript and image assets.
+            Real DOM assets, scripts, and stylesheets extracted directly from page HTML.
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { type: 'JavaScript Bundles', size: '284 KB', pct: 45, color: '#3B82F6' },
-              { type: 'Optimized Images', size: '180 KB', pct: 30, color: '#10B981' },
-              { type: 'Stylesheets (CSS)', size: '64 KB', pct: 15, color: '#F59E0B' },
-              { type: 'HTML Document', size: '28 KB', pct: 6, color: '#6366F1' },
-              { type: 'Web Fonts', size: '22 KB', pct: 4, color: '#94A3B8' }
-            ].map((res, i) => (
-              <div key={i}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '3px' }}>
-                  <span style={{ fontWeight: '500', color: '#334155' }}>{res.type}</span>
-                  <span style={{ color: '#64748B', fontFamily: 'monospace' }}>{res.size}</span>
-                </div>
-                <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${res.pct}%`, height: '100%', background: res.color, borderRadius: '3px' }} />
-                </div>
+          {hasAudit ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Total HTML Payload:</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.page_size_kb || 0} KB</span>
               </div>
-            ))}
-          </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>External JavaScript Tags:</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.external_scripts_count || 0} scripts</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Linked CSS Stylesheets:</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.stylesheets_count || 0} files</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Image Elements (DOM):</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>{composition.images_count || 0} images</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Text Compression Header:</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: composition.is_compressed ? '#16A34A' : '#DC2626' }}>
+                  {composition.compression_type ? composition.compression_type.toUpperCase() : (composition.is_compressed ? 'GZIP ACTIVE' : 'UNCOMPRESSED')}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '24px 16px', textAlign: 'center', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '12.5px' }}>
+              No audit data yet. Click &quot;Run Fresh Speed Audit&quot; to inspect asset composition.
+            </div>
+          )}
         </div>
 
         {/* Server Response Speed (TTFB) */}
         <div style={cardStyle}>
           <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
-            Edge &amp; Origin TTFB Velocity
+            Origin Response Velocity (TTFB)
           </div>
           <div style={{ fontSize: '12.5px', color: '#64748B', marginBottom: '16px' }}>
-            Time to First Byte response measurement from edge servers.
+            Time to First Byte latency measurement directly against web origin.
           </div>
 
           <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
               <span style={{ fontSize: '24px', fontWeight: '700', color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>
-                {ttfb} ms
+                {ttfbText} {hasAudit ? 'ms' : ''}
               </span>
-              <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>FAST RESPONSE</span>
+              {hasAudit && (
+                <span style={badgeStyle(
+                  metrics.ttfb_ms < 300 ? '#F0FDF4' : metrics.ttfb_ms < 800 ? '#FFFBEB' : '#FEF2F2',
+                  metrics.ttfb_ms < 300 ? '#15803D' : metrics.ttfb_ms < 800 ? '#B45309' : '#B91C1C',
+                  metrics.ttfb_ms < 300 ? '#DCFCE7' : metrics.ttfb_ms < 800 ? '#FEF3C7' : '#FECACA'
+                )}>
+                  {metrics.ttfb_ms < 300 ? 'FAST RESPONSE' : metrics.ttfb_ms < 800 ? 'ACCEPTABLE' : 'SLOW ORIGIN'}
+                </span>
+              )}
             </div>
             <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
-              Target origin responds well under the 200ms enterprise threshold.
+              {hasAudit
+                ? `Measured roundtrip socket latency: ${metrics.total_duration_ms || metrics.ttfb_ms || 0} ms`
+                : 'Run an audit to measure real origin socket TTFB'}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
-              <span style={{ color: '#64748B' }}>Compression</span>
-              <span style={{ fontWeight: '600', color: '#16A34A' }}>Brotli / Gzip Active</span>
+              <span style={{ color: '#64748B' }}>Browser Caching Header</span>
+              <span style={{ fontWeight: '600', color: composition.has_browser_caching ? '#16A34A' : '#64748B' }}>
+                {composition.has_browser_caching ? 'Cache-Control Present' : 'Default / Not Detected'}
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
-              <span style={{ color: '#64748B' }}>HTTP Version</span>
-              <span style={{ fontWeight: '600', color: '#0F172A' }}>HTTP/2 &amp; HTTP/3 (QUIC)</span>
+              <span style={{ color: '#64748B' }}>Audit Strategy</span>
+              <span style={{ fontWeight: '600', color: '#0F172A', textTransform: 'capitalize' }}>{strategy} Engine</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#64748B' }}>Audit Timestamp</span>
-              <span style={{ color: '#64748B' }}>{currentAudit?.audited_at ? new Date(currentAudit.audited_at).toLocaleTimeString() : 'Just now'}</span>
+              <span style={{ color: '#64748B' }}>Last Checked</span>
+              <span style={{ color: '#64748B' }}>
+                {currentAudit?.audited_at ? new Date(currentAudit.audited_at).toLocaleString() : 'Not yet'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ACTIONABLE DIAGNOSTIC OPPORTUNITIES TABLE */}
+      {/* ACTIONABLE DIAGNOSTIC OPPORTUNITIES TABLE (REAL AUDIT DATA) */}
       <div style={cardStyle}>
         <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
-          Diagnostic Audits &amp; Optimization Opportunities
+          Diagnostic Recommendations &amp; Optimization Opportunities
         </div>
         <div style={{ fontSize: '12.5px', color: '#64748B', marginBottom: '16px' }}>
-          Concrete performance diagnostics assessed against Google Web Vitals rules.
+          Specific opportunities identified by the real network audit engine for this domain.
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B' }}>
-                <th style={{ padding: '10px 12px', fontWeight: '600' }}>Diagnostic Rule</th>
-                <th style={{ padding: '10px 12px', fontWeight: '600' }}>Status</th>
-                <th style={{ padding: '10px 12px', fontWeight: '600' }}>Impact</th>
-                <th style={{ padding: '10px 12px', fontWeight: '600' }}>Recommendation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { rule: 'Eliminate render-blocking stylesheets', status: 'PASSED', impact: 'None', rec: 'Styles are non-blocking or inlined.' },
-                { rule: 'Serve images in modern WebP / AVIF formats', status: 'OPTIMIZED', impact: 'Low (~18 KB)', rec: 'Most images are compressed with next-gen formats.' },
-                { rule: 'Enable text compression (Brotli)', status: 'PASSED', impact: 'None', rec: 'Text assets are served with active gzip/brotli.' },
-                { rule: 'Reduce unused JavaScript execution', status: 'OPPORTUNITY', impact: 'Est. 120ms', rec: 'Defer uncritical third-party plugin scripts on page load.' },
-                { rule: 'Preconnect to required origins', status: 'PASSED', impact: 'None', rec: 'Fonts and CDN endpoints are preconnected.' }
-              ].map((diag, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={{ padding: '12px', fontWeight: '600', color: '#0F172A' }}>{diag.rule}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={badgeStyle(
-                      diag.status === 'PASSED' || diag.status === 'OPTIMIZED' ? '#F0FDF4' : '#FFFBEB',
-                      diag.status === 'PASSED' || diag.status === 'OPTIMIZED' ? '#15803D' : '#B45309',
-                      diag.status === 'PASSED' || diag.status === 'OPTIMIZED' ? '#DCFCE7' : '#FEF3C7'
-                    )}>
-                      {diag.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', color: '#64748B' }}>{diag.impact}</td>
-                  <td style={{ padding: '12px', color: '#334155' }}>{diag.rec}</td>
+        {recommendations.length === 0 ? (
+          <div style={{
+            padding: '28px 20px',
+            textAlign: 'center',
+            background: '#F8FAFC',
+            borderRadius: '10px',
+            border: '1px solid #E2E8F0'
+          }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: '#F0FDF4',
+              color: '#16A34A',
+              marginBottom: '8px'
+            }}>
+              <CheckCircle2 size={18} />
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#0F172A' }}>
+              {hasAudit ? 'Origin Speed Optimized' : 'Ready for Audit'}
+            </div>
+            <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+              {hasAudit
+                ? 'No critical latency bottlenecks found on this page.'
+                : 'Click "Run Fresh Speed Audit" to discover optimization opportunities.'}
+            </div>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E2E8F0', color: '#64748B' }}>
+                  <th style={{ padding: '10px 12px', fontWeight: '600' }}>Opportunity</th>
+                  <th style={{ padding: '10px 12px', fontWeight: '600' }}>Impact</th>
+                  <th style={{ padding: '10px 12px', fontWeight: '600' }}>Potential Savings</th>
+                  <th style={{ padding: '10px 12px', fontWeight: '600' }}>Actionable Guidance</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {recommendations.map((rec, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '12px', fontWeight: '600', color: '#0F172A' }}>{rec.title}</td>
+                    <td style={{ padding: '12px' }}>
+                      <span style={badgeStyle(
+                        rec.impact === 'HIGH' ? '#FEF2F2' : '#FFFBEB',
+                        rec.impact === 'HIGH' ? '#B91C1C' : '#B45309',
+                        rec.impact === 'HIGH' ? '#FECACA' : '#FEF3C7'
+                      )}>
+                        {rec.impact}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', color: '#64748B', fontWeight: '500' }}>{rec.savings}</td>
+                    <td style={{ padding: '12px', color: '#334155', maxWidth: '440px' }}>{rec.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

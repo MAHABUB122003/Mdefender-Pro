@@ -121,27 +121,32 @@ export default function BulkUptime() {
 
   const avgLatency = useMemo(() => {
     const latencies = Object.values(probeData).map(p => p.total_latency_ms).filter(n => typeof n === 'number' && n > 0)
-    if (latencies.length === 0) return 142
+    if (latencies.length === 0) return null
     return Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
   }, [probeData])
 
   const activeProbe = primarySiteId ? probeData[primarySiteId] : null
   const activeSsl = primarySiteId ? sslData[primarySiteId] : null
 
-  // 90-day heartbeat simulator
+  // 90-day heartbeat based on real incident logs
   const heartbeatDays = useMemo(() => {
+    const incidentDates = new Set(
+      incidents.map(inc => {
+        if (!inc.started_at) return ''
+        return new Date(inc.started_at).toISOString().split('T')[0]
+      }).filter(Boolean)
+    )
     const days = []
     const today = new Date()
     for (let i = 89; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().split('T')[0]
-      // 99.9% are operational
-      const isDown = i === 42 && incidents.length > 0
+      const hasIncident = incidentDates.has(dateStr)
       days.push({
         date: dateStr,
-        uptime: isDown ? 98.4 : 100.0,
-        status: isDown ? 'degraded' : 'operational'
+        uptime: hasIncident ? 92.0 : 100.0,
+        status: hasIncident ? 'degraded' : 'operational'
       })
     }
     return days
@@ -212,8 +217,8 @@ export default function BulkUptime() {
         <div style={cardStyle}>
           <div style={labelStyle}>Average Response Time</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
-            <span style={numberStyle}>{avgLatency}</span>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>ms</span>
+            <span style={numberStyle}>{avgLatency !== null ? avgLatency : '--'}</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{avgLatency !== null ? 'ms' : ''}</span>
           </div>
           <div style={subLabelStyle}>Global origin HTTP roundtrip latency</div>
         </div>
@@ -248,9 +253,25 @@ export default function BulkUptime() {
                 <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
                   {primarySite.domain || primarySite.url}
                 </h3>
-                <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
-                  {activeProbe?.status_code ? `HTTP ${activeProbe.status_code} OK` : 'HTTP 200 OK'}
-                </span>
+                {activeProbe ? (
+                  activeProbe.is_online !== false && activeProbe.status_code > 0 ? (
+                    <span style={badgeStyle(
+                      activeProbe.status_code >= 200 && activeProbe.status_code < 400 ? '#F0FDF4' : '#FEF2F2',
+                      activeProbe.status_code >= 200 && activeProbe.status_code < 400 ? '#15803D' : '#B91C1C',
+                      activeProbe.status_code >= 200 && activeProbe.status_code < 400 ? '#DCFCE7' : '#FECACA'
+                    )}>
+                      HTTP {activeProbe.status_code} {activeProbe.status_text || 'OK'}
+                    </span>
+                  ) : (
+                    <span style={badgeStyle('#FEF2F2', '#B91C1C', '#FECACA')}>
+                      OFFLINE (HTTP {activeProbe.status_code || 0})
+                    </span>
+                  )
+                ) : (
+                  <span style={badgeStyle('#F1F5F9', '#475569', '#E2E8F0')}>
+                    PROBING ORIGIN...
+                  </span>
+                )}
                 {primarySite.ip && (
                   <span style={{ fontSize: '12px', color: '#64748B', fontFamily: 'monospace' }}>
                     IP: {primarySite.ip}
@@ -334,24 +355,34 @@ export default function BulkUptime() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px' }}>
               <div>
                 <div style={stageLabelStyle}>DNS Resolution</div>
-                <div style={stageValueStyle}>{activeProbe?.dns_ms || '14.2'} ms</div>
+                <div style={stageValueStyle}>
+                  {typeof activeProbe?.dns_ms === 'number' ? `${activeProbe.dns_ms} ms` : (activeProbe ? 'Direct' : '--')}
+                </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>TCP Connect</div>
-                <div style={stageValueStyle}>{activeProbe?.tcp_ms || '22.8'} ms</div>
+                <div style={stageValueStyle}>
+                  {typeof activeProbe?.tcp_ms === 'number' ? `${activeProbe.tcp_ms} ms` : (activeProbe ? 'Connected' : '--')}
+                </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>TLS Handshake</div>
-                <div style={stageValueStyle}>{activeProbe?.tls_ms || '36.5'} ms</div>
+                <div style={stageValueStyle}>
+                  {typeof activeProbe?.tls_ms === 'number' ? `${activeProbe.tls_ms} ms` : (activeProbe ? 'Secured' : '--')}
+                </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>TTFB (Time to First Byte)</div>
-                <div style={stageValueStyle}>{activeProbe?.ttfb_ms || '68.0'} ms</div>
+                <div style={stageValueStyle}>
+                  {typeof activeProbe?.ttfb_ms === 'number' ? `${activeProbe.ttfb_ms} ms` : (activeProbe ? 'N/A' : '--')}
+                </div>
               </div>
               <div>
                 <div style={stageLabelStyle}>Total Latency</div>
                 <div style={{ ...stageValueStyle, color: '#2563EB' }}>
-                  {activeProbe?.total_latency_ms || avgLatency} ms
+                  {typeof activeProbe?.total_latency_ms === 'number'
+                    ? `${activeProbe.total_latency_ms} ms`
+                    : (activeProbe ? 'N/A' : '--')}
                 </div>
               </div>
             </div>
@@ -478,3 +509,4 @@ const badgeStyle = (bg, text, border) => ({
   color: text,
   border: `1px solid ${border}`
 })
+
