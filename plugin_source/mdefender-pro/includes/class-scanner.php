@@ -2,6 +2,44 @@
 defined('ABSPATH') || exit;
 
 class WAF_FW_Scanner {
+    /**
+     * Check if a file is an official legacy/deprecated WordPress core file.
+     */
+    public static function is_wp_legacy_core_file($rel_path, $content = '') {
+        static $legacy_files = [
+            'wp-admin/moderation.php' => true,
+            'wp-admin/ms-admin.php' => true,
+            'wp-admin/ms-sites.php' => true,
+            'wp-admin/custom-background.php' => true,
+            'wp-admin/custom-header.php' => true,
+            'wp-includes/class-phpmailer.php' => true,
+            'wp-includes/class-smtp.php' => true,
+            'wp-includes/class-json.php' => true,
+            'wp-includes/feed-rdf.php' => true,
+            'wp-includes/feed-rss.php' => true,
+            'wp-includes/registration-functions.php' => true,
+            'wp-includes/spl-autoload-compat.php' => true,
+            'wp-includes/session.php' => true,
+            'wp-includes/js/tinymce/wp-tinymce.php' => true,
+        ];
+
+        $rel_norm = ltrim(str_replace('\\', '/', $rel_path), '/');
+        if (isset($legacy_files[$rel_norm])) {
+            return true;
+        }
+
+        if (!empty($content) && strpos($content, '@package WordPress') !== false) {
+            if (strpos($content, '_deprecated_file') !== false ||
+                strpos($content, 'Redirects to edit-comments.php') !== false ||
+                strpos($content, 'The PHPMailer class has been moved') !== false ||
+                strpos($content, 'SPL autoload feature') !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static $_instance = null;
     private $db;
     const CELL_SIZE = 50;
@@ -1191,23 +1229,22 @@ class WAF_FW_Scanner {
             $findings[] = "SEO Blackhat Spam: Concealed pharma/gambling keywords injected";
         }
 
-        // Privilege Escalation / Unauthorized Administrator Account Backdoor
-        if (preg_match('/(?:wp_create_user|wp_insert_user)[\s\S]{0,200}set_role\s*\(\s*[\'"]administrator[\'"]/i', $content) ||
-            preg_match('/(?:wp_create_user|wp_insert_user)[\s\S]{0,100}[\'"]administrator[\'"]/i', $content)) {
+        // Privilege Escalation Backdoor: Unauthenticated creation of admin user taking credentials from external HTTP input
+        if (preg_match('#add_action\s*\(\s*[\x27\x22](?:init|wp_head|wp_footer)[\x27\x22][\s\S]{0,150}(?:wp_create_user|wp_insert_user)[\s\S]{0,120}\$_(?:GET|POST|REQUEST)#i', $content)) {
             $score = max($score, 95);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
-            $findings[] = "Privilege Escalation Backdoor: Unauthorized WordPress administrator account creation detected";
+            $findings[] = "Privilege Escalation Backdoor: Unauthenticated rogue administrator creation hook detected";
         }
 
-        // Obfuscation via repeated chr() character code concatenation
-        if (preg_match_all('/chr\s*\(\s*\d+\s*\)/i', $content, $chr_matches) >= 4) {
-            $score = max($score, 85);
+        // Obfuscation: Direct concatenated chr() chain passed to dynamic execution (e.g. chr(101).chr(118)...)
+        if (preg_match('#chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)\s*\.\s*chr#i', $content) &&
+            preg_match('#(?:eval|assert|system|exec|shell_exec|passthru|\$[a-zA-Z0-9_]+\s*\()#i', $content)) {
+            $score = max($score, 90);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
-            $findings[] = "Heuristic Obfuscation: Suspicious chr() character code concatenation chain detected (" . count($chr_matches[0]) . " calls)";
+            $findings[] = "Obfuscation Exploit: Concatenated chr() execution chain detected";
         }
-
         return [
             'score' => $score,
             'confidence' => $confidence,
@@ -1226,76 +1263,38 @@ class WAF_FW_Scanner {
             'backdoor' => [
                 'weight' => 95,
                 'patterns' => [
-                    '/\beval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)/i',
-                    '/\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(/i',
-                    '/(?:gzinflate|gzuncompress)\s*\(\s*(?:base64_decode|str_rot13)/i',
-                    '/\beval\s*\(\s*\$(?:[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\s*\)/i',
-                    '/\bassert\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|\$_(?:GET|POST|REQUEST|COOKIE))/i',
-                    '/\bsystem\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/\bexec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/\bshell_exec\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/\bpassthru\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    '/call_user_func\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    "/array_map\\s*\\(\\s*['\"](?:exec|system|shell_exec|passthru|eval|assert)['\"]\\s*,\\s*\\\$_(?:GET|POST|REQUEST|COOKIE)/i",
-                    "/preg_replace\\s*\\(\\s*['\"]\\/[^\\/]*e['\"]\\s*,/i",
-                    "/\\\$GLOBALS\\[['\"]\\w+['\"]\\]\\s*=\\s*\\\$_(?:GET|POST|REQUEST|COOKIE)/i",
-                    '/\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot|Godzilla|Behinder|China\s*Chopper|AntSword|IndoXploit|SimAttacker|IronShell)\b/i',
-                    "/\\\$auth_pass\\s*=\\s*['\"][a-f0-9]{32}['\"]/i",
-                    "/\\\$default_action\\s*=\\s*['\"]FilesMan['\"]/i",
-                    "/(?:wp_create_user|wp_insert_user)[\\s\\S]{0,150}(?:set_role\\s*\\(\\s*['\"]administrator['\"]|['\"]role['\"]\\s*=>\\s*['\"]administrator['\"])/i",
-                    '/\$(?:GLOBALS|_[A-Z]+)\s*\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)/i',
-                    "/register_shutdown_function\\s*\\(\\s*['\"](?:assert|system|eval|passthru)['\"]/i",
-                    "/add_action\\s*\\(\\s*['\"](?:init|admin_init|wp_head)['\"]\\s*,[\\s\\S]{0,120}wp_create_user/i",
-                    "/\\\$[a-zA-Z0-9_]+\\s*=\\s*['\"](?:system|exec|passthru|shell_exec|assert)['\"]\\s*;[\\s\\S]{0,50}\\\$[a-zA-Z0-9_]+\\s*\\(/i",
-                    '/(?:auto_prepend_file|auto_append_file)\s*=\s*[^\s;]+/i',
-                    "/move_uploaded_file\\s*\\(\\s*\\\$_FILES\\[[^\\]]+\\]\\[['\"]tmp_name['\"]\\][\\s\\S]{0,100}\\.(?:php|phtml|ico)/i",
-                    '/(?:wp_set_current_user|wp_set_auth_cookie)[\s\S]{0,120}wp_redirect/i',
-                    "/\\\$_(?:POST|GET|REQUEST)\\[['\"](?:pass|password|cmd|key|secret|pass1|pass2)['\"]\\][\\s\\S]{0,80}(?:eval|assert|system|passthru|shell_exec)/i",
-                    "/(?:googlebot|bingbot|yahoo! slurp|baiduspider)[\\s\\S]{0,80}(?:header\\s*\\(\\s*['\"]Location:|wp_redirect)/i",
-                    "/\\\$[a-zA-Z_\\x7f-\\xff][a-zA-Z0-9_\\x7f-\\xff]*\\s*=\\s*['\"](?:sys|ex|pass|eval|asse)['\"]\\s*\\.\\s*['\"][a-z]+['\"]/i",
-                    '/chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)/i',
-                    "/\\bhex2bin\\s*\\(\\s*['\"][0-9a-fA-F]{10,}['\"]\\s*\\)/i",
-                    '/\b(?:wp-vcd\.php|class-wp-cache\.php|wp-tmp\.php)\b/i',
+                    '#\beval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
+                    '#\beval\s*\(\s*(?:base64_decode|gzinflate|gzuncompress|str_rot13|hex2bin)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
+                    '#(?:gzinflate|gzuncompress)\s*\(\s*(?:base64_decode|str_rot13)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
+                    '#\bassert\s*\(\s*(?:\$_(?:GET|POST|REQUEST|COOKIE)\s*\[|(?:base64_decode|gzinflate|gzuncompress|str_rot13)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[)#i',
+                    '#\b(?:system|exec|shell_exec|passthru|proc_open|popen)\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)\s*\[#i',
+                    '#call_user_func(?:_array)?\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
+                    '#array_map\s*\(\s*[\x27\x22](?:exec|system|shell_exec|passthru|eval|assert)[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
+                    '#preg_replace\s*\(\s*[\x27\x22]/[^/]*e[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#\$GLOBALS\s*\[\s*[\x27\x22]\w+[\x27\x22]\s*\]\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
+                    '#\$(?:GLOBALS|_[A-Z]+)\s*\[[^\]]+\]\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)\s*\[#i',
+                    '#register_shutdown_function\s*\(\s*[\x27\x22](?:assert|system|eval|passthru)[\x27\x22]\s*,\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#\$_(?:POST|GET|REQUEST)\s*\[\s*[\x27\x22](?:pass|password|cmd|key|secret|pass1|pass2)[\x27\x22]\s*\][\s\S]{0,80}(?:eval|assert|system|passthru|shell_exec)\s*\(#i',
+                    '#\$[a-zA-Z0-9_]+\s*=\s*[\x27\x22](?:system|exec|passthru|shell_exec|assert)[\x27\x22]\s*;[\s\S]{0,80}\$[a-zA-Z0-9_]+\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22](?:sys|ex|pass|eval|asse)[\x27\x22]\s*\.\s*[\x27\x22][a-z]+[\x27\x22]\s*;[\s\S]{0,80}\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#\b(?:c99shell|r57shell|WSO\s*\d|b374k|FilesMan|Weevely|alfa-team|madspot|Godzilla|Behinder|China\s*Chopper|AntSword|IndoXploit|SimAttacker|IronShell|GYOKKA|Uchiha\s*Terminal|p0wny-shell)\b#i',
+                    '#\$auth_pass\s*=\s*[\x27\x22][a-f0-9]{32}[\x27\x22]#i',
+                    '#\$default_action\s*=\s*[\x27\x22]FilesMan[\x27\x22]#i',
+                    '#\b(?:wp-vcd\.php|class-wp-cache\.php|wp-tmp\.php)\b#i',
                 ],
             ],
             'crypto' => [
                 'weight' => 85,
                 'patterns' => [
-                    '/stratum\s*:\/\//i',
-                    '/mine\.\w+\.\w+/i',
-                    '/Monero|xmr\b/i',
-                    '/cryptonight/i',
-                    "/wallet\\s*=\\s*['\"][13][a-km-zA-HJ-NP-Z0-9]{26,33}['\"]/i",
-                    '/CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot|jsecoin/i',
-                    "/addEventListener\\s*\\(\\s*['\"]key(?:press|down|up)['\"][\\s\\S]{0,100}(?:fetch|XMLHttpRequest|\\.send)/i",
+                    '#stratum\+tcp://#i',
+                    '#mine\.\w+\.\w+#i',
+                    '#Monero|xmr\b#i',
+                    '#cryptonight#i',
+                    '#wallet\s*=\s*[\x27\x22][13][a-km-zA-HJ-NP-Z0-9]{26,33}[\x27\x22]#i',
+                    '#CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot|jsecoin#i',
                 ],
             ],
         ];
-
-        // Enrich with scanner_rules.json if present
-        $rules_file = WAF_FW_PLUGIN_DIR . 'includes/scanner_rules.json';
-        if (file_exists($rules_file)) {
-            $extra = json_decode(@file_get_contents($rules_file), true);
-            if (isset($extra['rules']) && is_array($extra['rules'])) {
-                foreach ($extra['rules'] as $cat => $items) {
-                    if (is_array($items) && !empty($items)) {
-                        $p_list = [];
-                        foreach ($items as $item) {
-                            $val = is_string($item) ? trim($item) : '';
-                            if ($val !== '' && strlen($val) >= 4) {
-                                $p_list[] = '/' . preg_quote($val, '/') . '/i';
-                            }
-                        }
-                        if (!empty($p_list)) {
-                            $patterns[$cat] = [
-                                'weight' => in_array($cat, ['shells', 'auto_login_backdoor', 'wp_vcd', 'persistent_admin_creator']) ? 95 : 75,
-                                'patterns' => $p_list,
-                            ];
-                        }
-                    }
-                }
-            }
-        }
 
         $cached_patterns = $patterns;
         return $patterns;
@@ -1303,31 +1302,20 @@ class WAF_FW_Scanner {
 
     private function get_secret_patterns() {
         return [
-            '/-----BEGIN\s+(RSA|DSA|EC|OPENSSH|PGP)\s+PRIVATE\s+KEY-----/',
-            '/SK-[a-zA-Z0-9]{8,40}/',
-            '/AKIA[0-9A-Z]{16}/',
-            '/AIza[0-9A-Za-z\-_]{35}/',
-            '/EAAC[a-zA-Z0-9]{60,}/',
-            '/ghp_[a-zA-Z0-9]{36}/',
-            '/gho_[a-zA-Z0-9]{36}/',
-            '/github_token\s*[=:]\s*[\'\"][a-zA-Z0-9]{40}[\'\"]/i',
-            '/xox[baprs]-[0-9a-zA-Z\-]{10,}/',
-            '/sk_live_[0-9a-zA-Z]{10,}/',
-            '/pk_live_[0-9a-zA-Z]{10,}/',
-            '/SG\.[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}/',
-            '/access_token\s*[=:]\s*[\'\"][a-zA-Z0-9]{50,}[\'\"]/i',
-            '/api[_-]?key\s*[=:]\s*[\'\"][a-zA-Z0-9]{16,64}[\'\"]/i',
-            '/password\s*[=:]\s*[\'\"][^\'\"]{6,}[\'\"]/i',
-            '/DB_PASSWORD|DB_HOST|DB_USER.*[\'\"][^\'\"]+[\'\"]/i',
-            '/(?:DB_PASSWORD|DB_HOST|DB_USER|DB_NAME)\s*=\s*[^\s]+/i',
-            '/(?:AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID)\s*=\s*[^\s]+/i',
-            '/(?:JWT_SECRET|jwt_secret)\s*=\s*[^\s]+/i',
-            '/mysql:\/\/[^:\s]+:[^@\s]+@/i',
-            '/postgres:\/\/[^:\s]+:[^@\s]+@/i',
-            '/redis:\/\/:[^@\s]+@/i',
-            '/mongodb:\/\/[^:\s]+:[^@\s]+@/i',
-            '/JWT_SECRET|jwt_secret|jwt-key/i',
-            '/-----BEGIN CERTIFICATE-----/',
+            '#-----BEGIN\s+(RSA|DSA|EC|OPENSSH|PGP)\s+PRIVATE\s+KEY-----#',
+            '#SK-[a-zA-Z0-9]{8,40}#',
+            '#AKIA[0-9A-Z]{16}#',
+            '#AIza[0-9A-Za-z\-_]{35}#',
+            '#EAAC[a-zA-Z0-9]{60,}#',
+            '#ghp_[a-zA-Z0-9]{36}#',
+            '#gho_[a-zA-Z0-9]{36}#',
+            '#github_token\s*[=:]\s*[\x27\x22][a-zA-Z0-9]{40}[\x27\x22]#i',
+            '#xox[baprs]-[0-9a-zA-Z\-]{10,}#',
+            '#sk_live_[0-9a-zA-Z]{24,}#',
+            '#SG\.[a-zA-Z0-9\-_]{20,}\.[a-zA-Z0-9\-_]{20,}#',
+            '#mysql:\/\/[^:\s]+:[^@\s]+@#i',
+            '#postgres:\/\/[^:\s]+:[^@\s]+@#i',
+            '#mongodb:\/\/[^:\s]+:[^@\s]+@#i',
         ];
     }
 
@@ -1574,6 +1562,12 @@ class WAF_FW_Scanner {
         $is_core_modified = false;
         $is_core_anomaly = false;
         if ($file_class === 'WORDPRESS_CORE' && $name !== 'wp-config.php') {
+            // Check if it is a known legacy/deprecated WordPress core file (e.g. class-phpmailer.php, moderation.php)
+            if (self::is_wp_legacy_core_file($rel_path, $content)) {
+                // Pristine legacy core file - completely legitimate
+                return null;
+            }
+
             $core_hashes = $this->get_core_checksums();
             if (!empty($core_hashes)) {
                 if (isset($core_hashes[$rel_path])) {
@@ -1590,15 +1584,10 @@ class WAF_FW_Scanner {
                         $confidence = 'HIGH';
                     }
                 } else {
-                    // Unrecognized file in WordPress Core directory (e.g. wp-admin/evil.php or wp-includes/shell.php)
-                    // Official WordPress distributions NEVER ship unexpected arbitrary files in core directories.
                     $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html'];
                     if (!in_array($name, $legit_root_extras, true)) {
                         $is_core_anomaly = true;
-                        $findings[] = "Core Directory Anomaly: Unrecognized non-standard file in WordPress core (" . $rel_path . ")";
-                        $total_score = max($total_score, 75);
-                        $classification = 'SUSPICIOUS';
-                        $confidence = 'HIGH';
+                        // Do not automatically flag as malware unless an actual malicious payload or AST taint is found
                     }
                 }
             }

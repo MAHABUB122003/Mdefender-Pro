@@ -1645,7 +1645,8 @@ export default function BulkScanner() {
               const isCritical = sev === 'critical'
               const isIgnored = ignoredIds.has(rowId)
               const filePath = f.file || f.path || ''
-              const isCore = f.is_repairable || (f.category === 'WordPress Core') || filePath.startsWith('wp-admin') || filePath.startsWith('wp-includes') || filePath.endsWith('index.php') || filePath.endsWith('wp-login.php') || filePath.endsWith('wp-settings.php')
+              const isSecConfig = f.type === 'WordPress security' || f.category === 'WordPress security' || f.category === 'Security Configuration'
+              const isCore = !isSecConfig && (f.is_repairable || (f.category === 'WordPress Core') || filePath.startsWith('wp-admin') || filePath.startsWith('wp-includes') || filePath.endsWith('index.php') || filePath.endsWith('wp-login.php') || filePath.endsWith('wp-settings.php'))
               const isDeletable = f.is_deletable && !isCore
               const isRepairable = f.is_repairable && isCore
               const isQuarantined = f.status === 'quarantined'
@@ -1829,42 +1830,62 @@ export default function BulkScanner() {
                         </div>
                       )}
 
-                      {/* Forensic Code Snippet Box (Wordfence style) */}
-                      <div style={{
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        border: '1px solid #D9E1DC',
-                        marginBottom: '16px'
-                      }}>
+                      {/* Forensic Code Snippet or Hardening Recommendation Box */}
+                      {isSecConfig ? (
                         <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '6px 14px',
-                          background: '#E2E8F0',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          color: '#334155',
-                          textTransform: 'uppercase'
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid #CBD5E1',
+                          background: '#F8FAFC',
+                          padding: '14px 16px',
+                          marginBottom: '16px'
                         }}>
-                          <span>{f.line_number && !isCore ? `LINE ${f.line_number}: ` : ''}{isCore ? 'CORE DIVERGENCE / INJECTED CODE' : 'MALICIOUS PATTERN / WEBSHELL PAYLOAD'}</span>
-                          <span>{isCore ? 'REPAIRABLE CORE FILE' : 'AST FORENSICS'}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              HARDENING RECOMMENDATION
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>
+                            {f.details || f.title || 'Security hardening configuration recommendation.'}
+                          </div>
                         </div>
-                        <pre style={{
-                          margin: 0,
-                          padding: '12px 14px',
-                          background: '#0B1F1C',
-                          color: '#F87171',
-                          fontSize: '12.5px',
-                          fontFamily: 'monospace',
-                          overflowX: 'auto',
-                          lineHeight: 1.5
+                      ) : (
+                        <div style={{
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid #D9E1DC',
+                          marginBottom: '16px'
                         }}>
-                          {isCore && !f.line_number
-  ? `Core SHA-256 divergence detected on server disk: ${filePath} differs from the pristine release on WordPress.org repository.`
-  : `[LINE ${f.line_number || '1'}] ${f.code_snippet || f.findings?.[0] || 'Malicious execution sink payload identified.'}`}
-                        </pre>
-                      </div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '6px 14px',
+                            background: '#E2E8F0',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            color: '#334155',
+                            textTransform: 'uppercase'
+                          }}>
+                            <span>{f.line_number && !isCore ? `LINE ${f.line_number}: ` : ''}{isCore ? 'CORE DIVERGENCE / INJECTED CODE' : 'MALICIOUS PATTERN / WEBSHELL PAYLOAD'}</span>
+                            <span>{isCore ? 'REPAIRABLE CORE FILE' : 'AST FORENSICS'}</span>
+                          </div>
+                          <pre style={{
+                            margin: 0,
+                            padding: '12px 14px',
+                            background: '#0B1F1C',
+                            color: '#F87171',
+                            fontSize: '12.5px',
+                            fontFamily: 'monospace',
+                            overflowX: 'auto',
+                            lineHeight: 1.5
+                          }}>
+                            {isCore && !f.line_number
+                              ? `Core SHA-256 divergence detected on server disk: ${filePath} differs from the pristine release on WordPress.org repository.`
+                              : `[LINE ${f.line_number || '1'}] ${f.code_snippet || f.findings?.[0] || 'Malicious execution sink payload identified.'}`}
+                          </pre>
+                        </div>
+                      )}
 
                       {/* Drawer Bottom Action Buttons */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

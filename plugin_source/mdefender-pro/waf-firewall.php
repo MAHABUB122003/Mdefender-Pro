@@ -3068,8 +3068,8 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
             $snippet = trim($lines[$line_number - 1]);
         } else {
             foreach ($lines as $idx => $line) {
-                if (preg_match('/(?:eval|system|exec|shell_exec|passthru|assert|proc_open|popen|wp_create_user|base64_decode|gzinflate|str_rot13|hex2bin)\\s*\\(/i', $line) ||
-                    preg_match('/(?:\\$_POST|\\$_GET|\\$_COOKIE|\\$_REQUEST)\\s*\\[/i', $line)) {
+                if (preg_match('/(?:eval|system|exec|shell_exec|passthru|assert|proc_open|popen)\\s*\\(/i', $line) ||
+                    preg_match('/\\$[a-zA-Z0-9_]+\\s*\\(\\s*\\$_(?:GET|POST|REQUEST|COOKIE)/i', $line)) {
                     $line_number = $idx + 1;
                     $snippet = trim($line);
                     break;
@@ -3086,9 +3086,9 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
 
     $threat_name = 'Webshell / Backdoor';
     $findings_str = implode(' ', $scan_res['findings'] ?? []);
-    if (strpos($findings_str, 'wp_create_user') !== false) {
+    if (strpos($findings_str, 'wp_create_user') !== false && !$is_core) {
         $threat_name = 'Privilege Escalation Backdoor (Rogue Admin Creation)';
-    } elseif (strpos($findings_str, 'Core Checksum Mismatch') !== false || $is_core) {
+    } elseif (strpos($findings_str, 'Core Checksum Mismatch') !== false) {
         $threat_name = 'WordPress core file modified: ' . $rel_path;
     } elseif (strpos($findings_str, 'system(') !== false || strpos($findings_str, 'shell_exec(') !== false) {
         $threat_name = 'Remote Code Execution (RCE) Backdoor';
