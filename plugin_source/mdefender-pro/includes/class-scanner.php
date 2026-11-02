@@ -1232,12 +1232,52 @@ class WAF_FW_Scanner {
             $findings[] = "SEO Blackhat Spam: Concealed pharma/gambling keywords injected";
         }
 
-        // Privilege Escalation Backdoor: Unauthenticated creation of admin user taking credentials from external HTTP input
-        if (preg_match('#add_action\s*\(\s*[\x27\x22](?:init|wp_head|wp_footer)[\x27\x22][\s\S]{0,150}(?:wp_create_user|wp_insert_user)[\s\S]{0,120}\$_(?:GET|POST|REQUEST)#i', $content)) {
-            $score = max($score, 95);
-            $confidence = 'HIGH';
-            $classification = 'CONFIRMED_MALWARE';
-            $findings[] = "Privilege Escalation Backdoor: Unauthenticated rogue administrator creation hook detected";
+        // Privilege Escalation Backdoor: Rogue Administrator Creation
+        // Unauthenticated or triggered creation of administrator accounts or assignment of administrator role
+        $is_whitelisted_core_installer = (
+            strpos($path, 'wp-admin/install.php') !== false || 
+            strpos($path, 'wp-admin/upgrade.php') !== false
+        );
+
+        if (!$is_whitelisted_core_installer) {
+            $has_user_create = (bool)preg_match('/(?:wp_create_user|wp_insert_user)/i', $content);
+            $has_role_admin = (bool)(
+                preg_match('/[\x27\x22]role[\x27\x22]\s*=>\s*[\x27\x22]administrator[\x27\x22]/i', $content) ||
+                preg_match('/->\s*(?:set_role|add_role)\s*\(\s*[\x27\x22]administrator[\x27\x22]/i', $content) ||
+                preg_match('/->\s*(?:set_role|add_role)\s*\(\s*\$_(?:GET|POST|REQUEST)/i', $content)
+            );
+            $has_trigger = (bool)(
+                preg_match('/\$_(?:GET|POST|REQUEST|COOKIE)/i', $content) ||
+                preg_match('/add_action\s*\(\s*[\x27\x22](?:init|wp_loaded|plugins_loaded|admin_init|wp_head|wp_footer|wp|template_redirect|setup_theme|after_setup_theme|login_init)[\x27\x22]/i', $content)
+            );
+
+            if (($has_user_create || preg_match('/->\s*(?:set_role|add_role)\s*\(\s*[\x27\x22]administrator[\x27\x22]/i', $content)) && $has_role_admin && $has_trigger) {
+                $score = max($score, 98);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = "Privilege Escalation Backdoor: Rogue administrator account creation detected";
+            } elseif ($has_user_create && preg_match('/[\x27\x22]role[\x27\x22]\s*=>\s*[\x27\x22]administrator[\x27\x22]/i', $content)) {
+                $score = max($score, 95);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = "Privilege Escalation Backdoor: Hardcoded administrator account creation detected";
+            } elseif (preg_match('/add_action\s*\(\s*[\x27\x22](?:init|wp_loaded|plugins_loaded|admin_init|wp_head|wp_footer)[\x27\x22]/i', $content) &&
+                      $has_user_create && preg_match('/administrator/i', $content)) {
+                $score = max($score, 95);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = "Privilege Escalation Backdoor: Unauthenticated rogue administrator creation hook detected";
+            }
+
+            // Authentication Bypass Backdoor: Hardcoded admin ID 1 or direct external ID login without auth
+            if (preg_match('/(?:wp_set_auth_cookie|wp_set_current_user)\s*\(\s*(?:1|\$_(?:GET|POST|REQUEST))\s*[,)]/i', $content) &&
+                preg_match('/\$_(?:GET|POST|REQUEST|COOKIE)/i', $content) &&
+                strpos($path, 'wp-login.php') === false && strpos($path, 'pluggable.php') === false) {
+                $score = max($score, 95);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = "Authentication Bypass Backdoor: Unauthenticated administrative login backdoor detected";
+            }
         }
 
         // Obfuscation: Direct concatenated chr() chain passed to dynamic execution (e.g. chr(101).chr(118)...)

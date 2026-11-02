@@ -3057,14 +3057,23 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
     $line_number = '';
     $snippet = '';
 
-    // Search for line number in findings
-    foreach ($scan_res['findings'] as $f) {
-        if (preg_match('/\[Line\s*(\d+)\]/i', $f, $m)) {
-            $line_number = (int)$m[1];
-            break;
-        } elseif (preg_match('/line\s*(\d+)/i', $f, $m)) {
-            $line_number = (int)$m[1];
-            break;
+    if (!empty($scan_res['line_number'])) {
+        $line_number = (int)$scan_res['line_number'];
+    }
+    if (!empty($scan_res['snippet'])) {
+        $snippet = $scan_res['snippet'];
+    }
+
+    // Search for line number in findings if not already set
+    if (empty($line_number) && !empty($scan_res['findings'])) {
+        foreach ($scan_res['findings'] as $f) {
+            if (preg_match('/\[Line\s*(\d+)\]/i', $f, $m)) {
+                $line_number = (int)$m[1];
+                break;
+            } elseif (preg_match('/line\s*(\d+)/i', $f, $m)) {
+                $line_number = (int)$m[1];
+                break;
+            }
         }
     }
 
@@ -3087,7 +3096,9 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
             $snippet = trim($lines[$line_number - 1]);
         } else {
             foreach ($lines as $idx => $line) {
-                if (preg_match('/(?:eval|system|exec|shell_exec|passthru|assert|proc_open|popen)\\s*\\(/i', $line) ||
+                if (preg_match('/(?:eval|system|exec|shell_exec|passthru|assert|proc_open|popen|wp_create_user|wp_insert_user)\\s*\\(/i', $line) ||
+                    preg_match('/(?:set_role|add_role)\\s*\\(\\s*[\x27\x22]administrator[\x27\x22]/i', $line) ||
+                    preg_match('/[\x27\x22]role[\x27\x22]\\s*=>\\s*[\x27\x22]administrator[\x27\x22]/i', $line) ||
                     preg_match('/\\$[a-zA-Z0-9_]+\\s*\\(\\s*\\$_(?:GET|POST|REQUEST|COOKIE)/i', $line)) {
                     $line_number = $idx + 1;
                     $snippet = trim($line);
@@ -3105,7 +3116,7 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
 
     $threat_name = 'Webshell / Backdoor';
     $findings_str = implode(' ', $scan_res['findings'] ?? []);
-    if (strpos($findings_str, 'wp_create_user') !== false && !$is_core) {
+    if ((strpos($findings_str, 'wp_create_user') !== false || strpos($findings_str, 'Privilege Escalation') !== false) && !$is_core) {
         $threat_name = 'Privilege Escalation Backdoor (Rogue Admin Creation)';
     } elseif (strpos($findings_str, 'Core Checksum Mismatch') !== false) {
         $threat_name = 'WordPress core file modified: ' . $rel_path;
