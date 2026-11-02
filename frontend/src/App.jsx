@@ -211,7 +211,9 @@ function App() {
           <Route path="monitoring/uptime" element={<BulkMonitoring initialTab="uptime" />} />
           <Route path="monitoring/performance" element={<BulkSiteHealth />} />
           <Route path="monitoring/broken-links" element={<BulkMonitoring initialTab="broken-links" />} />
-          <Route path="security/bot-defense" element={<UserTools activeMode="autoblock" isBulk={true} />} />
+          <Route path="security/bot-shield" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
+          <Route path="security/bot-defense" element={<UserTools activeMode="bot_shield" isBulk={true} />} />
+          <Route path="security/rate-limits" element={<UserTools activeMode="rate_limits" isBulk={true} />} />
           <Route path="security/2fa" element={<UserTools activeMode="twofactor" isBulk={true} />} />
           <Route path="security/threat-intelligence" element={<UserTools activeMode="whois" isBulk={true} />} />
           <Route path="security/port-scanner" element={<UserTools activeMode="audit" isBulk={true} />} />

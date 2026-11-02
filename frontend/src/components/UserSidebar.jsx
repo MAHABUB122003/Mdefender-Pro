@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   HardDrive,
   Cpu,
+  Bot,
+  SlidersHorizontal,
   Key,
   Flame,
   Radio,
@@ -107,7 +109,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
-      securityProtection: path.includes('/security/bot-defense') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
+      securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
       securityCenter: path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')
     }
   })
@@ -122,7 +124,7 @@ export default function UserSidebar({ isOpen, onClose }) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
     } else if (path.includes('/blacklist') || path.includes('/access/')) {
       setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
-    } else if (path.includes('/security/bot-defense') || path.includes('/security/2fa') || path.includes('/bulk/tools')) {
+    } else if (path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools')) {
       setOpenDropdowns(prev => prev.securityProtection ? prev : { ...prev, securityProtection: true })
     } else if (path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')) {
       setOpenDropdowns(prev => prev.securityCenter ? prev : { ...prev, securityCenter: true })
@@ -193,8 +195,11 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (toPath === '/user/access/country-blocking') {
       return currentPath === '/user/access/country-blocking' || (currentPath === '/user/blacklist' && (currentSearch.includes('country_blocking') || currentSearch.includes('country')))
     }
-    if (toPath === '/user/security/bot-defense') {
-      return currentPath === '/user/security/bot-defense' || currentPath === '/user/bulk/tools'
+    if (toPath === '/user/security/bot-shield') {
+      return currentPath === '/user/security/bot-shield' || currentPath === '/user/security/bot-defense'
+    }
+    if (toPath === '/user/security/rate-limits') {
+      return currentPath === '/user/security/rate-limits' || currentPath === '/user/bulk/tools'
     }
     if (toPath === '/user/security/2fa') {
       return currentPath === '/user/security/2fa'
@@ -212,7 +217,7 @@ export default function UserSidebar({ isOpen, onClose }) {
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
   const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
-  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-defense') || currentPath.includes('/security/2fa') || currentPath.includes('/bulk/tools')
+  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/bulk/tools')
   const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath === '/threat-intelligence'
 
   return (
@@ -438,12 +443,20 @@ export default function UserSidebar({ isOpen, onClose }) {
             isGroupActive={isSecurityProtectionGroupActive}
           >
             <Link
-              to="/user/security/bot-defense"
+              to="/user/security/bot-shield"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/security/bot-defense') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/bot-shield') ? 'active' : ''}`}
             >
-              <Cpu size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
-              <span style={{ pointerEvents: 'none' }}>Bot Defense &amp; Rate Limits</span>
+              <Bot size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Biometric &amp; Bot Shield</span>
+            </Link>
+            <Link
+              to="/user/security/rate-limits"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/rate-limits') ? 'active' : ''}`}
+            >
+              <SlidersHorizontal size={13.5} style={{ flexShrink: 0, pointerEvents: 'none' }} />
+              <span style={{ pointerEvents: 'none' }}>Rate Limiting &amp; DDoS</span>
             </Link>
             <Link
               to="/user/security/2fa"
