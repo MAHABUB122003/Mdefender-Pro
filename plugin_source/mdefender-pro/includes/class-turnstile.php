@@ -63,7 +63,7 @@ class WAF_FW_Turnstile {
 
         // 4. Site-Wide Visitor Verification Gate (Cloudflare Architecture)
         // By default runs for all modes (site_wide, forms, all) unless strictly restricted to login_only or forms_only
-        if ($mode !== 'login_only' && $mode !== 'forms_only') {
+        if ($mode === 'site_wide' || $mode === 'all') {
             add_action('init', [$this, 'handle_sitewide_challenge'], 1);
         }
 
@@ -553,16 +553,24 @@ class WAF_FW_Turnstile {
 
         $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
-        // 1. Allow critical core endpoints, sync webhooks, SaaS cloud actions and static assets
+        // 1. Allow critical core endpoints, sync webhooks, SaaS cloud actions, monitoring probes and static assets
         if (strpos($uri, 'wp-admin/admin-ajax.php') !== false ||
             strpos($uri, 'wp-login.php') !== false ||
             strpos($uri, '/wp-json/mdefender/') !== false ||
             strpos($uri, '/wp-json/waf-fw/') !== false ||
+            strpos($uri, 'waf-rescue.php') !== false ||
             isset($_REQUEST['waf_cloud_sync']) ||
             isset($_REQUEST['waf_sync']) ||
-            (isset($_GET['action']) && in_array($_GET['action'], ['trigger_scan', 'scan', 'remote_scan', 'waf_cloud_sync'])) ||
-            (isset($_POST['action']) && in_array($_POST['action'], ['trigger_scan', 'scan', 'remote_scan', 'waf_cloud_sync'])) ||
-            (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'MDefender-Pro-CloudAction') !== false) ||
+            (isset($_GET['action']) && in_array($_GET['action'], ['trigger_scan', 'scan', 'remote_scan', 'waf_cloud_sync', 'create_backup', 'restore_backup', 'delete_backup', 'get_backups'])) ||
+            (isset($_POST['action']) && in_array($_POST['action'], ['trigger_scan', 'scan', 'remote_scan', 'waf_cloud_sync', 'create_backup', 'restore_backup', 'delete_backup', 'get_backups'])) ||
+            (isset($_SERVER['HTTP_USER_AGENT']) && (
+                strpos($_SERVER['HTTP_USER_AGENT'], 'MDefender') !== false ||
+                strpos($_SERVER['HTTP_USER_AGENT'], 'CloudAction') !== false
+            )) ||
+            !empty($_SERVER['HTTP_X_API_KEY']) ||
+            !empty($_SERVER['HTTP_X_MDEFENDER_KEY']) ||
+            !empty($_SERVER['HTTP_X_MDEFENDER_PROBE']) ||
+            !empty($_SERVER['HTTP_X_SITE_TOKEN']) ||
             preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|webp|woff2?|ttf|eot|ico|webmanifest|xml)$/i', $uri)) {
             return;
         }

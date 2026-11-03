@@ -927,7 +927,7 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
         ip_val = (item.get("ip") or "").strip()
 
-        if not ip_val or ip_val in ("127.0.0.1", "::1", "0.0.0.0", "localhost"):
+        if not ip_val:
 
             continue
 

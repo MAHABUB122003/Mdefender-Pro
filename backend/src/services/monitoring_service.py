@@ -164,6 +164,7 @@ class MonitoringService:
             if target.get("api_key"):
                 req_headers["X-MDefender-Key"] = target["api_key"]
                 req_headers["X-API-KEY"] = target["api_key"]
+            req_headers["X-MDefender-Probe"] = "1"
 
             req = urllib.request.Request(url, headers=req_headers)
 
@@ -511,6 +512,7 @@ class MonitoringService:
         if target.get("api_key"):
             audit_headers["X-MDefender-Key"] = target["api_key"]
             audit_headers["X-API-KEY"] = target["api_key"]
+        audit_headers["X-MDefender-Probe"] = "1"
 
         req = urllib.request.Request(url, headers=audit_headers)
 
@@ -903,7 +905,7 @@ class MonitoringService:
         }
         if target.get("api_key"):
             crawler_headers["X-MDefender-Key"] = target["api_key"]
-            crawler_headers["X-API-KEY"] = target["api_key"]
+        crawler_headers["X-MDefender-Probe"] = "1"
 
         try:
             req = urllib.request.Request(url, headers=crawler_headers)

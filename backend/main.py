@@ -1436,7 +1436,7 @@ def push_to_fleet_async(target_sites, payload, full_sync=True):
                 now_dt = datetime.now()
                 for item in db.blacklist.find():
                     ip_v = (item.get('ip') or '').strip()
-                    if not ip_v or ip_v in ('127.0.0.1', '::1', '0.0.0.0', 'localhost'):
+                    if not ip_v:
                         continue
                     exp = item.get('expires_at')
                     if exp and isinstance(exp, datetime) and exp <= now_dt:
@@ -2293,16 +2293,38 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
     from src.security.attack_blocker import AttackBlocker
     ab = AttackBlocker(db)
     saved = ab.save_user_settings(user['_id'], data)
+
+    website_id = (data.get('website_id') or 'all').strip()
+    user_id_str = str(user.get('_id') or '')
+
+    # If a specific website is selected, update that website document in db.websites
+    if website_id and website_id != 'all':
+        ws_update = {}
+        for k in [
+            'hold_press_enabled', 'hold_press_duration_ms', 
+            'turnstile_enabled', 'turnstile_mode', 'turnstile_theme', 
+            'auto_block_enabled', 'rate_limit_per_minute', 'rate_limit_action', 
+            'auto_block_threshold', 'auto_block_window_hours', 'auto_block_duration_hours'
+        ]:
+            if k in data:
+                ws_update[k] = data[k]
+        if ws_update:
+            ws_update['updated_at'] = datetime.now()
+            db.websites.update_one(
+                {'$or': [{'_id': website_id}, {'id': website_id}, {'domain': website_id}]},
+                {'$set': ws_update}
+            )
+
     from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-    push_instant_sync_to_wordpress(user_id=user['_id'])
+    push_instant_sync_to_wordpress(user_id=user['_id'], website_id=website_id if website_id != 'all' else None)
 
     try:
-        user_id_str = str(user.get('_id') or '')
         audit_svc.log(
             user_id=user_id_str,
             action="bot_defense_updated",
             ip_address=request.client.host if request.client else "127.0.0.1",
             details={
+                "website_id": website_id,
                 "rate_limit_per_minute": data.get("rate_limit_per_minute"),
                 "auto_block_threshold": data.get("auto_block_threshold"),
                 "hold_press_enabled": data.get("hold_press_enabled"),

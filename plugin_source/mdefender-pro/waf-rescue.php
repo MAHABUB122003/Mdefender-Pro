@@ -238,6 +238,10 @@ if ($action === 'ping' || $action === 'self_heal') {
     exit;
 }
 
+if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+}
+
 if (class_exists('WAF_FW_Backup_Engine')) {
     $engine = WAF_FW_Backup_Engine::instance();
     if ($action === 'create_backup') {

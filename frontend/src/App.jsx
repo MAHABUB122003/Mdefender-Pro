@@ -235,6 +235,9 @@ function App() {
           <Route path="bulk/themes" element={<BulkThemes />} />
           <Route path="bulk/core" element={<BulkCore />} />
           <Route path="bulk/backup" element={<BulkBackup />} />
+          <Route path="backup" element={<BulkBackup />} />
+          <Route path="backups" element={<BulkBackup />} />
+          <Route path="bulk/backups" element={<BulkBackup />} />
           <Route path="bulk/scanner" element={<BulkScanner />} />
           <Route path="bulk/hardening" element={<BulkHardening />} />
           <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />

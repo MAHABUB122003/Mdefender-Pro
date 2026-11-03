@@ -321,11 +321,15 @@ export default function UserBlacklist({ activeMode }) {
     try {
       const payload = { ...form, website_id: form.website_id || selectedWebsite }
       const res = await api.addUserBlacklist(payload)
-      setShowModal(false)
-      setForm({ ip: '', reason: '', duration: '1d', website_id: selectedWebsite })
-      userStore.invalidate('blacklist')
-      showToast(res?.message || `IP ${form.ip} blocked.`)
-      fetchBlacklist(true, selectedWebsite)
+      if (res?.status === 'error') {
+        showToast(res?.message || 'Failed to block IP', 'error')
+      } else {
+        setShowModal(false)
+        setForm({ ip: '', reason: '', duration: '1d', website_id: selectedWebsite })
+        userStore.invalidate('blacklist')
+        showToast(res?.message || `IP ${form.ip} blocked.`)
+        fetchBlacklist(true, selectedWebsite)
+      }
     } catch (err) {
       showToast(err.message || 'Failed to block IP', 'error')
     } finally { setSubmitting(false) }

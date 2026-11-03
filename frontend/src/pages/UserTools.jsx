@@ -829,10 +829,11 @@ Report Generated: ${new Date().toISOString()}`
     try {
       const payload = {
         hold_press_enabled: Boolean(securityConfig.hold_press_enabled),
-        hold_press_duration_ms: Number(securityConfig.hold_press_duration_ms) || 2000
+        hold_press_duration_ms: Number(securityConfig.hold_press_duration_ms) || 2000,
+        website_id: selectedDdosSite || 'all'
       }
       const res = await api.updateUserSecurityConfig(payload)
-      if (res?.status === 'success') {
+      if (res?.status === 'success' || (res && res.status !== 'error')) {
         setAdminLoginFeedback('✓ Admin login security saved & synchronized to WordPress!')
         if (res.config) setSecurityConfig(prev => ({ ...prev, ...res.config }))
         setTimeout(() => setAdminLoginFeedback(''), 4000)
@@ -854,10 +855,11 @@ Report Generated: ${new Date().toISOString()}`
       const payload = {
         turnstile_enabled: Boolean(securityConfig.turnstile_enabled),
         turnstile_mode: securityConfig.turnstile_mode || 'site_wide',
-        turnstile_theme: securityConfig.turnstile_theme || 'auto'
+        turnstile_theme: securityConfig.turnstile_theme || 'auto',
+        website_id: selectedDdosSite || 'all'
       }
       const res = await api.updateUserSecurityConfig(payload)
-      if (res?.status === 'success') {
+      if (res?.status === 'success' || (res && res.status !== 'error')) {
         setVisitorBotFeedback('✓ Visitor bot shield saved & synchronized to WordPress!')
         if (res.config) setSecurityConfig(prev => ({ ...prev, ...res.config }))
         setTimeout(() => setVisitorBotFeedback(''), 4000)
@@ -888,7 +890,8 @@ Report Generated: ${new Date().toISOString()}`
         login_lockout_threshold: Number(securityConfig.login_lockout_threshold) || 5,
         login_lockout_duration_minutes: Number(securityConfig.login_lockout_duration_minutes) || 60,
         login_lockout_scope: securityConfig.login_lockout_scope || 'gateway_only',
-        rate_limit_action: securityConfig.rate_limit_action || 'throttle_429'
+        rate_limit_action: securityConfig.rate_limit_action || 'throttle_429',
+        website_id: selectedDdosSite || 'all'
       }
       const res = await api.updateUserSecurityConfig(payload)
       if (res?.status === 'success') {
