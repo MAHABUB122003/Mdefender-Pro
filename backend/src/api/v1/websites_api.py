@@ -926,6 +926,9 @@ class SecuritySettingsUpdate(BaseModel):
     login_two_factor: bool | None = None
     two_factor_secret: str | None = None
     two_factor_recovery_codes: list[str] | None = None
+    plugin_slug: str | None = None
+    activate: bool | None = None
+    version: str | None = None
 
 
 
@@ -10001,6 +10004,21 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
                     if t.get("new_version"):
                         t["version"] = t["new_version"]
             site_updates["themes"] = cur_t
+        elif body.action == "delete_plugin":
+            cur_p = list(ws.get("plugins") or [])
+            site_updates["plugins"] = [
+                p for p in cur_p
+                if not (
+                    (target_pfile and (p.get("file") == target_pfile or target_pfile in (p.get("file") or ""))) or
+                    (target_pid and (p.get("id") == target_pid or target_pid in (p.get("id") or "")))
+                )
+            ]
+        elif body.action == "delete_theme":
+            cur_t = list(ws.get("themes") or [])
+            site_updates["themes"] = [
+                t for t in cur_t
+                if not (target_tslug and (t.get("slug") == target_tslug or t.get("id") == target_tslug or target_tslug in (t.get("slug") or "")))
+            ]
 
         if site_updates:
             db.websites.update_one({"_id": ws["_id"]}, {"$set": site_updates})
@@ -10034,6 +10052,11 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
             url_params += f"&filename={body.filename}"
         if body.type:
             url_params += f"&type={body.type}"
+        if getattr(body, "plugin_slug", None) or getattr(body, "slug", None):
+            p_s = getattr(body, "plugin_slug", None) or getattr(body, "slug", None)
+            url_params += f"&plugin_slug={p_s}&slug={p_s}"
+        if getattr(body, "activate", None) is not None:
+            url_params += f"&activate={1 if body.activate else 0}"
         if api_key:
             url_params += f"&api_key={api_key}"
         if site_token:
@@ -10056,7 +10079,8 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
 
         for ep in candidates:
             try:
-                resp = requests.post(ep, json=action_payload, headers=headers, timeout=2.0, verify=False)
+                act_timeout = 25.0 if ("install" in body.action or "update" in body.action) else 6.0
+                resp = requests.post(ep, json=action_payload, headers=headers, timeout=act_timeout, verify=False)
                 if resp.status_code == 200:
                     try:
                         resp_json = resp.json()
