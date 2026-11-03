@@ -222,7 +222,7 @@ class WAF_FW_2FA {
         return $secret;
     }
 
-    public function verify_totp($secret, $code, $discrepancy = 1) {
+    public function verify_totp($secret, $code, $discrepancy = 2) {
         $currentTimeSlice = floor(time() / 30);
         for ($i = -$discrepancy; $i <= $discrepancy; $i++) {
             $calculatedCode = $this->get_totp_code($secret, $currentTimeSlice + $i);

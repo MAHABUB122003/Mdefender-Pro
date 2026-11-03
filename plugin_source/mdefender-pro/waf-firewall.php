@@ -93,6 +93,11 @@ if (class_exists('WAF_FW_Under_Attack_Shield')) {
     WAF_FW_Under_Attack_Shield::instance();
 }
 
+// Initialize Two-Factor Authentication Engine
+if (class_exists('WAF_FW_2FA')) {
+    WAF_FW_2FA::instance();
+}
+
 function waf_fw_activate() {
     try {
         $db = WAF_FW_DB::instance();
@@ -706,15 +711,38 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $sh_enabled = $config['security_headers'] ? 'enabled' : 'disabled';
                         update_option('waf_harden_security_headers', $sh_enabled);
                     }
-                    if (isset($config['login_two_factor'])) {
-                        $l2f_val = $config['login_two_factor'] ? 'enabled' : 'disabled';
+                    if (isset($config['login_two_factor']) || isset($config['two_factor_enabled'])) {
+                        $is_2fa_active = !empty($config['two_factor_enabled']) || !empty($config['login_two_factor']);
+                        $l2f_val = $is_2fa_active ? 'enabled' : 'disabled';
                         update_option('waf_harden_login_guard', $l2f_val);
-                        update_option('waf_2fa_enforced', (!empty($config['two_factor_enabled']) || $l2f_val === 'enabled') ? 'yes' : 'no');
+                        update_option('waf_2fa_enforced', $is_2fa_active ? 'yes' : 'no');
                         if (isset($config['two_factor_roles'])) {
                             update_option('waf_2fa_roles', sanitize_text_field($config['two_factor_roles']));
                         }
                         if (isset($config['two_factor_max_attempts'])) {
                             update_option('waf_2fa_max_attempts', intval($config['two_factor_max_attempts']));
+                        }
+                        if (!empty($config['two_factor_secret'])) {
+                            update_option('waf_2fa_fleet_secret', sanitize_text_field($config['two_factor_secret']));
+                        }
+                        if (!empty($config['two_factor_recovery_codes']) && is_array($config['two_factor_recovery_codes'])) {
+                            update_option('waf_2fa_fleet_recovery_codes', array_values(array_filter(array_map('sanitize_text_field', $config['two_factor_recovery_codes']))));
+                        }
+                        if (function_exists('get_users')) {
+                            $site_admins = get_users(['role' => 'administrator']);
+                            $prop_sec = !empty($config['two_factor_secret']) ? sanitize_text_field($config['two_factor_secret']) : get_option('waf_2fa_fleet_secret', '');
+                            $prop_rec = (!empty($config['two_factor_recovery_codes']) && is_array($config['two_factor_recovery_codes']))
+                                ? array_values(array_filter(array_map('sanitize_text_field', $config['two_factor_recovery_codes'])))
+                                : get_option('waf_2fa_fleet_recovery_codes', []);
+                            foreach ($site_admins as $admin_usr) {
+                                update_user_meta($admin_usr->ID, '_waf_2fa_enabled', $is_2fa_active ? 'yes' : 'no');
+                                if (!empty($prop_sec)) {
+                                    update_user_meta($admin_usr->ID, '_waf_2fa_secret', $prop_sec);
+                                }
+                                if (!empty($prop_rec)) {
+                                    update_user_meta($admin_usr->ID, '_waf_2fa_recovery_codes', $prop_rec);
+                                }
+                            }
                         }
                     }
                 }

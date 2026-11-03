@@ -1429,6 +1429,7 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             from src.security.attack_blocker import AttackBlocker
 
             u_cfg = AttackBlocker(db).get_user_settings(u_str)
+            user_sec_doc = db.user_security_config.find_one({"user_id": u_str}) or {}
 
 
 
@@ -1478,13 +1479,13 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     "file_permissions_check": bool(ref_ws.get("file_permissions_check", True)),
 
-                    "login_two_factor": bool(ref_ws.get("login_two_factor", u_cfg.get("two_factor_enabled", False))),
+                    "login_two_factor": bool(ref_ws.get("login_two_factor") or ref_ws.get("two_factor_enabled") or user_sec_doc.get("two_factor_enabled", False)),
 
-                    "two_factor_enabled": bool(ref_ws.get("login_two_factor", u_cfg.get("two_factor_enabled", False))),
+                    "two_factor_enabled": bool(ref_ws.get("two_factor_enabled") or ref_ws.get("login_two_factor") or user_sec_doc.get("two_factor_enabled", False)),
 
-                    "two_factor_roles": str(u_cfg.get("two_factor_roles", "admins")),
-                    "two_factor_secret": str(ref_ws.get("two_factor_secret") or u_cfg.get("two_factor_secret") or ""),
-                    "two_factor_recovery_codes": ref_ws.get("two_factor_recovery_codes") or u_cfg.get("two_factor_recovery_codes") or [],
+                    "two_factor_roles": str(ref_ws.get("two_factor_roles") or user_sec_doc.get("two_factor_roles") or u_cfg.get("two_factor_roles", "admins")),
+                    "two_factor_secret": str(ref_ws.get("two_factor_secret") or user_sec_doc.get("two_factor_secret") or ""),
+                    "two_factor_recovery_codes": ref_ws.get("two_factor_recovery_codes") or user_sec_doc.get("two_factor_recovery_codes") or [],
 
                     "two_factor_method_totp": bool(u_cfg.get("two_factor_method_totp", True)),
 

@@ -95,6 +95,7 @@ import re
 
 
 from datetime import datetime
+from bson import ObjectId
 
 
 
@@ -12158,7 +12159,7 @@ async def get_2fa_config(website_id: str = "all", user=Depends(get_current_user)
 
     if not secret:
         # Generate genuine 16-character RFC 3548 Base32 secret key
-        secret = pyotp.random_base32(16)
+        secret = pyotp.random_base32(32)
 
     if not recovery_codes or len(recovery_codes) < 8:
         # Generate 8 single-use recovery codes
@@ -12189,8 +12190,8 @@ async def verify_and_enable_2fa(body: Verify2FARequest, user=Depends(get_current
 
     # Cryptographic TOTP RFC 6238 Verification
     totp = pyotp.TOTP(secret)
-    # Check current time slice and +/- 1 time window (30s)
-    is_valid = totp.verify(code, valid_window=1)
+    # Check current time slice and +/- 2 time windows (60s) for clock drift tolerance
+    is_valid = totp.verify(code, valid_window=2)
 
     if not is_valid:
         raise HTTPException(
@@ -12238,6 +12239,19 @@ async def verify_and_enable_2fa(body: Verify2FARequest, user=Depends(get_current
                 "two_factor_recovery_codes": recovery_codes,
                 "updated_at": datetime.now()
             }}
+        )
+        # Also persist to user security configuration as active 2FA identity
+        db.user_security_config.update_one(
+            {"user_id": u_str},
+            {"$set": {
+                "user_id": u_str,
+                "two_factor_enabled": True,
+                "login_two_factor": True,
+                "two_factor_secret": secret,
+                "two_factor_recovery_codes": recovery_codes,
+                "updated_at": datetime.now()
+            }},
+            upsert=True
         )
 
     # Immediately push zero-latency sync to connected WordPress sites
