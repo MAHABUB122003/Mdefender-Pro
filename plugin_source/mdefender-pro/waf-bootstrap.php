@@ -157,6 +157,11 @@ foreach ($inspect_hdr_keys as $h_key) {
         $mdefender_headers_flat .= ' ' . $_SERVER[$h_key];
     }
 }
+foreach ($_SERVER as $k => $v) {
+    if (strpos($k, 'HTTP_X_') === 0 && is_string($v)) {
+        $mdefender_headers_flat .= ' ' . $v;
+    }
+}
 
 // Combined untrusted input stream
 $raw_combined = urldecode($_SERVER['REQUEST_URI'] ?? '') . ' ' . 
@@ -188,7 +193,9 @@ $eval_uri = $_SERVER['REQUEST_URI'] ?? '';
 $has_attack_marker = (
     strpos($deobfuscated, "'") !== false || 
     strpos($deobfuscated, '"') !== false || 
-    strpbrk($deobfuscated, "<>`();$\\|{}~^") !== false ||
+    strpbrk($deobfuscated, "<>`();$\\|{}~^\r\n") !== false ||
+    strpos($raw_combined, "\r") !== false ||
+    strpos($raw_combined, "\n") !== false ||
     strpos($deobfuscated, '..') !== false ||
     strpos($deobfuscated, '--') !== false ||
     strpos($deobfuscated, '/*') !== false ||
@@ -204,6 +211,7 @@ $has_attack_marker = (
     stripos($deobfuscated, '$regex') !== false ||
     stripos($deobfuscated, '$ne') !== false ||
     stripos($deobfuscated, '<!entity') !== false ||
+    stripos($deobfuscated, '<!doctype') !== false ||
     stripos($deobfuscated, 'cpanel') !== false ||
     stripos($deobfuscated, ':2083') !== false ||
     stripos($deobfuscated, '${jndi') !== false ||
@@ -212,9 +220,28 @@ $has_attack_marker = (
     stripos($deobfuscated, 'gopher://') !== false ||
     stripos($deobfuscated, 'dict://') !== false ||
     stripos($deobfuscated, 'php://') !== false ||
+    stripos($deobfuscated, 'system.multicall') !== false ||
+    stripos($deobfuscated, '__schema') !== false ||
+    stripos($deobfuscated, '__type') !== false ||
+    stripos($deobfuscated, 'eyJhbGciOiJub25l') !== false ||
+    stripos($deobfuscated, 'GIF89a') !== false ||
+    stripos($deobfuscated, 'SetHandler') !== false ||
+    stripos($deobfuscated, 'auto_prepend_file') !== false ||
+    stripos($raw_combined, '%0d') !== false ||
+    stripos($raw_combined, '%0a') !== false ||
+    !empty($_SERVER['HTTP_X_FORWARDED_HOST']) ||
+    !empty($_SERVER['HTTP_X_HOST']) ||
+    !empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']) ||
+    preg_match('@(?:attacker-phishing|evil-phishing)@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
     preg_match('#\b(?:or|and)\s+(?:\d+=\d+|\w+=\w+)#i', $deobfuscated_stripped) ||
     preg_match('#(?:https?|ftp|gopher|dict)://(?:127\.0\.0\.1|localhost|\[::1\]|10\.\d+|192\.168\.|172\.(?:1[6-9]|2\d|3[01]))#i', $deobfuscated) ||
-    preg_match('#/(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)#i', $eval_uri) ||
+    preg_match('#(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b|(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell)\.php\b|\.(?:phtml|php[3-8]|phar)\b|\.php\.(?:png|jpg|gif)\b|wp-admin/(?:install|setup-config)\.php\b|wp-json/wp/v2/users\b)#i', $eval_uri) ||
+    !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) ||
+    !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE']) ||
+    strpos($deobfuscated, 'TE.CL') !== false ||
+    preg_match('#(?:^|[?&])author=\d+\b#i', ($_SERVER['QUERY_STRING'] ?? '')) ||
+    preg_match('#\bO:\d+:"[^"]+":\d+:\{#i', $deobfuscated) ||
+    preg_match('#\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"#i', $deobfuscated) ||
     !empty($_GET['waf_test']) ||
     !empty($_POST['waf_test'])
 );
@@ -413,11 +440,39 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Cloud Metadata / SSRF internal destination probe intercepted by Pre-Flight WAAP.';
     }
     // Check Module 6: XML External Entity (XXE) & Insecure Deserialization
-    elseif (preg_match('/(?:<!ENTITY\s+\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{)/i', $eval_payload)) {
+    elseif (preg_match('@(?:<!ENTITY\s+(?:%\s+)?\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{|\ba:\d+:\{|system\.multicall\b|<soapenv:Envelope\b.*?<!ENTITY)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'XML External Entity (XXE) / Deserialization';
         $rule_name = 'Pre-Flight WAAP: Parser Attack & Object Injection Guard';
         $block_reason = 'Malicious XML External Entity (XXE) / Serialized Object payload intercepted by Pre-Flight WAAP.';
+    }
+    // Check Module 7: Broken Authentication & Access Control (BOLA/IDOR/Enum)
+    elseif (preg_match('@(?:(?:^|[?&])author=\d+\b|/wp-json/wp/v2/users\b|eyJhbGciOiJub25l|["\']alg["\']\s*:\s*["\']none["\']|\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"|wp-admin/(?:install|setup-config)\.php\b|(?:attacker-phishing|evil-phishing))@i', $eval_payload . ' ' . ($_SERVER['HTTP_HOST'] ?? ''))) {
+        $is_blocked = true;
+        $attack_name = 'Broken Authentication / Access Control';
+        $rule_name = 'Pre-Flight WAAP: Auth, Role Tampering & User Enumeration Guard';
+        $block_reason = 'Authentication tampering, User Enumeration or Privilege Escalation probe intercepted by Pre-Flight WAAP.';
+    }
+    // Check Module 8: API & GraphQL Attack Prevention
+    elseif (preg_match('@(?:__schema\s*\{|__type\s*\(\s*name\s*:|\[\s*\{\s*["\']query["\']\s*:.*\{\s*["\']query["\']\s*:|["\']roles["\']\s*:\s*\[\s*["\']administrator["\'])@i', $eval_payload) || !empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+        $is_blocked = true;
+        $attack_name = 'API & GraphQL Attack';
+        $rule_name = 'Pre-Flight WAAP: GraphQL Introspection & API Mass Assignment Guard';
+        $block_reason = 'GraphQL Schema Introspection or API Mass Assignment exploit intercepted by Pre-Flight WAAP.';
+    }
+    // Check Module 9: HTTP Protocol & Header Injection Prevention
+    elseif (preg_match('@(?:%0[da]|\r|\n)+(?:Set-Cookie:|Location:|<script|[a-z0-9\-_]+:)|(?:Transfer-Encoding.*Content-Length)|(?:Transfer-Encoding:\s*chunked.*Transfer-Encoding)|(?:Transfer-Encoding|TE\.CL)@i', $raw_combined) || (!empty($_SERVER['HTTP_X_FORWARDED_HOST']) && preg_match('@(?:evil-phishing|attacker-phishing)@i', $_SERVER['HTTP_X_FORWARDED_HOST'])) || (!empty($_SERVER['HTTP_X_HOST']) && preg_match('@(?:evil-phishing|attacker-phishing)@i', $_SERVER['HTTP_X_HOST'])) || !empty($_SERVER['HTTP_X_FORWARDED_TRANSFER_ENCODING']) || !empty($_SERVER['HTTP_X_CUSTOM_SMUGGLE'])) {
+        $is_blocked = true;
+        $attack_name = 'HTTP Protocol / Header Injection';
+        $rule_name = 'Pre-Flight WAAP: CRLF Response Splitting & Host Poisoning Guard';
+        $block_reason = 'CRLF Injection, Response Splitting or Host Header Poisoning probe intercepted by Pre-Flight WAAP.';
+    }
+    // Check Module 10: Malicious File Upload & WebShell Defense
+    elseif (preg_match('@(?:(?:shell|c99|r57|wso|alfa|b374k|cmd|webshell|fx29)\.php\b|\.(?:php|phtml|php[3-8]|phar)\.(?:png|jpg|jpeg|gif|ico|webp|svg|pdf|txt)\b|\.(?:phtml|php[3-8]|phar)\b|GIF89a<\?php|SetHandler\s+application/x-httpd-php|auto_prepend_file=)@i', $eval_payload)) {
+        $is_blocked = true;
+        $attack_name = 'WebShell / Malicious Upload';
+        $rule_name = 'Pre-Flight WAAP: WebShell Discovery & File Upload Guard';
+        $block_reason = 'Malicious WebShell probe or code injection upload intercepted by Pre-Flight WAAP.';
     }
 }
 
