@@ -1522,9 +1522,9 @@ class WAF_FW_Scanner {
             'mail_spammer' => [
                 'weight' => 90,
                 'patterns' => [
-                    '#(?:foreach|while)\s*\([^)]+\)[\s\S]{0,120}\bmail\s*\(\s*[^,]+,\s*[\x27\x22][^\x27\x22]*(?:bank|paypal|credential|urgent|reset|account|verify|invoice)[^\x27\x22]*[\x27\x22]#i',
-                    '#\bmail\s*\([^;]+,\s*[\x27\x22][^\x27\x22]*(?:reset|urgent|suspend|verify|bank|crypto)[^\x27\x22]*[\x27\x22][^\r\n]{0,120}(?:From:\s*support|service@|paypal)#i',
-                    '#(?:foreach|while)\s*\([^)]+\)[\s\S]{0,160}\bmail\s*\(\s*(?:\$to|\$email|\$target|trim\([^)]*\))[^,]+,\s*[^,]+(?:\$body|\$_POST|\$message)[\s\S]{0,160}(?:From:|support@|paypal)#i',
+                    '#(?:foreach|while)\s*\([^)]+\)[\s\S]{0,120}\b(?:mail|wp_mail)\s*\(\s*[^,]+,\s*[\x27\x22][^\x27\x22]*(?:bank|paypal|credential|urgent|reset|account|verify|invoice)[^\x27\x22]*[\x27\x22]#i',
+                    '#\b(?:mail|wp_mail)\s*\([^;]+,\s*[\x27\x22][^\x27\x22]*(?:reset|urgent|suspend|verify|bank|crypto)[^\x27\x22]*[\x27\x22][^\r\n]{0,120}(?:From:\s*support|service@|paypal)#i',
+                    '#(?:foreach|while)\s*\([^)]+\)[\s\S]{0,450}(?:(?:From:|support@|paypal)[\s\S]{0,250}\b(?:mail|wp_mail)\b|\b(?:mail|wp_mail)\b[\s\S]{0,250}(?:From:|support@|paypal))#i',
                 ],
             ],
             'javascript_malware' => [
@@ -1551,7 +1551,8 @@ class WAF_FW_Scanner {
                 'weight' => 95,
                 'patterns' => [
                     '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]pr[\x27\x22]\s*\.\s*[\x27\x22]eg[\x27\x22][\s\S]{0,80}\/e[\x27\x22]#i',
-                    '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]ass[\x27\x22]\s*\.\s*[\x27\x22]ert[\x27\x22]#i',
+                    '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]a[s]?[\x27\x22]\s*\.\s*[\x27\x22]s?ert[\x27\x22]#i',
+                    '#(?:call_user_func|call_user_func_array)\s*\(\s*(?:\$[a-zA-Z0-9_]+|[\x27\x22](?:assert|system|passthru|exec|shell_exec|eval)[\x27\x22])\s*,\s*(?:\$[a-zA-Z0-9_]+|\[\s*\$_(?:GET|POST|REQUEST))#i',
                     '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]sys[\x27\x22]\s*\.\s*[\x27\x22]tem[\x27\x22]#i',
                 ],
             ],
@@ -1559,7 +1560,7 @@ class WAF_FW_Scanner {
                 'weight' => 95,
                 'patterns' => [
                     '#"post-(?:install|update|package-install)-cmd"\s*:\s*\[?[^\]]*(?:php\s+-r|eval|assert|curl|wget|base64_decode|system|exec|passthru)#i',
-                    '#(?:Authorization|Bearer|auth_token|api_key|password)[\x27\x22]?\s*\][\s\S]{0,150}@?(?:file_get_contents|curl_exec|wp_remote_get|wp_remote_post)\s*\(\s*[\x27\x22]https?://#i',
+                    '#(?:Authorization|Bearer|auth_token|api_key|password|getHeader(?:Line)?\s*\(\s*[\x27\x22]Authorization)[\x27\x22\)]?[\s\S]{0,180}@?(?:file_get_contents|curl_exec|wp_remote_get|wp_remote_post)\s*\(\s*[\x27\x22]https?://#i',
                     '#substr\s*\(\s*\$(?:record|entry|log|msg|message)[^)]*\)[\s\S]{0,80}(?:system|exec|shell_exec|passthru|eval|assert)\s*\(#i',
                 ],
             ],
@@ -1610,6 +1611,7 @@ class WAF_FW_Scanner {
                     '#\$roles\[[\x27\x22](?:subscriber|contributor|author)[\x27\x22]\]\[[\x27\x22]capabilities[\x27\x22]\]\[[\x27\x22](?:administrator|manage_options|edit_plugins|edit_users)[\x27\x22]\]\s*=\s*(?:true|1)#i',
                     '#update_option\s*\(\s*[^,]*user_roles[\s\S]{0,100}(?:administrator|manage_options)#i',
                     '#add_filter\s*\(\s*[\x27\x22]map_meta_cap[\x27\x22][\s\S]{0,250}return\s*\[\s*[\x27\x22](?:exist|administrator|manage_options)[\x27\x22]\s*\]#i',
+                    '#INSERT\s+INTO\s+.*(?:users|usermeta)[\s\S]{0,150}(?:user_pass|MD5|wp_user_level|administrator)#i',
                 ],
             ],
             'woocommerce_skimmer' => [
@@ -2003,8 +2005,6 @@ class WAF_FW_Scanner {
                         'score' => 95,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
-                        'line_number' => 1,
-                        'snippet' => 'Compressed tar/gz archive stream',
                         'line_number' => $line_num,
                         'snippet' => trim($snippet),
                         'classification' => 'CONFIRMED_MALWARE',
@@ -2021,8 +2021,6 @@ class WAF_FW_Scanner {
                         'score' => 100,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
-                        'line_number' => 1,
-                        'snippet' => 'Compressed tar/gz archive stream',
                         'line_number' => $line_num,
                         'snippet' => trim($snippet),
                         'classification' => 'CONFIRMED_MALWARE',
@@ -2041,8 +2039,6 @@ class WAF_FW_Scanner {
                         'score' => 100,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
-                        'line_number' => 1,
-                        'snippet' => 'Compressed tar/gz archive stream',
                         'line_number' => $line_num,
                         'snippet' => trim($snippet),
                         'classification' => 'CONFIRMED_MALWARE',
@@ -2251,15 +2247,19 @@ class WAF_FW_Scanner {
         }
 
         // Module 8: Persistence & Stealth Configuration (.user.ini / php.ini)
-        if ($name === '.user.ini' || $name === 'php.ini') {
-            if (preg_match('/(?:auto_prepend_file|auto_append_file|allow_url_include)\s*=\s*([^\r\n]+)/i', $content, $ini_m)) {
+        if ($ext === 'ini' || $name === '.user.ini' || $name === 'php.ini' || substr($name, -4) === '.ini') {
+            if (preg_match('/(?:auto_prepend_file|auto_append_file|allow_url_include)\s*=\s*([^\r\n]+)/i', $content, $ini_m, PREG_OFFSET_CAPTURE)) {
+                $line_num = substr_count(substr($content, 0, $ini_m[0][1]), "\n") + 1;
+                $snippet = trim($ini_m[0][0]);
                 return [
                     'file' => $rel_path,
                     'score' => 95,
                     'severity' => 'critical',
                     'confidence' => 'HIGH',
+                    'line_number' => $line_num,
+                    'snippet' => $snippet,
                     'classification' => 'CONFIRMED_MALWARE',
-                    'findings' => ['Stealth Persistence: Malicious auto_prepend/append directive in ' . $name . ' (' . trim($ini_m[0]) . ')'],
+                    'findings' => ['Stealth Persistence: Malicious auto_prepend/append directive in ' . $name . ' (' . $snippet . ')'],
                     'size' => $size,
                     'hash' => md5($content),
                 ];
