@@ -259,6 +259,11 @@ $has_attack_marker = (
     preg_match('@/(?:phpmyadmin|adminer(?:\.php)?|pma|myadmin|\.aws/credentials)\b@i', $eval_uri) ||
     preg_match('@:(?:2082|2083|2086|2087|2095|2096)\b@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
     stripos($deobfuscated, 'wp.getusersblogs') !== false ||
+    stripos($eval_uri, 'reallysimplessl') !== false ||
+    stripos($eval_uri, 'async_litespeed') !== false ||
+    stripos($eval_uri, 'bricks/v1') !== false ||
+    stripos($eval_uri, 'wp-automatic') !== false ||
+    stripos($eval_uri, 'backup-heart') !== false ||
     preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)@i', ($_SERVER['HTTP_USER_AGENT'] ?? ''))
 );
 
@@ -463,8 +468,8 @@ if (!$is_blocked && $has_attack_marker) {
         $rule_name = 'Pre-Flight WAAP: Parser Attack & Object Injection Guard';
         $block_reason = 'Malicious XML External Entity (XXE) / Serialized Object payload intercepted by Pre-Flight WAAP.';
     }
-    // Check Module 7: Broken Authentication & Access Control (BOLA/IDOR/Enum)
-    elseif (preg_match('@(?:(?:^|[?&])author=\d+\b|/wp-json/wp/v2/users\b|eyJhbGciOiJub25l|["\']alg["\']\s*:\s*["\']none["\']|\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"|wp-admin/(?:install|setup-config)\.php\b|(?:attacker-phishing|evil-phishing))@i', $eval_payload . ' ' . ($_SERVER['HTTP_HOST'] ?? ''))) {
+    // Check Module 7: Broken Authentication & Access Control (BOLA/IDOR/Enum & CVE Exploits)
+    elseif (preg_match('@(?:(?:^|[?&])author=\d+\b|/wp-json/wp/v2/users\b|eyJhbGciOiJub25l|["\']alg["\']\s*:\s*["\']none["\']|\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"|wp-admin/(?:install|setup-config)\.php\b|(?:attacker-phishing|evil-phishing)|wp-json/reallysimplessl/v1/two_fa/(?:skip_onboarding|authenticate)|action=async_litespeed.*litespeed_hash|wp-json/bricks/v1/render_element|/wp-automatic/inc/csv\.php|backup-heart\.php)@i', $eval_payload . ' ' . ($_SERVER['HTTP_HOST'] ?? ''))) {
         $is_blocked = true;
         $attack_name = 'Broken Authentication / Access Control';
         $rule_name = 'Pre-Flight WAAP: Auth, Role Tampering & User Enumeration Guard';
