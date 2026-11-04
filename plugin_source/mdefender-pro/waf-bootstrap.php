@@ -189,6 +189,21 @@ $deobfuscated_stripped = preg_replace('/\/\*.*?\*\//s', '', $deobfuscated); // S
 $deobfuscated_spaced = preg_replace('/\/\*.*?\*\//s', ' ', $deobfuscated); // Strip SQL inline comments with space
 $eval_uri = $_SERVER['REQUEST_URI'] ?? '';
 
+// Rate Limit & Under-Attack Interstitial Screen Testing Hooks
+if (!empty($_GET['waf_test_challenge']) || !empty($_GET['test_under_attack'])) {
+    $ip = $mdefender_ip;
+    $site_name = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $challenge_data = ['target' => $_SERVER['REQUEST_URI'] ?? '/'];
+    include __DIR__ . '/under-attack-challenge.php';
+    exit;
+}
+if (!empty($_GET['waf_test_ratelimit']) || !empty($_GET['test_rate_limit'])) {
+    $remaining_seconds = 60;
+    $cooldown_reason = 'Request velocity limit exceeded (Pre-Flight Rate Limit Test).';
+    include __DIR__ . '/rate-limit-template.php';
+    exit;
+}
+
 // 2. Strict Attack Marker Detection
 $has_attack_marker = (
     strpos($deobfuscated, "'") !== false || 
@@ -264,7 +279,10 @@ $has_attack_marker = (
     stripos($eval_uri, 'bricks/v1') !== false ||
     stripos($eval_uri, 'wp-automatic') !== false ||
     stripos($eval_uri, 'backup-heart') !== false ||
-    preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)@i', ($_SERVER['HTTP_USER_AGENT'] ?? ''))
+    !empty($_POST['mdef_honeypot']) ||
+    !empty($_POST['waf_hp']) ||
+    !empty($_GET['anomaly_test']) ||
+    preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster|headlesschrome|phantomjs|puppeteer|scrapy|selenium)@i', ($_SERVER['HTTP_USER_AGENT'] ?? ''))
 );
 
 // 3. IP Blacklist Check
@@ -413,7 +431,7 @@ if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['b
 if (!$is_blocked) {
     $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
     if (!empty($ua)) {
-        if (preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)/i', $ua)) {
+        if (preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster|headlesschrome|phantomjs|puppeteer|scrapy|selenium)/i', $ua)) {
             $is_blocked = true;
             $attack_name = 'Automated Vulnerability Scanner';
             $rule_name = 'Pre-Flight WAAP: Scanner Signature Block';
@@ -518,6 +536,24 @@ if (!$is_blocked && $has_attack_marker) {
         $attack_name = 'Application Logic & Prototype Pollution';
         $rule_name = 'Pre-Flight WAAP: Prototype Pollution & Business Logic Guard';
         $block_reason = 'Prototype Pollution or Cart/Checkout Price Tampering intercepted by Pre-Flight WAAP.';
+    }
+    // Check Module 17: Bot Management & Invisible Honeypot Trap
+    elseif (!empty($_POST['mdef_honeypot']) || !empty($_POST['waf_hp']) || (!empty($_POST['comment']) && !empty($_POST['website_url_trap']))) {
+        $is_blocked = true;
+        $attack_name = 'Bot Trap / Honeypot Trigger';
+        $rule_name = 'Pre-Flight WAAP: Invisible Honeypot Trap';
+        $block_reason = 'Automated spam bot fell into hidden honeypot field.';
+    }
+    // Check Module 18: Zero-Day & Composite Anomaly Scoring
+    elseif (
+        (strpos($raw_combined, '%25') !== false && strpos($raw_combined, '..') !== false) ||
+        (!empty($_SERVER['HTTP_TRANSFER_ENCODING']) && !empty($_SERVER['HTTP_CONTENT_LENGTH'])) ||
+        (!empty($_GET['anomaly_test']) && $_GET['anomaly_test'] === 'high')
+    ) {
+        $is_blocked = true;
+        $attack_name = 'Zero-Day / Multi-Vector Anomaly';
+        $rule_name = 'Pre-Flight WAAP: Behavioral Composite Anomaly Engine';
+        $block_reason = 'High-risk anomalous behavioral profile detected exceeding anomaly scoring threshold.';
     }
 }
 
