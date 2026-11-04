@@ -107,8 +107,8 @@ class WAF_FW_Scanner {
             'root'    => ABSPATH,
         ];
         
-        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'md-defender-pro-dedicated/', 'md-defender-pro-go/', 'md-defender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/', 'waf-quarantine/', 'mdefender-backups/'];
-        $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'log'];
+        $excluded_dirs = ['mdefender-pro/', 'mdefender/', 'md-defender-pro-dedicated/', 'md-defender-pro-go/', 'md-defender/', 'wp-waf-firewall/', 'wp-waf-firewall1/', 'wordfence/', 'wflogs/', 'waf-quarantine/', 'mdefender-backups/'];
+        $known_extensions = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'log', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'mp3', 'mp4', 'wav', 'pdf', 'ini', 'zip', 'tar', 'gz', 'tgz'];
         
         $bulk_inserts = [];
         $total_files = 0;
@@ -128,7 +128,7 @@ class WAF_FW_Scanner {
                 $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
                 
                 // Always exclude quarantine and backup folders from scan queue
-                if (strpos($rel_path, 'waf-quarantine') !== false || strpos($rel_path, 'mdefender-backups') !== false) {
+                if (strpos($rel_path, 'wflogs') !== false || strpos($rel_path, 'waf-quarantine') !== false || strpos($rel_path, 'mdefender-backups') !== false) {
                     continue;
                 }
 
@@ -164,7 +164,7 @@ class WAF_FW_Scanner {
                 if ($skip) continue;
                 
                 $ext = strtolower(pathinfo($fp, PATHINFO_EXTENSION));
-                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess' && strpos(basename($fp), '.env') !== 0) continue;
+                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess' && basename($fp) !== '.user.ini' && strpos(basename($fp), '.env') !== 0) continue;
                 if ($file->getSize() > 10000000) continue; // Skip files > 10MB
                 
                 $bulk_inserts[] = $wpdb->prepare("(%d, %s, 'pending', %s)", $scan_id, $rel_path, $cat);
@@ -202,7 +202,7 @@ class WAF_FW_Scanner {
                 $rel_path = ltrim(str_replace('\\', '/', $rel_path), '/');
                 
                 $ext = strtolower(pathinfo($fp, PATHINFO_EXTENSION));
-                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess' && strpos(basename($fp), '.env') !== 0) continue;
+                if (!in_array($ext, $known_extensions) && basename($fp) !== '.htaccess' && basename($fp) !== '.user.ini' && strpos(basename($fp), '.env') !== 0) continue;
                 if ($file->getSize() > 10000000) continue;
                 
                 $bulk_inserts[] = $wpdb->prepare("(%d, %s, 'pending', %s)", $scan_id, $rel_path, $cat);
@@ -652,8 +652,26 @@ class WAF_FW_Scanner {
                         "SELECT COUNT(*) FROM $files_table WHERE scan_id = %d AND status = 'completed'",
                         $queue_id
                     ));
+                    $latest_row = $wpdb->get_row($wpdb->prepare("SELECT results FROM $queue_table WHERE id = %d", $queue_id));
+                    if ($latest_row && !empty($latest_row->results)) {
+                        $db_res = json_decode($latest_row->results, true);
+                        if (!empty($db_res['malware_scan']['suspicious_files'])) {
+                            $existing_map = [];
+                            foreach ($results['malware_scan']['suspicious_files'] as $sf) {
+                                $existing_map[$sf['file']] = true;
+                            }
+                            foreach ($db_res['malware_scan']['suspicious_files'] as $db_item) {
+                                if (empty($existing_map[$db_item['file']])) {
+                                    $results['malware_scan']['suspicious_files'][] = $db_item;
+                                    $results['malware_scan']['suspicious_found']++;
+                                    $results['malware_scan']['total_issues']++;
+                                    $existing_map[$db_item['file']] = true;
+                                }
+                            }
+                        }
+                    }
                     $wpdb->update($queue_table, [
-                        'results' => json_encode($results),
+                        'results' => json_encode($results, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR),
                         'scanned_files' => (int) $scanned_count,
                     ], ['id' => $queue_id]);
 
@@ -663,8 +681,10 @@ class WAF_FW_Scanner {
                     ));
                     if ($remains > 0) {
                         delete_option($lock_key);
-                        wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
-                        spawn_cron();
+                        if (php_sapi_name() !== 'cli' && (!defined('DISABLE_WP_CRON') || !DISABLE_WP_CRON)) {
+                            wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
+                            spawn_cron();
+                        }
                         return [
                             'status' => 'running',
                             'progress' => (int) (($stage_index / ($total_stages - 1)) * 100),
@@ -851,7 +871,7 @@ class WAF_FW_Scanner {
                         $wpdb->update($files_table, ['status' => 'completed_ml'], ['id' => $f_row->id]);
                     }
 
-                    $wpdb->update($queue_table, ['results' => json_encode($results)], ['id' => $queue_id]);
+                    $wpdb->update($queue_table, ['results' => json_encode($results, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR)], ['id' => $queue_id]);
 
                     $remains_ml = $wpdb->get_var($wpdb->prepare(
                         "SELECT COUNT(*) FROM $files_table WHERE scan_id = %d AND status = 'pending_ml'",
@@ -957,7 +977,7 @@ class WAF_FW_Scanner {
                         'progress' => 100,
                         'current_stage' => 'Scan complete',
                         'completed_at' => current_time('mysql'),
-                        'results' => json_encode($results),
+                        'results' => json_encode($results, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR),
                     ], ['id' => $queue_id]);
 
                     $wpdb->query($wpdb->prepare("DELETE FROM $files_table WHERE scan_id = %d", $queue_id));
@@ -979,7 +999,7 @@ class WAF_FW_Scanner {
                 $wpdb->update($queue_table, [
                     'current_stage' => $next_stage,
                     'progress' => (int) (($stage_index / ($total_stages - 1)) * 100),
-                    'results' => json_encode($results),
+                    'results' => json_encode($results, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR),
                 ], ['id' => $queue_id]);
                 $stage_completed = false;
             }
@@ -987,8 +1007,10 @@ class WAF_FW_Scanner {
 
         // Reschedule next execution block
         delete_option($lock_key);
-        wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
-        spawn_cron();
+        if (php_sapi_name() !== 'cli' && (!defined('DISABLE_WP_CRON') || !DISABLE_WP_CRON)) {
+            wp_schedule_single_event(time(), 'waf_fw_run_scan_batch', [$queue_id]);
+            spawn_cron();
+        }
 
         $scan_state = $wpdb->get_row($wpdb->prepare("SELECT * FROM $queue_table WHERE id = %d", $queue_id));
         return [
@@ -1060,7 +1082,7 @@ class WAF_FW_Scanner {
                         $cur = $tokens[$j];
                         if ($cur === '(') $paren_depth++;
                         if ($cur === ')') $paren_depth--;
-                        if ($cur === ';' && $paren_depth <= 0) break;
+                        if (($cur === ';' || $cur === '{' || $cur === '}' || $cur === ',') && $paren_depth <= 0) break;
                         $expr_tokens[] = $cur;
                         $j++;
                     }
@@ -1385,8 +1407,8 @@ class WAF_FW_Scanner {
         }
 
         // Shell Execution Operator: Backticks with user input or variable
-        if (preg_match('/`[^`\r\n]{0,120}\$_(?:GET|POST|REQUEST|COOKIE)/i', $code_no_comments) ||
-            preg_match('/\$([a-zA-Z0-9_]+)\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,120}`[^`\r\n]{0,120}\$\1/i', $code_no_comments)) {
+        if (preg_match('/(?<![\w`"\'\\])`[^`\r\n]{1,80}\$_(?:GET|POST|REQUEST|COOKIE)[^`\r\n]{0,80}`(?![\w`"\'\\])/i', $code_no_comments) ||
+            preg_match('/\$([a-zA-Z0-9_]+)\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,120}(?<![\w`"\'\\])`[^`\r\n]{0,80}\$\1[^`\r\n]{0,80}`(?![\w`"\'\\])/i', $code_no_comments)) {
             $score = max($score, 95);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
@@ -1472,7 +1494,7 @@ class WAF_FW_Scanner {
                     '#(?:include|require|include_once|require_once)\s*\(?\s*[\x27\x22](?:php://input|data://|php://memory|php://temp)#i',
                     '#(?:include|require|include_once|require_once|file_get_contents|readfile)\s*\(?\s*[\x27\x22]php://filter.*resource=wp-config#i',
                     '#\$wpdb\s*->\s*query\s*\(\s*(?:stripslashes\s*\()?\s*\$_(?:POST|GET|REQUEST|COOKIE)#i',
-                    '#(?:\$_(?:POST|GET|REQUEST|COOKIE)[\s\S]{0,150}\$wpdb\s*->\s*query|\$wpdb\s*->\s*query\s*\([\s\S]{0,100}\$_(?:POST|GET|REQUEST|COOKIE))#i',
+                    
                     '#(?:add_option|update_option)\s*\([^,]+,\s*(?:base64_encode|gzcompress|gzdeflate)\s*\([^)]*(?:eval|assert|system|exec|passthru)#i',
                     '#base64_encode\s*\(\s*[\x27\x22][^\x27\x22]*(?:eval|assert|system|exec|shell_exec|passthru)[\s\S]{0,100}add_option#i',
                     '#O:[0-9]+:[\x27\x22][a-zA-Z0-9_]+[\x27\x22]:[0-9]+:\{[\s\S]{0,100}(?:cat\s+/etc|/bin/sh|whoami|eval|assert|system)#i',
@@ -1507,7 +1529,7 @@ class WAF_FW_Scanner {
             'credential_stealer' => [
                 'weight' => 95,
                 'patterns' => [
-                    '#(?:\$wpdb->get_results|\$wpdb->get_row|SELECT\s+[^;]+user_pass)[\s\S]{0,300}(?:file_get_contents|curl_exec|wp_remote_post|mail)\s*\(#i',
+                    '#(?:\$wpdb->get_results|\$wpdb->get_row)\s*\([^;]*(?:user_pass|user_login|users)[^;]*\)[\s\S]{0,300}(?:file_get_contents|curl_exec|wp_remote_post|mail)\s*\(#i',
                     '#SELECT\s+[^;]*(?:user_login|user_pass|user_email)[\s\S]{0,200}FROM\s+[\w\.-]*users[\s\S]{0,200}(?:attacker|https?:\/\/|base64_encode)#i',
                 ],
             ],
@@ -1552,7 +1574,7 @@ class WAF_FW_Scanner {
                 'patterns' => [
                     '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]pr[\x27\x22]\s*\.\s*[\x27\x22]eg[\x27\x22][\s\S]{0,80}\/e[\x27\x22]#i',
                     '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]a[s]?[\x27\x22]\s*\.\s*[\x27\x22]s?ert[\x27\x22]#i',
-                    '#(?:call_user_func|call_user_func_array)\s*\(\s*(?:\$[a-zA-Z0-9_]+|[\x27\x22](?:assert|system|passthru|exec|shell_exec|eval)[\x27\x22])\s*,\s*(?:\$[a-zA-Z0-9_]+|\[\s*\$_(?:GET|POST|REQUEST))#i',
+                    '#(?:call_user_func|call_user_func_array)\s*\(\s*(?:\$[a-zA-Z0-9_]+|[\x27\x22](?:assert|system|passthru|exec|shell_exec|eval)[\x27\x22])\s*,\s*(?:\[?\s*\$_(?:GET|POST|REQUEST|COOKIE)|array\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE))#i',
                     '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]sys[\x27\x22]\s*\.\s*[\x27\x22]tem[\x27\x22]#i',
                 ],
             ],
@@ -1567,7 +1589,7 @@ class WAF_FW_Scanner {
             'rest_api_backdoor' => [
                 'weight' => 95,
                 'patterns' => [
-                    '#register_rest_route\s*\([^;]+(?:shell_exec|system|passthru|exec|eval|assert)\s*\(\s*(?:\$request->get_param|\$_GET|\$_POST)#i',
+                    '#register_rest_route\s*\([^;]+(?:shell_exec|system|passthru|exec|eval|assert)\s*\(\s*(?:\$[a-zA-Z0-9_]+->get_param|\$_GET|\$_POST)#i',
                     '#register_rest_route\s*\([^;]+wp_create_user[\s\S]{0,150}administrator#i',
                     '#add_filter\s*\(\s*[\x27\x22]rest_prepare_user[\x27\x22][\s\S]{0,250}user_pass#i',
                 ],
@@ -1575,7 +1597,7 @@ class WAF_FW_Scanner {
             'rasp_runtime_hooking' => [
                 'weight' => 95,
                 'patterns' => [
-                    '#add_filter\s*\(\s*[\x27\x22]authenticate[\x27\x22][\s\S]{0,350}(?:get_user_by|wp_set_current_user|wp_set_auth_cookie|return\s+\$(?:user|u)\b)#i',
+                    '#add_filter\s*\(\s*[\x27\x22]authenticate[\x27\x22][\s\S]{0,350}\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,150}(?:get_user_by|wp_set_current_user|wp_set_auth_cookie|return\s+\$(?:user|u)\b)#i',
                     '#add_filter\s*\(\s*[\x27\x22](?:nonce_user_logged_out|check_admin_referer|check_ajax_referer)[\x27\x22][\s\S]{0,250}(?:return\s+1\b|return\s+true\b)#i',
                     '#add_filter\s*\(\s*[\x27\x22]determine_current_user[\x27\x22][\s\S]{0,250}(?:return\s+1\b|return\s+\d+|get_user_by)#i',
                 ],
@@ -1599,8 +1621,8 @@ class WAF_FW_Scanner {
             'memory_opcache_persistence' => [
                 'weight' => 95,
                 'patterns' => [
-                    '#opcache_compile_file\s*\(\s*(?:\$|sys_get_temp_dir|tempnam|tmpfile|[\x27\x22]\/tmp)#i',
-                    '#opcache_invalidate\s*\([^;]+\btrue\b#i',
+                    '#(?:sys_get_temp_dir|tempnam|tmpfile)[\s\S]{0,250}opcache_compile_file|opcache_compile_file\s*\(\s*(?:sys_get_temp_dir|tempnam|tmpfile|[\x27\x22]\/tmp|[\x27\x22][^\x27\x22]*\.(?:txt|jpg|png|tmp)[\x27\x22])#i',
+                    
                     '#ini_set\s*\(\s*[\x27\x22]auto_prepend_file[\x27\x22]#i',
                     '#ini_set\s*\(\s*[\x27\x22]auto_append_file[\x27\x22]#i',
                 ],
@@ -1858,7 +1880,7 @@ class WAF_FW_Scanner {
             strpos($rel_path, 'wp-content/plugins/mdefender-pro/') === 0 ||
             strpos($rel_path, 'wp-content/plugins/mdefender/') === 0 ||
             strpos($rel_path, 'wp-content/plugins/wp-waf-firewall/') === 0 ||
-            strpos($rel_path, 'waf-quarantine') !== false ||
+            strpos($rel_path, 'wflogs') !== false || strpos($rel_path, 'waf-quarantine') !== false ||
             strpos($rel_path, 'mdefender-backups') !== false
         ) {
             return null;
@@ -2031,9 +2053,10 @@ class WAF_FW_Scanner {
                 }
             } else {
                 // Polyglot Media/Carrier containing embedded PHP execution headers
-                if (preg_match('/<\?(?:php|=)/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                if (preg_match('/<\?php\b[\s\S]{0,100}(?:eval|assert|system|exec|shell_exec|base64_decode|\$_POST|\$_GET|\$|\bfunction\b|\becho\b)|<\?=\s*[\$a-zA-Z0-9_\x22\x27]/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
                     $line_num = substr_count(substr($content, 0, $poly_m[0][1]), "\n") + 1;
-                    $snippet = substr($content, $poly_m[0][1], 120);
+                    $raw_snip = substr($content, $poly_m[0][1], 120);
+                    $snippet = preg_replace('/[^\x20-\x7E\t\r\n]/', '', $raw_snip);
                     return [
                         'file' => $rel_path,
                         'score' => 100,
@@ -2350,15 +2373,21 @@ class WAF_FW_Scanner {
                 $matched_snippet = trim(substr($lines[0], 0, 160));
             }
 
+            $clean_findings = [];
+            foreach (array_slice(array_unique($findings), 0, 15) as $f_item) {
+                $clean_findings[] = preg_replace('/[^\x20-\x7E\t\r\n]/', '', (string)$f_item);
+            }
+            $clean_snippet = preg_replace('/[^\x20-\x7E\t\r\n]/', '', (string)$matched_snippet);
+
             return [
                 'file' => $rel_path,
                 'score' => min(100, $total_score),
                 'severity' => $severity,
                 'confidence' => $confidence,
                 'classification' => $classification,
-                'findings' => array_slice(array_unique($findings), 0, 15),
+                'findings' => $clean_findings,
                 'line_number' => $matched_line,
-                'snippet' => $matched_snippet,
+                'snippet' => $clean_snippet,
                 'size' => $size,
             ];
         }
@@ -4222,7 +4251,7 @@ public function run_vulnerability_scan() {
         $wpdb->insert($table, [
             'scan_type' => $scan_type,
             'target_url' => $target_url,
-            'vulnerabilities' => json_encode($results),
+            'vulnerabilities' => json_encode($results, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR),
             'summary' => json_encode($summary),
             'score' => $score,
             'pages_scanned' => $pages_scanned,
