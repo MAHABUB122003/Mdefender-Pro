@@ -1555,6 +1555,22 @@ class WAF_FW_Scanner {
                     '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]sys[\x27\x22]\s*\.\s*[\x27\x22]tem[\x27\x22]#i',
                 ],
             ],
+            'supply_chain' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#"post-(?:install|update|package-install)-cmd"\s*:\s*\[?[^\]]*(?:php\s+-r|eval|assert|curl|wget|base64_decode|system|exec|passthru)#i',
+                    '#(?:Authorization|Bearer|auth_token|api_key|password)[\x27\x22]?\s*\][\s\S]{0,150}@?(?:file_get_contents|curl_exec|wp_remote_get|wp_remote_post)\s*\(\s*[\x27\x22]https?://#i',
+                    '#substr\s*\(\s*\$(?:record|entry|log|msg|message)[^)]*\)[\s\S]{0,80}(?:system|exec|shell_exec|passthru|eval|assert)\s*\(#i',
+                ],
+            ],
+            'rest_api_backdoor' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#register_rest_route\s*\([^;]+(?:shell_exec|system|passthru|exec|eval|assert)\s*\(\s*(?:\$request->get_param|\$_GET|\$_POST)#i',
+                    '#register_rest_route\s*\([^;]+wp_create_user[\s\S]{0,150}administrator#i',
+                    '#add_filter\s*\(\s*[\x27\x22]rest_prepare_user[\x27\x22][\s\S]{0,250}user_pass#i',
+                ],
+            ],
             'seo_spam' => [
                 'weight' => 85,
                 'patterns' => [
@@ -2073,6 +2089,12 @@ class WAF_FW_Scanner {
                 continue;
             }
             if ($cat_key === 'seo_spam' && !in_array($ext, ['php', 'phtml', 'html', 'htm', 'txt'])) {
+                continue;
+            }
+            if ($cat_key === 'supply_chain' && !in_array($ext, ['php', 'phtml', 'json'])) {
+                continue;
+            }
+            if ($cat_key === 'rest_api_backdoor' && !$is_php) {
                 continue;
             }
 
