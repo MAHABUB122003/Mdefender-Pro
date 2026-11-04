@@ -3039,7 +3039,7 @@ function waf_fw_analyze_request() {
                     include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
                     exit;
                 }
-                if ($is_country_bl || stripos($atype, 'Probe') !== false) {
+                if ($is_country_bl) {
                     include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
                     exit;
                 }
@@ -3100,12 +3100,15 @@ function waf_fw_analyze_request() {
         $GLOBALS['waf_fw_analyzed'] = true;
         if ($engine) {
             $client_ip = $engine->get_client_ip();
-            if (class_exists('WAF_FW_IP_Filter')) {
+            if (class_exists('WAF_FW_IP_Filter') && !in_array($client_ip, ['127.0.0.1', '::1', 'localhost', '0.0.0.0'], true)) {
                 WAF_FW_IP_Filter::instance()->add_to_blacklist($client_ip, 'Hosting control panel probe (/cpanel or port 2083 redirect)');
             }
         }
-        http_response_code(403);
-        include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
+        status_header(403);
+        header('HTTP/1.1 403 Forbidden', true, 403);
+        header('X-Protected-By: MDefender-Pro-WAAP');
+        header('Connection: close');
+        include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
         exit;
     }
 
@@ -3167,7 +3170,7 @@ function waf_fw_analyze_request() {
             include WAF_FW_PLUGIN_DIR . 'ip-blacklist-template.php';
             exit;
         }
-        if ($is_country_bl || stripos($atype, 'Probe') !== false) {
+        if ($is_country_bl) {
             include WAF_FW_PLUGIN_DIR . 'dead-network-template.php';
             exit;
         }

@@ -277,7 +277,7 @@ class WAF_FW_IP_Filter {
 
     public function add_to_blacklist($ip, $reason = 'Auto-blocked by rate limiter', $type = 'permanent', $auto = true, $expires_at = null, $notify_cloud = true) {
         $ip = trim((string) $ip);
-        if (empty($ip)) return;
+        if (empty($ip) || in_array($ip, ['127.0.0.1', '::1', '0.0.0.0', 'localhost'], true) || stripos($ip, '127.') === 0) return;
         global $wpdb;
         $table = WAF_FW_DB::instance()->get_blacklist_table();
         $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $table WHERE ip = %s", $ip));

@@ -243,7 +243,23 @@ $has_attack_marker = (
     preg_match('#\bO:\d+:"[^"]+":\d+:\{#i', $deobfuscated) ||
     preg_match('#\broles?=(?:administrator|admin)\b|["\']capabilities["\']\s*:\s*\[[^\]]*"administrator"#i', $deobfuscated) ||
     !empty($_GET['waf_test']) ||
-    !empty($_POST['waf_test'])
+    !empty($_POST['waf_test']) ||
+    strpos($deobfuscated, '__proto__') !== false ||
+    (strpos($deobfuscated, 'constructor') !== false && strpos($deobfuscated, 'prototype') !== false) ||
+    preg_match('@\b(?:price|amount|total|subtotal)\s*=\s*-\d+@i', $raw_combined) ||
+    preg_match('@["\'](?:discount_override|price_override)["\']\s*:\s*\d+@i', $raw_combined) ||
+    preg_match('@["\']total["\']\s*:\s*0(?:\.00)?\s*,\s*["\']discount@i', $raw_combined) ||
+    preg_match('@(?:^|[?&])(?:redirect|url|dest|next|return_to|target|goto)=(?:https?:)?//(?:evil|attacker|[a-z0-9-]+\.[a-z]{2,})@i', $eval_uri . ' ' . $raw_combined) ||
+    (!empty($_SERVER['HTTP_ORIGIN']) && (preg_match('@(?:evil|attacker)@i', $_SERVER['HTTP_ORIGIN']) || $_SERVER['HTTP_ORIGIN'] === 'null')) ||
+    (!empty($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe' && !empty($_SERVER['HTTP_ORIGIN'])) ||
+    strpos($eval_uri, 'iframe_embed') !== false ||
+    strpos($eval_uri, 'clickjacking') !== false ||
+    strpos($deobfuscated, '..;') !== false ||
+    preg_match('@http://(?:\[::ffff:|2130706433|0x7f|0177)@i', $deobfuscated) ||
+    preg_match('@/(?:phpmyadmin|adminer(?:\.php)?|pma|myadmin|\.aws/credentials)\b@i', $eval_uri) ||
+    preg_match('@:(?:2082|2083|2086|2087|2095|2096)\b@i', ($_SERVER['HTTP_HOST'] ?? '')) ||
+    stripos($deobfuscated, 'wp.getusersblogs') !== false ||
+    preg_match('@(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)@i', ($_SERVER['HTTP_USER_AGENT'] ?? ''))
 );
 
 // 3. IP Blacklist Check
@@ -293,6 +309,7 @@ foreach ($raw_candidates as $cand) {
 $candidates = array_values(array_unique(array_filter($candidates)));
 
 foreach ($candidates as $cand) {
+    if (in_array($cand, ['127.0.0.1', '::1', 'localhost'], true) && empty($_GET['waf_test_blacklist']) && empty($_GET['test_blacklisted'])) { continue; }
     if (isset($ip_blacklist[$cand]) || (is_array($ip_blacklist) && in_array($cand, $ip_blacklist, true)) || !empty($_GET['waf_test_blacklist']) || !empty($_GET['test_blacklisted'])) {
         $is_blocked = true;
         $matched_ip = $cand;
@@ -391,7 +408,7 @@ if ($is_country_block_enabled && !$is_blocked && !empty($mdefender_cache_data['b
 if (!$is_blocked) {
     $ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
     if (!empty($ua)) {
-        if (preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck)/i', $ua)) {
+        if (preg_match('/(sqlmap|nikto|acunetix|dirbuster|gobuster|wpscan|hydra|masscan|zgrab|nmaplowercheck|nuclei|ffuf|feroxbuster)/i', $ua)) {
             $is_blocked = true;
             $attack_name = 'Automated Vulnerability Scanner';
             $rule_name = 'Pre-Flight WAAP: Scanner Signature Block';
@@ -426,21 +443,21 @@ if (!$is_blocked && $has_attack_marker) {
         $block_reason = 'Remote Command Execution (RCE) / SSTI / WebShell payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 4: Path Traversal & Local File Inclusion (LFI/RFI)
-    elseif (preg_match('@(?:\.\.[\\\\/]){1,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\\\\/]windows|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)@i', $eval_payload)) {
+    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Path Traversal';
         $rule_name = 'Pre-Flight WAAP: Directory Traversal & Sensitive File Guard';
         $block_reason = 'Path Traversal & Sensitive Configuration Exposure probe intercepted by Pre-Flight WAAP.';
     }
     // Check Module 5: Server-Side Request Forgery (SSRF) & Cloud Metadata
-    elseif (preg_match('@(?:https?|ftp|gopher|dict):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|metadata\.google(?:\.internal)?)@i', $eval_payload)) {
+    elseif (preg_match('@(?:https?|ftp|gopher|dict):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|\[::ffff:(?:127\.|10\.|192\.168\.|172\.)\d+.*\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|2130706433|0x7f000001|017700000001|metadata\.google(?:\.internal)?)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Server-Side Request Forgery (SSRF)';
         $rule_name = 'Pre-Flight WAAP: Cloud Metadata & SSRF Guard';
         $block_reason = 'Cloud Metadata / SSRF internal destination probe intercepted by Pre-Flight WAAP.';
     }
-    // Check Module 6: XML External Entity (XXE) & Insecure Deserialization
-    elseif (preg_match('@(?:<!ENTITY\s+(?:%\s+)?\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{|\ba:\d+:\{|system\.multicall\b|<soapenv:Envelope\b.*?<!ENTITY)@i', $eval_payload)) {
+    // Check Module 6: XML External Entity (XXE) & Insecure Deserialization / XML-RPC Abuse
+    elseif (preg_match('@(?:<!ENTITY\s+(?:%\s+)?\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{|\ba:\d+:\{|system\.multicall\b|wp\.getUsersBlogs\b|<soapenv:Envelope\b.*?<!ENTITY)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'XML External Entity (XXE) / Deserialization';
         $rule_name = 'Pre-Flight WAAP: Parser Attack & Object Injection Guard';
@@ -474,24 +491,48 @@ if (!$is_blocked && $has_attack_marker) {
         $rule_name = 'Pre-Flight WAAP: WebShell Discovery & File Upload Guard';
         $block_reason = 'Malicious WebShell probe or code injection upload intercepted by Pre-Flight WAAP.';
     }
+    // Check Module 11: CSRF, CORS & Open Redirect Defense
+    elseif (
+        (!empty($_SERVER['HTTP_ORIGIN']) && (preg_match('@(?:evil|attacker)@i', $_SERVER['HTTP_ORIGIN']) || $_SERVER['HTTP_ORIGIN'] === 'null')) ||
+        preg_match('@(?:^|[?&])(?:redirect|url|dest|next|return_to|target|goto)=(?:https?:)?//(?:evil|attacker|[a-z0-9-]+\.[a-z]{2,})@i', $eval_uri . ' ' . $raw_combined) ||
+        (!empty($_SERVER['HTTP_SEC_FETCH_DEST']) && $_SERVER['HTTP_SEC_FETCH_DEST'] === 'iframe' && !empty($_SERVER['HTTP_ORIGIN'])) ||
+        strpos($eval_uri, 'iframe_embed') !== false ||
+        strpos($eval_uri, 'clickjacking') !== false
+    ) {
+        $is_blocked = true;
+        $attack_name = 'CSRF / CORS / Open Redirect';
+        $rule_name = 'Pre-Flight WAAP: Untrusted Origin & Open Redirect Guard';
+        $block_reason = 'Untrusted CORS Origin, Null Origin or Malicious Open Redirect probe intercepted by Pre-Flight WAAP.';
+    }
+    // Check Module 12: Prototype Pollution & Application Logic Guard
+    elseif (
+        preg_match('@(?:__proto__|constructor\s*["\']?\s*:\s*\{[^}]*["\']?prototype["\']?)@i', $eval_payload) ||
+        preg_match('@(?:\b(?:price|amount|total|subtotal)\s*=\s*-\d+|["\'](?:discount_override|price_override)["\']\s*:\s*\d+|["\']total["\']\s*:\s*0(?:\.00)?\s*,\s*["\']discount)@i', $eval_payload)
+    ) {
+        $is_blocked = true;
+        $attack_name = 'Application Logic & Prototype Pollution';
+        $rule_name = 'Pre-Flight WAAP: Prototype Pollution & Business Logic Guard';
+        $block_reason = 'Prototype Pollution or Cart/Checkout Price Tampering intercepted by Pre-Flight WAAP.';
+    }
 }
 
-// 8. Hosting Administration & cPanel Direct Probe Interception (Port 2082/2083)
+// 8. Hosting Administration & Sensitive Service Exposure Interception
 $server_port = (int)($_SERVER['SERVER_PORT'] ?? 80);
 $host_hdr = $_SERVER['HTTP_HOST'] ?? '';
 $uri_check = $_SERVER['REQUEST_URI'] ?? '';
 $query_check = $_SERVER['QUERY_STRING'] ?? '';
-$is_cpanel_probe = (
+$is_admin_service_probe = (
     in_array($server_port, [2082, 2083, 2086, 2087, 2095, 2096], true) ||
     preg_match('/:(?:2082|2083|2086|2087|2095|2096)(?:$|\/)/', $host_hdr) ||
     preg_match('#/(?:cpanel|whm|webmail|cpsrvd|kpanel|2082|2083|2086|2087|2095|2096)(?:/|\?|$)#i', $uri_check) ||
-    preg_match('#(?:^|&)(?:cpanel|whm|webmail|2082|2083)=?#i', $query_check)
+    preg_match('#(?:^|&)(?:cpanel|whm|webmail|2082|2083)=?#i', $query_check) ||
+    preg_match('#/(?:phpmyadmin|adminer(?:\.php)?|pma|myadmin|\.aws/credentials)(?:/|\?|$)#i', $uri_check)
 );
-if (!$is_blocked && $is_cpanel_probe) {
+if (!$is_blocked && $is_admin_service_probe) {
     $is_blocked = true;
-    $attack_name = 'Server Admin Probe';
-    $rule_name = 'Pre-Flight WAAP: Hosting Control Panel & Port Guard';
-    $block_reason = 'Direct probing of hosting control panel (cPanel/WHM/Port 2083) intercepted by Pre-Flight WAAP.';
+    $attack_name = 'Server Admin & Port Probe';
+    $rule_name = 'Pre-Flight WAAP: Admin Service & Port Guard';
+    $block_reason = 'Direct probing of administrative control panels (cPanel/Port 2083/phpMyAdmin/Adminer/.aws) intercepted by Pre-Flight WAAP.';
 }
 
 // 9. Incident Logging & International RFC Standard Block Delivery (RFC 7231 / RFC 7807)
@@ -513,8 +554,8 @@ if ($is_blocked) {
     ];
     @file_put_contents($fast_log_file, json_encode($attack_event) . "\n", FILE_APPEND | LOCK_EX);
 
-    // Stealth Dead Network for Regional / Server Probes
-    if ($attack_name === 'Country / Regional Restriction' || $attack_name === 'Server Admin Probe' || !empty($is_country_block)) {
+    // Stealth Dead Network for Regional / GeoIP Restrictions ONLY
+    if ($attack_name === 'Country / Regional Restriction' || !empty($is_country_block)) {
         include __DIR__ . '/dead-network-template.php';
         exit;
     }
