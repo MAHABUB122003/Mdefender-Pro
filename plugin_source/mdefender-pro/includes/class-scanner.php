@@ -1571,6 +1571,60 @@ class WAF_FW_Scanner {
                     '#add_filter\s*\(\s*[\x27\x22]rest_prepare_user[\x27\x22][\s\S]{0,250}user_pass#i',
                 ],
             ],
+            'rasp_runtime_hooking' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#add_filter\s*\(\s*[\x27\x22]authenticate[\x27\x22][\s\S]{0,350}(?:get_user_by|wp_set_current_user|wp_set_auth_cookie|return\s+\$(?:user|u)\b)#i',
+                    '#add_filter\s*\(\s*[\x27\x22](?:nonce_user_logged_out|check_admin_referer|check_ajax_referer)[\x27\x22][\s\S]{0,250}(?:return\s+1\b|return\s+true\b)#i',
+                    '#add_filter\s*\(\s*[\x27\x22]determine_current_user[\x27\x22][\s\S]{0,250}(?:return\s+1\b|return\s+\d+|get_user_by)#i',
+                ],
+            ],
+            'cloud_metadata_exfiltration' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#169\.254\.169\.254(?:\/latest\/meta-data|\/opc\/v1\/instance|\/metadata\/instance)#i',
+                    '#metadata\.google\.internal(?:\/computeMetadata)?#i',
+                    '#\/var\/run\/secrets\/kubernetes\.io\/serviceaccount\/(?:token|namespace)#i',
+                    '#100\.100\.100\.200\/latest\/meta-data#i',
+                ],
+            ],
+            'polymorphic_mutators' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#Closure::bind\s*\([^;]*(?:eval|assert|system|exec|passthru|shell_exec|base64_decode)#i',
+                    '#new\s+ReflectionFunction\s*\(\s*[\x27\x22]?(?:assert|system|exec|passthru|eval)[\x27\x22]?\s*\)[\s\S]{0,150}(?:invoke|invokeArgs)#i',
+                ],
+            ],
+            'memory_opcache_persistence' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#opcache_compile_file\s*\(\s*(?:\$|sys_get_temp_dir|tempnam|tmpfile|[\x27\x22]\/tmp)#i',
+                    '#opcache_invalidate\s*\([^;]+\btrue\b#i',
+                    '#ini_set\s*\(\s*[\x27\x22]auto_prepend_file[\x27\x22]#i',
+                    '#ini_set\s*\(\s*[\x27\x22]auto_append_file[\x27\x22]#i',
+                ],
+            ],
+            'privilege_escalation_tamper' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#\$roles\[[\x27\x22](?:subscriber|contributor|author)[\x27\x22]\]\[[\x27\x22]capabilities[\x27\x22]\]\[[\x27\x22](?:administrator|manage_options|edit_plugins|edit_users)[\x27\x22]\]\s*=\s*(?:true|1)#i',
+                    '#update_option\s*\(\s*[^,]*user_roles[\s\S]{0,100}(?:administrator|manage_options)#i',
+                    '#add_filter\s*\(\s*[\x27\x22]map_meta_cap[\x27\x22][\s\S]{0,250}return\s*\[\s*[\x27\x22](?:exist|administrator|manage_options)[\x27\x22]\s*\]#i',
+                ],
+            ],
+            'woocommerce_skimmer' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#(?:woocommerce_checkout_process|woocommerce_after_checkout_validation|woocommerce_payment_complete)[\s\S]{0,450}(?:card_number|card_cvv|card_expiry|wc-stripe-card|ccNum)[\s\S]{0,300}(?:wp_remote_post|curl_exec|file_get_contents|mail)\s*\(#i',
+                    '#class\s+\w+\s+extends\s+WC_Payment_Gateway[\s\S]{0,500}(?:card-number|card-cvc|card_number|card_cvv)[\s\S]{0,200}(?:file_get_contents|curl_exec|wp_remote_post)#i',
+                ],
+            ],
+            'dropin_persistence' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#defined\s*\(\s*[\x27\x22]ABSPATH[\x27\x22]\s*\)[\s\S]{0,200}(?:eval|assert|system|passthru|shell_exec)\s*\(#i',
+                ],
+            ],
             'seo_spam' => [
                 'weight' => 85,
                 'patterns' => [
@@ -1790,7 +1844,7 @@ class WAF_FW_Scanner {
         if ($size > 10000000 || $size === 0) return null;
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ini', 'zip', 'tar', 'gz', 'tgz'];
+        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'mp3', 'mp4', 'wav', 'pdf', 'ini', 'zip', 'tar', 'gz', 'tgz'];
         if (!in_array($ext, $scanable) && basename($path) !== '.htaccess' && basename($path) !== '.user.ini' && strpos(basename($path), '.env') !== 0) return null;
 
         $name = basename($path);
@@ -1871,6 +1925,10 @@ class WAF_FW_Scanner {
                             'score' => 98,
                             'severity' => 'critical',
                             'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
+                            'line_number' => 1,
+                            'snippet' => 'Archive Entry: ' . $bad_entry,
                             'classification' => 'CONFIRMED_MALWARE',
                             'findings' => ['Zip Slip Traversal: Archive contains path traversal entry attempting to overwrite files (' . $bad_entry . ')'],
                             'size' => $size,
@@ -1884,6 +1942,10 @@ class WAF_FW_Scanner {
                             'score' => 95,
                             'severity' => 'critical',
                             'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
+                            'line_number' => 1,
+                            'snippet' => 'Archive Entry: ' . $bad_entry,
                             'classification' => 'CONFIRMED_MALWARE',
                             'findings' => ['Malicious Archive: Zip contains executable PHP/binary script in public folder (' . $bad_entry . ')'],
                             'size' => $size,
@@ -1897,6 +1959,10 @@ class WAF_FW_Scanner {
                             'score' => 90,
                             'severity' => 'critical',
                             'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
+                            'line_number' => 1,
+                            'snippet' => 'Archive Entry: ' . $bad_entry,
                             'classification' => 'CONFIRMED_MALWARE',
                             'findings' => ['Sensitive Data Exposure: Zip archive contains unprotected database/environment config (' . $bad_entry . ')'],
                             'size' => $size,
@@ -1913,6 +1979,8 @@ class WAF_FW_Scanner {
                         'score' => 95,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
                         'classification' => 'CONFIRMED_MALWARE',
                         'findings' => ['Malicious Tarball: Compressed archive contains embedded PHP execution script'],
                         'size' => $size,
@@ -1923,28 +1991,40 @@ class WAF_FW_Scanner {
             return null; // Clean archive
         }
 
-        // Module 5 & 13: Polyglot Media & Steganography Detection
-        $media_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        // Module 5 & 13: Polyglot Media, Font & Audio Steganography Detection
+        $media_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'mp3', 'mp4', 'wav', 'pdf'];
         if (in_array($ext, $media_exts, true)) {
             if ($ext === 'svg') {
-                if (preg_match('#<svg[\\s\\S]*?(?:<script|onload\\s*=|onerror\\s*=|xlink:href\\s*=\\s*["\']?javascript:)#i', $content)) {
+                if (preg_match('#<svg[\s\S]*?(?:<script|onload\s*=|onerror\s*=|xlink:href\s*=\s*[\x22\x27]?javascript:)#i', $content, $svg_m, PREG_OFFSET_CAPTURE)) {
+                    $line_num = substr_count(substr($content, 0, $svg_m[0][1]), "\n") + 1;
+                    $snippet = substr($content, $svg_m[0][1], 120);
                     return [
                         'file' => $rel_path,
                         'score' => 95,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
+                        'line_number' => $line_num,
+                        'snippet' => trim($snippet),
                         'classification' => 'CONFIRMED_MALWARE',
                         'findings' => ['Malicious SVG Vector: Embedded JavaScript/XSS execution payload detected'],
                         'size' => $size,
                         'hash' => md5($content),
                     ];
                 }
-                if (preg_match('/<\?(?:php|=)/i', $content)) {
+                if (preg_match('/<\?(?:php|=)/i', $content, $svg_php_m, PREG_OFFSET_CAPTURE)) {
+                    $line_num = substr_count(substr($content, 0, $svg_php_m[0][1]), "\n") + 1;
+                    $snippet = substr($content, $svg_php_m[0][1], 120);
                     return [
                         'file' => $rel_path,
                         'score' => 100,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
+                        'line_number' => $line_num,
+                        'snippet' => trim($snippet),
                         'classification' => 'CONFIRMED_MALWARE',
                         'findings' => ['Embedded WebShell: Executable PHP code disguised inside SVG vector image'],
                         'size' => $size,
@@ -1952,15 +2032,21 @@ class WAF_FW_Scanner {
                     ];
                 }
             } else {
-                // Polyglot JPEG, PNG, GIF, WebP containing embedded PHP
-                if (preg_match('/<\?(?:php|=)/i', $content)) {
+                // Polyglot Media/Carrier containing embedded PHP execution headers
+                if (preg_match('/<\?(?:php|=)/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $line_num = substr_count(substr($content, 0, $poly_m[0][1]), "\n") + 1;
+                    $snippet = substr($content, $poly_m[0][1], 120);
                     return [
                         'file' => $rel_path,
                         'score' => 100,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
+                        'line_number' => 1,
+                        'snippet' => 'Compressed tar/gz archive stream',
+                        'line_number' => $line_num,
+                        'snippet' => trim($snippet),
                         'classification' => 'CONFIRMED_MALWARE',
-                        'findings' => ['Polyglot Media WebShell: Executable PHP payload disguised inside ' . strtoupper($ext) . ' image'],
+                        'findings' => ['Polyglot Media Carrier: Executable PHP payload disguised inside ' . strtoupper($ext) . ' asset'],
                         'size' => $size,
                         'hash' => md5($content),
                     ];
@@ -2097,6 +2183,12 @@ class WAF_FW_Scanner {
             if ($cat_key === 'rest_api_backdoor' && !$is_php) {
                 continue;
             }
+            if (in_array($cat_key, ['rasp_runtime_hooking', 'polymorphic_mutators', 'privilege_escalation_tamper', 'dropin_persistence'], true) && !$is_php) {
+                continue;
+            }
+            if ($cat_key === 'memory_opcache_persistence' && !in_array($ext, ['php', 'phtml', 'ini'], true)) {
+                continue;
+            }
 
             $matches = $this->check_malware_patterns($content, $data['patterns']);
             if (empty($matches) && $normalized_content !== $content) {
@@ -2140,14 +2232,18 @@ class WAF_FW_Scanner {
         // 7. Secrets/Credentials Detection (Skip standard wp-config.php constants)
         // Module 15: Apache .htaccess Hijack & PHP Handler Manipulation
         if ($name === '.htaccess' || substr($name, -9) === '.htaccess') {
-            if (preg_match('/(?:AddType|AddHandler|SetHandler)\s+application\/x-httpd-php|\bphp_value\s+(?:auto_prepend_file|auto_append_file)|\bphp_flag\s+engine\s+on|RewriteRule\s+.*https?:\/\/(?:[a-z0-9\-]+\.)+(?:ru|xyz|su|top|biz|cc|cn|pw)\b/i', $content, $ht_m)) {
+            if (preg_match('/(?:AddType|AddHandler|SetHandler)\s+application\/x-httpd-php|\bphp_value\s+(?:auto_prepend_file|auto_append_file)|\bphp_flag\s+engine\s+on|RewriteRule\s+.*https?:\/\/(?:[a-z0-9\-]+\.)+(?:ru|xyz|su|top|biz|cc|cn|pw)\b/i', $content, $ht_m, PREG_OFFSET_CAPTURE)) {
+                $line_num = substr_count(substr($content, 0, $ht_m[0][1]), "\n") + 1;
+                $snippet = trim($ht_m[0][0]);
                 return [
                     'file' => $rel_path,
                     'score' => 95,
                     'severity' => 'critical',
                     'confidence' => 'HIGH',
+                    'line_number' => $line_num,
+                    'snippet' => $snippet,
                     'classification' => 'CONFIRMED_MALWARE',
-                    'findings' => ['Apache .htaccess Hijack: Malicious handler/directive detected (' . trim($ht_m[0]) . ')'],
+                    'findings' => ['Apache .htaccess Hijack: Malicious handler/directive detected (' . $snippet . ')'],
                     'size' => $size,
                     'hash' => md5($content),
                 ];
@@ -2172,13 +2268,17 @@ class WAF_FW_Scanner {
 
         // Module 14: SQL Database Dump & Credentials / Rogue Admin Exposure Check
         if ($ext === 'sql' || strpos($name, '.sql') !== false) {
-            if (preg_match('/(?:CREATE\s+TABLE\s+[`\w]*users[`\w]*|INSERT\s+INTO\s+[`\w]*users[`\w]*|UPDATE\s+[`\w]*(?:users|usermeta)[`\w]*\s+SET\s+(?:user_pass|meta_value))/i', $content)) {
+            if (preg_match('/(?:CREATE\s+TABLE\s+[`\w]*users[`\w]*|INSERT\s+INTO\s+[`\w]*users[`\w]*|UPDATE\s+[`\w]*(?:users|usermeta)[`\w]*\s+SET\s+(?:user_pass|meta_value))/i', $content, $sql_m, PREG_OFFSET_CAPTURE)) {
                 if (preg_match('#\$P\$[A-Za-z0-9\.\/]{31}|user_pass|MD5\([\x27\x22][^\x27\x22]+[\x27\x22]\)|administrator|mailinator|yopmail#i', $content)) {
+                    $line_num = substr_count(substr($content, 0, $sql_m[0][1]), "\n") + 1;
+                    $snippet = trim(substr($sql_m[0][0], 0, 100));
                     return [
                         'file' => $rel_path,
                         'score' => 95,
                         'severity' => 'critical',
                         'confidence' => 'HIGH',
+                        'line_number' => $line_num,
+                        'snippet' => $snippet,
                         'classification' => 'CONFIRMED_MALWARE',
                         'findings' => ['Critical Exposure: Unprotected SQL dump or malicious user modification query (' . $name . ')'],
                         'size' => $size,
@@ -2240,7 +2340,7 @@ class WAF_FW_Scanner {
             $matched_snippet = '';
             $lines = explode("\n", $content);
             foreach ($lines as $l_idx => $l_text) {
-                if (preg_match('/(eval\s*\(|base64_decode|assert\s*\(|shell_exec|system\s*\(|passthru\s*\(|gzinflate|create_function|file_put_contents\s*\(|curl_exec|c99|r57|wso|alfa|b374k|wp_create_user|set_role|wp_insert_user|admin_user|auto_prepend_file)/i', $l_text)) {
+                if (preg_match('/(eval\s*\(|base64_decode|assert\s*\(|shell_exec|system\s*\(|passthru\s*\(|gzinflate|create_function|file_put_contents\s*\(|curl_exec|c99|r57|wso|alfa|b374k|wp_create_user|set_role|wp_insert_user|admin_user|auto_prepend_file|authenticate|nonce_user_logged_out|check_admin_referer|169\.254\.169\.254|metadata\.google|serviceaccount|Closure::bind|ReflectionFunction|opcache_compile|opcache_invalidate|map_meta_cap|woocommerce_checkout|WC_Payment_Gateway|HTTP_X_DROPIN|card_number|billing_first_name)/i', $l_text)) {
                     $matched_line = $l_idx + 1;
                     $matched_snippet = trim(substr($l_text, 0, 240));
                     break;
