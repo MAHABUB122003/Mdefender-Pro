@@ -213,16 +213,27 @@ class WAF_FW_IP_Filter {
             $raw_body = json_encode($_POST);
         }
         $check = urldecode($_SERVER['REQUEST_URI'] ?? '') . ' ' . urldecode($_SERVER['QUERY_STRING'] ?? '') . ' ' . $raw_body;
-        if ((strpos($check, "'") !== false || strpos($check, '"') !== false || strpbrk($check, "<>`();$\\") !== false) ||
+        $eval_uri = $_SERVER['REQUEST_URI'] ?? '';
+        if ((strpos($check, "'") !== false || strpos($check, '"') !== false || strpbrk($check, "<>`();$\\|{}~^") !== false) ||
+            strpos($check, '..') !== false ||
+            strpos($check, '--') !== false ||
+            strpos($check, '/*') !== false ||
             stripos($check, 'union') !== false || 
             stripos($check, 'select') !== false || 
             stripos($check, 'script') !== false || 
+            stripos($check, 'sleep(') !== false || 
             stripos($check, 'etc/') !== false ||
             stripos($check, 'base64') !== false ||
             stripos($check, '$gt') !== false ||
             stripos($check, '$where') !== false ||
             stripos($check, '<!entity') !== false ||
-            strpos($check, '..') !== false) {
+            stripos($check, '169.254.') !== false ||
+            stripos($check, 'metadata.google') !== false ||
+            stripos($check, 'gopher://') !== false ||
+            stripos($check, 'dict://') !== false ||
+            stripos($check, 'php://') !== false ||
+            preg_match('#\b(?:or|and)\s+(?:\d+=\d+|\w+=\w+)#i', $check) ||
+            preg_match('#/(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)#i', $eval_uri)) {
             return true;
         }
         return false;

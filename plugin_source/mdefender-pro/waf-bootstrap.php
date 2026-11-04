@@ -180,12 +180,18 @@ if (strpos($deobfuscated, '\\x') !== false) {
     }, $deobfuscated);
 }
 $deobfuscated = html_entity_decode($deobfuscated, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // HTML entities (&#x27; -> ')
-$deobfuscated_stripped = preg_replace('/\/\*.*?\*\//s', ' ', $deobfuscated); // Strip SQL inline comments (UN/**/ION -> UNION)
+$deobfuscated_stripped = preg_replace('/\/\*.*?\*\//s', '', $deobfuscated); // Strip SQL inline comments completely (UN/**/ION -> UNION)
+$deobfuscated_spaced = preg_replace('/\/\*.*?\*\//s', ' ', $deobfuscated); // Strip SQL inline comments with space
+$eval_uri = $_SERVER['REQUEST_URI'] ?? '';
 
 // 2. Strict Attack Marker Detection
 $has_attack_marker = (
-    (strpos($deobfuscated, "'") !== false || strpos($deobfuscated, '"') !== false || strpbrk($deobfuscated, "<>`();$\\") !== false) ||
+    strpos($deobfuscated, "'") !== false || 
+    strpos($deobfuscated, '"') !== false || 
+    strpbrk($deobfuscated, "<>`();$\\|{}~^") !== false ||
     strpos($deobfuscated, '..') !== false ||
+    strpos($deobfuscated, '--') !== false ||
+    strpos($deobfuscated, '/*') !== false ||
     stripos($deobfuscated_stripped, 'union') !== false ||
     stripos($deobfuscated_stripped, 'select') !== false ||
     stripos($deobfuscated_stripped, 'script') !== false ||
@@ -196,10 +202,19 @@ $has_attack_marker = (
     stripos($deobfuscated, '$gt') !== false ||
     stripos($deobfuscated, '$where') !== false ||
     stripos($deobfuscated, '$regex') !== false ||
-    stripos($deobfuscated, '<!ENTITY') !== false ||
+    stripos($deobfuscated, '$ne') !== false ||
+    stripos($deobfuscated, '<!entity') !== false ||
     stripos($deobfuscated, 'cpanel') !== false ||
     stripos($deobfuscated, ':2083') !== false ||
     stripos($deobfuscated, '${jndi') !== false ||
+    stripos($deobfuscated, '169.254.') !== false ||
+    stripos($deobfuscated, 'metadata.google') !== false ||
+    stripos($deobfuscated, 'gopher://') !== false ||
+    stripos($deobfuscated, 'dict://') !== false ||
+    stripos($deobfuscated, 'php://') !== false ||
+    preg_match('#\b(?:or|and)\s+(?:\d+=\d+|\w+=\w+)#i', $deobfuscated_stripped) ||
+    preg_match('#(?:https?|ftp|gopher|dict)://(?:127\.0\.0\.1|localhost|\[::1\]|10\.\d+|192\.168\.|172\.(?:1[6-9]|2\d|3[01]))#i', $deobfuscated) ||
+    preg_match('#/(?:\.env|\.git|\.user\.ini|\.htaccess|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)#i', $eval_uri) ||
     !empty($_GET['waf_test']) ||
     !empty($_POST['waf_test'])
 );
@@ -360,42 +375,42 @@ if (!$is_blocked) {
 
 // 7. Comprehensive 18-Module Threat Ingress Filter (< 0.1ms Pre-Flight Neutralization)
 if (!$is_blocked && $has_attack_marker) {
-    $eval_payload = $deobfuscated . ' ' . $deobfuscated_stripped;
+    $eval_payload = $deobfuscated . ' ' . $deobfuscated_stripped . ' ' . $deobfuscated_spaced . ' ' . $eval_uri;
 
     // Check Module 1: SQL Injection (Classic, Union, Blind, Error, Stacked, DB functions, NoSQL)
-    if (preg_match('/(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\'"]?\w+[\'"]?\s*=\s*[\'"]?\w+[\'"]?)|(?:\b(?:or|and)\b\s+1\s*=\s*1\b)|(?:\b(?:or|and)\b\s+\'1\'\s*=\s*\'1\')|(?:\'|\"|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:["\']?\\\$(?:gt|ne|gte|nin|regex|where|in)["\']?\s*:))/i', $eval_payload)) {
+    if (preg_match('@(?:\bunion\b(?:\s+all)?\s+\bselect\b|\bdrop\b\s+\btable\b|\btruncate\b\s+\btable\b|(?:\b(?:or|and)\b\s+[\x27\x22]?\w+[\x27\x22]?\s*=\s*[\x27\x22]?\w+[\x27\x22]?)|(?:\b(?:or|and)\b\s+\d+\s*=\s*\d+\b)|(?:\b(?:or|and)\b\s+\x271\x27\s*=\s*\x271\x27)|(?:\x27|\x22|%27)\s*(?:--|#|\/\*|\bor\b|\band\b|\bunion\b|;)|(?:\b(?:sleep|benchmark|waitfor\s+delay|load_file|into\s+outfile|pg_sleep)\s*\()|\binformation_schema\b|(?:[\x27\x22]?\$(?:gt|ne|gte|nin|regex|where|in)[\x27\x22]?\s*:))@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'SQL Injection';
         $rule_name = 'Pre-Flight WAAP: SQL & NoSQL Injection Guard';
         $block_reason = 'Critical SQL / NoSQL Injection exploit payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 2: Cross-Site Scripting (XSS) & Polyglot Vectors
-    elseif (preg_match('/(?:<script[\s\S]*?>|\bon[a-z]{3,15}\s*=\s*[\'"]?[^\'">]+|javascript\s*:\s*[^\s\'"]+|\b(?:alert|prompt|confirm)\s*\([^\)]*\)|<(?:iframe|object|embed|svg|img)[^>]+(?:onload|onerror|src\s*=\s*[\'"]?javascript)|jaVasCript:\/\*|\/\*<!\[CDATA\[\*\/)/i', $eval_payload)) {
+    elseif (preg_match('@(?:<script[\s\S]*?>|\bon[a-z]{3,15}\s*=\s*[\x27\x22]?[^\x27\x22>]+|javascript\s*:\s*[^\s\x27\x22]+|\b(?:alert|prompt|confirm)\s*\([^\)]*\)|<(?:iframe|object|embed|svg|img)[^>]+(?:onload|onerror|src\s*=\s*[\x27\x22]?javascript)|jaVasCript:\/\*|\/\*<!\[CDATA\[\*\/)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Cross-Site Scripting (XSS)';
         $rule_name = 'Pre-Flight WAAP: Script Tag & Event Handler Guard';
         $block_reason = 'Cross-Site Scripting (XSS) payload intercepted by Pre-Flight WAAP.';
     }
-    // Check Module 3: Command & Remote Code Execution (RCE) / Log4j
-    elseif (preg_match('/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\})/i', $eval_payload)) {
+    // Check Module 3: Command & Remote Code Execution (RCE) / Log4j / SSTI
+    elseif (preg_match('@(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode)\s*[\(\[]|`[^`]+`|\$\([^\)]+\)|\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c))|(?:;|&&|\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|wget|curl|chmod|nc|bash|sh|powershell|cmd)\b(?!\=)|\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\}|\{\{.*?\}\}|\$\{\s*[0-9\+\-\*\/]+\s*\})@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Remote Code Execution (RCE)';
-        $rule_name = 'Pre-Flight WAAP: PHP Shell, Command & JNDI Guard';
-        $block_reason = 'Remote Command Execution (RCE) / WebShell payload intercepted by Pre-Flight WAAP.';
+        $rule_name = 'Pre-Flight WAAP: PHP Shell, Command, SSTI & JNDI Guard';
+        $block_reason = 'Remote Command Execution (RCE) / SSTI / WebShell payload intercepted by Pre-Flight WAAP.';
     }
     // Check Module 4: Path Traversal & Local File Inclusion (LFI/RFI)
-    elseif (preg_match('#(?:\.\.[\\\\/]){1,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\\\\/]windows|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.htaccess|\.user\.ini|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)#i', $eval_payload)) {
+    elseif (preg_match('@(?:\.\.[\\\\/]){1,}|\/etc\/(?:passwd|shadow|hosts|group)|c:[\\\\/]windows|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Path Traversal';
         $rule_name = 'Pre-Flight WAAP: Directory Traversal & Sensitive File Guard';
         $block_reason = 'Path Traversal & Sensitive Configuration Exposure probe intercepted by Pre-Flight WAAP.';
     }
     // Check Module 5: Server-Side Request Forgery (SSRF) & Cloud Metadata
-    elseif (preg_match('/(?:https?|ftp|gopher):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|metadata\.google)/i', $eval_payload)) {
+    elseif (preg_match('@(?:https?|ftp|gopher|dict):\/\/(?:169\.254\.\d+\.\d+|127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|metadata\.google(?:\.internal)?)@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Server-Side Request Forgery (SSRF)';
-        $rule_name = 'Pre-Flight WAAP: Cloud Metadata & Localhost SSRF Guard';
-        $block_reason = 'Cloud Metadata (169.254.x.x) / SSRF probe intercepted by Pre-Flight WAAP.';
+        $rule_name = 'Pre-Flight WAAP: Cloud Metadata & SSRF Guard';
+        $block_reason = 'Cloud Metadata / SSRF internal destination probe intercepted by Pre-Flight WAAP.';
     }
     // Check Module 6: XML External Entity (XXE) & Insecure Deserialization
     elseif (preg_match('/(?:<!ENTITY\s+\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[|\bO:\d+:"[^"]+":\d+:\{)/i', $eval_payload)) {
