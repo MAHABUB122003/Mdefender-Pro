@@ -149,10 +149,12 @@ export default function BulkScanner() {
       const res = await api.getWebsiteScans(siteId)
       const scans = res?.data?.scans || res?.scans || (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
       if (scans.length > 0) {
-        const latest = scans[0]
+        // Prioritize completed scan or scan with real findings over stuck queued scan
+        const completedScan = scans.find(s => s.status === 'completed' || (s.findings && Array.isArray(s.findings) && s.findings.length > 0))
+        const latest = completedScan || scans[0]
         const latestFindings = latest.findings || latest.results?.findings || []
         setFindings(Array.isArray(latestFindings) ? latestFindings : [])
-        const score = latest.score ?? (latestFindings.length === 0 ? 100 : Math.max(20, 100 - latestFindings.length * 15))
+        const score = latest.score ?? latest.health_score ?? (latestFindings.length === 0 ? 100 : Math.max(20, 100 - latestFindings.length * 15))
         const metrics = latest.real_metrics || {}
         const totalScanned = latest.total_scanned || latest.files_scanned || metrics.total_files || (latestFindings.length > 0 ? latestFindings.length : 4818)
         const pluginFiles = metrics.plugin_files || 0
@@ -492,7 +494,10 @@ export default function BulkScanner() {
       setScannedFilesCount(currentScanned)
 
       // Check for scan finish conditions
-      const shouldFinish = (currentSec >= totalTargetSeconds) || (skipWaitSignalRef.current && cachedResultRef.current)
+      const minPacingSec = type === 'quick' ? 10 : 25
+      const shouldFinish = (currentSec >= totalTargetSeconds) || 
+        (skipWaitSignalRef.current && cachedResultRef.current) ||
+        (cachedResultRef.current && currentSec >= minPacingSec)
 
       if (shouldFinish) {
         clearInterval(scanInterval)
@@ -506,12 +511,13 @@ export default function BulkScanner() {
       setStageDetail('Correlating cross-domain risk vectors and updating baseline database.')
 
       let data = cachedResultRef.current || {}
-      if ((!data.findings || data.status === 'queued') && targetSiteId) {
+      if ((!data.findings || !data.findings.length || data.status === 'queued') && targetSiteId) {
         try {
           const fresh = await api.getWebsiteScans(targetSiteId)
-          const latest = fresh?.data?.scans?.[0] || fresh?.scans?.[0]
-          if (latest && (latest.findings || latest.status === 'completed')) {
-            data = latest
+          const scansList = fresh?.data?.scans || fresh?.scans || (Array.isArray(fresh?.data) ? fresh.data : [])
+          const completed = scansList.find(s => s.status === 'completed' || (s.findings && s.findings.length > 0))
+          if (completed) {
+            data = completed
           }
         } catch (_) {}
       }

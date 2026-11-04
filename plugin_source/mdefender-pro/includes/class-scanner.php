@@ -1643,8 +1643,8 @@ class WAF_FW_Scanner {
         if ($size > 10000000 || $size === 0) return null;
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp'];
-        if (!in_array($ext, $scanable) && basename($path) !== '.htaccess' && strpos(basename($path), '.env') !== 0) return null;
+        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ini'];
+        if (!in_array($ext, $scanable) && basename($path) !== '.htaccess' && basename($path) !== '.user.ini' && strpos(basename($path), '.env') !== 0) return null;
 
         $name = basename($path);
         $rel_path = str_replace(wp_normalize_path(ABSPATH), '', wp_normalize_path($path));
@@ -1682,6 +1682,52 @@ class WAF_FW_Scanner {
         $classification = 'SAFE';
 
         $is_php = in_array($ext, ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc']);
+
+        // Module 5 & 13: Polyglot Media & Steganography Detection
+        $media_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        if (in_array($ext, $media_exts, true)) {
+            if ($ext === 'svg') {
+                if (preg_match('#<svg[\\s\\S]*?(?:<script|onload\\s*=|onerror\\s*=|xlink:href\\s*=\\s*["\']?javascript:)#i', $content)) {
+                    return [
+                        'file' => $rel_path,
+                        'score' => 95,
+                        'severity' => 'critical',
+                        'confidence' => 'HIGH',
+                        'classification' => 'CONFIRMED_MALWARE',
+                        'findings' => ['Malicious SVG Vector: Embedded JavaScript/XSS execution payload detected'],
+                        'size' => $size,
+                        'hash' => md5($content),
+                    ];
+                }
+                if (preg_match('/<\?(?:php|=)/i', $content)) {
+                    return [
+                        'file' => $rel_path,
+                        'score' => 100,
+                        'severity' => 'critical',
+                        'confidence' => 'HIGH',
+                        'classification' => 'CONFIRMED_MALWARE',
+                        'findings' => ['Embedded WebShell: Executable PHP code disguised inside SVG vector image'],
+                        'size' => $size,
+                        'hash' => md5($content),
+                    ];
+                }
+            } else {
+                // Polyglot JPEG, PNG, GIF, WebP containing embedded PHP
+                if (preg_match('/<\?(?:php|=)/i', $content)) {
+                    return [
+                        'file' => $rel_path,
+                        'score' => 100,
+                        'severity' => 'critical',
+                        'confidence' => 'HIGH',
+                        'classification' => 'CONFIRMED_MALWARE',
+                        'findings' => ['Polyglot Media WebShell: Executable PHP payload disguised inside ' . strtoupper($ext) . ' image'],
+                        'size' => $size,
+                        'hash' => md5($content),
+                    ];
+                }
+            }
+            return null; // Clean media file
+        }
 
         // 2. Known-Bad Hash Match (definitive 100% signal)
         $known_bad = self::lookup_known_bad_hash($path);
@@ -1833,6 +1879,22 @@ class WAF_FW_Scanner {
         }
 
         // 7. Secrets/Credentials Detection (Skip standard wp-config.php constants)
+        // Module 8: Persistence & Stealth Configuration (.user.ini / php.ini)
+        if ($name === '.user.ini' || $name === 'php.ini') {
+            if (preg_match('/(?:auto_prepend_file|auto_append_file|allow_url_include)\s*=\s*([^\r\n]+)/i', $content, $ini_m)) {
+                return [
+                    'file' => $rel_path,
+                    'score' => 95,
+                    'severity' => 'critical',
+                    'confidence' => 'HIGH',
+                    'classification' => 'CONFIRMED_MALWARE',
+                    'findings' => ['Stealth Persistence: Malicious auto_prepend/append directive in ' . $name . ' (' . trim($ini_m[0]) . ')'],
+                    'size' => $size,
+                    'hash' => md5($content),
+                ];
+            }
+        }
+
         if ($name !== 'wp-config.php' && $name !== 'wp-config-sample.php') {
             $secrets = $this->get_secret_patterns();
             $secret_matches = $this->check_malware_patterns($content, $secrets);

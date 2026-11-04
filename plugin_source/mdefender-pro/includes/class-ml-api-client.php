@@ -581,6 +581,59 @@ class WAF_FW_ML_Api_Client {
 
 
     /**
+     * Ultra-fast batch hash check against 5.32M cloud intelligence records.
+     *
+     * @param array $file_hashes Array of [['path' => '...', 'sha256' => '...', 'md5' => '...'], ...]
+     * @return array|null Returns ['clean' => [...], 'malicious' => [...], 'unknown' => [...]] or null on failure.
+     */
+    public function check_bulk_hashes($file_hashes = []) {
+        $this->refresh_config();
+        if (!$this->is_available() || empty($file_hashes)) {
+            return null;
+        }
+        return $this->request('POST', '/api/v1/malware/bulk-hash-check', [
+            'api_key'    => $this->api_key,
+            'domain'     => $this->get_domain(),
+            'site_token' => $this->site_token,
+            'hashes'     => array_values($file_hashes),
+        ], 15);
+    }
+
+    /**
+     * Stateless deep multi-signal stream scan for unknown/suspicious files.
+     */
+    public function stream_scan_file($filename, $content, $source = null) {
+        $this->refresh_config();
+        if (!$this->is_available() || empty($content)) {
+            return null;
+        }
+        return $this->request('POST', '/api/v1/malware/stream-scan', [
+            'api_key'        => $this->api_key,
+            'domain'         => $this->get_domain(),
+            'site_token'     => $this->site_token,
+            'filename'       => sanitize_file_name($filename),
+            'content_base64' => base64_encode($content),
+            'source'         => $source ? sanitize_text_field($source) : null,
+        ], $this->scan_timeout);
+    }
+
+    /**
+     * Stateless inspection of database rows for SEO Spam and C2 redirects.
+     */
+    public function scan_db_rows($rows = []) {
+        $this->refresh_config();
+        if (!$this->is_available() || empty($rows)) {
+            return null;
+        }
+        return $this->request('POST', '/api/v1/malware/db-scan', [
+            'api_key'    => $this->api_key,
+            'domain'     => $this->get_domain(),
+            'site_token' => $this->site_token,
+            'rows'       => array_values($rows),
+        ], 20);
+    }
+
+    /**
      * Scan a single file content on the cloud malware detector.
      * Returns ['verdict','risk_score','confidence','family','reasons'] or null.
      */

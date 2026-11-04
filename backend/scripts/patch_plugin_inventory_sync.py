@@ -159,3 +159,4 @@ content = content.replace(old_rest_plugin_block, new_webhook_plugin_block, 1)
 
 waf_file.write_text(content, encoding="utf-8")
 print("Successfully patched waf-firewall.php with inventory hooks and control actions!")
+

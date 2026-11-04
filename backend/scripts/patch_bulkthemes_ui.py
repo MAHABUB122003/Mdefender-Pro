@@ -504,3 +504,4 @@ content = content.replace(old_end, new_end, 1)
 
 themes_path.write_text(content, encoding="utf-8")
 print("Successfully enhanced BulkThemes.jsx with Delete, Install, and Live Sync!")
+

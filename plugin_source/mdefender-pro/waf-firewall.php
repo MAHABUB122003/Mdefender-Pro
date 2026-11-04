@@ -1060,7 +1060,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $wpdb->insert($results_table, [
                             'scan_type'        => $scan_type,
                             'target_url'       => function_exists('home_url') ? home_url() : '',
-                            'status'           => $threats_count > 0 ? 'completed_with_issues' : 'clean',
+                            'status'           => $threats_count > 0 ? 'completed' : 'clean',
                             'vulnerabilities'  => json_encode(['findings' => $findings, 'vulnerability_scan' => $vuln_results ?? []]),
                             'summary'          => json_encode([
                                 'score'            => $health_score,

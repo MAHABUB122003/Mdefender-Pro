@@ -483,3 +483,4 @@ content = content.replace(old_end, new_end, 1)
 
 plugins_path.write_text(content, encoding="utf-8")
 print("Successfully enhanced BulkPlugins.jsx with Delete, Install, and Live Sync!")
+
