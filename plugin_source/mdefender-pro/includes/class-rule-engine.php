@@ -80,6 +80,11 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\.prototype)\s*(?:[\.\[]|["\']?\s*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JNDI / Log4j Injection Probe', 'pattern' => '/(?:\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'GraphQL Introspection Abuse', 'pattern' => '/(?:__schema\s*\{|__type\s*\(\s*name\s*:)/i', 'action' => 'block', 'severity' => 'medium', 'enabled' => true],
+            ['name' => 'NoSQL Injection - Operator Payload', 'pattern' => '/(?:["\']?\$(?:gt|ne|gte|nin|regex|where|in)["\']?\s*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XML External Entity (XXE) Injection', 'pattern' => '/(?:<!ENTITY\s+\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'User Enumeration Probe', 'pattern' => '/(?:\/wp-json\/wp\/v2\/users\b|[?&]author=\d+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'Hosting Control Panel Probe', 'pattern' => '/(?:^|[?&])(?:cpanel|whm|webmail)=\d*|:(?:2082|2083|2086|2087)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Double URL Encoded Injection', 'pattern' => '/(?:%25(?:27|22|3d|20|3c|3e))/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
         ];
     }
 

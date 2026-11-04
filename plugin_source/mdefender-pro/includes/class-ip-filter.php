@@ -193,13 +193,38 @@ class WAF_FW_IP_Filter {
             return true;
         }
 
-        // Loopback is allowed by default ONLY IF not explicitly added to the blacklist table and not running a waf test
-        if (empty($_GET['waf_test']) && empty($_POST['waf_test']) && empty($_GET['test_ip']) && empty($_GET['ip_test']) && empty($_GET['country_test']) && empty($_GET['test_country']) && empty($_SERVER['HTTP_CF_IPCOUNTRY']) && empty($_SERVER['CF_IPCOUNTRY'])) {
-            if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
-                return true;
+        // Loopback is allowed by default ONLY IF not explicitly added to the blacklist table and no attack markers exist in request
+        if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
+            if ($this->has_attack_marker_in_request()) {
+                return false;
             }
+            return true;
         }
 
+        return false;
+    }
+
+    public function has_attack_marker_in_request() {
+        if (!empty($_GET['waf_test']) || !empty($_POST['waf_test']) || !empty($_GET['test_ip']) || !empty($_GET['ip_test']) || !empty($_GET['country_test']) || !empty($_GET['test_country'])) {
+            return true;
+        }
+        $raw_body = $GLOBALS['mdefender_raw_body'] ?? '';
+        if (empty($raw_body) && !empty($_POST) && is_array($_POST)) {
+            $raw_body = json_encode($_POST);
+        }
+        $check = urldecode($_SERVER['REQUEST_URI'] ?? '') . ' ' . urldecode($_SERVER['QUERY_STRING'] ?? '') . ' ' . $raw_body;
+        if ((strpos($check, "'") !== false || strpos($check, '"') !== false || strpbrk($check, "<>`();$\\") !== false) ||
+            stripos($check, 'union') !== false || 
+            stripos($check, 'select') !== false || 
+            stripos($check, 'script') !== false || 
+            stripos($check, 'etc/') !== false ||
+            stripos($check, 'base64') !== false ||
+            stripos($check, '$gt') !== false ||
+            stripos($check, '$where') !== false ||
+            stripos($check, '<!entity') !== false ||
+            strpos($check, '..') !== false) {
+            return true;
+        }
         return false;
     }
 

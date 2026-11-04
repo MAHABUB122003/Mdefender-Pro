@@ -114,15 +114,18 @@ class WAF_FW_Engine {
     public function get_comprehensive_payload() {
         $parts = [];
 
-        // 1. Raw body (php://input)
-        $raw_body = '';
-        $input = @fopen('php://input', 'rb');
-        if ($input) {
-            $raw_body = @stream_get_contents($input);
-            @fclose($input);
-        }
+        // 1. Raw body (php://input) with caching in $GLOBALS
+        $raw_body = $GLOBALS['mdefender_raw_body'] ?? '';
         if (empty($raw_body)) {
-            $raw_body = @file_get_contents('php://input') ?: '';
+            $input = @fopen('php://input', 'rb');
+            if ($input) {
+                $raw_body = @stream_get_contents($input);
+                @fclose($input);
+            }
+            if (empty($raw_body)) {
+                $raw_body = @file_get_contents('php://input') ?: '';
+            }
+            $GLOBALS['mdefender_raw_body'] = is_string($raw_body) ? $raw_body : '';
         }
         if (!empty($raw_body)) {
             $parts[] = $raw_body;
@@ -299,24 +302,12 @@ class WAF_FW_Engine {
             $query_string = $_SERVER['QUERY_STRING'] ?? '';
             $query_params = $_GET;
 
-            // Whitelist legitimate WordPress login, custom login URL, and admin dashboard access
+            // Normal routine WordPress login / admin paths:
+            // Notice: We DO NOT bypass before rule_engine! All requests must be inspected by Rule Engine first!
             $url_path = strtolower(parse_url($url, PHP_URL_PATH) ?? $url);
             $custom_slug = trim(get_option('waf_harden_login_rename', ''));
             $is_custom_login = (!empty($custom_slug) && (strpos($url_path, '/' . strtolower($custom_slug)) !== false || trim($url_path, '/') === strtolower($custom_slug)));
             $is_wp_admin_path = ($is_custom_login || strpos($url_path, 'wp-login.php') !== false || strpos($url_path, 'wp-admin') !== false || strpos($url_path, 'admin-ajax.php') !== false);
-            if ($is_wp_admin_path && empty($_GET['waf_test']) && empty($_POST['waf_test'])) {
-                $features = $this->feature_extractor->extract_features($url . ' ' . $comprehensive_payload);
-                $has_dangerous_attack = false;
-                foreach (['sql_score', 'xss_score', 'lfi_score', 'rce_score', 'ssti_score', 'ssrf_score'] as $key) {
-                    if (($features[$key] ?? 0) >= 0.5) {
-                        $has_dangerous_attack = true;
-                        break;
-                    }
-                }
-                if (!$has_dangerous_attack) {
-                    return $this->do_allow($ip, $url, $method, $user_agent);
-                }
-            }
 
             $request_data = [
                 'url' => $url,

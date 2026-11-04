@@ -65,7 +65,16 @@ class WAF_FW_Feature_Extractor {
         }
 
         // Ultra-fast heuristic pre-filter (Executes in 0.001ms for 95% of normal traffic)
-        if (strpbrk($text, '\'"<>`;{}$\\%#') === false && stripos($text, 'union') === false && stripos($text, 'select') === false && stripos($text, 'script') === false) {
+        if (strpbrk($text, '\'"<>`;{}$\\%#=()|-/[]*~^') === false && 
+            stripos($text, 'union') === false && 
+            stripos($text, 'select') === false && 
+            stripos($text, 'script') === false && 
+            stripos($text, 'where') === false &&
+            stripos($text, 'sleep') === false &&
+            stripos($text, 'base64') === false &&
+            stripos($text, 'etc/') === false &&
+            stripos($text, '$gt') === false &&
+            stripos($text, '$regex') === false) {
             return $this->get_clean_features();
         }
 
