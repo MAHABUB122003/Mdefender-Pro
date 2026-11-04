@@ -1011,13 +1011,13 @@ class WAF_FW_Scanner {
         }
 
         $untrusted_sources = [
-            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_FILES',
+            '$_GET', '$_POST', '$_REQUEST', '$_COOKIE', '$_FILES', '$_SERVER',
             '$HTTP_RAW_POST_DATA'
         ];
 
         $dangerous_sinks = [
             'eval', 'assert', 'system', 'exec', 'shell_exec', 'passthru',
-            'proc_open', 'popen', 'pcntl_exec', 'create_function'
+            'proc_open', 'popen', 'pcntl_exec', 'create_function', 'unserialize'
         ];
 
         $transform_functions = [
@@ -1027,6 +1027,8 @@ class WAF_FW_Scanner {
         ];
 
         $tainted_vars = [];
+        $dynamic_sinks = [];
+        $known_strings = [];
         $findings = [];
         $score = 0;
         $confidence = 'LOW';
@@ -1048,7 +1050,9 @@ class WAF_FW_Scanner {
                     $next_idx++;
                 }
 
-                if ($next_idx < $token_count && $tokens[$next_idx] === '=') {
+                $is_plain_assign = ($next_idx < $token_count && $tokens[$next_idx] === '=');
+                $is_concat_assign = ($next_idx < $token_count && is_array($tokens[$next_idx]) && $tokens[$next_idx][0] === T_CONCAT_EQUAL);
+                if ($is_plain_assign || $is_concat_assign) {
                     $expr_tokens = [];
                     $j = $next_idx + 1;
                     $paren_depth = 0;
@@ -1091,6 +1095,32 @@ class WAF_FW_Scanner {
                         }
                     }
 
+                    // Track dynamic function alias & string resolution ($fn = 'ass' . 'ert', $sink = $x1 . $x2)
+                    $resolved_str = '';
+                    $is_resolvable = true;
+                    foreach ($expr_tokens as $etk) {
+                        $etk_id = is_array($etk) ? $etk[0] : null;
+                        $etk_txt = is_array($etk) ? $etk[1] : $etk;
+                        if ($etk_id === T_CONSTANT_ENCAPSED_STRING) {
+                            $resolved_str .= trim($etk_txt, "'\"");
+                        } elseif ($etk_id === T_VARIABLE && isset($known_strings[$etk_txt])) {
+                            $resolved_str .= $known_strings[$etk_txt];
+                        } elseif ($etk === '.') {
+                            continue;
+                        } elseif ($etk_id && in_array($etk_id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT])) {
+                            continue;
+                        } else {
+                            $is_resolvable = false;
+                            break;
+                        }
+                    }
+                    if ($is_resolvable && !empty($resolved_str)) {
+                        $known_strings[$var_name] = $resolved_str;
+                        if (in_array(strtolower($resolved_str), ['eval', 'assert', 'system', 'exec', 'passthru', 'shell_exec', 'proc_open', 'popen', 'preg_replace', 'unserialize'])) {
+                            $dynamic_sinks[$var_name] = strtolower($resolved_str);
+                        }
+                    }
+
                     if ($has_source) {
                         $tainted_vars[$var_name] = [
                             'source' => $source_found,
@@ -1114,9 +1144,10 @@ class WAF_FW_Scanner {
                 }
             }
 
-            // 2. Direct Sinks: eval, assert, system, exec, etc.
-            if ($t_id === T_EVAL || ($t_id === T_STRING && in_array(strtolower($t_text), $dangerous_sinks))) {
-                $sink_name = strtolower($t_text);
+            // 2. Direct and Dynamic Sinks: eval, assert, system, exec, $fn(...)
+            $is_dynamic_sink = ($t_id === T_VARIABLE && isset($dynamic_sinks[$t_text]));
+            if ($t_id === T_EVAL || ($t_id === T_STRING && in_array(strtolower($t_text), $dangerous_sinks)) || $is_dynamic_sink) {
+                $sink_name = $is_dynamic_sink ? $dynamic_sinks[$t_text] : strtolower($t_text);
                 
                 $arg_idx = $i + 1;
                 while ($arg_idx < $token_count && (is_array($tokens[$arg_idx]) && in_array($tokens[$arg_idx][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]))) {
@@ -1135,6 +1166,25 @@ class WAF_FW_Scanner {
                         $k++;
                     }
 
+                    // Check for dynamic reverse shell spawning (/bin/sh, /bin/bash, cmd.exe)
+                    if ($sink_name === 'proc_open' || $sink_name === 'popen') {
+                        $shell_cmd = '';
+                        foreach ($arg_tokens as $at) {
+                            $at_id = is_array($at) ? $at[0] : null;
+                            $at_text = is_array($at) ? $at[1] : $at;
+                            if ($at_id === T_CONSTANT_ENCAPSED_STRING) {
+                                $shell_cmd .= trim($at_text, "'\"");
+                            } elseif ($at_id === T_VARIABLE && isset($known_strings[$at_text])) {
+                                $shell_cmd .= $known_strings[$at_text];
+                            }
+                        }
+                        if (preg_match('#/(?:bin/)?(?:sh|bash|zsh)|cmd\.exe#i', $shell_cmd)) {
+                            $findings[] = "Reverse Shell Invocation [Line {$t_line}]: Interactive command shell spawned via {$sink_name}()";
+                            $score = max($score, 98);
+                            $confidence = 'HIGH';
+                            $classification = 'CONFIRMED_MALWARE';
+                        }
+                    }
                     $arg_has_source = false;
                     $arg_source = '';
                     $arg_taint = null;
@@ -1419,6 +1469,15 @@ class WAF_FW_Scanner {
                     '#\$auth_pass\s*=\s*[\x27\x22][a-f0-9]{32}[\x27\x22]#i',
                     '#\$default_action\s*=\s*[\x27\x22]FilesMan[\x27\x22]#i',
                     '#\b(?:wp-vcd\.php|class-wp-cache\.php|wp-tmp\.php)\b#i',
+                    '#(?:include|require|include_once|require_once)\s*\(?\s*[\x27\x22](?:php://input|data://|php://memory|php://temp)#i',
+                    '#(?:include|require|include_once|require_once|file_get_contents|readfile)\s*\(?\s*[\x27\x22]php://filter.*resource=wp-config#i',
+                    '#\$wpdb\s*->\s*query\s*\(\s*(?:stripslashes\s*\()?\s*\$_(?:POST|GET|REQUEST|COOKIE)#i',
+                    '#(?:\$_(?:POST|GET|REQUEST|COOKIE)[\s\S]{0,150}\$wpdb\s*->\s*query|\$wpdb\s*->\s*query\s*\([\s\S]{0,100}\$_(?:POST|GET|REQUEST|COOKIE))#i',
+                    '#(?:add_option|update_option)\s*\([^,]+,\s*(?:base64_encode|gzcompress|gzdeflate)\s*\([^)]*(?:eval|assert|system|exec|passthru)#i',
+                    '#base64_encode\s*\(\s*[\x27\x22][^\x27\x22]*(?:eval|assert|system|exec|shell_exec|passthru)[\s\S]{0,100}add_option#i',
+                    '#O:[0-9]+:[\x27\x22][a-zA-Z0-9_]+[\x27\x22]:[0-9]+:\{[\s\S]{0,100}(?:cat\s+/etc|/bin/sh|whoami|eval|assert|system)#i',
+                    '#ignore_user_abort\s*\(\s*(?:true|1)\s*\)[\s\S]{0,100}set_time_limit\s*\(\s*0\s*\)[\s\S]{0,150}(?:while\s*\(\s*(?:true|1)\s*\)|for\s*\(\s*;\s*;\s*\))[\s\S]{0,200}(?:hash\s*\(|mining|pool)#i',
+                    '#add_filter\s*\(\s*[\x27\x22](?:the_content|wp_footer|wp_head)[\x27\x22][\s\S]{0,200}@?(?:file_get_contents|curl_exec|wp_remote_get)\s*\(\s*[\x27\x22]https?://#i',
                 ],
             ],
             'crypto' => [
@@ -1430,6 +1489,73 @@ class WAF_FW_Scanner {
                     '#cryptonight#i',
                     '#wallet\s*=\s*[\x27\x22][13][a-km-zA-HJ-NP-Z0-9]{26,33}[\x27\x22]#i',
                     '#CoinHive(?:\.Anonymous)?|authedmine|webminer|cryptoloot|jsecoin#i',
+                ],
+            ],
+            'reverse_shell' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#proc_open\s*\(\s*[\x27\x22][^\x27\x22]*(?:\/bin\/sh|\/bin\/bash|cmd\.exe)[\x27\x22]\s*,\s*array\s*\(#i',
+                    '#(?:fsockopen|pfsockopen|socket_create)\s*\([^;]+proc_open\s*\(\s*[\x27\x22][^\x27\x22]*(?:sh|bash|cmd)#i',
+                    '#(?:fsockopen|pfsockopen)\s*\([^,]+,[^,]+(?:\);|\)\s*\{)[\s\S]{0,120}(?:exec|system|passthru|shell_exec|proc_open)#i',
+                ],
+            ],
+            'credential_stealer' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#(?:\$wpdb->get_results|\$wpdb->get_row|SELECT\s+[^;]+user_pass)[\s\S]{0,300}(?:file_get_contents|curl_exec|wp_remote_post|mail)\s*\(#i',
+                    '#SELECT\s+[^;]*(?:user_login|user_pass|user_email)[\s\S]{0,200}FROM\s+[\w\.-]*users[\s\S]{0,200}(?:attacker|https?:\/\/|base64_encode)#i',
+                ],
+            ],
+            'unauthorized_admin' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#wp_create_user\s*\([^)]+\)[\s\S]{0,300}set_role\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
+                    '#wp_insert_user\s*\([^)]+\)[\s\S]{0,300}(?:administrator|manage_options)#i',
+                    '#new\s+WP_User\s*\([^)]+\)[\s\S]{0,300}set_role\s*\(\s*[\x27\x22]administrator[\x27\x22]#i',
+                ],
+            ],
+            'mail_spammer' => [
+                'weight' => 90,
+                'patterns' => [
+                    '#(?:foreach|while)\s*\([^)]+\)[\s\S]{0,120}\bmail\s*\(\s*[^,]+,\s*[\x27\x22][^\x27\x22]*(?:bank|paypal|credential|urgent|reset|account|verify|invoice)[^\x27\x22]*[\x27\x22]#i',
+                    '#\bmail\s*\([^;]+,\s*[\x27\x22][^\x27\x22]*(?:reset|urgent|suspend|verify|bank|crypto)[^\x27\x22]*[\x27\x22][^\r\n]{0,120}(?:From:\s*support|service@|paypal)#i',
+                    '#(?:foreach|while)\s*\([^)]+\)[\s\S]{0,160}\bmail\s*\(\s*(?:\$to|\$email|\$target|trim\([^)]*\))[^,]+,\s*[^,]+(?:\$body|\$_POST|\$message)[\s\S]{0,160}(?:From:|support@|paypal)#i',
+                ],
+            ],
+            'javascript_malware' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#(?:billing_card_number|card_number|card_cvv|ccNum|ccCvv|billing_card_expiry)[\s\S]{0,300}(?:new\s+Image|fetch|XMLHttpRequest|\.src\s*=)#i',
+                    '#(?:addEventListener|\[[\x27\x22]addEventListener[\x27\x22]\])\s*\(\s*[\x27\x22]keypress[\x27\x22][\s\S]{0,250}(?:fetch|XMLHttpRequest|new\s+Image)#i',
+                    '#CoinHive(?:\.Anonymous)?|coinhive\.min\.js|authedmine|cryptoloot|monerominer#i',
+                    '#(?:Coin[\'\"]\s*\.\s*[\'\"]Hive|crypto[\'\"]\s*\.\s*[\'\"]miner)[\s\S]{0,100}(?:threads|throttle|start)#i',
+                    '#(?:site_key_monero|xmr_pool|stratum\+tcp|monero_miner)#i',
+                    '#eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*d\s*\)#i',
+                    '#btoa\s*\([^;]*(?:card_number|billing_card|password|keystrokes)#i',
+                    '#navigator\.clipboard\.writeText\s*\([^;]*(?:1[a-km-zA-HJ-NP-Z0-9]{26,33}|3[a-km-zA-HJ-NP-Z0-9]{26,33}|0x[a-fA-F0-9]{40})#i',
+                ],
+            ],
+            'xor_decryption_backdoor' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#\^[ \t]*\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\[[\s\S]{0,150}(?:assert|eval|system|passthru)\s*\(#i',
+                    '#for\s*\([^;]+\$i\s*\+\+\)[\s\S]{0,120}\^\s*\$[a-zA-Z0-9_]+\[[\s\S]{0,80}(?:assert|eval)\s*\(#i',
+                ],
+            ],
+            'dynamic_code_construction' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]pr[\x27\x22]\s*\.\s*[\x27\x22]eg[\x27\x22][\s\S]{0,80}\/e[\x27\x22]#i',
+                    '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]ass[\x27\x22]\s*\.\s*[\x27\x22]ert[\x27\x22]#i',
+                    '#\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*=\s*[\x27\x22]sys[\x27\x22]\s*\.\s*[\x27\x22]tem[\x27\x22]#i',
+                ],
+            ],
+            'seo_spam' => [
+                'weight' => 85,
+                'patterns' => [
+                    '#(?:[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]{6,}.*?(?:激安|通販|送料無料|人気|ブランド|セール|正規品))#u',
+                    '#<iframe\b[^>]*(?:display\s*:\s*none|width\s*:\s*0|left\s*:\s*-9999px|visibility\s*:\s*hidden)[^>]*>#i',
+                    '#(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*0px)[\s\S]{0,500}(?:viagra|cialis|levitra|online-casino|casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol)#i',
                 ],
             ],
         ];
@@ -1835,22 +1961,35 @@ class WAF_FW_Scanner {
         }
 
         // 6. Signature Checks (Crypto miners & Backdoors)
+        $normalized_content = preg_replace("/(['\"])\s*[\+\.]\s*\\1/", '', $content);
         $patterns = $this->get_malware_patterns();
         foreach ($patterns as $cat_key => $data) {
             // PHP backdoors only apply to executable PHP scripts, not client-side JS or CSS
-            if (($cat_key === 'backdoor' || $cat_key === 'webshell') && !$is_php) {
+            if (($cat_key === 'backdoor' || $cat_key === 'webshell' || $cat_key === 'reverse_shell' || $cat_key === 'credential_stealer' || $cat_key === 'unauthorized_admin' || $cat_key === 'mail_spammer') && !$is_php) {
+                continue;
+            }
+            if ($cat_key === 'javascript_malware' && !in_array($ext, ['js', 'html', 'htm', 'php', 'phtml'])) {
+                continue;
+            }
+            if ($cat_key === 'crypto' && !in_array($ext, ['js', 'html', 'htm', 'php', 'phtml'])) {
+                continue;
+            }
+            if ($cat_key === 'seo_spam' && !in_array($ext, ['php', 'phtml', 'html', 'htm', 'txt'])) {
                 continue;
             }
 
             $matches = $this->check_malware_patterns($content, $data['patterns']);
+            if (empty($matches) && $normalized_content !== $content) {
+                $matches = $this->check_malware_patterns($normalized_content, $data['patterns']);
+            }
             if (!empty($matches)) {
                 $total_score = max($total_score, $data['weight']);
                 $confidence = 'HIGH';
-                if ($cat_key === 'backdoor') {
+                if ($cat_key === 'backdoor' || $total_score >= 85) {
                     $classification = 'CONFIRMED_MALWARE';
                 }
                 foreach ($matches as $m) {
-                    $findings[] = $cat_key . ': ' . substr(trim($m), 0, 80);
+                    $findings[] = $cat_key . ': ' . (function_exists('mb_substr') ? mb_substr(trim($m), 0, 80, 'UTF-8') : substr(trim($m), 0, 80));
                 }
             }
         }
@@ -1879,6 +2018,22 @@ class WAF_FW_Scanner {
         }
 
         // 7. Secrets/Credentials Detection (Skip standard wp-config.php constants)
+        // Module 15: Apache .htaccess Hijack & PHP Handler Manipulation
+        if ($name === '.htaccess' || substr($name, -9) === '.htaccess') {
+            if (preg_match('/(?:AddType|AddHandler|SetHandler)\s+application\/x-httpd-php|\bphp_value\s+(?:auto_prepend_file|auto_append_file)|\bphp_flag\s+engine\s+on|RewriteRule\s+.*https?:\/\/(?:[a-z0-9\-]+\.)+(?:ru|xyz|su|top|biz|cc|cn|pw)\b/i', $content, $ht_m)) {
+                return [
+                    'file' => $rel_path,
+                    'score' => 95,
+                    'severity' => 'critical',
+                    'confidence' => 'HIGH',
+                    'classification' => 'CONFIRMED_MALWARE',
+                    'findings' => ['Apache .htaccess Hijack: Malicious handler/directive detected (' . trim($ht_m[0]) . ')'],
+                    'size' => $size,
+                    'hash' => md5($content),
+                ];
+            }
+        }
+
         // Module 8: Persistence & Stealth Configuration (.user.ini / php.ini)
         if ($name === '.user.ini' || $name === 'php.ini') {
             if (preg_match('/(?:auto_prepend_file|auto_append_file|allow_url_include)\s*=\s*([^\r\n]+)/i', $content, $ini_m)) {
@@ -1895,6 +2050,24 @@ class WAF_FW_Scanner {
             }
         }
 
+        // Module 14: SQL Database Dump & Credentials / Rogue Admin Exposure Check
+        if ($ext === 'sql' || strpos($name, '.sql') !== false) {
+            if (preg_match('/(?:CREATE\s+TABLE\s+[`\w]*users[`\w]*|INSERT\s+INTO\s+[`\w]*users[`\w]*|UPDATE\s+[`\w]*(?:users|usermeta)[`\w]*\s+SET\s+(?:user_pass|meta_value))/i', $content)) {
+                if (preg_match('#\$P\$[A-Za-z0-9\.\/]{31}|user_pass|MD5\([\x27\x22][^\x27\x22]+[\x27\x22]\)|administrator|mailinator|yopmail#i', $content)) {
+                    return [
+                        'file' => $rel_path,
+                        'score' => 95,
+                        'severity' => 'critical',
+                        'confidence' => 'HIGH',
+                        'classification' => 'CONFIRMED_MALWARE',
+                        'findings' => ['Critical Exposure: Unprotected SQL dump or malicious user modification query (' . $name . ')'],
+                        'size' => $size,
+                        'hash' => md5($content),
+                    ];
+                }
+            }
+        }
+
         if ($name !== 'wp-config.php' && $name !== 'wp-config-sample.php') {
             $secrets = $this->get_secret_patterns();
             $secret_matches = $this->check_malware_patterns($content, $secrets);
@@ -1908,8 +2081,14 @@ class WAF_FW_Scanner {
                         $total_score = max($total_score, 35);
                         $findings[] = 'Exposed Credentials: password pattern with value';
                     } else {
-                        $total_score = max($total_score, 40);
-                        $findings[] = 'Exposed Secret: ' . substr(trim($m), 0, 60) . '...';
+                        if (preg_match('/AKIA[0-9A-Z]{16}|wJalrXUtnFEMI|sk_live_[0-9a-zA-Z]{24,}|-----BEGIN\s+(?:RSA|EC|DSA|OPENSSH)\s+PRIVATE/i', $m)) {
+                            $total_score = max($total_score, 85);
+                            $classification = 'CONFIRMED_MALWARE';
+                            $findings[] = 'Critical Secret Leak: Active production API credentials/private key exposed in source code';
+                        } else {
+                            $total_score = max($total_score, 40);
+                            $findings[] = 'Exposed Secret: ' . substr(trim($m), 0, 60) . '...';
+                        }
                         $confidence = 'HIGH';
                     }
                     if ($classification === 'SAFE') {
@@ -3449,7 +3628,7 @@ class WAF_FW_Scanner {
     private function check_malware_patterns($content, $patterns) {
         $found = [];
         $clean = preg_replace('#/\*.*?\*/#s', '', $content);
-        $clean = preg_replace('#//.*$#m', '', $clean);
+        $clean = preg_replace('#(?<!:)//.*$#m', '', $clean);
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $clean, $m)) {
                 $found[] = $m[0];
