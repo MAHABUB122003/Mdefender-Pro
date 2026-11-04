@@ -1478,6 +1478,11 @@ class WAF_FW_Scanner {
                     '#O:[0-9]+:[\x27\x22][a-zA-Z0-9_]+[\x27\x22]:[0-9]+:\{[\s\S]{0,100}(?:cat\s+/etc|/bin/sh|whoami|eval|assert|system)#i',
                     '#ignore_user_abort\s*\(\s*(?:true|1)\s*\)[\s\S]{0,100}set_time_limit\s*\(\s*0\s*\)[\s\S]{0,150}(?:while\s*\(\s*(?:true|1)\s*\)|for\s*\(\s*;\s*;\s*\))[\s\S]{0,200}(?:hash\s*\(|mining|pool)#i',
                     '#add_filter\s*\(\s*[\x27\x22](?:the_content|wp_footer|wp_head)[\x27\x22][\s\S]{0,200}@?(?:file_get_contents|curl_exec|wp_remote_get)\s*\(\s*[\x27\x22]https?://#i',
+                    '#(?:\$_POST|\$_REQUEST)\s*\[\s*[\x27\x22](?:pwd|log|user_login|password|user_pass)[\x27\x22]\s*\][\s\S]{0,200}@?(?:file_get_contents|curl_exec|wp_remote_get|wp_remote_post)\s*\(\s*[\x27\x22]https?://#i',
+                    '#https?://[^\x27\x22]+[\x27\x22][\s\S]{0,150}@?(?:file_get_contents|curl_exec)[\s\S]{0,150}file_put_contents#i',
+                    '#@?file_get_contents\s*\(\s*[\x27\x22]https?://[^\x27\x22]+[\x27\x22]\s*\)[\s\S]{0,100}\beval\s*\(#i',
+                    '#auto_prepend_file\s*=\s*[\s\S]{0,100}file_put_contents|file_put_contents\s*\([^,]*\.user\.ini#i',
+                    '#\$_(?:POST|GET|REQUEST|COOKIE)[\s\S]{0,150}set_transient\s*\(#i',
                 ],
             ],
             'crypto' => [
@@ -1769,7 +1774,7 @@ class WAF_FW_Scanner {
         if ($size > 10000000 || $size === 0) return null;
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ini'];
+        $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ini', 'zip', 'tar', 'gz', 'tgz'];
         if (!in_array($ext, $scanable) && basename($path) !== '.htaccess' && basename($path) !== '.user.ini' && strpos(basename($path), '.env') !== 0) return null;
 
         $name = basename($path);
@@ -1808,6 +1813,99 @@ class WAF_FW_Scanner {
         $classification = 'SAFE';
 
         $is_php = in_array($ext, ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc']);
+
+        // Module 16: Compressed Archive Analysis (.zip, .tar, .gz)
+        if ($ext === 'zip' || $ext === 'tar' || $ext === 'gz' || $ext === 'tgz') {
+            if ($ext === 'zip' && class_exists('ZipArchive')) {
+                $zip = new ZipArchive();
+                if ($zip->open($path) === true) {
+                    $has_executable = false;
+                    $has_zip_slip = false;
+                    $has_db_dump = false;
+                    $bad_entry = '';
+
+                    for ($z = 0; $z < $zip->numFiles; $z++) {
+                        $stat = $zip->statIndex($z);
+                        if (!$stat) continue;
+                        $entry_name = $stat['name'];
+
+                        if (strpos($entry_name, '../') !== false || strpos($entry_name, '..\\') !== false) {
+                            $has_zip_slip = true;
+                            $bad_entry = $entry_name;
+                            break;
+                        }
+
+                        $entry_ext = strtolower(pathinfo($entry_name, PATHINFO_EXTENSION));
+                        if (in_array($entry_ext, ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'sh', 'exe', 'bat', 'pl', 'py'])) {
+                            $has_executable = true;
+                            $bad_entry = $entry_name;
+                            break;
+                        }
+
+                        if ($entry_ext === 'sql' || strpos($entry_name, '.env') !== false) {
+                            $has_db_dump = true;
+                            $bad_entry = $entry_name;
+                        }
+                    }
+                    $zip->close();
+
+                    if ($has_zip_slip) {
+                        return [
+                            'file' => $rel_path,
+                            'score' => 98,
+                            'severity' => 'critical',
+                            'confidence' => 'HIGH',
+                            'classification' => 'CONFIRMED_MALWARE',
+                            'findings' => ['Zip Slip Traversal: Archive contains path traversal entry attempting to overwrite files (' . $bad_entry . ')'],
+                            'size' => $size,
+                            'hash' => md5_file($path),
+                        ];
+                    }
+
+                    if ($has_executable) {
+                        return [
+                            'file' => $rel_path,
+                            'score' => 95,
+                            'severity' => 'critical',
+                            'confidence' => 'HIGH',
+                            'classification' => 'CONFIRMED_MALWARE',
+                            'findings' => ['Malicious Archive: Zip contains executable PHP/binary script in public folder (' . $bad_entry . ')'],
+                            'size' => $size,
+                            'hash' => md5_file($path),
+                        ];
+                    }
+
+                    if ($has_db_dump) {
+                        return [
+                            'file' => $rel_path,
+                            'score' => 90,
+                            'severity' => 'critical',
+                            'confidence' => 'HIGH',
+                            'classification' => 'CONFIRMED_MALWARE',
+                            'findings' => ['Sensitive Data Exposure: Zip archive contains unprotected database/environment config (' . $bad_entry . ')'],
+                            'size' => $size,
+                            'hash' => md5_file($path),
+                        ];
+                    }
+                }
+            } elseif ($ext === 'gz' || $ext === 'tar' || $ext === 'tgz') {
+                $raw = @file_get_contents($path, false, null, 0, 65536);
+                $data = ($ext === 'gz' && function_exists('gzdecode')) ? @gzdecode($raw) : $raw;
+                if ($data && preg_match('/(?:[a-zA-Z0-9_\-]+\.php|\.phtml|\.php5|<\?php)/i', $data)) {
+                    return [
+                        'file' => $rel_path,
+                        'score' => 95,
+                        'severity' => 'critical',
+                        'confidence' => 'HIGH',
+                        'classification' => 'CONFIRMED_MALWARE',
+                        'findings' => ['Malicious Tarball: Compressed archive contains embedded PHP execution script'],
+                        'size' => $size,
+                        'hash' => md5_file($path),
+                    ];
+                }
+            }
+            return null; // Clean archive
+        }
 
         // Module 5 & 13: Polyglot Media & Steganography Detection
         $media_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
