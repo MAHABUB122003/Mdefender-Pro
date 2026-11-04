@@ -37,54 +37,78 @@ class WAF_FW_Rule_Engine {
 
     private function get_default_rules() {
         return [
-            // SQL Injection
-            ['name' => 'SQL Injection - Union Select', 'pattern' => '/(?:\bUNION\b(?:\s+ALL)?\s+\bSELECT\b)|\bUNION\b\s*[\/\*].*?[\*\/]\s*\bSELECT\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            // 1. SQL Injection & 2026 Evasion Ladders
+            ['name' => 'SQL Injection - Union Select', 'pattern' => '/(?:\bUNION\b[\s\t%09\/\*]+(?:\bALL\b[\s\t%09\/\*]+)?\bSELECT\b)|\bUNION\b[\s\S]{0,40}\bSELECT\b|\/\*!\d*select\b|\/\*!\d*union\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SQL Injection - Drop Table', 'pattern' => '/(?:\bDROP\b\s+\bTABLE\b)|(?:\bTRUNCATE\b\s+\bTABLE\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Boolean Tautology', 'pattern' => "/(?:\b(?:OR|AND)\b\s+[\'\"]?\w+[\'\"]?\s*=\s*[\'\"]?\w+[\'\"]?)|(?:\b(?:OR|AND)\b\s+1\s*=\s*1\b)|(?:\b(?:OR|AND)\b\s+\'1\'\s*=\s*\'1\')/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Single Quote Escape', 'pattern' => "/(?:%27|\')\s*(?:--|#|\/\*|\bOR\b|\bAND\b|\bUNION\b|;)/i", 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'SQL Injection - Boolean Tautology', 'pattern' => '/(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]?\w+[\'"]?[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]?\w+[\'"]?)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+1[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*1\b)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]1[\'"][\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]1[\'"])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Single Quote Escape', 'pattern' => '/(?:%27|\')[\s\t\r\n%09%0a\/\*]*(?:--|#|\/\*|\bOR\b|\bAND\b|\bUNION\b|;)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'SQL Injection - Blind Sleep / Benchmark', 'pattern' => '/(?:\b(?:SLEEP|BENCHMARK|WAITFOR\s+DELAY|PG_SLEEP|LOAD_FILE|INTO\s+OUTFILE|SCHEMA_NAME)\s*\()/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            
-            // Cross-Site Scripting (XSS)
-            ['name' => 'XSS - Script Tag', 'pattern' => '/(?:<script[\s\S]*?>[\s\S]*?<\/script>)|(?:<script[\s\S]*?>)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XSS - Event Handlers', 'pattern' => '/(?:\bon[a-z]{3,15}\s*=\s*[\'\"]?[^\'\">]+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'XSS - JavaScript Protocol', 'pattern' => '/(?:javascript\s*:\s*[^\s\'\"]+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'XSS - Alert / Execution Functions', 'pattern' => '/(?:alert|prompt|confirm)\s*\([^\)]*\)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'XSS - Malicious Tags', 'pattern' => '/<(?:iframe|object|embed|svg|img|body|input|link)[^>]+(?:onload|onerror|src\s*=\s*[\'\"]?javascript|data:text\/html)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            
-            // Local & Remote File Inclusion & Sensitive Path Protection
-            ['name' => 'LFI - Directory Traversal', 'pattern' => '/(?:\.\.[\/\\]){1,}/', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'LFI - Sensitive Files', 'pattern' => '/(?:\/etc\/(?:passwd|shadow|hosts|group|issue))|(?:c:[\/\\]windows)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Stacked & OOB Queries', 'pattern' => '/(?:;[\s\t\r\n%09%0a\/\*]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|WAITFOR|EXEC|EXECUTE)\b)|(?:LOAD_FILE\s*\([\s\S]{0,60}\\\\)|(?:EXEC\s+(?:master\.\.)?xp_cmdshell)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Clauses & Ordering', 'pattern' => '/(?:\bHAVING\b[\s\t%09\/\*]+(?:\d+=\d+|1=1|[\'"]\w+[\'"]=[\'"]\w+[\'"]))|(?:\bORDER\b[\s\t%09\/\*]+\bBY\b[\s\t%09\/\*]+\d+[\s\t%09\/\*]*(?:--|#|\/\*|;)?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Escape and Comments', 'pattern' => '/(?:[\'"][\\)\]\}]{0,4}[\s\t%09\/\*]*(?:--|#|\/\*|;))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 2. Cross-Site Scripting (XSS 2026 Suite)
+            ['name' => 'XSS - Script Tag', 'pattern' => '/(?:<[\/s]*script[\s\S]*?>[\s\S]*?<\/[\/s]*script>)|(?:<[\/s]*script[\s\S]*?>)|(?:<scr<script>ipt>)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XSS - SVG Vectors & Context Breaking', 'pattern' => '/<svg[\s\S]*?(?:onload|onerror|onfocus|onmouseover|onmouseenter|xlink:href\s*=)[\s\S]*?>|[\x27\x22]>\s*<(?:script|svg)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XSS - Event Handlers', 'pattern' => '/(?:\bon[a-z]{3,15}[\s\t%09\/\*]*=[\s\t%09\/\*]*[\'"]?[^\'">]+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'XSS - JavaScript Protocol', 'pattern' => '/(?:javascript\s*:\s*[^\s\'"]+|data:text\/html)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'XSS - Alert / Execution Functions', 'pattern' => '/(?:alert|prompt|confirm)\s*(?:\([^\)]*\)|`[^`]*`)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'XSS - Malicious Tags', 'pattern' => '/<(?:iframe|object|embed|svg|img|body|input|link)[^>]+(?:onload|onerror|src\s*=\s*[\'"]?javascript|data:text\/html)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'XSS - DOM Clobbering & Framework Matrix', 'pattern' => '/(?:\{\{constructor\.constructor\([^)]+\)\(\)\}\}|<form[^>]+id\s*=\s*[\x27\x22]?config[\x27\x22]?|<a[^>]+id\s*=\s*[\x27\x22]?testobject[\x27\x22]?)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'XSS - Exfiltration & Context Hijacking', 'pattern' => '/(?:document\.(?:cookie|location|domain)|window\.(?:localStorage|sessionStorage|location)|fetch\s*\(\s*[\'"]https?:\/\/|btoa\s*\(\s*document\.)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 3. Local & Remote File Inclusion & Sensitive Path Protection
+            ['name' => 'LFI - Directory Traversal', 'pattern' => '#(?:\.{2,}[\/\\\\;]{1,}){1,}#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'LFI - Sensitive Files', 'pattern' => '#(?:\/etc\/(?:passwd|shadow|hosts|group|issue))|(?:c:[\/\\\\]windows[\/\\\\]win\.ini)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'LFI - PHP Wrappers', 'pattern' => '/(?:php:\/\/(?:filter|input|memory|data)|data:\/\/text\/plain|file:\/\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            
-            // Remote Command Execution & WebShells
+            ['name' => 'Information Disclosure & Dotfile Probes', 'pattern' => '#(?:^|[\s\t\/=\'\"`])(?:\.env|\.aws|\.kube|\.git|\.svn|\.ssh|\.bash_history|\.debug|__debug|actuator\b)|apache2\.conf|error\.log|mysql-bin\.log|iis6\.log#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 4. Remote Command Execution & Reverse Shells
             ['name' => 'Remote Code Execution - PHP Functions', 'pattern' => '/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode|gzinflate|create_function)\s*[\(\[])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Backticks and Subshells', 'pattern' => '/(?:`[^`]+`|\$\([^\)]+\))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Reverse Shells & Netcat', 'pattern' => '/(?:\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c|ep)|curl\s+[^\s|]+\s*\|\s*(?:bash|sh))\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\|)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)\s*(?:\|\||\|))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Reverse Shells & Netcat', 'pattern' => '/(?:\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c|ep|e)|curl\s+[^\s|]+\s*\|\s*(?:bash|sh))\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Reverse Shell - Multi-Language Network Connectors', 'pattern' => '/(?:\b(?:python\d*|perl|ruby|lua|awk|php)\s+-(?:[a-zA-Z]*[cMe])\s*[\'"][\s\S]{0,100}?(?:socket|pty\.spawn|TCPSocket|inet\/tcp|\/bin\/sh|\/bin\/bash|exec|system)|(?:nc|ncat|socat|netcat)\b[\s\S]{0,30}?(?:-[a-zA-Z]*e\b|-c\s+bash|\/bin\/sh|\/bin\/bash|\d{2,5}\s+-e)|(?:mkfifo\s+[\/\w]+|dev\/tcp\/|dev\/udp\/|inet\/tcp\/|TCPSocket\.open|Runtime\.getRuntime\(\)|p\.waitFor\(\)))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Privilege Escalation & Tool Execution', 'pattern' => '/(?:\b(?:linpeas\.sh|winpeas|chisel|mimikatz|pspy|socat)\b|(?:\/bin\/bash\s+-p|\/bin\/sh\s+-i|sudo\s+-(?:l|u\s+root)|whoami|id[\s;\|&`]|uname\s+-a)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'WebShell & PHP Stagers', 'pattern' => '/(?:\b(?:fsockopen|proc_open|popen)\s*\([\s\S]{0,50}?(?:\$ip|\$port|\/bin\/sh|\/bin\/bash|cmd\.exe)|\$shell\s*=\s*[\'"][^\'"]*?(?:id|whoami|\/bin\/sh)|<\?(?:php|=)[\s\S]{0,60}?(?:system|exec|passthru|shell_exec|eval|assert)\s*\(\s*\$_(?:GET|POST|REQUEST))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\||&&|;)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)\s*(?:\|\||\||&&|;))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:(?:;|&&)\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b(?!\=))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'PHP Deserialization Object Injection', 'pattern' => '/(?:\bO:\d+:"[^"]+":\d+:\{)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            
-            // Server-Side Request Forgery & Template Injection
-            ['name' => 'Path Traversal - Sensitive Files', 'pattern' => '/(?:\/(?:etc\/(?:passwd|shadow|issue|hosts|group)|var\/log\/|proc\/self\/environ|windows[\/\\]win\.ini)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSTI - Template Expressions', 'pattern' => '/(?:\{\{[^}]*\}\}|\$\{[^}]*\}|<%=[^%]*%>)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 5. Server-Side Request Forgery & Template Injection
+            ['name' => 'Path Traversal - Sensitive Files', 'pattern' => '#(?:\/(?:etc\/(?:passwd|shadow|issue|hosts|group)|var\/log\/|proc\/self\/environ|windows[\/\\\\]win\.ini)\b)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSTI - Multi-Engine Template Injection', 'pattern' => '/(?:\{\{[^}]*\}\}|\$\{[^}]*\}|<%=[^%]*%>|#set\s*\([^\)]+\)|<#assign|\$\{\.vars|\$\{[^}]*freemarker|java\.lang\.Runtime|Runtime\.getRuntime\(\)|@\{\s*ViewData)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSTI - Python Internals', 'pattern' => '/(?:__class__|__mro__|__subclasses__|__builtins__)/', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSRF - Internal IP', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSRF - Cloud Metadata', 'pattern' => '/(?:\/latest\/meta-data|\/computeMetadata|metadata\.google)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSRF - Internal Hostnames', 'pattern' => '/(?:(?:https?|ftp):\/\/[^\/]*(?:\.internal|\.corp|\.localdomain))/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            
-            // Next-Gen AI & Modern Zero-Day Attack Signatures
+            ['name' => 'SSRF - Cloud Metadata & Internal Endpoints', 'pattern' => '/(?:169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data|\/computeMetadata)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSRF & Out-of-Band Collaborator Probes', 'pattern' => '/(?:(?:burpcollaborator\.net|oastify\.com|canarytokens\.com|interact\.sh|requestcatcher\.com)\b|169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data|X-aws-ec2-metadata-token)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSRF - Encoded & IPv6 Loopback', 'pattern' => '/(?:\[::ffff:127\.0\.0\.1\]|\[::1\]|2130706433|0177\.0\.0\.1|0x7f000001|\b(?:gopher|dict):\/\/)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSRF - Private Subnets', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 6. Next-Gen Modern Attack Vectors & Deserialization
             ['name' => 'AI Security - Prompt Injection', 'pattern' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now|you\s+are\s+DAN\b)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\.prototype)\s*(?:[\.\[]|["\']?\s*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\s*\[\s*[\'"]?prototype[\'"]?\s*\]|prototype\s*\[\s*[\'"]?\w+[\'"]?\s*\]|constructor\.prototype)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Insecure Deserialization Suite', 'pattern' => '/(?:\bO:\d+:"[^"]+":\d+:\{|\$phar->|Phar::|rO0AB[a-zA-Z0-9+\/]{4,}|\bCakePHP\/RCE|\bYsoSerial\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JNDI / Log4j Injection Probe', 'pattern' => '/(?:\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'GraphQL Introspection Abuse', 'pattern' => '/(?:__schema\s*\{|__type\s*\(\s*name\s*:)/i', 'action' => 'block', 'severity' => 'medium', 'enabled' => true],
-            ['name' => 'NoSQL Injection - Operator Payload', 'pattern' => '/(?:["\']?\$(?:gt|ne|gte|nin|regex|where|in)["\']?\s*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XML External Entity (XXE) Injection', 'pattern' => '/(?:<!ENTITY\s+\w+\s+(?:SYSTEM|PUBLIC)\s+["\'][^"\']+["\']|<!DOCTYPE\s+\w+\s+\[)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'NoSQL Injection Extended', 'pattern' => '/(?:\[(?:[$]|%24)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)\])|(?:[\'\"\s](?:[$]|%24|%2524)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)[\'\"\s]*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XML External Entity (XXE) Suite', 'pattern' => '/(?:<!ENTITY[\s%]+\w+[\s\S]{0,40}?(?:SYSTEM|PUBLIC)\s+[\'"][^\'"]+[\'"]|<!DOCTYPE\s*\w*\s*\[|&lol\d+;|<!ENTITY%)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?:\/\/[a-zA-Z0-9_\*]+(?:\[[^\"]+\])?)|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'LDAP Injection', 'pattern' => '#(?:\(\s*[&|!]\s*\([a-zA-Z0-9_-]+[\*=\)])|(?:\*\)\s*\([a-zA-Z0-9_-]+=)|(?:\(%00|\(%2500)|(?:[\x00\s]*\)\s*\(&)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'JWT None Algorithm & Tampering', 'pattern' => '/(?:eyJhbGciOiJub25lIiw|"alg"\s*:\s*"none")/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 7. Request Smuggling, Cache Poisoning, Host Injection & Evasions
+            ['name' => 'Host Header Injection', 'pattern' => '/(?:Host:\s*[^\s\r\n]+@[^\r\n]*|[?&]Host=[^\r\n]*|Host:\s*[^\s\r\n:]+:[^\s\r\n:]+:[^\s\r\n:]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'HTTP Smuggling & Cache Poisoning', 'pattern' => '/(?::(?:method|path|authority|scheme):\s*\w+|%0d%0a\s*(?:Transfer-Encoding|Content-Length|Host|Set-Cookie):|\bTransfer-Encoding\s*:\s*chunked|\b(?:X-Forwarded-Host|X-Host|X-Original-URL)\s*:\s*[\w\.-]+\.(?:com|net|org|io|net|xyz|burp)|Forwarded:\s*for=[^;]+;host=)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'CORS Misconfiguration Origin Spoof', 'pattern' => '/\bOrigin:\s*null\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Open Redirect Protection', 'pattern' => '#(?:[?&](?:redirect|url|dest|next|return|target|goto|link|visit|r)=)(?:\/\/[^\/\s]+|https?:\/\/(?!localhost|127\.0\.0\.1)[^\/\s]+|\/\\\/[^\/\s]+|%0d%0aLocation:)#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'Automated Vulnerability Scanner', 'pattern' => '/\b(?:sqlmap|nikto|acunetix|nuclei|wpscan|gobuster|dirbuster|ffuf|nmap|masscan|zgrab|nessus|openvas|hydra|medusa)\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'WAF Bypass Wildcard & Encoded Execution', 'pattern' => '/(?:\/\?{2,}\/[a-z\?]+)|(?:%0a\s*(?:id|whoami|cat|ls|dir|\/bin\/))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'File Upload Double Extension & Null Byte', 'pattern' => '/(?:\.(?:php\d*|phtml|phar)\.(?:jpg|png|gif|pdf|txt|zip)|\.(?:php\d*|phtml|phar)%00)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'User Enumeration Probe', 'pattern' => '/(?:\/wp-json\/wp\/v2\/users\b|[?&]author=\d+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Hosting Control Panel Probe', 'pattern' => '/(?:^|[?&])(?:cpanel|whm|webmail)=\d*|:(?:2082|2083|2086|2087)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Double URL Encoded Injection', 'pattern' => '/(?:%25(?:27|22|3d|20|3c|3e))/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'Application Logic Cart Tampering', 'pattern' => '/(?:[?&](?:price|amount|total)=-\d+|"price"\s*:\s*-\d+|"discount_override"\s*:\s*100)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
         ];
     }
 
@@ -118,14 +142,14 @@ class WAF_FW_Rule_Engine {
         if (!empty($data['query_params']) && is_array($data['query_params'])) {
             $combined .= ' ' . $this->flatten_values($data['query_params']);
         }
-        // Inspect custom headers and cookies for Burp Suite & API tampering
+                                // Inspect custom headers and cookies for Burp Suite & API tampering
         if (!empty($data['headers']) && is_array($data['headers'])) {
             $safe_header_keys = [
                 'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
                 'accept', 'accept-language', 'accept-encoding', 'connection',
-                'host', 'upgrade-insecure-requests', 'sec-fetch-dest',
+                'upgrade-insecure-requests', 'sec-fetch-dest',
                 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority',
-                'referer', 'origin', 'content-length', 'if-none-match', 'if-modified-since',
+                'content-length', 'if-none-match', 'if-modified-since',
                 'cache-control', 'pragma', 'dnt'
             ];
             $inspect_headers = [];
@@ -134,18 +158,10 @@ class WAF_FW_Rule_Engine {
                 if (in_array($lower_k, $safe_header_keys, true)) {
                     continue;
                 }
-                // For cookies, inspect if they contain suspicious symbols (SQLi / XSS / RCE)
-                if ($lower_k === 'cookie') {
-                    $c_val = (string)$v;
-                    if (preg_match('/[\'\"<>|;()=\/\*]|union|select|script|alert|eval|base64/i', $c_val)) {
-                        $inspect_headers[] = $c_val;
-                    }
-                    continue;
-                }
-                $inspect_headers[] = (string)$v;
+                $inspect_headers[] = (string)$k . ": " . (string)$v;
             }
             if (!empty($inspect_headers)) {
-                $combined .= ' ' . implode(' ', $inspect_headers);
+                $combined .= "\r\n" . implode("\r\n", $inspect_headers);
             }
         }
 
@@ -186,15 +202,7 @@ class WAF_FW_Rule_Engine {
             }
         }
 
-        // FAST-PATH: If string contains no injection symbols or attack keywords, skip 40+ regex loops (< 0.001ms)
-        if (strpbrk($normalized, "'\"<>|;()=\\*`$") === false && 
-            stripos($normalized, 'UNION') === false && 
-            stripos($normalized, 'SELECT') === false && 
-            stripos($normalized, 'script') === false && 
-            stripos($normalized, 'etc/') === false &&
-            stripos($normalized, 'base64') === false) {
-            return $matches;
-        }
+        // Exhaustive rule evaluation across normalized and decoded request streams
 
         // Pattern matching on both normalized text and raw URL decoded input
         $raw_decoded = urldecode(urldecode($combined));

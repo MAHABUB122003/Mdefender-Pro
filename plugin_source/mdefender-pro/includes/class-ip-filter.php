@@ -193,12 +193,9 @@ class WAF_FW_IP_Filter {
             return true;
         }
 
-        // Loopback is allowed by default ONLY IF not explicitly added to the blacklist table and no attack markers exist in request
+        // Loopback is not auto-whitelisted so all requests undergo strict WAF rule inspection
         if ($ip === '127.0.0.1' || $ip === '::1' || $ip === '0.0.0.0' || $ip === 'localhost') {
-            if ($this->has_attack_marker_in_request()) {
-                return false;
-            }
-            return true;
+            return false;
         }
 
         return false;

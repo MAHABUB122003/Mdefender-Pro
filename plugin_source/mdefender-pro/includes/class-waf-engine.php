@@ -289,15 +289,7 @@ class WAF_FW_Engine {
                 return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, '', 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
             }
 
-            // FAST-PATH 3: Clean GET Request Pre-Filter (< 0.01ms)
-            // If request is a simple GET with no body and clean parameters, allow immediately without regex/ML parsing
-            if ($method === 'GET' && empty($_POST) && empty($_GET) && empty($_SERVER['QUERY_STRING'])) {
-                if (strpbrk($url, "<>'\"()\\;`*") === false && (empty($user_agent) || strpbrk($user_agent, "<>'\"`()") === false)) {
-                    return $this->do_allow($ip, $url, $method, $user_agent, 'Clean fast-path');
-                }
-            }
-
-            $body = file_get_contents('php://input');
+$body = file_get_contents('php://input');
             $comprehensive_payload = $this->get_comprehensive_payload();
             $query_string = $_SERVER['QUERY_STRING'] ?? '';
             $query_params = $_GET;
