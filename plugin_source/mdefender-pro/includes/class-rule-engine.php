@@ -40,8 +40,8 @@ class WAF_FW_Rule_Engine {
             // 1. SQL Injection & 2026 Evasion Ladders
             ['name' => 'SQL Injection - Union Select', 'pattern' => '/(?:\bUNION\b[\s\t%09\/\*]+(?:\bALL\b[\s\t%09\/\*]+)?\bSELECT\b)|\bUNION\b[\s\S]{0,40}\bSELECT\b|\/\*!\d*select\b|\/\*!\d*union\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SQL Injection - Drop Table', 'pattern' => '/(?:\bDROP\b\s+\bTABLE\b)|(?:\bTRUNCATE\b\s+\bTABLE\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Boolean Tautology', 'pattern' => '/(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]?\w+[\'"]?[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]?\w+[\'"]?)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+1[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*1\b)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]1[\'"][\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]1[\'"])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Single Quote Escape', 'pattern' => '/(?:%27|\')[\s\t\r\n%09%0a\/\*]*(?:--|#|\/\*|\bOR\b|\bAND\b|\bUNION\b|;)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'SQL Injection - Boolean Tautology', 'pattern' => '/(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]?\w+[\'"]?[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]?\w+[\'"]?)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+1[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*1\b)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]1[\'"][\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]1[\'"])|(?:\|\|[\s\t\r\n%09%0a\/\*]*[\'"]?1[\'"]?[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]?1[\'"]?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Single Quote Escape', 'pattern' => '/(?:%27|\')[\s\t\r\n%09%0a\/\*]*(?:--|#|\/\*|\bOR\b|\bAND\b|\bUNION\b|\|\||;)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'SQL Injection - Blind Sleep / Benchmark', 'pattern' => '/(?:\b(?:SLEEP|BENCHMARK|WAITFOR\s+DELAY|PG_SLEEP|LOAD_FILE|INTO\s+OUTFILE|SCHEMA_NAME)\s*\()/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SQL Injection - Stacked & OOB Queries', 'pattern' => '/(?:;[\s\t\r\n%09%0a\/\*]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|WAITFOR|EXEC|EXECUTE)\b)|(?:LOAD_FILE\s*\([\s\S]{0,60}\\\\)|(?:EXEC\s+(?:master\.\.)?xp_cmdshell)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SQL Injection - Clauses & Ordering', 'pattern' => '/(?:\bHAVING\b[\s\t%09\/\*]+(?:\d+=\d+|1=1|[\'"]\w+[\'"]=[\'"]\w+[\'"]))|(?:\bORDER\b[\s\t%09\/\*]+\bBY\b[\s\t%09\/\*]+\d+[\s\t%09\/\*]*(?:--|#|\/\*|;)?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
@@ -90,7 +90,7 @@ class WAF_FW_Rule_Engine {
 
             // 5. Server-Side Request Forgery & Template Injection
             ['name' => 'Path Traversal - Sensitive Files', 'pattern' => '#(?:\/(?:etc\/(?:passwd|shadow|issue|hosts|group)|var\/log\/|proc\/self\/environ|windows[\/\\\\]win\.ini)\b)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSTI - Multi-Engine Template Injection', 'pattern' => '/(?:\{\{[^}]*\}\}|\$\{[^}]*\}|<%=[^%]*%>|#set\s*\([^\)]+\)|<#assign|\$\{\.vars|\$\{[^}]*freemarker|java\.lang\.Runtime|Runtime\.getRuntime\(\)|@\{\s*ViewData)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSTI - Multi-Engine Template Injection', 'pattern' => '/(?:\{\{[^}]*\}\}|\$\{[^}]*\}|<%=[^%]*%>|#set\s*\([^\)]+\)|<#assign|\$\{\.vars|\$\{[^}]*freemarker|java\.lang\.(?:Runtime|ProcessBuilder)|Runtime\.getRuntime\(\)|ProcessBuilder\s*\(|@\{\s*ViewData)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSTI - Python Internals', 'pattern' => '/(?:__class__|__mro__|__subclasses__|__builtins__)/', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF - Cloud Metadata & Internal Endpoints', 'pattern' => '/(?:169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data|\/computeMetadata)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF & Out-of-Band Collaborator Probes', 'pattern' => '/(?:(?:burpcollaborator\.net|oastify\.com|canarytokens\.com|interact\.sh|requestcatcher\.com)\b|169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data|X-aws-ec2-metadata-token)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
@@ -99,14 +99,15 @@ class WAF_FW_Rule_Engine {
 
             // 6. Next-Gen Modern Attack Vectors & Deserialization
             ['name' => 'AI Security - Prompt Injection', 'pattern' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now|you\s+are\s+DAN\b)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
-            ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\s*\[\s*[\'"]?prototype[\'"]?\s*\]|prototype\s*\[\s*[\'"]?\w+[\'"]?\s*\]|constructor\.prototype)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\s*\[\s*[\'"]?prototype[\'"]?\s*\]|prototype\s*\[\s*[\'"]?\w+[\'"]?\s*\]|constructor\.prototype|\.polluted\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Insecure Deserialization Suite', 'pattern' => '/(?:\bO:\d+:"[^"]+":\d+:\{|\$phar->|Phar::|rO0AB[a-zA-Z0-9+\/]{4,}|\bCakePHP\/RCE|\bYsoSerial\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JNDI / Log4j Injection Probe', 'pattern' => '/(?:\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'GraphQL Introspection Abuse', 'pattern' => '/(?:__schema\s*\{|__type\s*\(\s*name\s*:)/i', 'action' => 'block', 'severity' => 'medium', 'enabled' => true],
-            ['name' => 'NoSQL Injection Extended', 'pattern' => '/(?:\[(?:[$]|%24)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)\])|(?:[\'\"\s](?:[$]|%24|%2524)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)[\'\"\s]*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'NoSQL Injection Extended', 'pattern' => '/(?:\[?(?:[$]|%24)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)\]?[\s\t]*(?:=|:))|(?:[\'\"\s](?:[$]|%24|%2524)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)[\'\"\s]*[:=])|(?:db\.[a-zA-Z0-9_]+\.(?:insert|find|update|delete|drop|remove|aggregate|count)\b)|(?:this\.constructor\.constructor)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'XML External Entity (XXE) Suite', 'pattern' => '/(?:<!ENTITY[\s%]+\w+[\s\S]{0,40}?(?:SYSTEM|PUBLIC)\s+[\'"][^\'"]+[\'"]|<!DOCTYPE\s*\w*\s*\[|&lol\d+;|<!ENTITY%)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?<!:)(?:\/\/[a-zA-Z0-9_\*]+\[[^\]]+\])|(?:\/\/\*)|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'LDAP Injection', 'pattern' => '#(?:\(\s*[&|!]\s*\([a-zA-Z0-9_-]+[\*=\)])|(?:\*\)\s*\([a-zA-Z0-9_-]+=)|(?:\(%00|\(%2500)|(?:[\x00\s]*\)\s*\(&)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?<!:)(?:\(?\/\/[a-zA-Z0-9_\*]+\)?\[[^\]]+\])|(?:\)\s*\|\s*\(?\/\/)|(?:\/\/\*)|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'LDAP Injection', 'pattern' => '#(?:\(\s*[&|!]\s*\([a-zA-Z0-9_-]+[\*=\)])|(?:\*\)\s*\([a-zA-Z0-9_-]+=)|(?:\(%00|\(%2500)|(?:[\x00\s%00]*\)\s*\(&)|(?:%00[%&]\()|(?:[&|!]\s*\([&|!])#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Null Byte Poisoning Attack', 'pattern' => '/(?:%00|\x00|%2500|\\\\000)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JWT None Algorithm & Tampering', 'pattern' => '/(?:eyJhbGciOiJub25lIiw|"alg"\s*:\s*"none")/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 7. Request Smuggling, Cache Poisoning, Host Injection & Evasions
@@ -225,7 +226,7 @@ class WAF_FW_Rule_Engine {
 
         foreach ($all_rules as $rule) {
             if (!$rule['enabled']) continue;
-            if (@preg_match($rule['pattern'], $normalized) || @preg_match($rule['pattern'], $raw_decoded)) {
+            if (@preg_match($rule['pattern'], $normalized) || @preg_match($rule['pattern'], $raw_decoded) || @preg_match($rule['pattern'], $combined)) {
                 $matches[] = [
                     'rule_name' => $rule['name'],
                     'pattern' => $rule['pattern'],
