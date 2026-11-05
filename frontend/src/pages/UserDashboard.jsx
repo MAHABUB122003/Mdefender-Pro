@@ -52,12 +52,12 @@ const brandTokens = {
   cardShadow: '0 4px 20px rgba(15, 23, 42, 0.04)',
   
   subCardBg: '#FFFFFF',
-  pillBg: '#EFF6FF',
+  pillBg: '#F4F4F5',
   
-  headingColor: '#10201E',
-  bodyColor: '#60716B',
-  brandForest: '#0B2522',
-  brandEmerald: '#2A8B68',
+  headingColor: '#09090B',
+  bodyColor: '#71717A',
+  brandForest: '#09090B',
+  brandEmerald: '#09090B',
   brandAmber: '#E8792F',
   dangerRed: '#DC2626'
 };
@@ -65,9 +65,9 @@ const brandTokens = {
 const securityPalette = [
   '#DC2626', // Critical Threats (SQLi / RCE)
   '#E8792F', // High Severity (XSS / CSRF)
-  '#2A8B68', // Behavioral / Bot Mitigations
-  '#0B2522', // Ingress Edge Neutral
-  '#60716B', // Muted Scanner Probes
+  '#09090B', // Behavioral / Bot Mitigations
+  '#18181B', // Ingress Edge Neutral
+  '#71717A', // Muted Scanner Probes
   '#87948D'  // Low Severity
 ];
 
@@ -80,12 +80,12 @@ const severityConfig = {
   lfi: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
   path: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
   traversal: { label: 'HIGH', color: '#D97706', bg: '#FEF3EB', border: '#FCD8BF' },
-  bot: { label: 'BLOCKED', color: '#60716B', bg: '#EFF6FF', border: '#E2E8F0' },
-  scanner: { label: 'BLOCKED', color: '#60716B', bg: '#EFF6FF', border: '#E2E8F0' },
-  probe: { label: 'DETECTED', color: '#60716B', bg: '#EFF6FF', border: '#E2E8F0' },
-  clean: { label: 'PASSED', color: '#2A8B68', bg: '#EFF6FF', border: '#BFDBFE' },
-  allowed: { label: 'PASSED', color: '#2A8B68', bg: '#EFF6FF', border: '#BFDBFE' },
-  ingress: { label: 'PASSED', color: '#2A8B68', bg: '#EFF6FF', border: '#BFDBFE' },
+  bot: { label: 'BLOCKED', color: '#60716B', bg: '#F4F4F5', border: '#E2E8F0' },
+  scanner: { label: 'BLOCKED', color: '#60716B', bg: '#F4F4F5', border: '#E2E8F0' },
+  probe: { label: 'DETECTED', color: '#60716B', bg: '#F4F4F5', border: '#E2E8F0' },
+  clean: { label: 'PASSED', color: '#09090B', bg: '#F4F4F5', border: '#E4E4E7' },
+  allowed: { label: 'PASSED', color: '#09090B', bg: '#F4F4F5', border: '#E4E4E7' },
+  ingress: { label: 'PASSED', color: '#09090B', bg: '#F4F4F5', border: '#E4E4E7' },
   default: { label: 'MITIGATED', color: '#E8792F', bg: '#FFF4ED', border: '#FCD3B6' }
 };
 
@@ -198,7 +198,7 @@ function StatCard({
 
       {/* Action Footer */}
       {actionLink && actionText && (
-        <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid #EFF6FF' }}>
+        <div style={{ marginTop: '18px', paddingTop: '12px', borderTop: '1px solid #F4F4F5' }}>
           <Link
             to={actionLink}
             style={{
@@ -569,9 +569,9 @@ export default function UserDashboard() {
               fontWeight: '800',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              background: isPaidActive ? '#EFF6FF' : '#F7F6F1',
+              background: isPaidActive ? '#F4F4F5' : '#F7F6F1',
               color: isPaidActive ? brandTokens.brandEmerald : brandTokens.bodyColor,
-              border: `1px solid ${isPaidActive ? '#BFDBFE' : '#E2E8F0'}`
+              border: `1px solid ${isPaidActive ? '#E4E4E7' : '#E2E8F0'}`
             }}>
               Current Plan: {userPlan.toUpperCase()}
             </span>
@@ -583,9 +583,9 @@ export default function UserDashboard() {
               fontWeight: '800',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
-              background: '#EFF6FF',
+              background: '#F4F4F5',
               color: brandTokens.brandEmerald,
-              border: '1px solid #BFDBFE',
+              border: '1px solid #E4E4E7',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px'
@@ -642,9 +642,9 @@ export default function UserDashboard() {
                 fontSize: '9.5px',
                 fontWeight: '800',
                 letterSpacing: '0.04em',
-                background: isSelectedSiteAttacked ? '#EFF6FF' : '#F1F5F3',
-                color: isSelectedSiteAttacked ? '#2A8B68' : brandTokens.mutedText,
-                border: isSelectedSiteAttacked ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                background: isSelectedSiteAttacked ? '#F4F4F5' : '#F1F5F3',
+                color: isSelectedSiteAttacked ? '#09090B' : brandTokens.mutedText,
+                border: isSelectedSiteAttacked ? '1px solid #E4E4E7' : '1px solid #E2E8F0',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px'
@@ -653,7 +653,7 @@ export default function UserDashboard() {
                   width: '5px',
                   height: '5px',
                   borderRadius: '50%',
-                  background: isSelectedSiteAttacked ? '#2A8B68' : '#94a3b8'
+                  background: isSelectedSiteAttacked ? '#09090B' : '#94a3b8'
                 }} />
                 {isSelectedSiteAttacked ? 'ACTIVE' : 'STANDBY'}
               </span>
@@ -1161,14 +1161,14 @@ export default function UserDashboard() {
       </div>
 
             {/* ========================================================================= */}
-      {/* 3.5 MALWARE SCANNER & INTEGRITY SENTINEL (ZERO-GREEN PURE WHITE HUD)     */}
+      {/* 3.5 BESPOKE ENTERPRISE MALWARE & INTEGRITY SCANNER (MONOCHROME HUD)       */}
       {/* ========================================================================= */}
       <div style={{
         background: '#ffffff',
-        borderRadius: brandTokens.cardRadius,
-        border: '1px solid #E2E8F0',
+        borderRadius: '16px',
+        border: '1px solid #E4E4E7',
         padding: '24px 28px',
-        boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
         marginBottom: '28px'
       }}>
         <div style={{
@@ -1179,42 +1179,42 @@ export default function UserDashboard() {
           gap: '16px',
           marginBottom: '20px',
           paddingBottom: '16px',
-          borderBottom: '1px solid #E2E8F0'
+          borderBottom: '1px solid #F4F4F5'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '12px',
-              background: '#EFF6FF',
-              color: '#2563EB',
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: '#09090B',
+              color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.15)'
+              fontSize: '18px'
             }}>
-              <ShieldCheck size={22} />
+              <ShieldCheck size={20} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', margin: 0 }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#09090B', margin: 0 }}>
                   Cloud Malware &amp; Core Integrity Scanner
                 </h3>
                 <span style={{
-                  background: '#EFF6FF',
-                  color: '#1D4ED8',
-                  border: '1px solid #BFDBFE',
+                  background: '#F4F4F5',
+                  color: '#09090B',
+                  border: '1px solid #E4E4E7',
                   padding: '2px 8px',
                   borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: '800'
+                  fontSize: '10.5px',
+                  fontWeight: '800',
+                  letterSpacing: '0.04em'
                 }}>
-                  ML-Powered &bull; 18 Sentinels Active
+                  18 SENTINELS ARMED
                 </span>
               </div>
-              <div style={{ fontSize: '13px', color: '#64748B', marginTop: '3px' }}>
-                Real-time file integrity drift, deep AST webshell detection, and zero-day core checksum telemetry
+              <div style={{ fontSize: '12.5px', color: '#71717A', marginTop: '3px' }}>
+                Automated file integrity drift, deep AST webshell detection, and zero-day core checksum telemetry
               </div>
             </div>
           </div>
@@ -1223,27 +1223,27 @@ export default function UserDashboard() {
             <Link
               to="/user/bulk/scanner"
               style={{
-                background: '#2563EB',
+                background: '#09090B',
                 color: '#ffffff',
                 textDecoration: 'none',
                 padding: '9px 18px',
                 borderRadius: '8px',
                 fontSize: '13px',
-                fontWeight: '700',
+                fontWeight: '800',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                 transition: 'all 0.15s ease'
               }}
             >
-              <Zap size={15} />
+              <Zap size={14} />
               <span>Launch Origin Threat Scan</span>
             </Link>
           </div>
         </div>
 
-        {/* 3 Grid Sentinel Highlight Cards (Pure Crisp White) */}
+        {/* 3 Precision Metric Tiles (Pure White, 1px hairline border) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
@@ -1252,22 +1252,22 @@ export default function UserDashboard() {
           <div style={{
             background: '#ffffff',
             borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            padding: '16px 18px',
-            boxShadow: '0 2px 8px rgba(15, 23, 42, 0.02)'
+            border: '1px solid #E4E4E7',
+            padding: '18px 20px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#F4F4F5', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield size={14} />
               </div>
-              <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#71717A', letterSpacing: '0.04em' }}>
                 CORE INTEGRITY
               </span>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: '900', color: '#0F172A' }}>
+            <div style={{ fontSize: '17px', fontWeight: '900', color: '#09090B' }}>
               SHA-256 Baseline Match
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#71717A', marginTop: '4px' }}>
               Verifies wp-admin, wp-includes, and core PHP against pristine WordPress.org binaries.
             </div>
           </div>
@@ -1275,22 +1275,22 @@ export default function UserDashboard() {
           <div style={{
             background: '#ffffff',
             borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            padding: '16px 18px',
-            boxShadow: '0 2px 8px rgba(15, 23, 42, 0.02)'
+            border: '1px solid #E4E4E7',
+            padding: '18px 20px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#EFF6FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Activity size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#F4F4F5', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Activity size={14} />
               </div>
-              <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#71717A', letterSpacing: '0.04em' }}>
                 DEEP AST DEOBFUSCATION
               </span>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: '900', color: '#0F172A' }}>
+            <div style={{ fontSize: '17px', fontWeight: '900', color: '#09090B' }}>
               Execution Sink Analysis
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#71717A', marginTop: '4px' }}>
               De-obfuscates nested base64, gzinflate, hex payloads, and polyglot media infections.
             </div>
           </div>
@@ -1298,29 +1298,29 @@ export default function UserDashboard() {
           <div style={{
             background: '#ffffff',
             borderRadius: '12px',
-            border: '1px solid #E2E8F0',
-            padding: '16px 18px',
-            boxShadow: '0 2px 8px rgba(15, 23, 42, 0.02)'
+            border: '1px solid #E4E4E7',
+            padding: '18px 20px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#EFF6FF', color: '#0EA5E9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Globe size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#F4F4F5', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Globe size={14} />
               </div>
-              <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#71717A', letterSpacing: '0.04em' }}>
                 18 SENTINEL MATRIX
               </span>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: '900', color: '#0F172A' }}>
+            <div style={{ fontSize: '17px', fontWeight: '900', color: '#09090B' }}>
               Continuous Origin Sentinel
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#71717A', marginTop: '4px' }}>
               Audits uploads, themes, plugins, database rogue options, SEO spam, and config exposure.
             </div>
           </div>
         </div>
       </div>
 
-{/* ========================================================================= */}
+      {/* ========================================================================= */}
       {/* 4. SECURITY OPERATIONS: TOP ATTACKERS & RECENT BLOCKED EVENTS             */}
       {/* ========================================================================= */}
       <div style={{
@@ -1391,7 +1391,7 @@ export default function UserDashboard() {
                     const isBanned = bannedIps.has(attacker.ip);
 
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid #EFF6FF' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid #F4F4F5' }}>
                         <td style={{ padding: '12px 6px', color: brandTokens.bodyColor, fontWeight: '700', fontSize: '11.5px' }}>
                           #{i + 1}
                         </td>
