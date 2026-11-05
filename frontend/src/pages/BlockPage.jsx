@@ -5,12 +5,12 @@ import api from '../api/api'
 export default function BlockPage() {
   const [params] = useSearchParams()
   
-  const attackType = params.get('attack_type') || 'Cross-Site Scripting (XSS)'
+  const attackType = params.get('attack_type') || 'Suspicious Request Pattern'
   const clientIp = params.get('client_ip') || '127.0.0.1'
   const realIp = params.get('real_ip') || clientIp
-  const reason = params.get('reason') || 'Request blocked by security rules'
+  const reason = params.get('reason') || 'Request intercepted by security policy'
   const timestamp = params.get('timestamp') || new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
-  const referenceId = params.get('reference_id') || ('MDSF ' + Math.random().toString(36).substr(2, 8).toUpperCase())
+  const referenceId = params.get('reference_id') || ('MDEF-' + Math.random().toString(36).substr(2, 8).toUpperCase())
   const targetUrl = params.get('url') || window.location.pathname
   const siteHost = params.get('host') || window.location.hostname || 'mahabubur.shop'
 
@@ -22,16 +22,16 @@ export default function BlockPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [copied, setCopied] = useState(false)
 
-  const handleCopyRayId = () => {
+  const handleCopyReferenceId = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(referenceId).then(() => {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }).catch(() => {
-        alert('MDefender Ray ID: ' + referenceId)
+        alert('Reference ID: ' + referenceId)
       })
     } else {
-      alert('MDefender Ray ID: ' + referenceId)
+      alert('Reference ID: ' + referenceId)
     }
   }
 
@@ -66,7 +66,7 @@ export default function BlockPage() {
           width: 100%;
           background-color: #ffffff;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
-          color: #333333;
+          color: #475569;
           margin: 0;
           padding: 0;
           box-sizing: border-box;
@@ -77,46 +77,71 @@ export default function BlockPage() {
         }
 
         .cf-wrap {
-          max-width: 900px;
+          max-width: 920px;
           width: 100%;
           margin: 0 auto;
           padding: 0 24px;
           box-sizing: border-box;
         }
 
-        .cf-header {
-          padding-top: 52px;
-          padding-bottom: 28px;
+        .cf-top-section {
+          padding-top: 44px;
+          padding-bottom: 34px;
         }
 
-        .cf-title {
-          font-size: 38px;
-          font-weight: 400;
-          color: #333333;
+        .cf-top-header {
+          margin-bottom: 26px;
+        }
+
+        .cf-main-title {
+          font-size: 34px;
+          font-weight: 500;
+          color: #1e293b;
           margin: 0 0 8px 0;
           letter-spacing: -0.02em;
-          line-height: 1.2;
+          line-height: 1.25;
         }
 
-        .cf-subtitle {
-          font-size: 16px;
+        .cf-main-subtitle {
+          font-size: 15px;
           font-weight: 400;
-          color: #666666;
+          color: #64748b;
           margin: 0;
-          line-height: 1.4;
+          line-height: 1.5;
         }
 
-        .cf-domain {
-          color: #333333;
-          font-weight: 500;
+        .cf-site-host {
+          color: #1e293b;
+          font-weight: 600;
+        }
+
+        .cf-explainer-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 48px;
+        }
+
+        .cf-explainer-col h2 {
+          font-size: 17.5px;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0 0 10px 0;
+          line-height: 1.3;
+        }
+
+        .cf-explainer-col p {
+          font-size: 14px;
+          line-height: 1.65;
+          color: #475569;
+          margin: 0;
         }
 
         .cf-mockup-section {
           width: 100%;
           background-color: #eeeeee;
-          border-top: 1px solid #e2e2e2;
-          border-bottom: 1px solid #e2e2e2;
-          padding: 48px 24px;
+          border-top: 1px solid #e0e0e0;
+          border-bottom: 1px solid #e0e0e0;
+          padding: 44px 24px;
           box-sizing: border-box;
           display: flex;
           justify-content: center;
@@ -161,7 +186,7 @@ export default function BlockPage() {
         }
 
         .cf-browser-body {
-          height: 270px;
+          height: 260px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -179,135 +204,120 @@ export default function BlockPage() {
           box-shadow: 0 6px 18px rgba(189, 36, 38, 0.22);
         }
 
-        .cf-columns-section {
-          padding-top: 48px;
-          padding-bottom: 36px;
+        .cf-bottom-section {
+          padding-top: 36px;
+          padding-bottom: 30px;
         }
 
-        .cf-columns-grid {
+        .cf-tech-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 18px 24px;
+          margin-bottom: 24px;
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 52px;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px;
         }
 
-        @media (max-width: 740px) {
-          .cf-columns-grid {
-            grid-template-columns: 1fr;
-            gap: 30px;
-          }
-          .cf-title {
-            font-size: 28px;
-          }
-          .cf-mockup-section {
-            padding: 30px 16px;
-          }
-          .cf-browser-body {
-            height: 210px;
-          }
-          .cf-badge-circle {
-            width: 76px;
-            height: 76px;
-          }
+        .cf-tech-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 4px;
         }
 
-        .cf-col-heading {
-          font-size: 19px;
+        .cf-tech-value {
+          font-size: 14px;
           font-weight: 600;
-          color: #222222;
-          margin: 0 0 12px 0;
-          line-height: 1.3;
+          color: #1e293b;
         }
 
-        .cf-col-desc {
-          font-size: 14.5px;
-          line-height: 1.65;
-          color: #555555;
-          margin: 0;
+        .cf-tech-mono {
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+          font-size: 13.5px;
+          color: #0f172a;
         }
 
-        .cf-pill {
-          margin-top: 14px;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 5px 12px;
-          background: #fee2e2;
-          border: 1px solid #fecaca;
-          border-radius: 4px;
-          font-size: 12.5px;
-          color: #991b1b;
-          font-weight: 500;
-        }
-
-        .cf-action-tools {
-          margin-top: 18px;
+        .cf-action-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          justify-content: center;
+          gap: 14px;
           flex-wrap: wrap;
+          margin-bottom: 24px;
         }
 
-        .cf-btn-contact {
+        .cf-btn {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
-          background: #2b2b2b;
-          color: #ffffff;
-          border-radius: 4px;
-          font-size: 13px;
+          gap: 8px;
+          padding: 9px 20px;
+          border-radius: 6px;
+          font-size: 13.5px;
           font-weight: 500;
           text-decoration: none;
-          border: none;
           cursor: pointer;
-          transition: background 0.15s ease;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
         }
 
-        .cf-btn-contact:hover {
-          background: #111111;
+        .cf-btn-primary {
+          background: #1e293b;
+          color: #ffffff;
+        }
+
+        .cf-btn-primary:hover {
+          background: #0f172a;
         }
 
         .cf-btn-secondary {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
-          background: #f3f4f6;
-          color: #374151;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.15s ease;
+          background: #ffffff;
+          color: #334155;
+          border-color: #cbd5e1;
         }
 
         .cf-btn-secondary:hover {
-          background: #e5e7eb;
+          background: #f1f5f9;
         }
 
         .cf-footer-section {
           margin-top: auto;
-          border-top: 1px solid #e2e2e2;
-          padding: 26px 0 36px 0;
-        }
-
-        .cf-footer-meta {
-          font-size: 13px;
-          color: #777777;
-          line-height: 1.8;
+          border-top: 1px solid #e2e8f0;
+          padding: 20px 0 28px 0;
           text-align: center;
+          font-size: 12.5px;
+          color: #94a3b8;
         }
 
-        .cf-meta-dot {
-          margin: 0 10px;
-          color: #9ca3af;
+        .cf-footer-section strong {
+          color: #475569;
         }
 
-        .cf-ip-mono {
-          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-          color: #374151;
-          font-weight: 500;
+        @media (max-width: 740px) {
+          .cf-explainer-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+          }
+          .cf-main-title {
+            font-size: 26px;
+          }
+          .cf-mockup-section {
+            padding: 28px 16px;
+          }
+          .cf-browser-body {
+            height: 200px;
+          }
+          .cf-badge-circle {
+            width: 74px;
+            height: 74px;
+          }
+          .cf-tech-card {
+            grid-template-columns: 1fr;
+            gap: 14px;
+          }
         }
 
         /* Modal */
@@ -344,17 +354,33 @@ export default function BlockPage() {
           outline: none;
         }
         .cf-input:focus {
-          border-color: #2b2b2b;
+          border-color: #1e293b;
         }
       `}</style>
 
-      {/* Top Heading */}
-      <header className="cf-header">
+      {/* Top Section: Title & 2 Columns */}
+      <header className="cf-top-section">
         <div className="cf-wrap">
-          <h1 className="cf-title">Sorry, you have been blocked</h1>
-          <p className="cf-subtitle">
-            You are unable to access <span className="cf-domain">{siteHost}</span>
-          </p>
+          <div className="cf-top-header">
+            <h1 className="cf-main-title">Access Restricted by Security Policy</h1>
+            <p className="cf-main-subtitle">
+              Your connection to <span className="cf-site-host">{siteHost}</span> was intercepted by automated security protection.
+            </p>
+          </div>
+          <div className="cf-explainer-grid">
+            <div className="cf-explainer-col">
+              <h2>Why was this request blocked?</h2>
+              <p>
+                This website employs MDefender Pro automated defense to safeguard infrastructure against malicious probes, automated abuse, and abnormal request patterns. Your interaction triggered an edge inspection security rule.
+              </p>
+            </div>
+            <div className="cf-explainer-col">
+              <h2>What can I do to resolve this?</h2>
+              <p>
+                If you believe this restriction was triggered by mistake, you can return to the homepage or notify the website administrator with your incident Reference ID and Client IP shown below.
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -378,58 +404,43 @@ export default function BlockPage() {
         </div>
       </section>
 
-      {/* Bottom 2 Columns */}
-      <main className="cf-columns-section">
+      {/* Bottom Technical Details & Action Row */}
+      <main className="cf-bottom-section">
         <div className="cf-wrap">
-          <div className="cf-columns-grid">
-            {/* Left Column */}
+          <div className="cf-tech-card">
             <div>
-              <h2 className="cf-col-heading">Why have I been blocked?</h2>
-              <p className="cf-col-desc">
-                This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.
-              </p>
-              <div className="cf-pill">
-                <span>Violation:</span>
-                <strong>{attackType}</strong>
-              </div>
+              <div className="cf-tech-label">Client IP Address</div>
+              <div className="cf-tech-value cf-tech-mono">{clientIp}</div>
             </div>
+            <div>
+              <div className="cf-tech-label">Incident Reference ID</div>
+              <div className="cf-tech-value cf-tech-mono">{referenceId}</div>
+            </div>
+            <div>
+              <div className="cf-tech-label">Timestamp (UTC)</div>
+              <div className="cf-tech-value">{timestamp}</div>
+            </div>
+          </div>
 
-            {/* Right Column */}
-            <div>
-              <h2 className="cf-col-heading">What can I do to resolve this?</h2>
-              <p className="cf-col-desc">
-                You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.
-              </p>
-              <div className="cf-action-tools">
-                <button type="button" className="cf-btn-contact" onClick={() => setReportModalOpen(true)}>
-                  Report False Positive
-                </button>
-                <button type="button" className="cf-btn-secondary" onClick={handleCopyRayId}>
-                  {copied ? 'Copied!' : 'Copy Ray ID'}
-                </button>
-                <button type="button" className="cf-btn-secondary" onClick={() => window.location.href = '/'}>
-                  Return Home
-                </button>
-              </div>
-            </div>
+          <div className="cf-action-row">
+            <button type="button" className="cf-btn cf-btn-primary" onClick={() => window.location.href = '/'}>
+              Return to Homepage
+            </button>
+            <button type="button" className="cf-btn cf-btn-secondary" onClick={handleCopyReferenceId}>
+              {copied ? 'Copied!' : 'Copy Reference ID'}
+            </button>
+            <button type="button" className="cf-btn cf-btn-secondary" onClick={() => setReportModalOpen(true)}>
+              Report False Positive
+            </button>
           </div>
         </div>
       </main>
 
-      {/* Footer Metadata */}
+      {/* Footer */}
       <footer className="cf-footer-section">
         <div className="cf-wrap">
-          <div className="cf-footer-meta">
-            <div>
-              <span>MDefender Ray ID: <strong>{referenceId}</strong></span>
-              <span className="cf-meta-dot">&bull;</span>
-              <span>Your IP: <span className="cf-ip-mono">{clientIp}</span></span>
-              <span className="cf-meta-dot">&bull;</span>
-              <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
-            </div>
-            <div style={{ marginTop: '4px', fontSize: '12px', color: '#888888' }}>
-              <span>Timestamp: {timestamp}</span>
-            </div>
+          <div>
+            Performance &amp; security by <strong>MDefender Pro</strong> Enterprise WAF. Security incident logged and audited.
           </div>
         </div>
       </footer>
@@ -457,9 +468,9 @@ export default function BlockPage() {
                 </div>
                 <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#111827' }}>Report Submitted</h4>
                 <p style={{ fontSize: '13.5px', color: '#6b7280', margin: '0 0 18px 0', lineHeight: 1.5 }}>
-                  Reference Ray ID <strong>{referenceId}</strong> has been forwarded to the SOC administrators.
+                  Reference ID <strong>{referenceId}</strong> has been forwarded to the SOC administrators.
                 </p>
-                <button className="cf-btn-contact" onClick={() => setReportModalOpen(false)} style={{ margin: '0 auto' }}>
+                <button className="cf-btn cf-btn-primary" onClick={() => setReportModalOpen(false)} style={{ margin: '0 auto' }}>
                   Close
                 </button>
               </div>
@@ -475,7 +486,7 @@ export default function BlockPage() {
                   </div>
                 )}
 
-                <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: '#374151' }}>MDefender Ray ID</div>
+                <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: '#374151' }}>Reference ID</div>
                 <input type="text" className="cf-input" value={referenceId} disabled style={{ background: '#f9fafb', color: '#6b7280' }} />
 
                 <div style={{ marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: '#374151' }}>Your Email (Optional)</div>
@@ -498,10 +509,10 @@ export default function BlockPage() {
                 />
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
-                  <button type="button" className="cf-btn-secondary" onClick={() => setReportModalOpen(false)}>
+                  <button type="button" className="cf-btn cf-btn-secondary" onClick={() => setReportModalOpen(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="cf-btn-contact" disabled={submitting}>
+                  <button type="submit" className="cf-btn cf-btn-primary" disabled={submitting}>
                     {submitting ? 'Submitting...' : 'Submit Report'}
                   </button>
                 </div>
