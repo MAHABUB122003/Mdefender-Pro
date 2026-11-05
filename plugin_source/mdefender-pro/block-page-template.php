@@ -64,24 +64,6 @@ if ($is_country_block || $attack_type === 'Server Admin Probe') {
     }
 }
 
-// Fast In-Memory GeoIP Resolution (Zero External HTTP Latency)
-$country_code_lower = 'bd';
-if (!empty($_GET['country_test'])) {
-    $country_code_lower = strtolower(substr(trim($_GET['country_test']), 0, 2));
-} elseif (!empty($result['country_code'])) {
-    $country_code_lower = strtolower(substr(trim($result['country_code']), 0, 2));
-} elseif (!empty($_SERVER['HTTP_CF_IPCOUNTRY'])) {
-    $country_code_lower = strtolower(substr(trim($_SERVER['HTTP_CF_IPCOUNTRY']), 0, 2));
-} elseif (!empty($_SERVER['GEOIP_COUNTRY_CODE'])) {
-    $country_code_lower = strtolower(substr(trim($_SERVER['GEOIP_COUNTRY_CODE']), 0, 2));
-} elseif (!empty($client_ip) && filter_var($client_ip, FILTER_VALIDATE_IP)) {
-    $transient_key = 'waf_fw_geoip_' . md5($client_ip);
-    $cached = function_exists('get_transient') ? get_transient($transient_key) : false;
-    if ($cached !== false && is_array($cached) && !empty($cached['code'])) {
-        $country_code_lower = strtolower(substr(trim($cached['code']), 0, 2));
-    }
-}
-
 // Convert timestamp to UTC & get Unix ref
 try {
     $dt = new DateTime($timestamp, new DateTimeZone('UTC'));
@@ -119,24 +101,18 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-    <title>403 Forbidden &mdash; Access Denied | MDefender-Pro AI</title>
+    <title>Attention Required! | MDefender Security Check</title>
     <style>
         :root {
-            --bg-page: #ffffff;
-            --bg-banner: #eceff1;
-            --text-heading: #0f172a;
-            --text-num403: #3f4753;
-            --text-sub: #4b5563;
-            --text-muted: #64748b;
-            --text-dark: #1e293b;
-            --color-alert: #dc2626;
-            --color-badge-bg: #fee2e2;
-            --color-badge-text: #dc2626;
-            --color-badge-border: #fecdd3;
-            --border-banner: #e2e8f0;
-            --border-btn: #cbd5e1;
-            --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
             --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+            --text-main: #333333;
+            --text-sub: #555555;
+            --text-muted: #777777;
+            --bg-gray: #eeeeee;
+            --border-gray: #e2e2e2;
+            --browser-bar: #8a8a8a;
+            --alert-red: #bd2426;
         }
 
         *, *::before, *::after {
@@ -148,434 +124,374 @@ $admin_email = function_exists('get_option') ? (get_option('admin_email') ?: 'se
         html, body {
             width: 100%;
             min-height: 100%;
-            background-color: var(--bg-page);
+            background-color: #ffffff;
             font-family: var(--font-family);
-            color: var(--text-dark);
+            color: var(--text-main);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
-            position: relative;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 40px 0;
-            overflow-x: hidden;
-        }
-
-        /* Subtle Corner Geometric Dot Pattern (matching screenshot) */
-        .top-pattern {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 240px;
-            height: 160px;
-            background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
-            background-size: 14px 14px;
-            opacity: 0.65;
-            pointer-events: none;
-            z-index: 0;
         }
 
         .page-container {
             width: 100%;
-            position: relative;
-            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Top 2 Columns ("What happened?" and "What can I do?") */
-        .top-columns-wrap {
-            max-width: 940px;
-            margin: 0 auto 34px auto;
+        .content-wrap {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
             padding: 0 24px;
         }
 
-        .top-columns-grid {
+        /* Top Heading Section */
+        .header-section {
+            padding-top: 52px;
+            padding-bottom: 28px;
+        }
+
+        .blocked-title {
+            font-size: 38px;
+            font-weight: 400;
+            color: #333333;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .blocked-subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: #666666;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .blocked-domain {
+            color: #333333;
+            font-weight: 500;
+        }
+
+        /* Center Full-Width Gray Section with Browser Mockup */
+        .mockup-section {
+            width: 100%;
+            background-color: var(--bg-gray);
+            border-top: 1px solid var(--border-gray);
+            border-bottom: 1px solid var(--border-gray);
+            padding: 48px 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .browser-mockup {
+            max-width: 720px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 6px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            border: 1px solid #dcdcdc;
+        }
+
+        .browser-header {
+            background: var(--browser-bar);
+            height: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            gap: 6px;
+        }
+
+        .browser-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ffffff;
+            opacity: 0.85;
+            display: inline-block;
+        }
+
+        .browser-address-bar {
+            margin-left: 14px;
+            background: rgba(255, 255, 255, 0.3);
+            height: 20px;
+            border-radius: 3px;
+            width: 38%;
+            max-width: 220px;
+        }
+
+        .browser-body {
+            height: 270px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+        }
+
+        .block-badge-circle {
+            width: 94px;
+            height: 94px;
+            border-radius: 50%;
+            background-color: var(--alert-red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(189, 36, 38, 0.22);
+        }
+
+        .block-badge-circle svg {
+            width: 44px;
+            height: 44px;
+            stroke: #ffffff;
+            stroke-width: 3.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Bottom 2 Columns */
+        .columns-section {
+            padding-top: 48px;
+            padding-bottom: 36px;
+        }
+
+        .columns-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 56px;
-            text-align: left;
+            gap: 52px;
+        }
+
+        @media (max-width: 740px) {
+            .columns-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            .blocked-title {
+                font-size: 28px;
+            }
+            .mockup-section {
+                padding: 30px 16px;
+            }
+            .browser-body {
+                height: 210px;
+            }
+            .block-badge-circle {
+                width: 76px;
+                height: 76px;
+            }
+            .block-badge-circle svg {
+                width: 36px;
+                height: 36px;
+            }
         }
 
         .col-heading {
-            font-size: 17px;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 10px;
+            font-size: 19px;
+            font-weight: 600;
+            color: #222222;
+            margin: 0 0 12px 0;
             line-height: 1.3;
         }
 
-        .col-text {
-            font-size: 13.5px;
-            line-height: 1.6;
-            color: var(--text-sub);
-        }
-
-        .col-text p + p {
-            margin-top: 10px;
-        }
-
-        /* Full Width Center Gray Ribbon Banner */
-        .banner-ribbon {
-            width: 100%;
-            background-color: var(--bg-banner);
-            border-top: 1px solid var(--border-banner);
-            border-bottom: 1px solid var(--border-banner);
-            padding: 44px 20px 38px 20px;
-            text-align: center;
-            margin-bottom: 34px;
-        }
-
-        .banner-inner {
-            max-width: 940px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .banner-num-403 {
-            font-size: clamp(86px, 11vw, 118px);
-            font-weight: 900;
-            color: var(--text-num403);
-            line-height: 0.95;
-            letter-spacing: -3px;
-            margin-bottom: 8px;
-        }
-
-        .banner-forbidden {
-            font-size: clamp(28px, 4vw, 36px);
-            font-weight: 800;
-            color: #1e293b;
-            line-height: 1.15;
-            letter-spacing: -0.5px;
-        }
-
-        /* Curved Accent Underline Under Forbidden */
-        .curved-underline {
-            display: block;
-            margin: 5px auto 10px auto;
-            width: 145px;
-            height: 9px;
-        }
-
-        .banner-denied {
-            font-size: 23px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 6px;
-            letter-spacing: -0.3px;
-        }
-
-        .banner-restricted {
+        .col-desc {
             font-size: 14.5px;
-            font-weight: 600;
-            color: var(--color-alert);
-            letter-spacing: 0.1px;
+            line-height: 1.65;
+            color: var(--text-sub);
+            margin: 0;
         }
 
-        /* Technical Details Section */
-        .tech-section-wrap {
-            max-width: 940px;
-            margin: 0 auto 30px auto;
-            padding: 0 24px;
-        }
-
-        /* Hatched Diagonal Divider Lines */
-        .hatched-divider {
-            width: 100%;
-            height: 6px;
-            background: repeating-linear-gradient(45deg, #cbd5e1, #cbd5e1 2px, transparent 2px, transparent 6px);
-            opacity: 0.7;
-        }
-
-        .hatched-top {
-            margin-bottom: 22px;
-        }
-
-        .hatched-bottom {
-            margin-top: 22px;
-            margin-bottom: 26px;
-        }
-
-        /* 3 Columns x 2 Rows Technical Grid */
-        .tech-grid {
-            display: grid;
-            grid-template-columns: 1.1fr 1fr 1.1fr;
-            gap: 22px 36px;
-            text-align: left;
-        }
-
-        .tech-item-label {
-            font-size: 11px;
-            font-weight: 700;
-            color: #111827;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-
-        .tech-item-value {
-            font-size: 13px;
-            color: #374151;
-            line-height: 1.45;
-            word-break: break-word;
-        }
-
-        .tech-item-value-mono {
-            font-family: var(--font-mono);
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #0f172a;
-            letter-spacing: 0.3px;
-        }
-
-        .country-pill {
-            display: inline-block;
-            background: #e0e7ff;
-            color: #4338ca;
-            font-size: 10.5px;
-            font-weight: 700;
-            padding: 1px 6px;
-            border-radius: 4px;
-            margin-left: 6px;
-            vertical-align: middle;
-            text-transform: lowercase;
-            letter-spacing: 0.2px;
-        }
-
-        /* Classification Pill Badge */
-        .attack-badge {
-            display: inline-block;
-            background-color: var(--color-badge-bg);
-            color: var(--color-badge-text);
-            border: 1px solid var(--color-badge-border);
-            font-size: 11.5px;
-            font-weight: 600;
-            padding: 2.5px 12px;
-            border-radius: 9999px;
-            margin-top: 2px;
-            letter-spacing: 0.2px;
-        }
-
-        /* Action Buttons Row */
-        .actions-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 22px;
-        }
-
-        .btn {
+        .attack-pill {
+            margin-top: 14px;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            font-family: var(--font-family);
+            gap: 6px;
+            padding: 5px 12px;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
             font-size: 12.5px;
-            font-weight: 600;
-            padding: 9px 18px;
-            border-radius: 7px;
+            color: #991b1b;
+            font-weight: 500;
+        }
+
+        .action-tools {
+            margin-top: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-contact {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #2b2b2b;
+            color: #ffffff;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
             text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .btn-contact:hover {
+            background: #111111;
+        }
+
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.15s ease;
         }
 
-        .btn-primary {
-            background-color: #0f172a;
-            color: #ffffff;
-            border: 1px solid #0f172a;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+        .btn-copy:hover {
+            background: #e5e7eb;
         }
 
-        .btn-primary:hover {
-            background-color: #1e293b;
-            border-color: #1e293b;
+        /* Footer Section */
+        .footer-section {
+            margin-top: auto;
+            border-top: 1px solid var(--border-gray);
+            padding: 26px 0 36px 0;
         }
 
-        .btn-secondary {
-            background-color: #ffffff;
-            color: #334155;
-            border: 1px solid var(--border-btn);
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-        }
-
-        .btn-secondary:hover {
-            background-color: #f8fafc;
-            border-color: #94a3b8;
-            color: #0f172a;
-        }
-
-        /* Footer */
-        .footer-note {
-            font-size: 11.5px;
+        .footer-meta {
+            font-size: 13px;
             color: var(--text-muted);
+            line-height: 1.8;
             text-align: center;
-            line-height: 1.5;
-            padding: 0 20px;
         }
 
-        @media (max-width: 768px) {
-            .top-columns-grid {
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }
-            .tech-grid {
-                grid-template-columns: 1fr;
-                gap: 18px;
-            }
-            .banner-ribbon {
-                padding: 34px 16px 28px 16px;
-            }
-            .banner-num-403 {
-                font-size: 78px;
-                letter-spacing: -2px;
-            }
-            .banner-forbidden {
-                font-size: 28px;
-            }
+        .footer-meta strong {
+            color: #222222;
+        }
+
+        .meta-dot {
+            margin: 0 10px;
+            color: #9ca3af;
+        }
+
+        .ip-mono {
+            font-family: var(--font-mono);
+            color: #374151;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <!-- Top Corner Subtle Geometric Pattern -->
-    <div class="top-pattern" aria-hidden="true"></div>
-
     <div class="page-container">
-        <!-- 2 Columns: What happened? & What can I do? -->
-        <div class="top-columns-wrap">
-            <div class="top-columns-grid">
-                <div class="top-col">
-                    <h3 class="col-heading">What happened?</h3>
-                    <div class="col-text">
-                        <p>This website is using a security service (MDefender-Pro AI) protect itself from online attacks. This action you to perform has been blocked by corporate WAF.</p>
-                    </div>
-                </div>
-                <div class="top-col">
-                    <h3 class="col-heading">What can I do?</h3>
-                    <div class="col-text">
-                        <p>If you are a visitor, please contact the site owner or support operations with the details below.</p>
-                        <p>If you believe this is a valid corporate action, please share the Reference ID below.</p>
-                    </div>
-                </div>
+        <!-- Top Heading -->
+        <header class="header-section">
+            <div class="content-wrap">
+                <h1 class="blocked-title">Sorry, you have been blocked</h1>
+                <p class="blocked-subtitle">You are unable to access <span class="blocked-domain"><?php echo esc_html($site_host); ?></span></p>
             </div>
-        </div>
+        </header>
 
-        <!-- Full-Width Center Ribbon Banner -->
-        <div class="banner-ribbon">
-            <div class="banner-inner">
-                <div class="banner-num-403">403</div>
-                <div class="banner-forbidden">Forbidden</div>
-                <svg class="curved-underline" viewBox="0 0 130 8" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M2 3C40 8 90 8 128 3" stroke="#e05252" stroke-width="2.5" stroke-linecap="round"/>
-                </svg>
-                <div class="banner-denied">Access Denied</div>
-                <div class="banner-restricted">Access to <?php echo esc_html($site_host); ?> is restricted</div>
-            </div>
-        </div>
-
-        <!-- Technical Details Grid -->
-        <div class="tech-section-wrap">
-            <!-- Hatched Divider (Top) -->
-            <div class="hatched-divider hatched-top" aria-hidden="true"></div>
-
-            <div class="tech-grid">
-                <!-- Column 1, Row 1: Your IP -->
-                <div>
-                    <div class="tech-item-label">YOUR IP</div>
-                    <div class="tech-item-value">
-                        <span style="font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: #374151;"><?php echo esc_html($client_ip); ?></span>
-                        <span class="country-pill"><?php echo strtolower(esc_html($country_code_lower)); ?></span>
-                    </div>
+        <!-- Center Full-Width Gray Section with Browser Mockup -->
+        <section class="mockup-section">
+            <div class="browser-mockup">
+                <div class="browser-header" aria-hidden="true">
+                    <span class="browser-dot"></span>
+                    <span class="browser-dot"></span>
+                    <span class="browser-dot"></span>
+                    <span class="browser-address-bar"></span>
                 </div>
-
-                <!-- Column 2, Row 1: Reference ID -->
-                <div>
-                    <div class="tech-item-label">REFERENCE ID</div>
-                    <div class="tech-item-value tech-item-value-mono" id="refIdText"><?php echo esc_html($reference_id); ?></div>
-                </div>
-
-                <!-- Column 3, Row 1: Timestamp -->
-                <div>
-                    <div class="tech-item-label">TIMESTAMP</div>
-                    <div class="tech-item-value"><?php echo esc_html($utc_timestamp); ?> (ref: <?php echo esc_html($unix_ref); ?>)</div>
-                </div>
-
-                <!-- Column 1, Row 2: Violation Reason -->
-                <div>
-                    <div class="tech-item-label">VIOLATION REASON</div>
-                    <div class="tech-item-value"><?php echo esc_html($violation_text); ?></div>
-                </div>
-
-                <!-- Column 2, Row 2: Attack Classification -->
-                <div>
-                    <div class="tech-item-label">ATTACK CLASSIFICATION</div>
-                    <div class="tech-item-value">
-                        <span class="attack-badge"><?php echo esc_html($attack_type); ?></span>
-                    </div>
-                </div>
-
-                <!-- Column 3, Row 2: Protocol Details -->
-                <div>
-                    <div class="tech-item-label">PROTOCOL DETAILS</div>
-                    <div class="tech-item-value">
-                        <?php echo esc_html($protocol); ?> (WAF_VER: 4.3.0)<br>
-                        <?php echo esc_html($site_host); ?>
+                <div class="browser-body">
+                    <div class="block-badge-circle" role="img" aria-label="Blocked Access">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Hatched Divider (Bottom) -->
-            <div class="hatched-divider hatched-bottom" aria-hidden="true"></div>
+        <!-- Bottom Explanations -->
+        <main class="columns-section">
+            <div class="content-wrap">
+                <div class="columns-grid">
+                    <!-- Left Column -->
+                    <div>
+                        <h2 class="col-heading">Why have I been blocked?</h2>
+                        <p class="col-desc">This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.</p>
+                        <div class="attack-pill">
+                            <span>Violation:</span>
+                            <strong><?php echo esc_html($rule_name ?: $attack_type); ?></strong>
+                        </div>
+                    </div>
 
-            <!-- Buttons -->
-            <div class="actions-row">
-                <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=WAF Block Reference: <?php echo esc_attr($reference_id); ?>&body=Security Support,%0D%0A%0D%0AMy request was restricted by MDefender-Pro AI Firewall.%0D%0A%0D%0ADetails:%0D%0A- Reference ID: <?php echo esc_attr($reference_id); ?>%0D%0A- Client IP: <?php echo esc_attr($client_ip); ?>%0D%0A- Host: <?php echo esc_attr($site_host); ?>" 
-                   class="btn btn-primary">
-                    Contact Security Operations
-                </a>
-                <a href="/" class="btn btn-secondary">
-                    Return to Homepage
-                </a>
-                <button type="button" class="btn btn-secondary" id="copyBtn" onclick="copyReferenceId()">
-                    Copy Reference ID
-                </button>
+                    <!-- Right Column -->
+                    <div>
+                        <h2 class="col-heading">What can I do to resolve this?</h2>
+                        <p class="col-desc">You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.</p>
+                        <div class="action-tools">
+                            <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=MDefender%20Block%20Ray%20ID:%20<?php echo esc_attr($reference_id); ?>" class="btn-contact">
+                                Contact Site Administrator
+                            </a>
+                            <button type="button" class="btn-copy" id="copyBtn" onclick="copyReferenceId()">
+                                Copy Ray ID
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </main>
 
-            <!-- Footer -->
-            <div class="footer-note">
-                Performance &amp; security by Mdefender Pro AI Firewall. All critical system events are logged and audited.
+        <!-- Footer Metadata -->
+        <footer class="footer-section">
+            <div class="content-wrap">
+                <div class="footer-meta">
+                    <div>
+                        <span>MDefender Ray ID: <strong id="rayIdVal"><?php echo esc_html($reference_id); ?></strong></span>
+                        <span class="meta-dot">&bull;</span>
+                        <span>Your IP: <span class="ip-mono"><?php echo esc_html($client_ip); ?></span></span>
+                        <span class="meta-dot">&bull;</span>
+                        <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
+                    </div>
+                    <div style="margin-top: 4px; font-size: 12px; color: #888888;">
+                        <span>Timestamp: <?php echo esc_html($utc_timestamp); ?></span>
+                    </div>
+                </div>
             </div>
-        </div>
+        </footer>
     </div>
 
     <script>
         const refId = "<?php echo esc_js($reference_id); ?>";
         function copyReferenceId() {
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(refId).then(() => {
-                    const btn = document.getElementById('copyBtn');
+                navigator.clipboard.writeText(refId).then(function() {
+                    var btn = document.getElementById('copyBtn');
                     if (btn) {
-                        const original = btn.innerText;
+                        var original = btn.innerText;
                         btn.innerText = 'Copied!';
                         btn.style.borderColor = '#10b981';
                         btn.style.color = '#10b981';
-                        setTimeout(() => {
+                        setTimeout(function() {
                             btn.innerText = original;
                             btn.style.borderColor = '';
                             btn.style.color = '';
                         }, 2000);
                     }
-                }).catch(() => {
-                    alert('Reference ID: ' + refId);
+                }).catch(function() {
+                    alert('MDefender Ray ID: ' + refId);
                 });
             } else {
-                alert('Reference ID: ' + refId);
+                alert('MDefender Ray ID: ' + refId);
             }
         }
     </script>
