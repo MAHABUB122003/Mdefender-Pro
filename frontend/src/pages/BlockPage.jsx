@@ -80,16 +80,16 @@ export default function BlockPage() {
         }
 
         .cf-content-wrap {
-          max-width: 1140px;
+          max-width: 820px;
           width: 100%;
           margin: 0 auto;
-          padding: 0 32px;
+          padding: 0 20px;
           box-sizing: border-box;
         }
 
         /* Top Section */
         .cf-top-section {
-          padding-top: 26px;
+          padding-top: 28px;
           padding-bottom: 16px;
           flex: 0 0 auto;
         }
@@ -99,16 +99,16 @@ export default function BlockPage() {
         }
 
         .cf-main-title {
-          font-size: 26px;
+          font-size: 27px;
           font-weight: 600;
           color: #0f172a;
-          margin: 0 0 4px 0;
+          margin: 0 0 5px 0;
           letter-spacing: -0.015em;
           line-height: 1.25;
         }
 
         .cf-main-subtitle {
-          font-size: 14px;
+          font-size: 13.5px;
           font-weight: 400;
           color: #64748b;
           margin: 0;
@@ -122,7 +122,7 @@ export default function BlockPage() {
         .cf-explainer-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 48px;
+          gap: 40px;
         }
 
         .cf-explainer-col h2 {
@@ -134,7 +134,7 @@ export default function BlockPage() {
         }
 
         .cf-explainer-col p {
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.6;
           color: #475569;
           margin: 0;
@@ -146,7 +146,7 @@ export default function BlockPage() {
           background-color: #eeeeee;
           border-top: 1px solid #e0e0e0;
           border-bottom: 1px solid #e0e0e0;
-          padding: 22px 24px;
+          padding: 24px 0;
           box-sizing: border-box;
           display: flex;
           justify-content: center;
@@ -156,8 +156,9 @@ export default function BlockPage() {
         }
 
         .cf-browser-mockup {
-          max-width: 800px;
+          max-width: 780px;
           width: 100%;
+          margin: 0 auto;
           background: #ffffff;
           border-radius: 8px;
           box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
@@ -188,21 +189,12 @@ export default function BlockPage() {
           background: rgba(255, 255, 255, 0.28);
           height: 18px;
           border-radius: 3px;
-          padding: 0 12px;
-          display: flex;
-          align-items: center;
-          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-          font-size: 11.5px;
-          color: #f8fafc;
-          width: 48%;
-          max-width: 260px;
-          overflow: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;
+          width: 45%;
+          max-width: 240px;
         }
 
         .cf-browser-body {
-          height: 155px;
+          height: 175px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -210,8 +202,8 @@ export default function BlockPage() {
         }
 
         .cf-badge-circle {
-          width: 70px;
-          height: 70px;
+          width: 76px;
+          height: 76px;
           border-radius: 50%;
           background-color: #bd2426;
           display: flex;
@@ -223,20 +215,21 @@ export default function BlockPage() {
         /* Bottom Section */
         .cf-bottom-section {
           padding-top: 16px;
-          padding-bottom: 22px;
+          padding-bottom: 24px;
           flex: 0 0 auto;
         }
 
         .cf-tech-card {
-          background: #f8fafc;
+          background: #ffffff;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 12px 24px;
+          padding: 14px 28px;
           margin-bottom: 16px;
           display: grid;
-          grid-template-columns: 1.1fr 1.2fr 1.1fr 1.1fr;
-          gap: 16px;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 24px;
           align-items: center;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         }
 
         .cf-tech-label {
@@ -245,35 +238,20 @@ export default function BlockPage() {
           color: #64748b;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          margin-bottom: 3px;
+          margin-bottom: 4px;
         }
 
         .cf-tech-value {
           font-size: 13.5px;
           font-weight: 600;
-          color: #1e293b;
+          color: #0f172a;
         }
 
         .cf-tech-mono {
           font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
           font-size: 13px;
+          font-weight: 700;
           color: #0f172a;
-        }
-
-        .cf-threat-pill {
-          display: inline-block;
-          background-color: #fee2e2;
-          color: #dc2626;
-          border: 1px solid #fecdd3;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 10px;
-          border-radius: 9999px;
-          letter-spacing: 0.2px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 100%;
         }
 
         .cf-action-row {
@@ -288,9 +266,10 @@ export default function BlockPage() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          font-family: inherit;
           font-size: 13px;
           font-weight: 500;
-          padding: 8px 20px;
+          padding: 8.5px 22px;
           border-radius: 6px;
           text-decoration: none;
           cursor: pointer;
@@ -299,13 +278,13 @@ export default function BlockPage() {
         }
 
         .cf-btn-primary {
-          background-color: #0f172a;
+          background-color: #1e293b;
           color: #ffffff;
           box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
         }
 
         .cf-btn-primary:hover {
-          background-color: #1e293b;
+          background-color: #0f172a;
         }
 
         .cf-btn-secondary {
@@ -316,7 +295,7 @@ export default function BlockPage() {
         }
 
         .cf-btn-secondary:hover {
-          background-color: #f1f5f9;
+          background-color: #f8fafc;
           border-color: #94a3b8;
           color: #0f172a;
         }
@@ -381,7 +360,7 @@ export default function BlockPage() {
           <div className="cf-heading-wrap">
             <h1 className="cf-main-title">Access Restricted by Security Policy</h1>
             <p className="cf-main-subtitle">
-              Your connection to <span className="cf-site-host">{siteHost}</span> was intercepted by automated security protection.
+              Your connection to <strong className="cf-site-host">{siteHost}</strong> was intercepted by automated security protection.
             </p>
           </div>
           <div className="cf-explainer-grid">
@@ -403,45 +382,41 @@ export default function BlockPage() {
 
       {/* Center Mockup Banner */}
       <section className="cf-mockup-section">
-        <div className="cf-browser-mockup">
-          <div className="cf-browser-header" aria-hidden="true">
-            <span className="cf-browser-dot"></span>
-            <span className="cf-browser-dot"></span>
-            <span className="cf-browser-dot"></span>
-            <span className="cf-browser-address-bar">https://{siteHost}</span>
-          </div>
-          <div className="cf-browser-body">
-            <div className="cf-badge-circle" role="img" aria-label="Access Blocked">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+        <div className="cf-content-wrap" style={{ padding: 0 }}>
+          <div className="cf-browser-mockup">
+            <div className="cf-browser-header" aria-hidden="true">
+              <span className="cf-browser-dot"></span>
+              <span className="cf-browser-dot"></span>
+              <span className="cf-browser-dot"></span>
+              <span className="cf-browser-address-bar"></span>
+            </div>
+            <div className="cf-browser-body">
+              <div className="cf-badge-circle" role="img" aria-label="Access Blocked">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Bottom Technical Section & Buttons */}
+      {/* Bottom Technical Section: Card & Buttons */}
       <footer className="cf-bottom-section">
         <div className="cf-content-wrap">
           <div className="cf-tech-card">
             <div>
-              <div className="cf-tech-label">Client IP Address</div>
+              <div className="cf-tech-label">CLIENT IP ADDRESS</div>
               <div className="cf-tech-value cf-tech-mono">{clientIp}</div>
             </div>
             <div>
-              <div className="cf-tech-label">Incident Reference ID</div>
+              <div className="cf-tech-label">INCIDENT REFERENCE ID</div>
               <div className="cf-tech-value cf-tech-mono">{referenceId}</div>
             </div>
             <div>
-              <div className="cf-tech-label">Timestamp (UTC)</div>
+              <div className="cf-tech-label">TIMESTAMP (UTC)</div>
               <div className="cf-tech-value">{timestamp}</div>
-            </div>
-            <div>
-              <div className="cf-tech-label">Security Classification</div>
-              <div>
-                <span className="cf-threat-pill">{attackType}</span>
-              </div>
             </div>
           </div>
 
@@ -453,7 +428,7 @@ export default function BlockPage() {
               {copied ? 'Copied!' : 'Copy Reference ID'}
             </button>
             <button type="button" className="cf-btn cf-btn-secondary" onClick={() => setReportModalOpen(true)}>
-              Contact Administrator
+              Email Administrator
             </button>
           </div>
         </div>

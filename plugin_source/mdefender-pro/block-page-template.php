@@ -102,11 +102,7 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
             --text-body: #334155;
             --text-sub: #475569;
             --text-muted: #64748b;
-            --color-alert: #dc2626;
-            --color-badge-bg: #fee2e2;
-            --color-badge-text: #dc2626;
-            --color-badge-border: #fecdd3;
-            --border-banner: #e2e8f0;
+            --border-banner: #e0e0e0;
             --border-btn: #cbd5e1;
             --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -142,18 +138,17 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
             box-sizing: border-box;
         }
 
-        /* Wide Content Wrap (No awkward empty margins) */
         .content-wrap {
-            max-width: 1140px;
+            max-width: 820px;
             width: 100%;
             margin: 0 auto;
-            padding: 0 32px;
+            padding: 0 20px;
             box-sizing: border-box;
         }
 
-        /* Top Header + Two Columns */
+        /* Top Section: Heading + Explainer Grid */
         .top-section {
-            padding-top: 26px;
+            padding-top: 28px;
             padding-bottom: 16px;
             flex: 0 0 auto;
         }
@@ -163,16 +158,16 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .main-title {
-            font-size: 26px;
+            font-size: 27px;
             font-weight: 600;
             color: var(--text-heading);
-            margin: 0 0 4px 0;
+            margin: 0 0 5px 0;
             letter-spacing: -0.015em;
             line-height: 1.25;
         }
 
         .main-subtitle {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 400;
             color: var(--text-muted);
             margin: 0;
@@ -186,7 +181,7 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         .explainer-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 48px;
+            gap: 40px;
         }
 
         .explainer-col h2 {
@@ -198,7 +193,7 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .explainer-col p {
-            font-size: 13.5px;
+            font-size: 13px;
             line-height: 1.6;
             color: var(--text-sub);
             margin: 0;
@@ -208,9 +203,9 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         .mockup-section {
             width: 100%;
             background-color: var(--bg-banner);
-            border-top: 1px solid #e0e0e0;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 22px 24px;
+            border-top: 1px solid var(--border-banner);
+            border-bottom: 1px solid var(--border-banner);
+            padding: 24px 0;
             box-sizing: border-box;
             display: flex;
             justify-content: center;
@@ -220,8 +215,9 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .browser-mockup {
-            max-width: 800px;
+            max-width: 780px;
             width: 100%;
+            margin: 0 auto;
             background: #ffffff;
             border-radius: 8px;
             box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
@@ -252,21 +248,12 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
             background: rgba(255, 255, 255, 0.28);
             height: 18px;
             border-radius: 3px;
-            padding: 0 12px;
-            display: flex;
-            align-items: center;
-            font-family: var(--font-mono);
-            font-size: 11.5px;
-            color: #f8fafc;
-            width: 48%;
-            max-width: 260px;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+            width: 45%;
+            max-width: 240px;
         }
 
         .browser-body {
-            height: 155px;
+            height: 175px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -274,8 +261,8 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .block-badge-circle {
-            width: 70px;
-            height: 70px;
+            width: 76px;
+            height: 76px;
             border-radius: 50%;
             background-color: #bd2426;
             display: flex;
@@ -285,31 +272,32 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .block-badge-circle svg {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             stroke: #ffffff;
-            stroke-width: 3.4;
+            stroke-width: 3.5;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
 
-        /* Bottom Technical Section & Buttons */
+        /* Bottom Section: Technical Details Card & Action Buttons */
         .bottom-section {
             padding-top: 16px;
-            padding-bottom: 22px;
+            padding-bottom: 24px;
             flex: 0 0 auto;
         }
 
         .tech-card {
-            background: #f8fafc;
+            background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 12px 24px;
+            padding: 14px 28px;
             margin-bottom: 16px;
             display: grid;
-            grid-template-columns: 1.1fr 1.2fr 1.1fr 1.1fr;
-            gap: 16px;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
             align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         }
 
         .tech-item-label {
@@ -318,35 +306,20 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
 
         .tech-item-value {
             font-size: 13.5px;
             font-weight: 600;
-            color: #1e293b;
+            color: #0f172a;
         }
 
         .tech-item-mono {
             font-family: var(--font-mono);
             font-size: 13px;
+            font-weight: 700;
             color: #0f172a;
-        }
-
-        .threat-pill {
-            display: inline-block;
-            background-color: var(--color-badge-bg);
-            color: var(--color-badge-text);
-            border: 1px solid var(--color-badge-border);
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 10px;
-            border-radius: 9999px;
-            letter-spacing: 0.2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
         }
 
         /* Action Buttons Row */
@@ -365,7 +338,7 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
             font-family: var(--font-family);
             font-size: 13px;
             font-weight: 500;
-            padding: 8px 20px;
+            padding: 8.5px 22px;
             border-radius: 6px;
             text-decoration: none;
             cursor: pointer;
@@ -374,13 +347,13 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .btn-primary {
-            background-color: #0f172a;
+            background-color: #1e293b;
             color: #ffffff;
             box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
         }
 
         .btn-primary:hover {
-            background-color: #1e293b;
+            background-color: #0f172a;
         }
 
         .btn-secondary {
@@ -391,7 +364,7 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
         }
 
         .btn-secondary:hover {
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             border-color: #94a3b8;
             color: #0f172a;
         }
@@ -420,7 +393,7 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
             <div class="content-wrap">
                 <div class="main-heading-wrap">
                     <h1 class="main-title">Access Restricted by Security Policy</h1>
-                    <p class="main-subtitle">Your connection to <span class="site-host"><?php echo esc_html($site_host); ?></span> was intercepted by automated security protection.</p>
+                    <p class="main-subtitle">Your connection to <strong class="site-host"><?php echo esc_html($site_host); ?></strong> was intercepted by automated security protection.</p>
                 </div>
                 <div class="explainer-grid">
                     <div class="explainer-col">
@@ -437,45 +410,41 @@ $home_url = function_exists('home_url') ? home_url('/') : '/';
 
         <!-- Center Full-Width Gray Mockup Banner -->
         <section class="mockup-section">
-            <div class="browser-mockup">
-                <div class="browser-header" aria-hidden="true">
-                    <span class="browser-dot"></span>
-                    <span class="browser-dot"></span>
-                    <span class="browser-dot"></span>
-                    <span class="browser-address-bar">https://<?php echo esc_html($site_host); ?></span>
-                </div>
-                <div class="browser-body">
-                    <div class="block-badge-circle" role="img" aria-label="Access Blocked">
-                        <svg viewBox="0 0 24 24" fill="none">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
+            <div class="content-wrap" style="padding: 0;">
+                <div class="browser-mockup">
+                    <div class="browser-header" aria-hidden="true">
+                        <span class="browser-dot"></span>
+                        <span class="browser-dot"></span>
+                        <span class="browser-dot"></span>
+                        <span class="browser-address-bar"></span>
+                    </div>
+                    <div class="browser-body">
+                        <div class="block-badge-circle" role="img" aria-label="Access Blocked">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Bottom Technical Section & Buttons -->
+        <!-- Bottom Technical Section: Card & Action Buttons -->
         <footer class="bottom-section">
             <div class="content-wrap">
                 <div class="tech-card">
                     <div>
-                        <div class="tech-item-label">Client IP Address</div>
+                        <div class="tech-item-label">CLIENT IP ADDRESS</div>
                         <div class="tech-item-value tech-item-mono"><?php echo esc_html($client_ip); ?></div>
                     </div>
                     <div>
-                        <div class="tech-item-label">Incident Reference ID</div>
+                        <div class="tech-item-label">INCIDENT REFERENCE ID</div>
                         <div class="tech-item-value tech-item-mono" id="refIdText"><?php echo esc_html($reference_id); ?></div>
                     </div>
                     <div>
-                        <div class="tech-item-label">Timestamp (UTC)</div>
+                        <div class="tech-item-label">TIMESTAMP (UTC)</div>
                         <div class="tech-item-value"><?php echo esc_html($utc_timestamp); ?></div>
-                    </div>
-                    <div>
-                        <div class="tech-item-label">Security Classification</div>
-                        <div>
-                            <span class="threat-pill"><?php echo esc_html($rule_name ?: $attack_type); ?></span>
-                        </div>
                     </div>
                 </div>
 
