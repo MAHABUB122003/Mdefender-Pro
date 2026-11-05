@@ -121,4 +121,41 @@ async def run_broken_links_scan(
     report = monitoring_svc.scan_broken_links(website, max_links=body.max_links)
     return success(report)
 
+class CreateRedirectRequest(BaseModel):
+    source_url: str = Field(..., description="Broken or dead source URL/path to redirect from")
+    target_url: str = Field("/", description="Target destination URL/path to redirect to")
+    redirect_code: int = Field(301, description="HTTP redirect code: 301, 302, 307, or 308")
+
+
+@router.get("/{website_id}/telemetry")
+async def get_website_telemetry(website_id: str, user=Depends(get_current_user)):
+    """Retrieve real WordPress runtime diagnostics (PHP memory, MySQL version, OPcache)."""
+    website = get_owned_website(user, website_id)
+    data = monitoring_svc.get_origin_runtime_telemetry(website)
+    return success(data)
+
+
+@router.post("/{website_id}/redirects")
+async def create_website_redirect(
+    website_id: str,
+    body: CreateRedirectRequest,
+    user=Depends(get_current_user)
+):
+    """Push a 1-click self-healing 301/302 redirect rule to the origin WordPress site."""
+    website = get_owned_website(user, website_id)
+    res = monitoring_svc.create_seo_redirect(
+        website,
+        source_url=body.source_url,
+        target_url=body.target_url,
+        redirect_code=body.redirect_code
+    )
+    return success(res)
+
+
+@router.get("/{website_id}/redirects")
+async def list_website_redirects(website_id: str, user=Depends(get_current_user)):
+    """List all active SEO redirect rules configured on the origin site."""
+    website = get_owned_website(user, website_id)
+    data = monitoring_svc.get_seo_redirects(website)
+    return success(data)
 

@@ -654,6 +654,13 @@ export const api = {
   getWebsiteSslMonitoring: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl`),
   probeWebsiteSsl: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/ssl/probe`, { method: 'POST' }),
   getWebsiteIncidents: (websiteId, limit = 15) => apiCall(`/api/v1/monitoring/${websiteId}/incidents?limit=${limit}`),
+  getWebsiteTelemetry: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/telemetry`),
+  createWebsiteRedirect: (websiteId, sourceUrl, targetUrl = '/', redirectCode = 301) =>
+    apiCall(`/api/v1/monitoring/${websiteId}/redirects`, {
+      method: 'POST',
+      body: JSON.stringify({ source_url: sourceUrl, target_url: targetUrl, redirect_code: redirectCode })
+    }),
+  getWebsiteRedirects: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/redirects`),
   getBrokenLinksScan: (websiteId) => apiCall(`/api/v1/monitoring/${websiteId}/broken-links`),
   runBrokenLinksScan: (websiteId, maxLinks = 100) => apiCall(`/api/v1/monitoring/${websiteId}/broken-links/scan`, { method: 'POST', body: JSON.stringify({ max_links: maxLinks }) }),
 

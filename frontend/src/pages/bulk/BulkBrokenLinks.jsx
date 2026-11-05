@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Link2,
+  CornerDownRight,
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
@@ -26,6 +27,9 @@ export default function BulkBrokenLinks() {
   const [filterMode, setFilterMode] = useState('broken') // 'all' | 'broken' | 'redirects' | 'clean'
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedUrl, setCopiedUrl] = useState(null)
+  const [redirectModal, setRedirectModal] = useState({ open: false, link: null, targetUrl: '/', code: 301, loading: false })
+  const [fixedRedirects, setFixedRedirects] = useState({}) // { [target_url]: target_destination }
+
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (text, isError = false) => {
@@ -116,6 +120,29 @@ export default function BulkBrokenLinks() {
     }
     return list
   }, [allLinksList, filterMode, searchQuery])
+
+    // 1-Click Self-Healing 301 Redirect Dispatcher
+  const handlePushRedirect = async () => {
+    if (!redirectModal.link || !primarySiteId) return
+    const srcUrl = redirectModal.link.target_url
+    const destUrl = redirectModal.targetUrl.trim() || '/'
+    setRedirectModal(prev => ({ ...prev, loading: true }))
+    try {
+      const res = await api.createWebsiteRedirect(primarySiteId, srcUrl, destUrl, redirectModal.code)
+      const data = res?.data || res
+      if (data?.success !== false) {
+        setFixedRedirects(prev => ({ ...prev, [srcUrl]: destUrl }))
+        showToast(`✓ Permanent 301 redirect created: ${srcUrl} -> ${destUrl}`)
+        setRedirectModal({ open: false, link: null, targetUrl: '/', code: 301, loading: false })
+      } else {
+        showToast(data?.message || 'Failed to create redirect on origin.', true)
+        setRedirectModal(prev => ({ ...prev, loading: false }))
+      }
+    } catch (err) {
+      showToast(`Redirect failed: ${err.message}`, true)
+      setRedirectModal(prev => ({ ...prev, loading: false }))
+    }
+  }
 
   const handleCopy = (url) => {
     copyToClipboard(url)
@@ -421,6 +448,32 @@ export default function BulkBrokenLinks() {
                     </td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        {fixedRedirects[link.target_url] ? (
+                          <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>
+                            ✓ 301 Fixed ({fixedRedirects[link.target_url]})
+                          </span>
+                        ) : (link.status_code === 404 || link.status_code === 410 || link.status_code === 0 || link.status_code >= 500) ? (
+                          <button
+                            onClick={() => setRedirectModal({ open: true, link, targetUrl: '/', code: 301, loading: false })}
+                            style={{
+                              background: '#0B2522',
+                              color: '#FFFFFF',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '5px 10px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontSize: '11.5px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            <CornerDownRight size={12} />
+                            <span>Fix with 301</span>
+                          </button>
+                        ) : null}
+
                         <button
                           onClick={() => handleCopy(link.target_url)}
                           title="Copy Link"
@@ -466,6 +519,129 @@ export default function BulkBrokenLinks() {
           </div>
         )}
       </div>
+
+      {/* 1-CLICK SELF-HEALING 301 REDIRECT MODAL */}
+      {redirectModal.open && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(11, 37, 34, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '560px',
+            width: '100%',
+            padding: '26px 28px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            border: '1px solid #E2E8F0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#F0FDF4', color: '#15803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CornerDownRight size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
+                    1-Click SEO Self-Healing Redirect
+                  </h3>
+                  <div style={{ fontSize: '12.5px', color: '#64748B' }}>
+                    Push permanent 301 redirect directly to connected WordPress origin
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setRedirectModal({ open: false, link: null, targetUrl: '/', code: 301, loading: false })}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748B' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: '#991B1B', textTransform: 'uppercase', marginBottom: '4px' }}>
+                Broken Source URL (HTTP {redirectModal.link?.status_code || 404})
+              </div>
+              <div style={{ fontSize: '13px', color: '#0F172A', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                {redirectModal.link?.target_url}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                Redirect Destination Path or URL:
+              </label>
+              <input
+                type="text"
+                value={redirectModal.targetUrl}
+                onChange={(e) => setRedirectModal(prev => ({ ...prev, targetUrl: e.target.value }))}
+                placeholder="/ or /shop or https://..."
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #CBD5E1',
+                  fontSize: '13px',
+                  outline: 'none',
+                  fontFamily: 'monospace'
+                }}
+              />
+              <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>
+                Visitors and search engine crawlers accessing this broken link will be forwarded with HTTP 301.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setRedirectModal({ open: false, link: null, targetUrl: '/', code: 301, loading: false })}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePushRedirect}
+                disabled={redirectModal.loading}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  background: '#0B2522',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: redirectModal.loading ? 'not-allowed' : 'pointer',
+                  opacity: redirectModal.loading ? 0.7 : 1
+                }}
+              >
+                {redirectModal.loading ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CornerDownRight size={14} />}
+                <span>{redirectModal.loading ? 'Pushing to WordPress...' : 'Enforce 301 Redirect'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

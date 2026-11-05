@@ -2378,6 +2378,83 @@ function waf_fw_handle_cloud_sync_webhook() {
                     'rotated_at' => current_time('mysql'),
                     'message' => 'Cryptographic security keys & salts rotated successfully with zero downtime. Old sessions invalidated.'
                 ];
+                        } elseif ($action === 'get_origin_runtime_telemetry') {
+                global $wpdb;
+                $mem_usage = memory_get_usage(true);
+                $mem_peak = memory_get_peak_usage(true);
+                $mem_limit = ini_get('memory_limit') ?: '256M';
+                
+                // Calculate database size
+                $db_size_bytes = 0;
+                try {
+                    $tables = $wpdb->get_results("SHOW TABLE STATUS", ARRAY_A);
+                    if ($tables) {
+                        foreach ($tables as $t) {
+                            $db_size_bytes += ($t['Data_length'] ?? 0) + ($t['Index_length'] ?? 0);
+                        }
+                    }
+                } catch (Exception $e) {}
+
+                $opcache_on = false;
+                if (function_exists('opcache_get_status')) {
+                    $op_status = @opcache_get_status(false);
+                    $opcache_on = !empty($op_status['opcache_enabled']);
+                }
+
+                $redirects = (array) get_option('waf_seo_redirects', []);
+
+                $action_result = [
+                    'success' => true,
+                    'php_version' => PHP_VERSION,
+                    'php_memory_usage' => size_format($mem_usage),
+                    'php_memory_usage_bytes' => $mem_usage,
+                    'php_memory_peak' => size_format($mem_peak),
+                    'php_memory_peak_bytes' => $mem_peak,
+                    'php_memory_limit' => $mem_limit,
+                    'php_max_execution_time' => (int) ini_get('max_execution_time'),
+                    'mysql_version' => $wpdb ? $wpdb->db_version() : 'Unknown',
+                    'db_size_mb' => round($db_size_bytes / (1024 * 1024), 2),
+                    'object_cache_active' => function_exists('wp_using_ext_object_cache') ? wp_using_ext_object_cache() : false,
+                    'opcache_active' => $opcache_on,
+                    'active_plugins_count' => count((array) get_option('active_plugins', [])),
+                    'active_redirects_count' => count($redirects),
+                    'wp_debug' => defined('WP_DEBUG') && WP_DEBUG,
+                    'timestamp' => current_time('mysql')
+                ];
+            } elseif ($action === 'create_seo_redirect') {
+                $source = sanitize_text_field($_REQUEST['source_url'] ?? $pushed_data['source_url'] ?? '');
+                $target = sanitize_text_field($_REQUEST['target_url'] ?? $pushed_data['target_url'] ?? '/');
+                $status_code = (int) ($_REQUEST['redirect_code'] ?? $pushed_data['redirect_code'] ?? 301);
+                if (!in_array($status_code, [301, 302, 307, 308])) $status_code = 301;
+
+                if (!empty($source)) {
+                    $source_path = parse_url($source, PHP_URL_PATH) ?: $source;
+                    $redirects = (array) get_option('waf_seo_redirects', []);
+                    $redirects[$source_path] = [
+                        'source' => $source_path,
+                        'target' => $target,
+                        'code' => $status_code,
+                        'created_at' => current_time('mysql'),
+                        'hits' => 0
+                    ];
+                    update_option('waf_seo_redirects', $redirects);
+
+                    $action_result = [
+                        'success' => true,
+                        'message' => "Permanent {$status_code} redirect created successfully for: {$source_path} -> {$target}",
+                        'redirect' => $redirects[$source_path],
+                        'total_redirects' => count($redirects)
+                    ];
+                } else {
+                    $action_result = ['success' => false, 'message' => 'Missing source_url parameter.'];
+                }
+            } elseif ($action === 'get_seo_redirects') {
+                $redirects = (array) get_option('waf_seo_redirects', []);
+                $action_result = [
+                    'success' => true,
+                    'redirects' => array_values($redirects),
+                    'total' => count($redirects)
+                ];
             } elseif ($action === 'rollback_hardening') {
                 $hardener = class_exists('WAF_FW_Website_Hardening') ? WAF_FW_Website_Hardening::instance() : null;
                 $snapshots = (array) get_option('waf_harden_safety_snapshots', []);
@@ -2890,6 +2967,24 @@ function waf_fw_handle_cloud_sync_webhook() {
         }
     }
 }
+// MDefender Pro Autonomous 301/302 Redirect Sentinel
+add_action('template_redirect', function() {
+    $redirects = get_option('waf_seo_redirects', []);
+    if (empty($redirects) || !is_array($redirects)) return;
+    $curr_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    if (!$curr_path) return;
+    $curr_path = rtrim($curr_path, '/');
+    foreach ($redirects as $src => $data) {
+        $clean_src = rtrim($src, '/');
+        if (!empty($clean_src) && ($curr_path === $clean_src || substr($curr_path, -strlen($clean_src)) === $clean_src)) {
+            $target = $data['target'] ?? '/';
+            $code = (int) ($data['code'] ?? 301);
+            wp_redirect($target, $code);
+            exit;
+        }
+    }
+}, 1);
+
 add_action('init', 'waf_fw_handle_cloud_sync_webhook', 1);
 
 add_action('rest_api_init', function() {
