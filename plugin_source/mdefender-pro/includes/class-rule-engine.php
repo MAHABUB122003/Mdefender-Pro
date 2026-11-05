@@ -58,7 +58,7 @@ class WAF_FW_Rule_Engine {
             ['name' => 'XSS - Exfiltration & Context Hijacking', 'pattern' => '/(?:document\.(?:cookie|location|domain)|window\.(?:localStorage|sessionStorage|location)|fetch\s*\(\s*[\'"]https?:\/\/|btoa\s*\(\s*document\.)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 3. Local & Remote File Inclusion & Sensitive Path Protection
-            ['name' => 'LFI - Directory Traversal', 'pattern' => '#(?:\.{2,}[\/\\\\;]{1,}){1,}#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'LFI - Directory Traversal', 'pattern' => '#(?:\.{2,}[\/\\\\;])|(?:[\/\\\\;]\.{2,})#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'LFI - Sensitive Files', 'pattern' => '#(?:\/etc\/(?:passwd|shadow|hosts|group|issue))|(?:c:[\/\\\\]windows[\/\\\\]win\.ini)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'LFI - PHP Wrappers', 'pattern' => '/(?:php:\/\/(?:filter|input|memory|data)|data:\/\/text\/plain|file:\/\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
@@ -73,8 +73,18 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Reverse Shell - Multi-Language Network Connectors', 'pattern' => '/(?:\b(?:python\d*|perl|ruby|lua|awk|php)\s+-(?:[a-zA-Z]*[cMe])\s*[\'"][\s\S]{0,100}?(?:socket|pty\.spawn|TCPSocket|inet\/tcp|\/bin\/sh|\/bin\/bash|exec|system)|(?:nc|ncat|socat|netcat)\b[\s\S]{0,30}?(?:-[a-zA-Z]*e\b|-c\s+bash|\/bin\/sh|\/bin\/bash|\d{2,5}\s+-e)|(?:mkfifo\s+[\/\w]+|dev\/tcp\/|dev\/udp\/|inet\/tcp\/|TCPSocket\.open|Runtime\.getRuntime\(\)|p\.waitFor\(\)))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Privilege Escalation & Tool Execution', 'pattern' => '/(?:\b(?:linpeas\.sh|winpeas|chisel|mimikatz|pspy|socat)\b|(?:\/bin\/bash\s+-p|\/bin\/sh\s+-i|sudo\s+-(?:l|u\s+root)|whoami|id[\s;\|&`]|uname\s+-a)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'WebShell & PHP Stagers', 'pattern' => '/(?:\b(?:fsockopen|proc_open|popen)\s*\([\s\S]{0,50}?(?:\$ip|\$port|\/bin\/sh|\/bin\/bash|cmd\.exe)|\$shell\s*=\s*[\'"][^\'"]*?(?:id|whoami|\/bin\/sh)|<\?(?:php|=)[\s\S]{0,60}?(?:system|exec|passthru|shell_exec|eval|assert)\s*\(\s*\$_(?:GET|POST|REQUEST))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\||&&|;)\s*(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell)\b(?!\=)\s*(?:\|\||\||&&|;))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:(?:;|&&)\s*(?:ls|cat|id|whoami|ping|nc|bash|sh|cmd|powershell)\b(?!\=))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\||&&|;|\$|\$\()\s*(?:(?:\/usr)?\/bin\/)?(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell|timeout|sleep|ping)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell|timeout|sleep|ping)\b(?!\=)\s*(?:\|\||\||&&|;))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:(?:;|&&|\|\||\||\$|\$\()\s*(?:(?:\/usr)?\/bin\/)?(?:ls|cat|id|whoami|ping|sleep|timeout|nc|bash|sh|cmd|powershell)\b(?!\=))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            ['name' => 'Command Injection - Newline and Execution Delimiters', 'pattern' => '/(?:(?:^|[\r\n%0a`])\s*(?:(?:\/usr)?\/bin\/)?(?:cat|ls|id|whoami|ping|sleep|timeout|nc|bash|sh)\s+(?:\d+|[\/\w\-\.]+))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+
+            // 8. Framework RCE & Modern Container/JVM Exploitation
+            ['name' => 'Framework RCE - Spring4Shell & ClassLoader', 'pattern' => '/(?:\bclass\.classLoader\b|\bclassLoader\b|\.URLs\[|\.pipeline\.first)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Framework RCE - Apache Solr & Struts OGNL', 'pattern' => '/(?:%\{[^\}]*\}|\/solr\/(?:admin|update)|\/cores\?action=|\bmakeRO\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Privilege Escalation - Container Escape & Audit Tools', 'pattern' => '/(?:\b(?:docker\s+run|chroot\s+\/|sudoedit|getcap\s+-r|pwnkit|pspy\d*|lse\.sh|linpeas|winpeas)\b|\bfind\s+[^\s]+\s+-perm\s+-[0-9a-z]+|\bfind\s+[^\s]+\s+-u=s)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Dynamic PHP Variable Function Execution', 'pattern' => '/(?:\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$[a-zA-Z_\x7f-\xff])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Host Header Injection Vector', 'pattern' => '/(?:(?:^|[\r\n%0a%0d\s])Host\s*:\s*[a-zA-Z0-9\.\-]+\.[a-zA-Z]{2,})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Isolated System Command', 'pattern' => '#(?:(?:(?:^|[\r\n;&|`\$\(\!])\s*(?:(?:\/usr)?\/bin\/)?(?:id|whoami|uname)\b(?:\s*[\r\n;&|`\$\)\!]|\s+[\w\-\.\/]+|\s*$)))|(?:\/(?:usr\/)?bin\/(?:id|whoami|uname)\b)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 5. Server-Side Request Forgery & Template Injection
             ['name' => 'Path Traversal - Sensitive Files', 'pattern' => '#(?:\/(?:etc\/(?:passwd|shadow|issue|hosts|group)|var\/log\/|proc\/self\/environ|windows[\/\\\\]win\.ini)\b)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
@@ -93,7 +103,7 @@ class WAF_FW_Rule_Engine {
             ['name' => 'GraphQL Introspection Abuse', 'pattern' => '/(?:__schema\s*\{|__type\s*\(\s*name\s*:)/i', 'action' => 'block', 'severity' => 'medium', 'enabled' => true],
             ['name' => 'NoSQL Injection Extended', 'pattern' => '/(?:\[(?:[$]|%24)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)\])|(?:[\'\"\s](?:[$]|%24|%2524)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)[\'\"\s]*:)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'XML External Entity (XXE) Suite', 'pattern' => '/(?:<!ENTITY[\s%]+\w+[\s\S]{0,40}?(?:SYSTEM|PUBLIC)\s+[\'"][^\'"]+[\'"]|<!DOCTYPE\s*\w*\s*\[|&lol\d+;|<!ENTITY%)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?:\/\/[a-zA-Z0-9_\*]+(?:\[[^\"]+\])?)|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?<!:)(?:\/\/[a-zA-Z0-9_\*]+\[[^\]]+\])|(?:\/\/\*)|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'LDAP Injection', 'pattern' => '#(?:\(\s*[&|!]\s*\([a-zA-Z0-9_-]+[\*=\)])|(?:\*\)\s*\([a-zA-Z0-9_-]+=)|(?:\(%00|\(%2500)|(?:[\x00\s]*\)\s*\(&)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JWT None Algorithm & Tampering', 'pattern' => '/(?:eyJhbGciOiJub25lIiw|"alg"\s*:\s*"none")/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
@@ -142,10 +152,13 @@ class WAF_FW_Rule_Engine {
         if (!empty($data['query_params']) && is_array($data['query_params'])) {
             $combined .= ' ' . $this->flatten_values($data['query_params']);
         }
+        if (!empty($data['user_agent'])) {
+            $combined .= ' User-Agent: ' . $data['user_agent'];
+        }
                                 // Inspect custom headers and cookies for Burp Suite & API tampering
         if (!empty($data['headers']) && is_array($data['headers'])) {
             $safe_header_keys = [
-                'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
+                'host', 'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
                 'accept', 'accept-language', 'accept-encoding', 'connection',
                 'upgrade-insecure-requests', 'sec-fetch-dest',
                 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority',

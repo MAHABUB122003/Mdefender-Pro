@@ -46,10 +46,15 @@ class WAF_FW_Semantic_Deobfuscator {
         while ($depth < $max_depth) {
             $previous = $current;
 
-            // 1. URL decoding (handles %20, %27, %2527, %252527)
-            $decoded_url = rawurldecode($current);
-            if ($decoded_url !== $current) {
+            // 1. Recursive URL decoding (handles %20, %27, %2527, %252527, and deep nested encodings)
+            $url_passes = 0;
+            while (strpos($current, '%') !== false && $url_passes < 8) {
+                $decoded_url = rawurldecode($current);
+                if ($decoded_url === $current) {
+                    break;
+                }
                 $current = $decoded_url;
+                $url_passes++;
             }
 
             // 2. HTML Entity decoding (handles &#x27;, &#39;, &quot;, &lt;)
