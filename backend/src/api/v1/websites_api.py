@@ -10030,6 +10030,12 @@ class RemoteActionRequest(BaseModel):
 
 
     status: str | None = None
+    bulk_action: str | None = None
+    plugins: list | None = None
+    themes: list | None = None
+    enabled: bool | str | None = None
+    class Config:
+        extra = "allow" 
 
 
 
@@ -10168,6 +10174,77 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
                 t for t in cur_t
                 if not (target_tslug and (t.get("slug") == target_tslug or t.get("id") == target_tslug or target_tslug in (t.get("slug") or "")))
             ]
+        elif body.action == "toggle_auto_update":
+            is_enabled = bool(body.enabled) if body.enabled is not None else True
+            if body.type == "theme":
+                cur_t = list(ws.get("themes") or [])
+                for t in cur_t:
+                    ts = t.get("slug") or t.get("id") or ""
+                    if target_tslug and (ts == target_tslug or target_tslug in ts):
+                        t["auto_update"] = is_enabled
+                site_updates["themes"] = cur_t
+            else:
+                cur_p = list(ws.get("plugins") or [])
+                for p in cur_p:
+                    pf = p.get("file") or ""
+                    pi = p.get("id") or p.get("slug") or ""
+                    if (target_pfile and (pf == target_pfile or target_pfile in pf)) or (target_pid and (pi == target_pid or target_pid in pi)):
+                        p["auto_update"] = is_enabled
+                site_updates["plugins"] = cur_p
+        elif body.action == "bulk_plugins_action":
+            b_act = body.bulk_action or ""
+            target_list = body.plugins or []
+            cur_p = list(ws.get("plugins") or [])
+            if b_act == "activate":
+                for p in cur_p:
+                    if (p.get("file") in target_list) or (p.get("id") in target_list):
+                        p["status"] = "active"
+                site_updates["plugins"] = cur_p
+            elif b_act == "deactivate":
+                for p in cur_p:
+                    if (p.get("file") in target_list) or (p.get("id") in target_list):
+                        p["status"] = "inactive"
+                site_updates["plugins"] = cur_p
+            elif b_act == "delete":
+                site_updates["plugins"] = [
+                    p for p in cur_p
+                    if not (p.get("file") in target_list or p.get("id") in target_list)
+                ]
+            elif b_act in ("enable_auto_update", "disable_auto_update"):
+                is_on = (b_act == "enable_auto_update")
+                for p in cur_p:
+                    if (p.get("file") in target_list) or (p.get("id") in target_list):
+                        p["auto_update"] = is_on
+                site_updates["plugins"] = cur_p
+            elif b_act == "update":
+                for p in cur_p:
+                    if (p.get("file") in target_list) or (p.get("id") in target_list):
+                        p["update_available"] = False
+                        if p.get("new_version"):
+                            p["version"] = p["new_version"]
+                site_updates["plugins"] = cur_p
+        elif body.action == "bulk_themes_action":
+            b_act = body.bulk_action or ""
+            target_list = body.themes or []
+            cur_t = list(ws.get("themes") or [])
+            if b_act == "delete":
+                site_updates["themes"] = [
+                    t for t in cur_t
+                    if not (t.get("slug") in target_list or t.get("id") in target_list)
+                ]
+            elif b_act in ("enable_auto_update", "disable_auto_update"):
+                is_on = (b_act == "enable_auto_update")
+                for t in cur_t:
+                    if (t.get("slug") in target_list) or (t.get("id") in target_list):
+                        t["auto_update"] = is_on
+                site_updates["themes"] = cur_t
+            elif b_act == "update":
+                for t in cur_t:
+                    if (t.get("slug") in target_list) or (t.get("id") in target_list):
+                        t["update_available"] = False
+                        if t.get("new_version"):
+                            t["version"] = t["new_version"]
+                site_updates["themes"] = cur_t
 
         if site_updates:
             db.websites.update_one({"_id": ws["_id"]}, {"$set": site_updates})
@@ -10206,6 +10283,10 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
             url_params += f"&plugin_slug={p_s}&slug={p_s}"
         if getattr(body, "activate", None) is not None:
             url_params += f"&activate={1 if body.activate else 0}"
+        if getattr(body, "bulk_action", None):
+            url_params += f"&bulk_action={body.bulk_action}"
+        if getattr(body, "enabled", None) is not None:
+            url_params += f"&enabled={1 if body.enabled else 0}"
         if api_key:
             url_params += f"&api_key={api_key}"
         if site_token:

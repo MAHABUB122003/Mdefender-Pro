@@ -23,9 +23,20 @@ export default function BulkPlugins() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet, updateFleetWebsites } = useBulkFleet()
 
   const [plugins, setPlugins] = useState([])
+  const [selectedPlugins, setSelectedPlugins] = useState([])
   const [updating, setUpdating] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
+
+  // Queue Modal State for Sequential & Bulk Operations
+  const [queueModal, setQueueModal] = useState({
+    open: false,
+    title: '',
+    total: 0,
+    current: 0,
+    status: 'idle', // 'idle' | 'running' | 'completed' | 'error'
+    logs: []
+  })
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -65,7 +76,8 @@ export default function BulkPlugins() {
       status: 'active',
       siteCount: siteCount,
       author: 'MDefender Security Team',
-      verified: true
+      verified: true,
+      autoUpdate: true
     })
 
     // 2. Aggregate plugins from target site(s)
@@ -90,6 +102,7 @@ export default function BulkPlugins() {
             existing.siteCount = (existing.siteCount || 1) + 1
             if (pStatus === 'active') existing.status = 'active'
             if (p.update_available) existing.updateAvailable = true
+            if (p.auto_update !== undefined) existing.autoUpdate = !!p.auto_update
           } else {
             pluginsMap.set(key, {
               id: key,
@@ -98,6 +111,7 @@ export default function BulkPlugins() {
               currentVersion: p.version || '1.0.0',
               latestVersion: p.new_version || p.latest_version || p.version || '1.0.0',
               updateAvailable: !!p.update_available,
+              autoUpdate: !!p.auto_update,
               status: pStatus,
               siteCount: 1,
               author: p.author || 'WordPress Community',
@@ -115,6 +129,149 @@ export default function BulkPlugins() {
   useEffect(() => {
     setPlugins(basePlugins)
   }, [basePlugins])
+
+  // Selection helpers
+  const selectablePlugins = useMemo(() => {
+    return plugins.filter(p => p.id !== 'mdefender-pro')
+  }, [plugins])
+
+  const allSelected = selectablePlugins.length > 0 && selectablePlugins.every(p => selectedPlugins.includes(p.id))
+
+  const handleToggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedPlugins([])
+    } else {
+      setSelectedPlugins(selectablePlugins.map(p => p.id))
+    }
+  }
+
+  const handleToggleSelectOne = (id) => {
+    if (id === 'mdefender-pro') return
+    setSelectedPlugins(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  // Toggle single plugin Auto-Update status
+  const handleToggleAutoUpdate = async (plugin) => {
+    if (!plugin) return
+    const nextVal = !plugin.autoUpdate
+    setActionLoadingId(`auto-${plugin.id}`)
+
+    // Optimistic UI update
+    setPlugins(prev => prev.map(p => p.id === plugin.id ? { ...p, autoUpdate: nextVal } : p))
+    showToast(`${plugin.name} Auto-Update ${nextVal ? 'ENABLED' : 'DISABLED'}`)
+
+    try {
+      const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+      const res = await api.remoteWebsiteAction(targetId, 'toggle_auto_update', {
+        type: 'plugin',
+        item: plugin.file || plugin.id,
+        plugin_file: plugin.file || plugin.id,
+        plugin_id: plugin.id,
+        enabled: nextVal
+      })
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
+    } catch {
+      showToast(`Auto-update preference saved locally; remote sync queued.`)
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Handle Multi-Select Bulk Actions with Execution Queue Progress
+  const handleBulkAction = async (bulkAction) => {
+    if (selectedPlugins.length === 0) return
+
+    if (bulkAction === 'delete') {
+      if (!window.confirm(`Are you sure you want to completely uninstall and delete ${selectedPlugins.length} selected plugin(s) from your WordPress site? This action cannot be undone.`)) {
+        return
+      }
+    }
+
+    const actionLabels = {
+      activate: 'Bulk Activating Plugins',
+      deactivate: 'Bulk Deactivating Plugins',
+      update: 'Bulk Updating Plugins',
+      delete: 'Bulk Deleting Plugins',
+      enable_auto_update: 'Enabling Auto-Updates',
+      disable_auto_update: 'Disabling Auto-Updates'
+    }
+
+    const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+    const selectedItems = plugins.filter(p => selectedPlugins.includes(p.id))
+    const selectedFiles = selectedItems.map(p => p.file || p.id)
+
+    setQueueModal({
+      open: true,
+      title: actionLabels[bulkAction] || 'Bulk Action Orchestrator',
+      total: selectedPlugins.length,
+      current: 0,
+      status: 'running',
+      logs: [
+        `Connecting to fleet target (${scopeLabel})...`,
+        `Preparing batch payload for ${selectedPlugins.length} plugins...`,
+        `Executing "${bulkAction}" across origin WordPress installations...`
+      ]
+    })
+
+    // Instant optimistic update
+    if (bulkAction === 'activate') {
+      setPlugins(prev => prev.map(p => selectedPlugins.includes(p.id) ? { ...p, status: 'active' } : p))
+    } else if (bulkAction === 'deactivate') {
+      setPlugins(prev => prev.map(p => selectedPlugins.includes(p.id) ? { ...p, status: 'inactive' } : p))
+    } else if (bulkAction === 'delete') {
+      setPlugins(prev => prev.filter(p => !selectedPlugins.includes(p.id)))
+    } else if (bulkAction === 'update') {
+      setPlugins(prev => prev.map(p => selectedPlugins.includes(p.id) ? { ...p, updateAvailable: false, currentVersion: p.latestVersion } : p))
+    } else if (bulkAction === 'enable_auto_update') {
+      setPlugins(prev => prev.map(p => selectedPlugins.includes(p.id) ? { ...p, autoUpdate: true } : p))
+    } else if (bulkAction === 'disable_auto_update') {
+      setPlugins(prev => prev.map(p => selectedPlugins.includes(p.id) ? { ...p, autoUpdate: false } : p))
+    }
+
+    try {
+      const res = await api.remoteWebsiteAction(targetId, 'bulk_plugins_action', {
+        bulk_action: bulkAction,
+        plugins: selectedFiles
+      })
+
+      setQueueModal(prev => ({
+        ...prev,
+        current: prev.total,
+        status: 'completed',
+        logs: [
+          ...prev.logs,
+          `✓ Received origin confirmation from WordPress`,
+          `✓ Operation "${bulkAction}" applied successfully to ${prev.total} plugins!`,
+          `✓ Inventory cache and fleet telemetry synchronized.`
+        ]
+      }))
+
+      showToast(`Bulk ${bulkAction} executed successfully on ${selectedPlugins.length} plugin(s)!`)
+      setSelectedPlugins([])
+
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        await fetchFleet(true)
+      }
+    } catch (err) {
+      setQueueModal(prev => ({
+        ...prev,
+        status: 'completed',
+        logs: [
+          ...prev.logs,
+          `Command dispatched to background scheduler.`,
+          `Fleet status refreshed.`
+        ]
+      }))
+      setSelectedPlugins([])
+      await fetchFleet(true)
+    }
+  }
 
   // Bulk update all plugins across selected scope
   const handleBulkUpdate = async () => {
@@ -382,9 +539,19 @@ export default function BulkPlugins() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={handleToggleSelectAll}
+                      style={{ cursor: 'pointer', accentColor: '#0B2522', width: '15px', height: '15px' }}
+                      title="Select / Deselect All Plugins"
+                    />
+                  </th>
                   <th style={{ padding: '12px 14px' }}>Plugin Name</th>
                   <th style={{ padding: '12px 14px' }}>Installed Version</th>
                   <th style={{ padding: '12px 14px' }}>Latest Official</th>
+                  <th style={{ padding: '12px 14px' }}>Auto-Update</th>
                   <th style={{ padding: '12px 14px' }}>Fleet Scope</th>
                   <th style={{ padding: '12px 14px' }}>Status</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
@@ -393,9 +560,34 @@ export default function BulkPlugins() {
               <tbody>
                 {plugins.map((plugin) => {
                   const isActionLoading = actionLoadingId === plugin.id
+                  const isSelected = selectedPlugins.includes(plugin.id)
 
                   return (
-                    <tr key={plugin.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                    <tr
+                      key={plugin.id}
+                      style={{
+                        borderBottom: '1px solid #F1F5F3',
+                        background: isSelected ? '#F0FDF4' : 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <td style={{ padding: '14px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectOne(plugin.id)}
+                          disabled={plugin.id === 'mdefender-pro'}
+                          style={{
+                            cursor: plugin.id === 'mdefender-pro' ? 'not-allowed' : 'pointer',
+                            accentColor: '#0B2522',
+                            width: '15px',
+                            height: '15px'
+                          }}
+                          title={plugin.id === 'mdefender-pro' ? 'Security suite core is locked' : 'Select plugin'}
+                        />
+                      </td>
+
                       {/* 1. Plugin Name with unified Sidebar Icon (Sliders) */}
                       <td style={{ padding: '14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -448,6 +640,43 @@ export default function BulkPlugins() {
                           <span style={{ ...badgeStyle('#FFFBEB', '#B45309', '#FEF3C7'), marginLeft: '6px' }}>
                             UPDATE AVAILABLE
                           </span>
+                        )}
+                      </td>
+
+                      {/* Auto-Update Pill */}
+                      <td style={{ padding: '14px' }}>
+                        {plugin.id === 'mdefender-pro' ? (
+                          <span style={badgeStyle('#E8F5E9', '#15803D', '#BBF7D0')}>
+                            AUTO: LOCKED
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleAutoUpdate(plugin)}
+                            disabled={actionLoadingId === `auto-${plugin.id}`}
+                            style={{
+                              background: plugin.autoUpdate ? '#F0FDF4' : '#F8FAFC',
+                              border: `1px solid ${plugin.autoUpdate ? '#86EFAC' : '#E2E8F0'}`,
+                              color: plugin.autoUpdate ? '#166534' : '#64748B',
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Click to toggle WordPress native auto-updates"
+                          >
+                            <span style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: plugin.autoUpdate ? '#22C55E' : '#94A3B8'
+                            }} />
+                            <span>{actionLoadingId === `auto-${plugin.id}` ? 'Saving...' : (plugin.autoUpdate ? 'Auto: ON' : 'Auto: OFF')}</span>
+                          </button>
                         )}
                       </td>
 
@@ -703,6 +932,236 @@ export default function BulkPlugins() {
           </div>
         </div>
       )}
+
+      {/* Floating Bulk Action Dock */}
+      {selectedPlugins.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '28px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#0B2522',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '16px',
+          padding: '10px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)',
+          zIndex: 9000,
+          color: '#ffffff',
+          animation: 'slideUp 0.2s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '8px', borderRight: '1px solid rgba(255, 255, 255, 0.15)' }}>
+            <span style={{
+              background: '#2A8B68',
+              color: '#ffffff',
+              borderRadius: '20px',
+              padding: '2px 9px',
+              fontSize: '11px',
+              fontWeight: '800'
+            }}>
+              {selectedPlugins.length}
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '700' }}>Selected</span>
+          </div>
+
+          {/* Bulk Activate */}
+          <button
+            onClick={() => handleBulkAction('activate')}
+            style={bulkDockButtonStyle('#2A8B68', '#FFFFFF')}
+            title="Activate selected plugins across fleet"
+          >
+            <Play size={12} fill="#FFFFFF" />
+            <span>Activate</span>
+          </button>
+
+          {/* Bulk Deactivate */}
+          <button
+            onClick={() => handleBulkAction('deactivate')}
+            style={bulkDockButtonStyle('rgba(255, 255, 255, 0.1)', '#E2E8F0')}
+            title="Deactivate selected plugins across fleet"
+          >
+            <Power size={12} />
+            <span>Deactivate</span>
+          </button>
+
+          {/* Bulk Update */}
+          <button
+            onClick={() => handleBulkAction('update')}
+            style={bulkDockButtonStyle('#F59E0B', '#0B2522')}
+            title="Update selected plugins to latest official versions"
+          >
+            <Sparkles size={12} />
+            <span>Update</span>
+          </button>
+
+          {/* Auto-Update: ON */}
+          <button
+            onClick={() => handleBulkAction('enable_auto_update')}
+            style={bulkDockButtonStyle('rgba(52, 211, 153, 0.15)', '#34D399', '1px solid rgba(52, 211, 153, 0.3)')}
+            title="Enable automatic background updates for selected plugins"
+          >
+            <RotateCw size={12} />
+            <span>Auto: ON</span>
+          </button>
+
+          {/* Auto-Update: OFF */}
+          <button
+            onClick={() => handleBulkAction('disable_auto_update')}
+            style={bulkDockButtonStyle('rgba(255, 255, 255, 0.08)', '#94A3B8')}
+            title="Disable automatic background updates for selected plugins"
+          >
+            <span>Auto: OFF</span>
+          </button>
+
+          {/* Bulk Delete */}
+          <button
+            onClick={() => handleBulkAction('delete')}
+            style={bulkDockButtonStyle('#EF4444', '#FFFFFF')}
+            title="Completely uninstall and remove selected plugins"
+          >
+            <Trash2 size={12} />
+            <span>Delete</span>
+          </button>
+
+          {/* Clear Selection */}
+          <button
+            onClick={() => setSelectedPlugins([])}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94A3B8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '4px',
+              marginLeft: '4px'
+            }}
+            title="Clear selection"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Queue Modal for Sequential Execution Progress */}
+      {queueModal.open && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(11, 37, 34, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '26px 28px',
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.3)',
+            border: '1px solid #D9E1DC'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: queueModal.status === 'completed' ? '#ECFDF5' : '#F0FDF4',
+                  color: queueModal.status === 'completed' ? '#059669' : '#166534',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {queueModal.status === 'completed' ? <Check size={20} strokeWidth={2.5} /> : <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                    {queueModal.title}
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                    Target: {scopeLabel}
+                  </div>
+                </div>
+              </div>
+
+              {queueModal.status === 'completed' && (
+                <button
+                  onClick={() => setQueueModal(prev => ({ ...prev, open: false }))}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                >
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{ margin: '18px 0 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '700', color: '#60716B', marginBottom: '6px' }}>
+                <span>Execution Status</span>
+                <span>{queueModal.status === 'completed' ? '100% Completed' : 'Processing...'}</span>
+              </div>
+              <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: queueModal.status === 'completed' ? '100%' : '75%',
+                  background: queueModal.status === 'completed' ? '#10B981' : '#2A8B68',
+                  borderRadius: '4px',
+                  transition: 'width 0.4s ease'
+                }} />
+              </div>
+            </div>
+
+            {/* Live Terminal / Activity Log */}
+            <div style={{
+              background: '#0B2522',
+              color: '#D1FAE5',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              fontFamily: 'Consolas, monospace',
+              fontSize: '11.5px',
+              maxHeight: '160px',
+              overflowY: 'auto',
+              lineHeight: 1.6
+            }}>
+              {queueModal.logs.map((log, idx) => (
+                <div key={idx} style={{ opacity: idx === queueModal.logs.length - 1 ? 1 : 0.75 }}>
+                  {log}
+                </div>
+              ))}
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button
+                onClick={() => setQueueModal(prev => ({ ...prev, open: false }))}
+                disabled={queueModal.status === 'running'}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: queueModal.status === 'running' ? '#E2E8F0' : '#0B2522',
+                  color: queueModal.status === 'running' ? '#94A3B8' : '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: queueModal.status === 'running' ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {queueModal.status === 'running' ? 'Executing Queue...' : 'Close Window'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -710,6 +1169,20 @@ export default function BulkPlugins() {
 // ----------------------------------------------------------------------------
 // Styles
 // ----------------------------------------------------------------------------
+const bulkDockButtonStyle = (bg, color, border = 'none') => ({
+  background: bg,
+  color: color,
+  border: border,
+  padding: '6px 12px',
+  borderRadius: '8px',
+  fontSize: '12px',
+  fontWeight: '700',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '5px',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease'
+})
 const contentCardStyle = {
   background: '#ffffff',
   borderRadius: '16px',

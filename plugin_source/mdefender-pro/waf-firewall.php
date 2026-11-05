@@ -1547,6 +1547,158 @@ function waf_fw_handle_cloud_sync_webhook() {
                 delete_site_transient('update_core');
                 update_option('waf_fw_core_last_updated', current_time('mysql'));
                 $action_result = ['success' => true, 'status' => 'updated', 'updated_version' => $target_ver, 'message' => "WordPress Core updated to {$target_ver}"];
+            } elseif ($action === 'toggle_auto_update' || $action === 'set_auto_update') {
+                $target_type = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? 'plugin');
+                $enabled = (isset($_REQUEST['enabled']) && ($_REQUEST['enabled'] === '1' || $_REQUEST['enabled'] === 'true' || $_REQUEST['enabled'] === true)) ||
+                           (isset($pushed_data['enabled']) && ($pushed_data['enabled'] === '1' || $pushed_data['enabled'] === 'true' || $pushed_data['enabled'] === true));
+                if ($target_type === 'theme') {
+                    $slug = sanitize_title($_REQUEST['theme_slug'] ?? $pushed_data['theme_slug'] ?? $_REQUEST['theme'] ?? $pushed_data['theme'] ?? $_REQUEST['slug'] ?? $pushed_data['slug'] ?? '');
+                    $auto_themes = (array) get_option('auto_update_themes', []);
+                    if ($enabled) {
+                        if (!in_array($slug, $auto_themes, true)) $auto_themes[] = $slug;
+                    } else {
+                        $auto_themes = array_values(array_diff($auto_themes, [$slug]));
+                    }
+                    update_option('auto_update_themes', array_unique($auto_themes));
+                    $action_result = ['success' => true, 'type' => 'theme', 'target' => $slug, 'auto_update' => $enabled];
+                } else {
+                    $pfile = sanitize_text_field($_REQUEST['plugin_file'] ?? $pushed_data['plugin_file'] ?? $_REQUEST['plugin'] ?? $pushed_data['plugin'] ?? '');
+                    if (!$pfile) {
+                        $pid = sanitize_text_field($_REQUEST['plugin_id'] ?? $pushed_data['plugin_id'] ?? '');
+                        if ($pid && function_exists('get_plugins')) {
+                            foreach (get_plugins() as $f => $d) {
+                                if (sanitize_title($d['Name']) === $pid || strpos($f, $pid) !== false) {
+                                    $pfile = $f;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    $auto_plugins = (array) get_option('auto_update_plugins', []);
+                    if ($enabled) {
+                        if (!in_array($pfile, $auto_plugins, true)) $auto_plugins[] = $pfile;
+                    } else {
+                        $auto_plugins = array_values(array_diff($auto_plugins, [$pfile]));
+                    }
+                    update_option('auto_update_plugins', array_unique($auto_plugins));
+                    $action_result = ['success' => true, 'type' => 'plugin', 'target' => $pfile, 'auto_update' => $enabled];
+                }
+            } elseif ($action === 'bulk_plugins_action') {
+                if (!function_exists('get_plugins')) {
+                    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+                }
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+                $bulk_action = sanitize_text_field($_REQUEST['bulk_action'] ?? $pushed_data['bulk_action'] ?? '');
+                $raw_plugins = $_REQUEST['plugins'] ?? $pushed_data['plugins'] ?? [];
+                if (is_string($raw_plugins)) {
+                    $raw_plugins = json_decode($raw_plugins, true) ?: explode(',', $raw_plugins);
+                }
+                $plugin_files = (array) $raw_plugins;
+                $processed = [];
+
+                if ($bulk_action === 'activate') {
+                    foreach ($plugin_files as $pf) {
+                        $clean_pf = sanitize_text_field(trim($pf));
+                        if ($clean_pf) {
+                            activate_plugin($clean_pf);
+                            $processed[] = $clean_pf;
+                        }
+                    }
+                } elseif ($bulk_action === 'deactivate') {
+                    foreach ($plugin_files as $pf) {
+                        $clean_pf = sanitize_text_field(trim($pf));
+                        if ($clean_pf && strpos($clean_pf, 'mdefender-pro') === false) {
+                            deactivate_plugins($clean_pf);
+                            $processed[] = $clean_pf;
+                        }
+                    }
+                } elseif ($bulk_action === 'delete') {
+                    $deletable = [];
+                    foreach ($plugin_files as $pf) {
+                        $clean_pf = sanitize_text_field(trim($pf));
+                        if ($clean_pf && strpos($clean_pf, 'mdefender-pro') === false) {
+                            deactivate_plugins($clean_pf);
+                            $deletable[] = $clean_pf;
+                        }
+                    }
+                    if (!empty($deletable)) {
+                        delete_plugins($deletable);
+                        $processed = $deletable;
+                    }
+                } elseif ($bulk_action === 'update') {
+                    $trans = get_site_transient('update_plugins');
+                    foreach ($plugin_files as $pf) {
+                        $clean_pf = sanitize_text_field(trim($pf));
+                        if ($trans && isset($trans->response[$clean_pf])) {
+                            unset($trans->response[$clean_pf]);
+                        }
+                        $processed[] = $clean_pf;
+                    }
+                    if ($trans) {
+                        set_site_transient('update_plugins', $trans);
+                    }
+                } elseif ($bulk_action === 'enable_auto_update' || $bulk_action === 'disable_auto_update') {
+                    $auto_plugins = (array) get_option('auto_update_plugins', []);
+                    $enable = ($bulk_action === 'enable_auto_update');
+                    foreach ($plugin_files as $pf) {
+                        $clean_pf = sanitize_text_field(trim($pf));
+                        if ($enable) {
+                            if (!in_array($clean_pf, $auto_plugins, true)) $auto_plugins[] = $clean_pf;
+                        } else {
+                            $auto_plugins = array_values(array_diff($auto_plugins, [$clean_pf]));
+                        }
+                        $processed[] = $clean_pf;
+                    }
+                    update_option('auto_update_plugins', array_unique($auto_plugins));
+                }
+                $action_result = ['success' => true, 'bulk_action' => $bulk_action, 'processed' => $processed, 'count' => count($processed)];
+            } elseif ($action === 'bulk_themes_action') {
+                require_once ABSPATH . 'wp-admin/includes/theme.php';
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+                $bulk_action = sanitize_text_field($_REQUEST['bulk_action'] ?? $pushed_data['bulk_action'] ?? '');
+                $raw_themes = $_REQUEST['themes'] ?? $pushed_data['themes'] ?? [];
+                if (is_string($raw_themes)) {
+                    $raw_themes = json_decode($raw_themes, true) ?: explode(',', $raw_themes);
+                }
+                $theme_slugs = (array) $raw_themes;
+                $active_theme_slug = get_stylesheet();
+                $processed = [];
+
+                if ($bulk_action === 'delete') {
+                    foreach ($theme_slugs as $ts) {
+                        $clean_ts = sanitize_title(trim($ts));
+                        if ($clean_ts && $clean_ts !== $active_theme_slug) {
+                            delete_theme($clean_ts);
+                            $processed[] = $clean_ts;
+                        }
+                    }
+                } elseif ($bulk_action === 'update') {
+                    $trans = get_site_transient('update_themes');
+                    foreach ($theme_slugs as $ts) {
+                        $clean_ts = sanitize_title(trim($ts));
+                        if ($trans && isset($trans->response[$clean_ts])) {
+                            unset($trans->response[$clean_ts]);
+                        }
+                        $processed[] = $clean_ts;
+                    }
+                    if ($trans) {
+                        set_site_transient('update_themes', $trans);
+                    }
+                } elseif ($bulk_action === 'enable_auto_update' || $bulk_action === 'disable_auto_update') {
+                    $auto_themes = (array) get_option('auto_update_themes', []);
+                    $enable = ($bulk_action === 'enable_auto_update');
+                    foreach ($theme_slugs as $ts) {
+                        $clean_ts = sanitize_title(trim($ts));
+                        if ($enable) {
+                            if (!in_array($clean_ts, $auto_themes, true)) $auto_themes[] = $clean_ts;
+                        } else {
+                            $auto_themes = array_values(array_diff($auto_themes, [$clean_ts]));
+                        }
+                        $processed[] = $clean_ts;
+                    }
+                    update_option('auto_update_themes', array_unique($auto_themes));
+                }
+                $action_result = ['success' => true, 'bulk_action' => $bulk_action, 'processed' => $processed, 'count' => count($processed)];
             } elseif ($action === 'set_auto_update_policy') {
                 $pol = sanitize_text_field($_REQUEST['policy'] ?? $pushed_data['policy'] ?? 'minor');
                 update_option('waf_fw_auto_update_core', $pol);
@@ -2058,7 +2210,6 @@ function waf_fw_handle_cloud_sync_webhook() {
     }
 }
 add_action('init', 'waf_fw_handle_cloud_sync_webhook', 1);
-add_action('plugins_loaded', 'waf_fw_handle_cloud_sync_webhook', 0);
 
 add_action('rest_api_init', function() {
     register_rest_route('waf-fw/v1', '/sync', [

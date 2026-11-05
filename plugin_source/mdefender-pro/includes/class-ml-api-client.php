@@ -217,10 +217,12 @@ class WAF_FW_ML_Api_Client {
         // 1. Plugins Audit
         $all_plugins = function_exists('get_plugins') ? get_plugins() : [];
         $active_plugins = (array) get_option('active_plugins', []);
+        $auto_update_plugins = (array) get_option('auto_update_plugins', []);
         $update_plugins = get_site_transient('update_plugins');
 
         $plugins = [];
         foreach ($all_plugins as $plugin_file => $data) {
+            $is_auto_update = in_array($plugin_file, $auto_update_plugins, true);
             $is_active = in_array($plugin_file, $active_plugins, true);
             $has_update = false;
             $new_version = '';
@@ -238,6 +240,7 @@ class WAF_FW_ML_Api_Client {
                 'status' => $is_active ? 'active' : 'inactive',
                 'update_available' => $has_update,
                 'new_version' => $new_version,
+                'auto_update' => $is_auto_update,
             ];
         }
 
@@ -245,10 +248,12 @@ class WAF_FW_ML_Api_Client {
         $all_themes = function_exists('wp_get_themes') ? wp_get_themes() : [];
         $active_theme = function_exists('wp_get_theme') ? wp_get_theme() : null;
         $active_slug = $active_theme ? $active_theme->get_stylesheet() : '';
+        $auto_update_themes = (array) get_option('auto_update_themes', []);
         $update_themes = get_site_transient('update_themes');
 
         $themes = [];
         foreach ($all_themes as $theme_slug => $tObj) {
+            $is_auto_update = in_array($theme_slug, $auto_update_themes, true);
             $is_active = ($active_slug === $theme_slug);
             $has_update = false;
             $new_ver = '';
@@ -267,6 +272,7 @@ class WAF_FW_ML_Api_Client {
                 'status' => $is_active ? 'active' : 'standby',
                 'update_available' => $has_update,
                 'new_version' => $new_ver,
+                'auto_update' => $is_auto_update,
             ];
         }
 

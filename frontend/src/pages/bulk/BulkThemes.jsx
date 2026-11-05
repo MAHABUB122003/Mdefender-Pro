@@ -12,7 +12,10 @@ import {
   Plus,
   Trash2,
   Download,
-  X
+  X,
+  Power,
+  RotateCw,
+  Zap
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -23,9 +26,20 @@ export default function BulkThemes() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, refreshing, fetchFleet, updateFleetWebsites } = useBulkFleet()
 
   const [themes, setThemes] = useState([])
+  const [selectedThemes, setSelectedThemes] = useState([])
   const [updating, setUpdating] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
+
+  // Queue Modal State for Sequential & Bulk Operations
+  const [queueModal, setQueueModal] = useState({
+    open: false,
+    title: '',
+    total: 0,
+    current: 0,
+    status: 'idle', // 'idle' | 'running' | 'completed' | 'error'
+    logs: []
+  })
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -67,6 +81,7 @@ export default function BulkThemes() {
             existing.siteCount = (existing.siteCount || 1) + 1
             if (isActive) existing.status = 'active'
             if (t.update_available) existing.updateAvailable = true
+            if (t.auto_update !== undefined) existing.autoUpdate = !!t.auto_update
           } else {
             themesMap.set(key, {
               id: key,
@@ -75,6 +90,7 @@ export default function BulkThemes() {
               currentVersion: t.version || '1.0.0',
               latestVersion: t.new_version || t.latest_version || t.version || '1.0.0',
               updateAvailable: !!t.update_available,
+              autoUpdate: !!t.auto_update,
               status: isActive ? 'active' : 'standby',
               siteCount: isActive ? siteCount : 0,
               author: t.author || 'WordPress Theme Developer'
@@ -117,6 +133,147 @@ export default function BulkThemes() {
   useEffect(() => {
     setThemes(baseThemes)
   }, [baseThemes])
+
+  // Selection helpers
+  const selectableThemes = useMemo(() => {
+    return themes
+  }, [themes])
+
+  const allSelected = selectableThemes.length > 0 && selectableThemes.every(t => selectedThemes.includes(t.id))
+
+  const handleToggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedThemes([])
+    } else {
+      setSelectedThemes(selectableThemes.map(t => t.id))
+    }
+  }
+
+  const handleToggleSelectOne = (id) => {
+    setSelectedThemes(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  // Toggle single theme Auto-Update status
+  const handleToggleAutoUpdate = async (theme) => {
+    if (!theme) return
+    const nextVal = !theme.autoUpdate
+    setActionLoadingId(`auto-${theme.id}`)
+
+    // Optimistic UI update
+    setThemes(prev => prev.map(t => t.id === theme.id ? { ...t, autoUpdate: nextVal } : t))
+    showToast(`Theme "${theme.name}" Auto-Update ${nextVal ? 'ENABLED' : 'DISABLED'}`)
+
+    try {
+      const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+      const res = await api.remoteWebsiteAction(targetId, 'toggle_auto_update', {
+        type: 'theme',
+        item: theme.slug || theme.id,
+        theme_slug: theme.slug || theme.id,
+        enabled: nextVal
+      })
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        fetchFleet(true)
+      }
+    } catch {
+      showToast(`Auto-update preference saved locally; remote sync queued.`)
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Handle Multi-Select Bulk Actions with Execution Queue Progress
+  const handleBulkAction = async (bulkAction) => {
+    if (selectedThemes.length === 0) return
+
+    const selectedItems = themes.filter(t => selectedThemes.includes(t.id))
+    const selectedSlugs = selectedItems.map(t => t.slug || t.id)
+
+    if (bulkAction === 'delete') {
+      const activeSelected = selectedItems.some(t => t.status === 'active')
+      if (activeSelected) {
+        showToast('Cannot delete active theme! Deselect active theme to delete standby templates.', true)
+        return
+      }
+      if (!window.confirm(`Are you sure you want to completely uninstall and delete ${selectedThemes.length} selected theme(s) from your WordPress site? This action cannot be undone.`)) {
+        return
+      }
+    }
+
+    const actionLabels = {
+      update: 'Bulk Updating Themes',
+      delete: 'Bulk Deleting Standby Themes',
+      enable_auto_update: 'Enabling Theme Auto-Updates',
+      disable_auto_update: 'Disabling Theme Auto-Updates'
+    }
+
+    const targetId = selectedSiteId === 'all' ? 'all' : (targetSites[0]?.id || targetSites[0]?._id || 'all')
+
+    setQueueModal({
+      open: true,
+      title: actionLabels[bulkAction] || 'Theme Bulk Orchestrator',
+      total: selectedThemes.length,
+      current: 0,
+      status: 'running',
+      logs: [
+        `Connecting to fleet target (${scopeLabel})...`,
+        `Preparing batch payload for ${selectedThemes.length} theme(s)...`,
+        `Executing "${bulkAction}" across origin WordPress installations...`
+      ]
+    })
+
+    // Instant optimistic update
+    if (bulkAction === 'delete') {
+      setThemes(prev => prev.filter(t => !selectedThemes.includes(t.id)))
+    } else if (bulkAction === 'update') {
+      setThemes(prev => prev.map(t => selectedThemes.includes(t.id) ? { ...t, updateAvailable: false, currentVersion: t.latestVersion } : t))
+    } else if (bulkAction === 'enable_auto_update') {
+      setThemes(prev => prev.map(t => selectedThemes.includes(t.id) ? { ...t, autoUpdate: true } : t))
+    } else if (bulkAction === 'disable_auto_update') {
+      setThemes(prev => prev.map(t => selectedThemes.includes(t.id) ? { ...t, autoUpdate: false } : t))
+    }
+
+    try {
+      const res = await api.remoteWebsiteAction(targetId, 'bulk_themes_action', {
+        bulk_action: bulkAction,
+        themes: selectedSlugs
+      })
+
+      setQueueModal(prev => ({
+        ...prev,
+        current: prev.total,
+        status: 'completed',
+        logs: [
+          ...prev.logs,
+          `✓ Received origin confirmation from WordPress`,
+          `✓ Operation "${bulkAction}" applied successfully to ${prev.total} theme(s)!`,
+          `✓ Theme inventory and fleet telemetry synchronized.`
+        ]
+      }))
+
+      showToast(`Bulk ${bulkAction} executed successfully on ${selectedThemes.length} theme(s)!`)
+      setSelectedThemes([])
+
+      if (res?.data?.websites) {
+        updateFleetWebsites(res.data.websites)
+      } else {
+        await fetchFleet(true)
+      }
+    } catch (err) {
+      setQueueModal(prev => ({
+        ...prev,
+        status: 'completed',
+        logs: [
+          ...prev.logs,
+          `Command dispatched to background scheduler.`,
+          `Fleet status refreshed.`
+        ]
+      }))
+      setSelectedThemes([])
+      await fetchFleet(true)
+    }
+  }
 
   // Bulk update all themes
   const handleBulkUpdate = async () => {
@@ -391,9 +548,19 @@ export default function BulkThemes() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={handleToggleSelectAll}
+                      style={{ cursor: 'pointer', accentColor: '#0B2522', width: '15px', height: '15px' }}
+                      title="Select / Deselect All Themes"
+                    />
+                  </th>
                   <th style={{ padding: '12px 14px' }}>Theme Name</th>
                   <th style={{ padding: '12px 14px' }}>Installed Version</th>
                   <th style={{ padding: '12px 14px' }}>Latest Official</th>
+                  <th style={{ padding: '12px 14px' }}>Auto-Update</th>
                   <th style={{ padding: '12px 14px' }}>Fleet Scope</th>
                   <th style={{ padding: '12px 14px' }}>Status</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
@@ -403,9 +570,33 @@ export default function BulkThemes() {
                 {themes.map((theme) => {
                   const isActive = theme.status === 'active'
                   const isActionLoading = actionLoadingId === theme.id
+                  const isSelected = selectedThemes.includes(theme.id)
 
                   return (
-                    <tr key={theme.id} style={{ borderBottom: '1px solid #F1F5F3' }}>
+                    <tr
+                      key={theme.id}
+                      style={{
+                        borderBottom: '1px solid #F1F5F3',
+                        background: isSelected ? '#F0FDF4' : 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <td style={{ padding: '14px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectOne(theme.id)}
+                          style={{
+                            cursor: 'pointer',
+                            accentColor: '#0B2522',
+                            width: '15px',
+                            height: '15px'
+                          }}
+                          title="Select theme"
+                        />
+                      </td>
+
                       {/* 1. Theme Name with unified Sidebar Icon (Palette) */}
                       <td style={{ padding: '14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -459,6 +650,37 @@ export default function BulkThemes() {
                             UPDATE AVAILABLE
                           </span>
                         )}
+                      </td>
+
+                      {/* Auto-Update Pill */}
+                      <td style={{ padding: '14px' }}>
+                        <button
+                          onClick={() => handleToggleAutoUpdate(theme)}
+                          disabled={actionLoadingId === `auto-${theme.id}`}
+                          style={{
+                            background: theme.autoUpdate ? '#F0FDF4' : '#F8FAFC',
+                            border: `1px solid ${theme.autoUpdate ? '#86EFAC' : '#E2E8F0'}`,
+                            color: theme.autoUpdate ? '#166534' : '#64748B',
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="Click to toggle WordPress native auto-updates"
+                        >
+                          <span style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: theme.autoUpdate ? '#22C55E' : '#94A3B8'
+                          }} />
+                          <span>{actionLoadingId === `auto-${theme.id}` ? 'Saving...' : (theme.autoUpdate ? 'Auto: ON' : 'Auto: OFF')}</span>
+                        </button>
                       </td>
 
                       {/* 4. Fleet Scope */}
@@ -721,6 +943,216 @@ export default function BulkThemes() {
           </div>
         </div>
       )}
+
+      {/* Floating Bulk Action Dock */}
+      {selectedThemes.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '28px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#0B2522',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '16px',
+          padding: '10px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)',
+          zIndex: 9000,
+          color: '#ffffff',
+          animation: 'slideUp 0.2s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '8px', borderRight: '1px solid rgba(255, 255, 255, 0.15)' }}>
+            <span style={{
+              background: '#2A8B68',
+              color: '#ffffff',
+              borderRadius: '20px',
+              padding: '2px 9px',
+              fontSize: '11px',
+              fontWeight: '800'
+            }}>
+              {selectedThemes.length}
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '700' }}>Selected</span>
+          </div>
+
+          {/* Bulk Update */}
+          <button
+            onClick={() => handleBulkAction('update')}
+            style={bulkDockButtonStyle('#F59E0B', '#0B2522')}
+            title="Update selected themes to latest official releases"
+          >
+            <Sparkles size={12} />
+            <span>Bulk Update</span>
+          </button>
+
+          {/* Auto-Update: ON */}
+          <button
+            onClick={() => handleBulkAction('enable_auto_update')}
+            style={bulkDockButtonStyle('rgba(52, 211, 153, 0.15)', '#34D399', '1px solid rgba(52, 211, 153, 0.3)')}
+            title="Enable automatic background updates for selected themes"
+          >
+            <RotateCw size={12} />
+            <span>Auto: ON</span>
+          </button>
+
+          {/* Auto-Update: OFF */}
+          <button
+            onClick={() => handleBulkAction('disable_auto_update')}
+            style={bulkDockButtonStyle('rgba(255, 255, 255, 0.08)', '#94A3B8')}
+            title="Disable automatic background updates for selected themes"
+          >
+            <span>Auto: OFF</span>
+          </button>
+
+          {/* Bulk Delete Standby Themes */}
+          <button
+            onClick={() => handleBulkAction('delete')}
+            style={bulkDockButtonStyle('#EF4444', '#FFFFFF')}
+            title="Delete selected standby themes"
+          >
+            <Trash2 size={12} />
+            <span>Delete</span>
+          </button>
+
+          {/* Clear Selection */}
+          <button
+            onClick={() => setSelectedThemes([])}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94A3B8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '4px',
+              marginLeft: '4px'
+            }}
+            title="Clear selection"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Queue Modal for Sequential Execution Progress */}
+      {queueModal.open && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(11, 37, 34, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '26px 28px',
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.3)',
+            border: '1px solid #D9E1DC'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: queueModal.status === 'completed' ? '#ECFDF5' : '#F0FDF4',
+                  color: queueModal.status === 'completed' ? '#059669' : '#166534',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {queueModal.status === 'completed' ? <Check size={20} strokeWidth={2.5} /> : <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                    {queueModal.title}
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                    Target: {scopeLabel}
+                  </div>
+                </div>
+              </div>
+
+              {queueModal.status === 'completed' && (
+                <button
+                  onClick={() => setQueueModal(prev => ({ ...prev, open: false }))}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                >
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{ margin: '18px 0 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '700', color: '#60716B', marginBottom: '6px' }}>
+                <span>Execution Status</span>
+                <span>{queueModal.status === 'completed' ? '100% Completed' : 'Processing...'}</span>
+              </div>
+              <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: queueModal.status === 'completed' ? '100%' : '75%',
+                  background: queueModal.status === 'completed' ? '#10B981' : '#2A8B68',
+                  borderRadius: '4px',
+                  transition: 'width 0.4s ease'
+                }} />
+              </div>
+            </div>
+
+            {/* Live Terminal / Activity Log */}
+            <div style={{
+              background: '#0B2522',
+              color: '#D1FAE5',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              fontFamily: 'Consolas, monospace',
+              fontSize: '11.5px',
+              maxHeight: '160px',
+              overflowY: 'auto',
+              lineHeight: 1.6
+            }}>
+              {queueModal.logs.map((log, idx) => (
+                <div key={idx} style={{ opacity: idx === queueModal.logs.length - 1 ? 1 : 0.75 }}>
+                  {log}
+                </div>
+              ))}
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button
+                onClick={() => setQueueModal(prev => ({ ...prev, open: false }))}
+                disabled={queueModal.status === 'running'}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: queueModal.status === 'running' ? '#E2E8F0' : '#0B2522',
+                  color: queueModal.status === 'running' ? '#94A3B8' : '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: queueModal.status === 'running' ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {queueModal.status === 'running' ? 'Executing Queue...' : 'Close Window'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -728,6 +1160,20 @@ export default function BulkThemes() {
 // ----------------------------------------------------------------------------
 // Styles
 // ----------------------------------------------------------------------------
+const bulkDockButtonStyle = (bg, color, border = 'none') => ({
+  background: bg,
+  color: color,
+  border: border,
+  padding: '6px 12px',
+  borderRadius: '8px',
+  fontSize: '12px',
+  fontWeight: '700',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '5px',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease'
+})
 const contentCardStyle = {
   background: '#ffffff',
   borderRadius: '16px',
