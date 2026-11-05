@@ -250,8 +250,8 @@ export default function BulkMonitoring() {
       )}
 
       <BulkHeader
-        title="Fleet Performance &amp; Uptime Monitoring"
-        subtitle="100% Real-time HTTP health, live TTFB latency, Mobile &amp; Desktop Core Web Vitals, and X.509 TLS certificate lifecycle inspection."
+        title="Fleet Performance & Uptime Monitoring"
+        subtitle="100% Real-time HTTP health, live TTFB latency, Mobile & Desktop Core Web Vitals, and X.509 TLS certificate lifecycle inspection."
         icon={Activity}
         activeBadge="Real-Time Engine 4.5"
       />

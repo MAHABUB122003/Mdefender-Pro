@@ -181,7 +181,7 @@ class AttackBlocker:
 
         doc = None
         if u_str:
-            doc = self.db.settings.find_one({'_type': 'user_security_config', 'user_id': u_str})
+            doc = getattr(self.db, 'user_security_config', self.db.settings).find_one({'user_id': u_str}) or self.db.settings.find_one({'_type': 'user_security_config', 'user_id': u_str})
         if not doc:
             doc = self.db.settings.find_one({'_type': 'waf_settings'}) or {}
         res = {
@@ -271,6 +271,14 @@ class AttackBlocker:
             {'$set': update_data},
             upsert=True
         )
+        try:
+            self.db.user_security_config.update_one(
+                {'user_id': u_str},
+                {'$set': update_data},
+                upsert=True
+            )
+        except Exception:
+            pass
         if hasattr(self, '_settings_cache'):
             self._settings_cache.clear()
 
@@ -279,12 +287,25 @@ class AttackBlocker:
         tf_enabled = update_data['two_factor_enabled']
         site_updates = {
             'login_two_factor': tf_enabled,
+            'two_factor_enabled': tf_enabled,
             'two_factor_roles': update_data['two_factor_roles'],
             'hold_press_enabled': update_data['hold_press_enabled'],
             'hold_press_duration_ms': update_data['hold_press_duration_ms'],
             'turnstile_enabled': update_data['turnstile_enabled'],
             'turnstile_mode': update_data['turnstile_mode'],
             'turnstile_theme': update_data['turnstile_theme'],
+            'rate_limit_per_minute': update_data.get('rate_limit_per_minute', 120),
+            'auto_block_enabled': update_data.get('auto_block_enabled', True),
+            'auto_block_threshold': update_data.get('auto_block_threshold', 10),
+            'auto_block_window_hours': update_data.get('auto_block_window_hours', 24),
+            'auto_block_duration_hours': update_data.get('auto_block_duration_hours', 24),
+            'ddos_mitigation_enabled': update_data.get('ddos_mitigation_enabled', True),
+            'admin_bruteforce_protection': update_data.get('admin_bruteforce_protection', True),
+            'auto_block_permanent': update_data.get('auto_block_permanent', False),
+            'login_lockout_threshold': update_data.get('login_lockout_threshold', 5),
+            'login_lockout_duration_minutes': update_data.get('login_lockout_duration_minutes', 60),
+            'login_lockout_scope': update_data.get('login_lockout_scope', 'gateway_only'),
+            'rate_limit_action': update_data.get('rate_limit_action', 'throttle_429'),
         }
         if scope == 'all':
             self.db.websites.update_many(

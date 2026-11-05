@@ -385,8 +385,8 @@ export default function BulkSafeUpdates() {
     return (
       <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
         <BulkHeader
-          title="Safe Updates &amp; Regression Guard"
-          subtitle="Autonomous Pre-Update Micro-Snapshots, Synthetic Tri-Endpoint Probes &amp; Sub-5s Rollback"
+          title="Safe Updates & Regression Guard"
+          subtitle="Autonomous Pre-Update Micro-Snapshots, Synthetic Tri-Endpoint Probes & Sub-5s Rollback"
         />
         <EmptyFleetState
           title="Connect Your First WordPress Site"

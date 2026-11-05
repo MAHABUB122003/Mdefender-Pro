@@ -475,7 +475,7 @@ export default function BulkThemes() {
       )}
 
       <BulkHeader
-        title="Fleet Themes &amp; Design Architecture"
+        title="Fleet Themes & Design Architecture"
         subtitle="Centrally monitor active and standby WordPress frontend themes, manage updates, and ensure responsive template stability."
         icon={Palette}
         activeBadge="Theme Manager"

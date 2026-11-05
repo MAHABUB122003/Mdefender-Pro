@@ -200,7 +200,7 @@ function BulkPerformanceContent() {
     return (
       <div>
         <BulkHeader
-          title="Performance &amp; Core Web Vitals"
+          title="Performance & Core Web Vitals"
           subtitle="Origin response velocity, Google Core Web Vitals and resource audit."
           icon={Zap}
         />
@@ -216,7 +216,7 @@ function BulkPerformanceContent() {
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <BulkHeader
-        title="Performance &amp; Core Web Vitals"
+        title="Performance & Core Web Vitals"
         subtitle="Origin response velocity, Google Core Web Vitals and resource audit."
         icon={Zap}
         activeBadge="Performance Monitoring"

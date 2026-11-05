@@ -398,7 +398,7 @@ export default function BulkLoginGateway() {
 
       {/* Header with Fleet Scope Picker */}
       <BulkHeader
-        title="WP Admin &amp; Login Gateway Security"
+        title="WP Admin & Login Gateway Security"
         subtitle="Conceal WordPress admin login URLs behind private secret directories and restrict administrative login access strictly to authorized IPs."
         icon={Key}
         activeBadge="Gateway Protection"

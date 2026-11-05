@@ -180,7 +180,7 @@ export default function BulkActivity() {
       )}
 
       <BulkHeader
-        title="Fleet Administrative Activity &amp; Audit Trail"
+        title="Fleet Administrative Activity & Audit Trail"
         subtitle="Immutable timestamped log of all security mitigations, IP quarantines, backup snapshots, and configuration policies."
         icon={FileText}
         activeBadge="Audit Ledger"

@@ -315,7 +315,7 @@ export default function BulkCore() {
       )}
 
       <BulkHeader
-        title="WordPress Core Version &amp; Integrity"
+        title="WordPress Core Version & Integrity"
         subtitle="Manage WordPress engine versions, verify official SVN core file checksums, and monitor runtime health."
         icon={Cpu}
         activeBadge="Core Engine Guard"

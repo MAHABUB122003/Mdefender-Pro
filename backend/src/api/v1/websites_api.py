@@ -12585,18 +12585,24 @@ async def update_user_security_config_endpoint(body: dict, user=Depends(get_curr
     u_str = str(user["id"])
     body["updated_at"] = datetime.now()
     db.user_security_config.update_one({"user_id": u_str}, {"$set": body}, upsert=True)
-    if "two_factor_enabled" in body:
-        is_on = bool(body["two_factor_enabled"])
-        db.websites.update_many(
-            {"$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]},
-            {"$set": {"two_factor_enabled": is_on, "login_two_factor": is_on}}
+    
+    # Delegate to AttackBlocker to update settings and sync website config
+    from src.security.attack_blocker import AttackBlocker
+    blocker = AttackBlocker(db)
+    saved_cfg = blocker.save_user_settings(u_str, body)
+    
+    target_site = body.get("website_id")
+    # Instant push sync to all connected WordPress sites
+    try:
+        from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
+        push_instant_sync_to_wordpress(
+            user_id=user["id"],
+            website_id=None if not target_site or target_site == "all" else target_site
         )
-        try:
-            from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
-            push_instant_sync_to_wordpress(user_id=user["id"])
-        except Exception:
-            pass
-    return success({"saved": True})
+    except Exception as e:
+        logger.warning(f"[SecurityConfig] Failed to push instant sync: {e}")
+
+    return success({"saved": True, "config": saved_cfg})
 
 
 @router.get("/{website_id}/performance-audit")

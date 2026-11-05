@@ -455,7 +455,7 @@ export default function BulkBackup() {
 
       {/* Header Bar */}
       <BulkHeader
-        title="Fleet Backup &amp; Disaster Recovery"
+        title="Fleet Backup & Disaster Recovery"
         subtitle="Zero-downtime database snapshots, scheduled fleet archives, and 1-click emergency restore even if WordPress Admin is broken or inaccessible."
         icon={HardDrive}
         activeBadge="Vault Protection"
@@ -1191,7 +1191,7 @@ export default function BulkBackup() {
                   style={primaryActionButtonStyle}
                 >
                   <Upload size={14} style={{ animation: uploading ? 'spin 1s linear infinite' : 'none' }} />
-                  <span>{uploading ? 'Uploading Archive...' : 'Upload &amp; Add to Catalog'}</span>
+                  <span>{uploading ? 'Uploading Archive...' : 'Upload & Add to Catalog'}</span>
                 </button>
               </form>
             </div>

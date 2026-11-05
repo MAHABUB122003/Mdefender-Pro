@@ -489,11 +489,36 @@ function waf_fw_handle_cloud_sync_webhook() {
         $is_local_req = in_array($remote_ip, ['127.0.0.1', '::1', 'localhost', '0.0.0.0'], true) ||
             strpos($remote_ip, '192.168.') === 0 || strpos($remote_ip, '10.') === 0 || strpos($remote_ip, '172.16.') === 0;
 
+        // Cryptographic HMAC Verification & Anti-Replay Protection (Zero-Trust Standard)
+        $incoming_sig = $_SERVER['HTTP_X_MDEFENDER_SIGNATURE'] ?? '';
+        $incoming_ts  = $_SERVER['HTTP_X_MDEFENDER_TIMESTAMP'] ?? '';
+        $incoming_nonce = $_SERVER['HTTP_X_MDEFENDER_NONCE'] ?? '';
+        $hmac_verified = false;
+
+        if (!empty($incoming_sig) && !empty($incoming_ts) && !empty($incoming_nonce)) {
+            // Anti-replay: must be within 300 seconds (5 minutes)
+            if (abs(time() - (int) $incoming_ts) <= 300) {
+                $nonce_cache_key = 'waf_fw_nonce_' . substr(preg_replace('/[^a-zA-Z0-9]/', '', $incoming_nonce), 0, 32);
+                if (!get_transient($nonce_cache_key)) {
+                    set_transient($nonce_cache_key, 1, 360);
+                    $candidate_secrets = array_filter([$stored_key, $stored_token, $api_key, $token]);
+                    foreach ($candidate_secrets as $secret) {
+                        $expected_hmac = hash_hmac('sha256', $incoming_ts . '.' . $incoming_nonce . '.' . $raw_body, $secret);
+                        if (hash_equals($expected_hmac, $incoming_sig)) {
+                            $hmac_verified = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         $is_admin = function_exists('current_user_can') && current_user_can('manage_options');
         $valid_incoming_key = !empty($api_key) && strlen($api_key) >= 32;
         $key_unconfigured = empty($stored_key) || strlen($stored_key) < 16;
 
         $is_authorized = $is_admin
+            || $hmac_verified
             || (!empty($stored_token) && !empty($token) && (hash_equals($stored_token, $token) || strcasecmp($stored_token, $token) === 0))
             || (!empty($stored_key) && !empty($api_key) && (hash_equals($stored_key, $api_key) || strpos($stored_key, $api_key) !== false || hash_equals($api_key, $stored_key)))
             || ($key_unconfigured && $valid_incoming_key);

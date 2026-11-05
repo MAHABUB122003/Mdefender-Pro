@@ -155,7 +155,7 @@ export default function BulkBrokenLinks() {
     return (
       <div>
         <BulkHeader
-          title="Broken Links &amp; Dead Reference Crawler"
+          title="Broken Links & Dead Reference Crawler"
           subtitle="Automated crawling to identify 404 dead links, broken anchors and redirection loops."
           icon={Link2}
         />
@@ -171,7 +171,7 @@ export default function BulkBrokenLinks() {
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <BulkHeader
-        title="Broken Links &amp; Dead Reference Crawler"
+        title="Broken Links & Dead Reference Crawler"
         subtitle="Automated crawling to identify 404 dead links, broken anchors and redirection loops."
         icon={Link2}
         activeBadge="Link Integrity Watchdog"

@@ -1917,6 +1917,24 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                         target_config["admin_ip_whitelist"] = []
                     target_payload["config"] = target_config
 
+                    # Cryptographic HMAC-SHA256 signature generation (Zero-Trust Standard)
+                    try:
+                        import hmac
+                        import hashlib
+                        import time
+                        import uuid
+                        ts_str = str(int(time.time()))
+                        nonce_str = uuid.uuid4().hex
+                        raw_json_str = json.dumps(target_payload, separators=(',', ':'))
+                        signing_key = (api_key or site_token or "mdefender_default_sync").encode('utf-8')
+                        msg_to_sign = f"{ts_str}.{nonce_str}.{raw_json_str}".encode('utf-8')
+                        hmac_sig = hmac.new(signing_key, msg_to_sign, hashlib.sha256).hexdigest()
+                        headers["X-MDefender-Timestamp"] = ts_str
+                        headers["X-MDefender-Nonce"] = nonce_str
+                        headers["X-MDefender-Signature"] = hmac_sig
+                    except Exception:
+                        pass
+
                     for target_ep in candidate_endpoints:
 
                         try:

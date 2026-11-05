@@ -167,7 +167,7 @@ export default function BulkUptime() {
     return (
       <div>
         <BulkHeader
-          title="Uptime &amp; Availability Monitoring"
+          title="Uptime & Availability Monitoring"
           subtitle="Continuous origin health checks, DNS/TLS network breakdown, and 90-day SLA reliability."
           icon={Activity}
         />
@@ -183,7 +183,7 @@ export default function BulkUptime() {
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <BulkHeader
-        title="Uptime &amp; Availability Monitoring"
+        title="Uptime & Availability Monitoring"
         subtitle="Continuous origin health checks, DNS/TLS network breakdown, and 90-day SLA reliability."
         icon={Activity}
         activeBadge="Availability Monitoring"

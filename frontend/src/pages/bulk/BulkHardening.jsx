@@ -334,8 +334,8 @@ export default function BulkHardening() {
     return (
       <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
         <BulkHeader
-          title="Security Hardening &amp; Zero-Trust Engine"
-          subtitle="Cross-Server PHP Sandboxing, Granular REST/XML-RPC Gateways, Dual-Mode CSP &amp; Autonomous Rollback"
+          title="Security Hardening & Zero-Trust Engine"
+          subtitle="Cross-Server PHP Sandboxing, Granular REST/XML-RPC Gateways, Dual-Mode CSP & Autonomous Rollback"
         />
         <EmptyFleetState
           title="Connect Your First WordPress Site"

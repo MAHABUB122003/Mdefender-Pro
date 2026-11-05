@@ -193,17 +193,17 @@ export default function BulkSiteHealth() {
       )}
 
       <BulkHeader
-        title="Fleet Site Health &amp; Speed Observatory"
-        subtitle="Monitor real-time Google Core Web Vitals, Mobile &amp; Desktop speed audits, origin TTFB, and runtime server diagnostics."
+        title="Fleet Site Health & Speed Observatory"
+        subtitle="Monitor real-time Google Core Web Vitals, Mobile & Desktop speed audits, origin TTFB, and runtime server diagnostics."
         icon={HeartPulse}
-        activeBadge="Health &amp; Performance"
+        activeBadge="Health & Performance"
       />
 
       {!hasWebsites ? (
         <EmptyFleetState
           title="No WordPress Websites Connected Yet"
           description="Your fleet health and speed observatory is empty. Connect your WordPress site using the MDefender-Pro plugin to audit Core Web Vitals, test Mobile and Desktop performance, and inspect runtime health."
-          featureName="Site Health &amp; Speed"
+          featureName="Site Health & Speed"
         />
       ) : (
         <>

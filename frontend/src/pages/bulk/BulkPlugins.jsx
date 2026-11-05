@@ -473,7 +473,7 @@ export default function BulkPlugins() {
       )}
 
       <BulkHeader
-        title="Fleet Plugins &amp; Bulk Updates"
+        title="Fleet Plugins & Bulk Updates"
         subtitle="Manage installed plugins across your WordPress sites. Run 1-click bulk updates and toggle activation state with pre-flight health validation."
         icon={Sliders}
         activeBadge="Plugin Orchestrator"
