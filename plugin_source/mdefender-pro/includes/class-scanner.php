@@ -5514,7 +5514,7 @@ public function run_vulnerability_scan() {
 
         $is_core = (strpos($rel_path, 'wp-admin/') === 0 || 
                     strpos($rel_path, 'wp-includes/') === 0 || 
-                    in_array($rel_path, ['index.php', 'wp-login.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php']));
+                    in_array($rel_path, ['index.php', 'wp-login.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'xmlrpc.php', 'readme.html', 'license.txt']));
 
         if (!$is_core || strpos($rel_path, 'wp-config') !== false || strpos($rel_path, 'wp-content') !== false) {
             return ['success' => false, 'message' => 'File is not an officially restorable WordPress core file or is protected.'];
