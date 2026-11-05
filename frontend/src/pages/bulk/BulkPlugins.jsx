@@ -12,7 +12,9 @@ import {
   ArrowUpRight,
   Trash2,
   Download,
-  X
+  X,
+  Power,
+  RotateCw
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'

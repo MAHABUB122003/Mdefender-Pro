@@ -7,7 +7,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileCode,
-  Layers
+  Layers,
+  Cpu,
+  Database,
+  HardDrive,
+  Server
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
