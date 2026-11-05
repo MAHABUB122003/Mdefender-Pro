@@ -259,7 +259,7 @@ export default function BulkScanner() {
         const pAlpha = (1 - (pulseRadius / maxRadius)) * (scanning ? 0.35 : 0.18)
         ctx.strokeStyle = (radarState === 'threat')
           ? `rgba(223, 90, 56, ${pAlpha})`
-          : (scanning ? `rgba(5, 150, 105, ${pAlpha})` : `rgba(16, 185, 129, ${pAlpha})`)
+          : (scanning ? `rgba(37, 99, 235, ${pAlpha})` : `rgba(59, 130, 246, ${pAlpha})`)
         ctx.lineWidth = 1.5
         ctx.beginPath()
         ctx.arc(cx, cy, pulseRadius, 0, Math.PI * 2)
@@ -269,7 +269,7 @@ export default function BulkScanner() {
       // 3. Concentric Target Rings with Distance Markers
       const rings = [0.25, 0.5, 0.75, 1.0]
       rings.forEach(r => {
-        ctx.strokeStyle = r === 1.0 ? 'rgba(5, 150, 105, 0.38)' : 'rgba(15, 44, 38, 0.12)'
+        ctx.strokeStyle = r === 1.0 ? 'rgba(37, 99, 235, 0.40)' : 'rgba(30, 41, 59, 0.12)'
         ctx.lineWidth = r === 1.0 ? 1.8 : 1
         ctx.beginPath()
         ctx.arc(cx, cy, maxRadius * r, 0, Math.PI * 2)
@@ -281,7 +281,7 @@ export default function BulkScanner() {
         const rad = (deg * Math.PI) / 180
         const isMajor = deg % 45 === 0
         const innerR = maxRadius - (isMajor ? 8 : 4)
-        ctx.strokeStyle = isMajor ? 'rgba(5, 150, 105, 0.45)' : 'rgba(15, 44, 38, 0.16)'
+        ctx.strokeStyle = isMajor ? 'rgba(37, 99, 235, 0.45)' : 'rgba(30, 41, 59, 0.14)'
         ctx.lineWidth = isMajor ? 1.5 : 1
         ctx.beginPath()
         ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR)
@@ -290,7 +290,7 @@ export default function BulkScanner() {
       }
 
       // 5. Crosshairs & Cardinal Coordinate Lines
-      ctx.strokeStyle = 'rgba(15, 44, 38, 0.12)'
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.12)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(cx - maxRadius, cy)
@@ -300,7 +300,7 @@ export default function BulkScanner() {
       ctx.stroke()
 
       // Diagonal Guides
-      ctx.strokeStyle = 'rgba(15, 44, 38, 0.06)'
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.06)'
       ctx.beginPath()
       ctx.moveTo(cx - maxRadius * 0.707, cy - maxRadius * 0.707)
       ctx.lineTo(cx + maxRadius * 0.707, cy + maxRadius * 0.707)
@@ -318,13 +318,13 @@ export default function BulkScanner() {
         sweepGrad.addColorStop(0.7, 'rgba(223, 90, 56, 0.15)')
         sweepGrad.addColorStop(1, 'rgba(223, 90, 56, 0.0)')
       } else if (scanning) {
-        sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.45)')
-        sweepGrad.addColorStop(0.6, 'rgba(5, 150, 105, 0.2)')
-        sweepGrad.addColorStop(1, 'rgba(15, 44, 38, 0.01)')
+        sweepGrad.addColorStop(0, 'rgba(37, 99, 235, 0.45)')
+        sweepGrad.addColorStop(0.6, 'rgba(14, 165, 233, 0.2)')
+        sweepGrad.addColorStop(1, 'rgba(15, 23, 42, 0.01)')
       } else {
-        sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.35)')
-        sweepGrad.addColorStop(0.7, 'rgba(5, 150, 105, 0.12)')
-        sweepGrad.addColorStop(1, 'rgba(15, 44, 38, 0.01)')
+        sweepGrad.addColorStop(0, 'rgba(37, 99, 235, 0.35)')
+        sweepGrad.addColorStop(0.7, 'rgba(14, 165, 233, 0.12)')
+        sweepGrad.addColorStop(1, 'rgba(15, 23, 42, 0.01)')
       }
 
       ctx.fillStyle = sweepGrad
@@ -349,7 +349,7 @@ export default function BulkScanner() {
         const isBlipThreat = blip.isThreat || (radarState === 'threat' && blip.dist > maxRadius * 0.4)
         ctx.fillStyle = isBlipThreat
           ? `rgba(239, 68, 68, ${blip.alpha})`
-          : `rgba(16, 185, 129, ${blip.alpha})`
+          : `rgba(37, 99, 235, ${blip.alpha})`
 
         ctx.beginPath()
         ctx.arc(blip.x, blip.y, blip.size, 0, Math.PI * 2)
@@ -736,20 +736,20 @@ export default function BulkScanner() {
 
   // 18 Default Sentinels List
   const sentinelsList = [
-    { key: 'filesystem', name: 'Filesystem Sentinel', desc: 'New, modified, deleted & executable files in uploads folder', icon: FileWarning, color: '#059669' },
-    { key: 'malware', name: 'Malware & Trojan Scanner', desc: 'Known malware, ransomware & YARA signature intelligence', icon: ShieldAlert, color: '#10B981' },
+    { key: 'filesystem', name: 'Filesystem Sentinel', desc: 'New, modified, deleted & executable files in uploads folder', icon: FileWarning, color: '#2563EB' },
+    { key: 'malware', name: 'Malware & Trojan Scanner', desc: 'Known malware, ransomware & YARA signature intelligence', icon: ShieldAlert, color: '#4F46E5' },
     { key: 'backdoors', name: 'Backdoors & Webshells', desc: 'Deep AST de-obfuscation & execution sink analysis', icon: FileCode, color: '#EF4444' },
     { key: 'integrity', name: 'File Integrity & Changes', desc: 'Cryptographic SHA-256 drift detection against official baselines', icon: CheckCircle2, color: '#3B82F6' },
-    { key: 'wp_core', name: 'WordPress Core Sentinel', desc: 'Direct verification against official WordPress.org repository tags', icon: Shield, color: '#059669' },
+    { key: 'wp_core', name: 'WordPress Core Sentinel', desc: 'Direct verification against official WordPress.org repository tags', icon: Shield, color: '#0EA5E9' },
     { key: 'plugins', name: 'Plugin Vulnerability Audit', desc: 'Cross-referencing installed plugins with WPScan CVE vulnerability base', icon: Layers, color: '#8B5CF6' },
     { key: 'themes', name: 'Theme Security Audit', desc: 'Static code analysis of theme templates, headers & hooks', icon: Zap, color: '#F59E0B' },
-    { key: 'database', name: 'Database & Injection Sentinel', desc: 'SQL injection patterns, persistent backdoors & rogue options audit', icon: Database, color: '#059669' },
+    { key: 'database', name: 'Database & Injection Sentinel', desc: 'SQL injection patterns, persistent backdoors & rogue options audit', icon: Database, color: '#6366F1' },
     { key: 'users', name: 'User & Privilege Sentinel', desc: 'Rogue administrator detection, weak credentials & brute-force audit', icon: Key, color: '#EC4899' },
     { key: 'config', name: 'Sensitive Config Exposure', desc: 'Detects exposed wp-config.php, .env, .git and database backup dumps', icon: Lock, color: '#F97316' },
     { key: 'exposure', name: 'Full Path Disclosure Sentinel', desc: 'Identifies stack traces exposing server directories and system paths', icon: ExternalLink, color: '#6366F1' },
     { key: 'vulnerabilities', name: 'Known CVE Vulnerabilities', desc: 'Comprehensive telemetry matching 5,000+ zero-day WordPress CVEs', icon: AlertOctagon, color: '#EF4444' },
-    { key: 'headers', name: 'Security Headers & CSP', desc: 'HSTS, X-Frame-Options, Content Security Policy & CORS posture audit', icon: Globe, color: '#10B981' },
-    { key: 'server', name: 'Server & Environment Sentinel', desc: 'PHP version, open dangerous ports, SSL/TLS certificates and modules', icon: Server, color: '#059669' },
+    { key: 'headers', name: 'Security Headers & CSP', desc: 'HSTS, X-Frame-Options, Content Security Policy & CORS posture audit', icon: Globe, color: '#0284C7' },
+    { key: 'server', name: 'Server & Environment Sentinel', desc: 'PHP version, open dangerous ports, SSL/TLS certificates and modules', icon: Server, color: '#3B82F6' },
     { key: 'changes', name: 'Real-Time File Drift', desc: 'Instant event alerts whenever PHP or JS source code is altered', icon: Activity, color: '#3B82F6' },
     { key: 'threat_intel', name: 'Threat Intel & Leaks', desc: 'Continuous correlation with global Cloud ML malicious IP blocklists', icon: Sliders, color: '#8B5CF6' },
     { key: 'redirects', name: 'Malicious Redirects Sentinel', desc: 'Detects stealth .htaccess and JavaScript client-side redirect cloaking', icon: RotateCw, color: '#F59E0B' },
@@ -759,7 +759,7 @@ export default function BulkScanner() {
   // If no websites connected
   if (!hasWebsites) {
     return (
-      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
+      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F8FAFC' }}>
         <BulkHeader
           title="Website Threat Scanner"
           subtitle="Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics"
@@ -773,7 +773,7 @@ export default function BulkScanner() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7', color: '#10201E' }}>
+    <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F8FAFC', color: '#0F172A' }}>
       
       {/* Toast Notification */}
       {toastMsg && (
@@ -782,9 +782,9 @@ export default function BulkScanner() {
           top: '24px',
           right: '24px',
           zIndex: 99999,
-          background: toastMsg.isError ? '#FEF2F2' : '#F0FDF4',
-          color: toastMsg.isError ? '#DC2626' : '#15803D',
-          border: `1px solid ${toastMsg.isError ? '#FCA5A5' : '#86EFAC'}`,
+          background: toastMsg.isError ? '#FEF2F2' : '#EFF6FF',
+          color: toastMsg.isError ? '#DC2626' : '#1D4ED8',
+          border: `1px solid ${toastMsg.isError ? '#FCA5A5' : '#93C5FD'}`,
           borderRadius: '10px',
           padding: '12px 20px',
           fontSize: '13px',
@@ -808,16 +808,16 @@ export default function BulkScanner() {
         padding: '10px 16px',
         background: '#ffffff',
         borderRadius: '12px',
-        border: '1px solid #D9E1DC',
-        boxShadow: '0 2px 8px rgba(11, 37, 34, 0.02)'
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
             width: '24px',
             height: '24px',
             borderRadius: '6px',
-            background: '#0B2522',
-            color: '#10B981',
+            background: '#0F172A',
+            color: '#3B82F6',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -826,11 +826,11 @@ export default function BulkScanner() {
           }}>
             M
           </div>
-          <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>MDefender Pro</span>
-          <span style={{ color: '#C0CBC5' }}>/</span>
-          <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>Threat Intelligence</span>
-          <span style={{ color: '#C0CBC5' }}>/</span>
-          <strong style={{ fontSize: '13px', color: '#0B2522', fontWeight: 800 }}>Website Security Scanner</strong>
+          <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>MDefender Pro</span>
+          <span style={{ color: '#CBD5E1' }}>/</span>
+          <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>Threat Intelligence</span>
+          <span style={{ color: '#CBD5E1' }}>/</span>
+          <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: 800 }}>Website Security Scanner</strong>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -838,10 +838,10 @@ export default function BulkScanner() {
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: '#10B981',
-            boxShadow: '0 0 10px #10B981'
+            background: '#3B82F6',
+            boxShadow: '0 0 10px #3B82F6'
           }} />
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', letterSpacing: '0.3px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563EB', letterSpacing: '0.3px' }}>
             Autonomous Radar Armed
           </span>
         </div>
@@ -856,8 +856,8 @@ export default function BulkScanner() {
         padding: '12px 20px',
         background: '#ffffff',
         borderRadius: '12px',
-        border: '1px solid #D9E1DC',
-        boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 2px 10px rgba(15, 23, 42, 0.05)',
         flexWrap: 'wrap',
         gap: '14px'
       }}>
@@ -866,11 +866,11 @@ export default function BulkScanner() {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            color: '#059669',
-            background: '#ECFDF5',
+            color: '#2563EB',
+            background: '#EFF6FF',
             padding: '6px 12px',
             borderRadius: '8px',
-            border: '1px solid #A7F3D0',
+            border: '1px solid #BFDBFE',
             fontSize: '12px',
             fontWeight: 800
           }}>
@@ -887,9 +887,9 @@ export default function BulkScanner() {
                 width: '100%',
                 padding: '9px 36px 9px 14px',
                 borderRadius: '8px',
-                border: '1.5px solid #10B981',
+                border: '1.5px solid #3B82F6',
                 background: '#ffffff',
-                color: '#0B2522',
+                color: '#0F172A',
                 fontSize: '13.5px',
                 fontWeight: 700,
                 cursor: scanning ? 'not-allowed' : 'pointer',
@@ -918,7 +918,7 @@ export default function BulkScanner() {
                 right: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: '#059669',
+                color: '#2563EB',
                 pointerEvents: 'none'
               }}
             />
@@ -932,11 +932,11 @@ export default function BulkScanner() {
                 gap: '6px',
                 padding: '4px 10px',
                 borderRadius: '6px',
-                background: '#F0FDF4',
-                color: '#15803D',
+                background: '#EFF6FF',
+                color: '#1D4ED8',
                 fontSize: '12px',
                 fontWeight: 700,
-                border: '1px solid #BBF7D0'
+                border: '1px solid #BFDBFE'
               }}>
                 <CheckCircle2 size={13} />
                 <span>{currentSite.domain || currentSite.url}</span>
@@ -964,8 +964,8 @@ export default function BulkScanner() {
             onClick={() => targetSiteId && loadLatestScans(targetSiteId)}
             disabled={scanning}
             style={{
-              background: '#FAFBF9',
-              border: '1px solid #D9E1DC',
+              background: '#ffffff',
+              border: '1px solid #E2E8F0',
               color: '#374151',
               padding: '6px 12px',
               borderRadius: '7px',
@@ -994,10 +994,10 @@ export default function BulkScanner() {
         gap: '16px'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#0B2522', letterSpacing: '-0.5px' }}>
-            Website Threat <span style={{ color: '#059669' }}>Scanner.</span>
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px' }}>
+            Website Threat <span style={{ color: '#2563EB' }}>Scanner.</span>
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#60716B', maxWidth: '680px' }}>
+          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#64748B', maxWidth: '680px' }}>
             Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation &amp; Cloud ML Heuristics.
           </p>
         </div>
@@ -1010,9 +1010,9 @@ export default function BulkScanner() {
             gap: '8px',
             padding: '7px 14px',
             borderRadius: '8px',
-            background: scanning ? '#EFF6FF' : (radarState === 'threat' ? '#FEF2F2' : '#ECFDF5'),
-            border: `1px solid ${scanning ? '#BFDBFE' : (radarState === 'threat' ? '#FECACA' : '#A7F3D0')}`,
-            color: scanning ? '#1D4ED8' : (radarState === 'threat' ? '#DC2626' : '#059669'),
+            background: scanning ? '#EFF6FF' : (radarState === 'threat' ? '#FEF2F2' : '#EFF6FF'),
+            border: `1px solid ${scanning ? '#BFDBFE' : (radarState === 'threat' ? '#FECACA' : '#BFDBFE')}`,
+            color: scanning ? '#1D4ED8' : (radarState === 'threat' ? '#DC2626' : '#2563EB'),
             fontSize: '12px',
             fontWeight: 800
           }}>
@@ -1020,7 +1020,7 @@ export default function BulkScanner() {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: scanning ? '#2563EB' : (radarState === 'threat' ? '#DC2626' : '#059669')
+              background: scanning ? '#2563EB' : (radarState === 'threat' ? '#DC2626' : '#2563EB')
             }} />
             <span>{scanning ? 'SCANNING ORIGIN...' : (radarState === 'threat' ? `${tabCounts.all} THREATS IDENTIFIED` : 'SYSTEM SECURE')}</span>
           </div>
@@ -1030,7 +1030,7 @@ export default function BulkScanner() {
             onClick={() => handleStartScan('full')}
             disabled={scanning}
             style={{
-              background: '#0B2522',
+              background: '#0F172A',
               color: '#ffffff',
               border: 'none',
               padding: '9px 20px',
@@ -1041,7 +1041,7 @@ export default function BulkScanner() {
               alignItems: 'center',
               gap: '8px',
               cursor: scanning ? 'not-allowed' : 'pointer',
-              boxShadow: '0 2px 10px rgba(11, 37, 34, 0.2)',
+              boxShadow: '0 2px 10px rgba(15, 23, 42, 0.2)',
               opacity: scanning ? 0.7 : 1
             }}
           >
@@ -1053,9 +1053,9 @@ export default function BulkScanner() {
             <button
               onClick={handleSkipWait}
               style={{
-                background: '#ECFDF5',
-                color: '#059669',
-                border: '1px solid #A7F3D0',
+                background: '#EFF6FF',
+                color: '#2563EB',
+                border: '1px solid #BFDBFE',
                 padding: '9px 16px',
                 borderRadius: '8px',
                 fontSize: '12.5px',
@@ -1064,10 +1064,10 @@ export default function BulkScanner() {
                 alignItems: 'center',
                 gap: '6px',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(5, 150, 105, 0.15)'
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.15)'
               }}
             >
-              <CheckCircle2 size={15} color="#059669" />
+              <CheckCircle2 size={15} color="#2563EB" />
               <span>View Results Early &rarr;</span>
             </button>
           )}
@@ -1076,9 +1076,9 @@ export default function BulkScanner() {
             onClick={() => handleStartScan('quick')}
             disabled={scanning}
             style={{
-              background: '#FAFBF9',
-              color: '#0B2522',
-              border: '1px solid #D9E1DC',
+              background: '#ffffff',
+              color: '#0F172A',
+              border: '1px solid #E2E8F0',
               padding: '9px 18px',
               borderRadius: '8px',
               fontSize: '13px',
@@ -1100,9 +1100,9 @@ export default function BulkScanner() {
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #D9E1DC',
+        border: '1px solid #E2E8F0',
         padding: '28px 32px',
-        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)',
+        boxShadow: '0 4px 20px rgba(15, 23, 42, 0.05)',
         marginBottom: '24px'
       }}>
         <div style={{
@@ -1132,12 +1132,12 @@ export default function BulkScanner() {
               }}>
                 <ShieldCheck
                   size={24}
-                  color={radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#059669' : '#60716B')}
+                  color={radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#2563EB' : '#64748B')}
                 />
                 <span style={{
                   fontSize: '26px',
                   fontWeight: 900,
-                  color: radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#0B2522' : '#60716B'),
+                  color: radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#0F172A' : '#64748B'),
                   lineHeight: 1.1,
                   marginTop: '2px'
                 }}>
@@ -1146,7 +1146,7 @@ export default function BulkScanner() {
                 <span style={{
                   fontSize: '9.5px',
                   fontWeight: 800,
-                  color: radarState === 'threat' ? '#DC2626' : '#059669',
+                  color: radarState === 'threat' ? '#DC2626' : '#2563EB',
                   letterSpacing: '0.8px',
                   textTransform: 'uppercase',
                   marginTop: '1px'
@@ -1163,17 +1163,17 @@ export default function BulkScanner() {
               justifyContent: 'space-between',
               marginTop: '14px',
               padding: '10px 16px',
-              background: '#F8FAF9',
+              background: '#ffffff',
               borderRadius: '10px',
-              border: '1px solid #E6ECE9'
+              border: '1px solid #E2E8F0'
             }}>
               <div>
-                <span style={{ display: 'block', fontSize: '9.5px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>ENGINE MODE</span>
-                <strong style={{ fontSize: '11.5px', color: '#0B2522', fontWeight: 700 }}>Cloud ML + Heuristic AST</strong>
+                <span style={{ display: 'block', fontSize: '9.5px', color: '#64748B', fontWeight: 800, letterSpacing: '0.6px' }}>ENGINE MODE</span>
+                <strong style={{ fontSize: '11.5px', color: '#0F172A', fontWeight: 700 }}>Cloud ML + Heuristic AST</strong>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '9.5px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>RADAR SWEEP</span>
-                <strong style={{ fontSize: '11.5px', color: '#059669', fontWeight: 700 }}>
+                <span style={{ display: 'block', fontSize: '9.5px', color: '#64748B', fontWeight: 800, letterSpacing: '0.6px' }}>RADAR SWEEP</span>
+                <strong style={{ fontSize: '11.5px', color: '#2563EB', fontWeight: 700 }}>
                   {scanning ? 'Active Micro-batch Sweep' : 'Continuous Sentinel'}
                 </strong>
               </div>
@@ -1189,97 +1189,97 @@ export default function BulkScanner() {
             }}>
               
               {/* Metric 1: Security Health Score */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ShieldCheck size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SECURITY HEALTH</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px' }}>SECURITY HEALTH</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>
                   {telemetryMetrics.securityHealth !== null ? `${telemetryMetrics.securityHealth}/100` : '—'}
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#2563EB', marginTop: '2px' }}>
                   {telemetryMetrics.healthSub}
                 </div>
               </div>
 
               {/* Metric 2: Files Scanned */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FileText size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>FILES SCANNED</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px' }}>FILES SCANNED</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>
                   {telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : '—'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                   {telemetryMetrics.filesScanned > 0 ? 'Verified on origin disk' : 'No completed scan yet'}
                 </div>
               </div>
 
               {/* Metric 3: Component Files Scanned */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F3E8FF', color: '#7E22CE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Layers size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>COMPONENTS AUDITED</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px' }}>COMPONENTS AUDITED</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>
                   {telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : '—'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                   Plugins, themes &amp; uploads
                 </div>
               </div>
 
               {/* Metric 4: Active Threats */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: telemetryMetrics.unresolvedChanges > 0 ? '#FEF2F2' : '#ECFDF5', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: telemetryMetrics.unresolvedChanges > 0 ? '#FEF2F2' : '#EFF6FF', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <AlertTriangle size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>ACTIONABLE THREATS</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px' }}>ACTIONABLE THREATS</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669' }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#2563EB' }}>
                   {Number(telemetryMetrics.unresolvedChanges).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#2563EB', marginTop: '2px' }}>
                   {telemetryMetrics.unresolvedChanges > 0 ? `${telemetryMetrics.unresolvedChanges} Unresolved Issues` : '0 Actionable Threats'}
                 </div>
               </div>
 
               {/* Metric 5: Last Deep Analysis */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Clock size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>LAST DEEP SCAN</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px' }}>LAST DEEP SCAN</span>
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>
                   {telemetryMetrics.lastDeepAnalysis}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                   {telemetryMetrics.durationText}
                 </div>
               </div>
 
               {/* Metric 6: Monitoring Uptime */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Activity size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>AUTONOMOUS UPTIME</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.6px' }}>AUTONOMOUS UPTIME</span>
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 900, color: '#059669' }}>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>
                   {continuousMonitoring ? 'Enabled' : 'Paused'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                   Continuous scan monitoring
                 </div>
               </div>
@@ -1293,9 +1293,9 @@ export default function BulkScanner() {
               justifyContent: 'space-between',
               marginTop: '16px',
               padding: '12px 18px',
-              background: '#FAFBF9',
+              background: '#ffffff',
               borderRadius: '10px',
-              border: '1px solid #D9E1DC',
+              border: '1px solid #E2E8F0',
               flexWrap: 'wrap',
               gap: '12px'
             }}>
@@ -1304,9 +1304,9 @@ export default function BulkScanner() {
                   type="checkbox"
                   checked={continuousMonitoring}
                   onChange={(e) => setContinuousMonitoring(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
+                  style={{ width: '16px', height: '16px', accentColor: '#2563EB', cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0B2522' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
                   Continuous Real-Time Monitoring
                 </span>
               </label>
@@ -1316,12 +1316,12 @@ export default function BulkScanner() {
                   onClick={() => setScheduleModal(true)}
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #D9E1DC',
+                    border: '1px solid #E2E8F0',
                     padding: '6px 14px',
                     borderRadius: '7px',
                     fontSize: '12px',
                     fontWeight: 700,
-                    color: '#0B2522',
+                    color: '#0F172A',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -1336,12 +1336,12 @@ export default function BulkScanner() {
                   onClick={() => showToast(`Automated report sent to admin email for ${currentSite?.domain || 'site'}.`)}
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #D9E1DC',
+                    border: '1px solid #E2E8F0',
                     padding: '6px 14px',
                     borderRadius: '7px',
                     fontSize: '12px',
                     fontWeight: 700,
-                    color: '#0B2522',
+                    color: '#0F172A',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -1362,20 +1362,20 @@ export default function BulkScanner() {
           <div style={{
             marginTop: '24px',
             padding: '20px',
-            background: '#FAFBF9',
+            background: '#ffffff',
             borderRadius: '12px',
-            border: '1px solid #A7F3D0',
+            border: '1px solid #BFDBFE',
             animation: 'fadeIn 0.3s ease'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <RotateCw size={18} color="#059669" style={{ animation: 'spin 1.5s linear infinite' }} />
+                <RotateCw size={18} color="#2563EB" style={{ animation: 'spin 1.5s linear infinite' }} />
                 <div>
-                  <strong style={{ fontSize: '14px', color: '#0B2522', fontWeight: 800 }}>{scanStage}</strong>
-                  <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{stageDetail}</div>
+                  <strong style={{ fontSize: '14px', color: '#0F172A', fontWeight: 800 }}>{scanStage}</strong>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>{stageDetail}</div>
                 </div>
               </div>
-              <span style={{ fontSize: '18px', fontWeight: 900, color: '#059669' }}>
+              <span style={{ fontSize: '18px', fontWeight: 900, color: '#2563EB' }}>
                 {scanProgressPct}%
               </span>
             </div>
@@ -1395,7 +1395,7 @@ export default function BulkScanner() {
                     <span>{Math.round(st.pct)}%</span>
                   </div>
                   <div style={{ height: '5px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ width: `${st.pct}%`, height: '100%', background: '#059669', transition: 'width 0.3s ease' }} />
+                    <div style={{ width: `${st.pct}%`, height: '100%', background: '#2563EB', transition: 'width 0.3s ease' }} />
                   </div>
                 </div>
               ))}
@@ -1407,8 +1407,8 @@ export default function BulkScanner() {
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '10px 14px',
-              background: '#0B1F1C',
-              color: '#34D399',
+              background: '#0F172A',
+              color: '#38BDF8',
               borderRadius: '8px',
               fontFamily: 'monospace',
               fontSize: '12px'
@@ -1434,7 +1434,7 @@ export default function BulkScanner() {
         padding: '14px 24px',
         background: '#ffffff',
         borderRadius: '12px',
-        border: '1px solid #D9E1DC',
+        border: '1px solid #E2E8F0',
         marginBottom: '24px',
         flexWrap: 'wrap',
         gap: '12px'
@@ -1452,11 +1452,11 @@ export default function BulkScanner() {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: '#059669',
-              boxShadow: '0 0 6px rgba(5, 150, 105, 0.4)'
+              background: '#2563EB',
+              boxShadow: '0 0 6px rgba(37, 99, 235, 0.35)'
             }} />
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B2522' }}>{step}</span>
-            {idx < 5 && <span style={{ color: '#D9E1DC', marginLeft: '12px' }}>&bull;</span>}
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>{step}</span>
+            {idx < 5 && <span style={{ color: '#E2E8F0', marginLeft: '12px' }}>&bull;</span>}
           </div>
         ))}
       </div>
@@ -1465,9 +1465,9 @@ export default function BulkScanner() {
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #D9E1DC',
+        border: '1px solid #E2E8F0',
         padding: '24px 28px',
-        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)',
+        boxShadow: '0 4px 20px rgba(15, 23, 42, 0.05)',
         marginBottom: '28px'
       }}>
         
@@ -1476,21 +1476,21 @@ export default function BulkScanner() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid #EDF2F0',
+          borderBottom: '1px solid #E2E8F0',
           paddingBottom: '18px',
           marginBottom: '18px',
           flexWrap: 'wrap',
           gap: '14px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Shield size={22} color="#0B2522" strokeWidth={2.3} />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0B2522' }}>
+            <Shield size={22} color="#0F172A" strokeWidth={2.3} />
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
               Security Findings &amp; Forensic Analysis
             </h3>
             <span style={{
-              background: tabCounts.all > 0 ? '#FEF2F2' : '#ECFDF5',
-              color: tabCounts.all > 0 ? '#DC2626' : '#059669',
-              border: `1px solid ${tabCounts.all > 0 ? '#FECACA' : '#A7F3D0'}`,
+              background: tabCounts.all > 0 ? '#FEF2F2' : '#EFF6FF',
+              color: tabCounts.all > 0 ? '#DC2626' : '#2563EB',
+              border: `1px solid ${tabCounts.all > 0 ? '#FECACA' : '#BFDBFE'}`,
               borderRadius: '20px',
               padding: '2px 10px',
               fontSize: '11.5px',
@@ -1504,9 +1504,9 @@ export default function BulkScanner() {
             <button
               onClick={handleToggleExpandAll}
               style={{
-                background: '#FAFBF9',
-                border: '1px solid #D9E1DC',
-                color: '#0B2522',
+                background: '#ffffff',
+                border: '1px solid #E2E8F0',
+                color: '#0F172A',
                 padding: '7px 14px',
                 borderRadius: '8px',
                 fontSize: '12px',
@@ -1544,9 +1544,9 @@ export default function BulkScanner() {
             <button
               onClick={handleBulkRepairCore}
               style={{
-                background: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                color: '#15803D',
+                background: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                color: '#1D4ED8',
                 padding: '7px 14px',
                 borderRadius: '8px',
                 fontSize: '12px',
@@ -1575,9 +1575,9 @@ export default function BulkScanner() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               style={{
-                background: activeTab === tab.key ? '#0B2522' : '#FAFBF9',
-                color: activeTab === tab.key ? '#ffffff' : '#60716B',
-                border: `1px solid ${activeTab === tab.key ? '#0B2522' : '#D9E1DC'}`,
+                background: activeTab === tab.key ? '#0F172A' : '#ffffff',
+                color: activeTab === tab.key ? '#ffffff' : '#64748B',
+                border: `1px solid ${activeTab === tab.key ? '#0F172A' : '#E2E8F0'}`,
                 padding: '6px 16px',
                 borderRadius: '7px',
                 fontSize: '12.5px',
@@ -1597,22 +1597,22 @@ export default function BulkScanner() {
           alignItems: 'center',
           gap: '20px',
           padding: '10px 16px',
-          background: '#F8FAF9',
+          background: '#ffffff',
           borderRadius: '8px',
-          border: '1px solid #E6ECE9',
+          border: '1px solid #E2E8F0',
           fontSize: '12.5px',
-          color: '#60716B',
+          color: '#64748B',
           marginBottom: '20px',
           flexWrap: 'wrap'
         }}>
-          <div>Files scanned: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
-          <div>Plugin &amp; theme files: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
-          <div>Users checked: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.usersChecked !== null && telemetryMetrics.usersChecked !== undefined ? Number(telemetryMetrics.usersChecked).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
-          <div>Database tables: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.databaseTables !== null && telemetryMetrics.databaseTables !== undefined ? Number(telemetryMetrics.databaseTables).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
+          <div>Files scanned: <strong style={{ color: '#0F172A' }}>{telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
+          <div>Plugin &amp; theme files: <strong style={{ color: '#0F172A' }}>{telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
+          <div>Users checked: <strong style={{ color: '#0F172A' }}>{telemetryMetrics.usersChecked !== null && telemetryMetrics.usersChecked !== undefined ? Number(telemetryMetrics.usersChecked).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
+          <div>Database tables: <strong style={{ color: '#0F172A' }}>{telemetryMetrics.databaseTables !== null && telemetryMetrics.databaseTables !== undefined ? Number(telemetryMetrics.databaseTables).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
           {telemetryMetrics.postsScanned !== null && telemetryMetrics.postsScanned !== undefined && (
-            <div>Posts audited: <strong style={{ color: '#0B2522' }}>{Number(telemetryMetrics.postsScanned).toLocaleString()}</strong></div>
+            <div>Posts audited: <strong style={{ color: '#0F172A' }}>{Number(telemetryMetrics.postsScanned).toLocaleString()}</strong></div>
           )}
-          <div>Results Found: <strong style={{ color: tabCounts.all > 0 ? '#DC2626' : '#059669' }}>{tabCounts.all} Issues</strong></div>
+          <div>Results Found: <strong style={{ color: tabCounts.all > 0 ? '#DC2626' : '#2563EB' }}>{tabCounts.all} Issues</strong></div>
         </div>
 
         {/* Findings List */}
@@ -1621,16 +1621,16 @@ export default function BulkScanner() {
             <div style={{
               textAlign: 'center',
               padding: '48px 24px',
-              background: '#FAFBF9',
+              background: '#ffffff',
               borderRadius: '12px',
-              border: '1px dashed #D9E1DC'
+              border: '1px dashed #E2E8F0'
             }}>
               <div style={{
                 width: '54px',
                 height: '54px',
                 borderRadius: '50%',
-                background: '#ECFDF5',
-                color: '#059669',
+                background: '#EFF6FF',
+                color: '#2563EB',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1638,8 +1638,8 @@ export default function BulkScanner() {
               }}>
                 <ShieldCheck size={32} />
               </div>
-              <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>Zero Threats Detected</h4>
-              <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '440px', display: 'inline-block' }}>
+              <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>Zero Threats Detected</h4>
+              <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748B', maxWidth: '440px', display: 'inline-block' }}>
                 Your WordPress files, core checksums, database and server configuration match pristine baseline integrity.
               </p>
             </div>
@@ -1662,8 +1662,8 @@ export default function BulkScanner() {
                 <div
                   key={rowId}
                   style={{
-                    border: `1px solid ${isCritical ? '#FECACA' : '#D9E1DC'}`,
-                    borderLeft: `4px solid ${isQuarantined ? '#10B981' : (isCritical ? '#DC2626' : '#F59E0B')}`,
+                    border: `1px solid ${isCritical ? '#FECACA' : '#E2E8F0'}`,
+                    borderLeft: `4px solid ${isQuarantined ? '#3B82F6' : (isCritical ? '#DC2626' : '#F59E0B')}`,
                     borderRadius: '10px',
                     background: '#ffffff',
                     overflow: 'hidden',
@@ -1699,10 +1699,10 @@ export default function BulkScanner() {
                       </div>
 
                       <div>
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#0B2522' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>
                           {f.title || f.threat_name || filePath}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                           Type: <strong>{f.type || f.category || 'File'}</strong>
                         </div>
                       </div>
@@ -1727,9 +1727,9 @@ export default function BulkScanner() {
                             onClick={() => handleRepairCore(f)}
                             disabled={isBusy}
                             style={{
-                              background: '#F0FDF4',
-                              color: '#15803D',
-                              border: '1px solid #BBF7D0',
+                              background: '#EFF6FF',
+                              color: '#1D4ED8',
+                              border: '1px solid #BFDBFE',
                               padding: '5px 12px',
                               borderRadius: '6px',
                               fontSize: '11.5px',
@@ -1771,9 +1771,9 @@ export default function BulkScanner() {
                         <button
                           onClick={() => handleToggleIgnore(rowId)}
                           style={{
-                            background: '#FAFBF9',
-                            color: '#60716B',
-                            border: '1px solid #D9E1DC',
+                            background: '#ffffff',
+                            color: '#64748B',
+                            border: '1px solid #E2E8F0',
                             padding: '5px 12px',
                             borderRadius: '6px',
                             fontSize: '11.5px',
@@ -1787,9 +1787,9 @@ export default function BulkScanner() {
                         <button
                           onClick={() => toggleRowDrawer(rowId)}
                           style={{
-                            background: '#FAFBF9',
-                            color: '#0B2522',
-                            border: '1px solid #D9E1DC',
+                            background: '#ffffff',
+                            color: '#0F172A',
+                            border: '1px solid #E2E8F0',
                             padding: '5px 12px',
                             borderRadius: '6px',
                             fontSize: '11.5px',
@@ -1811,24 +1811,24 @@ export default function BulkScanner() {
                   {isExpanded && (
                     <div style={{
                       padding: '16px 20px',
-                      background: '#FAFBF9',
-                      borderTop: '1px solid #EDF2F0'
+                      background: '#ffffff',
+                      borderTop: '1px solid #E2E8F0'
                     }}>
                       <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
-                        <strong style={{ color: '#0B2522' }}>Filename:</strong> <code style={{ background: '#E2E8F0', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{filePath}</code>
+                        <strong style={{ color: '#0F172A' }}>Filename:</strong> <code style={{ background: '#E2E8F0', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{filePath}</code>
                       </div>
                       <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
-                        <strong style={{ color: '#0B2522' }}>File Type:</strong> {isCore ? 'WordPress Core (Protected Official System File)' : (f.category || 'Plugin File')}
+                        <strong style={{ color: '#0F172A' }}>File Type:</strong> {isCore ? 'WordPress Core (Protected Official System File)' : (f.category || 'Plugin File')}
                       </div>
                       <div style={{ fontSize: '13px', color: '#475569', marginBottom: '12px' }}>
-                        <strong style={{ color: '#0B2522' }}>Details:</strong> {f.details || 'This file has been modified or differs from the original pristine baseline version.'}
+                        <strong style={{ color: '#0F172A' }}>Details:</strong> {f.details || 'This file has been modified or differs from the original pristine baseline version.'}
                       </div>
 
                       {/* Forensic Signals Bullet List */}
                       {f.evidence && f.evidence.length > 0 && (
                         <div style={{ marginBottom: '14px' }}>
-                          <strong style={{ fontSize: '12px', color: '#0B2522' }}>Forensic Signals:</strong>
-                          <ul style={{ margin: '4px 0 0 20px', color: '#60716B', fontSize: '12px', lineHeight: 1.6 }}>
+                          <strong style={{ fontSize: '12px', color: '#0F172A' }}>Forensic Signals:</strong>
+                          <ul style={{ margin: '4px 0 0 20px', color: '#64748B', fontSize: '12px', lineHeight: 1.6 }}>
                             {f.evidence.map((ev, ei) => (
                               <li key={ei}>{ev}</li>
                             ))}
@@ -1880,7 +1880,7 @@ export default function BulkScanner() {
                               <span style={{ display: 'inline-flex', gap: '4px' }}>
                                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444' }} />
                                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3B82F6' }} />
                               </span>
                               <span style={{ color: '#E2E8F0', fontFamily: 'monospace' }}>
                                 {filePath || 'Detected Threat File'}
@@ -1982,12 +1982,12 @@ export default function BulkScanner() {
                           onClick={() => handleViewFile(f)}
                           style={{
                             background: '#ffffff',
-                            border: '1px solid #D9E1DC',
+                            border: '1px solid #E2E8F0',
                             padding: '6px 14px',
                             borderRadius: '6px',
                             fontSize: '12px',
                             fontWeight: 700,
-                            color: '#0B2522',
+                            color: '#0F172A',
                             cursor: 'pointer'
                           }}
                         >
@@ -1999,12 +1999,12 @@ export default function BulkScanner() {
                             onClick={() => handleViewDiff(f)}
                             style={{
                               background: '#ffffff',
-                              border: '1px solid #D9E1DC',
+                              border: '1px solid #E2E8F0',
                               padding: '6px 14px',
                               borderRadius: '6px',
                               fontSize: '12px',
                               fontWeight: 700,
-                              color: '#0B2522',
+                              color: '#0F172A',
                               cursor: 'pointer'
                             }}
                           >
@@ -2016,12 +2016,12 @@ export default function BulkScanner() {
                           onClick={() => handleToggleIgnore(rowId)}
                           style={{
                             background: '#ffffff',
-                            border: '1px solid #D9E1DC',
+                            border: '1px solid #E2E8F0',
                             padding: '6px 14px',
                             borderRadius: '6px',
                             fontSize: '12px',
                             fontWeight: 700,
-                            color: '#60716B',
+                            color: '#64748B',
                             cursor: 'pointer'
                           }}
                         >
@@ -2033,7 +2033,7 @@ export default function BulkScanner() {
                             onClick={() => handleRepairCore(f)}
                             disabled={isBusy}
                             style={{
-                              background: '#059669',
+                              background: '#2563EB',
                               border: 'none',
                               color: '#ffffff',
                               padding: '6px 16px',
@@ -2079,9 +2079,9 @@ export default function BulkScanner() {
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #D9E1DC',
+        border: '1px solid #E2E8F0',
         padding: '24px 28px',
-        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)'
+        boxShadow: '0 4px 20px rgba(15, 23, 42, 0.05)'
       }}>
         <div
           onClick={() => setShow18Sentinels(prev => !prev)}
@@ -2099,8 +2099,8 @@ export default function BulkScanner() {
               width: '36px',
               height: '36px',
               borderRadius: '10px',
-              background: '#ECFDF5',
-              color: '#059669',
+              background: '#EFF6FF',
+              color: '#2563EB',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -2108,10 +2108,10 @@ export default function BulkScanner() {
               <Globe size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
+              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>
                 18 Autonomous Security Sentinel Domains
               </h3>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
                 Filesystem, integrity, backdoor, CVE vulnerability and header sentinels
               </div>
             </div>
@@ -2119,9 +2119,9 @@ export default function BulkScanner() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{
-              background: '#ECFDF5',
-              color: '#059669',
-              border: '1px solid #A7F3D0',
+              background: '#EFF6FF',
+              color: '#2563EB',
+              border: '1px solid #BFDBFE',
               borderRadius: '20px',
               padding: '3px 12px',
               fontSize: '11px',
@@ -2132,9 +2132,9 @@ export default function BulkScanner() {
             <button
               type="button"
               style={{
-                background: '#FAFBF9',
-                border: '1px solid #D9E1DC',
-                color: '#0B2522',
+                background: '#ffffff',
+                border: '1px solid #E2E8F0',
+                color: '#0F172A',
                 padding: '7px 14px',
                 borderRadius: '8px',
                 fontSize: '12px',
@@ -2159,7 +2159,7 @@ export default function BulkScanner() {
             gap: '16px',
             marginTop: '20px',
             paddingTop: '20px',
-            borderTop: '1px solid #EDF2F0'
+            borderTop: '1px solid #E2E8F0'
           }}>
             {sentinelsList.map(item => {
               const domData = domainsStatus[item.key] || { status: 'secure', count: 0 }
@@ -2170,9 +2170,9 @@ export default function BulkScanner() {
                 <div
                   key={item.key}
                   style={{
-                    background: '#FAFBF9',
+                    background: '#ffffff',
                     borderRadius: '12px',
-                    border: `1px solid ${isThreat ? '#FECACA' : '#D9E1DC'}`,
+                    border: `1px solid ${isThreat ? '#FECACA' : '#E2E8F0'}`,
                     padding: '16px 18px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -2199,18 +2199,18 @@ export default function BulkScanner() {
                         fontWeight: 800,
                         padding: '2px 8px',
                         borderRadius: '6px',
-                        background: isThreat ? '#FEF2F2' : '#ECFDF5',
-                        color: isThreat ? '#DC2626' : '#059669',
-                        border: `1px solid ${isThreat ? '#FECACA' : '#A7F3D0'}`
+                        background: isThreat ? '#FEF2F2' : '#EFF6FF',
+                        color: isThreat ? '#DC2626' : '#2563EB',
+                        border: `1px solid ${isThreat ? '#FECACA' : '#BFDBFE'}`
                       }}>
                         {isThreat ? 'THREAT' : 'SECURE'}
                       </span>
                     </div>
 
-                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#0B2522' }}>
+                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>
                       {item.name}
                     </h4>
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B', lineHeight: 1.4 }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B', lineHeight: 1.4 }}>
                       {item.desc}
                     </p>
                   </div>
@@ -2221,12 +2221,12 @@ export default function BulkScanner() {
                     alignItems: 'center',
                     marginTop: '14px',
                     paddingTop: '10px',
-                    borderTop: '1px solid #E6ECE9',
+                    borderTop: '1px solid #E2E8F0',
                     fontSize: '11px',
                     color: '#94A3B8'
                   }}>
-                    <span>Checked: <strong style={{ color: '#0B2522' }}>Just now</strong></span>
-                    <span><strong style={{ color: isThreat ? '#DC2626' : '#059669' }}>{domData.count || 0}</strong> findings</span>
+                    <span>Checked: <strong style={{ color: '#0F172A' }}>Just now</strong></span>
+                    <span><strong style={{ color: isThreat ? '#DC2626' : '#2563EB' }}>{domData.count || 0}</strong> findings</span>
                   </div>
                 </div>
               )
@@ -2243,7 +2243,7 @@ export default function BulkScanner() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(11, 37, 34, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
@@ -2254,7 +2254,7 @@ export default function BulkScanner() {
           <div style={{
             background: '#ffffff',
             borderRadius: '16px',
-            border: '1px solid #D9E1DC',
+            border: '1px solid #E2E8F0',
             width: '100%',
             maxWidth: '1000px',
             maxHeight: '85vh',
@@ -2270,10 +2270,10 @@ export default function BulkScanner() {
               borderBottom: '1px solid #E2E8F0'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>
                   Visual Code Differences
                 </h3>
-                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
                   Comparing local file on server with official WordPress.org release: <code>{diffModal.file}</code>
                 </div>
               </div>
@@ -2287,20 +2287,20 @@ export default function BulkScanner() {
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
               {diffModal.loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#059669' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#2563EB' }}>
                   <RotateCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
                   <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 700 }}>Fetching baseline diff...</div>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#059669', marginBottom: '6px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', marginBottom: '6px' }}>
                       Pristine WordPress.org Release Baseline
                     </div>
                     <pre style={{
                       margin: 0,
                       padding: '14px',
-                      background: '#F8FAF9',
+                      background: '#ffffff',
                       border: '1px solid #E2E8F0',
                       borderRadius: '8px',
                       fontSize: '11.5px',
@@ -2344,13 +2344,13 @@ export default function BulkScanner() {
               gap: '12px',
               padding: '16px 24px',
               borderTop: '1px solid #E2E8F0',
-              background: '#FAFBF9'
+              background: '#ffffff'
             }}>
               <button
                 onClick={() => setDiffModal({ open: false, file: '', original: '', local: '', loading: false })}
                 style={{
                   background: '#ffffff',
-                  border: '1px solid #D9E1DC',
+                  border: '1px solid #E2E8F0',
                   padding: '7px 18px',
                   borderRadius: '8px',
                   fontSize: '12.5px',
@@ -2367,7 +2367,7 @@ export default function BulkScanner() {
                   setDiffModal({ open: false, file: '', original: '', local: '', loading: false })
                 }}
                 style={{
-                  background: '#059669',
+                  background: '#2563EB',
                   border: 'none',
                   color: '#ffffff',
                   padding: '7px 18px',
@@ -2392,7 +2392,7 @@ export default function BulkScanner() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(11, 37, 34, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
@@ -2403,7 +2403,7 @@ export default function BulkScanner() {
           <div style={{
             background: '#ffffff',
             borderRadius: '16px',
-            border: '1px solid #D9E1DC',
+            border: '1px solid #E2E8F0',
             width: '100%',
             maxWidth: '900px',
             maxHeight: '85vh',
@@ -2419,10 +2419,10 @@ export default function BulkScanner() {
               borderBottom: '1px solid #E2E8F0'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>
                   Source Code Inspection
                 </h3>
-                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
                   <code>{viewFileModal.file}</code> &bull; {viewFileModal.lines} lines
                 </div>
               </div>
@@ -2436,7 +2436,7 @@ export default function BulkScanner() {
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
               {viewFileModal.loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#059669' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#2563EB' }}>
                   <RotateCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
                   <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 700 }}>Reading file source...</div>
                 </div>
@@ -2444,7 +2444,7 @@ export default function BulkScanner() {
                 <pre style={{
                   margin: 0,
                   padding: '16px',
-                  background: '#0B1F1C',
+                  background: '#0F172A',
                   color: '#E2E8F0',
                   borderRadius: '10px',
                   fontSize: '12px',
@@ -2464,7 +2464,7 @@ export default function BulkScanner() {
               gap: '12px',
               padding: '16px 24px',
               borderTop: '1px solid #E2E8F0',
-              background: '#FAFBF9'
+              background: '#ffffff'
             }}>
               <button
                 onClick={() => {
@@ -2473,7 +2473,7 @@ export default function BulkScanner() {
                 }}
                 style={{
                   background: '#ffffff',
-                  border: '1px solid #D9E1DC',
+                  border: '1px solid #E2E8F0',
                   padding: '7px 18px',
                   borderRadius: '8px',
                   fontSize: '12.5px',
@@ -2490,7 +2490,7 @@ export default function BulkScanner() {
               <button
                 onClick={() => setViewFileModal({ open: false, file: '', content: '', lines: 0, loading: false })}
                 style={{
-                  background: '#0B2522',
+                  background: '#0F172A',
                   border: 'none',
                   color: '#ffffff',
                   padding: '7px 18px',
@@ -2515,7 +2515,7 @@ export default function BulkScanner() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(11, 37, 34, 0.65)',
+          background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
@@ -2526,14 +2526,14 @@ export default function BulkScanner() {
           <div style={{
             background: '#ffffff',
             borderRadius: '16px',
-            border: '1px solid #D9E1DC',
+            border: '1px solid #E2E8F0',
             width: '100%',
             maxWidth: '520px',
             padding: '24px',
             boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0B2522' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
                 Automated Scan Scheduling
               </h3>
               <button
@@ -2544,22 +2544,22 @@ export default function BulkScanner() {
               </button>
             </div>
 
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#60716B', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#64748B', lineHeight: 1.5 }}>
               Configure recurring background autonomous security audits for <strong>{currentSite?.domain || 'this site'}</strong>.
             </p>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0B2522', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
                 SCAN FREQUENCY
               </label>
               <select style={{
                 width: '100%',
                 padding: '9px 12px',
                 borderRadius: '8px',
-                border: '1px solid #D9E1DC',
+                border: '1px solid #E2E8F0',
                 fontSize: '13px',
                 fontWeight: 700,
-                color: '#0B2522',
+                color: '#0F172A',
                 background: '#ffffff'
               }}>
                 <option value="daily">Daily Automated Deep Audit</option>
@@ -2569,7 +2569,7 @@ export default function BulkScanner() {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0B2522', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
                 ALERT EMAIL NOTIFICATION
               </label>
               <input
@@ -2580,9 +2580,9 @@ export default function BulkScanner() {
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #D9E1DC',
+                  border: '1px solid #E2E8F0',
                   fontSize: '13px',
-                  color: '#0B2522',
+                  color: '#0F172A',
                   boxSizing: 'border-box'
                 }}
               />
@@ -2593,7 +2593,7 @@ export default function BulkScanner() {
                 onClick={() => setScheduleModal(false)}
                 style={{
                   background: '#ffffff',
-                  border: '1px solid #D9E1DC',
+                  border: '1px solid #E2E8F0',
                   padding: '8px 16px',
                   borderRadius: '8px',
                   fontSize: '12.5px',
@@ -2609,7 +2609,7 @@ export default function BulkScanner() {
                   showToast('Automated scan schedule saved successfully!')
                 }}
                 style={{
-                  background: '#0B2522',
+                  background: '#0F172A',
                   border: 'none',
                   color: '#ffffff',
                   padding: '8px 18px',
