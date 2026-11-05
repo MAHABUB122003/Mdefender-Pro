@@ -60,7 +60,8 @@ class WAF_FW_Rule_Engine {
             ['name' => 'XSS - Frontend SPA Directives', 'pattern' => '/(?:\bv-html\s*=|\bng-bind-html\s*=|\bdangerouslySetInnerHTML\b)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
 
             // 3. Local & Remote File Inclusion & Sensitive Path Protection
-            ['name' => 'LFI - Directory Traversal', 'pattern' => '#(?:\.{2,}[\/\\\\;])|(?:[\/\\\\;]\.{2,})#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'Evasion - Overlong UTF-8 & Unicode Traversal', 'pattern' => '#%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'LFI - Directory Traversal', 'pattern' => '#(?:\.{2,}[\/\\\\;])|(?:[\/\\\\;]\.{2,})|(?:\.\.[\/\\])#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'LFI - Sensitive Files', 'pattern' => '#(?:\/etc\/(?:passwd|shadow|hosts|group|issue))|(?:c:[\/\\\\]windows[\/\\\\]win\.ini)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'LFI - PHP Wrappers', 'pattern' => '/(?:php:\/\/(?:filter|input|memory|data)|data:\/\/text\/plain|file:\/\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],

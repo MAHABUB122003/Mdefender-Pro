@@ -35,8 +35,14 @@ class DeepNormalizer:
         # Stage 1: Strip null bytes & bad control characters immediately
         current = self.strip_null_and_control_chars(current)
 
+        # Stage 1b: Canonicalize overlong UTF-8 & non-standard Unicode path traversal
+        current = self.normalize_overlong_and_unicode_traversal(current)
+
         # Stage 2: Recursive URL & Percent Decoding
         current = self.recursive_url_decode(current)
+
+        # Stage 2b: Re-canonicalize after URL decoding (catches nested and decoded byte sequences)
+        current = self.normalize_overlong_and_unicode_traversal(current)
 
         # Stage 3: HTML entity decoding
         current = self.decode_html_entities(current)
@@ -86,6 +92,48 @@ class DeepNormalizer:
         text = re.sub(r"(?i)%00|\\0|\\x00|\x00", "", text)
         # Remove unprintable chars (0x01-0x08, 0x0B, 0x0C, 0x0E-0x1F, 0x7F)
         text = re.sub(r"[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
+        return text
+
+    def normalize_overlong_and_unicode_traversal(self, text: str) -> str:
+        """Canonicalizes overlong UTF-8 and non-standard Unicode path traversal representations."""
+        if not text:
+            return ""
+
+        # Slash encodings
+        slashes = [
+            "%c0%af", "%c0%2f", "%c1%8f", "%c1%af", "%e0%80%af", "%e0%80%2f", "%f0%80%80%af",
+            "%u002f", "%u2215", "%uff0f", "%uefc8", "%u2044",
+            "\xc0\xaf", "\xc0\x2f", "\xc1\x8f", "\xc1\xaf", "\xe0\x80\xaf",
+            "%2f"
+        ]
+        for s in slashes:
+            text = text.replace(s, "/").replace(s.upper(), "/")
+
+        # Backslash encodings
+        backslashes = [
+            "%c0%5c", "%c0%9c", "%c1%9c", "%c1%bc", "%e0%80%5c", "%e0%81%9c", "%f0%80%80%5c",
+            "%u005c", "%u2216", "%uff3c",
+            "\xc0\x5c", "\xc0\x9c", "\xc1\x9c", "\xc1\xbc", "\xe0\x80\x5c",
+            "%5c"
+        ]
+        for b in backslashes:
+            text = text.replace(b, "\\").replace(b.upper(), "\\")
+
+        # Dot encodings
+        dots = [
+            "%c0%ae", "%c0%2e", "%c1%8e", "%c1%ae", "%e0%80%ae", "%e0%80%2e", "%f0%80%80%ae",
+            "%u002e", "%uff0e",
+            "\xc0\xae", "\xc0\x2e", "\xc1\x8e", "\xc1\xae", "\xe0\x80\xae",
+            "%2e"
+        ]
+        for d in dots:
+            text = text.replace(d, ".").replace(d.upper(), ".")
+
+        # Replace replacement characters \ufffd (from unquoted overlong sequences)
+        text = re.sub(r"\.\.\ufffd+", "../", text)
+        text = re.sub(r"\ufffd+etc", "/etc", text)
+        text = re.sub(r"\ufffd+passwd", "/passwd", text)
+
         return text
 
     def recursive_url_decode(self, text: str) -> str:

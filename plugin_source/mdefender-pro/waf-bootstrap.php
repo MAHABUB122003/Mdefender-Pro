@@ -173,7 +173,22 @@ $raw_combined = urldecode($_SERVER['REQUEST_URI'] ?? '') . ' ' .
                 $mdefender_headers_flat;
 
 // Layer 1 Normalization: Multi-Pass Deobfuscation (< 0.02ms)
+// 0. Overlong UTF-8 & Non-standard Unicode Path Traversal Canonicalization
+$slash_patterns = ['%c0%af', '%c0%2f', '%c1%8f', '%c1%af', '%e0%80%af', '%e0%80%2f', '%f0%80%80%af', '%u002f', '%u2215', '%uff0f', '%uefc8', '%u2044', "\xc0\xaf", "\xc0\x2f", "\xc1\x8f", "\xc1\xaf", "\xe0\x80\xaf", '%2f', '%2F'];
+$backslash_patterns = ['%c0%5c', '%c0%9c', '%c1%9c', '%c1%bc', '%e0%80%5c', '%e0%81%9c', '%f0%80%80%5c', '%u005c', '%u2216', '%uff3c', "\xc0\x5c", "\xc0\x9c", "\xc1\x9c", "\xc1\xbc", "\xe0\x80\x5c", '%5c', '%5C'];
+$dot_patterns = ['%c0%ae', '%c0%2e', '%c1%8e', '%c1%ae', '%e0%80%ae', '%e0%80%2e', '%f0%80%80%ae', '%u002e', '%uff0e', "\xc0\xae", "\xc0\x2e", "\xc1\x8e", "\xc1\xae", "\xe0\x80\xae", '%2e', '%2E'];
+
+$raw_combined = str_ireplace($slash_patterns, '/', $raw_combined);
+$raw_combined = str_ireplace($backslash_patterns, '\\', $raw_combined);
+$raw_combined = str_ireplace($dot_patterns, '.', $raw_combined);
+
 $deobfuscated = urldecode(urldecode($raw_combined)); // Double URL decode (%2527 -> ')
+$deobfuscated = str_ireplace($slash_patterns, '/', $deobfuscated);
+$deobfuscated = str_ireplace($backslash_patterns, '\\', $deobfuscated);
+$deobfuscated = str_ireplace($dot_patterns, '.', $deobfuscated);
+$deobfuscated = (string) preg_replace('/(?:\xc0[\xaf\x2f]|\xc1[\x8f\xaf]|\xe0\x80[\xaf\x2f])/i', '/', $deobfuscated);
+$deobfuscated = (string) preg_replace('/(?:\xc0[\x5c\x9c]|\xc1[\x9c\xbc]|\xe0\x80\x5c)/i', '\\', $deobfuscated);
+$deobfuscated = (string) preg_replace('/(?:\xc0[\xae\x2e]|\xc1[\x8e\xae]|\xe0\x80[\xae\x2e])/i', '.', $deobfuscated);
 if (strpos($deobfuscated, '\\u') !== false) {
     $deobfuscated = (string) preg_replace_callback('#\\\\u([0-9a-fA-F]{4})#', function($m) {
         return mb_chr(hexdec($m[1]), 'UTF-8');
@@ -206,6 +221,7 @@ if (!empty($_GET['waf_test_ratelimit']) || !empty($_GET['test_rate_limit'])) {
 
 // 2. Strict Attack Marker Detection
 $has_attack_marker = (
+    preg_match('#%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]#i', $raw_combined) ||
     strpos($deobfuscated, "'") !== false || 
     strpos($deobfuscated, '"') !== false || 
     strpbrk($deobfuscated, "<>`();$\\|{}~^\r\n") !== false ||
@@ -465,8 +481,8 @@ if (!$is_blocked && $has_attack_marker) {
         $rule_name = 'Pre-Flight WAAP: PHP Shell, Command, SSTI & JNDI Guard';
         $block_reason = 'Remote Command Execution (RCE) / SSTI / WebShell payload intercepted by Pre-Flight WAAP.';
     }
-    // Check Module 4: Path Traversal & Local File Inclusion (LFI/RFI)
-    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)@i', $eval_payload)) {
+    // Check Module 4: Path Traversal, LFI/RFI & Overlong UTF-8 Evasion
+    elseif (preg_match('@(?:\.\.[;]?[\\\\/]){1,}|\/?etc\/(?:passwd|shadow|hosts|group)|(?:c:)?(?:[\\\\/]|;[\\\\/])*windows[\\\\/](?:system32|win\.ini)|php:\/\/(?:filter|input|memory|data)|(?:\.env|\.git\/|\.git$|\.htaccess|\.user\.ini|\.aws/credentials|wp-config\.php(?:\.(?:bak|old|swp)|~)?\b)|%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]@i', $eval_payload)) {
         $is_blocked = true;
         $attack_name = 'Path Traversal';
         $rule_name = 'Pre-Flight WAAP: Directory Traversal & Sensitive File Guard';

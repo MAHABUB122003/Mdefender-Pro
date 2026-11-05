@@ -36,7 +36,7 @@ class WAF_FW_Semantic_Deobfuscator {
         }
 
         // FAST-PATH: If string contains no encoded or escaped characters, return normalized whitespace instantly (< 0.001ms)
-        if (strpbrk($input, "%&\\/*\0") === false) {
+        if (strpbrk($input, "%&\\/*\0\xc0\xc1\xe0\xf0") === false) {
             return trim(preg_replace('/\s+/', ' ', $input));
         }
 
@@ -45,6 +45,36 @@ class WAF_FW_Semantic_Deobfuscator {
 
         while ($depth < $max_depth) {
             $previous = $current;
+
+            // 0. Canonicalize overlong UTF-8 and non-standard Unicode path traversal representations
+            $slash_patterns = [
+                '%c0%af', '%c0%2f', '%c1%8f', '%c1%af', '%e0%80%af', '%e0%80%2f', '%f0%80%80%af',
+                '%u002f', '%u2215', '%uff0f', '%uefc8', '%u2044',
+                "\xc0\xaf", "\xc0\x2f", "\xc1\x8f", "\xc1\xaf", "\xe0\x80\xaf",
+                '%2f', '%2F'
+            ];
+            $current = str_ireplace($slash_patterns, '/', $current);
+
+            $backslash_patterns = [
+                '%c0%5c', '%c0%9c', '%c1%9c', '%c1%bc', '%e0%80%5c', '%e0%81%9c', '%f0%80%80%5c',
+                '%u005c', '%u2216', '%uff3c',
+                "\xc0\x5c", "\xc0\x9c", "\xc1\x9c", "\xc1\xbc", "\xe0\x80\x5c",
+                '%5c', '%5C'
+            ];
+            $current = str_ireplace($backslash_patterns, '\\', $current);
+
+            $dot_patterns = [
+                '%c0%ae', '%c0%2e', '%c1%8e', '%c1%ae', '%e0%80%ae', '%e0%80%2e', '%f0%80%80%ae',
+                '%u002e', '%uff0e',
+                "\xc0\xae", "\xc0\x2e", "\xc1\x8e", "\xc1\xae", "\xe0\x80\xae",
+                '%2e', '%2E'
+            ];
+            $current = str_ireplace($dot_patterns, '.', $current);
+
+            // Regex-based overlong UTF-8 canonicalization for high-byte bypasses
+            $current = preg_replace('/(?:\xc0[\xaf\x2f]|\xc1[\x8f\xaf]|\xe0\x80[\xaf\x2f])/i', '/', $current);
+            $current = preg_replace('/(?:\xc0[\x5c\x9c]|\xc1[\x9c\xbc]|\xe0\x80\x5c)/i', '\\', $current);
+            $current = preg_replace('/(?:\xc0[\xae\x2e]|\xc1[\x8e\xae]|\xe0\x80[\xae\x2e])/i', '.', $current);
 
             // 1. Recursive URL decoding (handles %20, %27, %2527, %252527, and deep nested encodings)
             $url_passes = 0;
