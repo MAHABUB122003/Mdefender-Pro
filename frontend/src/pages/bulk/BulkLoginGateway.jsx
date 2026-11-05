@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Key,
   ShieldCheck,
@@ -15,7 +15,10 @@ import {
   Server,
   Check,
   Lock,
-  Layers
+  Layers,
+  MoreVertical,
+  ShieldAlert,
+  ShieldOff
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -25,19 +28,11 @@ import api from '../../api/api'
 export default function BulkLoginGateway() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
 
-  // Specific target selection within this screen (defaults to top scope)
-  const [formTargetSiteId, setFormTargetSiteId] = useState(selectedSiteId || 'all')
-
-  // Keep form target site id in sync when top domain scope changes
-  useEffect(() => {
-    setFormTargetSiteId(selectedSiteId || 'all')
-  }, [selectedSiteId])
-
-  const isAllTarget = formTargetSiteId === 'all'
+  const isAllTarget = !selectedSiteId || selectedSiteId === 'all'
   const activeTargetSite = useMemo(() => {
     if (isAllTarget) return activeWebsite || wpWebsites[0] || {}
-    return wpWebsites.find(w => (w.id || w._id) === formTargetSiteId) || wpWebsites[0] || {}
-  }, [formTargetSiteId, isAllTarget, activeWebsite, wpWebsites])
+    return wpWebsites.find(w => (w.id || w._id) === selectedSiteId) || activeWebsite || wpWebsites[0] || {}
+  }, [selectedSiteId, isAllTarget, activeWebsite, wpWebsites])
 
   // 1. WP Admin Hide & Custom Login URL
   const [customLoginSlug, setCustomLoginSlug] = useState('')
@@ -46,7 +41,6 @@ export default function BulkLoginGateway() {
   // 2. Admin & Login IP Restriction
   const [adminIpWhitelist, setAdminIpWhitelist] = useState([])
   const [newAdminIpInput, setNewAdminIpInput] = useState('')
-  const [ipTargetSiteId, setIpTargetSiteId] = useState('all')
   const [detectedClientIp, setDetectedClientIp] = useState('')
 
   // Loading & Action States
@@ -57,6 +51,47 @@ export default function BulkLoginGateway() {
   const [deletingIp, setDeletingIp] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
+
+  // Floating 3-Dots Portal Dropdowns
+  const [openGatewayDropdownId, setOpenGatewayDropdownId] = useState(null)
+  const [selectedGatewaySite, setSelectedGatewaySite] = useState(null)
+  const [gatewayDropdownPos, setGatewayDropdownPos] = useState({ top: 0, right: 0 })
+  const gatewayDropdownRef = useRef(null)
+
+  const [openIpDropdownId, setOpenIpDropdownId] = useState(null)
+  const [selectedIpRule, setSelectedIpRule] = useState(null)
+  const [ipDropdownPos, setIpDropdownPos] = useState({ top: 0, right: 0 })
+  const ipDropdownRef = useRef(null)
+
+  // Auto-close dropdowns on click outside, scroll, or resize
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (gatewayDropdownRef.current && !gatewayDropdownRef.current.contains(e.target)) {
+        setOpenGatewayDropdownId(null)
+        setSelectedGatewaySite(null)
+      }
+      if (ipDropdownRef.current && !ipDropdownRef.current.contains(e.target)) {
+        setOpenIpDropdownId(null)
+        setSelectedIpRule(null)
+      }
+    }
+    const handleScrollOrResize = (e) => {
+      if (gatewayDropdownRef.current && gatewayDropdownRef.current.contains(e.target)) return
+      if (ipDropdownRef.current && ipDropdownRef.current.contains(e.target)) return
+      setOpenGatewayDropdownId(null)
+      setSelectedGatewaySite(null)
+      setOpenIpDropdownId(null)
+      setSelectedIpRule(null)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('scroll', handleScrollOrResize, true)
+    window.addEventListener('resize', handleScrollOrResize)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', handleScrollOrResize, true)
+      window.removeEventListener('resize', handleScrollOrResize)
+    }
+  }, [])
 
   // Populate form fields whenever the target site changes
   useEffect(() => {
@@ -72,7 +107,7 @@ export default function BulkLoginGateway() {
       ? rawWl
       : (rawWl ? String(rawWl).split(/[,\r\n]+/).map(s => s.trim()).filter(Boolean) : [])
     setAdminIpWhitelist(parsedWl)
-  }, [activeTargetSite?.id, activeTargetSite?._id, activeTargetSite?.custom_login_slug, activeTargetSite?.admin_ip_whitelist, formTargetSiteId])
+  }, [activeTargetSite?.id, activeTargetSite?._id, activeTargetSite?.custom_login_slug, activeTargetSite?.admin_ip_whitelist, selectedSiteId])
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -123,7 +158,7 @@ export default function BulkLoginGateway() {
   const handleSaveLoginGateway = async () => {
     const cleanSlug = customLoginSlug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
     if (!cleanSlug || ['wp-admin', 'wp-login.php', 'wp-login'].includes(cleanSlug)) {
-      showToast('Please specify a valid secret directory (e.g. mahabub, portal, secret-gateway).', true)
+      showToast('Please specify a valid secret directory (e.g. mahabub, portal, secure-admin).', true)
       return
     }
 
@@ -162,7 +197,13 @@ export default function BulkLoginGateway() {
   }
 
   const handleResetLoginGateway = async (siteToReset) => {
+    setOpenGatewayDropdownId(null)
+    setSelectedGatewaySite(null)
     const siteKey = siteToReset.id || siteToReset._id
+    const siteDom = siteToReset.domain || siteToReset.url || 'this website'
+    if (!window.confirm(`Are you sure you want to delete the secret login gateway for "${siteDom}"? This will restore standard /wp-login.php.`)) {
+      return
+    }
     setResettingSecretSiteId(siteKey)
     const payload = {
       hide_login_url: false,
@@ -179,7 +220,7 @@ export default function BulkLoginGateway() {
         siteToReset.hardening.hide_login_url = false
       }
 
-      showToast(`Secret URL deleted for ${siteToReset.domain || 'site'}. Default /wp-login.php restored successfully!`)
+      showToast(`Secret URL deleted for ${siteDom}. Default /wp-login.php restored successfully!`)
       if (siteToReset.id === activeTargetSite.id || siteToReset._id === activeTargetSite._id) {
         setCustomLoginSlug('')
       }
@@ -220,10 +261,7 @@ export default function BulkLoginGateway() {
       admin_ip_whitelist: listToSave || []
     }
     try {
-      const isFleetScope = ipTargetSiteId === 'all'
-      const targetSites = isFleetScope
-        ? wpWebsites
-        : wpWebsites.filter(w => (w.id || w._id) === ipTargetSiteId)
+      const targetSites = isAllTarget ? wpWebsites : [activeTargetSite]
 
       await Promise.all(targetSites.filter(t => t && (t.id || t._id)).map(site => {
         const sid = site.id || site._id
@@ -240,7 +278,7 @@ export default function BulkLoginGateway() {
       })
 
       if (hasIps) {
-        showToast(`Admin IP restriction saved for ${isFleetScope ? 'All Domains' : (targetSites[0]?.domain || 'selected domain')} (${listToSave.length} IP authorized)!`)
+        showToast(`Admin IP restriction saved for ${isAllTarget ? 'All Domains' : (targetSites[0]?.domain || 'selected domain')} (${listToSave.length} IP authorized)!`)
       } else {
         showToast(`All IP restrictions removed. Admin login access is now unrestricted!`)
       }
@@ -254,21 +292,24 @@ export default function BulkLoginGateway() {
 
   const handleRemoveAllowedIp = async (ipToRemove, fromSite = null) => {
     setDeletingIp(ipToRemove)
+    setOpenIpDropdownId(null)
+    setSelectedIpRule(null)
     try {
-      if (fromSite && fromSite.id) {
-        const currentList = Array.isArray(fromSite.admin_ip_whitelist) ? fromSite.admin_ip_whitelist : []
+      const targetSite = fromSite || activeTargetSite
+      if (targetSite && (targetSite.id || targetSite._id)) {
+        const currentList = Array.isArray(targetSite.admin_ip_whitelist) ? targetSite.admin_ip_whitelist : []
         const updated = currentList.filter(ip => ip !== ipToRemove)
         const payload = {
           admin_ip_whitelist_enabled: updated.length > 0,
           admin_ip_whitelist: updated
         }
-        await api.updateWebsiteSecuritySettings(fromSite.id || fromSite._id, payload)
-        fromSite.admin_ip_whitelist = updated
-        fromSite.admin_ip_whitelist_enabled = updated.length > 0
-        if (fromSite.id === activeTargetSite.id || fromSite._id === activeTargetSite._id) {
+        await api.updateWebsiteSecuritySettings(targetSite.id || targetSite._id, payload)
+        targetSite.admin_ip_whitelist = updated
+        targetSite.admin_ip_whitelist_enabled = updated.length > 0
+        if (targetSite.id === activeTargetSite.id || targetSite._id === activeTargetSite._id) {
           setAdminIpWhitelist(updated)
         }
-        showToast(`IP ${ipToRemove} deleted for ${fromSite.domain}.`)
+        showToast(`IP ${ipToRemove} deleted for ${targetSite.domain || 'website'}.`)
       } else {
         const updated = adminIpWhitelist.filter(ip => ip !== ipToRemove)
         setAdminIpWhitelist(updated)
@@ -284,6 +325,9 @@ export default function BulkLoginGateway() {
   }
 
   const handleRemoveAllAdminIps = async () => {
+    if (!window.confirm('Are you sure you want to clear all IP restrictions? Admin login will be open to all IPs.')) {
+      return
+    }
     setResettingAllIps(true)
     setAdminIpWhitelist([])
     const payload = {
@@ -315,7 +359,45 @@ export default function BulkLoginGateway() {
     }
   }
 
-  // Common Card Style
+  // Active Secret Gateways List (Only show websites that have a custom secret slug configured)
+  const activeSecretGateways = useMemo(() => {
+    const list = (wpWebsites || []).filter(site => {
+      const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
+      return Boolean(
+        effectiveSlug &&
+        site.hide_login_url !== false &&
+        !['wp-admin', 'wp-login.php', 'wp-login'].includes(effectiveSlug.toLowerCase())
+      )
+    })
+    if (selectedSiteId && selectedSiteId !== 'all') {
+      return list.filter(site => (site.id || site._id) === selectedSiteId)
+    }
+    return list
+  }, [wpWebsites, selectedSiteId])
+
+  // Active IP Rules List
+  const allFleetIpRules = useMemo(() => {
+    const list = []
+    wpWebsites.forEach(site => {
+      const raw = site.admin_ip_whitelist || site.hardening?.admin_ip_whitelist
+      const parsed = Array.isArray(raw)
+        ? raw
+        : (raw ? String(raw).split(/[,\r\n]+/).map(s => s.trim()).filter(Boolean) : [])
+      parsed.forEach(ip => {
+        list.push({ ip, site })
+      })
+    })
+    return list
+  }, [wpWebsites])
+
+  const displayedIpRules = useMemo(() => {
+    if (selectedSiteId && selectedSiteId !== 'all') {
+      return allFleetIpRules.filter(r => (r.site?.id || r.site?._id) === selectedSiteId)
+    }
+    return allFleetIpRules
+  }, [allFleetIpRules, selectedSiteId])
+
+  // Card Styles
   const contentCardStyle = {
     background: '#ffffff',
     borderRadius: '14px',
@@ -337,81 +419,44 @@ export default function BulkLoginGateway() {
     alignItems: 'center'
   })
 
-  // Professional Dark / Black Action Button Styling (Strictly NO RED)
-  const darkActionButtonStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    borderRadius: '6px',
-    background: '#0F172A',
-    border: '1px solid #1E293B',
-    color: '#FFFFFF',
-    fontSize: '12px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.1)',
-    transition: 'all 0.15s ease'
-  }
-
-  // Compute aggregated list of configured IP rules across all sites
-  const allFleetIpRules = useMemo(() => {
-    const list = []
-    wpWebsites.forEach(site => {
-      const raw = site.admin_ip_whitelist || site.hardening?.admin_ip_whitelist
-      const parsed = Array.isArray(raw)
-        ? raw
-        : (raw ? String(raw).split(/[,\r\n]+/).map(s => s.trim()).filter(Boolean) : [])
-      parsed.forEach(ip => {
-        list.push({ ip, site })
-      })
-    })
-    return list
-  }, [wpWebsites])
-
   return (
     <div className="bulk-login-gateway-page" style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
       
-      {/* Toast Notification Banner */}
+      {/* Top Banner & Unified Domain Scope Header */}
+      <BulkHeader
+        badge="GATEWAY PROTECTION"
+        title="WP Admin & Login Gateway Security"
+        description="Conceal WordPress admin login URLs behind private secret directories and restrict administrative login access strictly to authorized IPs."
+      />
+
+      {/* Floating Status Toast Notification */}
       {toastMsg && (
         <div style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
-          padding: '12px 18px',
-          borderRadius: '8px',
-          background: '#0F172A',
-          border: '1px solid #334155',
-          color: '#ffffff',
+          zIndex: 999999,
+          background: toastMsg.isError ? '#DC2626' : '#0B2522',
+          color: '#FFFFFF',
+          padding: '12px 20px',
+          borderRadius: '10px',
           fontSize: '13px',
-          fontWeight: 600,
-          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.2)',
-          zIndex: 9999,
+          fontWeight: 700,
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '10px',
+          animation: 'fadeIn 0.2s ease-out'
         }}>
-          {toastMsg.isError ? <AlertTriangle size={15} color="#F59E0B" /> : <CheckCircle2 size={15} color="#10B981" />}
+          {toastMsg.isError ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} color="#4ADE80" />}
           <span>{toastMsg.text}</span>
         </div>
       )}
 
-      {/* Header with Fleet Scope Picker */}
-      <BulkHeader
-        title="WP Admin & Login Gateway Security"
-        subtitle="Conceal WordPress admin login URLs behind private secret directories and restrict administrative login access strictly to authorized IPs."
-        icon={Key}
-        activeBadge="Gateway Protection"
-      />
-
       {!hasWebsites ? (
-        <EmptyFleetState
-          title="No WordPress Websites Connected Yet"
-          description="Your login gateway security dashboard is empty because no WordPress sites are connected. Connect your site using the MDefender-Pro plugin to conceal wp-admin and restrict login access by IP."
-          featureName="Gateway Protection"
-        />
+        <EmptyFleetState title="No Connected WordPress Sites Found" />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '20px' }}>
           
           {/* ========================================================================= */}
           {/* SECTION 1: WP ADMIN HIDE & CUSTOM SECRET LOGIN GATEWAY                    */}
@@ -425,7 +470,7 @@ export default function BulkLoginGateway() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '700', color: '#0F172A' }}>
-                    WP Admin Hide &amp; Custom Secret Login Gateway
+                    WP Admin Hide & Custom Secret Login Gateway
                   </h3>
                   <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
                     Conceal <code>/wp-admin</code> and <code>/wp-login.php</code> behind a private secret slug. Unauthorized requests are blocked with 404 or redirected to homepage.
@@ -442,49 +487,16 @@ export default function BulkLoginGateway() {
 
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
-              {/* Target Domain Selector & Secret Slug Form */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              {/* Secret Slug Form (Clean 2-Column Layout, Redundant Domain Dropdown Removed) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 
-                {/* Field 0: Choose Target Domain (All or Single) */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
-                    Apply Secret Gateway To
-                  </label>
-                  <select
-                    value={formTargetSiteId}
-                    onChange={(e) => setFormTargetSiteId(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: '40px',
-                      padding: '0 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: '#0F172A',
-                      background: '#FFFFFF',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="all">Apply to All Domains (Fleet-Wide)</option>
-                    {wpWebsites.map(site => (
-                      <option key={site.id || site._id} value={site.id || site._id}>
-                        {site.domain || site.url} {site.custom_login_slug ? `(Current: /${site.custom_login_slug})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                    Choose whether to hide wp-admin across all sites or for a specific website.
-                  </small>
-                </div>
-
-                {/* Field 1: Secret Login Slug */}
+                {/* Field 1: Custom Secret Directory Slug */}
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
                     Custom Secret Directory Slug
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px', overflow: 'hidden' }}>
-                    <span style={{ padding: '0 10px', fontSize: '12.5px', color: '#64748B', fontWeight: 600, background: '#F1F5F9', height: '40px', display: 'flex', alignItems: 'center', borderRight: '1px solid #CBD5E1', whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '0 12px', fontSize: '12.5px', color: '#64748B', fontWeight: 600, background: '#F1F5F9', height: '40px', display: 'flex', alignItems: 'center', borderRight: '1px solid #CBD5E1', whiteSpace: 'nowrap' }}>
                       {isAllTarget ? '[domain]' : activeTargetSite.domain}/
                     </span>
                     <input
@@ -504,12 +516,12 @@ export default function BulkLoginGateway() {
                       }}
                     />
                   </div>
-                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                    Only requests to this exact path will show WordPress login.
+                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
+                    Target Scope: <strong>{isAllTarget ? 'All Domains' : activeTargetSite.domain}</strong>. Only requests to this path will show WordPress login.
                   </small>
                 </div>
 
-                {/* Field 2: Unauthorized Intruder Action */}
+                {/* Field 2: Unauthorized Intruder Action & Save Button */}
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
                     Unauthorized Access Action
@@ -560,163 +572,165 @@ export default function BulkLoginGateway() {
                       <span>{savingSecret ? 'Saving...' : 'Save Secret Gateway'}</span>
                     </button>
                   </div>
-                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '4px', display: 'block' }}>
-                    What unauthorized visitors see when attempting to access /wp-admin.
+                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
+                    What unauthorized visitors see when attempting to access default /wp-admin.
                   </small>
                 </div>
               </div>
 
-              {/* Configured Secret Gateways Table (Rows with details and sleek dark delete button) */}
-              <div style={{ marginTop: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Layers size={14} />
-                    <span>Configured Secret Gateways &amp; Domain Fleet ({wpWebsites.length} Websites)</span>
+              {/* ========================================================================= */}
+              {/* CONFIG-REGISTRY TABLE: ACTIVE SECRET LOGIN GATEWAYS                       */}
+              {/* ========================================================================= */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#0B2522', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Key size={15} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
+                        Active Secret Login Gateways & Fleet Registry
+                      </h4>
+                      <span style={{ fontSize: '11.5px', color: '#60716B' }}>
+                        Concealed WordPress login paths actively protected by MDefender WAF
+                      </span>
+                    </div>
                   </div>
-                  <span style={{ fontSize: '12px', color: '#64748B' }}>
-                    Settings are stored in each website's database and synced live
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#E8F3EC', color: '#2A8B68', border: '1px solid #CFE2D4' }}>
+                      {activeSecretGateways.length} Gateways Protected
+                    </span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#F1F5F3', color: '#60716B', border: '1px solid #D9E1DC' }}>
+                      Active Registry
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {wpWebsites.map((site, index) => {
-                    const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
-                    const isConfigured = Boolean(
-                      effectiveSlug &&
-                      site.hide_login_url !== false &&
-                      !['wp-admin', 'wp-login.php', 'wp-login'].includes(effectiveSlug.toLowerCase())
-                    )
-                    const activeUrl = isConfigured
-                      ? getComputedLoginUrl(site, effectiveSlug)
-                      : getComputedLoginUrl(site, '')
-                    const siteKey = site.id || site._id || index
-                    const isResettingThis = resettingSecretSiteId === siteKey
+                {activeSecretGateways.length === 0 ? (
+                  <div style={{
+                    padding: '38px 20px',
+                    textAlign: 'center',
+                    background: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px dashed #CBD5E1',
+                    margin: '8px 0'
+                  }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#F1F5F9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                      <Key size={20} color="#64748B" />
+                    </div>
+                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '14.5px', marginBottom: '4px' }}>
+                      No Custom Secret Gateways Configured
+                    </div>
+                    <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+                      Standard /wp-login.php is currently active. Type a custom directory slug above and click "Save Secret Gateway" to conceal your administrator login URL.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto', overflowY: 'visible', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #E2E8F0', background: '#F8FAFC' }}>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A', width: '50px' }}>#</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Website / Domain</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Gateway Status</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Secret Login URL</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Unauthorized Action</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeSecretGateways.map((site, idx) => {
+                          const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
+                          const activeUrl = getComputedLoginUrl(site, effectiveSlug)
+                          const siteKey = site.id || site._id || idx
+                          const isDropdownOpen = openGatewayDropdownId === siteKey
 
-                    return (
-                      <div
-                        key={siteKey}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '14px 18px',
-                          borderRadius: '8px',
-                          border: '1px solid #E2E8F0',
-                          background: '#FFFFFF',
-                          flexWrap: 'wrap',
-                          gap: '12px',
-                          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.02)'
-                        }}
-                      >
-                        {/* Column 1: Domain Name & Status */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Globe size={16} color="#0F172A" />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
-                              {site.domain || site.url || 'Connected Site'}
-                            </div>
-                            <div style={{ marginTop: '2px' }}>
-                              {isConfigured ? (
-                                <span style={badgeStyle('#DCFCE7', '#166534', '#86EFAC')}>
-                                  SECRET GATEWAY ACTIVE (/{effectiveSlug})
-                                </span>
-                              ) : (
-                                <span style={badgeStyle('#F1F5F9', '#475569', '#CBD5E1')}>
-                                  DEFAULT (/wp-login.php)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Column 2: Full Active Login URL */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: '240px' }}>
-                          <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                            Login Gateway URL
-                          </span>
-                          <code style={{ fontSize: '13px', fontWeight: 700, color: isConfigured ? '#15803D' : '#0F172A', wordBreak: 'break-all' }}>
-                            {activeUrl}
-                          </code>
-                        </div>
-
-                        {/* Column 3: Action & Mode */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '160px' }}>
-                          <span style={{ fontSize: '12px', color: '#64748B' }}>Action:</span>
-                          <span style={badgeStyle('#F8FAFC', '#334155', '#E2E8F0')}>
-                            {(site.login_redirect_type === 'home' || site.hardening?.login_redirect_type === 'home') ? 'Homepage 301' : 'Stealth 404'}
-                          </span>
-                        </div>
-
-                        {/* Column 4: Action Buttons (Test, Copy, Delete) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <a
-                            href={activeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              background: '#F8FAFC',
-                              border: '1px solid #CBD5E1',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: '#0F172A',
-                              textDecoration: 'none',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <ExternalLink size={13} />
-                            <span>Test Gateway</span>
-                          </a>
-
-                          <button
-                            type="button"
-                            onClick={() => copyLoginUrl(activeUrl, siteKey)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              background: '#FFFFFF',
-                              border: '1px solid #CBD5E1',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              color: '#0F172A',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Copy size={13} />
-                            <span>{copiedId === siteKey ? 'Copied!' : 'Copy Link'}</span>
-                          </button>
-
-                          {/* Professional Dark/Black Delete Button - STRICTLY NO RED */}
-                          {isConfigured && (
-                            <button
-                              type="button"
-                              onClick={() => handleResetLoginGateway(site)}
-                              disabled={isResettingThis}
-                              title="Delete secret slug and restore standard /wp-login.php"
+                          return (
+                            <tr
+                              key={siteKey}
                               style={{
-                                ...darkActionButtonStyle,
-                                opacity: isResettingThis ? 0.6 : 1,
-                                cursor: isResettingThis ? 'not-allowed' : 'pointer'
+                                borderBottom: '1px solid #E2E8F0',
+                                background: '#FFFFFF',
+                                transition: 'background 0.15s ease'
                               }}
                             >
-                              <Undo2 size={13} />
-                              <span>{isResettingThis ? 'Restoring...' : 'Delete Secret URL'}</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                              <td style={{ padding: '14px', color: '#64748B', fontWeight: 700 }}>
+                                {idx + 1}
+                              </td>
+                              <td style={{ padding: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Globe size={14} color="#0F172A" />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '13.5px' }}>
+                                      {site.domain || site.url || 'Connected Site'}
+                                    </div>
+                                    <span style={{ fontSize: '11px', color: '#64748B' }}>
+                                      WordPress Agent v4.1
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px' }}>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                  padding: '3px 10px', borderRadius: '16px',
+                                  background: '#DCFCE7', color: '#166534',
+                                  border: '1px solid #86EFAC', fontSize: '11.5px', fontWeight: 700
+                                }}>
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A' }} />
+                                  Active & Concealed (/{effectiveSlug})
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px' }}>
+                                <code style={{ fontSize: '12.5px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '3px 8px', borderRadius: '4px', border: '1px solid #BBF7D0' }}>
+                                  {activeUrl}
+                                </code>
+                              </td>
+                              <td style={{ padding: '14px', color: '#334155', fontWeight: 600 }}>
+                                {(site.login_redirect_type === 'home' || site.hardening?.login_redirect_type === 'home') ? 'Homepage (301)' : 'Stealth (404)'}
+                              </td>
+                              <td style={{ padding: '14px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isDropdownOpen) {
+                                      setOpenGatewayDropdownId(null);
+                                      setSelectedGatewaySite(null);
+                                      return;
+                                    }
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const menuHeight = 150;
+                                    const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
+                                    setGatewayDropdownPos({
+                                      top: openUpwards ? (rect.top - menuHeight - 4) : (rect.bottom + 6),
+                                      right: Math.max(16, window.innerWidth - rect.right)
+                                    });
+                                    setOpenGatewayDropdownId(siteKey);
+                                    setSelectedGatewaySite(site);
+                                  }}
+                                  style={{
+                                    width: '32px', height: '32px', borderRadius: '6px',
+                                    border: '1px solid #CBD5E1', background: isDropdownOpen ? '#0F172A' : '#FFFFFF',
+                                    color: isDropdownOpen ? '#FFFFFF' : '#0F172A', cursor: 'pointer',
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  title="Manage Gateway Actions"
+                                >
+                                  <MoreVertical size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -734,7 +748,7 @@ export default function BulkLoginGateway() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '700', color: '#0F172A' }}>
-                    Restrict Admin Panel &amp; Login Access by IP
+                    Restrict Admin Panel & Login Access by IP
                   </h3>
                   <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
                     Limit access to <code>/wp-admin</code> and login gateways strictly to authorized IP addresses. Unauthorized visitors are blocked with 403.
@@ -743,8 +757,8 @@ export default function BulkLoginGateway() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={badgeStyle(allFleetIpRules.length > 0 ? '#F0FDF4' : '#F8FAFC', allFleetIpRules.length > 0 ? '#15803D' : '#64748B', allFleetIpRules.length > 0 ? '#BBF7D0' : '#E2E8F0')}>
-                  {allFleetIpRules.length > 0 ? `${allFleetIpRules.length} ACTIVE IP RULE(S)` : 'ALLOW ALL IPS (UNRESTRICTED)'}
+                <span style={badgeStyle(displayedIpRules.length > 0 ? '#F0FDF4' : '#F8FAFC', displayedIpRules.length > 0 ? '#15803D' : '#64748B', displayedIpRules.length > 0 ? '#BBF7D0' : '#E2E8F0')}>
+                  {displayedIpRules.length > 0 ? `${displayedIpRules.length} ACTIVE IP RULE(S)` : 'ALLOW ALL IPS (UNRESTRICTED)'}
                 </span>
               </div>
             </div>
@@ -793,38 +807,13 @@ export default function BulkLoginGateway() {
                 </button>
               </div>
 
-              {/* Add IP Input & Action Buttons */}
+              {/* Add IP Input & Action Buttons (No Redundant Dropdown!) */}
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
                   Authorize Admin IP Address or CIDR Subnet
                 </label>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   
-                  {/* Select target domain for this IP */}
-                  <select
-                    value={ipTargetSiteId}
-                    onChange={(e) => setIpTargetSiteId(e.target.value)}
-                    style={{
-                      height: '40px',
-                      padding: '0 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #CBD5E1',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: '#0F172A',
-                      background: '#FFFFFF',
-                      minWidth: '220px',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="all">Apply to All Domains</option>
-                    {wpWebsites.map(site => (
-                      <option key={site.id || site._id} value={site.id || site._id}>
-                        {site.domain || site.url}
-                      </option>
-                    ))}
-                  </select>
-
                   <input
                     type="text"
                     value={newAdminIpInput}
@@ -833,7 +822,7 @@ export default function BulkLoginGateway() {
                     placeholder="e.g. 103.120.45.241 or 192.168.1.0/24"
                     style={{
                       flex: 1,
-                      minWidth: '200px',
+                      minWidth: '240px',
                       height: '40px',
                       padding: '0 12px',
                       borderRadius: '8px',
@@ -866,7 +855,7 @@ export default function BulkLoginGateway() {
                     }}
                   >
                     <Plus size={14} />
-                    <span>Add IP</span>
+                    <span>Add IP to List</span>
                   </button>
 
                   <button
@@ -895,120 +884,336 @@ export default function BulkLoginGateway() {
                   </button>
                 </div>
                 <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
-                  Target Scope: <strong>{ipTargetSiteId === 'all' ? 'All Domains' : (wpWebsites.find(w => (w.id || w._id) === ipTargetSiteId)?.domain || 'Selected Site')}</strong>. Accepts single IPv4, IPv6, or CIDR blocks.
+                  Target Scope: <strong>{isAllTarget ? 'All Domains' : (activeTargetSite.domain || 'Selected Site')}</strong>. Accepts single IPv4, IPv6, or CIDR blocks.
                 </small>
               </div>
 
-              {/* Active Allowed IPs List in Rows with Sleek Dark Delete Button */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Lock size={14} />
-                    <span>Authorized Admin IP Rules ({allFleetIpRules.length > 0 ? allFleetIpRules.length : adminIpWhitelist.length})</span>
+              {/* ========================================================================= */}
+              {/* CONFIG-REGISTRY TABLE: AUTHORIZED ADMIN IP ACCESS                         */}
+              {/* ========================================================================= */}
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#0B2522', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ShieldCheck size={15} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
+                        Authorized Admin IP Access Registry
+                      </h4>
+                      <span style={{ fontSize: '11.5px', color: '#60716B' }}>
+                        Strict IP whitelist rules for WordPress administrator login gateways
+                      </span>
+                    </div>
                   </div>
-                  {allFleetIpRules.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAllAdminIps()}
-                      disabled={resettingAllIps}
-                      style={{
-                        ...darkActionButtonStyle,
-                        padding: '4px 10px',
-                        fontSize: '11.5px',
-                        opacity: resettingAllIps ? 0.6 : 1
-                      }}
-                    >
-                      <Trash2 size={12} />
-                      <span>{resettingAllIps ? 'Clearing...' : 'Clear All IP Restrictions'}</span>
-                    </button>
-                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: displayedIpRules.length > 0 ? '#E8F3EC' : '#F1F5F3', color: displayedIpRules.length > 0 ? '#2A8B68' : '#64748B', border: '1px solid #CFE2D4' }}>
+                      {displayedIpRules.length > 0 ? `${displayedIpRules.length} Authorized IPs` : 'Allow All IPs (Unrestricted)'}
+                    </span>
+                    {displayedIpRules.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAllAdminIps()}
+                        disabled={resettingAllIps}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          background: '#F1F5F9',
+                          border: '1px solid #CBD5E1',
+                          color: '#0F172A',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: resettingAllIps ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        <Trash2 size={12} />
+                        <span>{resettingAllIps ? 'Clearing...' : 'Clear All IPs'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {allFleetIpRules.length === 0 && adminIpWhitelist.length === 0 ? (
+                {displayedIpRules.length === 0 ? (
                   <div style={{
-                    padding: '14px 16px',
-                    borderRadius: '8px',
+                    padding: '38px 20px',
+                    textAlign: 'center',
                     background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
-                    color: '#64748B',
-                    fontSize: '13px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
+                    borderRadius: '12px',
+                    border: '1px dashed #CBD5E1',
+                    margin: '8px 0'
                   }}>
-                    <ShieldCheck size={16} color="#10B981" />
-                    <span><strong>Unrestricted Access:</strong> No IP whitelist configured. WordPress administrative login is open from any IP address.</span>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#F1F5F9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                      <ShieldCheck size={20} color="#10B981" />
+                    </div>
+                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '14.5px', marginBottom: '4px' }}>
+                      No IP Restrictions Active (Unrestricted Access)
+                    </div>
+                    <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+                      WordPress administrative login is currently open from any IP address. Click "+ Add My Current IP" or enter an authorized IP address above to restrict login strictly to trusted IPs.
+                    </p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {/* Render each configured IP entry */}
-                    {(allFleetIpRules.length > 0 ? allFleetIpRules : adminIpWhitelist.map(ip => ({ ip, site: activeTargetSite }))).map(({ ip, site }, idx) => {
-                      const isCurrent = detectedClientIp && ip === detectedClientIp
-                      const key = `${site?.id || site?.domain || idx}-${ip}`
-                      const isDeletingThis = deletingIp === ip
+                  <div style={{ overflowX: 'auto', overflowY: 'visible', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #E2E8F0', background: '#F8FAFC' }}>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A', width: '50px' }}>#</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Authorized IP / Subnet</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Domain Scope</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Access Permission</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A' }}>Enforcement</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: '#0F172A', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayedIpRules.map(({ ip, site }, idx) => {
+                          const isCurrent = detectedClientIp && ip === detectedClientIp
+                          const ruleKey = `${site?.id || site?.domain || idx}-${ip}`
+                          const isDropdownOpen = openIpDropdownId === ruleKey
 
-                      return (
-                        <div
-                          key={key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            flexWrap: 'wrap',
-                            gap: '10px',
-                            padding: '12px 16px',
-                            borderRadius: '8px',
-                            background: '#FFFFFF',
-                            border: '1px solid #E2E8F0',
-                            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.02)'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Server size={14} color="#0F172A" />
-                            </div>
-                            
-                            <code style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A', background: '#F1F5F9', padding: '3px 10px', borderRadius: '5px' }}>
-                              {ip}
-                            </code>
-
-                            <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>
-                              Domain Scope: <strong style={{ color: '#0F172A' }}>{site?.domain || 'All Domains'}</strong>
-                            </span>
-
-                            {isCurrent && (
-                              <span style={badgeStyle('#F0FDF4', '#15803D', '#BBF7D0')}>
-                                YOUR CURRENT IP
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Professional Dark/Black Delete Button - STRICTLY NO RED */}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAllowedIp(ip, site)}
-                            disabled={isDeletingThis}
-                            title="Delete this authorized IP"
-                            style={{
-                              ...darkActionButtonStyle,
-                              padding: '5px 12px',
-                              fontSize: '11.5px',
-                              opacity: isDeletingThis ? 0.6 : 1,
-                              cursor: isDeletingThis ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            <Trash2 size={12} />
-                            <span>{isDeletingThis ? 'Deleting...' : 'Delete IP'}</span>
-                          </button>
-                        </div>
-                      )
-                    })}
+                          return (
+                            <tr
+                              key={ruleKey}
+                              style={{
+                                borderBottom: '1px solid #E2E8F0',
+                                background: '#FFFFFF',
+                                transition: 'background 0.15s ease'
+                              }}
+                            >
+                              <td style={{ padding: '14px', color: '#64748B', fontWeight: 700 }}>
+                                {idx + 1}
+                              </td>
+                              <td style={{ padding: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Server size={14} color="#0F172A" />
+                                  </div>
+                                  <code style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', background: '#F1F5F9', padding: '3px 8px', borderRadius: '4px' }}>
+                                    {ip}
+                                  </code>
+                                  {isCurrent && (
+                                    <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '12px', background: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}>
+                                      YOUR CURRENT IP
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px', color: '#0F172A', fontWeight: 700 }}>
+                                {site?.domain || 'All Domains'}
+                              </td>
+                              <td style={{ padding: '14px' }}>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                  padding: '3px 9px', borderRadius: '14px',
+                                  background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0',
+                                  fontSize: '11.5px', fontWeight: 700
+                                }}>
+                                  <ShieldCheck size={13} color="#16A34A" />
+                                  Admin Login Allowed
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px', color: '#64748B', fontSize: '12px' }}>
+                                Strict Whitelist Active
+                              </td>
+                              <td style={{ padding: '14px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isDropdownOpen) {
+                                      setOpenIpDropdownId(null);
+                                      setSelectedIpRule(null);
+                                      return;
+                                    }
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const menuHeight = 120;
+                                    const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
+                                    setIpDropdownPos({
+                                      top: openUpwards ? (rect.top - menuHeight - 4) : (rect.bottom + 6),
+                                      right: Math.max(16, window.innerWidth - rect.right)
+                                    });
+                                    setOpenIpDropdownId(ruleKey);
+                                    setSelectedIpRule({ ip, site });
+                                  }}
+                                  style={{
+                                    width: '32px', height: '32px', borderRadius: '6px',
+                                    border: '1px solid #CBD5E1', background: isDropdownOpen ? '#0F172A' : '#FFFFFF',
+                                    color: isDropdownOpen ? '#FFFFFF' : '#0F172A', cursor: 'pointer',
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  title="Manage IP Actions"
+                                >
+                                  <MoreVertical size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
 
             </div>
           </div>
+
+          {/* ========================================================================= */}
+          {/* FLOATING ACTION DROPDOWN FOR SECRET GATEWAY                               */}
+          {/* ========================================================================= */}
+          {openGatewayDropdownId && selectedGatewaySite && (
+            <div
+              ref={gatewayDropdownRef}
+              style={{
+                position: 'fixed',
+                top: `${gatewayDropdownPos.top}px`,
+                right: `${gatewayDropdownPos.right}px`,
+                width: '220px',
+                background: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                borderRadius: '10px',
+                boxShadow: '0 12px 36px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06)',
+                zIndex: 99999,
+                padding: '6px',
+                textAlign: 'left'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <a
+                href={getComputedLoginUrl(selectedGatewaySite, selectedGatewaySite.custom_login_slug || selectedGatewaySite.hardening?.custom_login_slug)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => { setOpenGatewayDropdownId(null); setSelectedGatewaySite(null); }}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: 'none', background: 'transparent', textAlign: 'left',
+                  fontSize: '12.5px', fontWeight: 600, color: '#0F172A',
+                  display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                  textDecoration: 'none', boxSizing: 'border-box'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <ExternalLink size={14} color="#0F172A" />
+                <span>Test Secret Gateway</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const u = getComputedLoginUrl(selectedGatewaySite, selectedGatewaySite.custom_login_slug || selectedGatewaySite.hardening?.custom_login_slug);
+                  copyLoginUrl(u, selectedGatewaySite.id || selectedGatewaySite._id);
+                  setOpenGatewayDropdownId(null);
+                  setSelectedGatewaySite(null);
+                }}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: 'none', background: 'transparent', textAlign: 'left',
+                  fontSize: '12.5px', fontWeight: 600, color: '#0F172A',
+                  display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Copy size={14} color="#0F172A" />
+                <span>Copy Secret URL</span>
+              </button>
+
+              <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleResetLoginGateway(selectedGatewaySite);
+                }}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: 'none', background: 'transparent', textAlign: 'left',
+                  fontSize: '12.5px', fontWeight: 700, color: '#DC2626',
+                  display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Undo2 size={14} color="#DC2626" />
+                <span>Remove / Reset Gateway</span>
+              </button>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* FLOATING ACTION DROPDOWN FOR AUTHORIZED IP                                */}
+          {/* ========================================================================= */}
+          {openIpDropdownId && selectedIpRule && (
+            <div
+              ref={ipDropdownRef}
+              style={{
+                position: 'fixed',
+                top: `${ipDropdownPos.top}px`,
+                right: `${ipDropdownPos.right}px`,
+                width: '210px',
+                background: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                borderRadius: '10px',
+                boxShadow: '0 12px 36px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06)',
+                zIndex: 99999,
+                padding: '6px',
+                textAlign: 'left'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(selectedIpRule.ip);
+                    showToast(`IP ${selectedIpRule.ip} copied to clipboard!`);
+                  }
+                  setOpenIpDropdownId(null);
+                  setSelectedIpRule(null);
+                }}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: 'none', background: 'transparent', textAlign: 'left',
+                  fontSize: '12.5px', fontWeight: 600, color: '#0F172A',
+                  display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Copy size={14} color="#0F172A" />
+                <span>Copy IP Address</span>
+              </button>
+
+              <div style={{ height: '1px', background: '#E2E8F0', margin: '4px 0' }} />
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to remove IP "${selectedIpRule.ip}" from authorized access for ${selectedIpRule.site?.domain || 'this website'}?`)) {
+                    handleRemoveAllowedIp(selectedIpRule.ip, selectedIpRule.site);
+                  }
+                }}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px',
+                  border: 'none', background: 'transparent', textAlign: 'left',
+                  fontSize: '12.5px', fontWeight: 700, color: '#DC2626',
+                  display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <Trash2 size={14} color="#DC2626" />
+                <span>Remove / Delete IP Access</span>
+              </button>
+            </div>
+          )}
 
         </div>
       )}
