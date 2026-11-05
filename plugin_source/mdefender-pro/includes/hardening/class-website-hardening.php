@@ -675,6 +675,7 @@ class WAF_FW_Website_Hardening {
             }
         }
 
+        $this->ensure_htaccess_rule(ABSPATH . '.htaccess', 'protect_sensitive_files');
         update_option('waf_harden_sensitive_files', 'enabled');
         update_option('waf_harden_sensitive_files_settings', $settings);
         $this->log_activity('Hardening Applied', 'Protect Sensitive Files', 'Success', implode('; ', $results['actions']));
@@ -1919,6 +1920,10 @@ class WAF_FW_Website_Hardening {
             'block_cpanel_probes' => [
                 'tag' => 'MDefender-Pro - Block cPanel & Server Admin Probes',
                 'code' => "\n# MDefender-Pro - Block cPanel & Server Admin Probes\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteCond %{REQUEST_URI} ^/(cpanel|whm|webmail|cpsrvd|2082|2083|2086|2087|2095|2096)/? [NC]\nRewriteRule .* - [F,L]\n</IfModule>\n",
+            ],
+            'protect_sensitive_files' => [
+                'tag' => 'MDefender-Pro - Protect Sensitive Files & Logs',
+                'code' => "\n# MDefender-Pro - Protect Sensitive Files & Logs\n<FilesMatch \"^.*(debug\\.log|\\.log|\\.sql|\\.bak|\\.env|\\.git|wp-config\\.php.*)$\">\nOrder allow,deny\nDeny from all\n</FilesMatch>\n",
             ],
         ];
         if (!isset($rules[$rule_type])) return false;
