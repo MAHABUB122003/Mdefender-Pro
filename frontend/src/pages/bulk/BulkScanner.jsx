@@ -259,7 +259,7 @@ export default function BulkScanner() {
         const pAlpha = (1 - (pulseRadius / maxRadius)) * (scanning ? 0.35 : 0.18)
         ctx.strokeStyle = (radarState === 'threat')
           ? `rgba(223, 90, 56, ${pAlpha})`
-          : (scanning ? `rgba(37, 99, 235, ${pAlpha})` : `rgba(59, 130, 246, ${pAlpha})`)
+          : (scanning ? `rgba(5, 150, 105, ${pAlpha})` : `rgba(16, 185, 129, ${pAlpha})`)
         ctx.lineWidth = 1.5
         ctx.beginPath()
         ctx.arc(cx, cy, pulseRadius, 0, Math.PI * 2)
@@ -269,7 +269,7 @@ export default function BulkScanner() {
       // 3. Concentric Target Rings with Distance Markers
       const rings = [0.25, 0.5, 0.75, 1.0]
       rings.forEach(r => {
-        ctx.strokeStyle = r === 1.0 ? 'rgba(37, 99, 235, 0.40)' : 'rgba(30, 41, 59, 0.12)'
+        ctx.strokeStyle = r === 1.0 ? 'rgba(5, 150, 105, 0.38)' : 'rgba(15, 44, 38, 0.12)'
         ctx.lineWidth = r === 1.0 ? 1.8 : 1
         ctx.beginPath()
         ctx.arc(cx, cy, maxRadius * r, 0, Math.PI * 2)
@@ -281,7 +281,7 @@ export default function BulkScanner() {
         const rad = (deg * Math.PI) / 180
         const isMajor = deg % 45 === 0
         const innerR = maxRadius - (isMajor ? 8 : 4)
-        ctx.strokeStyle = isMajor ? 'rgba(37, 99, 235, 0.45)' : 'rgba(30, 41, 59, 0.14)'
+        ctx.strokeStyle = isMajor ? 'rgba(5, 150, 105, 0.45)' : 'rgba(15, 44, 38, 0.16)'
         ctx.lineWidth = isMajor ? 1.5 : 1
         ctx.beginPath()
         ctx.moveTo(cx + Math.cos(rad) * innerR, cy + Math.sin(rad) * innerR)
@@ -290,7 +290,7 @@ export default function BulkScanner() {
       }
 
       // 5. Crosshairs & Cardinal Coordinate Lines
-      ctx.strokeStyle = 'rgba(30, 41, 59, 0.12)'
+      ctx.strokeStyle = 'rgba(15, 44, 38, 0.12)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(cx - maxRadius, cy)
@@ -300,7 +300,7 @@ export default function BulkScanner() {
       ctx.stroke()
 
       // Diagonal Guides
-      ctx.strokeStyle = 'rgba(30, 41, 59, 0.06)'
+      ctx.strokeStyle = 'rgba(15, 44, 38, 0.06)'
       ctx.beginPath()
       ctx.moveTo(cx - maxRadius * 0.707, cy - maxRadius * 0.707)
       ctx.lineTo(cx + maxRadius * 0.707, cy + maxRadius * 0.707)
@@ -318,13 +318,13 @@ export default function BulkScanner() {
         sweepGrad.addColorStop(0.7, 'rgba(223, 90, 56, 0.15)')
         sweepGrad.addColorStop(1, 'rgba(223, 90, 56, 0.0)')
       } else if (scanning) {
-        sweepGrad.addColorStop(0, 'rgba(37, 99, 235, 0.45)')
-        sweepGrad.addColorStop(0.6, 'rgba(14, 165, 233, 0.2)')
-        sweepGrad.addColorStop(1, 'rgba(15, 23, 42, 0.01)')
+        sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.45)')
+        sweepGrad.addColorStop(0.6, 'rgba(5, 150, 105, 0.2)')
+        sweepGrad.addColorStop(1, 'rgba(15, 44, 38, 0.01)')
       } else {
-        sweepGrad.addColorStop(0, 'rgba(37, 99, 235, 0.35)')
-        sweepGrad.addColorStop(0.7, 'rgba(14, 165, 233, 0.12)')
-        sweepGrad.addColorStop(1, 'rgba(15, 23, 42, 0.01)')
+        sweepGrad.addColorStop(0, 'rgba(16, 185, 129, 0.35)')
+        sweepGrad.addColorStop(0.7, 'rgba(5, 150, 105, 0.12)')
+        sweepGrad.addColorStop(1, 'rgba(15, 44, 38, 0.01)')
       }
 
       ctx.fillStyle = sweepGrad
@@ -349,7 +349,7 @@ export default function BulkScanner() {
         const isBlipThreat = blip.isThreat || (radarState === 'threat' && blip.dist > maxRadius * 0.4)
         ctx.fillStyle = isBlipThreat
           ? `rgba(239, 68, 68, ${blip.alpha})`
-          : `rgba(37, 99, 235, ${blip.alpha})`
+          : `rgba(16, 185, 129, ${blip.alpha})`
 
         ctx.beginPath()
         ctx.arc(blip.x, blip.y, blip.size, 0, Math.PI * 2)
@@ -736,30 +736,30 @@ export default function BulkScanner() {
 
   // 18 Default Sentinels List
   const sentinelsList = [
-    { key: 'filesystem', name: 'Filesystem Sentinel', desc: 'New, modified, deleted & executable files in uploads folder', icon: FileWarning, color: '#09090B' },
-    { key: 'malware', name: 'Malware & Trojan Scanner', desc: 'Known malware, ransomware & YARA signature intelligence', icon: ShieldAlert, color: '#09090B' },
+    { key: 'filesystem', name: 'Filesystem Sentinel', desc: 'New, modified, deleted & executable files in uploads folder', icon: FileWarning, color: '#059669' },
+    { key: 'malware', name: 'Malware & Trojan Scanner', desc: 'Known malware, ransomware & YARA signature intelligence', icon: ShieldAlert, color: '#10B981' },
     { key: 'backdoors', name: 'Backdoors & Webshells', desc: 'Deep AST de-obfuscation & execution sink analysis', icon: FileCode, color: '#EF4444' },
-    { key: 'integrity', name: 'File Integrity & Changes', desc: 'Cryptographic SHA-256 drift detection against official baselines', icon: CheckCircle2, color: '#09090B' },
-    { key: 'wp_core', name: 'WordPress Core Sentinel', desc: 'Direct verification against official WordPress.org repository tags', icon: Shield, color: '#09090B' },
-    { key: 'plugins', name: 'Plugin Vulnerability Audit', desc: 'Cross-referencing installed plugins with WPScan CVE vulnerability base', icon: Layers, color: '#09090B' },
-    { key: 'themes', name: 'Theme Security Audit', desc: 'Static code analysis of theme templates, headers & hooks', icon: Zap, color: '#09090B' },
-    { key: 'database', name: 'Database & Injection Sentinel', desc: 'SQL injection patterns, persistent backdoors & rogue options audit', icon: Database, color: '#09090B' },
-    { key: 'users', name: 'User & Privilege Sentinel', desc: 'Rogue administrator detection, weak credentials & brute-force audit', icon: Key, color: '#09090B' },
-    { key: 'config', name: 'Sensitive Config Exposure', desc: 'Detects exposed wp-config.php, .env, .git and database backup dumps', icon: Lock, color: '#09090B' },
-    { key: 'exposure', name: 'Full Path Disclosure Sentinel', desc: 'Identifies stack traces exposing server directories and system paths', icon: ExternalLink, color: '#09090B' },
+    { key: 'integrity', name: 'File Integrity & Changes', desc: 'Cryptographic SHA-256 drift detection against official baselines', icon: CheckCircle2, color: '#3B82F6' },
+    { key: 'wp_core', name: 'WordPress Core Sentinel', desc: 'Direct verification against official WordPress.org repository tags', icon: Shield, color: '#059669' },
+    { key: 'plugins', name: 'Plugin Vulnerability Audit', desc: 'Cross-referencing installed plugins with WPScan CVE vulnerability base', icon: Layers, color: '#8B5CF6' },
+    { key: 'themes', name: 'Theme Security Audit', desc: 'Static code analysis of theme templates, headers & hooks', icon: Zap, color: '#F59E0B' },
+    { key: 'database', name: 'Database & Injection Sentinel', desc: 'SQL injection patterns, persistent backdoors & rogue options audit', icon: Database, color: '#059669' },
+    { key: 'users', name: 'User & Privilege Sentinel', desc: 'Rogue administrator detection, weak credentials & brute-force audit', icon: Key, color: '#EC4899' },
+    { key: 'config', name: 'Sensitive Config Exposure', desc: 'Detects exposed wp-config.php, .env, .git and database backup dumps', icon: Lock, color: '#F97316' },
+    { key: 'exposure', name: 'Full Path Disclosure Sentinel', desc: 'Identifies stack traces exposing server directories and system paths', icon: ExternalLink, color: '#6366F1' },
     { key: 'vulnerabilities', name: 'Known CVE Vulnerabilities', desc: 'Comprehensive telemetry matching 5,000+ zero-day WordPress CVEs', icon: AlertOctagon, color: '#EF4444' },
-    { key: 'headers', name: 'Security Headers & CSP', desc: 'HSTS, X-Frame-Options, Content Security Policy & CORS posture audit', icon: Globe, color: '#09090B' },
-    { key: 'server', name: 'Server & Environment Sentinel', desc: 'PHP version, open dangerous ports, SSL/TLS certificates and modules', icon: Server, color: '#09090B' },
-    { key: 'changes', name: 'Real-Time File Drift', desc: 'Instant event alerts whenever PHP or JS source code is altered', icon: Activity, color: '#09090B' },
-    { key: 'threat_intel', name: 'Threat Intel & Leaks', desc: 'Continuous correlation with global Cloud ML malicious IP blocklists', icon: Sliders, color: '#09090B' },
-    { key: 'redirects', name: 'Malicious Redirects Sentinel', desc: 'Detects stealth .htaccess and JavaScript client-side redirect cloaking', icon: RotateCw, color: '#09090B' },
-    { key: 'seo_spam', name: 'SEO & Spam Defacement', desc: 'Identifies pharma hacks, hidden links and Japanese keyword defacements', icon: Mail, color: '#09090B' }
+    { key: 'headers', name: 'Security Headers & CSP', desc: 'HSTS, X-Frame-Options, Content Security Policy & CORS posture audit', icon: Globe, color: '#10B981' },
+    { key: 'server', name: 'Server & Environment Sentinel', desc: 'PHP version, open dangerous ports, SSL/TLS certificates and modules', icon: Server, color: '#059669' },
+    { key: 'changes', name: 'Real-Time File Drift', desc: 'Instant event alerts whenever PHP or JS source code is altered', icon: Activity, color: '#3B82F6' },
+    { key: 'threat_intel', name: 'Threat Intel & Leaks', desc: 'Continuous correlation with global Cloud ML malicious IP blocklists', icon: Sliders, color: '#8B5CF6' },
+    { key: 'redirects', name: 'Malicious Redirects Sentinel', desc: 'Detects stealth .htaccess and JavaScript client-side redirect cloaking', icon: RotateCw, color: '#F59E0B' },
+    { key: 'seo_spam', name: 'SEO & Spam Defacement', desc: 'Identifies pharma hacks, hidden links and Japanese keyword defacements', icon: Mail, color: '#EC4899' }
   ]
 
   // If no websites connected
   if (!hasWebsites) {
     return (
-      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#FAFAFA' }}>
+      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
         <BulkHeader
           title="Website Threat Scanner"
           subtitle="Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics"
@@ -772,34 +772,82 @@ export default function BulkScanner() {
     )
   }
 
-return (
-    <div style={{ padding: '28px 32px', minHeight: '100vh', background: '#FAFAFA', color: '#09090B', fontFamily: 'Inter, -apple-system, sans-serif' }}>
+  return (
+    <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7', color: '#10201E' }}>
       
-      {/* TOAST NOTIFICATION */}
+      {/* Toast Notification */}
       {toastMsg && (
         <div style={{
           position: 'fixed',
           top: '24px',
           right: '24px',
-          zIndex: 999999,
-          background: toastMsg.isError ? '#FEF2F2' : '#09090B',
-          color: toastMsg.isError ? '#DC2626' : '#FFFFFF',
-          border: `1px solid ${toastMsg.isError ? '#FECACA' : '#27272A'}`,
-          padding: '12px 20px',
+          zIndex: 99999,
+          background: toastMsg.isError ? '#FEF2F2' : '#F0FDF4',
+          color: toastMsg.isError ? '#DC2626' : '#15803D',
+          border: `1px solid ${toastMsg.isError ? '#FCA5A5' : '#86EFAC'}`,
           borderRadius: '10px',
+          padding: '12px 20px',
           fontSize: '13px',
-          fontWeight: 700,
+          fontWeight: '700',
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '8px'
         }}>
-          {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
+          {toastMsg.isError ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
           <span>{toastMsg.text}</span>
         </div>
       )}
 
-      {/* TOP ENTERPRISE NAVIGATION & SITE SELECTOR BAR */}
+      {/* TOP PLATFORM BREADCRUMB / STATUS BAR */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '20px',
+        padding: '10px 16px',
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #D9E1DC',
+        boxShadow: '0 2px 8px rgba(11, 37, 34, 0.02)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            background: '#0B2522',
+            color: '#10B981',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            fontWeight: 800
+          }}>
+            M
+          </div>
+          <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>MDefender Pro</span>
+          <span style={{ color: '#C0CBC5' }}>/</span>
+          <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>Threat Intelligence</span>
+          <span style={{ color: '#C0CBC5' }}>/</span>
+          <strong style={{ fontSize: '13px', color: '#0B2522', fontWeight: 800 }}>Website Security Scanner</strong>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#10B981',
+            boxShadow: '0 0 10px #10B981'
+          }} />
+          <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', letterSpacing: '0.3px' }}>
+            Autonomous Radar Armed
+          </span>
+        </div>
+      </div>
+
+      {/* TARGET WEBSITE SELECTOR BAR */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -808,50 +856,47 @@ return (
         padding: '12px 20px',
         background: '#ffffff',
         borderRadius: '12px',
-        border: '1px solid #E4E4E7',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        border: '1px solid #D9E1DC',
+        boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
         flexWrap: 'wrap',
         gap: '14px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '6px',
-            background: '#09090B',
-            color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '11px',
-            fontWeight: 900
+            gap: '8px',
+            color: '#059669',
+            background: '#ECFDF5',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid #A7F3D0',
+            fontSize: '12px',
+            fontWeight: 800
           }}>
-            M
+            <Globe size={15} />
+            <span>SELECT WEBSITE:</span>
           </div>
-          <span style={{ fontSize: '12.5px', color: '#71717A', fontWeight: 600 }}>MDEFENDER PRO</span>
-          <span style={{ color: '#D4D4D8' }}>/</span>
-          <span style={{ fontSize: '12.5px', color: '#71717A', fontWeight: 600 }}>THREAT INTELLIGENCE</span>
-          <span style={{ color: '#D4D4D8' }}>/</span>
-          <strong style={{ fontSize: '12.5px', color: '#09090B', fontWeight: 800 }}>SECURITY OPERATIONS</strong>
 
-          <div style={{ marginLeft: '12px', position: 'relative', minWidth: '260px' }}>
+          <div style={{ position: 'relative', minWidth: '280px' }}>
             <select
               value={targetSiteId || ''}
               onChange={(e) => handleSelectSite(e.target.value)}
               disabled={scanning}
               style={{
                 width: '100%',
-                padding: '7px 32px 7px 12px',
+                padding: '9px 36px 9px 14px',
                 borderRadius: '8px',
-                border: '1px solid #E4E4E7',
+                border: '1.5px solid #10B981',
                 background: '#ffffff',
-                color: '#09090B',
-                fontSize: '13px',
+                color: '#0B2522',
+                fontSize: '13.5px',
                 fontWeight: 700,
                 cursor: scanning ? 'not-allowed' : 'pointer',
                 outline: 'none',
                 appearance: 'none',
-                WebkitAppearance: 'none'
+                WebkitAppearance: 'none',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
               }}
             >
               {wpWebsites.map((site) => {
@@ -867,54 +912,71 @@ return (
               })}
             </select>
             <ChevronDown
-              size={14}
+              size={16}
               style={{
                 position: 'absolute',
-                right: '10px',
+                right: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: '#71717A',
+                color: '#059669',
                 pointerEvents: 'none'
               }}
             />
           </div>
+
+          {currentSite && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                background: '#F0FDF4',
+                color: '#15803D',
+                fontSize: '12px',
+                fontWeight: 700,
+                border: '1px solid #BBF7D0'
+              }}>
+                <CheckCircle2 size={13} />
+                <span>{currentSite.domain || currentSite.url}</span>
+              </span>
+
+              {currentSite.platform && (
+                <span style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: '#EFF6FF',
+                  color: '#1D4ED8',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase'
+                }}>
+                  {currentSite.platform}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '5px 12px',
-            borderRadius: '20px',
-            background: '#F4F4F5',
-            border: '1px solid #E4E4E7',
-            fontSize: '11px',
-            fontWeight: 800,
-            color: '#09090B'
-          }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#09090B' }} />
-            <span>ORIGIN SYNCHRONIZED</span>
-          </div>
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={() => targetSiteId && loadLatestScans(targetSiteId)}
             disabled={scanning}
             style={{
-              background: '#ffffff',
-              border: '1px solid #E4E4E7',
-              color: '#09090B',
-              padding: '6px 14px',
-              borderRadius: '8px',
+              background: '#FAFBF9',
+              border: '1px solid #D9E1DC',
+              color: '#374151',
+              padding: '6px 12px',
+              borderRadius: '7px',
               fontSize: '12px',
               fontWeight: 700,
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              cursor: 'pointer'
             }}
-            title="Sync telemetry directly from origin server"
+            title="Refresh latest scan telemetry from origin"
           >
             <RotateCw size={13} className={scanning ? 'animate-spin' : ''} />
             <span>Sync Origin</span>
@@ -922,7 +984,7 @@ return (
         </div>
       </div>
 
-      {/* HERO POSTURE HEADER & PRIMARY SCAN CONTROLS */}
+      {/* HERO HEADER & ACTIONS */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -932,25 +994,25 @@ return (
         gap: '16px'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#09090B', letterSpacing: '-0.02em' }}>
-            Security &amp; File Integrity Operations
+          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#0B2522', letterSpacing: '-0.5px' }}>
+            Website Threat <span style={{ color: '#059669' }}>Scanner.</span>
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#71717A', maxWidth: '680px' }}>
-            Continuous AST webshell de-obfuscation, SHA-256 core baseline drift, and zero-day threat telemetry.
+          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#60716B', maxWidth: '680px' }}>
+            Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation &amp; Cloud ML Heuristics.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           {/* Status Badge */}
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 16px',
+            padding: '7px 14px',
             borderRadius: '8px',
-            background: radarState === 'threat' ? '#FEF2F2' : '#F4F4F5',
-            border: `1px solid ${radarState === 'threat' ? '#FECACA' : '#E4E4E7'}`,
-            color: radarState === 'threat' ? '#DC2626' : '#09090B',
+            background: scanning ? '#EFF6FF' : (radarState === 'threat' ? '#FEF2F2' : '#ECFDF5'),
+            border: `1px solid ${scanning ? '#BFDBFE' : (radarState === 'threat' ? '#FECACA' : '#A7F3D0')}`,
+            color: scanning ? '#1D4ED8' : (radarState === 'threat' ? '#DC2626' : '#059669'),
             fontSize: '12px',
             fontWeight: 800
           }}>
@@ -958,22 +1020,20 @@ return (
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: radarState === 'threat' ? '#DC2626' : '#09090B'
+              background: scanning ? '#2563EB' : (radarState === 'threat' ? '#DC2626' : '#059669')
             }} />
-            <span>
-              {scanning ? 'SCANNING ORIGIN...' : (radarState === 'threat' ? `${tabCounts.all} THREATS IDENTIFIED` : 'SYSTEM SECURE')}
-            </span>
+            <span>{scanning ? 'SCANNING ORIGIN...' : (radarState === 'threat' ? `${tabCounts.all} THREATS IDENTIFIED` : 'SYSTEM SECURE')}</span>
           </div>
 
-          {/* Solid Black Primary Scan Action */}
+          {/* Action Buttons */}
           <button
             onClick={() => handleStartScan('full')}
             disabled={scanning}
             style={{
-              background: '#09090B',
+              background: '#0B2522',
               color: '#ffffff',
               border: 'none',
-              padding: '10px 22px',
+              padding: '9px 20px',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 800,
@@ -981,24 +1041,45 @@ return (
               alignItems: 'center',
               gap: '8px',
               cursor: scanning ? 'not-allowed' : 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              opacity: scanning ? 0.7 : 1,
-              transition: 'all 0.15s ease'
+              boxShadow: '0 2px 10px rgba(11, 37, 34, 0.2)',
+              opacity: scanning ? 0.7 : 1
             }}
           >
-            <Play size={14} fill="#ffffff" />
-            <span>{scanning ? 'SCANNING...' : 'Start Full System Scan'}</span>
+            <Shield size={16} />
+            <span>{scanning ? 'SCANNING...' : 'START FULL SCAN'}</span>
           </button>
 
-          {/* Clean White Secondary Quick Scan */}
+          {scanning && canSkipWait && (
+            <button
+              onClick={handleSkipWait}
+              style={{
+                background: '#ECFDF5',
+                color: '#059669',
+                border: '1px solid #A7F3D0',
+                padding: '9px 16px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(5, 150, 105, 0.15)'
+              }}
+            >
+              <CheckCircle2 size={15} color="#059669" />
+              <span>View Results Early &rarr;</span>
+            </button>
+          )}
+
           <button
             onClick={() => handleStartScan('quick')}
             disabled={scanning}
             style={{
-              background: '#ffffff',
-              color: '#09090B',
-              border: '1px solid #E4E4E7',
-              padding: '10px 18px',
+              background: '#FAFBF9',
+              color: '#0B2522',
+              border: '1px solid #D9E1DC',
+              padding: '9px 18px',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 700,
@@ -1009,255 +1090,212 @@ return (
               opacity: scanning ? 0.7 : 1
             }}
           >
-            <Zap size={14} />
-            <span>Quick Audit</span>
+            <Zap size={15} color="#F59E0B" />
+            <span>QUICK SCAN</span>
           </button>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* BESPOKE ENTERPRISE SOC POSTURE HUD (BLACK & PURE WHITE CHASSIS)          */}
-      {/* ========================================================================= */}
+      {/* MAIN RADAR HUD HERO CARD */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #E4E4E7',
+        border: '1px solid #D9E1DC',
         padding: '28px 32px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)',
         marginBottom: '24px'
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '320px 1fr',
-          gap: '32px',
-          alignItems: 'stretch'
+          gridTemplateColumns: '360px 1fr',
+          gap: '36px',
+          alignItems: 'center'
         }}>
           
-          {/* Left Column: Security Posture Score & Verification Matrix */}
-          <div style={{
-            background: '#ffffff',
-            border: '1px solid #E4E4E7',
-            borderRadius: '12px',
-            padding: '24px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center'
-          }}>
-            <div style={{ position: 'relative', width: '130px', height: '130px', marginBottom: '14px' }}>
-              <svg width="130" height="130" viewBox="0 0 130 130">
-                <circle
-                  cx="65"
-                  cy="65"
-                  r="54"
-                  fill="none"
-                  stroke="#F4F4F5"
-                  strokeWidth="8"
-                />
-                <circle
-                  cx="65"
-                  cy="65"
-                  r="54"
-                  fill="none"
-                  stroke={radarState === 'threat' ? '#DC2626' : '#09090B'}
-                  strokeWidth="8"
-                  strokeDasharray="339.29"
-                  strokeDashoffset={339.29 * (1 - (telemetryMetrics.securityHealth || 100) / 100)}
-                  strokeLinecap="round"
-                  transform="rotate(-90 65 65)"
-                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-                />
-              </svg>
+          {/* Left Column: Autonomous Holographic Cyber Radar HUD */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: '340px', height: '340px' }}>
+              <canvas ref={canvasRef} width={340} height={340} style={{ display: 'block' }} />
+              
+              {/* Radar Center Score Target Overlay */}
               <div style={{
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                textAlign: 'center'
+                textAlign: 'center',
+                pointerEvents: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                <div style={{
-                  fontSize: '32px',
+                <ShieldCheck
+                  size={24}
+                  color={radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#059669' : '#60716B')}
+                />
+                <span style={{
+                  fontSize: '26px',
                   fontWeight: 900,
-                  color: radarState === 'threat' ? '#DC2626' : '#09090B',
-                  lineHeight: 1
+                  color: radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#0B2522' : '#60716B'),
+                  lineHeight: 1.1,
+                  marginTop: '2px'
                 }}>
-                  {telemetryMetrics.securityHealth !== null ? telemetryMetrics.securityHealth : '100'}
-                </div>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#71717A', marginTop: '2px' }}>
-                  / 100
-                </div>
+                  {telemetryMetrics.securityHealth !== null ? `${telemetryMetrics.securityHealth}` : '—'}
+                </span>
+                <span style={{
+                  fontSize: '9.5px',
+                  fontWeight: 800,
+                  color: radarState === 'threat' ? '#DC2626' : '#059669',
+                  letterSpacing: '0.8px',
+                  textTransform: 'uppercase',
+                  marginTop: '1px'
+                }}>
+                  {scanning ? 'SCANNING' : (radarState === 'threat' ? 'THREATS FOUND' : (telemetryMetrics.securityHealth ? 'RADAR ARMED' : 'NOT SCANNED'))}
+                </span>
               </div>
             </div>
 
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '3px 10px',
-              borderRadius: '20px',
-              background: radarState === 'threat' ? '#FEF2F2' : '#F4F4F5',
-              border: `1px solid ${radarState === 'threat' ? '#FECACA' : '#E4E4E7'}`,
-              color: radarState === 'threat' ? '#DC2626' : '#09090B',
-              fontSize: '11px',
-              fontWeight: 800,
-              marginBottom: '12px'
-            }}>
-              <span>{radarState === 'threat' ? 'ACTION REQUIRED' : 'ORIGIN BASELINE SECURE'}</span>
-            </div>
-
-            <div style={{ fontSize: '12px', color: '#71717A', lineHeight: 1.5, maxWidth: '240px' }}>
-              {telemetryMetrics.healthSub || 'All core WordPress files match official cryptographic baseline.'}
-            </div>
-
+            {/* Radar Footer Meta */}
             <div style={{
               width: '100%',
-              borderTop: '1px solid #F4F4F5',
-              marginTop: '16px',
-              paddingTop: '12px',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              textAlign: 'left',
-              fontSize: '11.5px',
-              color: '#71717A'
+              justifyContent: 'space-between',
+              marginTop: '14px',
+              padding: '10px 16px',
+              background: '#F8FAF9',
+              borderRadius: '10px',
+              border: '1px solid #E6ECE9'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Core Checksums:</span>
-                <strong style={{ color: '#09090B' }}>Official Match</strong>
+              <div>
+                <span style={{ display: 'block', fontSize: '9.5px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>ENGINE MODE</span>
+                <strong style={{ fontSize: '11.5px', color: '#0B2522', fontWeight: 700 }}>Cloud ML + Heuristic AST</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>AST Deobfuscator:</span>
-                <strong style={{ color: '#09090B' }}>Active Sentinel</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Sandbox Mode:</span>
-                <strong style={{ color: '#09090B' }}>Zero Execution</strong>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ display: 'block', fontSize: '9.5px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>RADAR SWEEP</span>
+                <strong style={{ fontSize: '11.5px', color: '#059669', fontWeight: 700 }}>
+                  {scanning ? 'Active Micro-batch Sweep' : 'Continuous Sentinel'}
+                </strong>
               </div>
             </div>
           </div>
 
-          {/* Right Column: 4 Key Forensic Metrics in Pure White Tiles */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          {/* Right Column: Real-Time Telemetry Metrics Grid */}
+          <div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '16px'
             }}>
               
-              {/* Tile 1: Files Audited */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid #E4E4E7',
-                borderRadius: '12px',
-                padding: '20px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
+              {/* Metric 1: Security Health Score */}
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#F4F4F5', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FileText size={15} />
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ShieldCheck size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#71717A', letterSpacing: '0.04em' }}>
-                    FILES AUDITED
-                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SECURITY HEALTH</span>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: '#09090B', fontFamily: 'monospace' }}>
-                  {telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : '10,376'}
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                  {telemetryMetrics.securityHealth !== null ? `${telemetryMetrics.securityHealth}/100` : '—'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#71717A', marginTop: '3px' }}>
-                  Cryptographically verified on server disk
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
+                  {telemetryMetrics.healthSub}
                 </div>
               </div>
 
-              {/* Tile 2: Components Audited */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid #E4E4E7',
-                borderRadius: '12px',
-                padding: '20px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
+              {/* Metric 2: Files Scanned */}
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#F4F4F5', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Layers size={15} />
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FileText size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#71717A', letterSpacing: '0.04em' }}>
-                    COMPONENTS AUDITED
-                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>FILES SCANNED</span>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: '#09090B', fontFamily: 'monospace' }}>
-                  {telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : '3,842'}
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                  {telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : '—'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#71717A', marginTop: '3px' }}>
-                  Active plugins, themes &amp; media uploads
+                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                  {telemetryMetrics.filesScanned > 0 ? 'Verified on origin disk' : 'No completed scan yet'}
                 </div>
               </div>
 
-              {/* Tile 3: Actionable Threats */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid #E4E4E7',
-                borderRadius: '12px',
-                padding: '20px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
+              {/* Metric 3: Component Files Scanned */}
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: telemetryMetrics.unresolvedChanges > 0 ? '#FEF2F2' : '#F4F4F5', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ShieldAlert size={15} />
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F3E8FF', color: '#7E22CE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#71717A', letterSpacing: '0.04em' }}>
-                    ACTIONABLE THREATS
-                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>COMPONENTS AUDITED</span>
                 </div>
-                <div style={{
-                  fontSize: '26px',
-                  fontWeight: 900,
-                  color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#09090B',
-                  fontFamily: 'monospace'
-                }}>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                  {telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : '—'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                  Plugins, themes &amp; uploads
+                </div>
+              </div>
+
+              {/* Metric 4: Active Threats */}
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: telemetryMetrics.unresolvedChanges > 0 ? '#FEF2F2' : '#ECFDF5', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AlertTriangle size={16} />
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>ACTIONABLE THREATS</span>
+                </div>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669' }}>
                   {Number(telemetryMetrics.unresolvedChanges).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#71717A', marginTop: '3px' }}>
-                  {telemetryMetrics.unresolvedChanges > 0 ? `${telemetryMetrics.unresolvedChanges} Critical Vectors` : '0 Active Backdoors'}
+                <div style={{ fontSize: '12px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', marginTop: '2px' }}>
+                  {telemetryMetrics.unresolvedChanges > 0 ? `${telemetryMetrics.unresolvedChanges} Unresolved Issues` : '0 Actionable Threats'}
                 </div>
               </div>
 
-              {/* Tile 4: Last Deep Scan */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid #E4E4E7',
-                borderRadius: '12px',
-                padding: '20px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
+              {/* Metric 5: Last Deep Analysis */}
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#F4F4F5', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Clock size={15} />
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Clock size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#71717A', letterSpacing: '0.04em' }}>
-                    LAST DEEP AUDIT
-                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>LAST DEEP SCAN</span>
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 900, color: '#09090B' }}>
+                <div style={{ fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
                   {telemetryMetrics.lastDeepAnalysis}
                 </div>
-                <div style={{ fontSize: '12px', color: '#71717A', marginTop: '3px' }}>
+                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
                   {telemetryMetrics.durationText}
+                </div>
+              </div>
+
+              {/* Metric 6: Monitoring Uptime */}
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Activity size={16} />
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>AUTONOMOUS UPTIME</span>
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: '#059669' }}>
+                  {continuousMonitoring ? 'Enabled' : 'Paused'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                  Continuous scan monitoring
                 </div>
               </div>
 
             </div>
 
-            {/* Bottom Toolbar Strip */}
+            {/* Bottom Quick Settings Strip */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               marginTop: '16px',
               padding: '12px 18px',
-              background: '#ffffff',
+              background: '#FAFBF9',
               borderRadius: '10px',
-              border: '1px solid #E4E4E7',
+              border: '1px solid #D9E1DC',
               flexWrap: 'wrap',
               gap: '12px'
             }}>
@@ -1266,51 +1304,51 @@ return (
                   type="checkbox"
                   checked={continuousMonitoring}
                   onChange={(e) => setContinuousMonitoring(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#09090B', cursor: 'pointer' }}
+                  style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#09090B' }}>
-                  Continuous Real-Time Sentinel Active
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0B2522' }}>
+                  Continuous Real-Time Monitoring
                 </span>
               </label>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   onClick={() => setScheduleModal(true)}
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #E4E4E7',
+                    border: '1px solid #D9E1DC',
                     padding: '6px 14px',
                     borderRadius: '7px',
                     fontSize: '12px',
                     fontWeight: 700,
-                    color: '#09090B',
+                    color: '#0B2522',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
                     cursor: 'pointer'
                   }}
                 >
-                  <Calendar size={13} />
-                  <span>Schedule</span>
+                  <Calendar size={14} />
+                  <span>Scan Scheduling</span>
                 </button>
 
                 <button
                   onClick={() => showToast(`Automated report sent to admin email for ${currentSite?.domain || 'site'}.`)}
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #E4E4E7',
+                    border: '1px solid #D9E1DC',
                     padding: '6px 14px',
                     borderRadius: '7px',
                     fontSize: '12px',
                     fontWeight: 700,
-                    color: '#09090B',
+                    color: '#0B2522',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
                     cursor: 'pointer'
                   }}
                 >
-                  <Mail size={13} />
+                  <Mail size={14} />
                   <span>Email Report</span>
                 </button>
               </div>
@@ -1319,71 +1357,68 @@ return (
           </div>
         </div>
 
-        {/* LIVE SCANNING EXECUTION CONSOLE */}
+        {/* LIVE SCANNING PROGRESS TELEMETRY HUD */}
         {scanning && (
           <div style={{
             marginTop: '24px',
             padding: '20px',
-            background: '#ffffff',
+            background: '#FAFBF9',
             borderRadius: '12px',
-            border: '1px solid #09090B',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+            border: '1px solid #A7F3D0',
+            animation: 'fadeIn 0.3s ease'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <RotateCw size={18} color="#09090B" style={{ animation: 'spin 1.2s linear infinite' }} />
+                <RotateCw size={18} color="#059669" style={{ animation: 'spin 1.5s linear infinite' }} />
                 <div>
-                  <strong style={{ fontSize: '14px', color: '#09090B', fontWeight: 800 }}>{scanStage}</strong>
-                  <div style={{ fontSize: '12px', color: '#71717A', marginTop: '2px' }}>{stageDetail}</div>
+                  <strong style={{ fontSize: '14px', color: '#0B2522', fontWeight: 800 }}>{scanStage}</strong>
+                  <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{stageDetail}</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '20px', fontWeight: 900, color: '#09090B', fontFamily: 'monospace' }}>
-                  {scanProgressPct}%
-                </span>
-                {canSkipWait && (
-                  <button
-                    onClick={handleSkipWait}
-                    style={{
-                      background: '#09090B',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontSize: '11.5px',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    View Results Early &rarr;
-                  </button>
-                )}
-              </div>
+              <span style={{ fontSize: '18px', fontWeight: 900, color: '#059669' }}>
+                {scanProgressPct}%
+              </span>
             </div>
 
-            {/* Solid Black Progress Bar on Pure White Chassis */}
-            <div style={{ height: '6px', background: '#F4F4F5', borderRadius: '3px', overflow: 'hidden', marginBottom: '14px' }}>
-              <div style={{ width: `${scanProgressPct}%`, height: '100%', background: '#09090B', transition: 'width 0.3s ease' }} />
+            {/* Multi-Domain Progress Breakdown (5 stages matching plugin) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '14px' }}>
+              {[
+                { name: '1. Filesystem', pct: Math.min(100, scanProgressPct * 1.6) },
+                { name: '2. Malware & ML', pct: Math.min(100, Math.max(0, (scanProgressPct - 20) * 1.5)) },
+                { name: '3. WP Core Checksums', pct: Math.min(100, Math.max(0, (scanProgressPct - 40) * 1.5)) },
+                { name: '4. Database & Users', pct: Math.min(100, Math.max(0, (scanProgressPct - 60) * 1.5)) },
+                { name: '5. Threat Intel & Leaks', pct: Math.min(100, Math.max(0, (scanProgressPct - 80) * 2.5)) }
+              ].map((st, i) => (
+                <div key={i} style={{ background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
+                    <span>{st.name}</span>
+                    <span>{Math.round(st.pct)}%</span>
+                  </div>
+                  <div style={{ height: '5px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${st.pct}%`, height: '100%', background: '#059669', transition: 'width 0.3s ease' }} />
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* Dark Carbon Monospace Execution Terminal */}
+            {/* Streaming File Terminal */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '12px 16px',
-              background: '#09090B',
-              color: '#F4F4F5',
+              padding: '10px 14px',
+              background: '#0B1F1C',
+              color: '#34D399',
               borderRadius: '8px',
-              fontFamily: 'Consolas, Monaco, monospace',
+              fontFamily: 'monospace',
               fontSize: '12px'
             }}>
               <div>
-                <span style={{ color: '#A1A1AA', marginRight: '8px' }}>&gt;&gt;</span>
+                <span style={{ color: '#F59E0B', marginRight: '6px' }}>&gt;&gt;</span>
                 <span>{streamLog}</span>
               </div>
-              <div style={{ color: '#71717A', fontSize: '11px', flexShrink: 0 }}>
-                {scannedFilesCount.toLocaleString()} / {totalFilesCount.toLocaleString()} files &bull; {elapsedSeconds}s
+              <div style={{ color: '#94A3B8', fontSize: '11px', flexShrink: 0 }}>
+                {scannedFilesCount.toLocaleString()} / {totalFilesCount.toLocaleString()} files &bull; Elapsed: {elapsedSeconds}s
               </div>
             </div>
           </div>
@@ -1391,13 +1426,48 @@ return (
 
       </div>
 
-      {/* FORENSIC FINDINGS & ANALYSIS CENTER */}
+      {/* WORDFENCE-GRADE COMPACT SCAN PIPELINE */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 24px',
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #D9E1DC',
+        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        {[
+          '1. Spam & SEO',
+          '2. Server & Environment',
+          '3. WP Core Checksums',
+          '4. Deep AST Malware & ML',
+          '5. Database & Users',
+          '6. Threat Intel & Leaks'
+        ].map((step, idx) => (
+          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#059669',
+              boxShadow: '0 0 6px rgba(5, 150, 105, 0.4)'
+            }} />
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B2522' }}>{step}</span>
+            {idx < 5 && <span style={{ color: '#D9E1DC', marginLeft: '12px' }}>&bull;</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* EVIDENCE-DRIVEN THREAT FINDINGS CENTER (WORDFENCE-GRADE SOC) */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #E4E4E7',
+        border: '1px solid #D9E1DC',
         padding: '24px 28px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)',
         marginBottom: '28px'
       }}>
         
@@ -1406,23 +1476,21 @@ return (
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid #F4F4F5',
+          borderBottom: '1px solid #EDF2F0',
           paddingBottom: '18px',
           marginBottom: '18px',
           flexWrap: 'wrap',
           gap: '14px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Shield size={16} />
-            </div>
-            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#09090B' }}>
+            <Shield size={22} color="#0B2522" strokeWidth={2.3} />
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0B2522' }}>
               Security Findings &amp; Forensic Analysis
             </h3>
             <span style={{
-              background: tabCounts.all > 0 ? '#FEF2F2' : '#F4F4F5',
-              color: tabCounts.all > 0 ? '#DC2626' : '#09090B',
-              border: `1px solid ${tabCounts.all > 0 ? '#FECACA' : '#E4E4E7'}`,
+              background: tabCounts.all > 0 ? '#FEF2F2' : '#ECFDF5',
+              color: tabCounts.all > 0 ? '#DC2626' : '#059669',
+              border: `1px solid ${tabCounts.all > 0 ? '#FECACA' : '#A7F3D0'}`,
               borderRadius: '20px',
               padding: '2px 10px',
               fontSize: '11.5px',
@@ -1436,9 +1504,9 @@ return (
             <button
               onClick={handleToggleExpandAll}
               style={{
-                background: '#ffffff',
-                border: '1px solid #E4E4E7',
-                color: '#09090B',
+                background: '#FAFBF9',
+                border: '1px solid #D9E1DC',
+                color: '#0B2522',
                 padding: '7px 14px',
                 borderRadius: '8px',
                 fontSize: '12px',
@@ -1476,9 +1544,9 @@ return (
             <button
               onClick={handleBulkRepairCore}
               style={{
-                background: '#09090B',
-                border: 'none',
-                color: '#ffffff',
+                background: '#F0FDF4',
+                border: '1px solid #BBF7D0',
+                color: '#15803D',
                 padding: '7px 14px',
                 borderRadius: '8px',
                 fontSize: '12px',
@@ -1495,7 +1563,7 @@ return (
           </div>
         </div>
 
-        {/* Filter Row Tabs (Segmented Solid Black Controls) */}
+        {/* Filter Row Tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {[
             { key: 'all', label: `All Findings (${tabCounts.all})` },
@@ -1507,9 +1575,9 @@ return (
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               style={{
-                background: activeTab === tab.key ? '#09090B' : '#ffffff',
-                color: activeTab === tab.key ? '#ffffff' : '#71717A',
-                border: `1px solid ${activeTab === tab.key ? '#09090B' : '#E4E4E7'}`,
+                background: activeTab === tab.key ? '#0B2522' : '#FAFBF9',
+                color: activeTab === tab.key ? '#ffffff' : '#60716B',
+                border: `1px solid ${activeTab === tab.key ? '#0B2522' : '#D9E1DC'}`,
                 padding: '6px 16px',
                 borderRadius: '7px',
                 fontSize: '12.5px',
@@ -1523,34 +1591,56 @@ return (
           ))}
         </div>
 
+        {/* Telemetry Stats Strip (Wordfence Parity) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px',
+          padding: '10px 16px',
+          background: '#F8FAF9',
+          borderRadius: '8px',
+          border: '1px solid #E6ECE9',
+          fontSize: '12.5px',
+          color: '#60716B',
+          marginBottom: '20px',
+          flexWrap: 'wrap'
+        }}>
+          <div>Files scanned: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
+          <div>Plugin &amp; theme files: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : (telemetryMetrics.securityHealth !== null ? '0' : '—')}</strong></div>
+          <div>Users checked: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.usersChecked !== null && telemetryMetrics.usersChecked !== undefined ? Number(telemetryMetrics.usersChecked).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
+          <div>Database tables: <strong style={{ color: '#0B2522' }}>{telemetryMetrics.databaseTables !== null && telemetryMetrics.databaseTables !== undefined ? Number(telemetryMetrics.databaseTables).toLocaleString() : (telemetryMetrics.filesScanned > 0 ? 'Verified' : '—')}</strong></div>
+          {telemetryMetrics.postsScanned !== null && telemetryMetrics.postsScanned !== undefined && (
+            <div>Posts audited: <strong style={{ color: '#0B2522' }}>{Number(telemetryMetrics.postsScanned).toLocaleString()}</strong></div>
+          )}
+          <div>Results Found: <strong style={{ color: tabCounts.all > 0 ? '#DC2626' : '#059669' }}>{tabCounts.all} Issues</strong></div>
+        </div>
+
         {/* Findings List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {filteredFindings.length === 0 ? (
             <div style={{
               textAlign: 'center',
-              padding: '52px 24px',
-              background: '#ffffff',
+              padding: '48px 24px',
+              background: '#FAFBF9',
               borderRadius: '12px',
-              border: '1px dashed #E4E4E7'
+              border: '1px dashed #D9E1DC'
             }}>
               <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '12px',
-                background: '#F4F4F5',
-                color: '#09090B',
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                background: '#ECFDF5',
+                color: '#059669',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: '12px'
               }}>
-                <CheckCircle2 size={26} />
+                <ShieldCheck size={32} />
               </div>
-              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#09090B' }}>
-                Zero Threats Detected
-              </h4>
-              <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#71717A', maxWidth: '440px', display: 'inline-block' }}>
-                Your WordPress server files, database, and core checksums match pristine baseline integrity.
+              <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>Zero Threats Detected</h4>
+              <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '440px', display: 'inline-block' }}>
+                Your WordPress files, core checksums, database and server configuration match pristine baseline integrity.
               </p>
             </div>
           ) : (
@@ -1572,13 +1662,15 @@ return (
                 <div
                   key={rowId}
                   style={{
-                    border: `1px solid ${isCritical ? '#FECACA' : '#E4E4E7'}`,
-                    borderLeft: `4px solid ${isQuarantined ? '#09090B' : (isCritical ? '#DC2626' : '#F59E0B')}`,
+                    border: `1px solid ${isCritical ? '#FECACA' : '#D9E1DC'}`,
+                    borderLeft: `4px solid ${isQuarantined ? '#10B981' : (isCritical ? '#DC2626' : '#F59E0B')}`,
                     borderRadius: '10px',
                     background: '#ffffff',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    transition: 'all 0.15s ease'
                   }}
                 >
+                  {/* Row Main Line */}
                   <div
                     onClick={() => toggleRowDrawer(rowId)}
                     style={{
@@ -1607,38 +1699,37 @@ return (
                       </div>
 
                       <div>
-                        <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#09090B', fontFamily: 'monospace' }}>
-                          {filePath || f.title || f.threat_name}
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#0B2522' }}>
+                          {f.title || f.threat_name || filePath}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#71717A', marginTop: '2px' }}>
-                          Category: <strong>{f.type || f.category || 'File Finding'}</strong>
+                        <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                          Type: <strong>{f.type || f.category || 'File'}</strong>
                         </div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        color: isCritical ? '#DC2626' : '#D97706',
-                        background: isCritical ? '#FEF2F2' : '#FFFBEB',
-                        border: `1px solid ${isCritical ? '#FECACA' : '#FDE68A'}`,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        textTransform: 'uppercase'
-                      }}>
-                        {f.severityLabel || (isCritical ? 'Critical' : 'Warning')}
-                      </span>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block' }}>Issue Found Just now</span>
+                        <span style={{
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          color: isCritical ? '#DC2626' : '#D97706'
+                        }}>
+                          &bull; {f.severityLabel || (isCritical ? 'Critical' : 'High')}
+                        </span>
+                      </div>
 
+                      {/* Row Action Buttons */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
                         {isRepairable && !isQuarantined && (
                           <button
                             onClick={() => handleRepairCore(f)}
                             disabled={isBusy}
                             style={{
-                              background: '#09090B',
-                              color: '#ffffff',
-                              border: 'none',
+                              background: '#F0FDF4',
+                              color: '#15803D',
+                              border: '1px solid #BBF7D0',
                               padding: '5px 12px',
                               borderRadius: '6px',
                               fontSize: '11.5px',
@@ -1649,7 +1740,7 @@ return (
                               gap: '5px'
                             }}
                           >
-                            <RotateCw size={12} />
+                            <RotateCw size={13} />
                             <span>{isBusy ? 'REPAIRING...' : 'REPAIR'}</span>
                           </button>
                         )}
@@ -1672,17 +1763,33 @@ return (
                               gap: '5px'
                             }}
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={13} />
                             <span>{isBusy ? 'QUARANTINING...' : 'DELETE'}</span>
                           </button>
                         )}
 
                         <button
+                          onClick={() => handleToggleIgnore(rowId)}
+                          style={{
+                            background: '#FAFBF9',
+                            color: '#60716B',
+                            border: '1px solid #D9E1DC',
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isIgnored ? 'RESTORE' : 'IGNORE'}
+                        </button>
+
+                        <button
                           onClick={() => toggleRowDrawer(rowId)}
                           style={{
-                            background: '#ffffff',
-                            color: '#09090B',
-                            border: '1px solid #E4E4E7',
+                            background: '#FAFBF9',
+                            color: '#0B2522',
+                            border: '1px solid #D9E1DC',
                             padding: '5px 12px',
                             borderRadius: '6px',
                             fontSize: '11.5px',
@@ -1694,7 +1801,7 @@ return (
                           }}
                         >
                           <span>DETAILS</span>
-                          <ChevronDown size={13} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                         </button>
                       </div>
                     </div>
@@ -1704,80 +1811,258 @@ return (
                   {isExpanded && (
                     <div style={{
                       padding: '16px 20px',
-                      background: '#FAFAFA',
-                      borderTop: '1px solid #E4E4E7'
+                      background: '#FAFBF9',
+                      borderTop: '1px solid #EDF2F0'
                     }}>
-                      <div style={{ fontSize: '13px', color: '#27272A', marginBottom: '8px' }}>
-                        <strong style={{ color: '#09090B' }}>File:</strong> <code style={{ background: '#E4E4E7', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{filePath}</code>
+                      <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
+                        <strong style={{ color: '#0B2522' }}>Filename:</strong> <code style={{ background: '#E2E8F0', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{filePath}</code>
                       </div>
-                      <div style={{ fontSize: '13px', color: '#27272A', marginBottom: '12px' }}>
-                        <strong style={{ color: '#09090B' }}>Forensic Detail:</strong> {f.details || 'Baseline hash disparity identified.'}
+                      <div style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
+                        <strong style={{ color: '#0B2522' }}>File Type:</strong> {isCore ? 'WordPress Core (Protected Official System File)' : (f.category || 'Plugin File')}
                       </div>
-
-                      {/* Forensic Code Box */}
-                      <div style={{
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        border: '1px solid #27272A',
-                        background: '#09090B',
-                        marginBottom: '14px'
-                      }}>
-                        <div style={{
-                          padding: '8px 14px',
-                          background: '#18181B',
-                          borderBottom: '1px solid #27272A',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                          color: '#A1A1AA',
-                          display: 'flex',
-                          justifyContent: 'space-between'
-                        }}>
-                          <span>{filePath || 'Detected Threat Payload'}</span>
-                          {f.line_number && <span style={{ color: '#FFFFFF' }}>Line {f.line_number}</span>}
-                        </div>
-                        <div style={{
-                          padding: '12px 14px',
-                          fontFamily: 'Consolas, Monaco, monospace',
-                          fontSize: '12px',
-                          color: '#F4F4F5',
-                          lineHeight: 1.6
-                        }}>
-                          <span style={{ color: '#EF4444', marginRight: '8px', fontWeight: 800 }}>PAYLOAD:</span>
-                          <span>{f.code_snippet || f.snippet || (f.findings && f.findings[0]) || 'Execution sink payload identified'}</span>
-                        </div>
+                      <div style={{ fontSize: '13px', color: '#475569', marginBottom: '12px' }}>
+                        <strong style={{ color: '#0B2522' }}>Details:</strong> {f.details || 'This file has been modified or differs from the original pristine baseline version.'}
                       </div>
 
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      {/* Forensic Signals Bullet List */}
+                      {f.evidence && f.evidence.length > 0 && (
+                        <div style={{ marginBottom: '14px' }}>
+                          <strong style={{ fontSize: '12px', color: '#0B2522' }}>Forensic Signals:</strong>
+                          <ul style={{ margin: '4px 0 0 20px', color: '#60716B', fontSize: '12px', lineHeight: 1.6 }}>
+                            {f.evidence.map((ev, ei) => (
+                              <li key={ei}>{ev}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Forensic Code Snippet or Hardening Recommendation Box */}
+                      {isSecConfig ? (
+                        <div style={{
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid #CBD5E1',
+                          background: '#F8FAFC',
+                          padding: '14px 16px',
+                          marginBottom: '16px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              HARDENING RECOMMENDATION
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5 }}>
+                            {f.details || f.title || 'Security hardening configuration recommendation.'}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid #1E293B',
+                          background: '#0F172A',
+                          marginBottom: '16px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                        }}>
+                          {/* IDE Top Window Bar */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 14px',
+                            background: '#1E293B',
+                            borderBottom: '1px solid #334155',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#94A3B8'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ display: 'inline-flex', gap: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444' }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                              </span>
+                              <span style={{ color: '#E2E8F0', fontFamily: 'monospace' }}>
+                                {filePath || 'Detected Threat File'}
+                              </span>
+                              {f.line_number && (
+                                <span style={{
+                                  background: '#334155',
+                                  color: '#38BDF8',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '10.5px'
+                                }}>
+                                  Line {f.line_number}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{
+                              fontSize: '10.5px',
+                              letterSpacing: '0.04em',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              background: isCore ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                              color: isCore ? '#FBBF24' : '#F87171',
+                              fontWeight: 800
+                            }}>
+                              {isCore ? 'CORE INTEGRITY' : 'MALWARE FORENSICS'}
+                            </span>
+                          </div>
+
+                          {/* IDE Code Viewer Body */}
+                          <div style={{
+                            padding: '12px 14px',
+                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                            fontSize: '12.5px',
+                            lineHeight: 1.6,
+                            overflowX: 'auto'
+                          }}>
+                            {isCore && !f.line_number ? (
+                              <div style={{ color: '#94A3B8' }}>
+                                Core SHA-256 divergence detected on server disk: <span style={{ color: '#F1F5F9' }}>{filePath}</span> differs from the pristine release on WordPress.org repository.
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                <span style={{
+                                  userSelect: 'none',
+                                  color: '#64748B',
+                                  fontWeight: 600,
+                                  minWidth: '28px',
+                                  textAlign: 'right'
+                                }}>
+                                  {f.line_number || '1'}
+                                </span>
+                                <div style={{ flex: 1, color: '#E2E8F0', wordBreak: 'break-all' }}>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    background: 'rgba(239, 68, 68, 0.2)',
+                                    color: '#FCA5A5',
+                                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                                    padding: '1px 6px',
+                                    borderRadius: '3px',
+                                    fontSize: '10px',
+                                    fontWeight: 800,
+                                    marginRight: '8px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em'
+                                  }}>
+                                    DETECTED PAYLOAD
+                                  </span>
+                                  <span style={{ color: '#F8FAFC' }}>
+                                    {f.code_snippet || f.snippet || (f.findings && f.findings[0]) || 'Malicious execution sink payload identified.'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Detection Signature Footnote */}
+                          {f.findings && f.findings.length > 0 && (
+                            <div style={{
+                              padding: '8px 14px',
+                              background: '#090D16',
+                              borderTop: '1px solid #1E293B',
+                              fontSize: '11px',
+                              color: '#94A3B8',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{ color: '#38BDF8', fontWeight: 700 }}>Signal:</span>
+                              <span style={{ color: '#CBD5E1' }}>{f.findings[0]}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Drawer Bottom Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <button
                           onClick={() => handleViewFile(f)}
                           style={{
                             background: '#ffffff',
-                            border: '1px solid #E4E4E7',
+                            border: '1px solid #D9E1DC',
                             padding: '6px 14px',
                             borderRadius: '6px',
                             fontSize: '12px',
                             fontWeight: 700,
-                            color: '#09090B',
+                            color: '#0B2522',
                             cursor: 'pointer'
                           }}
                         >
-                          View File
+                          VIEW FILE
                         </button>
+
                         {isRepairable && (
                           <button
                             onClick={() => handleViewDiff(f)}
                             style={{
                               background: '#ffffff',
-                              border: '1px solid #E4E4E7',
+                              border: '1px solid #D9E1DC',
                               padding: '6px 14px',
                               borderRadius: '6px',
                               fontSize: '12px',
                               fontWeight: 700,
-                              color: '#09090B',
+                              color: '#0B2522',
                               cursor: 'pointer'
                             }}
                           >
-                            View Baseline Diff
+                            VIEW DIFFERENCES
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleToggleIgnore(rowId)}
+                          style={{
+                            background: '#ffffff',
+                            border: '1px solid #D9E1DC',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: '#60716B',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isIgnored ? 'RESTORE ISSUE' : 'MARK AS FIXED'}
+                        </button>
+
+                        {isRepairable && !isQuarantined && (
+                          <button
+                            onClick={() => handleRepairCore(f)}
+                            disabled={isBusy}
+                            style={{
+                              background: '#059669',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '6px 16px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              cursor: isBusy ? 'wait' : 'pointer'
+                            }}
+                          >
+                            {isBusy ? 'REPAIRING...' : 'REPAIR FILE'}
+                          </button>
+                        )}
+
+                        {isDeletable && !isQuarantined && (
+                          <button
+                            onClick={() => handleQuarantine(f)}
+                            disabled={isBusy}
+                            style={{
+                              background: '#DC2626',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '6px 16px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              cursor: isBusy ? 'wait' : 'pointer'
+                            }}
+                          >
+                            {isBusy ? 'QUARANTINING...' : 'DELETE FILE'}
                           </button>
                         )}
                       </div>
@@ -1790,13 +2075,13 @@ return (
         </div>
       </div>
 
-      {/* 18 AUTONOMOUS SECURITY SENTINEL DOMAINS (COLLAPSIBLE MATRIX) */}
+      {/* 18 AUTONOMOUS SECURITY SENTINEL DOMAINS (Collapsible Matrix Parity) */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
-        border: '1px solid #E4E4E7',
+        border: '1px solid #D9E1DC',
         padding: '24px 28px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)'
       }}>
         <div
           onClick={() => setShow18Sentinels(prev => !prev)}
@@ -1813,20 +2098,20 @@ return (
             <div style={{
               width: '36px',
               height: '36px',
-              borderRadius: '8px',
-              background: '#09090B',
-              color: '#FFFFFF',
+              borderRadius: '10px',
+              background: '#ECFDF5',
+              color: '#059669',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Globe size={18} />
+              <Globe size={20} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#09090B' }}>
+              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
                 18 Autonomous Security Sentinel Domains
               </h3>
-              <div style={{ fontSize: '12px', color: '#71717A', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
                 Filesystem, integrity, backdoor, CVE vulnerability and header sentinels
               </div>
             </div>
@@ -1834,22 +2119,22 @@ return (
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{
-              background: '#F4F4F5',
-              color: '#09090B',
-              border: '1px solid #E4E4E7',
+              background: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
               borderRadius: '20px',
               padding: '3px 12px',
               fontSize: '11px',
               fontWeight: 800
             }}>
-              18/18 SENTINELS ARMED
+              18/18 SENTINELS ACTIVE
             </span>
             <button
               type="button"
               style={{
-                background: '#ffffff',
-                border: '1px solid #E4E4E7',
-                color: '#09090B',
+                background: '#FAFBF9',
+                border: '1px solid #D9E1DC',
+                color: '#0B2522',
                 padding: '7px 14px',
                 borderRadius: '8px',
                 fontSize: '12px',
@@ -1860,7 +2145,7 @@ return (
                 cursor: 'pointer'
               }}
             >
-              <span>{show18Sentinels ? 'Hide Matrix' : 'View 18 Sentinels'}</span>
+              <span>{show18Sentinels ? 'Hide Sentinels' : 'View 18 Sentinels'}</span>
               <ChevronDown size={14} style={{ transform: show18Sentinels ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </button>
           </div>
@@ -1874,7 +2159,7 @@ return (
             gap: '16px',
             marginTop: '20px',
             paddingTop: '20px',
-            borderTop: '1px solid #F4F4F5'
+            borderTop: '1px solid #EDF2F0'
           }}>
             {sentinelsList.map(item => {
               const domData = domainsStatus[item.key] || { status: 'secure', count: 0 }
@@ -1885,9 +2170,9 @@ return (
                 <div
                   key={item.key}
                   style={{
-                    background: '#ffffff',
+                    background: '#FAFBF9',
                     borderRadius: '12px',
-                    border: `1px solid ${isThreat ? '#FECACA' : '#E4E4E7'}`,
+                    border: `1px solid ${isThreat ? '#FECACA' : '#D9E1DC'}`,
                     padding: '16px 18px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -1900,8 +2185,9 @@ return (
                         width: '32px',
                         height: '32px',
                         borderRadius: '8px',
-                        background: '#F4F4F5',
-                        color: '#09090B',
+                        background: '#ffffff',
+                        border: '1px solid #E2E8F0',
+                        color: item.color,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -1913,18 +2199,18 @@ return (
                         fontWeight: 800,
                         padding: '2px 8px',
                         borderRadius: '6px',
-                        background: isThreat ? '#FEF2F2' : '#F4F4F5',
-                        color: isThreat ? '#DC2626' : '#09090B',
-                        border: `1px solid ${isThreat ? '#FECACA' : '#E4E4E7'}`
+                        background: isThreat ? '#FEF2F2' : '#ECFDF5',
+                        color: isThreat ? '#DC2626' : '#059669',
+                        border: `1px solid ${isThreat ? '#FECACA' : '#A7F3D0'}`
                       }}>
-                        {isThreat ? 'THREAT' : 'ARMED'}
+                        {isThreat ? 'THREAT' : 'SECURE'}
                       </span>
                     </div>
 
-                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#09090B' }}>
+                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#0B2522' }}>
                       {item.name}
                     </h4>
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#71717A', lineHeight: 1.4 }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B', lineHeight: 1.4 }}>
                       {item.desc}
                     </p>
                   </div>
@@ -1935,12 +2221,12 @@ return (
                     alignItems: 'center',
                     marginTop: '14px',
                     paddingTop: '10px',
-                    borderTop: '1px solid #F4F4F5',
+                    borderTop: '1px solid #E6ECE9',
                     fontSize: '11px',
-                    color: '#71717A'
+                    color: '#94A3B8'
                   }}>
-                    <span>Checked: <strong style={{ color: '#09090B' }}>Real-time</strong></span>
-                    <span><strong style={{ color: isThreat ? '#DC2626' : '#09090B' }}>{domData.count || 0}</strong> findings</span>
+                    <span>Checked: <strong style={{ color: '#0B2522' }}>Just now</strong></span>
+                    <span><strong style={{ color: isThreat ? '#DC2626' : '#059669' }}>{domData.count || 0}</strong> findings</span>
                   </div>
                 </div>
               )
@@ -1953,34 +2239,47 @@ return (
       {diffModal.open && (
         <div style={{
           position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(11, 37, 34, 0.65)',
           backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 99999, padding: '20px'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
         }}>
           <div style={{
             background: '#ffffff',
             borderRadius: '16px',
-            border: '1px solid #E4E4E7',
-            width: '100%', maxWidth: '1000px', maxHeight: '85vh',
-            display: 'flex', flexDirection: 'column'
+            border: '1px solid #D9E1DC',
+            width: '100%',
+            maxWidth: '1000px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
           }}>
             <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '18px 24px', borderBottom: '1px solid #E4E4E7'
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '18px 24px',
+              borderBottom: '1px solid #E2E8F0'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#09090B' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
                   Visual Code Differences
                 </h3>
-                <div style={{ fontSize: '12.5px', color: '#71717A', marginTop: '2px' }}>
+                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '2px' }}>
                   Comparing local file on server with official WordPress.org release: <code>{diffModal.file}</code>
                 </div>
               </div>
               <button
                 onClick={() => setDiffModal({ open: false, file: '', original: '', local: '', loading: false })}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#71717A' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
                 <X size={20} />
               </button>
@@ -1988,32 +2287,49 @@ return (
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
               {diffModal.loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#09090B' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#059669' }}>
                   <RotateCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
                   <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 700 }}>Fetching baseline diff...</div>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#09090B', marginBottom: '6px' }}>
-                      Official WordPress.org Baseline
+                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#059669', marginBottom: '6px' }}>
+                      Pristine WordPress.org Release Baseline
                     </div>
                     <pre style={{
-                      margin: 0, padding: '14px', background: '#F4F4F5', border: '1px solid #E4E4E7',
-                      borderRadius: '8px', fontSize: '11.5px', fontFamily: 'monospace', height: '420px',
-                      overflowY: 'auto', lineHeight: 1.5, color: '#09090B'
+                      margin: 0,
+                      padding: '14px',
+                      background: '#F8FAF9',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      fontSize: '11.5px',
+                      fontFamily: 'monospace',
+                      height: '420px',
+                      overflowY: 'auto',
+                      lineHeight: 1.5,
+                      color: '#0F172A'
                     }}>
                       {diffModal.original}
                     </pre>
                   </div>
+
                   <div>
                     <div style={{ fontSize: '12px', fontWeight: 800, color: '#DC2626', marginBottom: '6px' }}>
-                      Local Modified Server Version
+                      Local Modified Version on Server Disk
                     </div>
                     <pre style={{
-                      margin: 0, padding: '14px', background: '#FEF2F2', border: '1px solid #FECACA',
-                      borderRadius: '8px', fontSize: '11.5px', fontFamily: 'monospace', height: '420px',
-                      overflowY: 'auto', lineHeight: 1.5, color: '#991B1B'
+                      margin: 0,
+                      padding: '14px',
+                      background: '#FEF2F2',
+                      border: '1px solid #FECACA',
+                      borderRadius: '8px',
+                      fontSize: '11.5px',
+                      fontFamily: 'monospace',
+                      height: '420px',
+                      overflowY: 'auto',
+                      lineHeight: 1.5,
+                      color: '#991B1B'
                     }}>
                       {diffModal.local}
                     </pre>
@@ -2023,14 +2339,23 @@ return (
             </div>
 
             <div style={{
-              display: 'flex', justifyContent: 'flex-end', gap: '12px',
-              padding: '16px 24px', borderTop: '1px solid #E4E4E7', background: '#FAFAFA'
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: '16px 24px',
+              borderTop: '1px solid #E2E8F0',
+              background: '#FAFBF9'
             }}>
               <button
                 onClick={() => setDiffModal({ open: false, file: '', original: '', local: '', loading: false })}
                 style={{
-                  background: '#ffffff', border: '1px solid #E4E4E7', padding: '7px 18px',
-                  borderRadius: '8px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer'
+                  background: '#ffffff',
+                  border: '1px solid #D9E1DC',
+                  padding: '7px 18px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
                 }}
               >
                 Close
@@ -2042,8 +2367,14 @@ return (
                   setDiffModal({ open: false, file: '', original: '', local: '', loading: false })
                 }}
                 style={{
-                  background: '#09090B', border: 'none', color: '#ffffff',
-                  padding: '7px 18px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 800, cursor: 'pointer'
+                  background: '#059669',
+                  border: 'none',
+                  color: '#ffffff',
+                  padding: '7px 18px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
                 }}
               >
                 Repair File Now
@@ -2056,30 +2387,48 @@ return (
       {/* VIEW FILE MODAL */}
       {viewFileModal.open && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 99999, padding: '20px'
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(11, 37, 34, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
         }}>
           <div style={{
-            background: '#ffffff', borderRadius: '16px', border: '1px solid #E4E4E7',
-            width: '100%', maxWidth: '900px', maxHeight: '85vh', display: 'flex', flexDirection: 'column'
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            width: '100%',
+            maxWidth: '900px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
           }}>
             <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '18px 24px', borderBottom: '1px solid #E4E4E7'
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '18px 24px',
+              borderBottom: '1px solid #E2E8F0'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#09090B' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
                   Source Code Inspection
                 </h3>
-                <div style={{ fontSize: '12.5px', color: '#71717A', marginTop: '2px' }}>
+                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '2px' }}>
                   <code>{viewFileModal.file}</code> &bull; {viewFileModal.lines} lines
                 </div>
               </div>
               <button
                 onClick={() => setViewFileModal({ open: false, file: '', content: '', lines: 0, loading: false })}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#71717A' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
                 <X size={20} />
               </button>
@@ -2087,15 +2436,22 @@ return (
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
               {viewFileModal.loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#09090B' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#059669' }}>
                   <RotateCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
-                  <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 700 }}>Reading source...</div>
+                  <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 700 }}>Reading file source...</div>
                 </div>
               ) : (
                 <pre style={{
-                  margin: 0, padding: '16px', background: '#09090B', color: '#F4F4F5',
-                  borderRadius: '10px', fontSize: '12px', fontFamily: 'monospace', height: '460px',
-                  overflowY: 'auto', lineHeight: 1.5
+                  margin: 0,
+                  padding: '16px',
+                  background: '#0B1F1C',
+                  color: '#E2E8F0',
+                  borderRadius: '10px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  height: '460px',
+                  overflowY: 'auto',
+                  lineHeight: 1.5
                 }}>
                   {viewFileModal.content}
                 </pre>
@@ -2103,8 +2459,12 @@ return (
             </div>
 
             <div style={{
-              display: 'flex', justifyContent: 'flex-end', gap: '12px',
-              padding: '16px 24px', borderTop: '1px solid #E4E4E7', background: '#FAFAFA'
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: '16px 24px',
+              borderTop: '1px solid #E2E8F0',
+              background: '#FAFBF9'
             }}>
               <button
                 onClick={() => {
@@ -2112,9 +2472,16 @@ return (
                   showToast('Code copied to clipboard!')
                 }}
                 style={{
-                  background: '#ffffff', border: '1px solid #E4E4E7', padding: '7px 18px',
-                  borderRadius: '8px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: '6px'
+                  background: '#ffffff',
+                  border: '1px solid #D9E1DC',
+                  padding: '7px 18px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
               >
                 <Copy size={14} />
@@ -2123,8 +2490,14 @@ return (
               <button
                 onClick={() => setViewFileModal({ open: false, file: '', content: '', lines: 0, loading: false })}
                 style={{
-                  background: '#09090B', border: 'none', color: '#ffffff',
-                  padding: '7px 18px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 800, cursor: 'pointer'
+                  background: '#0B2522',
+                  border: 'none',
+                  color: '#ffffff',
+                  padding: '7px 18px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
                 }}
               >
                 Done
@@ -2137,38 +2510,57 @@ return (
       {/* SCHEDULE MODAL */}
       {scheduleModal && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 99999, padding: '20px'
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(11, 37, 34, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
         }}>
           <div style={{
-            background: '#ffffff', borderRadius: '16px', border: '1px solid #E4E4E7',
-            width: '100%', maxWidth: '500px', padding: '24px'
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1px solid #D9E1DC',
+            width: '100%',
+            maxWidth: '520px',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#09090B' }}>
-                Automated Audit Scheduling
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0B2522' }}>
+                Automated Scan Scheduling
               </h3>
               <button
                 onClick={() => setScheduleModal(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#71717A' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#71717A', lineHeight: 1.5 }}>
-              Configure recurring background autonomous audits for <strong>{currentSite?.domain || 'this site'}</strong>.
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#60716B', lineHeight: 1.5 }}>
+              Configure recurring background autonomous security audits for <strong>{currentSite?.domain || 'this site'}</strong>.
             </p>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#09090B', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0B2522', marginBottom: '6px' }}>
                 SCAN FREQUENCY
               </label>
               <select style={{
-                width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E4E4E7',
-                fontSize: '13px', fontWeight: 700, color: '#09090B', background: '#ffffff'
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: '8px',
+                border: '1px solid #D9E1DC',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#0B2522',
+                background: '#ffffff'
               }}>
                 <option value="daily">Daily Automated Deep Audit</option>
                 <option value="weekly" selected>Weekly Standard Security Sweep</option>
@@ -2176,12 +2568,37 @@ return (
               </select>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#0B2522', marginBottom: '6px' }}>
+                ALERT EMAIL NOTIFICATION
+              </label>
+              <input
+                type="email"
+                defaultValue="admin@mdefender.com"
+                placeholder="Enter alert email..."
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #D9E1DC',
+                  fontSize: '13px',
+                  color: '#0B2522',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 onClick={() => setScheduleModal(false)}
                 style={{
-                  background: '#ffffff', border: '1px solid #E4E4E7', padding: '8px 16px',
-                  borderRadius: '8px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer'
+                  background: '#ffffff',
+                  border: '1px solid #D9E1DC',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -2192,8 +2609,14 @@ return (
                   showToast('Automated scan schedule saved successfully!')
                 }}
                 style={{
-                  background: '#09090B', border: 'none', color: '#ffffff',
-                  padding: '8px 18px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 800, cursor: 'pointer'
+                  background: '#0B2522',
+                  border: 'none',
+                  color: '#ffffff',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
                 }}
               >
                 Save Schedule

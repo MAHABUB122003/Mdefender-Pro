@@ -847,9 +847,6 @@ body {
 }
 .ml-user-section .system-card { animation-delay: 0.34s; }
 .scanner-wrap { position: relative; }
-/* =========================================================================
-   ENTERPRISE MALWARE SCANNER & SOC CONSOLE (MONOCHROME / BLACK & WHITE)
-   ========================================================================= */
 .premium-blur .scanner-body { filter: blur(3px); pointer-events: none; user-select: none; }
 .scanner-body { display: flex; flex-direction: column; gap: 14px; }
 .scan-dropzone {
@@ -857,112 +854,104 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 36px 20px;
-  border: 1.5px dashed #d4d4d8;
+  gap: 8px;
+  padding: 34px 20px;
+  border: 2px dashed #cbd5e1;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s;
   text-align: center;
-  background: #ffffff;
+  background: #f8fafc;
 }
-.scan-dropzone:hover { border-color: #09090b; background: #fafafa; }
-.scan-dropzone.dragging { border-color: #09090b; background: #f4f4f5; transform: scale(1.01); }
-.scan-dropzone.has-file { border-color: #09090b; background: #fafafa; }
-.scan-dropzone i { font-size: 28px; color: #71717a; transition: color 0.2s; }
-.scan-dropzone.has-file i { color: #09090b; }
-.scan-drop-title { font-size: 14px; font-weight: 700; color: #09090b; word-break: break-all; max-width: 100%; }
-.scan-drop-sub { font-size: 12px; color: #71717a; }
+.scan-dropzone:hover { border-color: #2563eb; background: #eff6ff; }
+.scan-dropzone.dragging { border-color: #2563eb; background: #eff6ff; transform: scale(1.01); }
+.scan-dropzone.has-file { border-color: #10b981; background: #ecfdf5; }
+.scan-dropzone i { font-size: 30px; color: #94a3b8; }
+.scan-dropzone.has-file i { color: #10b981; }
+.scan-drop-title { font-size: 14px; font-weight: 600; color: #0f172a; word-break: break-all; max-width: 100%; }
+.scan-drop-sub { font-size: 12px; color: #94a3b8; }
 .scan-run-btn {
-  padding: 12px 22px;
+  padding: 12px 20px;
   border: none;
   border-radius: 10px;
-  background: #09090b;
-  color: #ffffff;
-  font-size: 13.5px;
-  font-weight: 700;
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 2px 8px rgba(236,72,153,0.3);
 }
-.scan-run-btn:hover:not(:disabled) { background: #18181b; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
-.scan-run-btn:disabled { opacity: 0.45; cursor: not-allowed; background: #27272a; }
+.scan-run-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.scan-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .scan-error {
-  padding: 11px 14px;
+  padding: 10px 14px;
   background: #fef2f2;
   color: #dc2626;
-  border: 1px solid #fecaca;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .scan-result {
-  border: 1px solid #e4e4e7;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  background: #fff;
 }
-.scan-result.malicious { border-color: #fecaca; background: #ffffff; border-left: 4px solid #dc2626; }
-.scan-result.suspicious { border-color: #fed7aa; background: #ffffff; border-left: 4px solid #f59e0b; }
-.scan-result.clean { border-color: #e4e4e7; background: #ffffff; border-left: 4px solid #09090b; }
+.scan-result.malicious { border-color: #fecaca; background: #fff7f7; }
+.scan-result.suspicious { border-color: #fde68a; background: #fffbeb; }
+.scan-result.clean { border-color: #a7f3d0; background: #f0fdf9; }
 .scan-verdict { display: flex; align-items: center; gap: 14px; }
 .scan-verdict-icon {
-  width: 48px; height: 48px; border-radius: 10px;
+  width: 52px; height: 52px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
 }
-.scan-verdict-icon.malicious { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-.scan-verdict-icon.suspicious { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
-.scan-verdict-icon.clean { background: #f4f4f5; color: #09090b; border: 1px solid #e4e4e7; }
-.scan-verdict-icon.error { background: #f4f4f5; color: #09090b; border: 1px solid #e4e4e7; }
-.scan-verdict-label { font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; color: #09090b; }
-.scan-verdict-sub { font-size: 12.5px; color: #71717a; }
+.scan-verdict-icon.malicious { background: #fef2f2; color: #dc2626; }
+.scan-verdict-icon.suspicious { background: #fffbeb; color: #d97706; }
+.scan-verdict-icon.clean { background: #ecfdf5; color: #059669; }
+.scan-verdict-icon.error { background: #eff6ff; color: #2563eb; }
+.scan-verdict-label { font-size: 18px; font-weight: 700; text-transform: capitalize; color: #0f172a; }
+.scan-verdict-sub { font-size: 12px; color: #64748b; }
 .scan-metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 .scan-metric {
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
-.scan-metric span { font-size: 11px; color: #71717a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.scan-metric strong { font-size: 14px; color: #09090b; font-weight: 800; font-family: monospace; }
+.scan-metric span { font-size: 11px; color: #94a3b8; font-weight: 500; }
+.scan-metric strong { font-size: 14px; color: #0f172a; word-break: break-all; }
 .scan-reasons { display: flex; flex-direction: column; gap: 6px; }
-.scan-reasons-title { font-size: 11.5px; font-weight: 700; color: #71717a; text-transform: uppercase; letter-spacing: 0.04em; }
+.scan-reasons-title { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
 .scan-reason {
   display: flex; align-items: flex-start; gap: 8px;
-  font-size: 12.5px; color: #27272a;
-  padding: 8px 12px; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 6px;
+  font-size: 12.5px; color: #475569;
+  padding: 6px 10px; background: #f8fafc; border-radius: 6px;
 }
-.scan-reason i { color: #09090b; margin-top: 3px; font-size: 11px; }
+.scan-reason i { color: #2563eb; margin-top: 3px; font-size: 10px; }
 .scan-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 11.5px;
-  color: #71717a;
-  flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid #f4f4f5;
-  font-family: monospace;
+  display: flex; flex-wrap: wrap; gap: 14px;
+  padding-top: 12px; border-top: 1px solid #f1f5f9;
+  font-size: 12px; color: #94a3b8;
 }
 .scan-meta span { display: inline-flex; align-items: center; gap: 6px; }
 .scan-meta i { color: #cbd5e1; }
