@@ -41,14 +41,15 @@ export default function BulkUptime() {
   // Filter target sites based on global scope
   const targetWebsites = useMemo(() => {
     if (selectedSiteId === 'all') return wpWebsites
-    return wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+    const list = Array.isArray(wpWebsites) ? wpWebsites : []
+    return list.filter(w => w && (w.id === selectedSiteId || w._id === selectedSiteId))
   }, [wpWebsites, selectedSiteId])
 
   // Current primary target site
   const primarySite = useMemo(() => {
     if (activeWebsite) return activeWebsite
     if (targetWebsites.length > 0) return targetWebsites[0]
-    return wpWebsites[0] || null
+    return (Array.isArray(wpWebsites) && wpWebsites[0]) || null
   }, [activeWebsite, targetWebsites, wpWebsites])
 
   const primarySiteId = primarySite ? (primarySite.id || primarySite._id) : null
@@ -115,7 +116,7 @@ export default function BulkUptime() {
   // Calculated Fleet Metrics
   const onlineCount = useMemo(() => {
     return targetWebsites.filter(w => {
-      const p = probeData[w.id || w._id]
+      const p = probeData[w?.id || w?._id]
       return p ? p.is_online !== false : true
     }).length
   }, [targetWebsites, probeData])
@@ -137,8 +138,13 @@ export default function BulkUptime() {
   const heartbeatDays = useMemo(() => {
     const incidentDates = new Set(
       incidents.map(inc => {
-        if (!inc.started_at) return ''
-        return new Date(inc.started_at).toISOString().split('T')[0]
+        if (!inc || !inc.started_at) return ''
+        try {
+          const d = new Date(inc.started_at)
+          return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0]
+        } catch {
+          return ''
+        }
       }).filter(Boolean)
     )
     const days = []

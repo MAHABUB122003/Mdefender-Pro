@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Zap,
   Smartphone,
@@ -18,7 +18,77 @@ import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
 
-export default function BulkPerformance() {
+// Sub-component Error Boundary so child widget issues never crash the entire page
+class PerformanceErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('Performance view error:', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #FECACA',
+          borderRadius: '14px',
+          padding: '32px 24px',
+          textAlign: 'center',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+        }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            background: '#FEF2F2',
+            color: '#DC2626',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '12px'
+          }}>
+            <AlertTriangle size={20} />
+          </div>
+          <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', margin: '0 0 6px' }}>
+            Performance Metric Renderer Encountered an Issue
+          </h3>
+          <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '480px', margin: '0 auto 16px' }}>
+            {this.state.error?.message || 'An error occurred while evaluating performance data.'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null })
+              if (this.props.onRetry) this.props.onRetry()
+            }}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '8px',
+              background: '#0F172A',
+              color: '#FFFFFF',
+              fontSize: '13px',
+              fontWeight: '600',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Retry Audit
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+function BulkPerformanceContent() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
 
   const [strategy, setStrategy] = useState('desktop') // 'desktop' | 'mobile'
@@ -35,14 +105,15 @@ export default function BulkPerformance() {
 
   // Target websites
   const targetWebsites = useMemo(() => {
-    if (selectedSiteId === 'all') return wpWebsites
-    return wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+    const list = Array.isArray(wpWebsites) ? wpWebsites : []
+    if (selectedSiteId === 'all') return list
+    return list.filter(w => w && (w.id === selectedSiteId || w._id === selectedSiteId))
   }, [wpWebsites, selectedSiteId])
 
   const primarySite = useMemo(() => {
     if (activeWebsite) return activeWebsite
     if (targetWebsites.length > 0) return targetWebsites[0]
-    return wpWebsites[0] || null
+    return (Array.isArray(wpWebsites) && wpWebsites[0]) || null
   }, [activeWebsite, targetWebsites, wpWebsites])
 
   const primarySiteId = primarySite ? (primarySite.id || primarySite._id) : null
@@ -83,42 +154,43 @@ export default function BulkPerformance() {
       api.getWebsiteTelemetry(primarySiteId)
         .then(res => {
           const d = res?.data || res
-          if (d) setOriginTelemetry(d)
+          if (d && typeof d === 'object') setOriginTelemetry(d)
         })
         .catch(err => console.debug('Origin telemetry not available:', err))
         .finally(() => setLoadingTelemetry(false))
     }
   }, [primarySiteId])
 
-
   const currentAudit = primarySiteId ? (perfData[`${primarySiteId}_${strategy}`] || null) : null
-  const hasAudit = currentAudit && typeof currentAudit.score === 'number'
-  const isChallenged = currentAudit?.is_challenged || (hasAudit && currentAudit.score === 0)
+  const hasAudit = Boolean(currentAudit && typeof currentAudit?.score === 'number')
+  const isChallenged = Boolean(currentAudit?.is_challenged || (hasAudit && currentAudit?.score === 0))
 
   // Real metric extraction from backend audit
   const score = hasAudit ? currentAudit.score : null
-  const metrics = currentAudit?.metrics || {}
-  const composition = currentAudit?.page_composition || {}
-  const recommendations = currentAudit?.recommendations || []
+  const metrics = (currentAudit && typeof currentAudit.metrics === 'object' && currentAudit.metrics) || {}
+  const composition = (currentAudit && typeof currentAudit.page_composition === 'object' && currentAudit.page_composition) || {}
+  const rawRecs = currentAudit?.recommendations
+  const recommendations = Array.isArray(rawRecs) ? rawRecs : []
 
-  const lcpText = hasAudit && !isChallenged && typeof metrics.lcp_ms === 'number' && metrics.lcp_ms > 0
+  const lcpText = hasAudit && !isChallenged && typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms > 0
     ? (metrics.lcp_ms / 1000).toFixed(2)
     : '--'
-  const inpText = hasAudit && !isChallenged && typeof metrics.inp_ms === 'number' && metrics.inp_ms > 0
+  const inpText = hasAudit && !isChallenged && typeof metrics?.inp_ms === 'number' && metrics.inp_ms > 0
     ? `${metrics.inp_ms}`
     : '--'
-  const clsText = hasAudit && !isChallenged && typeof metrics.cls === 'number'
+  const clsText = hasAudit && !isChallenged && typeof metrics?.cls === 'number'
     ? `${metrics.cls}`
     : '--'
-  const ttfbText = hasAudit && typeof metrics.ttfb_ms === 'number' && metrics.ttfb_ms > 0
+  const ttfbText = hasAudit && typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms > 0
     ? `${Math.round(metrics.ttfb_ms)}`
     : '--'
 
   const scoreBadge = (s) => {
-    if (s === null) return { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0', label: 'PENDING AUDIT' }
+    if (s === null || s === undefined) return { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0', label: 'PENDING AUDIT' }
     if (isChallenged) return { bg: '#EFF6FF', text: '#1D4ED8', border: '#DBEAFE', label: 'WAF CHALLENGED (403)' }
-    if (s >= 90) return { bg: '#F0FDF4', text: '#15803D', border: '#DCFCE7', label: 'GOOD' }
-    if (s >= 50) return { bg: '#FFFBEB', text: '#B45309', border: '#FEF3C7', label: 'NEEDS IMPROVEMENT' }
+    const num = Number(s)
+    if (num >= 90) return { bg: '#F0FDF4', text: '#15803D', border: '#DCFCE7', label: 'GOOD' }
+    if (num >= 50) return { bg: '#FFFBEB', text: '#B45309', border: '#FEF3C7', label: 'NEEDS IMPROVEMENT' }
     return { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA', label: 'POOR' }
   }
 
@@ -231,14 +303,14 @@ export default function BulkPerformance() {
 
           {primarySite && (
             <span style={{ fontSize: '12.5px', color: '#64748B', marginLeft: '6px' }}>
-              Target: <strong style={{ color: '#0F172A' }}>{primarySite.domain || primarySite.url}</strong>
+              Target: <strong style={{ color: '#0F172A' }}>{primarySite.domain || primarySite.url || 'Active Site'}</strong>
             </span>
           )}
         </div>
 
         <button
           onClick={() => fetchAudit(primarySiteId, strategy, true, true)}
-          disabled={loadingAudit}
+          disabled={loadingAudit || !primarySiteId}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -250,8 +322,8 @@ export default function BulkPerformance() {
             fontSize: '13px',
             fontWeight: '600',
             border: 'none',
-            cursor: loadingAudit ? 'not-allowed' : 'pointer',
-            opacity: loadingAudit ? 0.7 : 1
+            cursor: loadingAudit || !primarySiteId ? 'not-allowed' : 'pointer',
+            opacity: loadingAudit || !primarySiteId ? 0.7 : 1
           }}
         >
           <RefreshCw size={14} style={{ animation: loadingAudit ? 'spin 1s linear infinite' : 'none' }} />
@@ -283,11 +355,11 @@ export default function BulkPerformance() {
             <span style={numberStyle}>{lcpText}</span>
             <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{lcpText !== '--' ? 's' : ''}</span>
             <span style={badgeStyle(
-              isChallenged ? '#EFF6FF' : hasAudit && metrics.lcp_ms < 2500 ? '#F0FDF4' : '#FFFBEB',
-              isChallenged ? '#1D4ED8' : hasAudit && metrics.lcp_ms < 2500 ? '#15803D' : '#B45309',
-              isChallenged ? '#DBEAFE' : hasAudit && metrics.lcp_ms < 2500 ? '#DCFCE7' : '#FEF3C7'
+              isChallenged ? '#EFF6FF' : hasAudit && typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms < 2500 ? '#F0FDF4' : '#FFFBEB',
+              isChallenged ? '#1D4ED8' : hasAudit && typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms < 2500 ? '#15803D' : '#B45309',
+              isChallenged ? '#DBEAFE' : hasAudit && typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms < 2500 ? '#DCFCE7' : '#FEF3C7'
             )}>
-              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (metrics.lcp_ms < 2500 ? 'GOOD (< 2.5s)' : 'OPPORTUNITY') : 'BENCHMARK: < 2.5s'}
+              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (typeof metrics?.lcp_ms === 'number' && metrics.lcp_ms < 2500 ? 'GOOD (< 2.5s)' : 'OPPORTUNITY') : 'BENCHMARK: < 2.5s'}
             </span>
           </div>
           <div style={subLabelStyle}>Time to render primary page content</div>
@@ -300,11 +372,11 @@ export default function BulkPerformance() {
             <span style={numberStyle}>{inpText}</span>
             <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>{inpText !== '--' ? 'ms' : ''}</span>
             <span style={badgeStyle(
-              isChallenged ? '#EFF6FF' : hasAudit && metrics.inp_ms < 200 ? '#F0FDF4' : '#FFFBEB',
-              isChallenged ? '#1D4ED8' : hasAudit && metrics.inp_ms < 200 ? '#15803D' : '#B45309',
-              isChallenged ? '#DBEAFE' : hasAudit && metrics.inp_ms < 200 ? '#DCFCE7' : '#FEF3C7'
+              isChallenged ? '#EFF6FF' : hasAudit && typeof metrics?.inp_ms === 'number' && metrics.inp_ms < 200 ? '#F0FDF4' : '#FFFBEB',
+              isChallenged ? '#1D4ED8' : hasAudit && typeof metrics?.inp_ms === 'number' && metrics.inp_ms < 200 ? '#15803D' : '#B45309',
+              isChallenged ? '#DBEAFE' : hasAudit && typeof metrics?.inp_ms === 'number' && metrics.inp_ms < 200 ? '#DCFCE7' : '#FEF3C7'
             )}>
-              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (metrics.inp_ms < 200 ? 'GOOD (< 200ms)' : 'OPPORTUNITY') : 'BENCHMARK: < 200ms'}
+              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (typeof metrics?.inp_ms === 'number' && metrics.inp_ms < 200 ? 'GOOD (< 200ms)' : 'OPPORTUNITY') : 'BENCHMARK: < 200ms'}
             </span>
           </div>
           <div style={subLabelStyle}>Responsiveness to user taps and clicks</div>
@@ -316,11 +388,11 @@ export default function BulkPerformance() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
             <span style={numberStyle}>{clsText}</span>
             <span style={badgeStyle(
-              isChallenged ? '#EFF6FF' : hasAudit && metrics.cls < 0.1 ? '#F0FDF4' : '#FFFBEB',
-              isChallenged ? '#1D4ED8' : hasAudit && metrics.cls < 0.1 ? '#15803D' : '#B45309',
-              isChallenged ? '#DBEAFE' : hasAudit && metrics.cls < 0.1 ? '#DCFCE7' : '#FEF3C7'
+              isChallenged ? '#EFF6FF' : hasAudit && typeof metrics?.cls === 'number' && metrics.cls < 0.1 ? '#F0FDF4' : '#FFFBEB',
+              isChallenged ? '#1D4ED8' : hasAudit && typeof metrics?.cls === 'number' && metrics.cls < 0.1 ? '#15803D' : '#B45309',
+              isChallenged ? '#DBEAFE' : hasAudit && typeof metrics?.cls === 'number' && metrics.cls < 0.1 ? '#DCFCE7' : '#FEF3C7'
             )}>
-              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (metrics.cls < 0.1 ? 'GOOD (< 0.1)' : 'NEEDS WORK') : 'BENCHMARK: < 0.1'}
+              {isChallenged ? 'WAF CHALLENGED' : hasAudit ? (typeof metrics?.cls === 'number' && metrics.cls < 0.1 ? 'GOOD (< 0.1)' : 'NEEDS WORK') : 'BENCHMARK: < 0.1'}
             </span>
           </div>
           <div style={subLabelStyle}>Visual stability and layout movement</div>
@@ -374,7 +446,7 @@ export default function BulkPerformance() {
                 <span>PHP Version</span>
               </div>
               <div style={{ fontSize: '16px', fontWeight: '700', color: '#0F172A', marginTop: '4px' }}>
-                PHP {originTelemetry?.php_version || '8.0.30'}
+                PHP {originTelemetry?.php_version || '8.2'}
               </div>
             </div>
 
@@ -424,8 +496,10 @@ export default function BulkPerformance() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '13px', color: '#475569' }}>Text Compression Header:</span>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: composition.is_compressed ? '#16A34A' : '#DC2626' }}>
-                  {composition.compression_type ? composition.compression_type.toUpperCase() : (composition.is_compressed ? 'GZIP ACTIVE' : 'UNCOMPRESSED')}
+                <span style={{ fontSize: '13px', fontWeight: '700', color: composition?.is_compressed ? '#16A34A' : '#DC2626' }}>
+                  {typeof composition?.compression_type === 'string' && composition.compression_type && composition.compression_type.toLowerCase() !== 'none'
+                    ? composition.compression_type.toUpperCase()
+                    : (composition?.is_compressed ? 'GZIP ACTIVE' : 'UNCOMPRESSED')}
                 </span>
               </div>
             </div>
@@ -452,11 +526,11 @@ export default function BulkPerformance() {
               </span>
               {hasAudit && (
                 <span style={badgeStyle(
-                  metrics.ttfb_ms < 300 ? '#F0FDF4' : metrics.ttfb_ms < 800 ? '#FFFBEB' : '#FEF2F2',
-                  metrics.ttfb_ms < 300 ? '#15803D' : metrics.ttfb_ms < 800 ? '#B45309' : '#B91C1C',
-                  metrics.ttfb_ms < 300 ? '#DCFCE7' : metrics.ttfb_ms < 800 ? '#FEF3C7' : '#FECACA'
+                  typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 300 ? '#F0FDF4' : typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 800 ? '#FFFBEB' : '#FEF2F2',
+                  typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 300 ? '#15803D' : typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 800 ? '#B45309' : '#B91C1C',
+                  typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 300 ? '#DCFCE7' : typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 800 ? '#FEF3C7' : '#FECACA'
                 )}>
-                  {metrics.ttfb_ms < 300 ? 'FAST RESPONSE' : metrics.ttfb_ms < 800 ? 'ACCEPTABLE' : 'SLOW ORIGIN'}
+                  {typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 300 ? 'FAST RESPONSE' : typeof metrics?.ttfb_ms === 'number' && metrics.ttfb_ms < 800 ? 'ACCEPTABLE' : 'SLOW ORIGIN'}
                 </span>
               )}
             </div>
@@ -470,8 +544,8 @@ export default function BulkPerformance() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
               <span style={{ color: '#64748B' }}>Browser Caching Header</span>
-              <span style={{ fontWeight: '600', color: composition.has_browser_caching ? '#16A34A' : '#64748B' }}>
-                {composition.has_browser_caching ? 'Cache-Control Present' : 'Default / Not Detected'}
+              <span style={{ fontWeight: '600', color: composition?.has_browser_caching ? '#16A34A' : '#64748B' }}>
+                {composition?.has_browser_caching ? 'Cache-Control Present' : 'Default / Not Detected'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
@@ -481,7 +555,15 @@ export default function BulkPerformance() {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Last Checked</span>
               <span style={{ color: '#64748B' }}>
-                {currentAudit?.audited_at ? new Date(currentAudit.audited_at).toLocaleString() : 'Not yet'}
+                {(() => {
+                  if (!currentAudit?.audited_at) return 'Not yet';
+                  try {
+                    const d = new Date(currentAudit.audited_at);
+                    return isNaN(d.getTime()) ? 'Recently' : d.toLocaleString();
+                  } catch {
+                    return 'Recently';
+                  }
+                })()}
               </span>
             </div>
           </div>
@@ -541,18 +623,18 @@ export default function BulkPerformance() {
               <tbody>
                 {recommendations.map((rec, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '12px', fontWeight: '600', color: '#0F172A' }}>{rec.title}</td>
+                    <td style={{ padding: '12px', fontWeight: '600', color: '#0F172A' }}>{rec?.title || 'Performance Opportunity'}</td>
                     <td style={{ padding: '12px' }}>
                       <span style={badgeStyle(
-                        rec.impact === 'HIGH' ? '#FEF2F2' : '#FFFBEB',
-                        rec.impact === 'HIGH' ? '#B91C1C' : '#B45309',
-                        rec.impact === 'HIGH' ? '#FECACA' : '#FEF3C7'
+                        rec?.impact === 'HIGH' ? '#FEF2F2' : '#FFFBEB',
+                        rec?.impact === 'HIGH' ? '#B91C1C' : '#B45309',
+                        rec?.impact === 'HIGH' ? '#FECACA' : '#FEF3C7'
                       )}>
-                        {rec.impact}
+                        {rec?.impact || 'MEDIUM'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px', color: '#64748B', fontWeight: '500' }}>{rec.savings}</td>
-                    <td style={{ padding: '12px', color: '#334155', maxWidth: '440px' }}>{rec.description}</td>
+                    <td style={{ padding: '12px', color: '#64748B', fontWeight: '500' }}>{rec?.savings || '--'}</td>
+                    <td style={{ padding: '12px', color: '#334155', maxWidth: '440px' }}>{rec?.description || ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -561,6 +643,14 @@ export default function BulkPerformance() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function BulkPerformance() {
+  return (
+    <PerformanceErrorBoundary>
+      <BulkPerformanceContent />
+    </PerformanceErrorBoundary>
   )
 }
 

@@ -596,9 +596,13 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
         for hk, hv in body.hardening.items():
 
-            if hk in ("disable_xmlrpc", "block_uploads_php", "disable_file_editing", "hide_wp_version", "prevent_user_enumeration", "security_headers", "file_permissions_check", "login_two_factor", "disable_directory_listing"):
+            if hk in ("disable_xmlrpc", "block_uploads_php", "disable_file_editing", "hide_wp_version", "prevent_user_enumeration", "security_headers", "file_permissions_check", "login_two_factor", "disable_directory_listing", "hide_login_url", "admin_ip_whitelist_enabled"):
 
                 site_updates[hk] = bool(hv)
+            elif hk in ("custom_login_slug", "login_redirect_type"):
+                site_updates[hk] = str(hv or "")
+            elif hk == "admin_ip_whitelist":
+                site_updates[hk] = [str(x).strip() for x in hv if str(x).strip()] if isinstance(hv, list) else []
 
     if body.backups is not None:
 

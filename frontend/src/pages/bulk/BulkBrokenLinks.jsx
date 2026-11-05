@@ -40,13 +40,14 @@ export default function BulkBrokenLinks() {
   // Filter target sites
   const targetWebsites = useMemo(() => {
     if (selectedSiteId === 'all') return wpWebsites
-    return wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+    const list = Array.isArray(wpWebsites) ? wpWebsites : []
+    return list.filter(w => w && (w.id === selectedSiteId || w._id === selectedSiteId))
   }, [wpWebsites, selectedSiteId])
 
   const primarySite = useMemo(() => {
     if (activeWebsite) return activeWebsite
     if (targetWebsites.length > 0) return targetWebsites[0]
-    return wpWebsites[0] || null
+    return (Array.isArray(wpWebsites) && wpWebsites[0]) || null
   }, [activeWebsite, targetWebsites, wpWebsites])
 
   const primarySiteId = primarySite ? (primarySite.id || primarySite._id) : null

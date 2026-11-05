@@ -277,6 +277,11 @@ class WAF_FW_ML_Api_Client {
         }
 
         // 3. Hardening Configuration
+        $admin_whitelist_raw = (string) get_option('waf_harden_admin_whitelist', '');
+        $admin_whitelist_arr = array_values(array_filter(array_map('trim', explode("\n", $admin_whitelist_raw))));
+        $custom_login_slug = (string) get_option('waf_harden_login_rename', '');
+        $hide_login_url = get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes';
+
         $hardening = [
             'disable_file_editing' => get_option('waf_fw_disable_file_editing', 'yes') === 'yes',
             'disable_xmlrpc' => get_option('waf_fw_disable_xmlrpc', 'yes') === 'yes',
@@ -287,6 +292,11 @@ class WAF_FW_ML_Api_Client {
             'file_permissions_check' => true,
             'login_two_factor' => get_option('waf_harden_login_guard', 'enabled') === 'enabled',
             'disable_directory_listing' => get_option('waf_fw_disable_directory_listing', 'yes') === 'yes',
+            'custom_login_slug' => $custom_login_slug,
+            'hide_login_url' => $hide_login_url,
+            'login_redirect_type' => (string) get_option('waf_harden_login_redirect_type', '404'),
+            'admin_ip_whitelist' => $admin_whitelist_arr,
+            'admin_ip_whitelist_enabled' => get_option('waf_harden_admin_ip_enabled', 'disabled') === 'enabled',
         ];
 
         // 4. Backups Inventory

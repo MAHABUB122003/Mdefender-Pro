@@ -29,6 +29,10 @@ class WAF_FW_Login_Protector {
         add_action('wp_login_failed', [$this, 'on_login_failed'], 10, 1);
         add_action('wp_login', [$this, 'on_login_success'], 10, 2);
 
+        // Enforce Administrative & Login Portal IP Whitelist Restriction
+        add_action('plugins_loaded', [$this, 'check_admin_ip_restriction'], 2);
+        add_action('init', [$this, 'check_admin_ip_restriction'], 2);
+
         if ($this->custom_login_slug) {
             add_action('plugins_loaded', [$this, 'handle_custom_login_url'], 1);
             add_action('init', [$this, 'handle_custom_login_url'], 1);
@@ -293,6 +297,237 @@ class WAF_FW_Login_Protector {
     <footer class="wp-site-footer">
         <p>&copy; <?php echo date('Y'); ?> <a href="<?php echo esc_url($home_url); ?>"><?php echo esc_html($site_name); ?></a>. All rights reserved.</p>
     </footer>
+</body>
+</html>
+        <?php
+    }
+
+    /**
+     * Enforce strict IP whitelist restriction for administrative and login endpoints.
+     */
+    public function check_admin_ip_restriction() {
+        $ip_protection_enabled = get_option('waf_harden_admin_ip_enabled', 'disabled') === 'enabled';
+        if (!$ip_protection_enabled) {
+            return;
+        }
+
+        $whitelist_raw = (string) get_option('waf_harden_admin_whitelist', '');
+        $allowed_ips = array_values(array_filter(array_map('trim', explode("\n", $whitelist_raw))));
+        if (empty($allowed_ips)) {
+            return;
+        }
+
+        // Emergency admin bypass token check
+        if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_reset']) || isset($_GET['waf_login_restore'])) {
+            return;
+        }
+
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $raw_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
+        
+        $home_path = parse_url(home_url(), PHP_URL_PATH) ?: '';
+        $path = $raw_path;
+        if (!empty($home_path) && strpos($path, $home_path) === 0) {
+            $path = substr($path, strlen($home_path));
+        }
+        $trimmed_path = trim($path, '/');
+
+        // Check if request is targeting login, wp-admin or custom secret gateway
+        $is_login_path = (strpos($raw_path, 'wp-login.php') !== false);
+        $is_admin_path = ($trimmed_path === 'wp-admin' || strpos($trimmed_path, 'wp-admin/') === 0);
+        $slug = $this->custom_login_slug;
+        $is_custom_slug = (!empty($slug) && ($trimmed_path === $slug || strpos($trimmed_path, $slug . '/') === 0));
+
+        if (!$is_login_path && !$is_admin_path && !$is_custom_slug) {
+            return;
+        }
+
+        // Allow public admin ajax, cron, rest, admin-post
+        $is_ajax = (defined('DOING_AJAX') && DOING_AJAX) || (strpos($request_uri, 'admin-ajax.php') !== false);
+        $is_cron = (defined('DOING_CRON') && DOING_CRON);
+        $is_admin_post = (strpos($request_uri, 'admin-post.php') !== false);
+        $is_rest = (defined('REST_REQUEST') && REST_REQUEST) || (strpos($request_uri, '/wp-json/') !== false);
+
+        if ($is_ajax || $is_cron || $is_admin_post || $is_rest) {
+            return;
+        }
+
+        $client_ip = $this->get_client_ip();
+
+        // Check if client IP is authorized
+        $is_allowed = false;
+        foreach ($allowed_ips as $entry) {
+            if ($this->ip_matches_entry($client_ip, $entry)) {
+                $is_allowed = true;
+                break;
+            }
+        }
+
+        if (!$is_allowed) {
+            status_header(403);
+            nocache_headers();
+            $this->render_admin_ip_blocked_screen($client_ip);
+            exit;
+        }
+    }
+
+    /**
+     * Check whether an IP matches an allowed whitelist entry (single IP or CIDR block).
+     */
+    public function ip_matches_entry($client_ip, $allowed_entry) {
+        $allowed_entry = trim($allowed_entry);
+        if ($client_ip === $allowed_entry) {
+            return true;
+        }
+        // Subnet CIDR match e.g. 192.168.1.0/24
+        if (strpos($allowed_entry, '/') !== false) {
+            $parts = explode('/', $allowed_entry, 2);
+            $subnet = $parts[0];
+            $bits = intval($parts[1]);
+            if (filter_var($client_ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                $ip_long = ip2long($client_ip);
+                $subnet_long = ip2long($subnet);
+                $mask = -1 << (32 - $bits);
+                $subnet_long &= $mask;
+                return ($ip_long & $mask) == $subnet_long;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Renders high-security professional block screen for unauthorized IP attempting admin access.
+     */
+    public function render_admin_ip_blocked_screen($client_ip) {
+        $site_name = get_bloginfo('name') ?: 'WordPress';
+        $ref_id = 'AIP-' . strtoupper(substr(md5($client_ip . time()), 0, 8));
+        ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <title>403 Forbidden - Admin Gateway Restricted</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .mdf-card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 14px;
+            max-width: 560px;
+            width: 100%;
+            padding: 36px 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            text-align: left;
+        }
+        .mdf-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #374151;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        .mdf-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+        .mdf-desc {
+            font-size: 13.5px;
+            color: #9ca3af;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .mdf-meta-box {
+            background: #0b0f19;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .mdf-meta-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .mdf-meta-value {
+            font-size: 13px;
+            font-family: monospace;
+            font-weight: 700;
+            color: #f3f4f6;
+        }
+        .mdf-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #6b7280;
+            padding-top: 16px;
+            border-top: 1px solid #1f2937;
+        }
+        .mdf-footer a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .mdf-footer a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="mdf-card">
+        <div class="mdf-badge">
+            <span>&#9679; Security Gateway Policy</span>
+        </div>
+        <h1 class="mdf-title">Administrative Gateway Restricted</h1>
+        <p class="mdf-desc">
+            Access to the administration portal and login gateway for <strong><?php echo esc_html($site_name); ?></strong> is restricted strictly to authorized IP addresses. Your IP address does not match any authorized administrative whitelist rule.
+        </p>
+
+        <div class="mdf-meta-box">
+            <div>
+                <div class="mdf-meta-label">Your Client IP</div>
+                <div class="mdf-meta-value"><?php echo esc_html($client_ip); ?></div>
+            </div>
+            <div>
+                <div class="mdf-meta-label">Incident Reference</div>
+                <div class="mdf-meta-value"><?php echo esc_html($ref_id); ?></div>
+            </div>
+        </div>
+
+        <div class="mdf-footer">
+            <span>Protected by MDefender-Pro AI</span>
+            <a href="<?php echo esc_url(home_url('/')); ?>">&larr; Return to Website</a>
+        </div>
+    </div>
 </body>
 </html>
         <?php

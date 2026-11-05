@@ -42,9 +42,10 @@ export default function useBulkFleet() {
 
   // Extract all WordPress websites
   const wpWebsites = useMemo(() => {
-    const list = data?.websites || []
+    const list = Array.isArray(data?.websites) ? data.websites : []
     return list.filter(w => {
-      const p = (w.platform || '').toLowerCase()
+      if (!w || typeof w !== 'object') return false
+      const p = String(w.platform || '').toLowerCase()
       return p === 'wordpress' || p === 'wp' || p.includes('wordpress') || !w.platform
     })
   }, [data])
@@ -54,7 +55,7 @@ export default function useBulkFleet() {
   // Active target
   const activeWebsite = useMemo(() => {
     if (selectedSiteId === 'all') return null
-    return wpWebsites.find(w => (w.id || w._id) === selectedSiteId) || null
+    return wpWebsites.find(w => w && (w.id === selectedSiteId || w._id === selectedSiteId)) || null
   }, [selectedSiteId, wpWebsites])
 
   // Directly update fleet websites without waiting for re-fetch

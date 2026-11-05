@@ -835,16 +835,36 @@ class UserAPI:
                     w_c = [{"_id": w_target_id}]
                     if ObjectId.is_valid(str(w_target_id)):
                         w_c.append({"_id": ObjectId(str(w_target_id))})
+                    update_fields = {
+                        "total_requests": tot,
+                        "total_blocked": blk,
+                        "requests_today": today_cnt,
+                        "blocked_today": today_blk,
+                        "requests_today_date": today,
+                        "last_activity": datetime.now()
+                    }
+                    lg = st.get('login_gateway')
+                    if isinstance(lg, dict):
+                        site_info['custom_login_slug'] = lg.get('custom_login_slug', '')
+                        site_info['hide_login_url'] = bool(lg.get('hide_login_url', False))
+                        site_info['login_redirect_type'] = lg.get('login_redirect_type', '404')
+                        site_info['admin_ip_whitelist'] = lg.get('admin_ip_whitelist', [])
+                        site_info['admin_ip_whitelist_enabled'] = bool(lg.get('admin_ip_whitelist_enabled', False))
+                        if isinstance(site_info.get('hardening'), dict):
+                            site_info['hardening']['custom_login_slug'] = site_info['custom_login_slug']
+                            site_info['hardening']['hide_login_url'] = site_info['hide_login_url']
+                            site_info['hardening']['login_redirect_type'] = site_info['login_redirect_type']
+                            site_info['hardening']['admin_ip_whitelist'] = site_info['admin_ip_whitelist']
+                            site_info['hardening']['admin_ip_whitelist_enabled'] = site_info['admin_ip_whitelist_enabled']
+                        update_fields['custom_login_slug'] = site_info['custom_login_slug']
+                        update_fields['hide_login_url'] = site_info['hide_login_url']
+                        update_fields['login_redirect_type'] = site_info['login_redirect_type']
+                        update_fields['admin_ip_whitelist'] = site_info['admin_ip_whitelist']
+                        update_fields['admin_ip_whitelist_enabled'] = site_info['admin_ip_whitelist_enabled']
+
                     self.db.websites.update_one(
                         {"$or": w_c},
-                        {"$set": {
-                            "total_requests": tot,
-                            "total_blocked": blk,
-                            "requests_today": today_cnt,
-                            "blocked_today": today_blk,
-                            "requests_today_date": today,
-                            "last_activity": datetime.now()
-                        }}
+                        {"$set": update_fields}
                     )
                     return {
                         'site_id': site_info.get('id'),

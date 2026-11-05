@@ -180,6 +180,11 @@ class WAF_FW_Logger {
 
         $login_blocked = WAF_FW_Login_Protector::instance()->get_blocked_login_count();
 
+        $admin_whitelist_raw = (string) get_option('waf_harden_admin_whitelist', '');
+        $admin_whitelist_arr = array_values(array_filter(array_map('trim', explode("\n", $admin_whitelist_raw))));
+        $custom_login_slug = (string) get_option('waf_harden_login_rename', '');
+        $hide_login_url = get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes';
+
         return [
             'total_attacks_blocked' => $total_attacks,
             'total_requests' => $total_requests,
@@ -192,6 +197,13 @@ class WAF_FW_Logger {
             'top_attackers' => $top_attackers,
             'recent_logs' => $recent_logs,
             'rate_limit_stats' => $this->get_rate_limit_stats(),
+            'login_gateway' => [
+                'custom_login_slug' => $custom_login_slug,
+                'hide_login_url' => $hide_login_url,
+                'login_redirect_type' => (string) get_option('waf_harden_login_redirect_type', '404'),
+                'admin_ip_whitelist' => $admin_whitelist_arr,
+                'admin_ip_whitelist_enabled' => get_option('waf_harden_admin_ip_enabled', 'disabled') === 'enabled',
+            ],
         ];
     }
 

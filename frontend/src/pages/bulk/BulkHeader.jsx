@@ -53,11 +53,12 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
     setTimeout(() => setToastMsg(null), 3500)
   }
 
-  // Extract WordPress websites
+    // Extract WordPress websites
   const wpWebsites = useMemo(() => {
-    const list = data?.websites || []
+    const list = Array.isArray(data?.websites) ? data.websites : []
     return list.filter(w => {
-      const p = (w.platform || '').toLowerCase()
+      if (!w || typeof w !== 'object') return false
+      const p = String(w.platform || '').toLowerCase()
       return p === 'wordpress' || p === 'wp' || p.includes('wordpress') || !w.platform
     })
   }, [data])
