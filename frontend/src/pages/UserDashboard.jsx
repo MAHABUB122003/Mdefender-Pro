@@ -37,7 +37,8 @@ import {
   Lock,
   Crown,
   Flame,
-  Power
+  Power,
+  X
 } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler);
@@ -235,6 +236,49 @@ export default function UserDashboard() {
   const [copiedIp, setCopiedIp] = useState(null);
   const [copiedUri, setCopiedUri] = useState(null);
   const [bannedIps, setBannedIps] = useState(() => new Set());
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d', website_id: 'all', action_type: 'block' });
+  const [submittingBlock, setSubmittingBlock] = useState(false);
+
+  const handleOpenBlockModal = (ip, reason = 'Automated IP Quarantine via Dashboard') => {
+    if (!ip) return;
+    setBlockForm({
+      ip,
+      reason,
+      duration: '1d',
+      website_id: selectedWebsite || 'all',
+      action_type: 'block'
+    });
+    setShowBlockModal(true);
+  };
+
+  const handleConfirmBlock = async (e) => {
+    if (e) e.preventDefault();
+    if (!blockForm.ip) return;
+    setSubmittingBlock(true);
+    try {
+      if (blockForm.action_type === 'whitelist') {
+        const res = await api.addUserWhitelist({ ip: blockForm.ip, reason: blockForm.reason || 'Whitelisted via Dashboard' });
+        alert(res?.message || `IP ${blockForm.ip} added to safe whitelist successfully.`);
+      } else {
+        const res = await api.addUserBlacklist({
+          ip: blockForm.ip,
+          reason: blockForm.reason || 'Quarantined via Dashboard',
+          duration: blockForm.duration,
+          website_id: blockForm.website_id
+        });
+        setBannedIps(prev => new Set(prev).add(blockForm.ip));
+        alert(res?.message || `IP ${blockForm.ip} quarantined successfully.`);
+      }
+      setShowBlockModal(false);
+      userStore.clear();
+      fetchData(true, selectedWebsite);
+    } catch (err) {
+      alert(err.message || `Failed to quarantine IP ${blockForm.ip}`);
+    } finally {
+      setSubmittingBlock(false);
+    }
+  };
   const [streamFilter, setStreamFilter] = useState('all'); // 'all' | 'critical' | 'bots'
   const [chartMetric, setChartMetric] = useState('both'); // 'both' | 'clean' | 'threats'
 
@@ -1268,7 +1312,7 @@ export default function UserDashboard() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => blockTopIP(attacker.ip)}
+                              onClick={() => handleOpenBlockModal(attacker.ip, `Hostile probe detected (${attacker.count} hits)`)}
                               style={{
                                 padding: '5px 12px',
                                 borderRadius: '6px',
@@ -1417,7 +1461,7 @@ export default function UserDashboard() {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => blockTopIP(log.ip)}
+                            onClick={() => handleOpenBlockModal(log.ip, `Hostile vector: ${log.attack_type || 'Malicious URI probing'}`)}
                             title={`Ban IP ${log.ip}`}
                             style={{
                               padding: '2px 7px',
@@ -1494,6 +1538,262 @@ export default function UserDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* SCOPED QUARANTINE MODAL (SINGLE-SITE VS FLEET-WIDE BAN)                   */}
+      {/* ========================================================================= */}
+      {showBlockModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(11, 37, 34, 0.65)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }} onClick={() => setShowBlockModal(false)}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            padding: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            border: '1px solid #D9E1DC'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ban size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                    Quarantine Attacker IP
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#60716B' }}>
+                    Choose isolation scope: Target Domain Only or Global Fleet-Wide Ban
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBlockModal(false)}
+                style={{ background: 'none', border: 'none', color: '#60716B', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmBlock}>
+              {/* Target IP Header Card */}
+              <div style={{
+                padding: '12px 14px',
+                background: '#FAFBF9',
+                border: '1px solid #D9E1DC',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target IP Address</span>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '15px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
+                    {blockForm.ip}
+                  </div>
+                </div>
+                <span style={{ fontSize: '11px', fontWeight: '800', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', padding: '3px 8px', borderRadius: '6px' }}>
+                  THREAT DETECTED
+                </span>
+              </div>
+
+              {/* Scoped Website Choice */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '8px' }}>
+                  Quarantine Scope
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                  <div
+                    onClick={() => setBlockForm({ ...blockForm, website_id: selectedWebsite !== 'all' ? selectedWebsite : (websitesList[0]?.id || 'all') })}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: blockForm.website_id !== 'all' ? '2px solid #2A8B68' : '1px solid #D9E1DC',
+                      background: blockForm.website_id !== 'all' ? '#F4FBF7' : '#FFFFFF',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: blockForm.website_id !== 'all' ? '#0B2522' : '#10201E' }}>
+                        This Website Only
+                      </span>
+                      <input
+                        type="radio"
+                        checked={blockForm.website_id !== 'all'}
+                        onChange={() => {}}
+                        style={{ accentColor: '#2A8B68' }}
+                      />
+                    </div>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
+                      Blocks ONLY on {selectedWebsite !== 'all' ? (websitesList.find(w => w.id === selectedWebsite)?.domain || selectedWebsite) : (websitesList[0]?.domain || 'selected domain')}. Other sites remain open.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setBlockForm({ ...blockForm, website_id: 'all' })}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: blockForm.website_id === 'all' ? '2px solid #DC2626' : '1px solid #D9E1DC',
+                      background: blockForm.website_id === 'all' ? '#FEF2F2' : '#FFFFFF',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: blockForm.website_id === 'all' ? '#DC2626' : '#10201E' }}>
+                        Global Fleet-Wide
+                      </span>
+                      <input
+                        type="radio"
+                        checked={blockForm.website_id === 'all'}
+                        onChange={() => {}}
+                        style={{ accentColor: '#DC2626' }}
+                      />
+                    </div>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
+                      Instant cascade across all {websitesList.length || 5} connected WordPress sites in parallel.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Mode */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  Enforcement Action
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {[
+                    { key: 'block', label: 'Hard 403 Forbidden', color: '#DC2626' },
+                    { key: 'challenge', label: 'PoW Challenge', color: '#D97735' },
+                    { key: 'whitelist', label: 'Safe Whitelist', color: '#065F46' }
+                  ].map(act => (
+                    <button
+                      key={act.key}
+                      type="button"
+                      onClick={() => setBlockForm({ ...blockForm, action_type: act.key })}
+                      style={{
+                        padding: '8px 6px',
+                        borderRadius: '8px',
+                        border: blockForm.action_type === act.key ? `2px solid ${act.color}` : '1px solid #D9E1DC',
+                        background: blockForm.action_type === act.key ? '#FFFFFF' : '#FAFBF9',
+                        color: blockForm.action_type === act.key ? act.color : '#60716B',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {act.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Duration */}
+              {blockForm.action_type !== 'whitelist' && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                    Ban Duration
+                  </label>
+                  <select
+                    value={blockForm.duration}
+                    onChange={e => setBlockForm({ ...blockForm, duration: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '10px',
+                      border: '1px solid #D9E1DC',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      background: '#FFFFFF',
+                      boxSizing: 'border-box',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="1d">1 Day (24 Hours) — Recommended</option>
+                    <option value="2d">2 Days (48 Hours)</option>
+                    <option value="7d">7 Days (1 Week)</option>
+                    <option value="30d">30 Days (1 Month)</option>
+                    <option value="permanent">Permanent (Until manual unban)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Note */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  Quarantine Reason / Note
+                </label>
+                <input
+                  type="text"
+                  value={blockForm.reason}
+                  onChange={e => setBlockForm({ ...blockForm, reason: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #D9E1DC',
+                    fontSize: '13px',
+                    boxSizing: 'border-box',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBlockModal(false)}
+                  style={{
+                    padding: '9px 16px',
+                    background: '#FAFBF9',
+                    border: '1px solid #D9E1DC',
+                    borderRadius: '10px',
+                    fontSize: '12.5px',
+                    fontWeight: '600',
+                    color: '#60716B',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingBlock}
+                  style={{
+                    padding: '9px 20px',
+                    background: blockForm.action_type === 'whitelist' ? '#065F46' : '#DC2626',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '12.5px',
+                    fontWeight: '800',
+                    cursor: submittingBlock ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                  }}
+                >
+                  {submittingBlock ? 'Quarantining Fleet...' : (blockForm.action_type === 'whitelist' ? 'Confirm Whitelist' : 'Enforce Quarantine')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

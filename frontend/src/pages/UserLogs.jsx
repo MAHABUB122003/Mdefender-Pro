@@ -541,6 +541,29 @@ export default function UserLogs() {
     }
   };
 
+  const handleBlockCountry = async (code, countryName) => {
+    const cc = String(code || '').trim().toUpperCase();
+    if (!cc || cc.length !== 2) return;
+    const name = countryName || cc;
+    const targetSiteObj = websites.find(w => String(w.id || w._id) === String(websiteFilter));
+    const scopeLabel = websiteFilter && targetSiteObj ? `website ${targetSiteObj.domain || targetSiteObj.name}` : 'all connected websites in your security fleet';
+    
+    if (!confirm(`Confirm Country Quarantine: Do you want to block all incoming traffic from ${name} (${cc}) for ${scopeLabel}?`)) {
+      return;
+    }
+    try {
+      const res = await api.addUserCountryBlock({
+        country_code: cc,
+        country_name: name,
+        reason: `Geo-block triggered from Live Traffic Sentinel (${cc})`,
+        website_id: websiteFilter || 'all'
+      });
+      alert(res?.message || `Country ${name} (${cc}) blocked successfully.`);
+    } catch (err) {
+      alert('Error blocking country: ' + (err?.message || String(err)));
+    }
+  };
+
   const handleWhitelistIp = async (rawIp) => {
     const ip = String(rawIp || '').trim();
     if (!ip) return;
@@ -1678,6 +1701,30 @@ export default function UserLogs() {
                                   <ShieldCheck size={12} color="#2A8B68" />
                                   <span>Whitelist IP</span>
                                 </button>
+
+                                {log?.country_code && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBlockCountry(log.country_code, log.country)}
+                                    title={`Block all traffic from ${log.country || log.country_code}`}
+                                    style={{
+                                      fontSize: '12px',
+                                      fontWeight: '600',
+                                      padding: '5px 11px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #FECACA',
+                                      background: '#FEF2F2',
+                                      color: '#DC2626',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px'
+                                    }}
+                                  >
+                                    <Globe size={12} />
+                                    <span>Block {String(log.country_code).toUpperCase()}</span>
+                                  </button>
+                                )}
 
                                 <button
                                   type="button"

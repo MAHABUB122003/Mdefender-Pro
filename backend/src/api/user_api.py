@@ -2082,6 +2082,7 @@ class UserAPI:
         wp_sites = list(self.db.wordpress_sites.find({'$or': [{'user_id': user_id_str}, {'user_id': user_id_obj}]}))
         all_sites = user_sites + wp_sites
         user_domains = [w.get('domain') for w in all_sites if w.get('domain')]
+        user_site_ids = [str(w.get('_id')) for w in all_sites if w.get('_id')]
 
         user_scope = [{'user_id': user_id_str}, {'user_id': user_id_obj}]
         if user_domains:
