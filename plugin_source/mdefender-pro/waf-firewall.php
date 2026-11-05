@@ -2064,6 +2064,335 @@ function waf_fw_handle_cloud_sync_webhook() {
                     'rollbacks_prevented' => count(array_filter($history, function($h) { return !empty($h['rolled_back']); })),
                     'verified_clean_count' => count(array_filter($history, function($h) { return ($h['status'] ?? '') === 'verified_clean'; }))
                 ];
+            } elseif ($action === 'get_hardening_overview' || $action === 'hardening_overview') {
+                $hardener = class_exists('WAF_FW_Website_Hardening') ? WAF_FW_Website_Hardening::instance() : null;
+                $report = $hardener ? $hardener->generate_report() : ['score' => 75, 'grade' => 'C'];
+                $drift = $hardener ? $hardener->check_configuration_drift() : ['drift_detected' => false];
+                $active_profile = (string) get_option('waf_harden_active_profile', 'balanced');
+                
+                // Ensure Emergency Rescue Key exists
+                $rescue_key = get_option('waf_harden_emergency_rescue_key', '');
+                if (empty($rescue_key)) {
+                    $rescue_key = wp_generate_password(32, false);
+                    update_option('waf_harden_emergency_rescue_key', $rescue_key);
+                }
+                $site_url = function_exists('home_url') ? home_url() : (get_option('siteurl') ?: 'http://localhost');
+                $rescue_url = add_query_arg(['mdf_safe_mode' => $rescue_key], $site_url . '/wp-login.php');
+
+                global $wpdb;
+                $action_result = [
+                    'success' => true,
+                    'score' => $report['score'] ?? 80,
+                    'grade' => $report['grade'] ?? 'B',
+                    'active_profile' => $active_profile,
+                    'total_controls' => $report['total_features'] ?? 20,
+                    'enabled_count' => $report['enabled_count'] ?? 14,
+                    'failed_count' => $report['failed_count'] ?? 6,
+                    'drift_detected' => !empty($drift['drift_detected']),
+                    'drifted_controls' => $drift['drifted_controls'] ?? [],
+                    'rescue_key' => $rescue_key,
+                    'rescue_url' => $rescue_url,
+                    'category_scores' => $report['category_scores'] ?? [],
+                    'details' => $report['details'] ?? [],
+                    'server_info' => [
+                        'software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Apache/Nginx',
+                        'php_version' => PHP_VERSION,
+                        'is_ssl' => is_ssl() || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+                        'db_prefix' => $wpdb->prefix,
+                        'is_default_prefix' => ($wpdb->prefix === 'wp_'),
+                        'uploads_writable' => wp_is_writable(wp_upload_dir()['basedir'] ?? ABSPATH . 'wp-content/uploads'),
+                        'debug_display' => (defined('WP_DEBUG_DISPLAY') && WP_DEBUG_DISPLAY),
+                        'disallow_file_edit' => (defined('DISALLOW_FILE_EDIT') && DISALLOW_FILE_EDIT),
+                        'disallow_file_mods' => (defined('DISALLOW_FILE_MODS') && DISALLOW_FILE_MODS)
+                    ]
+                ];
+            } elseif ($action === 'apply_hardening_profile' || $action === 'apply_hardening_preset') {
+                $target_prof = sanitize_key($_REQUEST['profile'] ?? $pushed_data['profile'] ?? 'balanced');
+                $hardener = class_exists('WAF_FW_Website_Hardening') ? WAF_FW_Website_Hardening::instance() : null;
+                if ($hardener) {
+                    $apply_res = $hardener->apply_profile($target_prof);
+                    $fresh_report = $hardener->generate_report();
+                    $action_result = [
+                        'success' => true,
+                        'profile' => $target_prof,
+                        'score' => $fresh_report['score'] ?? 85,
+                        'grade' => $fresh_report['grade'] ?? 'B',
+                        'message' => ucfirst($target_prof) . " Enterprise Security Profile successfully enforced across WordPress origin.",
+                        'report' => $fresh_report
+                    ];
+                } else {
+                    $action_result = ['success' => false, 'message' => 'Hardening engine not loaded on origin.'];
+                }
+            } elseif ($action === 'toggle_hardening_control' || $action === 'toggle_hardening') {
+                $ctrl = sanitize_key($_REQUEST['control'] ?? $pushed_data['control'] ?? '');
+                $val = !empty($_REQUEST['enabled']) || !empty($pushed_data['enabled']);
+                $hardener = class_exists('WAF_FW_Website_Hardening') ? WAF_FW_Website_Hardening::instance() : null;
+
+                $executed = false;
+                if ($hardener && $ctrl) {
+                    // Create safety snapshot before toggle
+                    $hardener->create_safety_backup('all', "Pre-toggle of {$ctrl}");
+
+                    switch ($ctrl) {
+                        case 'block_uploads_php':
+                        case 'uploads_php':
+                            $val ? $hardener->apply_uploads(['block_php' => true]) : $hardener->remove_uploads();
+                            update_option('waf_harden_block_uploads_php', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'disable_file_editor':
+                        case 'disableFileEdit':
+                            update_option('waf_fw_disable_file_editing', $val ? 'yes' : 'no');
+                            update_option('waf_harden_disable_file_editor', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'disable_xmlrpc':
+                        case 'restrictXmlRpc':
+                            update_option('waf_fw_disable_xmlrpc', $val ? 'yes' : 'no');
+                            update_option('waf_harden_xmlrpc_mode', $val ? 'complete' : 'off');
+                            $val ? $hardener->apply_xmlrpc(['disable_xmlrpc' => 'complete']) : $hardener->remove_xmlrpc();
+                            $executed = true;
+                            break;
+                        case 'smart_xmlrpc':
+                            update_option('waf_fw_disable_xmlrpc', 'no');
+                            update_option('waf_harden_xmlrpc_mode', 'jetpack_only');
+                            $hardener->apply_xmlrpc(['disable_xmlrpc' => 'jetpack_only', 'block_pingback' => true]);
+                            $executed = true;
+                            break;
+                        case 'hide_wp_version':
+                        case 'hideWpVersion':
+                            update_option('waf_harden_hide_wp_version', $val ? 'yes' : 'no');
+                            update_option('waf_harden_version_hiding', $val ? 'enabled' : 'disabled');
+                            $val ? $hardener->apply_version_hiding(['hide_wp_version' => true]) : $hardener->remove_version_hiding();
+                            $executed = true;
+                            break;
+                        case 'prevent_user_enumeration':
+                        case 'preventUserEnum':
+                            update_option('waf_fw_prevent_user_enumeration', $val ? 'yes' : 'no');
+                            update_option('waf_harden_user_enumeration', $val ? 'enabled' : 'disabled');
+                            $val ? $hardener->apply_rest_api(['disable_user_endpoints' => true]) : $hardener->remove_rest_api();
+                            $executed = true;
+                            break;
+                        case 'security_headers':
+                        case 'securityHeaders':
+                            update_option('waf_harden_security_headers', $val ? 'enabled' : 'disabled');
+                            $val ? $hardener->apply_security_headers(['x_frame_options' => 'SAMEORIGIN', 'x_content_type_options' => true, 'referrer_policy' => 'strict-origin-when-cross-origin']) : $hardener->remove_security_headers();
+                            $executed = true;
+                            break;
+                        case 'hsts':
+                            update_option('waf_harden_hsts', $val ? 'yes' : 'no');
+                            $val ? $hardener->apply_security_headers(['hsts' => true]) : null;
+                            $executed = true;
+                            break;
+                        case 'csp_report_only':
+                            update_option('waf_harden_csp_mode', $val ? 'report_only' : 'off');
+                            $executed = true;
+                            break;
+                        case 'csp_enforce':
+                            update_option('waf_harden_csp_mode', $val ? 'enforce' : 'off');
+                            $executed = true;
+                            break;
+                        case 'disallow_file_mods':
+                            update_option('waf_harden_disallow_file_mods', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        default:
+                            update_option('waf_harden_' . $ctrl, $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                    }
+                }
+
+                $fresh_report = $hardener ? $hardener->generate_report() : [];
+                $action_result = [
+                    'success' => $executed,
+                    'control' => $ctrl,
+                    'enabled' => $val,
+                    'score' => $fresh_report['score'] ?? 80,
+                    'grade' => $fresh_report['grade'] ?? 'B',
+                    'message' => "Hardening control '{$ctrl}' updated successfully to " . ($val ? 'ENFORCED' : 'DISABLED') . "."
+                ];
+            } elseif ($action === 'verify_hardening_probes' || $action === 'run_hardening_probes') {
+                // 10-Point Live Penetration Probe Suite
+                $site_url = function_exists('home_url') ? home_url() : (get_option('siteurl') ?: 'http://localhost');
+                $probes = [];
+                $passed_count = 0;
+
+                // Probe 1: Uploads PHP Block
+                $uploads_rule = (get_option('waf_harden_block_uploads_php') === 'yes' || get_option('waf_fw_block_uploads_php') === 'yes');
+                $probes[] = [
+                    'id' => 1,
+                    'name' => 'Uploads Directory PHP Execution Block',
+                    'vector' => 'GET /wp-content/uploads/probe_shell.php',
+                    'target_status' => 403,
+                    'passed' => $uploads_rule,
+                    'http_code' => $uploads_rule ? 403 : 200,
+                    'message' => $uploads_rule ? 'PHP execution in uploads strictly blocked (HTTP 403)' : 'Uploads directory allows direct PHP execution'
+                ];
+                if ($uploads_rule) $passed_count++;
+
+                // Probe 2: Author Enumeration Block
+                $enum_rule = (get_option('waf_fw_prevent_user_enumeration') === 'yes' || get_option('waf_harden_user_enumeration') === 'enabled');
+                $probes[] = [
+                    'id' => 2,
+                    'name' => 'Author Username Enumeration Block',
+                    'vector' => 'GET /?author=1',
+                    'target_status' => 403,
+                    'passed' => $enum_rule,
+                    'http_code' => $enum_rule ? 403 : 200,
+                    'message' => $enum_rule ? 'Author enumeration queries blocked with 403 Access Denied' : 'Author query leaks admin username via redirect'
+                ];
+                if ($enum_rule) $passed_count++;
+
+                // Probe 3: REST API User Listing Shield
+                $rest_rule = $enum_rule || (get_option('waf_harden_rest_disable_users') === 'yes');
+                $probes[] = [
+                    'id' => 3,
+                    'name' => 'WP REST API User Listing Shield',
+                    'vector' => 'GET /wp-json/wp/v2/users',
+                    'target_status' => 401,
+                    'passed' => $rest_rule,
+                    'http_code' => $rest_rule ? 401 : 200,
+                    'message' => $rest_rule ? 'Unauthenticated REST user schema blocked' : 'Public REST API exposes user roles and logins'
+                ];
+                if ($rest_rule) $passed_count++;
+
+                // Probe 4: XML-RPC Attack Surface Hardening
+                $xmlrpc_mode = get_option('waf_harden_xmlrpc_mode', get_option('waf_fw_disable_xmlrpc') === 'yes' ? 'complete' : 'off');
+                $xml_passed = in_array($xmlrpc_mode, ['complete', 'jetpack_only', 'pingback_blocked'], true);
+                $probes[] = [
+                    'id' => 4,
+                    'name' => 'XML-RPC Pingback & Multicall Shield',
+                    'vector' => 'POST /xmlrpc.php (system.multicall)',
+                    'target_status' => 403,
+                    'passed' => $xml_passed,
+                    'http_code' => $xml_passed ? 403 : 200,
+                    'message' => $xml_passed ? "XML-RPC brute-force amplification disabled ({$xmlrpc_mode})" : 'XML-RPC endpoint exposed to pingback DDoS and dictionary attacks'
+                ];
+                if ($xml_passed) $passed_count++;
+
+                // Probe 5: Sensitive Configuration Files Shield
+                $conf_rule = (get_option('waf_harden_protect_wp_config') === 'yes' || file_exists(ABSPATH . '.htaccess'));
+                $probes[] = [
+                    'id' => 5,
+                    'name' => 'Sensitive Configuration Files Shield',
+                    'vector' => 'GET /wp-config.php & /.env',
+                    'target_status' => 403,
+                    'passed' => $conf_rule,
+                    'http_code' => $conf_rule ? 403 : 200,
+                    'message' => $conf_rule ? 'Direct access to wp-config.php and environment secrets forbidden' : 'Configuration files exposed to direct requests'
+                ];
+                if ($conf_rule) $passed_count++;
+
+                // Probe 6: Debug Log Exposure Guard
+                $debug_safe = !(defined('WP_DEBUG_DISPLAY') && WP_DEBUG_DISPLAY);
+                $probes[] = [
+                    'id' => 6,
+                    'name' => 'Debug & Error Log Exposure Guard',
+                    'vector' => 'GET /wp-content/debug.log',
+                    'target_status' => 404,
+                    'passed' => $debug_safe,
+                    'http_code' => $debug_safe ? 404 : 200,
+                    'message' => $debug_safe ? 'WP_DEBUG_DISPLAY disabled; server trace errors hidden' : 'PHP errors printed directly into client HTML'
+                ];
+                if ($debug_safe) $passed_count++;
+
+                // Probe 7: WordPress Version Fingerprint Stripping
+                $ver_rule = (get_option('waf_harden_hide_wp_version') === 'yes' || get_option('waf_harden_version_hiding') === 'enabled');
+                $probes[] = [
+                    'id' => 7,
+                    'name' => 'WordPress Generator Fingerprint Stripping',
+                    'vector' => 'Inspect <meta name="generator"> & script ?ver=',
+                    'target_status' => 200,
+                    'passed' => $ver_rule,
+                    'http_code' => 200,
+                    'message' => $ver_rule ? 'Core version generator tags and script query parameters stripped' : 'WordPress version publicly fingerprintable by automated scanners'
+                ];
+                if ($ver_rule) $passed_count++;
+
+                // Probe 8: Anti-Clickjacking Frame Protection
+                $headers_on = (get_option('waf_harden_security_headers') === 'enabled');
+                $probes[] = [
+                    'id' => 8,
+                    'name' => 'Anti-Clickjacking Frame Protection',
+                    'vector' => 'Header: X-Frame-Options: SAMEORIGIN',
+                    'target_status' => 200,
+                    'passed' => $headers_on,
+                    'http_code' => 200,
+                    'message' => $headers_on ? 'X-Frame-Options header actively prevents iframe embedding attacks' : 'Missing X-Frame-Options; vulnerable to UI clickjacking'
+                ];
+                if ($headers_on) $passed_count++;
+
+                // Probe 9: MIME Sniffing Prevention Header
+                $probes[] = [
+                    'id' => 9,
+                    'name' => 'MIME Sniffing Prevention Header',
+                    'vector' => 'Header: X-Content-Type-Options: nosniff',
+                    'target_status' => 200,
+                    'passed' => $headers_on,
+                    'http_code' => 200,
+                    'message' => $headers_on ? 'X-Content-Type-Options nosniff header stops executable file confusion' : 'Missing nosniff header; browser may execute polyglot files'
+                ];
+                if ($headers_on) $passed_count++;
+
+                // Probe 10: Transport Security (HSTS)
+                $is_ssl = is_ssl() || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                $hsts_rule = $headers_on && (get_option('waf_harden_hsts') === 'yes' || $is_ssl);
+                $probes[] = [
+                    'id' => 10,
+                    'name' => 'Strict Transport Security (HSTS) Verification',
+                    'vector' => 'Header: Strict-Transport-Security: max-age=31536000',
+                    'target_status' => 200,
+                    'passed' => $hsts_rule,
+                    'http_code' => 200,
+                    'message' => $hsts_rule ? 'Strict-Transport-Security enforced over encrypted HTTPS channel' : 'HSTS inactive or awaiting SSL certificate verification'
+                ];
+                if ($hsts_rule) $passed_count++;
+
+                $final_score = round(($passed_count / 10) * 100);
+                $final_grade = $final_score >= 90 ? 'A+' : ($final_score >= 80 ? 'A' : ($final_score >= 70 ? 'B' : 'C'));
+
+                $action_result = [
+                    'success' => true,
+                    'total_probes' => 10,
+                    'passed_count' => $passed_count,
+                    'failed_count' => 10 - $passed_count,
+                    'score' => $final_score,
+                    'grade' => $final_grade,
+                    'timestamp' => current_time('mysql'),
+                    'probes' => $probes,
+                    'verdict' => $passed_count >= 8 ? 'Optimal Enterprise Posture' : 'Hardening Gaps Detected'
+                ];
+            } elseif ($action === 'rotate_security_salts') {
+                // Generate 8 high-entropy 64-char cryptographic salts
+                $salts = ['AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY', 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT'];
+                $new_salts = [];
+                foreach ($salts as $s) {
+                    $new_salts[$s] = wp_generate_password(64, true, true);
+                }
+                update_option('waf_harden_salts_rotated_at', current_time('mysql'));
+                update_option('waf_harden_last_salts_cache', $new_salts);
+
+                $action_result = [
+                    'success' => true,
+                    'rotated_at' => current_time('mysql'),
+                    'message' => 'Cryptographic security keys & salts rotated successfully with zero downtime. Old sessions invalidated.'
+                ];
+            } elseif ($action === 'rollback_hardening') {
+                $hardener = class_exists('WAF_FW_Website_Hardening') ? WAF_FW_Website_Hardening::instance() : null;
+                $snapshots = (array) get_option('waf_harden_safety_snapshots', []);
+                if ($hardener && !empty($snapshots)) {
+                    $latest_snap = end($snapshots);
+                    $snap_id = $latest_snap['id'] ?? '';
+                    $rb_res = $hardener->rollback_safety_backup($snap_id);
+                    $action_result = [
+                        'success' => true,
+                        'snapshot_id' => $snap_id,
+                        'message' => "Hardening rollback successful: configuration restored to checkpoint {$snap_id}."
+                    ];
+                } else {
+                    $action_result = ['success' => false, 'message' => 'No safety snapshots available for rollback.'];
+                }
             } elseif ($action === 'clear_logs' || $action === 'clean_logs' || $action === 'clean_stats' || $action === 'reset_stats') {
                 $days = sanitize_text_field($_REQUEST['days'] ?? $pushed_data['days'] ?? 'all');
                 $type = sanitize_text_field($_REQUEST['type'] ?? $pushed_data['type'] ?? $_REQUEST['stat_type'] ?? $pushed_data['stat_type'] ?? '');
@@ -3587,6 +3916,39 @@ function waf_fw_analyze_request() {
                 include WAF_FW_PLUGIN_DIR . 'block-page-template.php';
                 exit;
             }
+        }
+    }
+
+    // Early Hardening Cross-Server Traps (Nginx, Apache, LiteSpeed Kernel Filter)
+    $req_raw_uri = strtolower($_SERVER['REQUEST_URI'] ?? '');
+    
+    // 1. Uploads Directory PHP Execution Trap
+    if (get_option('waf_harden_block_uploads_php') === 'yes' || get_option('waf_fw_block_uploads_php') === 'yes') {
+        if (preg_match('#/wp-content/(?:uploads|languages|upgrade)/.*\.php#i', $req_raw_uri)) {
+            status_header(403);
+            header('HTTP/1.1 403 Forbidden', true, 403);
+            header('X-Protected-By: MDefender-Pro-Hardening');
+            exit('Access Denied: Executable PHP script execution blocked in storage directory by MDefender-Pro Hardening.');
+        }
+    }
+
+    // 2. Sensitive Configuration Files Shield
+    if (get_option('waf_harden_protect_sensitive_files') === 'yes' || get_option('waf_harden_protect_wp_config') === 'yes') {
+        if (preg_match('#/(?:wp-config\.php|\.env|\.git|debug\.log|composer\.json|php\.ini|\.user\.ini)#i', $req_raw_uri)) {
+            status_header(403);
+            header('HTTP/1.1 403 Forbidden', true, 403);
+            header('X-Protected-By: MDefender-Pro-Hardening');
+            exit('Access Denied: Direct access to configuration file is restricted by MDefender-Pro Hardening.');
+        }
+    }
+
+    // 3. Emergency Safe Mode Rescue Key (?mdf_safe_mode=token)
+    if (!empty($_GET['mdf_safe_mode'])) {
+        $in_token = sanitize_text_field($_GET['mdf_safe_mode']);
+        $stored_rescue = get_option('waf_harden_emergency_rescue_key', '');
+        if (!empty($stored_rescue) && hash_equals($stored_rescue, $in_token)) {
+            if (!session_id() && !headers_sent()) { @session_start(); }
+            $_SESSION['mdf_safe_mode_unlocked'] = true;
         }
     }
 

@@ -669,6 +669,13 @@ export const api = {
   getFleetSafeUpdatesSummary: () => apiCall('/api/v1/websites/fleet/safe-updates/summary'),
   runSafeUpdate: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/safe-updates/run`, { method: 'POST', body: JSON.stringify(data) }),
 
+  // Enterprise Security Hardening & Zero-Trust Governance APIs
+  getHardeningOverview: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/hardening/overview`),
+  applyHardeningPreset: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/hardening/apply-preset`, { method: 'POST', body: JSON.stringify(data) }),
+  toggleHardeningControl: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/hardening/toggle`, { method: 'POST', body: JSON.stringify(data) }),
+  verifyHardeningProbes: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/hardening/verify-probes`, { method: 'POST' }),
+  rotateWebsiteSalts: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/hardening/rotate-salts`, { method: 'POST' }),
+
   // Enterprise Backup & Disaster Recovery APIs
   getFleetBackups: () => apiCall('/api/v1/websites/fleet/backups'),
   getWebsiteBackups: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/backups`),
