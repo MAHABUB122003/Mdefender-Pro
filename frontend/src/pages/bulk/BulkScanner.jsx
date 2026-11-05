@@ -758,7 +758,21 @@ export default function BulkScanner() {
 
   // If no websites connected
   if (!hasWebsites) {
-  return (
+    return (
+      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#FAFAFA' }}>
+        <BulkHeader
+          title="Website Threat Scanner"
+          subtitle="Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics"
+        />
+        <EmptyFleetState
+          title="Connect Your First WordPress Site"
+          description="Deploy the MDefender Pro security engine to enable continuous 24/7 autonomous scanning, malware quarantine, and WordPress.org core integrity verification."
+        />
+      </div>
+    )
+  }
+
+return (
     <div style={{ padding: '28px 32px', minHeight: '100vh', background: '#FAFAFA', color: '#09090B', fontFamily: 'Inter, -apple-system, sans-serif' }}>
       
       {/* TOAST NOTIFICATION */}
@@ -2191,5 +2205,4 @@ export default function BulkScanner() {
 
     </div>
   )
-}
 }
