@@ -1863,9 +1863,9 @@ class WAF_FW_Scanner {
     }
 
     public function scan_file_multi_signal($path, $category = 'unknown') {
-        if (!file_exists($path) || !is_readable($path)) return null;
-        $size = filesize($path);
-        if ($size > 10000000 || $size === 0) return null;
+        if (!file_exists($path)) return null;
+        $size = @filesize($path);
+        if ($size === false || $size > 10000000 || $size === 0) return null;
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $scanable = ['php', 'phtml', 'php4', 'php5', 'php7', 'php8', 'inc', 'htaccess', 'js', 'txt', 'html', 'htm', 'shtml', 'pl', 'py', 'sh', 'bash', 'cgi', 'asp', 'aspx', 'jsp', 'env', 'config', 'yml', 'yaml', 'xml', 'json', 'sql', 'bak', 'backup', 'old', 'save', 'swp', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'mp3', 'mp4', 'wav', 'pdf', 'ini', 'zip', 'tar', 'gz', 'tgz'];
@@ -1887,7 +1887,28 @@ class WAF_FW_Scanner {
         }
 
         $content = @file_get_contents($path);
-        if (!$content) return null;
+        if ($content === false || $content === null) {
+            $last_err = error_get_last();
+            $err_msg = $last_err['message'] ?? '';
+            $is_quarantined = (stripos($err_msg, 'Invalid argument') !== false || stripos($err_msg, 'Operation did not complete') !== false || stripos($err_msg, 'Permission denied') !== false);
+            return [
+                'file' => $rel_path,
+                'score' => 100,
+                'severity' => 'critical',
+                'confidence' => 'HIGH',
+                'line_number' => 1,
+                'snippet' => '[FILE ACCESS BLOCKED BY OS SECURITY / ANTIVIRUS SHIELD]',
+                'classification' => 'CONFIRMED_MALWARE',
+                'findings' => [
+                    $is_quarantined 
+                        ? 'Host OS Antivirus Alert: File quarantined or read-locked by host OS security shield (' . ($err_msg ?: 'Access Denied') . ')'
+                        : 'Unreadable Suspicious File: File exists on disk but read stream was rejected'
+                ],
+                'size' => $size,
+                'hash' => '',
+            ];
+        }
+        if ($content === '') return null;
 
         // 1. File Classification
         $file_class = 'UNKNOWN';
@@ -1897,7 +1918,7 @@ class WAF_FW_Scanner {
             $file_class = 'THEME';
         } elseif (strpos($rel_path, 'wp-content/uploads/') === 0 || $category === 'uploads') {
             $file_class = 'UPLOAD';
-        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || in_array($rel_path, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'])) {
+        } elseif (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0 || strpos($rel_path, '/') === false || in_array($rel_path, ['index.php', 'wp-login.php', 'wp-config.php', 'wp-cron.php', 'wp-settings.php', 'wp-load.php', 'wp-blog-header.php', 'wp-mail.php', 'wp-signup.php', 'wp-trackback.php', 'wp-activate.php', 'wp-comments-post.php', 'wp-config-sample.php', 'wp-links-opml.php', 'xmlrpc.php'])) {
             $file_class = 'WORDPRESS_CORE';
         }
 
@@ -2118,11 +2139,11 @@ class WAF_FW_Scanner {
                     $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html'];
                     if (!in_array($name, $legit_root_extras, true)) {
                         $is_core_anomaly = true;
-                        if (in_array($ext, ['php', 'phtml', 'inc']) && (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0)) {
-                            $total_score = max($total_score, 90);
+                        if (in_array($ext, ['php', 'phtml', 'inc'])) {
+                            $total_score = max($total_score, 95);
                             $classification = 'CONFIRMED_MALWARE';
                             $confidence = 'HIGH';
-                            $findings[] = 'Rogue Core File: Unauthorized PHP executable found inside WordPress Core directory (' . $rel_path . ')';
+                            $findings[] = 'Rogue Core File: Unauthorized PHP executable found inside WordPress directory (' . $rel_path . ')';
                         }
                     }
                 }
@@ -2159,8 +2180,18 @@ class WAF_FW_Scanner {
             }
         }
 
+        $has_php_code = $is_php || preg_match('#<\?(?:php|=|\s)|<script\s+language\s*=\s*[\x22\x27]?php#i', $content);
+
+        // Detect embedded executable PHP tags inside non-PHP assets (.txt, .js, .css, .json, .log, .sql)
+        if (!$is_php && $has_php_code && !in_array($ext, ['svg', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'mp3', 'mp4', 'wav', 'pdf'])) {
+            $total_score = max($total_score, 95);
+            $confidence = 'HIGH';
+            $classification = 'CONFIRMED_MALWARE';
+            $findings[] = 'Executable Code Injection: Active PHP code embedded inside non-executable ' . strtoupper($ext) . ' asset (' . $name . ')';
+        }
+
         // 5. PHP AST Dataflow Taint Analysis
-        if ($is_php && ($file_class !== 'WORDPRESS_CORE' || $is_core_modified || !empty($is_core_anomaly))) {
+        if ($has_php_code && ($file_class !== 'WORDPRESS_CORE' || $is_core_modified || !empty($is_core_anomaly))) {
             $ast_result = $this->analyze_php_ast_dataflow($path, $content);
             if ($ast_result['score'] > 0) {
                 // If it's a modified core file or non-core file with high AST score

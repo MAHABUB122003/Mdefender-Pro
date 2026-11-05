@@ -820,7 +820,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                         }
                     }
 
-                    // 1b. Loose files directly in wp-content/ (e.g. wp-content/shell.php, wp-content/test_backdoor.php)
+                    // 1b. Files & custom directories directly in wp-content/ (e.g. wp-content/theme/, wp-content/shell.php)
                     $content_dir = ABSPATH . 'wp-content/';
                     if (is_dir($content_dir)) {
                         $content_entries = @scandir($content_dir) ?: [];
@@ -835,6 +835,27 @@ function waf_fw_handle_cloud_sync_webhook() {
                                     if ($res && !empty($res['findings'])) {
                                         $findings[] = mdf_format_threat_finding($ce_path, $res, $id_counter++);
                                     }
+                                }
+                            } elseif (is_dir($ce_path)) {
+                                if (!in_array($ce, ['plugins', 'themes', 'uploads', 'mu-plugins', 'wflogs', 'waf-quarantine', 'mdefender-backups'])) {
+                                    try {
+                                        $custom_it = new RecursiveIteratorIterator(
+                                            new RecursiveDirectoryIterator($ce_path, RecursiveDirectoryIterator::SKIP_DOTS),
+                                            RecursiveIteratorIterator::SELF_FIRST
+                                        );
+                                        foreach ($custom_it as $cf) {
+                                            if ($cf->isFile()) {
+                                                $c_ext = strtolower($cf->getExtension());
+                                                if (in_array($c_ext, ['php', 'phtml', 'inc', 'htaccess', 'txt', 'js', 'html', 'htm', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'pdf', 'zip', 'tar', 'gz', 'bak', 'sql'])) {
+                                                    $scanned_count++;
+                                                    $res = $scanner->scan_file_multi_signal($cf->getPathname(), 'content');
+                                                    if ($res && !empty($res['findings'])) {
+                                                        $findings[] = mdf_format_threat_finding($cf->getPathname(), $res, $id_counter++);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } catch (\Exception $e) {}
                                 }
                             }
                         }
