@@ -12425,12 +12425,33 @@ async def get_2fa_config(website_id: str = "all", user=Depends(get_current_user)
         # Generate 8 single-use recovery codes
         recovery_codes = [f"{secrets.token_hex(2).upper()}-{secrets.token_hex(2).upper()}" for _ in range(8)]
 
+    # Fetch all user websites with their individual 2FA status for fleet management table
+    user_websites = list(db.websites.find(
+        {"$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}]},
+        {"_id": 1, "domain": 1, "url": 1, "platform": 1, "two_factor_enabled": 1, "login_two_factor": 1, "two_factor_roles": 1, "status": 1, "updated_at": 1}
+    ))
+    fleet_list = []
+    for w in user_websites:
+        w_id_val = str(w.get("_id"))
+        w_dom = w.get("domain") or w.get("url") or "Website"
+        w_enabled = bool(w.get("two_factor_enabled", w.get("login_two_factor", False)))
+        fleet_list.append({
+            "id": w_id_val,
+            "domain": w_dom,
+            "url": w.get("url") or f"https://{w_dom}",
+            "enabled": w_enabled,
+            "roles": w.get("two_factor_roles") or "admins",
+            "status": "active" if w_enabled else "inactive",
+            "updated_at": str(w.get("updated_at") or "")
+        })
+
     return success({
         "enabled": enabled,
         "secret": secret,
         "recovery_codes": recovery_codes,
         "domain": domain_label,
-        "website_id": website_id
+        "website_id": website_id,
+        "fleet_websites": fleet_list
     })
 
 @router.post("/security/2fa/verify")

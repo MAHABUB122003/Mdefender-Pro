@@ -56,9 +56,14 @@ class WAF_FW_2FA {
             return $user;
         }
 
-        // Emergency bypass via query parameter for locked out site owners
-        if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || isset($_GET['waf_login_restore'])) {
-            return $user;
+        // Cryptographic emergency rescue override (Zero-Trust Standard)
+        // Never allow unauthenticated query parameter bypasses!
+        if (isset($_GET['waf_rescue_token']) && !empty($_GET['waf_rescue_token'])) {
+            $site_token = (string) get_option('waf_fw_site_token', '');
+            $rescue_in = sanitize_text_field($_GET['waf_rescue_token']);
+            if (!empty($site_token) && strlen($rescue_in) >= 16 && hash_equals($site_token, $rescue_in)) {
+                return $user; // Authenticated cryptographic rescue token verified
+            }
         }
 
         $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
@@ -101,13 +106,27 @@ class WAF_FW_2FA {
             return $user;
         }
 
+        // Prevent XML-RPC and REST API authentication bypasses for 2FA-enforced roles
+        if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
+            return new WP_Error('waf_2fa_xmlrpc_denied', 'Two-Factor Authentication is enforced on this account. XML-RPC authentication is blocked.');
+        }
+
         $code = sanitize_text_field($_POST['waf_2fa_code'] ?? '');
         $code = preg_replace('/\s+/', '', $code);
 
         $valid = false;
         if (!empty($code)) {
+            // Anti-Replay Guard: Prevent replaying the same 6-digit TOTP code within time window
+            $replay_key = 'waf_2fa_used_' . md5($user->ID . '_' . $code);
+            if (get_transient($replay_key)) {
+                return new WP_Error('waf_2fa_replayed', '<strong>MDefender Pro Security</strong>: This 2FA code has already been used. Please wait for the next 6-digit code in your authenticator app.');
+            }
+
             $valid = $this->verify_totp($secret, $code);
-            if (!$valid) {
+            if ($valid) {
+                // Consume code for 90 seconds
+                set_transient($replay_key, 1, 90);
+            } else {
                 $valid = $this->verify_and_consume_recovery_code($user->ID, $code);
             }
             if (!$valid) {
@@ -123,7 +142,7 @@ class WAF_FW_2FA {
         if (!$valid) {
             // Track failed 2FA attempts by IP to prevent brute-forcing
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-            $transient_key = 'waf_2fa_fails_' . md5($ip);
+            $transient_key = 'waf_2fa_fails_' . md5($ip . '_' . $user->ID);
             $fails = intval(get_transient($transient_key)) + 1;
             set_transient($transient_key, $fails, 3600);
 
@@ -132,6 +151,25 @@ class WAF_FW_2FA {
                 if (class_exists('WAF_FW_IP_Filter')) {
                     WAF_FW_IP_Filter::instance()->add_to_blacklist($ip, 'Brute-force 2FA Bypass Attempt Locked Out', 'temporary', 86400);
                 }
+                // Record in wp_waf_attacks
+                global $wpdb;
+                $table_attacks = $wpdb->prefix . 'waf_attacks';
+                if ($wpdb->get_var("SHOW TABLES LIKE '{$table_attacks}'") === $table_attacks) {
+                    $wpdb->insert($table_attacks, [
+                        'ip'            => $ip,
+                        'country_code'  => 'LOCAL',
+                        'url'           => sanitize_text_field($_SERVER['REQUEST_URI'] ?? '/wp-login.php'),
+                        'method'        => 'POST',
+                        'attack_type'   => '2FA Brute-Force Abuse',
+                        'confidence'    => 0.99,
+                        'status'        => 'blocked',
+                        'user_agent'    => sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? ''),
+                        'rule_matched'  => 'Two-Factor Authentication: Anti-Brute-Force Lockout',
+                        'reference_id'  => 'MDEF-2FA-' . strtoupper(substr(md5(uniqid('', true)), 0, 8)),
+                        'created_at'    => current_time('mysql')
+                    ]);
+                }
+
                 wp_die('<div style="font-family:sans-serif;max-width:500px;margin:80px auto;padding:30px;border:1px solid #D9E1DC;border-radius:12px;background:#FFF;text-align:center;"><h2 style="color:#10201E;margin-top:0;">Access Quarantined (HTTP 403)</h2><p style="color:#60716B;">Too many failed 2FA verification attempts. Your IP has been temporarily quarantined by MDefender Pro Edge Protection.</p></div>', '2FA Lockout', ['response' => 403]);
             }
 
@@ -139,7 +177,7 @@ class WAF_FW_2FA {
         }
 
         // On successful verification, clear failed count
-        delete_transient('waf_2fa_fails_' . md5($_SERVER['REMOTE_ADDR'] ?? ''));
+        delete_transient('waf_2fa_fails_' . md5(($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1') . '_' . $user->ID));
         return $user;
     }
 

@@ -1909,6 +1909,15 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                         target_config["login_redirect_type"] = str(target_ws.get("login_redirect_type", "404")).strip()
                         target_config["admin_ip_whitelist_enabled"] = bool(target_ws.get("admin_ip_whitelist_enabled", False))
                         target_config["admin_ip_whitelist"] = target_ws.get("admin_ip_whitelist") or []
+                        # Site-specific 2FA enforcement isolation
+                        if "two_factor_enabled" in target_ws or "login_two_factor" in target_ws:
+                            site_2fa = bool(target_ws.get("two_factor_enabled", target_ws.get("login_two_factor", False)))
+                            target_config["two_factor_enabled"] = site_2fa
+                            target_config["login_two_factor"] = site_2fa
+                            if target_ws.get("two_factor_secret"):
+                                target_config["two_factor_secret"] = str(target_ws.get("two_factor_secret"))
+                            if target_ws.get("two_factor_recovery_codes"):
+                                target_config["two_factor_recovery_codes"] = target_ws.get("two_factor_recovery_codes")
                     else:
                         target_config["custom_login_slug"] = ""
                         target_config["hide_login_url"] = False
