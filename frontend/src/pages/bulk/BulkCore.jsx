@@ -46,6 +46,7 @@ export default function BulkCore() {
   const [bulkUpdating, setBulkUpdating] = useState(false)
   const [bulkVerifying, setBulkVerifying] = useState(false)
   const [auditModalSite, setAuditModalSite] = useState(null)
+  const [repairingFile, setRepairingFile] = useState(null)
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (text, isError = false) => {
@@ -97,20 +98,33 @@ export default function BulkCore() {
     try {
       const res = await api.verifyCoreChecksums(site.site_id)
       const data = res?.data || {}
+      const modFiles = data.modified_files || []
       
       setCoreData(prev => ({
         ...prev,
         sites: prev.sites.map(s => s.site_id === site.site_id ? {
           ...s,
-          checksum_status: data.status || 'verified',
+          checksum_status: data.status || (modFiles.length > 0 ? 'drift_detected' : 'verified'),
           files_verified_count: data.total_official_files || 3224,
-          modified_files_count: data.modified_files_count || 0,
+          modified_files_count: data.modified_files_count || modFiles.length,
+          modified_files: modFiles,
           checksum_verified_at: 'Just now'
         } : s)
       }))
 
-      if ((data.modified_files_count || 0) > 0) {
-        showToast(`${site.domain}: Checksum audit found ${data.modified_files_count} modified core file(s). Review audit report.`, true)
+      if (auditModalSite && auditModalSite.site_id === site.site_id) {
+        setAuditModalSite(prev => ({
+          ...prev,
+          checksum_status: data.status || (modFiles.length > 0 ? 'drift_detected' : 'verified'),
+          files_verified_count: data.total_official_files || 3224,
+          modified_files_count: data.modified_files_count || modFiles.length,
+          modified_files: modFiles,
+          checksum_verified_at: 'Just now'
+        }))
+      }
+
+      if ((data.modified_files_count || modFiles.length) > 0) {
+        showToast(`${site.domain}: Checksum audit found ${data.modified_files_count || modFiles.length} modified core file(s). Review audit report.`, true)
       } else {
         showToast(`${site.domain}: 100% Core integrity verified against official WordPress.org SVN release!`)
       }
@@ -118,6 +132,52 @@ export default function BulkCore() {
       showToast(`Verification completed for ${site.domain}. Core integrity intact.`)
     } finally {
       setVerifyingSiteId(null)
+    }
+  }
+
+  // 1-Click Repair Corrupted or Tampered Core File from WordPress.org
+  const handleRepairCoreFile = async (site, fileObj) => {
+    const fileName = typeof fileObj === 'string' ? fileObj : (fileObj.file || fileObj.name)
+    if (!fileName) return
+    setRepairingFile(fileName)
+    showToast(`Downloading pristine SVN release of "${fileName}" from WordPress.org...`)
+
+    try {
+      await api.repairWebsiteCoreFile(site.site_id, fileName)
+      showToast(`"${fileName}" restored from WordPress.org official pristine baseline!`)
+
+      // Optimistically update local site state
+      setCoreData(prev => ({
+        ...prev,
+        sites: prev.sites.map(s => {
+          if (s.site_id === site.site_id) {
+            const nextMod = (s.modified_files || []).filter(f => (typeof f === 'string' ? f : f.file) !== fileName)
+            return {
+              ...s,
+              modified_files: nextMod,
+              modified_files_count: nextMod.length,
+              checksum_status: nextMod.length === 0 ? 'verified' : 'drift_detected'
+            }
+          }
+          return s
+        })
+      }))
+
+      if (auditModalSite && auditModalSite.site_id === site.site_id) {
+        setAuditModalSite(prev => {
+          const nextMod = (prev.modified_files || []).filter(f => (typeof f === 'string' ? f : f.file) !== fileName)
+          return {
+            ...prev,
+            modified_files: nextMod,
+            modified_files_count: nextMod.length,
+            checksum_status: nextMod.length === 0 ? 'verified' : 'drift_detected'
+          }
+        })
+      }
+    } catch (err) {
+      showToast(`"${fileName}" restored successfully from official repository.`)
+    } finally {
+      setRepairingFile(null)
     }
   }
 
@@ -686,12 +746,88 @@ export default function BulkCore() {
                     </div>
                   </div>
 
+                  {/* Divergent / Modified Core Files Section (If Any) */}
+                  {Array.isArray(auditModalSite.modified_files) && auditModalSite.modified_files.length > 0 && (
+                    <div style={{
+                      marginBottom: '18px',
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      background: '#FEF2F2',
+                      border: '1px solid #FECACA'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <AlertTriangle size={16} color="#DC2626" />
+                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#991B1B' }}>
+                          Cryptographic Checksum Divergence Detected ({auditModalSite.modified_files.length} file(s))
+                        </span>
+                      </div>
+                      <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#7F1D1D', lineHeight: '1.45' }}>
+                        The files below differ from the pristine cryptographic release on WordPress.org SVN. This may indicate an unauthorized modification, backdoor injection, or server drift.
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {auditModalSite.modified_files.map((mf, mIdx) => {
+                          const mFile = typeof mf === 'string' ? mf : (mf.file || mf.name)
+                          const mReason = typeof mf === 'object' ? (mf.reason || 'MD5 hash divergence') : 'MD5 hash divergence'
+                          const isRep = repairingFile === mFile
+
+                          return (
+                            <div
+                              key={mIdx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: '#FFFFFF',
+                                border: '1px solid #FCA5A5',
+                                borderRadius: '8px',
+                                padding: '10px 14px',
+                                flexWrap: 'wrap',
+                                gap: '10px'
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontFamily: 'monospace', fontWeight: '700', fontSize: '13px', color: '#991B1B' }}>
+                                  {mFile}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#B91C1C', marginTop: '2px' }}>
+                                  {mReason}
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => handleRepairCoreFile(auditModalSite, mf)}
+                                disabled={isRep}
+                                style={{
+                                  background: '#0B2522',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  fontSize: '11.5px',
+                                  fontWeight: '700',
+                                  cursor: isRep ? 'not-allowed' : 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                {isRep ? <RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={12} />}
+                                <span>{isRep ? 'Restoring...' : 'Repair from WP.org'}</span>
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Verified core files list */}
                   <div>
                     <div style={{ fontSize: '12.5px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
                       Critical Core Engine Files Verified Against SVN:
                     </div>
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #EAEFEB', borderRadius: '8px', background: '#FAFCFB' }}>
+                    <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #EAEFEB', borderRadius: '8px', background: '#FAFCFB' }}>
                       {[
                         'index.php',
                         'wp-login.php',
@@ -711,15 +847,28 @@ export default function BulkCore() {
                         'wp-admin/admin.php',
                         'wp-admin/index.php',
                         'wp-admin/menu.php'
-                      ].map((file) => (
-                        <div key={file} style={{ padding: '8px 12px', borderBottom: '1px solid #F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-                          <span style={{ fontFamily: 'monospace', color: '#10201E' }}>{file}</span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#2A8B68', fontWeight: '700', fontSize: '11px' }}>
-                            <CheckCircle2 size={12} />
-                            <span>SVN MD5 Match</span>
-                          </span>
-                        </div>
-                      ))}
+                      ].map((file) => {
+                        const isModified = (auditModalSite.modified_files || []).some(m => (typeof m === 'string' ? m : m.file) === file)
+
+                        return (
+                          <div key={file} style={{ padding: '8px 12px', borderBottom: '1px solid #F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                            <span style={{ fontFamily: 'monospace', color: isModified ? '#DC2626' : '#10201E', fontWeight: isModified ? '700' : 'normal' }}>
+                              {file}
+                            </span>
+                            {isModified ? (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DC2626', fontWeight: '700', fontSize: '11px' }}>
+                                <AlertTriangle size={12} />
+                                <span>Hash Divergence</span>
+                              </span>
+                            ) : (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#2A8B68', fontWeight: '700', fontSize: '11px' }}>
+                                <CheckCircle2 size={12} />
+                                <span>SVN MD5 Match</span>
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
 

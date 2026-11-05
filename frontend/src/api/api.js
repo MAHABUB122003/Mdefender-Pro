@@ -664,6 +664,11 @@ export const api = {
   updateWordpressCore: (websiteId) => apiCall(`/api/v1/wordpress/core/${websiteId}/update`, { method: 'POST' }),
   updateAllWordpressCore: () => apiCall('/api/v1/wordpress/core/update-all', { method: 'POST' }),
 
+  // Safe Updates & Autonomous Regression Guard APIs
+  getSafeUpdatesHistory: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/safe-updates/history`),
+  getFleetSafeUpdatesSummary: () => apiCall('/api/v1/websites/fleet/safe-updates/summary'),
+  runSafeUpdate: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/safe-updates/run`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Enterprise Backup & Disaster Recovery APIs
   getFleetBackups: () => apiCall('/api/v1/websites/fleet/backups'),
   getWebsiteBackups: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/backups`),
