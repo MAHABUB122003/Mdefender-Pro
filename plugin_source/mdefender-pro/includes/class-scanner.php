@@ -2052,8 +2052,8 @@ class WAF_FW_Scanner {
                     ];
                 }
             } else {
-                // Polyglot Media/Carrier containing embedded PHP execution headers
-                if (preg_match('/<\?php\b[\s\S]{0,100}(?:eval|assert|system|exec|shell_exec|base64_decode|\$_POST|\$_GET|\$|\bfunction\b|\becho\b)|<\?=\s*[\$a-zA-Z0-9_\x22\x27]/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                // Polyglot Media/Carrier containing embedded PHP execution headers or base64 PHP markers
+                if (preg_match('/(<\?(?:php\b|=|\s)|<script\s+language\s*=\s*["\']?php["\']?|__halt_compiler\s*\(\s*\)|(?:PD9waH|c3lzdGVtKA|ZXZhbC|c2hlbGxfZXhlY))/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
                     $line_num = substr_count(substr($content, 0, $poly_m[0][1]), "\n") + 1;
                     $raw_snip = substr($content, $poly_m[0][1], 120);
                     $snippet = preg_replace('/[^\x20-\x7E\t\r\n]/', '', $raw_snip);
@@ -2118,7 +2118,12 @@ class WAF_FW_Scanner {
                     $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html'];
                     if (!in_array($name, $legit_root_extras, true)) {
                         $is_core_anomaly = true;
-                        // Do not automatically flag as malware unless an actual malicious payload or AST taint is found
+                        if (in_array($ext, ['php', 'phtml', 'inc']) && (strpos($rel_path, 'wp-admin/') === 0 || strpos($rel_path, 'wp-includes/') === 0)) {
+                            $total_score = max($total_score, 90);
+                            $classification = 'CONFIRMED_MALWARE';
+                            $confidence = 'HIGH';
+                            $findings[] = 'Rogue Core File: Unauthorized PHP executable found inside WordPress Core directory (' . $rel_path . ')';
+                        }
                     }
                 }
             }
@@ -2183,8 +2188,9 @@ class WAF_FW_Scanner {
         $normalized_content = preg_replace("/(['\"])\s*[\+\.]\s*\\1/", '', $content);
         $patterns = $this->get_malware_patterns();
         foreach ($patterns as $cat_key => $data) {
-            // PHP backdoors only apply to executable PHP scripts, not client-side JS or CSS
-            if (($cat_key === 'backdoor' || $cat_key === 'webshell' || $cat_key === 'reverse_shell' || $cat_key === 'credential_stealer' || $cat_key === 'unauthorized_admin' || $cat_key === 'mail_spammer') && !$is_php) {
+            // PHP backdoors apply to executable PHP scripts OR any file containing embedded PHP tags
+            $has_php_code = $is_php || preg_match('/<\?(?:php|=|\s)|<script\s+language\s*=\s*["\']?php/i', $content);
+            if (($cat_key === 'backdoor' || $cat_key === 'webshell' || $cat_key === 'reverse_shell' || $cat_key === 'credential_stealer' || $cat_key === 'unauthorized_admin' || $cat_key === 'mail_spammer') && !$has_php_code) {
                 continue;
             }
             if ($cat_key === 'javascript_malware' && !in_array($ext, ['js', 'html', 'htm', 'php', 'phtml'])) {

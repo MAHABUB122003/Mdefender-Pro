@@ -4466,7 +4466,7 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
 
-        "status": "queued"
+        "status": {"$in": ["queued", "running"]}
 
 
 
@@ -4546,7 +4546,7 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
 
-        "status": "queued",
+        "status": {"$in": ["queued", "running"]},
 
 
 
@@ -4914,7 +4914,7 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
 
-                scan_timeout = 20.0 if scan_type == "quick" else 40.0
+                scan_timeout = 45.0 if scan_type == "quick" else 150.0
                 resp = requests.post(ep, json={"action": "trigger_scan", "scan_id": scan_id, "scan_type": scan_type}, headers=headers, timeout=scan_timeout, verify=False)
 
 
@@ -5747,7 +5747,7 @@ async def get_website_scans(website_id: str, limit: int = 10, user=Depends(get_c
         from datetime import timedelta
         db.malware_scans.delete_many({
             "$or": [{"website_id": w_id}, {"domain": website.get("domain")}],
-            "status": "queued",
+            "status": {"$in": ["queued", "running"]},
             "started_at": {"$lt": datetime.now() - timedelta(seconds=10)}
         })
     except Exception:

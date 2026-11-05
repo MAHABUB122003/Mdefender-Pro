@@ -810,7 +810,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $re_path = ABSPATH . $re;
                         if (is_file($re_path)) {
                             $ext = strtolower(pathinfo($re_path, PATHINFO_EXTENSION));
-                            if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess']) || $re === '.htaccess') {
+                            if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'js', 'html', 'htm', 'txt', 'sql', 'bak', 'jpg', 'jpeg', 'png', 'webp', 'svg']) || $re === '.htaccess') {
                                 $scanned_count++;
                                 $res = $scanner->scan_file_multi_signal($re_path, 'core');
                                 if ($res && !empty($res['findings'])) {
@@ -829,7 +829,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                             $ce_path = $content_dir . $ce;
                             if (is_file($ce_path)) {
                                 $ext = strtolower(pathinfo($ce_path, PATHINFO_EXTENSION));
-                                if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'txt'])) {
+                                if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'txt', 'js', 'html', 'htm', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'pdf', 'zip', 'tar', 'gz', 'bak', 'sql'])) {
                                     $scanned_count++;
                                     $res = $scanner->scan_file_multi_signal($ce_path, 'content');
                                     if ($res && !empty($res['findings'])) {
@@ -840,21 +840,35 @@ function waf_fw_handle_cloud_sync_webhook() {
                         }
                     }
 
-                    // Also scan wp-admin/ and wp-includes/ PHP files
+                    // Also scan wp-admin/ and wp-includes/ RECURSIVELY across all subdirectories
                     foreach ([ABSPATH . 'wp-admin/', ABSPATH . 'wp-includes/'] as $core_dir) {
                         if (!is_dir($core_dir)) continue;
-                        $dir_files = @scandir($core_dir) ?: [];
-                        foreach ($dir_files as $df) {
-                            if ($df === '.' || $df === '..') continue;
-                            $df_path = $core_dir . $df;
-                            if (is_file($df_path) && strtolower(pathinfo($df_path, PATHINFO_EXTENSION)) === 'php') {
-                                $scanned_count++;
-                                $res = $scanner->scan_file_multi_signal($df_path, 'core');
-                                if ($res && !empty($res['findings'])) {
-                                    $findings[] = mdf_format_threat_finding($df_path, $res, $id_counter++);
+                        $dir_count = 0;
+                        try {
+                            $it = new RecursiveIteratorIterator(
+                                new RecursiveDirectoryIterator($core_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                                RecursiveIteratorIterator::SELF_FIRST
+                            );
+                            foreach ($it as $file) {
+                                if ($file->isFile()) {
+                                    $ext = strtolower($file->getExtension());
+                                    $core_exts = ($scan_type === 'quick') ? ['php', 'phtml', 'inc'] : ['php', 'phtml', 'inc', 'js', 'html', 'htm', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'svg'];
+                                    if (in_array($ext, $core_exts)) {
+                                        if ($scan_type === 'quick' && ++$dir_count > 2500) {
+                                            break;
+                                        }
+                                        if ((microtime(true) - $start_time) > 240) {
+                                            break;
+                                        }
+                                        $scanned_count++;
+                                        $res = $scanner->scan_file_multi_signal($file->getPathname(), 'core');
+                                        if ($res && !empty($res['findings'])) {
+                                            $findings[] = mdf_format_threat_finding($file->getPathname(), $res, $id_counter++);
+                                        }
+                                    }
                                 }
                             }
-                        }
+                        } catch (\Exception $e) {}
                     }
 
                     // 2. Plugins Directory (Recursive scan of all plugin files)
@@ -868,17 +882,16 @@ function waf_fw_handle_cloud_sync_webhook() {
                             foreach ($it as $file) {
                                 if ($file->isFile()) {
                                     $ext = strtolower($file->getExtension());
-                                    if (in_array($ext, ['php', 'phtml', 'inc'])) {
+                                    if (in_array($ext, ['php', 'phtml', 'inc', 'js', 'html', 'htm', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'])) {
                                         $pathname = str_replace('\\', '/', $file->getPathname());
                                         if (strpos($pathname, '/plugins/mdefender-pro/') !== false || strpos($pathname, '/plugins/mdefender/') !== false ||
-                                            strpos($pathname, '/vendor/') !== false || strpos($pathname, '/node_modules/') !== false ||
-                                            strpos($pathname, '/languages/') !== false || strpos($pathname, '/i18n/') !== false) {
+                                            strpos($pathname, '/node_modules/') !== false) {
                                             continue;
                                         }
-                                        if ($scan_type === 'quick' && $scanned_count >= 1000) {
+                                        if ($scan_type === 'quick' && $scanned_count >= 1500) {
                                             break;
                                         }
-                                        if ((microtime(true) - $start_time) > 180) {
+                                        if ((microtime(true) - $start_time) > 240) {
                                             break;
                                         }
                                         $scanned_count++;
@@ -903,7 +916,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                             foreach ($it as $file) {
                                 if ($file->isFile()) {
                                     $ext = strtolower($file->getExtension());
-                                    if (in_array($ext, ['php', 'phtml', 'inc'])) {
+                                    if (in_array($ext, ['php', 'phtml', 'inc', 'js', 'html', 'htm', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'])) {
                                         $scanned_count++;
                                         $res = $scanner->scan_file_multi_signal($file->getPathname(), 'themes');
                                         if ($res && !empty($res['findings'])) {
@@ -926,7 +939,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                             foreach ($it as $file) {
                                 if ($file->isFile()) {
                                     $ext = strtolower($file->getExtension());
-                                    if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc', 'cgi', 'asp', 'aspx', 'sh', 'py'])) {
+                                    if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc', 'cgi', 'asp', 'aspx', 'sh', 'py', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'pdf', 'txt', 'zip', 'tar', 'gz', 'bak', 'sql'])) {
                                         $scanned_count++;
                                         $res = $scanner->scan_file_multi_signal($file->getPathname(), 'uploads');
                                         if ($res && !empty($res['findings'])) {
@@ -1107,7 +1120,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                         'score'            => $health_score,
                         'security_status'  => $threats_count > 0 ? ($threats_count . ' Threats Detected') : 'A+ Pristine Integrity'
                     ]
-                ]);
+                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
                 exit;
             } elseif ($action === 'get_scan_results' || $action === 'get_latest_scan' || $action === 'get_scan_status') {
                 $scanner = class_exists('WAF_FW_Scanner') ? WAF_FW_Scanner::instance() : null;
@@ -3374,7 +3387,7 @@ function mdf_format_threat_finding($full_path, $scan_res, $id) {
         'score'          => $scan_res['score'] ?? 95,
         'classification' => $scan_res['classification'] ?? 'CONFIRMED_MALWARE',
         'findings'       => $scan_res['findings'] ?? [],
-        'code_snippet'   => substr($snippet, 0, 240),
+        'code_snippet'   => preg_replace('/[^\x20-\x7E\t\r\n]/', '', substr((string)$snippet, 0, 240)),
         'is_repairable'  => $is_core && (basename($full_path) !== 'wp-config.php'),
         'is_deletable'   => $is_uploads && !$is_core,
         'status'         => 'active'
