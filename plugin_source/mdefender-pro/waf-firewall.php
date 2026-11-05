@@ -374,34 +374,47 @@ function waf_fw_apply_config_payload($cfg) {
         $is_2fa_active = ($l2f_val === 'enabled');
         update_option('waf_harden_login_guard', $l2f_val);
         update_option('waf_2fa_enforced', $is_2fa_active ? 'yes' : 'no');
-        if (isset($cfg['two_factor_roles'])) {
-            update_option('waf_2fa_roles', sanitize_text_field($cfg['two_factor_roles']));
-        }
-        if (isset($cfg['two_factor_max_attempts'])) {
-            update_option('waf_2fa_max_attempts', intval($cfg['two_factor_max_attempts']));
-        }
-        if (!empty($cfg['two_factor_secret'])) {
-            $f_sec = sanitize_text_field($cfg['two_factor_secret']);
-            update_option('waf_2fa_fleet_secret', $f_sec);
-        }
-        if (!empty($cfg['two_factor_recovery_codes']) && is_array($cfg['two_factor_recovery_codes'])) {
-            $f_rec = array_values(array_filter(array_map('sanitize_text_field', $cfg['two_factor_recovery_codes'])));
-            update_option('waf_2fa_fleet_recovery_codes', $f_rec);
-        }
-        // Propagate 2FA status and secret to all administrator accounts
-        if (function_exists('get_users')) {
-            $site_admins = get_users(['role' => 'administrator']);
-            $prop_sec = !empty($cfg['two_factor_secret']) ? sanitize_text_field($cfg['two_factor_secret']) : get_option('waf_2fa_fleet_secret', '');
-            $prop_rec = (!empty($cfg['two_factor_recovery_codes']) && is_array($cfg['two_factor_recovery_codes']))
-                ? array_values(array_filter(array_map('sanitize_text_field', $cfg['two_factor_recovery_codes'])))
-                : get_option('waf_2fa_fleet_recovery_codes', []);
-            foreach ($site_admins as $admin_usr) {
-                update_user_meta($admin_usr->ID, '_waf_2fa_enabled', $is_2fa_active ? 'yes' : 'no');
-                if (!empty($prop_sec)) {
-                    update_user_meta($admin_usr->ID, '_waf_2fa_secret', $prop_sec);
+        if (!$is_2fa_active) {
+            delete_option('waf_2fa_fleet_secret');
+            delete_option('waf_2fa_fleet_recovery_codes');
+            if (function_exists('get_users')) {
+                $site_admins = get_users(['role' => 'administrator']);
+                foreach ($site_admins as $admin_usr) {
+                    update_user_meta($admin_usr->ID, '_waf_2fa_enabled', 'no');
+                    delete_user_meta($admin_usr->ID, '_waf_2fa_secret');
+                    delete_user_meta($admin_usr->ID, '_waf_2fa_recovery_codes');
                 }
-                if (!empty($prop_rec)) {
-                    update_user_meta($admin_usr->ID, '_waf_2fa_recovery_codes', $prop_rec);
+            }
+        } else {
+            if (isset($cfg['two_factor_roles'])) {
+                update_option('waf_2fa_roles', sanitize_text_field($cfg['two_factor_roles']));
+            }
+            if (isset($cfg['two_factor_max_attempts'])) {
+                update_option('waf_2fa_max_attempts', intval($cfg['two_factor_max_attempts']));
+            }
+            if (!empty($cfg['two_factor_secret'])) {
+                $f_sec = sanitize_text_field($cfg['two_factor_secret']);
+                update_option('waf_2fa_fleet_secret', $f_sec);
+            }
+            if (!empty($cfg['two_factor_recovery_codes']) && is_array($cfg['two_factor_recovery_codes'])) {
+                $f_rec = array_values(array_filter(array_map('sanitize_text_field', $cfg['two_factor_recovery_codes'])));
+                update_option('waf_2fa_fleet_recovery_codes', $f_rec);
+            }
+            // Propagate 2FA status and secret to all administrator accounts
+            if (function_exists('get_users')) {
+                $site_admins = get_users(['role' => 'administrator']);
+                $prop_sec = !empty($cfg['two_factor_secret']) ? sanitize_text_field($cfg['two_factor_secret']) : get_option('waf_2fa_fleet_secret', '');
+                $prop_rec = (!empty($cfg['two_factor_recovery_codes']) && is_array($cfg['two_factor_recovery_codes']))
+                    ? array_values(array_filter(array_map('sanitize_text_field', $cfg['two_factor_recovery_codes'])))
+                    : get_option('waf_2fa_fleet_recovery_codes', []);
+                foreach ($site_admins as $admin_usr) {
+                    update_user_meta($admin_usr->ID, '_waf_2fa_enabled', 'yes');
+                    if (!empty($prop_sec)) {
+                        update_user_meta($admin_usr->ID, '_waf_2fa_secret', $prop_sec);
+                    }
+                    if (!empty($prop_rec)) {
+                        update_user_meta($admin_usr->ID, '_waf_2fa_recovery_codes', $prop_rec);
+                    }
                 }
             }
         }

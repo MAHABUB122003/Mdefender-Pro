@@ -12563,6 +12563,8 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
             {"$set": {
                 "two_factor_enabled": False,
                 "login_two_factor": False,
+                "two_factor_secret": "",
+                "two_factor_recovery_codes": [],
                 "updated_at": datetime.now()
             }}
         )
@@ -12571,6 +12573,9 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
             {"$set": {
                 "user_id": u_str,
                 "two_factor_enabled": False,
+                "login_two_factor": False,
+                "two_factor_secret": "",
+                "two_factor_recovery_codes": [],
                 "updated_at": datetime.now()
             }},
             upsert=True
@@ -12584,9 +12589,27 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
             {"$set": {
                 "two_factor_enabled": False,
                 "login_two_factor": False,
+                "two_factor_secret": "",
+                "two_factor_recovery_codes": [],
                 "updated_at": datetime.now()
             }}
         )
+        # If no remaining sites have 2FA enabled, reset user-level security config
+        any_remaining = db.websites.find_one({
+            "$or": [{"user_id": u_str}, {"added_by_user_id": u_str}, {"created_by": u_str}],
+            "$or": [{"two_factor_enabled": True}, {"login_two_factor": True}]
+        })
+        if not any_remaining:
+            db.user_security_config.update_one(
+                {"user_id": u_str},
+                {"$set": {
+                    "two_factor_enabled": False,
+                    "login_two_factor": False,
+                    "two_factor_secret": "",
+                    "two_factor_recovery_codes": [],
+                    "updated_at": datetime.now()
+                }}
+            )
 
     try:
         from src.api.v1.wordpress_api import push_instant_sync_to_wordpress
@@ -12596,7 +12619,7 @@ async def disable_2fa(body: Disable2FARequest, user=Depends(get_current_user)):
 
     return success({
         "success": True,
-        "message": "Two-Factor Authentication disabled.",
+        "message": "Two-Factor Authentication deleted and disabled.",
         "enabled": False
     })
 
