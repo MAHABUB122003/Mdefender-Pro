@@ -280,7 +280,10 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
         clean_target_url = f"https://{body.domain}" if body.domain not in ("localhost", "127.0.0.1") else "http://localhost"
 
-    
+    trial_starts_at = website.get("trial_starts_at") or now
+    trial_ends_at = website.get("trial_ends_at")
+    if not trial_ends_at:
+        trial_ends_at = now + timedelta(days=14)
 
     update_fields = {
 
@@ -295,6 +298,12 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         "site_token": site_token,
 
         "url": clean_target_url,
+
+        "subscription_status": website.get("subscription_status") or "trial_active",
+
+        "trial_starts_at": trial_starts_at,
+
+        "trial_ends_at": trial_ends_at,
 
         "wordpress_connection": {
 
@@ -482,6 +491,8 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
 
 
+    days_remaining = max(0, (trial_ends_at - now).days) if trial_ends_at else 14
+
     return success({
 
         "site_token": site_token,
@@ -489,6 +500,10 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         "website_id": auth_data["website_id"],
 
         "mode": website.get("waf_mode", "protect"),
+
+        "subscription_status": update_fields.get("subscription_status", "trial_active"),
+
+        "trial_days_remaining": days_remaining,
 
         "message": "WordPress site connected",
 
@@ -2117,6 +2132,57 @@ async def disconnect_wordpress(website_id: str, user=Depends(get_current_user)):
         pass
 
     return success(message="WordPress connection removed")
+
+
+@router.post("/site/{website_id}/sso-token")
+async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current_user)):
+    """Generate a single-use 60-second cryptographic HMAC SSO magic login token for 1-Click WP-Admin access."""
+    website = get_owned_website(user, website_id)
+    db = MongoDB()
+
+    # 1. Resolve site domain and base target URL
+    raw_domain = website.get("domain") or website.get("url") or ""
+    clean_domain = re.sub(r"^https?:\/\/", "", raw_domain, flags=re.IGNORECASE).strip().rstrip("/")
+    site_url = website.get("url") or f"https://{clean_domain}"
+    if not site_url.startswith(("http://", "https://")):
+        site_url = f"https://{site_url}"
+
+    # 2. Resolve secret token (from site_token, raw_site_token, or website api_key)
+    conn = website.get("wordpress_connection", {})
+    site_token = conn.get("raw_site_token") or website.get("site_token") or website.get("api_key") or ""
+
+    if not site_token:
+        wp_site = db.wordpress_sites.find_one({"$or": [{"website_id": website_id}, {"domain": clean_domain}]})
+        if wp_site:
+            site_token = wp_site.get("site_token") or wp_site.get("api_key") or ""
+            if not site_url and wp_site.get("url"):
+                site_url = wp_site.get("url")
+
+    if not site_token:
+        site_token = user.get("api_key", "")
+
+    # 3. Generate 60-second one-time cryptographic HMAC token
+    import time
+    import hmac
+    import hashlib
+    import secrets
+    import urllib.parse
+
+    ts = int(time.time())
+    nonce = secrets.token_hex(16)
+    user_email = user.get("email") or user.get("username") or "admin"
+
+    payload = f"{website_id}:{clean_domain}:{user_email}:{ts}:{nonce}"
+    sig = hmac.new(site_token.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    clean_target = site_url.rstrip("/")
+    sso_url = f"{clean_target}/?mdefender_sso=1&token={sig}&ts={ts}&nonce={nonce}&email={urllib.parse.quote(user_email)}&sid={website_id}"
+
+    return success({
+        "sso_url": sso_url,
+        "expires_in": 60,
+        "domain": clean_domain
+    })
 
 
 

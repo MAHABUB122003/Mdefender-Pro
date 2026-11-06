@@ -414,6 +414,7 @@ export const api = {
   verifyWebsiteDns: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/verify-dns`, { method: 'POST' }),
   getWebsiteInstallation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/installation`),
   toggleWebsiteUnderAttack: (websiteId, enabled) => apiCall(`/api/v1/websites/${websiteId}/under-attack`, { method: 'POST', body: JSON.stringify({ enabled }) }),
+  getWordpressSsoToken: (websiteId) => apiCall(`/api/v1/wordpress/site/${websiteId}/sso-token`, { method: 'POST' }),
   getWebsiteSecuritySettings: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/security-settings`),
   getMyIp: () => apiCall('/api/v1/my-ip'),
   updateWebsiteSecuritySettings: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/security-settings`, {

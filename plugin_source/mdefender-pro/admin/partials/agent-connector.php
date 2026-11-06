@@ -27,6 +27,8 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
     if ($action === 'save_connection') {
         $api_key = sanitize_text_field(trim($_POST['waf_api_key'] ?? ''));
         $cloud_url = esc_url_raw(trim($_POST['waf_cloud_url'] ?? ''));
+        $allow_sso = !empty($_POST['waf_allow_cloud_sso']) ? 'yes' : 'no';
+        update_option('waf_allow_cloud_sso', $allow_sso);
         
         if (empty($cloud_url) || strpos($cloud_url, 'localhost') !== false) {
             $cloud_url = 'https://mdefender-pro.crafix.tech'; // Default MDefender Cloud Production URL
@@ -36,14 +38,79 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
             $notice_msg = __('API Key cannot be empty. Please enter your valid MDefender Pro API Key.', 'mdefender-pro');
             $notice_type = 'error';
         } else {
-            update_option('waf_fw_api_key', $api_key);
-            update_option('waf_fw_ml_api_key', $api_key);
-            update_option('waf_fw_cloud_api_url', $cloud_url);
-            update_option('waf_fw_ml_api_url', $cloud_url);
-            update_option('waf_fw_connected', 'yes');
-            update_option('waf_fw_last_sync', current_time('mysql'));
-            $notice_msg = __('Successfully connected to MDefender Pro Cloud! Agent is actively synchronized.', 'mdefender-pro');
-            $notice_type = 'success';
+            // Live Handshake with MDefender Cloud Fleet
+            $domain = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $clean_domain = preg_replace('/^www\./i', '', $domain);
+
+            $handshake_payload = [
+                'api_key' => $api_key,
+                'domain' => $clean_domain,
+                'site_url' => home_url(),
+                'home_url' => home_url(),
+                'site_name' => get_bloginfo('name'),
+                'wp_version' => get_bloginfo('version'),
+                'php_version' => phpversion(),
+                'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0'
+            ];
+
+            $response = wp_remote_post(rtrim($cloud_url, '/') . '/api/v1/wordpress/connect', [
+                'timeout' => 15,
+                'sslverify' => false,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $api_key
+                ],
+                'body' => wp_json_encode($handshake_payload)
+            ]);
+
+            $handshake_ok = false;
+            $res_data = [];
+            if (!is_wp_error($response)) {
+                $code = wp_remote_retrieve_response_code($response);
+                $body = wp_remote_retrieve_body($response);
+                $decoded = json_decode($body, true);
+                if ($code === 200 && !empty($decoded['data'])) {
+                    $handshake_ok = true;
+                    $res_data = $decoded['data'];
+                } elseif (!empty($decoded['detail']) || !empty($decoded['message'])) {
+                    $notice_msg = 'Cloud pairing error: ' . esc_html($decoded['detail'] ?? $decoded['message'] ?? 'Authentication failed');
+                    $notice_type = 'error';
+                }
+            }
+
+            if ($handshake_ok) {
+                $site_token = $res_data['site_token'] ?? '';
+                $website_id = $res_data['website_id'] ?? '';
+                $trial_days = intval($res_data['trial_days_remaining'] ?? 14);
+                $sub_status = $res_data['subscription_status'] ?? 'trial_active';
+
+                update_option('waf_fw_api_key', $api_key);
+                update_option('waf_fw_ml_api_key', $api_key);
+                if (!empty($site_token)) update_option('waf_fw_site_token', $site_token);
+                if (!empty($website_id)) update_option('waf_fw_website_id', $website_id);
+                update_option('waf_fw_trial_days_remaining', $trial_days);
+                update_option('waf_fw_subscription_status', $sub_status);
+                update_option('waf_fw_cloud_api_url', $cloud_url);
+                update_option('waf_fw_ml_api_url', $cloud_url);
+                update_option('waf_fw_connected', 'yes');
+                update_option('waf_fw_last_sync', current_time('mysql'));
+
+                $notice_msg = sprintf(
+                    __('Successfully paired with MDefender Pro Cloud Fleet! 14-Day Enterprise Protection Trial is ACTIVE (%d days remaining).', 'mdefender-pro'),
+                    $trial_days
+                );
+                $notice_type = 'success';
+            } elseif (empty($notice_msg)) {
+                // Fallback to local save if network timed out
+                update_option('waf_fw_api_key', $api_key);
+                update_option('waf_fw_ml_api_key', $api_key);
+                update_option('waf_fw_cloud_api_url', $cloud_url);
+                update_option('waf_fw_ml_api_url', $cloud_url);
+                update_option('waf_fw_connected', 'yes');
+                update_option('waf_fw_last_sync', current_time('mysql'));
+                $notice_msg = __('API Key saved. Connected in local cache mode (Cloud handshake pending).', 'mdefender-pro');
+                $notice_type = 'warning';
+            }
         }
     } elseif ($action === 'disconnect') {
         update_option('waf_fw_api_key', '');
@@ -340,11 +407,26 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
                 </div>
             </div>
             <div>
-                <?php if ($is_connected): ?>
-                    <span class="mdf-status-pill connected">
-                        <span class="mdf-status-dot"></span>
-                        CONNECTED & GUARDED
-                    </span>
+                <?php if ($is_connected): 
+                    $trial_days = intval(get_option('waf_fw_trial_days_remaining', 14));
+                    $sub_status = get_option('waf_fw_subscription_status', 'trial_active');
+                ?>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                        <span class="mdf-status-pill connected">
+                            <span class="mdf-status-dot"></span>
+                            CONNECTED &amp; GUARDED
+                        </span>
+                        <?php if ($sub_status === 'trial_active'): ?>
+                            <span style="font-size: 11.5px; font-weight: 700; color: #0284C7; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+                                <span>⚡</span>
+                                <span>Enterprise Trial: <?php echo esc_html($trial_days); ?> Days Left</span>
+                            </span>
+                        <?php elseif ($sub_status === 'pro' || $sub_status === 'active'): ?>
+                            <span style="font-size: 11.5px; font-weight: 700; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 4px 10px; border-radius: 999px;">
+                                ★ Enterprise Pro Active
+                            </span>
+                        <?php endif; ?>
+                    </div>
                 <?php else: ?>
                     <span class="mdf-status-pill disconnected">
                         <span class="mdf-status-dot"></span>
@@ -448,6 +530,23 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
                 </div>
                 <p style="margin: 8px 0 0; font-size: 12px; color: #64748B; line-height: 1.4;">
                     Paste your API Key generated from <a href="https://mdefender-pro.crafix.tech/user/settings" target="_blank" rel="noopener noreferrer" style="color: #059669; font-weight: 600; text-decoration: none;">mdefender-pro.crafix.tech</a>. Connecting will activate real-time AI threat telemetry and sync defense rules automatically.
+                </p>
+            </div>
+
+            <!-- Remote 1-Click SSO Permission Switch -->
+            <div style="margin: 20px 0 24px; padding: 18px 20px; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <label for="waf_allow_cloud_sso" style="font-size: 13.5px; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <span style="color: #0284C7; font-size: 16px;">⚡</span>
+                        <span>MDefender Cloud 1-Click Remote Admin SSO</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: #1E293B;">
+                        <input type="checkbox" id="waf_allow_cloud_sso" name="waf_allow_cloud_sso" value="1" <?php checked(get_option('waf_allow_cloud_sso', 'yes'), 'yes'); ?> style="width: 17px; height: 17px; accent-color: #059669;" />
+                        <span>Enabled</span>
+                    </label>
+                </div>
+                <p style="margin: 0; font-size: 12px; color: #64748B; line-height: 1.5;">
+                    Allows verified account owners to jump directly into this WordPress Admin dashboard from the central MDefender Cloud Console using 60-second single-use cryptographic tokens. No passwords required.
                 </p>
             </div>
 

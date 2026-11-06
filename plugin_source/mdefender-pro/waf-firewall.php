@@ -3136,6 +3136,151 @@ add_action('template_redirect', function() {
     }
 }, 1);
 
+/**
+ * Enterprise 1-Click Cryptographic WP-Admin SSO Handler
+ * Authenticates account owner directly into /wp-admin via single-use HMAC token from MDefender Cloud.
+ */
+function waf_fw_handle_cloud_sso_login() {
+    if (empty($_GET['mdefender_sso']) || strval($_GET['mdefender_sso']) !== '1') {
+        return;
+    }
+
+    // 1. Check if Site Owner allowed remote cloud SSO
+    if (get_option('waf_allow_cloud_sso', 'yes') !== 'yes') {
+        wp_die(
+            esc_html__('Remote 1-Click SSO access is disabled by the administrator on this website. Please log in directly with your WordPress credentials.', 'mdefender-pro'),
+            esc_html__('MDefender SSO Forbidden', 'mdefender-pro'),
+            ['response' => 403]
+        );
+    }
+
+    $token = sanitize_text_field($_GET['token'] ?? '');
+    $ts    = intval($_GET['ts'] ?? 0);
+    $nonce = preg_replace('/[^a-zA-Z0-9]/', '', strval($_GET['nonce'] ?? ''));
+    $email = sanitize_email(urldecode(strval($_GET['email'] ?? '')));
+    $sid   = sanitize_text_field($_GET['sid'] ?? '');
+
+    if (empty($token) || empty($ts) || empty($nonce)) {
+        wp_die(
+            esc_html__('Invalid MDefender SSO request: missing cryptographic signature parameters.', 'mdefender-pro'),
+            esc_html__('SSO Authentication Failed', 'mdefender-pro'),
+            ['response' => 400]
+        );
+    }
+
+    // 2. Strict 90-second timestamp drift window
+    if (abs(time() - $ts) > 90) {
+        wp_die(
+            esc_html__('This MDefender 1-Click SSO link has expired (tokens are valid for 90 seconds only for security). Please launch a fresh link from your MDefender Cloud Dashboard.', 'mdefender-pro'),
+            esc_html__('SSO Token Expired', 'mdefender-pro'),
+            ['response' => 403]
+        );
+    }
+
+    // 3. Replay prevention via Transient (Single-use Token)
+    $nonce_key = 'waf_sso_used_' . substr($nonce, 0, 32);
+    if (get_transient($nonce_key)) {
+        wp_die(
+            esc_html__('This MDefender SSO login token has already been used. Each 1-Click login link is strictly single-use.', 'mdefender-pro'),
+            esc_html__('SSO Token Replay Denied', 'mdefender-pro'),
+            ['response' => 403]
+        );
+    }
+    set_transient($nonce_key, 1, 180); // Lock for 3 minutes
+
+    // 4. Cryptographic HMAC Verification
+    $domain = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
+    $clean_domain = preg_replace('/^www\./i', '', $domain);
+
+    $candidate_secrets = array_filter([
+        get_option('waf_fw_site_token'),
+        get_option('waf_fw_api_key'),
+        get_option('waf_fw_ml_api_key')
+    ]);
+
+    $verified = false;
+    foreach ($candidate_secrets as $secret) {
+        if (empty($secret) || strlen($secret) < 16) continue;
+
+        // Payload matching: f"{website_id}:{clean_domain}:{user_email}:{ts}:{nonce}"
+        $payload = "{$sid}:{$clean_domain}:{$email}:{$ts}:{$nonce}";
+        $expected_sig = hash_hmac('sha256', $payload, $secret);
+        if (hash_equals($expected_sig, $token)) {
+            $verified = true;
+            break;
+        }
+
+        // Also check with raw domain
+        $payload_raw = "{$sid}:{$domain}:{$email}:{$ts}:{$nonce}";
+        $expected_sig_raw = hash_hmac('sha256', $payload_raw, $secret);
+        if (hash_equals($expected_sig_raw, $token)) {
+            $verified = true;
+            break;
+        }
+    }
+
+    if (!$verified) {
+        wp_die(
+            esc_html__('Cryptographic signature verification failed. Invalid MDefender Cloud SSO credentials.', 'mdefender-pro'),
+            esc_html__('SSO Signature Verification Failed', 'mdefender-pro'),
+            ['response' => 403]
+        );
+    }
+
+    // 5. Locate an active Administrator User
+    $admin_user = null;
+    if (!empty($email)) {
+        $found = get_user_by('email', $email);
+        if ($found && in_array('administrator', (array)$found->roles, true)) {
+            $admin_user = $found;
+        }
+    }
+
+    if (!$admin_user) {
+        $admins = get_users(['role' => 'administrator', 'number' => 1, 'orderby' => 'ID', 'order' => 'ASC']);
+        if (!empty($admins)) {
+            $admin_user = $admins[0];
+        }
+    }
+
+    if (!$admin_user) {
+        wp_die(
+            esc_html__('No active WordPress administrator account found on this site to initiate remote session.', 'mdefender-pro'),
+            esc_html__('Administrator Not Found', 'mdefender-pro'),
+            ['response' => 404]
+        );
+    }
+
+    // 6. Establish Authenticated Session & Redirect to Admin
+    if (!defined('MDEFENDER_ALLOWED_LOGIN')) {
+        define('MDEFENDER_ALLOWED_LOGIN', true);
+    }
+
+    wp_clear_auth_cookie();
+    wp_set_current_user($admin_user->ID);
+    wp_set_auth_cookie($admin_user->ID, true, is_ssl());
+    do_action('wp_login', $admin_user->user_login, $admin_user);
+
+    // Log the successful SSO entry in MDefender audit table
+    if (class_exists('WAF_FW_DB')) {
+        try {
+            global $wpdb;
+            $events_tbl = $wpdb->prefix . (defined('WAF_FW_TABLE_SECURITY_EVENTS') ? WAF_FW_TABLE_SECURITY_EVENTS : 'waf_security_events');
+            $wpdb->insert($events_tbl, [
+                'event_type' => 'cloud_sso_login',
+                'description' => sprintf('1-Click SSO Admin login via MDefender Cloud for administrator %s', $admin_user->user_login),
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                'severity' => 'info',
+                'created_at' => current_time('mysql')
+            ]);
+        } catch (Exception $e) {}
+    }
+
+    wp_safe_redirect(admin_url());
+    exit;
+}
+add_action('init', 'waf_fw_handle_cloud_sso_login', 1);
+
 add_action('init', 'waf_fw_handle_cloud_sync_webhook', 1);
 
 add_action('rest_api_init', function() {
