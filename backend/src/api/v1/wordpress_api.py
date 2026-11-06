@@ -2344,11 +2344,13 @@ async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current
     clean_target = site_url.rstrip("/")
     sso_url = f"{clean_target}/?mdefender_sso=1&token={sig}&ts={ts}&nonce={nonce}&email={urllib.parse.quote(user_email)}&sid={website_id}"
 
-    return success({
+    res = success({
         "sso_url": sso_url,
         "expires_in": 60,
         "domain": clean_domain
     })
+    res["sso_url"] = sso_url
+    return res
 
 
 

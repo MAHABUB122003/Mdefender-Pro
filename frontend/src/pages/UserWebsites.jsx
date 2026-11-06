@@ -648,12 +648,13 @@ export default function UserWebsites() {
     setFeedbackMsg(null)
     try {
       const res = await api.getWordpressSsoToken(siteId)
-      if (res && res.sso_url) {
-        window.open(res.sso_url, '_blank', 'noopener,noreferrer')
+      const ssoUrl = res?.data?.sso_url || res?.sso_url || res?.data?.url || res?.url
+      if (ssoUrl) {
+        window.open(ssoUrl, '_blank', 'noopener,noreferrer')
       } else {
         setFeedbackMsg({
           type: 'error',
-          text: res?.message || 'Failed to generate 1-Click SSO link. Verify plugin is connected.'
+          text: res?.message || res?.detail || 'Failed to generate 1-Click SSO link. Verify plugin is connected.'
         })
       }
     } catch (err) {

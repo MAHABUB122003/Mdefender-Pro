@@ -28,9 +28,15 @@ def get_owned_website(user, website_id):
     except Exception:
         pass
 
-    # 2. Try by string _id
+    # 2. Try by string _id or id
     if not website:
-        website = db.websites.find_one({"_id": str(website_id)})
+        website = db.websites.find_one({
+            "$or": [
+                {"_id": str(website_id)},
+                {"id": str(website_id)},
+                {"website_id": str(website_id)},
+            ]
+        })
 
     # 3. Try by domain, url, or name (strip http:// or https:// if provided)
     if not website:
