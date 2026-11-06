@@ -88,33 +88,8 @@ def verify_api_key(db, api_key, domain=None):
 
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
     
-    # 1. Scoped API key (from db.api_keys)
-    record = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
-    if record:
-        website = db.websites.find_one({"_id": record.get("website_id")})
-        if website:
-            if domain and not _domain_matches_site(website, domain):
-                return None
-            user_id_str = str(record.get("user_id") or website.get("user_id", ""))
-            return {
-                "user_id": user_id_str,
-                "website_id": record.get("website_id"),
-                "website": website,
-            }
-
-    # 1b. Direct Website API key (from db.websites)
-    direct_site = db.websites.find_one({"api_key": api_key})
-    if direct_site:
-        if domain and not _domain_matches_site(direct_site, domain):
-            return None
-        user_id_str = str(direct_site.get("user_id", ""))
-        return {
-            "user_id": user_id_str,
-            "website_id": str(direct_site["_id"]),
-            "website": direct_site,
-        }
-
-    # 2. Master Account API key (from db.users)
+    # 1. PRIORITY 1: Master Account API key (from db.users)
+    # Allows a user to connect unlimited WordPress sites with a single account key!
     user = db.users.find_one({"api_key": api_key})
     if user:
         from bson import ObjectId
@@ -142,11 +117,12 @@ def verify_api_key(db, api_key, domain=None):
         if not website:
             try:
                 import uuid
-                site_id = str(uuid.uuid4())
+                site_id = f"site_{uuid.uuid4().hex[:12]}"
                 now = datetime.now()
                 site_name = domain or "WordPress Site"
                 website = {
                     "_id": site_id,
+                    "id": site_id,
                     "user_id": user_id_str,
                     "name": site_name,
                     "url": f"https://{expected}" if (expected and expected not in ("localhost", "127.0.0.1")) else "http://localhost",
@@ -175,29 +151,41 @@ def verify_api_key(db, api_key, domain=None):
                         website = existing
                         website["user_id"] = user_id_str
                         site_id = str(existing.get("_id"))
-                
-                db.api_keys.update_one(
-                    {"key_hash": key_hash},
-                    {"$set": {
-                        "website_id": site_id,
-                        "user_id": user_id_str,
-                        "key_hash": key_hash,
-                        "label": "wordpress_auto",
-                        "status": "active",
-                        "last_used": now,
-                        "updated_at": now,
-                    }},
-                    upsert=True
-                )
             except Exception:
                 website = db.websites.find_one({"user_id": user_id_str})
                 if not website:
                     return None
         return {
             "user_id": user_id_str,
-            "website_id": website["_id"],
+            "website_id": str(website.get("_id") or website.get("id")),
             "website": website,
         }
+
+    # 2. PRIORITY 2: Direct Website API key (from db.websites)
+    direct_site = db.websites.find_one({"api_key": api_key})
+    if direct_site:
+        if domain and not _domain_matches_site(direct_site, domain):
+            return None
+        user_id_str = str(direct_site.get("user_id", ""))
+        return {
+            "user_id": user_id_str,
+            "website_id": str(direct_site["_id"]),
+            "website": direct_site,
+        }
+
+    # 3. PRIORITY 3: Scoped API key (from db.api_keys)
+    record = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
+    if record:
+        website = db.websites.find_one({"_id": record.get("website_id")})
+        if website:
+            if domain and not _domain_matches_site(website, domain):
+                return None
+            user_id_str = str(record.get("user_id") or website.get("user_id", ""))
+            return {
+                "user_id": user_id_str,
+                "website_id": record.get("website_id"),
+                "website": website,
+            }
 
     return None
 
