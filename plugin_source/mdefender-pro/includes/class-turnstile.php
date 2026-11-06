@@ -291,7 +291,17 @@ class WAF_FW_Turnstile {
 
         $payload = "{$domain}|{$ip}|{$exp}|{$entropy}";
         $expected_sig = hash_hmac('sha256', $payload, $this->get_turnstile_secret());
-        return hash_equals($expected_sig, $sig);
+        if (!hash_equals($expected_sig, $sig)) {
+            return false;
+        }
+
+        // Anti-Token Replay Attack: Cryptographically bind clearance cookie to client IP
+        $client_ip = $this->get_client_ip();
+        if ($ip !== $client_ip && $ip !== '127.0.0.1' && $client_ip !== '127.0.0.1') {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -374,10 +384,12 @@ class WAF_FW_Turnstile {
         if (defined('DOING_CRON') && DOING_CRON) return $commentdata;
         if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) return $commentdata;
 
-        if (is_user_logged_in() && current_user_can('moderate_comments')) {
+        // Logged-in users are trusted humans - never block comments
+        if (is_user_logged_in()) {
             return $commentdata;
         }
 
+        // Cleared visitors (who passed site gate or previously verified) bypass smoothly
         if ($this->is_visitor_cleared()) {
             return $commentdata;
         }
@@ -508,12 +520,16 @@ class WAF_FW_Turnstile {
 
     public function render_comment_widget() {
         if ($this->comment_widget_rendered) return;
+        // Never render intrusive captcha widget if visitor is already cleared or logged in
+        if (is_user_logged_in() || $this->is_visitor_cleared()) return;
         $this->comment_widget_rendered = true;
         $this->render_widget('comment');
     }
 
     public function filter_comment_submit_field($submit_field, $args = []) {
         if ($this->comment_widget_rendered) return $submit_field;
+        // Keep comment section 100% clean and native for cleared visitors and logged-in users
+        if (is_user_logged_in() || $this->is_visitor_cleared()) return $submit_field;
         $this->comment_widget_rendered = true;
         ob_start();
         $this->render_widget('comment');
@@ -959,6 +975,21 @@ class WAF_FW_Turnstile {
                     if (/Chrome/.test(navigator.userAgent) && !window.chrome) { suspicious = true; reasons.push('fake_chrome'); }
                     if (!navigator.languages || navigator.languages.length === 0) { suspicious = true; reasons.push('no_languages'); }
                     if (!window.crypto || !window.crypto.subtle) { suspicious = true; reasons.push('no_crypto'); }
+                    // Deep WebGL GPU audit to detect software emulated headless scrapers
+                    try {
+                        var cvs = document.createElement('canvas');
+                        var gl = cvs.getContext('webgl') || cvs.getContext('experimental-webgl');
+                        if (gl) {
+                            var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+                            if (dbg) {
+                                var rend = (gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+                                if (/swiftshader|llvmpipe|mesa offscreen|virtualbox/i.test(rend)) {
+                                    suspicious = true;
+                                    reasons.push('emulated_gpu');
+                                }
+                            }
+                        }
+                    } catch(ge) {}
                 } catch(e) {
                     suspicious = true;
                     reasons.push('eval_error');
@@ -1102,7 +1133,8 @@ class WAF_FW_Turnstile {
 
                     // Step 2: Interactive Challenge (When user clicks or if suspicious)
                     var box = container.querySelector('.mdef-ts-card');
-                    box.addEventListener('click', function() {
+                    box.addEventListener('click', function(e) {
+                        if (e && e.isTrusted === false) return; // Block untrusted synthetic script events
                         if (container.dataset.solved === '1') return;
                         runChallengeVerification(container, false);
                     });
@@ -1301,6 +1333,10 @@ class WAF_FW_Turnstile {
 
             <script>
             window.addEventListener('mdefender:verified', function(e) {
+                var title = document.querySelector('.challenge-title');
+                var desc = document.querySelector('.challenge-desc');
+                if (title) title.textContent = 'Connection Verified';
+                if (desc) desc.innerHTML = 'Your connection is secure. Redirecting to <strong><?php echo esc_js($domain); ?></strong> in a moment...';
                 setTimeout(function() {
                     window.location.reload();
                 }, 400);
