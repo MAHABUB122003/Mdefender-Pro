@@ -8,6 +8,11 @@ import traceback
 from datetime import datetime, timedelta
 from typing import Optional
 
+# Fix passlib 1.7.4 compatibility with bcrypt >= 4.1.0
+import bcrypt
+if not hasattr(bcrypt, '__about__'):
+    bcrypt.__about__ = type('about', (), {'__version__': getattr(bcrypt, '__version__', '4.0.0')})
+
 from bson import ObjectId
 from fastapi import FastAPI, Request, Response, HTTPException, Depends, BackgroundTasks
 from fastapi.encoders import jsonable_encoder
@@ -1097,17 +1102,17 @@ async def admin_auto_block_stats(user: str = Depends(verify_admin_token)):
 
 @app.get("/api/user/profile")
 async def user_get_profile(user: dict = Depends(verify_user_token_compat)):
-    return user_api.get_profile(user)
+    return await asyncio.to_thread(user_api.get_profile, user)
 
 @app.put("/api/user/profile")
 async def user_update_profile(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
-    return user_api.update_profile(user, data)
+    return await asyncio.to_thread(user_api.update_profile, user, data)
 
 @app.post("/api/user/change_password")
 async def user_change_password(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
-    return user_api.change_password(user, data)
+    return await asyncio.to_thread(user_api.change_password, user, data)
 
 @app.post("/api/user/regenerate_key")
 async def user_regenerate_key(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -1115,7 +1120,7 @@ async def user_regenerate_key(request: Request, user: dict = Depends(verify_user
         data = await request.json()
     except Exception:
         data = None
-    return user_api.regenerate_api_key(user, data)
+    return await asyncio.to_thread(user_api.regenerate_api_key, user, data)
 
 @app.post("/api/user/websites")
 async def user_add_website(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -1124,7 +1129,7 @@ async def user_add_website(request: Request, user: dict = Depends(verify_user_to
     except Exception:
         data = {}
     try:
-        res = user_api.add_website(user, data)
+        res = await asyncio.to_thread(user_api.add_website, user, data)
         status_code = 200 if res.get('status') != 'error' else 400
         return JSONResponse(status_code=status_code, content=res)
     except Exception as e:
@@ -1136,7 +1141,7 @@ async def user_remove_website(request: Request, user: dict = Depends(verify_user
     try:
         website_id = request.query_params.get('id')
         domain = request.query_params.get('domain')
-        res = user_api.remove_website(user, website_id=website_id, domain=domain)
+        res = await asyncio.to_thread(user_api.remove_website, user, website_id=website_id, domain=domain)
         status_code = 200 if res.get('status') != 'error' else 400
         return JSONResponse(status_code=status_code, content=res)
     except Exception as e:
@@ -1177,7 +1182,7 @@ async def user_dashboard(request: Request, user: dict = Depends(verify_user_toke
     try:
         website_id = request.query_params.get('website_id')
         refresh = request.query_params.get('refresh') in ('1', 'true')
-        res = user_api.get_dashboard_stats(user, website_id=website_id, force_refresh=refresh)
+        res = await asyncio.to_thread(user_api.get_dashboard_stats, user, website_id=website_id, force_refresh=refresh)
         return JSONResponse(status_code=200, content=jsonable_encoder(res))
     except Exception as e:
         print(f"[Error] user_dashboard exception: {e}")
@@ -1188,11 +1193,11 @@ async def upgrade_user_plan(request: Request, user: dict = Depends(verify_user_t
     data = await request.json()
     plan = data.get('plan', 'premium')
     days = data.get('days', 30)
-    return user_api.upgrade_plan(user, plan=plan, days=days)
+    return await asyncio.to_thread(user_api.upgrade_plan, user, plan=plan, days=days)
 
 @app.post("/api/user/downgrade-plan")
 async def downgrade_user_plan(user: dict = Depends(verify_user_token_compat)):
-    return user_api.downgrade_plan(user)
+    return await asyncio.to_thread(user_api.downgrade_plan, user)
 
 @app.get("/api/payment/config")
 async def get_payment_configuration():
@@ -1288,7 +1293,7 @@ async def get_user_payment_history(user: dict = Depends(verify_user_token_compat
 @app.get("/api/user/logs")
 async def user_get_logs(request: Request, user: dict = Depends(verify_user_token_compat)):
     params = dict(request.query_params)
-    return user_api.get_user_logs(user, params)
+    return await asyncio.to_thread(user_api.get_user_logs, user, params)
 
 @app.post("/api/user/clean-logs")
 async def user_clean_logs(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -1296,12 +1301,12 @@ async def user_clean_logs(request: Request, user: dict = Depends(verify_user_tok
         data = await request.json()
     except Exception:
         data = {}
-    return user_api.clean_user_logs(user, data)
+    return await asyncio.to_thread(user_api.clean_user_logs, user, data)
 
 @app.get("/api/user/log-recycle-settings")
 async def user_get_log_recycle_settings(request: Request, user: dict = Depends(verify_user_token_compat)):
     website_id = request.query_params.get('website_id')
-    return user_api.get_log_recycle_settings(user, website_id=website_id)
+    return await asyncio.to_thread(user_api.get_log_recycle_settings, user, website_id=website_id)
 
 @app.post("/api/user/log-recycle-settings")
 async def user_update_log_recycle_settings(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -1309,7 +1314,7 @@ async def user_update_log_recycle_settings(request: Request, user: dict = Depend
         data = await request.json()
     except Exception:
         data = {}
-    return user_api.update_log_recycle_settings(user, data)
+    return await asyncio.to_thread(user_api.update_log_recycle_settings, user, data)
 
 @app.post("/api/user/reset-stats")
 async def user_reset_stats(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -1317,37 +1322,37 @@ async def user_reset_stats(request: Request, user: dict = Depends(verify_user_to
         data = await request.json()
     except Exception:
         data = {}
-    return user_api.reset_user_stats(user, data)
+    return await asyncio.to_thread(user_api.reset_user_stats, user, data)
 
 @app.get("/api/user/rules")
 async def user_get_rules(user: dict = Depends(verify_user_token_compat)):
-    return user_api.get_user_rules(user)
+    return await asyncio.to_thread(user_api.get_user_rules, user)
 
 @app.post("/api/user/rules")
 async def user_create_rule(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
-    return user_api.create_user_rule(user, data)
+    return await asyncio.to_thread(user_api.create_user_rule, user, data)
 
 @app.put("/api/user/rules")
 async def user_update_rule(request: Request, user: dict = Depends(verify_user_token_compat)):
     rule_id = request.query_params.get('id')
     data = await request.json()
-    return user_api.update_user_rule(user, rule_id, data)
+    return await asyncio.to_thread(user_api.update_user_rule, user, rule_id, data)
 
 @app.delete("/api/user/rules")
 async def user_delete_rule(request: Request, user: dict = Depends(verify_user_token_compat)):
     rule_id = request.query_params.get('id')
-    return user_api.delete_user_rule(user, rule_id)
+    return await asyncio.to_thread(user_api.delete_user_rule, user, rule_id)
 
 @app.get("/api/user/ddos-status")
 async def user_ddos_status(user: dict = Depends(verify_user_token_compat)):
-    return user_api.get_ddos_status(user)
+    return await asyncio.to_thread(user_api.get_ddos_status, user)
 
 @app.post("/api/user/ddos-toggle")
 async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     enabled = data.get('enabled', True)
-    return user_api.toggle_ddos_protection(user, enabled)
+    return await asyncio.to_thread(user_api.toggle_ddos_protection, user, enabled)
 
 def parse_ban_duration(duration_input):
     s = str(duration_input or 'permanent').strip().lower()
@@ -2500,7 +2505,7 @@ async def user_security_audit(request: Request, user: dict = Depends(verify_user
 
 @app.get("/api/admin/users")
 async def admin_get_users(user: str = Depends(verify_admin_token)):
-    return user_api.get_all_users()
+    return await asyncio.to_thread(user_api.get_all_users)
 
 @app.post("/api/admin/users")
 async def admin_create_user(request: Request, user: str = Depends(verify_admin_token)):
@@ -2520,16 +2525,16 @@ async def admin_gift_plan_legacy(request: Request, user: str = Depends(verify_ad
 async def admin_update_user(request: Request, user: str = Depends(verify_admin_token)):
     user_id = request.query_params.get('id')
     data = await request.json()
-    return user_api.admin_update_user(user_id, data)
+    return await asyncio.to_thread(user_api.admin_update_user, user_id, data)
 
 @app.delete("/api/admin/users")
 async def admin_delete_user(request: Request, user: str = Depends(verify_admin_token)):
     user_id = request.query_params.get('id')
-    return user_api.admin_delete_user(user_id)
+    return await asyncio.to_thread(user_api.admin_delete_user, user_id)
 
 @app.get("/api/admin/user_stats")
 async def admin_user_stats(user: str = Depends(verify_admin_token)):
-    return user_api.admin_get_user_stats()
+    return await asyncio.to_thread(user_api.admin_get_user_stats)
 
 @app.get("/api/notices")
 async def get_notices(user: dict = Depends(verify_user_token_compat)):

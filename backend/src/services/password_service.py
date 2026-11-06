@@ -10,6 +10,10 @@ import re
 import logging
 from typing import Dict, List
 
+import bcrypt
+if not hasattr(bcrypt, '__about__'):
+    bcrypt.__about__ = type('about', (), {'__version__': getattr(bcrypt, '__version__', '4.0.0')})
+
 from passlib.context import CryptContext
 
 logger = logging.getLogger('mdefender.auth')
