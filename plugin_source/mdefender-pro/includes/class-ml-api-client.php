@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender-Pro cloud API client (v1 / SaaS backend).
  *

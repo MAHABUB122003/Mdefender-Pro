@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender-Pro Enterprise Backup & Restore Engine
  *

@@ -59,8 +59,9 @@ export default function BulkCore() {
     setLoading(true)
     try {
       const res = await api.getWordpressCoreStatus()
-      if (res && res.data) {
-        setCoreData(res.data)
+      const actualData = res?.data || res
+      if (actualData && (actualData.sites || actualData.official_info)) {
+        setCoreData(actualData)
       }
     } catch (err) {
       console.warn('[BulkCore] Failed to load core status:', err)

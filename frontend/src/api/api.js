@@ -452,6 +452,24 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ action, ...payload })
     }),
+  getPostHackStatus: (websiteId) =>
+    apiCall(`/api/v1/websites/${websiteId}/post-hack/status`),
+  executePostHackAction: (websiteId, action, payload = {}) =>
+    apiCall(`/api/v1/websites/${websiteId}/post-hack/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...payload })
+    }),
+
+  // Breach Intelligence & Have I Been Pwned (HIBP)
+  checkPwnedPassword: (password, hashParams = {}) =>
+    apiCall('/api/v1/websites/breach-intelligence/check-password', {
+      method: 'POST',
+      body: JSON.stringify({ password, ...hashParams })
+    }),
+  getGlobalBreaches: (query = '', limit = 30) =>
+    apiCall(`/api/v1/websites/breach-intelligence/global-breaches?query=${encodeURIComponent(query)}&limit=${limit}`),
+  getFleetAdminBreachStatus: (websiteId) =>
+    apiCall(`/api/v1/websites/breach-intelligence/fleet-admins/${websiteId}`),
 
   // Cloudflare-Style Domain & DNS Zone Management APIs
   getDomainsOverview: () => apiCall('/api/v1/domains/overview'),

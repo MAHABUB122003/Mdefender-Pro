@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender Pro - Enterprise Under Attack Mode & Proof-of-Work (PoW) Shield
  *

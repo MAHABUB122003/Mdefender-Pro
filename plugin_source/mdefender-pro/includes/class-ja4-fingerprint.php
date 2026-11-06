@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender-Pro JA4 / JA4H Client Fingerprinting & Bot Armor Engine
  *

@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender Pro - WordPress Official Core Integrity & Checksum Verifier
  * Inspired by Wordfence & Sucuri Core Security Architecture.

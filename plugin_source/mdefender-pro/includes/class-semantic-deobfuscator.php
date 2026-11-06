@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender-Pro Semantic Payload Deobfuscator & Lexical Tokenizer
  *

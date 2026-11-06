@@ -480,10 +480,10 @@ class WAF_FW_Logger {
         }
 
         global $wpdb;
-        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 10000);
+        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 2000);
         $days = (int) get_option('waf_fw_recycle_days', 7);
-        if ($max_logs <= 0) $max_logs = 10000;
-        if ($days <= 0) $days = 7;
+        if ($max_logs <= 0 || $max_logs > 2000) $max_logs = 2000;
+        if ($days <= 0 || $days > 7) $days = 7;
 
         $requests_table = $this->db->get_requests_table();
         $attacks_table = $this->db->get_attacks_table();

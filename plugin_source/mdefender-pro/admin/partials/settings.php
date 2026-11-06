@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 $waf_setup_pending = get_option('waf_fw_onboarding_pending', 'no') === 'yes';
 $waf_dash_url = (string) get_option('waf_fw_dashboard_url', '');
 if (empty($waf_dash_url) || strpos($waf_dash_url, 'onrender.com') !== false || strpos($waf_dash_url, 'localhost:5173') !== false) {

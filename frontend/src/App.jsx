@@ -47,6 +47,8 @@ const BulkBackup = lazy(() => import('./pages/bulk/BulkBackup'))
 const BulkScanner = lazy(() => import('./pages/bulk/BulkScanner'))
 const BulkHardening = lazy(() => import('./pages/bulk/BulkHardening'))
 const BulkLoginGateway = lazy(() => import('./pages/bulk/BulkLoginGateway'))
+const BulkPostHack = lazy(() => import('./pages/bulk/BulkPostHack'))
+const BulkBreachIntelligence = lazy(() => import('./pages/bulk/BulkBreachIntelligence'))
 const BulkSafeUpdates = lazy(() => import('./pages/bulk/BulkSafeUpdates'))
 const BulkSiteHealth = lazy(() => import('./pages/bulk/BulkSiteHealth'))
 const BulkActivity = lazy(() => import('./pages/bulk/BulkActivity'))
@@ -229,8 +231,15 @@ function App() {
           <Route path="security/login-gateway" element={<BulkLoginGateway />} />
           <Route path="security/rate-limits" element={<UserTools activeMode="rate_limits" isBulk={true} />} />
           <Route path="security/2fa" element={<UserTools activeMode="twofactor" isBulk={true} />} />
+          <Route path="security/post-hack" element={<BulkPostHack />} />
+          <Route path="security/incident-response" element={<BulkPostHack />} />
+          <Route path="bulk/posthack" element={<BulkPostHack />} />
           <Route path="security/threat-intelligence" element={<UserTools activeMode="whois" isBulk={true} />} />
           <Route path="security/port-scanner" element={<UserTools activeMode="audit" isBulk={true} />} />
+          <Route path="security/breach-intelligence" element={<BulkBreachIntelligence />} />
+          <Route path="security/hibp" element={<BulkBreachIntelligence />} />
+          <Route path="security/pwned" element={<BulkBreachIntelligence />} />
+          <Route path="bulk/breach-intelligence" element={<BulkBreachIntelligence />} />
           <Route path="bulk/plugins" element={<BulkPlugins />} />
           <Route path="bulk/themes" element={<BulkThemes />} />
           <Route path="bulk/core" element={<BulkCore />} />

@@ -109,8 +109,8 @@ export default function UserSidebar({ isOpen, onClose }) {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
       wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
-      securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools'),
-      securityCenter: path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')
+      securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/security/post-hack') || path.includes('/security/incident-response') || path.includes('/bulk/posthack') || path.includes('/bulk/tools'),
+      securityCenter: path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner') || path.includes('/security/breach-intelligence') || path.includes('/security/hibp') || path.includes('/security/pwned') || path.includes('/bulk/breach-intelligence')
     }
   })
 
@@ -124,9 +124,9 @@ export default function UserSidebar({ isOpen, onClose }) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
     } else if (path.includes('/blacklist') || path.includes('/access/')) {
       setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
-    } else if (path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/bulk/tools')) {
+    } else if (path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/security/post-hack') || path.includes('/security/incident-response') || path.includes('/bulk/posthack') || path.includes('/bulk/tools')) {
       setOpenDropdowns(prev => prev.securityProtection ? prev : { ...prev, securityProtection: true })
-    } else if (path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner')) {
+    } else if (path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner') || path.includes('/security/breach-intelligence') || path.includes('/security/hibp') || path.includes('/security/pwned') || path.includes('/bulk/breach-intelligence')) {
       setOpenDropdowns(prev => prev.securityCenter ? prev : { ...prev, securityCenter: true })
     }
   }, [location.pathname, location.search])
@@ -207,11 +207,17 @@ export default function UserSidebar({ isOpen, onClose }) {
     if (toPath === '/user/security/2fa') {
       return currentPath === '/user/security/2fa'
     }
+    if (toPath === '/user/security/post-hack') {
+      return currentPath === '/user/security/post-hack' || currentPath === '/user/security/incident-response' || currentPath === '/user/bulk/posthack'
+    }
     if (toPath === '/user/security/threat-intelligence') {
       return currentPath === '/user/security/threat-intelligence'
     }
     if (toPath === '/user/security/port-scanner') {
       return currentPath === '/user/security/port-scanner'
+    }
+    if (toPath === '/user/security/breach-intelligence') {
+      return currentPath === '/user/security/breach-intelligence' || currentPath === '/user/security/hibp' || currentPath === '/user/security/pwned' || currentPath === '/user/bulk/breach-intelligence'
     }
     return currentPath === toPath
   }
@@ -220,8 +226,8 @@ export default function UserSidebar({ isOpen, onClose }) {
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
   const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
-  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/login-gateway') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/bulk/tools')
-  const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath === '/threat-intelligence'
+  const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/login-gateway') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/security/post-hack') || currentPath.includes('/security/incident-response') || currentPath.includes('/bulk/posthack') || currentPath.includes('/bulk/tools')
+  const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath.includes('/security/breach-intelligence') || currentPath.includes('/security/hibp') || currentPath.includes('/security/pwned') || currentPath.includes('/bulk/breach-intelligence') || currentPath === '/threat-intelligence'
 
   return (
     <>
@@ -461,6 +467,13 @@ export default function UserSidebar({ isOpen, onClose }) {
             >
               <span style={{ pointerEvents: 'none' }}>Two-Factor Auth (2FA)</span>
             </Link>
+            <Link
+              to="/user/security/post-hack"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/post-hack') ? 'active' : ''}`}
+            >
+              <span style={{ pointerEvents: 'none' }}>Post-Hack Recovery</span>
+            </Link>
           </DropdownItem>
 
           {/* 8. Security Center > (Dropdown) */}
@@ -485,6 +498,13 @@ export default function UserSidebar({ isOpen, onClose }) {
               className={`user-subnav-link ${isSubLinkActive('/user/security/port-scanner') ? 'active' : ''}`}
             >
               <span style={{ pointerEvents: 'none' }}>Security &amp; Port Scanner</span>
+            </Link>
+            <Link
+              to="/user/security/breach-intelligence"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/security/breach-intelligence') ? 'active' : ''}`}
+            >
+              <span style={{ pointerEvents: 'none' }}>Breach Intelligence &amp; HIBP</span>
             </Link>
           </DropdownItem>
 

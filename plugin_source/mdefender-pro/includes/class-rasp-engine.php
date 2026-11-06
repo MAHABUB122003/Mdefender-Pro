@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender-Pro Enterprise RASP Engine (Runtime Application Self-Protection)
  *

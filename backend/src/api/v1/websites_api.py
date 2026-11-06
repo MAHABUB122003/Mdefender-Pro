@@ -6137,6 +6137,18 @@ async def repair_website_core_file(website_id: str, body: dict = None, user=Depe
     import requests
     api_key = website.get('api_key') or ''
     site_token = website.get('site_token') or ''
+    result_payload = {'status': 'success', 'message': f'Core file {file_path} restored to official WordPress release.'}
+
+    # 1. Primary dispatch via robust posthack cloud sync channel
+    try:
+        dispatch_res = _dispatch_wp_posthack(website, "core_integrity_restore", extra_params={"file_path": file_path, "file": file_path}, timeout=25.0)
+        if dispatch_res.get("success") and dispatch_res.get("data", {}).get("success"):
+            result_payload = dispatch_res["data"]
+            return success(result_payload)
+    except Exception:
+        pass
+
+    # 2. Candidate fallback endpoints
     headers = {'Content-Type': 'application/json', 'User-Agent': 'MDefender-Pro-CloudAction/1.0'}
     if api_key:
         headers['Authorization'] = f'Bearer {api_key}'
@@ -6150,7 +6162,6 @@ async def repair_website_core_file(website_id: str, body: dict = None, user=Depe
         f"{target_url}/index.php?rest_route=/waf-fw/v1/remote-scan-repair-core&waf_cloud_sync=1&api_key={api_key}&site_token={site_token}",
         f"{target_url}/wp-json/waf-fw/v1/remote-scan-repair-core?waf_cloud_sync=1&api_key={api_key}&site_token={site_token}"
     ]
-    result_payload = {'status': 'success', 'message': f'Core file {file_path} restored to official WordPress release.'}
     for ep in candidates:
         try:
             r = requests.post(ep, json={'file': file_path, 'action': 'repair_core_file', 'api_key': api_key, 'site_token': site_token}, headers=headers, timeout=10.0, verify=False)
@@ -10039,6 +10050,14 @@ class RemoteActionRequest(BaseModel):
         extra = "allow" 
 
 
+class PostHackActionRequest(BaseModel):
+    action: str
+    scope: str | None = "admins"
+    enable: bool | None = None
+    class Config:
+        extra = "allow" 
+
+
 
 
 
@@ -10379,6 +10398,375 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
         "action": body.action,
         "results": results,
         "websites": fresh_websites,
+    })
+
+
+# Persistent Connection Pool & Endpoint Cache for Ultra-Fast Resilient Fleet Operations
+_posthack_session = None
+_posthack_endpoint_cache = {}
+
+def _get_posthack_session():
+    global _posthack_session
+    if _posthack_session is None:
+        import requests
+        from urllib3.util import Retry
+        from requests.adapters import HTTPAdapter
+        s = requests.Session()
+        retries = Retry(total=2, backoff_factor=0.1, status_forcelist=[502, 503, 504], raise_on_status=False)
+        adapter = HTTPAdapter(pool_connections=50, pool_maxsize=100, max_retries=retries)
+        s.mount("http://", adapter)
+        s.mount("https://", adapter)
+        _posthack_session = s
+    return _posthack_session
+
+
+def _dispatch_wp_posthack(ws: dict, action: str, extra_params: dict = None, timeout: float = None) -> dict:
+    if timeout is None:
+        timeout = 25.0 if "integrity" in action else 8.0
+    target_url = ws.get("url") or ws.get("domain") or ""
+    if target_url and not target_url.startswith("http"):
+        target_url = f"https://{target_url}" if ws.get("domain") not in ("localhost", "127.0.0.1") else "http://localhost"
+    api_key = ws.get("api_key") or ""
+    site_token = ws.get("site_token") or ""
+
+    url_params = f"waf_cloud_sync=1&action={action}"
+    if api_key:
+        url_params += f"&api_key={api_key}"
+    if site_token:
+        url_params += f"&site_token={site_token}"
+    if extra_params:
+        for k, v in extra_params.items():
+            if v is not None:
+                url_params += f"&{k}={v}"
+
+    clean_target = target_url.rstrip("/")
+    cached_ep = _posthack_endpoint_cache.get(str(ws.get("_id")))
+    if cached_ep:
+        base_ep = cached_ep.split("?")[0]
+        candidates = [f"{base_ep}?{url_params}"]
+    elif clean_target.endswith(".php"):
+        candidates = [f"{clean_target}?{url_params}"]
+    else:
+        candidates = [
+            f"{clean_target}/index.php?{url_params}",
+            f"{clean_target}/?{url_params}",
+            f"{clean_target}/wp-json/waf-fw/v1/sync?{url_params}",
+        ]
+
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "MDefender-Pro-CloudAction/1.0",
+        "Connection": "keep-alive",
+        "Cache-Control": "no-cache, no-store",
+        "Pragma": "no-cache"
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["X-API-Key"] = api_key
+    if site_token:
+        headers["X-Site-Token"] = site_token
+
+    post_json = {"action": action, "api_key": api_key, "site_token": site_token}
+    if extra_params:
+        post_json.update(extra_params)
+
+    session = _get_posthack_session()
+
+    for ep in candidates:
+        try:
+            resp = session.post(ep, json=post_json, headers=headers, timeout=timeout, verify=False)
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    _posthack_endpoint_cache[str(ws.get("_id"))] = ep
+                    return {"success": True, "data": data.get("data") or data.get("action_result") or data, "raw": data}
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # If cached endpoint failed, try other candidates as fallback
+    if cached_ep and not clean_target.endswith(".php"):
+        _posthack_endpoint_cache.pop(str(ws.get("_id")), None)
+        fallback_candidates = [
+            f"{clean_target}/index.php?{url_params}",
+            f"{clean_target}/?{url_params}",
+        ]
+        for ep in fallback_candidates:
+            try:
+                resp = session.post(ep, json=post_json, headers=headers, timeout=timeout, verify=False)
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        _posthack_endpoint_cache[str(ws.get("_id"))] = ep
+                        return {"success": True, "data": data.get("data") or data.get("action_result") or data, "raw": data}
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+    return {"success": False, "message": "Failed to connect to WordPress site"}
+
+
+@router.get("/{website_id}/post-hack/status")
+async def get_website_posthack_status(website_id: str, user=Depends(get_current_user)):
+    """Retrieve complete incident response and post-hack recovery status for a website."""
+    website = get_owned_website(user, website_id)
+    res = _dispatch_wp_posthack(website, "posthack_get_status")
+    if res.get("success"):
+        return success({
+            "website_id": website_id,
+            "domain": website.get("domain", ""),
+            "status": res["data"]
+        })
+    return success({
+        "website_id": website_id,
+        "domain": website.get("domain", ""),
+        "status": {
+            "success": False,
+            "reachable": False,
+            "lockdown_active": False,
+            "salts_last_regenerated": "Not available",
+            "active_sessions_count": 0,
+            "total_admins": 0,
+            "admins": [],
+            "message": res.get("message", "Unable to contact site")
+        }
+    })
+
+
+@router.post("/{website_id}/post-hack/action")
+async def execute_posthack_action(website_id: str, body: PostHackActionRequest, user=Depends(get_current_user)):
+    """Execute high-security emergency post-hack recovery actions (Session Terminate, Salts Regen, Password Reset, Lockdown)."""
+    db = MongoDB()
+    from bson import ObjectId
+    import concurrent.futures
+
+    websites = []
+    if website_id == "all":
+        u_cond = [{"user_id": str(user["id"])}]
+        if ObjectId.is_valid(str(user["id"])):
+            u_cond.append({"user_id": ObjectId(str(user["id"]))})
+        websites = list(db.websites.find({"$or": u_cond, "platform": {"$regex": "^wordpress", "$options": "i"}}))
+    else:
+        website = get_owned_website(user, website_id)
+        websites = [website]
+
+    if not websites:
+        raise HTTPException(status_code=404, detail="No connected WordPress sites found")
+
+    action_map = {
+        "terminate_sessions": "posthack_terminate_sessions",
+        "regen_salts": "posthack_regenerate_salts",
+        "force_password_reset": "posthack_force_password_reset",
+        "toggle_lockdown": "posthack_toggle_lockdown",
+        "audit_admins": "posthack_audit_admins",
+    }
+    wp_action = action_map.get(body.action, body.action)
+    extra = {}
+    if body.scope:
+        extra["scope"] = body.scope
+    if body.enable is not None:
+        extra["enable"] = "1" if body.enable else "0"
+
+    def do_action(ws):
+        wp_res = _dispatch_wp_posthack(ws, wp_action, extra)
+        return {
+            "website_id": str(ws["_id"]),
+            "domain": ws.get("domain", ""),
+            "success": wp_res.get("success", False),
+            "result": wp_res.get("data") or wp_res
+        }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(websites), 10)) as executor:
+        results = list(executor.map(do_action, websites))
+
+    from src.auth.audit_service import AuditService
+    try:
+        AuditService().log(
+            user_id=str(user["id"]),
+            action=f"posthack_{body.action}",
+            ip_address="system",
+            details={"website_id": website_id, "action": body.action, "results_count": len(results)}
+        )
+    except Exception:
+        pass
+
+    return success({
+        "action": body.action,
+        "results": results
+    })
+
+
+# -----------------------------------------------------------------------------
+# Breach Intelligence & Have I Been Pwned (HIBP) Endpoints
+# -----------------------------------------------------------------------------
+
+class PwnedPasswordCheckRequest(BaseModel):
+    password: Optional[str] = None
+    sha1_prefix: Optional[str] = None
+    sha1_suffix: Optional[str] = None
+
+_global_breaches_cache = {"timestamp": 0, "data": []}
+
+@router.post("/breach-intelligence/check-password")
+async def check_pwned_password_api(body: PwnedPasswordCheckRequest, user=Depends(get_current_user)):
+    """Check a password against billions of leaked credentials using k-Anonymity (HIBP API)."""
+    import hashlib
+    import requests
+    import re
+
+    if body.password and len(body.password) > 256:
+        raise HTTPException(status_code=400, detail="Password exceeds maximum supported length (256 characters)")
+
+    sha1_prefix = ""
+    sha1_suffix = ""
+
+    if body.sha1_prefix and body.sha1_suffix:
+        clean_pref = body.sha1_prefix.strip().upper()[:5]
+        clean_suff = body.sha1_suffix.strip().upper()
+        if not re.match(r'^[A-F0-9]{5}$', clean_pref) or not re.match(r'^[A-F0-9]{35}$', clean_suff):
+            raise HTTPException(status_code=400, detail="Invalid SHA-1 k-Anonymity hash format")
+        sha1_prefix = clean_pref
+        sha1_suffix = clean_suff
+    elif body.password:
+        h = hashlib.sha1(body.password.encode('utf-8')).hexdigest().upper()
+        sha1_prefix = h[:5]
+        sha1_suffix = h[5:]
+    else:
+        raise HTTPException(status_code=400, detail="Password or SHA1 hash parameters are required")
+
+    url = f"https://api.pwnedpasswords.com/range/{sha1_prefix}"
+    headers = {
+        "User-Agent": "MDefender-Pro-Breach-Check/1.0",
+        "Add-Padding": "true"
+    }
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=6.0)
+        if resp.status_code != 200:
+            return success({
+                "pwned": False,
+                "count": 0,
+                "sha1_prefix": sha1_prefix,
+                "risk": "UNKNOWN",
+                "message": "HIBP upstream service temporarily unreachable"
+            })
+        
+        found_count = 0
+        for line in resp.text.splitlines():
+            parts = line.split(":")
+            if len(parts) >= 2 and parts[0].strip().upper() == sha1_suffix:
+                try:
+                    found_count = int(parts[1].strip())
+                except ValueError:
+                    found_count = 1
+                break
+
+        risk = "CLEAN"
+        if found_count > 10000:
+            risk = "CRITICAL"
+        elif found_count > 100:
+            risk = "HIGH"
+        elif found_count > 0:
+            risk = "MEDIUM"
+
+        return success({
+            "pwned": found_count > 0,
+            "count": found_count,
+            "sha1_prefix": sha1_prefix,
+            "risk": risk
+        })
+    except Exception as e:
+        return success({
+            "pwned": False,
+            "count": 0,
+            "sha1_prefix": sha1_prefix,
+            "risk": "UNKNOWN",
+            "message": "Lookup service query timed out"
+        })
+
+
+@router.get("/breach-intelligence/global-breaches")
+async def get_global_breaches(query: Optional[str] = None, limit: int = 50, user=Depends(get_current_user)):
+    """Search or list verified global dark web breaches from the Have I Been Pwned repository."""
+    import time
+    import requests
+
+    now = time.time()
+    # Cache for 2 hours
+    if not _global_breaches_cache["data"] or (now - _global_breaches_cache["timestamp"] > 7200):
+        try:
+            r = requests.get(
+                "https://haveibeenpwned.com/api/v3/breaches",
+                headers={"User-Agent": "MDefender-Pro-Breach-Intelligence/1.0"},
+                timeout=8.0
+            )
+            if r.status_code == 200:
+                _global_breaches_cache["data"] = r.json()
+                _global_breaches_cache["timestamp"] = now
+        except Exception:
+            pass
+
+    data = _global_breaches_cache["data"] or []
+    if query:
+        q = query.strip().lower()[:100]
+        data = [
+            b for b in data
+            if q in b.get("Name", "").lower()
+            or q in b.get("Title", "").lower()
+            or q in b.get("Domain", "").lower()
+            or any(q in dc.lower() for dc in b.get("DataClasses", []))
+        ]
+
+    # Sort by BreachDate descending
+    data = sorted(data, key=lambda x: x.get("BreachDate", ""), reverse=True)
+    return success({
+        "total_matches": len(data),
+        "breaches": data[:max(1, min(limit, 100))]
+    })
+
+
+@router.get("/breach-intelligence/fleet-admins/{website_id}")
+async def get_fleet_admin_breach_status(website_id: str, user=Depends(get_current_user)):
+    """Audit administrator accounts and privilege exposure across connected websites."""
+    db = MongoDB()
+    from bson import ObjectId
+
+    sites_to_check = []
+    if website_id == "all":
+        u_cond = [{"user_id": str(user["id"])}]
+        if ObjectId.is_valid(str(user["id"])):
+            u_cond.append({"user_id": ObjectId(str(user["id"]))})
+        sites_to_check = list(db.websites.find({"$or": u_cond, "platform": {"$regex": "^wordpress", "$options": "i"}}))
+    else:
+        site = get_owned_website(user, website_id)
+        sites_to_check = [site]
+
+    results = []
+    for ws in sites_to_check:
+        res = _dispatch_wp_posthack(ws, "posthack_audit_admins")
+        admin_data = []
+        if res.get("success"):
+            raw_admins = res.get("data", {}).get("admins", [])
+            for a in raw_admins:
+                admin_data.append({
+                    "user_login": str(a.get("user_login", "")).strip()[:64],
+                    "user_email": str(a.get("user_email", "")).strip()[:128],
+                    "has_2fa": bool(a.get("has_2fa", False)),
+                    "active_sessions": int(a.get("active_sessions", 0)),
+                    "risk_rating": "HIGH" if a.get("risk_rating") == "HIGH" else ("MEDIUM" if a.get("risk_rating") == "MEDIUM" else "LOW")
+                })
+        results.append({
+            "website_id": str(ws["_id"]),
+            "domain": ws.get("domain", ""),
+            "name": ws.get("name", ws.get("domain", "")),
+            "admins": admin_data,
+            "connected": res.get("success", False)
+        })
+
+    return success({
+        "results": results
     })
 
 # -----------------------------------------------------------------------------

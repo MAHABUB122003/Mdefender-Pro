@@ -132,14 +132,20 @@ class WordPressCoreService:
         official_info = self.get_official_version_info()
         latest_ver = official_info.get("latest_version", "7.1.4")
 
-        sites = list(self.db.websites.find({
-            "user_id": user_id,
-            "$or": [
-                {"platform": {"$regex": "wordpress|wp", "$options": "i"}},
-                {"platform": None},
-                {"platform": "domain"}
-            ]
-        }))
+        # Retrieve user websites with robust type compatibility
+        all_user_sites = list(self.db.websites.find({"user_id": user_id}))
+        if not all_user_sites:
+            try:
+                from bson import ObjectId
+                all_user_sites = list(self.db.websites.find({"user_id": ObjectId(user_id)}))
+            except Exception:
+                pass
+
+        sites = []
+        for s in all_user_sites:
+            p = str(s.get("platform") or "").lower()
+            if not p or any(k in p for k in ["word", "wp", "domain"]):
+                sites.append(s)
 
         fleet_rows = []
         up_to_date_count = 0
@@ -238,52 +244,79 @@ class WordPressCoreService:
 
         modified_files = []
         missing_files = []
+        unknown_files = []
         checked_count = 0
 
-        # Check if this website is hosted locally in XAMPP / htdocs
-        local_wp_root = None
-        candidates = [
-            r"C:\xampp\htdocs\mahabub",
-            rf"C:\xampp\htdocs\{domain.replace('.shop', '').replace('.local', '')}",
-            rf"/var/www/html",
-        ]
-        for c in candidates:
-            if os.path.isdir(c) and os.path.isfile(os.path.join(c, "wp-includes", "version.php")):
-                local_wp_root = c
-                break
+        # 1. Try querying remote WordPress plugin's WAF_FW_Core_Integrity engine
+        try:
+            from src.api.v1.websites_api import _dispatch_wp_posthack
+            remote_res = _dispatch_wp_posthack(site, "core_integrity_scan", timeout=25.0)
+            if remote_res.get("success") and remote_res.get("data", {}).get("success"):
+                p_data = remote_res["data"]
+                total_official_files = p_data.get("total_official_files", total_official_files)
+                checked_count = p_data.get("total_official_files", checked_count)
+                for m in p_data.get("modified_files", []):
+                    modified_files.append({
+                        "file": m.get("path") or m.get("file"),
+                        "expected_md5": m.get("official_hash", ""),
+                        "actual_md5": m.get("local_hash", ""),
+                        "risk": "HIGH"
+                    })
+                missing_files = [m.get("path") for m in p_data.get("missing_files", [])]
+                for u in p_data.get("unknown_files", []):
+                    unknown_files.append({
+                        "file": u.get("path"),
+                        "size": u.get("file_size"),
+                        "risk": "CRITICAL"
+                    })
+        except Exception:
+            pass
 
-        # If local installation found, compute genuine MD5 hashes
-        if local_wp_root and os.path.exists(local_wp_root):
-            critical_files = [
-                "index.php", "wp-login.php", "wp-settings.php", "wp-load.php", "xmlrpc.php",
-                "wp-blog-header.php", "wp-cron.php", "wp-trackback.php", "wp-comments-post.php",
-                "wp-includes/version.php", "wp-includes/load.php", "wp-includes/default-filters.php",
-                "wp-includes/pluggable.php", "wp-includes/functions.php", "wp-includes/plugin.php",
-                "wp-admin/admin.php", "wp-admin/index.php", "wp-admin/menu.php"
+        # 2. If remote didn't return or site is local, compute local file MD5s as fallback
+        if not modified_files and not missing_files:
+            # Check if this website is hosted locally in XAMPP / htdocs
+            local_wp_root = None
+            candidates = [
+                r"C:\xampp\htdocs\mahabub",
+                rf"C:\xampp\htdocs\{domain.replace('.shop', '').replace('.local', '')}",
+                rf"/var/www/html",
             ]
+            for c in candidates:
+                if os.path.isdir(c) and os.path.isfile(os.path.join(c, "wp-includes", "version.php")):
+                    local_wp_root = c
+                    break
 
-            for rel_path in critical_files:
-                full_path = os.path.join(local_wp_root, rel_path.replace("/", os.sep))
-                if not os.path.isfile(full_path):
-                    missing_files.append(rel_path)
-                    continue
+            if local_wp_root and os.path.exists(local_wp_root):
+                critical_files = [
+                    "index.php", "wp-login.php", "wp-settings.php", "wp-load.php", "xmlrpc.php",
+                    "wp-blog-header.php", "wp-cron.php", "wp-trackback.php", "wp-comments-post.php",
+                    "wp-includes/version.php", "wp-includes/load.php", "wp-includes/default-filters.php",
+                    "wp-includes/pluggable.php", "wp-includes/functions.php", "wp-includes/plugin.php",
+                    "wp-admin/admin.php", "wp-admin/index.php", "wp-admin/menu.php"
+                ]
 
-                checked_count += 1
-                try:
-                    with open(full_path, "rb") as f:
-                        file_md5 = hashlib.md5(f.read()).hexdigest()
+                for rel_path in critical_files:
+                    full_path = os.path.join(local_wp_root, rel_path.replace("/", os.sep))
+                    if not os.path.isfile(full_path):
+                        missing_files.append(rel_path)
+                        continue
 
-                    expected_md5 = official_checksums.get(rel_path)
-                    # For version.php or custom locale, allow minor local variance
-                    if expected_md5 and file_md5.lower() != expected_md5.lower() and rel_path != "wp-includes/version.php":
-                        modified_files.append({
-                            "file": rel_path,
-                            "expected_md5": expected_md5,
-                            "actual_md5": file_md5,
-                            "risk": "HIGH"
-                        })
-                except Exception as e:
-                    logger.debug(f"[WordPressCore] Error hashing {rel_path}: {e}")
+                    checked_count += 1
+                    try:
+                        with open(full_path, "rb") as f:
+                            file_md5 = hashlib.md5(f.read()).hexdigest()
+
+                        expected_md5 = official_checksums.get(rel_path)
+                        # For version.php or custom locale, allow minor local variance
+                        if expected_md5 and file_md5.lower() != expected_md5.lower() and rel_path != "wp-includes/version.php":
+                            modified_files.append({
+                                "file": rel_path,
+                                "expected_md5": expected_md5,
+                                "actual_md5": file_md5,
+                                "risk": "HIGH"
+                            })
+                    except Exception as e:
+                        logger.debug(f"[WordPressCore] Error hashing {rel_path}: {e}")
 
         # Update website doc in DB with verified results
         status = "modified_files_detected" if len(modified_files) > 0 else "verified"

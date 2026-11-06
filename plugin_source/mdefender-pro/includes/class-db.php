@@ -603,23 +603,49 @@ class WAF_FW_DB {
     }
 
     public static function cleanup_old_logs() {
-        $days = get_option('waf_fw_log_retention_days', 30);
         global $wpdb;
+        $days = (int) get_option('waf_fw_log_retention_days', 7);
+        if ($days <= 0 || $days > 7) {
+            $days = 7;
+        }
+        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 2000);
+        if ($max_logs <= 0 || $max_logs > 2000) {
+            $max_logs = 2000;
+        }
+
+        $attacks_table = $wpdb->prefix . (defined('WAF_FW_TABLE_ATTACKS') ? WAF_FW_TABLE_ATTACKS : 'waf_attacks');
+        $requests_table = $wpdb->prefix . (defined('WAF_FW_TABLE_REQUESTS') ? WAF_FW_TABLE_REQUESTS : 'waf_requests');
+
+        // 1. Purge records older than 7 days
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->prefix}" . WAF_FW_TABLE_ATTACKS . " WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+            "DELETE FROM $attacks_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
             $days
         ));
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->prefix}" . WAF_FW_TABLE_REQUESTS . " WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+            "DELETE FROM $requests_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
             $days
         ));
 
-        $login_table = $wpdb->prefix . WAF_FW_TABLE_LOGIN_ATTEMPTS;
+        // 2. FIFO Enforce max 2,000 logs cap on attacks table
+        $att_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
+        if ($att_count > $max_logs) {
+            $excess = $att_count - $max_logs;
+            $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table ORDER BY id ASC LIMIT %d", $excess));
+        }
+
+        // 3. FIFO Enforce max 2,000 logs cap on requests table
+        $req_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        if ($req_count > $max_logs) {
+            $excess = $req_count - $max_logs;
+            $wpdb->query($wpdb->prepare("DELETE FROM $requests_table ORDER BY id ASC LIMIT %d", $excess));
+        }
+
+        $login_table = $wpdb->prefix . (defined('WAF_FW_TABLE_LOGIN_ATTEMPTS') ? WAF_FW_TABLE_LOGIN_ATTEMPTS : 'waf_login_attempts');
         $wpdb->query(
             "DELETE FROM $login_table WHERE last_attempt < DATE_SUB(NOW(), INTERVAL 1 DAY)"
         );
 
-        $blacklist_table = $wpdb->prefix . WAF_FW_TABLE_BLACKLIST;
+        $blacklist_table = $wpdb->prefix . (defined('WAF_FW_TABLE_BLACKLIST') ? WAF_FW_TABLE_BLACKLIST : 'waf_blacklist');
         $wpdb->query(
             "DELETE FROM $blacklist_table WHERE block_expires_at IS NOT NULL AND block_expires_at <= NOW()"
         );

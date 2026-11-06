@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit('Access Denied');
+
 /**
  * MDefender Pro - Emergency Post-Hack Response & Site Recovery Engine
  * Inspired by Sucuri & Wordfence Incident Response Toolkits.
@@ -32,6 +34,7 @@ class WAF_FW_PostHack_Recovery {
 
         // Emergency maintenance lockdown hook
         if (get_option('waf_posthack_lockdown_active') === 'yes') {
+            add_action('init', [$this, 'handle_emergency_lockdown'], 1);
             add_action('template_redirect', [$this, 'handle_emergency_lockdown'], 1);
         }
     }
@@ -126,18 +129,33 @@ class WAF_FW_PostHack_Recovery {
 
         $content = file_get_contents($config_file);
 
-        // Replace existing salt definitions
+        // Replace existing salt definitions cleanly line by line (safe against salts containing closing parens)
         $salt_keys = ['AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY', 'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT'];
-        $pattern = "/define\s*\(\s*['\"](" . implode('|', $salt_keys) . ")['\"]\s*,\s*[^)]+\s*\)\s*;/";
+        $raw_lines = preg_split("/\r\n|\n|\r/", $content);
+        $clean_lines = [];
+        foreach ($raw_lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '// MDefender Pro - Regenerated Security Keys & Salts') {
+                continue;
+            }
+            $is_salt_line = false;
+            foreach ($salt_keys as $sk) {
+                if (preg_match('/define\s*\(\s*[\'"]' . $sk . '[\'"]/', $line)) {
+                    $is_salt_line = true;
+                    break;
+                }
+            }
+            if (!$is_salt_line) {
+                $clean_lines[] = $line;
+            }
+        }
+        $content = implode("\n", $clean_lines);
 
-        if (preg_match($pattern, $content)) {
-            // Remove old keys first
-            $content = preg_replace($pattern, '', $content);
-            // Insert fresh keys right after opening <?php
+        // Insert fresh keys right after opening <?php
+        if (preg_match('/<\?php\s*/', $content)) {
             $content = preg_replace('/<\?php\s*/', "<?php\n\n// MDefender Pro - Regenerated Security Keys & Salts\n" . $salts_code . "\n\n", $content, 1);
         } else {
-            // Append right after opening <?php
-            $content = preg_replace('/<\?php\s*/', "<?php\n\n// MDefender Pro - Regenerated Security Keys & Salts\n" . $salts_code . "\n\n", $content, 1);
+            $content = "<?php\n\n// MDefender Pro - Regenerated Security Keys & Salts\n" . $salts_code . "\n\n" . $content;
         }
 
         $saved = @file_put_contents($config_file, $content, LOCK_EX);
@@ -147,6 +165,8 @@ class WAF_FW_PostHack_Recovery {
                 'message' => 'Failed to write updated salts to wp-config.php.',
             ];
         }
+
+        update_option('waf_posthack_salts_last_regen', current_time('mysql'));
 
         if (class_exists('WAF_FW_Website_Hardening')) {
             WAF_FW_Website_Hardening::instance()->log_activity('Security Salts Regenerated', 'wp-config.php', 'Success', 'Generated fresh 64-character cryptographic security keys & salts.');
@@ -309,15 +329,26 @@ class WAF_FW_PostHack_Recovery {
      * Intercept frontend traffic during emergency lockdown.
      */
     public function handle_emergency_lockdown() {
-        if (!is_user_logged_in() || !current_user_can('manage_options')) {
-            status_header(503);
-            nocache_headers();
-            wp_die(
-                '<h1>Website Under Emergency Security Maintenance</h1><p>This website is currently in incident response lockdown mode by MDefender-Pro Security. Please check back shortly.</p>',
-                'Security Maintenance Mode - MDefender Pro',
-                ['response' => 503]
-            );
+        if (isset($_GET['waf_cloud_sync']) || isset($_POST['waf_cloud_sync']) || isset($_GET['waf_sync'])) {
+            return;
         }
+        if (is_admin() || (isset($GLOBALS['pagenow']) && in_array($GLOBALS['pagenow'], ['wp-login.php', 'wp-register.php']))) {
+            return;
+        }
+        if (function_exists('is_user_logged_in') && is_user_logged_in() && current_user_can('manage_options')) {
+            return;
+        }
+        status_header(503);
+        nocache_headers();
+        header('HTTP/1.1 503 Service Unavailable');
+        header('Status: 503 Service Unavailable');
+        header('Retry-After: 3600');
+        wp_die(
+            '<h1>Website Under Emergency Security Maintenance</h1><p>This website is currently in incident response lockdown mode by MDefender-Pro Security. Please check back shortly.</p>',
+            'Security Maintenance Mode - MDefender Pro',
+            ['response' => 503]
+        );
+        exit;
     }
 
     /**
@@ -347,5 +378,40 @@ class WAF_FW_PostHack_Recovery {
                 exit;
             }
         }
+    }
+
+    /**
+     * Get complete status overview for Post-Hack Recovery & Incident Response.
+     *
+     * @return array
+     */
+    public function get_status_overview() {
+        $lockdown_active = (get_option('waf_posthack_lockdown_active', 'no') === 'yes');
+        $salts_last_regen = get_option('waf_posthack_salts_last_regen', '') ?: get_option('waf_harden_salts_rotated_at', '');
+
+        // Count active sessions across all accounts
+        $all_users = get_users(['fields' => ['ID']]);
+        $total_sessions = 0;
+        if (!empty($all_users)) {
+            foreach ($all_users as $u) {
+                $sess = get_user_meta($u->ID, 'session_tokens', true);
+                if (is_array($sess)) {
+                    $total_sessions += count($sess);
+                }
+            }
+        }
+
+        $admin_audit = $this->audit_administrator_security();
+
+        return [
+            'success' => true,
+            'lockdown_active' => $lockdown_active,
+            'salts_last_regenerated' => $salts_last_regen ?: 'Not rotated yet',
+            'active_sessions_count' => $total_sessions,
+            'total_admins' => $admin_audit['total_admins'] ?? 0,
+            'admins' => $admin_audit['admins'] ?? [],
+            'timestamp' => current_time('mysql'),
+            'status' => 'success'
+        ];
     }
 }

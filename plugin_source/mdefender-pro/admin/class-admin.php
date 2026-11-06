@@ -14,9 +14,25 @@ class WAF_FW_Admin {
     public function __construct() {
         self::$_instance = $this;
         add_action('admin_menu', [$this, 'add_admin_menu']);
+        add_action('admin_init', [$this, 'handle_legacy_redirects']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_head', [$this, 'admin_head_styles']);
         add_action('admin_notices', [$this, 'show_admin_notifications']);
+    }
+
+    public function handle_legacy_redirects() {
+        if (isset($_GET['page']) && is_admin()) {
+            $page = sanitize_text_field($_GET['page']);
+            $legacy_pages = [
+                'waf-firewall-rules', 'waf-firewall-blacklist', 'waf-firewall-logs',
+                'waf-firewall-scan', 'waf-firewall-hardening', 'waf-firewall-backup',
+                'waf-firewall-tools', 'waf-firewall-settings', 'waf-firewall-about'
+            ];
+            if (in_array($page, $legacy_pages, true)) {
+                wp_safe_redirect(admin_url('admin.php?page=waf-firewall'));
+                exit;
+            }
+        }
     }
 
     public function show_admin_notifications() {
@@ -82,78 +98,14 @@ class WAF_FW_Admin {
     public function add_admin_menu() {
         $icon_url = defined('WAF_FW_PLUGIN_URL') ? WAF_FW_PLUGIN_URL . 'assets/images/mdefender-icon.png' : 'dashicons-shield';
         add_menu_page(
-            'MDefender-Pro - AI Web Application Firewall',
+            'MDefender-Pro - Security Agent',
             'MDefender-Pro',
             'manage_options',
             'waf-firewall',
-            [$this, 'render_dashboard'],
+            [$this, 'render_agent_dashboard'],
             $icon_url,
             100
         );
-
-        $pages = [
-            'waf-firewall' => [
-                'title' => 'Dashboard',
-                'menu' => 'Dashboard',
-                'render' => 'render_dashboard',
-            ],
-            'waf-firewall-rules' => [
-                'title' => 'Firewall Rules',
-                'menu' => 'Firewall Rules',
-                'render' => 'render_rules',
-            ],
-            'waf-firewall-blacklist' => [
-                'title' => 'Blacklist',
-                'menu' => 'Blacklist',
-                'render' => 'render_blacklist',
-            ],
-            'waf-firewall-logs' => [
-                'title' => 'Security Logs',
-                'menu' => 'Security Logs',
-                'render' => 'render_logs',
-            ],
-            'waf-firewall-scan' => [
-                'title' => 'Scan Website',
-                'menu' => 'Scan Website',
-                'render' => 'render_scan',
-            ],
-            'waf-firewall-hardening' => [
-                'title' => 'Website Hardening',
-                'menu' => 'Hardening',
-                'render' => 'render_hardening',
-            ],
-            'waf-firewall-backup' => [
-                'title' => 'Backup & Restore',
-                'menu' => 'Backup & Restore',
-                'render' => 'render_backup',
-            ],
-            'waf-firewall-tools' => [
-                'title' => 'Tools & Security',
-                'menu' => 'Tools',
-                'render' => 'render_tools',
-            ],
-            'waf-firewall-settings' => [
-                'title' => 'Settings',
-                'menu' => 'Settings',
-                'render' => 'render_settings',
-            ],
-            'waf-firewall-about' => [
-                'title' => 'About',
-                'menu' => 'About',
-                'render' => 'render_about',
-            ],
-        ];
-
-        foreach ($pages as $slug => $page) {
-            add_submenu_page(
-                'waf-firewall',
-                $page['title'],
-                $page['menu'],
-                'manage_options',
-                $slug,
-                [$this, $page['render']]
-            );
-        }
     }
 
     public function enqueue_assets($hook) {
@@ -212,86 +164,56 @@ class WAF_FW_Admin {
         echo '</div>';
     }
 
+    public function render_agent_dashboard() {
+        include WAF_FW_PLUGIN_DIR . 'admin/partials/agent-connector.php';
+    }
+
     public function render_dashboard() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/dashboard.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_rules() {
-        $this->render_header();
-        $engine = WAF_FW_Rule_Engine::instance();
-        $rules = [];
-        foreach ($engine->get_rules() as $i => $rule) {
-            $rule['id'] = $i;
-            $rules[] = $rule;
-        }
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/rules.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_blocked() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/blocked-ips.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_blacklist() {
-        $this->render_header();
-        $filter = WAF_FW_IP_Filter::instance();
-        $blacklist = $filter->get_blacklist();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/blacklist.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_logs() {
-        $this->render_header();
-        $logger = WAF_FW_Logger::instance();
-        $logs = $logger->get_logs($_GET);
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/logs.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_scan() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/scan-website.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_hardening() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/hardening.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_backup() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/backup.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_settings() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/settings.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_about() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/about.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_2fa() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/2fa.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_tools() {
-        $this->render_header();
-        include WAF_FW_PLUGIN_DIR . 'admin/partials/tools.php';
-        $this->render_footer();
+        $this->render_agent_dashboard();
     }
 
     public function render_feature_settings($key, $label, $settings = []) {

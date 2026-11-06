@@ -11,6 +11,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!function_exists('esc_html')) {
+    function esc_html($text) {
+        return htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8');
+    }
+}
+if (!function_exists('esc_attr')) {
+    function esc_attr($text) {
+        return htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8');
+    }
+}
+
 // Variables available:
 // $client_ip      - Visitor's IP address
 // $reference_id   - Unique MDefender Ray/Incident ID
@@ -27,8 +38,8 @@ $site_host      = isset($site_host) ? $site_host : (isset($_SERVER['HTTP_HOST'])
 $attack_type    = isset($attack_type) ? $attack_type : 'Web Application Attack';
 $rule_name      = isset($rule_name) ? $rule_name : $attack_type;
 $utc_timestamp  = isset($utc_timestamp) ? $utc_timestamp : gmdate('Y-m-d H:i:s') . ' UTC';
-$admin_email    = isset($admin_email) ? $admin_email : get_option('admin_email', 'security@' . $site_host);
-$home_url       = isset($home_url) ? $home_url : home_url('/');
+$admin_email    = isset($admin_email) ? $admin_email : (function_exists('get_option') ? get_option('admin_email', 'security@' . $site_host) : 'security@' . $site_host);
+$home_url       = isset($home_url) ? $home_url : (function_exists('home_url') ? home_url('/') : '/');
 ?>
 <!DOCTYPE html>
 <html lang="en">

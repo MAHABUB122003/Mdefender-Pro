@@ -2703,9 +2703,124 @@ function waf_fw_handle_cloud_sync_webhook() {
             } elseif ($action === 'get_recycle_settings') {
                 $action_result = [
                     'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 10000),
+                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 2000),
                     'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
                 ];
+            } elseif ($action === 'posthack_get_status' || $action === 'get_posthack_status') {
+                $rec = class_exists('WAF_FW_PostHack_Recovery') ? WAF_FW_PostHack_Recovery::instance() : null;
+                $res = $rec ? $rec->get_status_overview() : ['success' => false, 'message' => 'Post-Hack Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'core_integrity_scan' || $action === 'posthack_scan_core_integrity') {
+                $engine = class_exists('WAF_FW_Core_Integrity') ? WAF_FW_Core_Integrity::instance() : null;
+                $res = $engine ? $engine->scan_core_integrity() : ['success' => false, 'message' => 'Core Integrity Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'core_integrity_restore' || $action === 'posthack_restore_core_file') {
+                $file_path = sanitize_text_field($_REQUEST['file_path'] ?? $pushed_data['file_path'] ?? $_REQUEST['file'] ?? $pushed_data['file'] ?? '');
+                $engine = class_exists('WAF_FW_Core_Integrity') ? WAF_FW_Core_Integrity::instance() : null;
+                $res = ($engine && !empty($file_path)) ? $engine->restore_core_file($file_path) : ['success' => false, 'message' => 'No file path specified or engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'core_integrity_delete_unknown' || $action === 'posthack_delete_rogue_file') {
+                $file_path = sanitize_text_field($_REQUEST['file_path'] ?? $pushed_data['file_path'] ?? $_REQUEST['file'] ?? $pushed_data['file'] ?? '');
+                $engine = class_exists('WAF_FW_Core_Integrity') ? WAF_FW_Core_Integrity::instance() : null;
+                $res = ($engine && !empty($file_path)) ? $engine->delete_rogue_file($file_path) : ['success' => false, 'message' => 'No file path specified or engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'posthack_terminate_sessions' || $action === 'terminate_all_sessions') {
+                $rec = class_exists('WAF_FW_PostHack_Recovery') ? WAF_FW_PostHack_Recovery::instance() : null;
+                $res = $rec ? $rec->terminate_all_sessions(false) : ['success' => false, 'message' => 'Post-Hack Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res, 'message' => $res['message'] ?? 'Sessions terminated']);
+                exit;
+            } elseif ($action === 'posthack_regenerate_salts' || $action === 'regenerate_security_salts') {
+                $rec = class_exists('WAF_FW_PostHack_Recovery') ? WAF_FW_PostHack_Recovery::instance() : null;
+                $res = $rec ? $rec->regenerate_security_salts() : ['success' => false, 'message' => 'Post-Hack Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => ($res['success'] ?? false) ? 'success' : 'error', 'data' => $res, 'action_result' => $res, 'message' => $res['message'] ?? 'Salts regenerated']);
+                exit;
+            } elseif ($action === 'posthack_force_password_reset' || $action === 'force_global_password_reset') {
+                $scope = sanitize_text_field($_REQUEST['scope'] ?? $pushed_data['scope'] ?? 'admins');
+                $rec = class_exists('WAF_FW_PostHack_Recovery') ? WAF_FW_PostHack_Recovery::instance() : null;
+                $res = $rec ? $rec->force_global_password_reset($scope) : ['success' => false, 'message' => 'Post-Hack Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res, 'message' => $res['message'] ?? 'Password reset forced']);
+                exit;
+            } elseif ($action === 'posthack_toggle_lockdown' || $action === 'toggle_emergency_lockdown') {
+                $raw_en = $_REQUEST['enable'] ?? $pushed_data['enable'] ?? $_REQUEST['active'] ?? $pushed_data['active'] ?? '0';
+                $enable = ($raw_en === '1' || $raw_en === 'yes' || $raw_en === 'true' || $raw_en === true || $raw_en === 1);
+                $rec = class_exists('WAF_FW_PostHack_Recovery') ? WAF_FW_PostHack_Recovery::instance() : null;
+                $res = $rec ? $rec->toggle_emergency_lockdown($enable) : ['success' => false, 'message' => 'Post-Hack Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res, 'lockdown_active' => $enable, 'message' => $res['message'] ?? 'Lockdown updated']);
+                exit;
+            } elseif ($action === 'posthack_audit_admins' || $action === 'audit_administrator_security') {
+                $rec = class_exists('WAF_FW_PostHack_Recovery') ? WAF_FW_PostHack_Recovery::instance() : null;
+                $res = $rec ? $rec->audit_administrator_security() : ['success' => false, 'message' => 'Post-Hack Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'core_integrity_scan' || $action === 'posthack_scan_core_integrity') {
+                $engine = class_exists('WAF_FW_Core_Integrity') ? WAF_FW_Core_Integrity::instance() : null;
+                $res = $engine ? $engine->scan_core_integrity() : ['success' => false, 'message' => 'Core Integrity Engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'core_integrity_restore' || $action === 'posthack_restore_core_file') {
+                $file_path = sanitize_text_field($_REQUEST['file_path'] ?? $pushed_data['file_path'] ?? $_REQUEST['file'] ?? $pushed_data['file'] ?? '');
+                $engine = class_exists('WAF_FW_Core_Integrity') ? WAF_FW_Core_Integrity::instance() : null;
+                $res = ($engine && !empty($file_path)) ? $engine->restore_core_file($file_path) : ['success' => false, 'message' => 'No file path specified or engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
+            } elseif ($action === 'core_integrity_delete_unknown' || $action === 'posthack_delete_rogue_file') {
+                $file_path = sanitize_text_field($_REQUEST['file_path'] ?? $pushed_data['file_path'] ?? $_REQUEST['file'] ?? $pushed_data['file'] ?? '');
+                $engine = class_exists('WAF_FW_Core_Integrity') ? WAF_FW_Core_Integrity::instance() : null;
+                $res = ($engine && !empty($file_path)) ? $engine->delete_rogue_file($file_path) : ['success' => false, 'message' => 'No file path specified or engine unavailable'];
+                while (ob_get_level()) { ob_end_clean(); }
+                if (!headers_sent()) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                }
+                echo json_encode(['status' => 'success', 'data' => $res, 'action_result' => $res]);
+                exit;
             } elseif ($action === 'update_recycle_settings') {
                 $auto_rec = $_REQUEST['auto_recycle'] ?? $pushed_data['auto_recycle'] ?? null;
                 if ($auto_rec !== null) {
@@ -2725,7 +2840,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                 $action_result = [
                     'success' => true,
                     'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 10000),
+                    'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 2000),
                     'retention_days' => (int) get_option('waf_fw_recycle_days', 7),
                     'message' => 'Log auto-recycle rules updated successfully on WordPress site'
                 ];
@@ -3458,7 +3573,7 @@ add_action('rest_api_init', function() {
             return new WP_REST_Response([
                 'status' => 'success',
                 'auto_recycle' => get_option('waf_fw_auto_recycle_logs', 'yes') === 'yes',
-                'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 10000),
+                'max_logs' => (int) get_option('waf_fw_recycle_max_logs', 2000),
                 'retention_days' => (int) get_option('waf_fw_recycle_days', 7)
             ], 200);
         },
