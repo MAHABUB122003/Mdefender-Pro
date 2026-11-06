@@ -112,6 +112,7 @@ export default function UserWebsites() {
 
 
 
+  const accountApiKey = data?.api_key || data?.user?.api_key || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : null) || ''
   const rawPlan = data?.user?.plan || data?.plan || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_plan') : null) || 'free'
 
   const userPlan = (typeof rawPlan === 'string' ? rawPlan : (rawPlan?.id || rawPlan?.name || 'free')).toLowerCase()
@@ -154,6 +155,9 @@ export default function UserWebsites() {
 
   const [activeMenuSiteId, setActiveMenuSiteId] = useState(null)
   const [ssoLoadingId, setSsoLoadingId] = useState(null)
+  const [copiedAccountKey, setCopiedAccountKey] = useState(false)
+  const [showAccountKey, setShowAccountKey] = useState(false)
+  const [showManualForm, setShowManualForm] = useState(false)
 
 
 
@@ -1192,12 +1196,87 @@ export default function UserWebsites() {
 
 
 
-        {/* Connect Form */}
+        {/* Zero-Touch Master Account Key Pairing Banner */}
+        <div style={{
+          background: '#F8FAFC',
+          border: '1.5px solid #E2E8F0',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Key size={15} color="#059669" />
+              <span>Your Account Master Connect Key (Zero-Touch Auto-Pairing)</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '999px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                Auto-Discovered
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#64748B' }}>
+              No manual domain setup required — just paste this key into your WordPress site!
+            </div>
+          </div>
 
-        <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{
+              flex: '1 1 300px', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px',
+              padding: '9px 14px', fontFamily: 'Consolas, monospace', fontSize: '12.5px', color: '#1E293B',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <span>{showAccountKey ? (accountApiKey || 'mdf_live_sec_master_key') : ((accountApiKey || 'mdf_live_sec_master_key').substring(0, 14) + '••••••••••••••••••••••••')}</span>
+              <button
+                type="button"
+                onClick={() => setShowAccountKey(!showAccountKey)}
+                title={showAccountKey ? 'Mask Key' : 'Reveal Key'}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 4px' }}
+              >
+                {showAccountKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
 
-          Connect a WordPress website to generate a dedicated Site API Key:
+            <button
+              type="button"
+              onClick={() => {
+                const keyToCopy = accountApiKey || 'mdf_live_sec_master_key'
+                copyToClipboard(keyToCopy)
+                setCopiedAccountKey(true)
+                setTimeout(() => setCopiedAccountKey(false), 2000)
+              }}
+              style={{
+                padding: '9px 18px', background: '#059669', color: '#FFFFFF', border: 'none',
+                borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {copiedAccountKey ? <Check size={14} /> : <Copy size={14} />}
+              <span>{copiedAccountKey ? 'Copied Master Key!' : 'Copy Master Key'}</span>
+            </button>
+          </div>
 
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ fontSize: '12px', color: '#475569', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <span><strong>1.</strong> Download &amp; install plugin</span>
+              <span><strong>2.</strong> Paste Master Key in Settings</span>
+              <span><strong>3.</strong> Click Connect &rarr; Site appears below automatically!</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowManualForm(!showManualForm)}
+              style={{ background: 'none', border: 'none', color: '#059669', fontSize: '12px', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              {showManualForm ? 'Hide manual domain form' : 'Or pre-register domain manually &rarr;'}
+            </button>
+          </div>
+        </div>
+
+        {/* Optional Manual Pre-registration Form */}
+        {showManualForm && (
+        <div style={{ marginBottom: '16px', padding: '16px', background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px' }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>
+          Pre-register a WordPress domain manually:
         </div>
 
 
@@ -1323,6 +1402,8 @@ export default function UserWebsites() {
           </button>
 
         </form>
+        </div>
+        )}
 
       </div>
 
