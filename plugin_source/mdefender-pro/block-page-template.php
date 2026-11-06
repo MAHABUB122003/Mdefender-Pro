@@ -2,7 +2,7 @@
 /**
  * MDefender Pro - Enterprise WAF Block Page Template
  * 
- * High-performance, branded, single-viewport zero-scroll block template.
+ * High-performance, branded, Cloudflare-inspired enterprise block page.
  * 
  * @package MDefenderPro
  */
@@ -42,13 +42,12 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
         :root {
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
             --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
-            --text-heading: #0f172a;
-            --text-body: #334155;
-            --text-sub: #475569;
-            --text-muted: #64748b;
-            --bg-gray: #ebebeb;
-            --border-gray: #dadada;
-            --browser-bar: #8c8c8c;
+            --text-main: #333333;
+            --text-sub: #555555;
+            --text-muted: #777777;
+            --bg-gray: #eeeeee;
+            --border-gray: #e2e2e2;
+            --browser-bar: #8a8a8a;
             --alert-red: #bd2426;
         }
 
@@ -60,77 +59,68 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
 
         html, body {
             width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
+            min-height: 100%;
             background-color: #ffffff;
             font-family: var(--font-family);
-            color: var(--text-body);
+            color: var(--text-main);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            overflow: hidden;
         }
 
         .page-container {
             width: 100%;
-            height: 100vh;
-            max-height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            overflow: hidden;
-            box-sizing: border-box;
         }
 
         .content-wrap {
-            max-width: 880px;
+            max-width: 900px;
             width: 100%;
             margin: 0 auto;
-            padding: 0 20px;
-            box-sizing: border-box;
+            padding: 0 24px;
         }
 
         /* Top Heading Section */
         .header-section {
-            padding-top: 18px;
-            padding-bottom: 12px;
-            flex: 0 0 auto;
+            padding-top: 52px;
+            padding-bottom: 28px;
         }
 
         .policy-pill {
             display: inline-block;
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #475569;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            padding: 3px 10px;
+            color: #555555;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            padding: 4px 12px;
             border-radius: 9999px;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         .blocked-title {
-            font-size: 27px;
-            font-weight: 600;
-            color: var(--text-heading);
-            margin: 0 0 4px 0;
-            letter-spacing: -0.015em;
+            font-size: 38px;
+            font-weight: 400;
+            color: #333333;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.02em;
             line-height: 1.2;
         }
 
         .blocked-subtitle {
-            font-size: 13.5px;
+            font-size: 16px;
             font-weight: 400;
-            color: var(--text-muted);
+            color: #666666;
             margin: 0;
             line-height: 1.4;
         }
 
         .blocked-domain {
-            color: var(--text-heading);
-            font-weight: 600;
+            color: #333333;
+            font-weight: 500;
         }
 
         /* Center Full-Width Gray Section with Browser Mockup */
@@ -139,36 +129,29 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
             background-color: var(--bg-gray);
             border-top: 1px solid var(--border-gray);
             border-bottom: 1px solid var(--border-gray);
-            padding: 14px 20px;
+            padding: 48px 24px;
             display: flex;
             justify-content: center;
             align-items: center;
-            flex: 1 1 auto;
-            min-height: 0;
-            box-sizing: border-box;
         }
 
         .browser-mockup {
-            max-width: 760px;
+            max-width: 720px;
             width: 100%;
             background: #ffffff;
-            border-radius: 4px;
+            border-radius: 6px;
             box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
             overflow: hidden;
-            border: 1px solid #d4d4d4;
-            display: flex;
-            flex-direction: column;
-            max-height: 100%;
+            border: 1px solid #dcdcdc;
         }
 
         .browser-header {
             background: var(--browser-bar);
-            height: 30px;
+            height: 38px;
             display: flex;
             align-items: center;
-            padding: 0 12px;
-            gap: 5px;
-            flex-shrink: 0;
+            padding: 0 14px;
+            gap: 6px;
         }
 
         .browser-dot {
@@ -176,176 +159,167 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
             height: 7px;
             border-radius: 50%;
             background: #ffffff;
-            opacity: 0.9;
+            opacity: 0.85;
             display: inline-block;
         }
 
         .browser-address-bar {
-            margin-left: 12px;
-            background: rgba(255, 255, 255, 0.35);
-            height: 16px;
+            margin-left: 14px;
+            background: rgba(255, 255, 255, 0.3);
+            height: 20px;
             border-radius: 3px;
-            width: 45%;
+            width: 38%;
             max-width: 220px;
         }
 
         .browser-body {
-            height: 160px;
-            min-height: 120px;
+            height: 270px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #ffffff;
-            flex: 1 1 auto;
         }
 
         .block-badge-circle {
-            width: 72px;
-            height: 72px;
+            width: 94px;
+            height: 94px;
             border-radius: 50%;
             background-color: var(--alert-red);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 16px rgba(189, 36, 38, 0.22);
+            box-shadow: 0 6px 18px rgba(189, 36, 38, 0.22);
         }
 
         .block-badge-circle svg {
-            width: 32px;
-            height: 32px;
+            width: 44px;
+            height: 44px;
             stroke: #ffffff;
-            stroke-width: 3.5;
+            stroke-width: 3.4;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
 
         /* Bottom 2 Columns */
         .columns-section {
-            padding-top: 14px;
-            padding-bottom: 10px;
-            flex: 0 0 auto;
+            padding-top: 48px;
+            padding-bottom: 36px;
         }
 
         .columns-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 36px;
+            gap: 52px;
+        }
+
+        @media (max-width: 740px) {
+            .columns-grid {
+                grid-template-columns: 1fr;
+                gap: 28px;
+            }
         }
 
         .col-heading {
-            font-size: 14.5px;
-            font-weight: 700;
-            color: var(--text-heading);
-            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 500;
+            color: #333333;
+            margin: 0 0 12px 0;
             line-height: 1.3;
         }
 
         .col-desc {
-            font-size: 12.5px;
-            line-height: 1.55;
-            color: var(--text-sub);
+            font-size: 14px;
+            line-height: 1.65;
+            color: #555555;
             margin: 0;
         }
 
         .attack-pill {
-            margin-top: 8px;
+            margin-top: 14px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 3px 10px;
-            background: #fef2f2;
-            border: 1px solid #fee2e2;
+            padding: 4px 10px;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
             border-radius: 4px;
-            font-size: 11.5px;
+            font-size: 12px;
             color: #991b1b;
             font-family: var(--font-mono);
-            font-weight: 600;
         }
 
         .action-tools {
-            margin-top: 8px;
+            margin-top: 16px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
         .btn-contact {
             display: inline-flex;
             align-items: center;
-            padding: 6.5px 14px;
-            background: #1e293b;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #2b2b2b;
             color: #ffffff;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 500;
             text-decoration: none;
             transition: background 0.15s ease;
         }
 
         .btn-contact:hover {
-            background: #0f172a;
+            background: #111111;
         }
 
         .btn-copy {
             display: inline-flex;
             align-items: center;
-            padding: 6.5px 14px;
-            background: #ffffff;
-            color: #334155;
-            border: 1px solid #cbd5e1;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.15s ease;
         }
 
         .btn-copy:hover {
-            background: #f8fafc;
-            border-color: #94a3b8;
-            color: #0f172a;
+            background: #e5e7eb;
+            color: #111111;
         }
 
         /* Footer Metadata */
         .footer-section {
-            border-top: 1px solid #f1f5f9;
-            padding: 10px 0 14px 0;
-            flex: 0 0 auto;
+            border-top: 1px solid var(--border-gray);
+            padding: 26px 0 36px 0;
         }
 
         .footer-meta {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-muted);
-            line-height: 1.6;
+            line-height: 1.8;
             text-align: center;
         }
 
         .footer-meta strong {
-            color: var(--text-heading);
+            color: #222222;
         }
 
         .meta-dot {
-            margin: 0 8px;
-            color: #94a3b8;
+            margin: 0 10px;
+            color: #9ca3af;
         }
 
         .ip-mono {
             font-family: var(--font-mono);
-            color: var(--text-heading);
-            font-weight: 600;
-        }
-
-        @media (max-height: 600px) or (max-width: 740px) {
-            html, body, .page-container {
-                height: auto;
-                max-height: none;
-                overflow-y: auto;
-            }
-            .columns-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
+            color: #374151;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -370,7 +344,7 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                     <span class="browser-address-bar"></span>
                 </div>
                 <div class="browser-body">
-                    <div class="block-badge-circle" role="img" aria-label="Access Restricted">
+                    <div class="block-badge-circle" role="img" aria-label="Blocked Access">
                         <svg viewBox="0 0 24 24" fill="none">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -387,7 +361,7 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                     <!-- Left Column -->
                     <div>
                         <h2 class="col-heading">Why have I been blocked?</h2>
-                        <p class="col-desc">This website is protected by MDefender Pro automated defense to safeguard infrastructure against malicious probes, automated abuse, and abnormal request patterns. Your interaction triggered an edge inspection security rule.</p>
+                        <p class="col-desc">This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.</p>
                         <div class="attack-pill">
                             <span>Violation:</span>
                             <strong><?php echo esc_html($rule_name ?: $attack_type); ?></strong>
@@ -397,9 +371,9 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                     <!-- Right Column -->
                     <div>
                         <h2 class="col-heading">What can I do to resolve this?</h2>
-                        <p class="col-desc">If you believe this restriction was triggered by mistake, you can notify the website administrator with your incident Reference ID and Client IP shown below.</p>
+                        <p class="col-desc">You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.</p>
                         <div class="action-tools">
-                            <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=MDefender%20Security%20Incident:%20<?php echo esc_attr($reference_id); ?>" class="btn-contact">
+                            <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=MDefender%20Block%20Ray%20ID:%20<?php echo esc_attr($reference_id); ?>" class="btn-contact">
                                 Contact Site Administrator
                             </a>
                             <button type="button" class="btn-copy" id="copyBtn" onclick="copyReferenceId()">
@@ -420,9 +394,10 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                         <span class="meta-dot">&bull;</span>
                         <span>Your IP: <span class="ip-mono"><?php echo esc_html($client_ip); ?></span></span>
                         <span class="meta-dot">&bull;</span>
-                        <span>Timestamp: <?php echo esc_html($utc_timestamp); ?></span>
-                        <span class="meta-dot">&bull;</span>
                         <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
+                    </div>
+                    <div style="margin-top: 4px; font-size: 12px; color: #888888;">
+                        <span>Timestamp: <?php echo esc_html($utc_timestamp); ?></span>
                     </div>
                 </div>
             </div>
