@@ -256,13 +256,95 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
 
-    api_key = body.api_key or bearer_key
+    api_key = (body.api_key or bearer_key or "").strip()
 
+    # 1. Primary: Verify through standard verify_api_key
     auth_data = verify_api_key(db, api_key, body.domain)
 
-    if not auth_data:
+    # 2. Resilient Fleet Auto-Pairing: If not matched, resolve owning user from any key of this account
+    if not auth_data and api_key:
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        user = db.users.find_one({"api_key": api_key})
 
-        raise HTTPException(status_code=401, detail="Invalid API key or domain mismatch")
+        if not user:
+            # Check if key is a site-level key from db.websites
+            site_key_match = db.websites.find_one({"api_key": api_key})
+            if site_key_match and site_key_match.get("user_id"):
+                uid = site_key_match.get("user_id")
+                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
+                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
+
+        if not user:
+            # Check if key is in db.api_keys
+            scoped_match = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
+            if scoped_match and scoped_match.get("user_id"):
+                uid = scoped_match.get("user_id")
+                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
+                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
+
+        if user:
+            user_id_str = str(user["_id"])
+            raw_dom = body.domain or ""
+            clean_dom = re.sub(r"^https?:\/\/", "", raw_dom, flags=re.I).split("/")[0].split(":")[0].strip().lower()
+            clean_dom = re.sub(r"^www\.", "", clean_dom, flags=re.I)
+            escaped_dom = re.escape(clean_dom)
+
+            u_conds = [{"user_id": user_id_str}]
+            if ObjectId.is_valid(user_id_str):
+                u_conds.append({"user_id": ObjectId(user_id_str)})
+
+            # Check if user already has this website registered
+            website = db.websites.find_one({
+                "$and": [
+                    {"$or": u_conds},
+                    {"$or": [
+                        {"domain": {"$regex": f"{escaped_dom}", "$options": "i"}},
+                        {"url": {"$regex": f"{escaped_dom}", "$options": "i"}},
+                        {"domain": clean_dom},
+                        {"domain": f"www.{clean_dom}"},
+                    ]}
+                ]
+            })
+
+            now = datetime.now()
+            if not website:
+                site_id = f"site_{uuid.uuid4().hex[:12]}"
+                website = {
+                    "_id": site_id,
+                    "id": site_id,
+                    "user_id": user_id_str,
+                    "name": clean_dom or "WordPress Site",
+                    "url": body.site_url or body.home_url or f"https://{clean_dom}",
+                    "domain": clean_dom or "localhost",
+                    "platform": "wordpress",
+                    "status": "active",
+                    "protection_enabled": True,
+                    "waf_mode": "protect",
+                    "malware_scanner": True,
+                    "threat_level": "LOW",
+                    "verified": True,
+                    "subscription_status": "trial_active",
+                    "trial_starts_at": now,
+                    "trial_ends_at": now + timedelta(days=14),
+                    "connected_at": now,
+                    "last_activity": now,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                try:
+                    db.websites.insert_one(website)
+                except Exception:
+                    website = db.websites.find_one({"domain": clean_dom})
+
+            if website:
+                auth_data = {
+                    "user_id": user_id_str,
+                    "website_id": str(website.get("_id") or website.get("id")),
+                    "website": website
+                }
+
+    if not auth_data:
+        raise HTTPException(status_code=401, detail="Invalid API key. Please check your Master API Key from MDefender Pro dashboard.")
 
 
 
@@ -525,13 +607,95 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
 
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
 
-    api_key = body.api_key or bearer_key
+    api_key = (body.api_key or bearer_key or "").strip()
 
+    # 1. Primary: Verify through standard verify_api_key
     auth_data = verify_api_key(db, api_key, body.domain)
 
-    if not auth_data:
+    # 2. Resilient Fleet Auto-Pairing: If not matched, resolve owning user from any key of this account
+    if not auth_data and api_key:
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        user = db.users.find_one({"api_key": api_key})
 
-        raise HTTPException(status_code=401, detail="Invalid API key or domain mismatch")
+        if not user:
+            # Check if key is a site-level key from db.websites
+            site_key_match = db.websites.find_one({"api_key": api_key})
+            if site_key_match and site_key_match.get("user_id"):
+                uid = site_key_match.get("user_id")
+                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
+                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
+
+        if not user:
+            # Check if key is in db.api_keys
+            scoped_match = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
+            if scoped_match and scoped_match.get("user_id"):
+                uid = scoped_match.get("user_id")
+                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
+                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
+
+        if user:
+            user_id_str = str(user["_id"])
+            raw_dom = body.domain or ""
+            clean_dom = re.sub(r"^https?:\/\/", "", raw_dom, flags=re.I).split("/")[0].split(":")[0].strip().lower()
+            clean_dom = re.sub(r"^www\.", "", clean_dom, flags=re.I)
+            escaped_dom = re.escape(clean_dom)
+
+            u_conds = [{"user_id": user_id_str}]
+            if ObjectId.is_valid(user_id_str):
+                u_conds.append({"user_id": ObjectId(user_id_str)})
+
+            # Check if user already has this website registered
+            website = db.websites.find_one({
+                "$and": [
+                    {"$or": u_conds},
+                    {"$or": [
+                        {"domain": {"$regex": f"{escaped_dom}", "$options": "i"}},
+                        {"url": {"$regex": f"{escaped_dom}", "$options": "i"}},
+                        {"domain": clean_dom},
+                        {"domain": f"www.{clean_dom}"},
+                    ]}
+                ]
+            })
+
+            now = datetime.now()
+            if not website:
+                site_id = f"site_{uuid.uuid4().hex[:12]}"
+                website = {
+                    "_id": site_id,
+                    "id": site_id,
+                    "user_id": user_id_str,
+                    "name": clean_dom or "WordPress Site",
+                    "url": body.site_url or body.home_url or f"https://{clean_dom}",
+                    "domain": clean_dom or "localhost",
+                    "platform": "wordpress",
+                    "status": "active",
+                    "protection_enabled": True,
+                    "waf_mode": "protect",
+                    "malware_scanner": True,
+                    "threat_level": "LOW",
+                    "verified": True,
+                    "subscription_status": "trial_active",
+                    "trial_starts_at": now,
+                    "trial_ends_at": now + timedelta(days=14),
+                    "connected_at": now,
+                    "last_activity": now,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                try:
+                    db.websites.insert_one(website)
+                except Exception:
+                    website = db.websites.find_one({"domain": clean_dom})
+
+            if website:
+                auth_data = {
+                    "user_id": user_id_str,
+                    "website_id": str(website.get("_id") or website.get("id")),
+                    "website": website
+                }
+
+    if not auth_data:
+        raise HTTPException(status_code=401, detail="Invalid API key. Please check your Master API Key from MDefender Pro dashboard.")
 
 
 
