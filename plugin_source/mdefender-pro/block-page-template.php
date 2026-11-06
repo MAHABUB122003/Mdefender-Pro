@@ -345,7 +345,7 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
             <div class="content-wrap">
                 <span class="policy-pill">MDEFENDER PRO &bull; EDGE POLICY ENFORCEMENT</span>
                 <h1 class="blocked-title">Access Restricted by Security Policy</h1>
-                <p class="blocked-subtitle">Your connection to <span class="blocked-domain"><?php echo esc_html($site_host); ?></span> was flagged and intercepted by automated threat protection.</p>
+                <p class="blocked-subtitle">Your connection to <span class="blocked-domain" id="siteHostSpan"><?php echo esc_html($site_host); ?></span> was flagged and intercepted by automated threat protection.</p>
             </div>
         </header>
 
@@ -379,7 +379,7 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                         <p class="col-desc">This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.</p>
                         <div class="attack-pill">
                             <span>Violation:</span>
-                            <strong><?php echo esc_html($rule_name ?: $attack_type); ?></strong>
+                            <strong id="attackTypeVal"><?php echo esc_html($attack_type); ?></strong>
                         </div>
                     </div>
 
@@ -389,7 +389,7 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                         <p class="col-desc">You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.</p>
                         <div class="action-tools">
                             <a href="mailto:<?php echo esc_attr($admin_email); ?>?subject=MDefender%20Block%20Ray%20ID:%20<?php echo esc_attr($reference_id); ?>"
-                                class="btn-contact">
+                                class="btn-contact" id="contactEmailBtn">
                                 Contact Site Administrator
                             </a>
                             <button type="button" class="btn-copy" id="copyBtn" onclick="copyReferenceId()">
@@ -408,12 +408,12 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
                     <div>
                         <span>MDefender Ray ID: <strong id="rayIdVal"><?php echo esc_html($reference_id); ?></strong></span>
                         <span class="meta-dot">&bull;</span>
-                        <span>Your IP: <span class="ip-mono"><?php echo esc_html($client_ip); ?></span></span>
+                        <span>Your IP: <span class="ip-mono" id="clientIpText"><?php echo esc_html($client_ip); ?></span></span>
                         <span class="meta-dot">&bull;</span>
                         <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
                     </div>
                     <div style="margin-top: 2px; font-size: 11.5px; color: #888888;">
-                        <span>Timestamp: <?php echo esc_html($utc_timestamp); ?></span>
+                        <span>Timestamp: <span id="timestampVal"><?php echo esc_html($utc_timestamp); ?></span></span>
                     </div>
                 </div>
             </div>
@@ -421,8 +421,9 @@ $home_url       = isset($home_url) ? $home_url : home_url('/');
     </div>
 
     <script>
-        const refId = "<?php echo esc_js($reference_id); ?>";
         function copyReferenceId() {
+            var rayEl = document.getElementById('rayIdVal');
+            var refId = rayEl ? rayEl.innerText.trim() : '<?php echo esc_js($reference_id); ?>';
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(refId).then(function () {
                     var btn = document.getElementById('copyBtn');
