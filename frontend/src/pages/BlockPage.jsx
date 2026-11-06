@@ -143,9 +143,9 @@ export default function BlockPage() {
         /* Center Banner */
         .cf-mockup-section {
           width: 100%;
-          background-color: #eeeeee;
-          border-top: 1px solid #e0e0e0;
-          border-bottom: 1px solid #e0e0e0;
+          background-color: #ebebeb;
+          border-top: 1px solid #dadada;
+          border-bottom: 1px solid #dadada;
           padding: 24px 0;
           box-sizing: border-box;
           display: flex;
@@ -160,14 +160,14 @@ export default function BlockPage() {
           width: 100%;
           margin: 0 auto;
           background: #ffffff;
-          border-radius: 8px;
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+          border-radius: 4px;
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
           overflow: hidden;
           border: 1px solid #d4d4d4;
         }
 
         .cf-browser-header {
-          background: #64748b;
+          background: #8c8c8c;
           height: 32px;
           display: flex;
           align-items: center;
@@ -180,14 +180,14 @@ export default function BlockPage() {
           height: 7px;
           border-radius: 50%;
           background: #ffffff;
-          opacity: 0.85;
+          opacity: 0.9;
           display: inline-block;
         }
 
         .cf-browser-address-bar {
           margin-left: 12px;
-          background: rgba(255, 255, 255, 0.28);
-          height: 18px;
+          background: rgba(255, 255, 255, 0.35);
+          height: 16px;
           border-radius: 3px;
           width: 45%;
           max-width: 240px;
