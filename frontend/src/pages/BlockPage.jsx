@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 export default function BlockPage() {
@@ -39,323 +39,349 @@ export default function BlockPage() {
   return (
     <div className="bp-root">
       <style>{`
-        *, *::before, *::after {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
+        :root {
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+            --text-main: #333333;
+            --text-sub: #555555;
+            --text-muted: #777777;
+            --bg-gray: #eeeeee;
+            --browser-bar: #8a8a8a;
+            --alert-red: #bd2426;
         }
 
-        html, body {
-          width: 100%;
-          min-height: 100%;
-          background-color: #ffffff;
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+            font-family: var(--font-family);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .bp-root {
-          width: 100%;
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          background-color: #ffffff;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
-          color: #333333;
-          -webkit-font-smoothing: antialiased;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: #ffffff;
+            overflow: hidden;
         }
 
-        .bp-content-wrap {
-          max-width: 900px;
-          width: 100%;
-          margin: 0 auto;
-          padding: 0 24px;
+        .content-wrap {
+            max-width: 1100px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 36px;
         }
 
         /* Top Heading Section */
-        .bp-header-section {
-          padding-top: 52px;
-          padding-bottom: 28px;
+        .header-section {
+            padding-top: 18px;
+            padding-bottom: 12px;
         }
 
-        .bp-policy-pill {
-          display: inline-block;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          color: #555555;
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
-          padding: 4px 12px;
-          border-radius: 9999px;
-          margin-bottom: 12px;
+        .policy-pill {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #555555;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            padding: 3px 12px;
+            border-radius: 9999px;
+            margin-bottom: 6px;
         }
 
-        .bp-title {
-          font-size: 38px;
-          font-weight: 400;
-          color: #333333;
-          margin: 0 0 8px 0;
-          letter-spacing: -0.02em;
-          line-height: 1.2;
+        .blocked-title {
+            font-size: 40px;
+            font-weight: 400;
+            color: #333333;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
         }
 
-        .bp-subtitle {
-          font-size: 16px;
-          font-weight: 400;
-          color: #666666;
-          margin: 0;
-          line-height: 1.4;
+        .blocked-subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: #666666;
+            margin: 0;
+            line-height: 1.35;
         }
 
-        .bp-domain {
-          color: #333333;
-          font-weight: 500;
+        .blocked-domain {
+            color: #333333;
+            font-weight: 500;
         }
 
         /* Center Full-Width Gray Section with Browser Mockup */
-        .bp-mockup-section {
-          width: 100%;
-          background-color: #eeeeee;
-          border-top: 1px solid #e2e2e2;
-          border-bottom: 1px solid #e2e2e2;
-          padding: 48px 24px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
+        .mockup-section {
+            width: 100%;
+            background-color: var(--bg-gray);
+            border-top: 1px solid #dcdcdc;
+            border-bottom: none;
+            padding: 38px 36px 0 36px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
         }
 
-        .bp-browser-mockup {
-          max-width: 720px;
-          width: 100%;
-          background: #ffffff;
-          border-radius: 6px;
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
-          overflow: hidden;
-          border: 1px solid #dcdcdc;
+        .browser-mockup {
+            max-width: 980px;
+            width: 100%;
+            background: #ffffff;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+            box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            border: 1px solid #dcdcdc;
+            border-bottom: none;
         }
 
-        .bp-browser-header {
-          background: #8a8a8a;
-          height: 38px;
-          display: flex;
-          align-items: center;
-          padding: 0 14px;
-          gap: 6px;
+        .browser-header {
+            background: var(--browser-bar);
+            height: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 8px;
         }
 
-        .bp-browser-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #ffffff;
-          opacity: 0.85;
-          display: inline-block;
+        .browser-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #ffffff;
+            opacity: 0.85;
+            display: inline-block;
         }
 
-        .bp-browser-address-bar {
-          margin-left: 14px;
-          background: rgba(255, 255, 255, 0.3);
-          height: 20px;
-          border-radius: 3px;
-          width: 38%;
-          max-width: 220px;
+        .browser-address-bar {
+            margin-left: 16px;
+            background: rgba(255, 255, 255, 0.3);
+            height: 20px;
+            border-radius: 3px;
+            width: 38%;
+            max-width: 240px;
         }
 
-        .bp-browser-body {
-          height: 270px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #ffffff;
+        .browser-body {
+            height: 305px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
         }
 
-        .bp-badge-circle {
-          width: 94px;
-          height: 94px;
-          border-radius: 50%;
-          background-color: #bd2426;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 6px 18px rgba(189, 36, 38, 0.22);
+        .block-badge-circle {
+            width: 104px;
+            height: 104px;
+            border-radius: 50%;
+            background-color: var(--alert-red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 22px rgba(189, 36, 38, 0.25);
         }
 
-        .bp-badge-circle svg {
-          width: 44px;
-          height: 44px;
-          stroke: #ffffff;
-          stroke-width: 3.4;
-          stroke-linecap: round;
-          stroke-linejoin: round;
+        .block-badge-circle svg {
+            width: 48px;
+            height: 48px;
+            stroke: #ffffff;
+            stroke-width: 3.4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         /* Bottom 2 Columns */
-        .bp-columns-section {
-          padding-top: 48px;
-          padding-bottom: 36px;
+        .columns-section {
+            padding-top: 18px;
+            padding-bottom: 18px;
         }
 
-        .bp-columns-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 52px;
+        .columns-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 52px;
         }
 
         @media (max-width: 740px) {
-          .bp-columns-grid {
-            grid-template-columns: 1fr;
-            gap: 28px;
-          }
+            .columns-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            html, body, .bp-root {
+                overflow: auto;
+            }
         }
 
-        .bp-col-heading {
-          font-size: 18px;
-          font-weight: 500;
-          color: #333333;
-          margin: 0 0 12px 0;
-          line-height: 1.3;
+        .col-heading {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333333;
+            margin: 0 0 6px 0;
+            line-height: 1.3;
         }
 
-        .bp-col-desc {
-          font-size: 14px;
-          line-height: 1.65;
-          color: #555555;
-          margin: 0;
+        .col-desc {
+            font-size: 14px;
+            line-height: 1.55;
+            color: #555555;
+            margin: 0;
         }
 
-        .bp-attack-pill {
-          margin-top: 14px;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          background: #fee2e2;
-          border: 1px solid #fca5a5;
-          border-radius: 4px;
-          font-size: 12px;
-          color: #991b1b;
-          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        .attack-pill {
+            margin-top: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #991b1b;
+            font-family: var(--font-mono);
         }
 
-        .bp-action-tools {
-          margin-top: 16px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
+        .action-tools {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
-        .bp-btn-contact {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
-          background: #2b2b2b;
-          color: #ffffff;
-          border-radius: 4px;
-          font-size: 13px;
-          font-weight: 500;
-          border: none;
-          cursor: pointer;
-          transition: background 0.15s ease;
+        .btn-contact {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 15px;
+            background: #2b2b2b;
+            color: #ffffff;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s ease;
         }
 
-        .bp-btn-contact:hover {
-          background: #111111;
+        .btn-contact:hover {
+            background: #111111;
         }
 
-        .bp-btn-copy {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
-          background: #f3f4f6;
-          color: #374151;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.15s ease;
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 15px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
         }
 
-        .bp-btn-copy:hover {
-          background: #e5e7eb;
-          color: #111111;
+        .btn-copy:hover {
+            background: #e5e7eb;
+            color: #111111;
         }
 
         /* Footer Metadata */
-        .bp-footer-section {
-          border-top: 1px solid #e2e2e2;
-          padding: 26px 0 36px 0;
+        .footer-section {
+            border-top: 1px solid #e2e2e2;
+            padding: 10px 0 12px 0;
+            background: #fafafa;
         }
 
-        .bp-footer-meta {
-          font-size: 13px;
-          color: #777777;
-          line-height: 1.8;
-          text-align: center;
+        .footer-meta {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            text-align: center;
         }
 
-        .bp-footer-meta strong {
-          color: #222222;
+        .footer-meta strong {
+            color: #222222;
         }
 
-        .bp-meta-dot {
-          margin: 0 10px;
-          color: #9ca3af;
+        .meta-dot {
+            margin: 0 8px;
+            color: #9ca3af;
         }
 
-        .bp-ip-mono {
-          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-          color: #374151;
-          font-weight: 500;
+        .ip-mono {
+            font-family: var(--font-mono);
+            color: #374151;
+            font-weight: 500;
         }
 
         /* Modal Styles */
         .bp-modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(15, 23, 42, 0.45);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 16px;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
         }
 
         .bp-modal-card {
-          background: #ffffff;
-          border-radius: 8px;
-          max-width: 480px;
-          width: 100%;
-          padding: 24px;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            background: #ffffff;
+            border-radius: 8px;
+            max-width: 480px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
       `}</style>
 
       {/* Top Heading Section */}
-      <header className="bp-header-section">
-        <div className="bp-content-wrap">
-          <span className="bp-policy-pill">MDEFENDER PRO &bull; EDGE POLICY ENFORCEMENT</span>
-          <h1 className="bp-title">Access Restricted by Security Policy</h1>
-          <p className="bp-subtitle">
-            Your connection to <span className="bp-domain">{domain}</span> was flagged and intercepted by automated threat protection.
+      <header className="header-section">
+        <div className="content-wrap">
+          <span className="policy-pill">MDEFENDER PRO &bull; EDGE POLICY ENFORCEMENT</span>
+          <h1 className="blocked-title">Access Restricted by Security Policy</h1>
+          <p className="blocked-subtitle">
+            Your connection to <span className="blocked-domain">{domain}</span> was flagged and intercepted by automated threat protection.
           </p>
         </div>
       </header>
 
-      {/* Center Full-Width Gray Section with Browser Mockup */}
-      <section className="bp-mockup-section">
-        <div className="bp-browser-mockup">
-          <div className="bp-browser-header" aria-hidden="true">
-            <span className="bp-browser-dot"></span>
-            <span className="bp-browser-dot"></span>
-            <span className="bp-browser-dot"></span>
-            <span className="bp-browser-address-bar"></span>
+      {/* Center Full-Width Gray Section with Browser Mockup Connected to Bottom Background */}
+      <section className="mockup-section">
+        <div className="browser-mockup">
+          <div className="browser-header" aria-hidden="true">
+            <span className="browser-dot"></span>
+            <span className="browser-dot"></span>
+            <span className="browser-dot"></span>
+            <span className="browser-address-bar"></span>
           </div>
-          <div className="bp-browser-body">
-            <div className="bp-badge-circle" role="img" aria-label="Blocked Access">
+          <div className="browser-body">
+            <div className="block-badge-circle" role="img" aria-label="Blocked Access">
               <svg viewBox="0 0 24 24" fill="none">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -366,16 +392,16 @@ export default function BlockPage() {
       </section>
 
       {/* Bottom Explanations */}
-      <main className="bp-columns-section">
-        <div className="bp-content-wrap">
-          <div className="bp-columns-grid">
+      <main className="columns-section">
+        <div className="content-wrap">
+          <div className="columns-grid">
             {/* Left Column */}
             <div>
-              <h2 className="bp-col-heading">Why have I been blocked?</h2>
-              <p className="bp-col-desc">
+              <h2 className="col-heading">Why have I been blocked?</h2>
+              <p className="col-desc">
                 This website is using a security service to protect itself from online attacks. The action you just performed triggered the security solution. There are several actions that could trigger this block including submitting a certain word or phrase, a SQL command or malformed data.
               </p>
-              <div className="bp-attack-pill">
+              <div className="attack-pill">
                 <span>Violation:</span>
                 <strong>{ruleName}</strong>
               </div>
@@ -383,21 +409,21 @@ export default function BlockPage() {
 
             {/* Right Column */}
             <div>
-              <h2 className="bp-col-heading">What can I do to resolve this?</h2>
-              <p className="bp-col-desc">
+              <h2 className="col-heading">What can I do to resolve this?</h2>
+              <p className="col-desc">
                 You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.
               </p>
-              <div className="bp-action-tools">
+              <div className="action-tools">
                 <button
                   type="button"
-                  className="bp-btn-contact"
+                  className="btn-contact"
                   onClick={() => setIsReportOpen(true)}
                 >
                   Contact Site Administrator
                 </button>
                 <button
                   type="button"
-                  className="bp-btn-copy"
+                  className="btn-copy"
                   onClick={handleCopy}
                   style={copied ? { borderColor: '#10b981', color: '#10b981' } : {}}
                 >
@@ -410,18 +436,18 @@ export default function BlockPage() {
       </main>
 
       {/* Footer Metadata */}
-      <footer className="bp-footer-section">
-        <div className="bp-content-wrap">
-          <div className="bp-footer-meta">
+      <footer className="footer-section">
+        <div className="content-wrap">
+          <div className="footer-meta">
             <div>
-              <span>MDefender Ray ID: <strong>{rayId}</strong></span>
-              <span className="bp-meta-dot">&bull;</span>
-              <span>Your IP: <span className="bp-ip-mono">{ip}</span></span>
-              <span className="bp-meta-dot">&bull;</span>
+              <span>MDefender Ray ID: <strong id="rayIdVal">{rayId}</strong></span>
+              <span className="meta-dot">&bull;</span>
+              <span>Your IP: <span className="ip-mono">{ip}</span></span>
+              <span className="meta-dot">&bull;</span>
               <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
             </div>
-            <div style={{ marginTop: '4px', fontSize: '12px', color: '#888888' }}>
-              <span>Timestamp: {timestamp}</span>
+            <div style={{ marginTop: '2px', fontSize: '11.5px', color: '#888888' }}>
+              <span>Timestamp: <span>{timestamp}</span></span>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,20 +15,23 @@
             --text-sub: #555555;
             --text-muted: #777777;
             --bg-gray: #eeeeee;
-            --border-gray: #e2e2e2;
             --browser-bar: #8a8a8a;
             --alert-red: #bd2426;
         }
 
-        *, *::before, *::after {
+        *,
+        *::before,
+        *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        html, body {
+        html,
+        body {
             width: 100%;
-            min-height: 100%;
+            height: 100%;
+            overflow: hidden;
             background-color: #ffffff;
             font-family: var(--font-family);
             color: var(--text-main);
@@ -37,45 +41,47 @@
 
         .page-container {
             width: 100%;
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }
 
+        /* 100% জুমে পারফেক্ট ফিট হওয়ার জন্য কন্টেইনারের উইডথ অপ্টিমাইজ করা হয়েছে */
         .content-wrap {
-            max-width: 900px;
+            max-width: 1100px;
             width: 100%;
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 0 36px;
         }
 
         /* Top Heading Section */
         .header-section {
-            padding-top: 52px;
-            padding-bottom: 28px;
+            padding-top: 18px;
+            padding-bottom: 12px;
         }
 
         .policy-pill {
             display: inline-block;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #555555;
             background: #f3f4f6;
             border: 1px solid #e5e7eb;
-            padding: 4px 12px;
+            padding: 3px 12px;
             border-radius: 9999px;
-            margin-bottom: 12px;
+            margin-bottom: 6px;
         }
 
         .blocked-title {
-            font-size: 38px;
+            font-size: 40px; /* 100% জুমে বড় ও প্রিমিয়াম দেখানোর জন্য ফন্ট সাইজ সামঞ্জস্য করা হয়েছে */
             font-weight: 400;
             color: #333333;
-            margin: 0 0 8px 0;
+            margin: 0 0 6px 0;
             letter-spacing: -0.02em;
-            line-height: 1.2;
+            line-height: 1.15;
         }
 
         .blocked-subtitle {
@@ -83,7 +89,7 @@
             font-weight: 400;
             color: #666666;
             margin: 0;
-            line-height: 1.4;
+            line-height: 1.35;
         }
 
         .blocked-domain {
@@ -95,22 +101,26 @@
         .mockup-section {
             width: 100%;
             background-color: var(--bg-gray);
-            border-top: 1px solid var(--border-gray);
-            border-bottom: 1px solid var(--border-gray);
-            padding: 48px 24px;
+            border-top: 1px solid #dcdcdc;
+            border-bottom: none;
+            padding: 38px 36px 0 36px;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-end;
         }
 
         .browser-mockup {
-            max-width: 720px;
+            max-width: 980px; /* 100% জুমে মকআপের প্রশস্ততা পারফেক্ট রাখা হয়েছে */
             width: 100%;
             background: #ffffff;
-            border-radius: 6px;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+            box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.06);
             overflow: hidden;
             border: 1px solid #dcdcdc;
+            border-bottom: none;
         }
 
         .browser-header {
@@ -118,13 +128,13 @@
             height: 38px;
             display: flex;
             align-items: center;
-            padding: 0 14px;
-            gap: 6px;
+            padding: 0 16px;
+            gap: 8px;
         }
 
         .browser-dot {
-            width: 7px;
-            height: 7px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             background: #ffffff;
             opacity: 0.85;
@@ -132,16 +142,16 @@
         }
 
         .browser-address-bar {
-            margin-left: 14px;
+            margin-left: 16px;
             background: rgba(255, 255, 255, 0.3);
             height: 20px;
             border-radius: 3px;
             width: 38%;
-            max-width: 220px;
+            max-width: 240px;
         }
 
         .browser-body {
-            height: 270px;
+            height: 305px; /* 100% জুমে ব্রাউজার বডির হাইট আকর্ষণীয় রাখা হয়েছে */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -149,19 +159,19 @@
         }
 
         .block-badge-circle {
-            width: 94px;
-            height: 94px;
+            width: 104px; /* লাল সার্কেলের সাইজ প্রফেশনাল লুক অনুযায়ী সেট করা হয়েছে */
+            height: 104px;
             border-radius: 50%;
             background-color: var(--alert-red);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 18px rgba(189, 36, 38, 0.22);
+            box-shadow: 0 6px 22px rgba(189, 36, 38, 0.25);
         }
 
         .block-badge-circle svg {
-            width: 44px;
-            height: 44px;
+            width: 48px; /* ক্রসের সাইজ সামঞ্জস্যপূর্ণ রাখা হয়েছে */
+            height: 48px;
             stroke: #ffffff;
             stroke-width: 3.4;
             stroke-linecap: round;
@@ -170,8 +180,8 @@
 
         /* Bottom 2 Columns */
         .columns-section {
-            padding-top: 48px;
-            padding-bottom: 36px;
+            padding-top: 18px;
+            padding-bottom: 18px;
         }
 
         .columns-grid {
@@ -183,7 +193,10 @@
         @media (max-width: 740px) {
             .columns-grid {
                 grid-template-columns: 1fr;
-                gap: 28px;
+                gap: 16px;
+            }
+            html, body {
+                overflow: auto;
             }
         }
 
@@ -191,23 +204,23 @@
             font-size: 18px;
             font-weight: 500;
             color: #333333;
-            margin: 0 0 12px 0;
+            margin: 0 0 6px 0;
             line-height: 1.3;
         }
 
         .col-desc {
             font-size: 14px;
-            line-height: 1.65;
+            line-height: 1.55;
             color: #555555;
             margin: 0;
         }
 
         .attack-pill {
-            margin-top: 14px;
+            margin-top: 10px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px;
+            padding: 3px 10px;
             background: #fee2e2;
             border: 1px solid #fca5a5;
             border-radius: 4px;
@@ -217,7 +230,7 @@
         }
 
         .action-tools {
-            margin-top: 16px;
+            margin-top: 12px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -228,7 +241,7 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 16px;
+            padding: 7px 15px;
             background: #2b2b2b;
             color: #ffffff;
             border-radius: 4px;
@@ -246,7 +259,7 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 16px;
+            padding: 7px 15px;
             background: #f3f4f6;
             color: #374151;
             border: 1px solid #d1d5db;
@@ -264,14 +277,15 @@
 
         /* Footer Metadata */
         .footer-section {
-            border-top: 1px solid var(--border-gray);
-            padding: 26px 0 36px 0;
+            border-top: 1px solid #e2e2e2;
+            padding: 10px 0 12px 0;
+            background: #fafafa;
         }
 
         .footer-meta {
-            font-size: 13px;
+            font-size: 12.5px;
             color: var(--text-muted);
-            line-height: 1.8;
+            line-height: 1.4;
             text-align: center;
         }
 
@@ -280,7 +294,7 @@
         }
 
         .meta-dot {
-            margin: 0 10px;
+            margin: 0 8px;
             color: #9ca3af;
         }
 
@@ -291,6 +305,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="page-container">
         <!-- Top Heading Section -->
@@ -302,7 +317,7 @@
             </div>
         </header>
 
-        <!-- Center Full-Width Gray Section with Browser Mockup -->
+        <!-- Center Full-Width Gray Section with Browser Mockup Connected to Bottom Background -->
         <section class="mockup-section">
             <div class="browser-mockup">
                 <div class="browser-header" aria-hidden="true">
@@ -341,7 +356,8 @@
                         <h2 class="col-heading">What can I do to resolve this?</h2>
                         <p class="col-desc">You can email the site owner to let them know you were blocked. Please include what you were doing when this page came up and the MDefender Ray ID found at the bottom of this page.</p>
                         <div class="action-tools">
-                            <a href="mailto:security@{{ website_name }}?subject=MDefender%20Block%20Ray%20ID:%20{{ reference_id }}" class="btn-contact" id="contactEmailBtn">
+                            <a href="mailto:security@{{ website_name }}?subject=MDefender%20Block%20Ray%20ID:%20{{ reference_id }}"
+                                class="btn-contact" id="contactEmailBtn">
                                 Contact Site Administrator
                             </a>
                             <button type="button" class="btn-copy" id="copyBtn" onclick="copyReferenceId()">
@@ -364,7 +380,7 @@
                         <span class="meta-dot">&bull;</span>
                         <span>Performance &amp; security by <strong>MDefender Pro</strong></span>
                     </div>
-                    <div style="margin-top: 4px; font-size: 12px; color: #888888;">
+                    <div style="margin-top: 2px; font-size: 11.5px; color: #888888;">
                         <span>Timestamp: <span id="timestampVal">{{ timestamp }}</span></span>
                     </div>
                 </div>
@@ -374,7 +390,7 @@
 
     <script>
         // Automatic safe fallbacks so raw curly braces are never displayed in direct browser previews
-        (function() {
+        (function () {
             var defaultHost = window.location.hostname || 'mahabubur.shop';
             var defaultIp = '103.120.45.241';
             var defaultRef = 'MDEF-2070BF20';
@@ -407,20 +423,20 @@
                 refId = 'MDEF-2070BF20';
             }
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(refId).then(function() {
+                navigator.clipboard.writeText(refId).then(function () {
                     var btn = document.getElementById('copyBtn');
                     if (btn) {
                         var original = btn.innerText;
                         btn.innerText = 'Copied!';
                         btn.style.borderColor = '#10b981';
                         btn.style.color = '#10b981';
-                        setTimeout(function() {
+                        setTimeout(function () {
                             btn.innerText = original;
                             btn.style.borderColor = '';
                             btn.style.color = '';
                         }, 2000);
                     }
-                }).catch(function() {
+                }).catch(function () {
                     alert('MDefender Ray ID: ' + refId);
                 });
             } else {
@@ -429,4 +445,5 @@
         }
     </script>
 </body>
+
 </html>
