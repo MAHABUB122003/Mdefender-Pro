@@ -42,7 +42,7 @@ import uuid
 
 import zipfile
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from pathlib import Path
 
@@ -491,7 +491,9 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
 
 
-    days_remaining = max(0, (trial_ends_at - now).days) if trial_ends_at else 14
+    import math
+    seconds_remaining = (trial_ends_at - now).total_seconds() if trial_ends_at else 14 * 86400
+    days_remaining = max(0, math.ceil(seconds_remaining / 86400))
 
     return success({
 
