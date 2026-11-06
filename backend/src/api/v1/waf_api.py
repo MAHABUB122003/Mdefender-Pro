@@ -12,7 +12,7 @@ clients - the block page is rendered from a generic reason + reference ID.
 import hashlib
 import hmac
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -152,7 +152,9 @@ def verify_api_key(db, api_key, domain=None):
                         website["user_id"] = user_id_str
                         site_id = str(existing.get("_id"))
             except Exception:
-                website = db.websites.find_one({"user_id": user_id_str})
+                website = db.websites.find_one({"domain": expected})
+                if not website and not domain:
+                    website = db.websites.find_one({"user_id": user_id_str})
                 if not website:
                     return None
         return {

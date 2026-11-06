@@ -39,8 +39,14 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
             $notice_type = 'error';
         } else {
             // Live Handshake with MDefender Cloud Fleet
-            $domain = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
-            $clean_domain = preg_replace('/^www\./i', '', $domain);
+            $host = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $clean_host = preg_replace('/^www\./i', '', $host);
+            $site_path = trim(parse_url(home_url(), PHP_URL_PATH) ?? '', '/');
+            if (in_array(strtolower($clean_host), ['localhost', '127.0.0.1']) && !empty($site_path)) {
+                $clean_domain = $clean_host . '/' . $site_path;
+            } else {
+                $clean_domain = $clean_host;
+            }
 
             $handshake_payload = [
                 'api_key' => $api_key,
