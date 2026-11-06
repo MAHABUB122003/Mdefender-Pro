@@ -13228,9 +13228,9 @@ async def get_fleet_safe_updates_summary(user=Depends(get_current_user)):
     clean = len([l for l in logs if l.get("status") == "verified_clean"])
 
     return success({
-        "total_safe_updates_run": max(total_runs, 14),
-        "rollbacks_prevented": max(rollbacks, 2),
-        "zero_downtime_success_pct": "100.0",
+        "total_safe_updates_run": total_runs,
+        "rollbacks_prevented": rollbacks,
+        "zero_downtime_success_pct": "100.0" if total_runs == 0 else f"{round((clean / max(1, total_runs)) * 100, 1)}",
         "active_regression_guard": True,
         "protected_sites_count": len(user_sites)
     })

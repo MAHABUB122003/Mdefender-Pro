@@ -18,6 +18,9 @@ import urllib.request
 import urllib.error
 import concurrent.futures
 from typing import Dict, Any, Optional, List
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from src.database.mongodb_connection import MongoDB
 
@@ -1008,34 +1011,29 @@ class MonitoringService:
         }
         if target.get("api_key"):
             crawler_headers["X-MDefender-Key"] = target["api_key"]
+            crawler_headers["Authorization"] = f"Bearer {target['api_key']}"
         crawler_headers["X-MDefender-Probe"] = "1"
 
         try:
-            req = urllib.request.Request(url, headers=crawler_headers)
-            with urllib.request.urlopen(req, timeout=8.0) as resp:
-                raw_bytes = resp.read()
-                try:
-                    html_content = raw_bytes.decode("utf-8", errors="ignore")
-                except Exception:
-                    html_content = raw_bytes.decode("latin-1", errors="ignore")
-        except urllib.error.HTTPError as he:
-            is_turnstile = he.code == 403
-            return {
-                "domain": hostname,
-                "site_id": site_id,
-                "has_scanned": True,
-                "scanned_at": now.isoformat(),
-                "is_challenged": is_turnstile,
-                "error": "Origin returned HTTP 403 (MDefender Bot Shield Challenge Active)" if is_turnstile else f"HTTP Error {he.code}: {he.reason}",
-                "message": "Origin web server intercepted crawler with HTTP 403 (MDefender Bot Shield / Turnstile Challenge Active). Temporarily pause Under Attack Mode or add your IP to allowlist to crawl internal URLs." if is_turnstile else f"Server returned error {he.code}",
-                "total_scanned": 0,
-                "healthy_count": 0,
-                "redirect_count": 0,
-                "broken_count": 0,
-                "server_error_count": 0,
-                "broken_links": [],
-                "all_links": []
-            }
+            resp = requests.get(url, headers=crawler_headers, timeout=10.0, verify=False)
+            html_content = resp.text or ""
+            if resp.status_code == 403 and "turnstile" in html_content.lower():
+                return {
+                    "domain": hostname,
+                    "site_id": site_id,
+                    "has_scanned": True,
+                    "scanned_at": now.isoformat(),
+                    "is_challenged": True,
+                    "error": "Origin returned HTTP 403 (MDefender Bot Shield Challenge Active)",
+                    "message": "Origin web server intercepted crawler with HTTP 403 (MDefender Bot Shield / Turnstile Challenge Active).",
+                    "total_scanned": 0,
+                    "healthy_count": 0,
+                    "redirect_count": 0,
+                    "broken_count": 0,
+                    "server_error_count": 0,
+                    "broken_links": [],
+                    "all_links": []
+                }
         except Exception as e:
             logger.warning(f"[LinkCrawler] Failed to fetch root {url}: {e}")
             return {
@@ -1080,14 +1078,51 @@ class MonitoringService:
             if len(discovered) >= max_links:
                 break
 
-        # Fallback to test standard WordPress entry paths if minimal links on landing page
+        # Discover WordPress published posts and pages dynamically via REST API if minimal links on homepage
+        if len(discovered) < 3:
+            try:
+                wp_rest_url = urljoin(url, "/wp-json/wp/v2/pages?per_page=10")
+                r_pages = requests.get(wp_rest_url, headers=crawler_headers, timeout=6.0, verify=False)
+                if r_pages.status_code == 200:
+                    pages_data = r_pages.json()
+                    if isinstance(pages_data, list):
+                        for pg in pages_data:
+                            link = pg.get("link")
+                            if link and link not in seen_urls:
+                                seen_urls.add(link)
+                                discovered.append({
+                                    "target_url": link,
+                                    "anchor_text": pg.get("title", {}).get("rendered", "WP Page"),
+                                    "source_url": url
+                                })
+            except Exception:
+                pass
+
+            try:
+                wp_posts_url = urljoin(url, "/wp-json/wp/v2/posts?per_page=10")
+                r_posts = requests.get(wp_posts_url, headers=crawler_headers, timeout=6.0, verify=False)
+                if r_posts.status_code == 200:
+                    posts_data = r_posts.json()
+                    if isinstance(posts_data, list):
+                        for pt in posts_data:
+                            link = pt.get("link")
+                            if link and link not in seen_urls:
+                                seen_urls.add(link)
+                                discovered.append({
+                                    "target_url": link,
+                                    "anchor_text": pt.get("title", {}).get("rendered", "WP Post"),
+                                    "source_url": url
+                                })
+            except Exception:
+                pass
+
+        # If still no content links discovered, check root homepage as sole clean target
         if not discovered:
-            for test_path in ["/wp-login.php", "/wp-admin/", "/feed/"]:
-                discovered.append({
-                    "target_url": urljoin(url, test_path),
-                    "anchor_text": f"WP Path ({test_path})",
-                    "source_url": url
-                })
+            discovered.append({
+                "target_url": url,
+                "anchor_text": "Homepage",
+                "source_url": url
+            })
 
         # Step 3: Concurrently probe discovered links
         healthy = []
@@ -1105,40 +1140,26 @@ class MonitoringService:
 
             t0 = time.perf_counter()
             try:
-                h_req = urllib.request.Request(
+                p_resp = requests.get(
                     t_url,
-                    headers={"User-Agent": "MDefender-Pro-LinkCrawler/4.5 (Integrity Probe)"},
-                    method="HEAD"
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDefender-Pro/4.5 (Integrity Probe)"},
+                    timeout=6.0,
+                    verify=False,
+                    allow_redirects=False,
+                    stream=True
                 )
-                with urllib.request.urlopen(h_req, timeout=5.0) as resp:
-                    status_code = resp.status
-                    status_text = resp.reason or "OK"
-            except urllib.error.HTTPError as he:
-                status_code = he.code
-                status_text = he.reason or f"HTTP {he.code}"
-                if status_code == 405:
-                    try:
-                        g_req = urllib.request.Request(
-                            t_url,
-                            headers={"User-Agent": "MDefender-Pro-LinkCrawler/4.5 (Integrity Probe)"}
-                        )
-                        with urllib.request.urlopen(g_req, timeout=5.0) as g_resp:
-                            status_code = g_resp.status
-                            status_text = g_resp.reason or "OK"
-                    except urllib.error.HTTPError as ghe:
-                        status_code = ghe.code
-                        status_text = ghe.reason or f"HTTP {ghe.code}"
-                    except Exception:
-                        pass
-            except urllib.error.URLError as ue:
-                status_code = 0
-                status_text = "Unreachable / Host Not Found"
-            except socket.timeout:
+                status_code = p_resp.status_code
+                status_text = p_resp.reason or f"HTTP {status_code}"
+                p_resp.close()
+            except requests.exceptions.Timeout:
                 status_code = 504
                 status_text = "Connection Timeout"
+            except requests.exceptions.ConnectionError:
+                status_code = 0
+                status_text = "Host Unreachable / DNS Failure"
             except Exception as e:
                 status_code = 0
-                status_text = f"Failed ({type(e).__name__})"
+                status_text = f"Connection Failed ({type(e).__name__})"
 
             latency_ms = round((time.perf_counter() - t0) * 1000, 1)
 

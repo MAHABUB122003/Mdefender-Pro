@@ -13,15 +13,16 @@ class WAF_FW_Admin {
 
     public function __construct() {
         self::$_instance = $this;
-        add_action('admin_menu', [$this, 'add_admin_menu']);
-        add_action('admin_init', [$this, 'handle_legacy_redirects']);
+        add_action('init', [$this, 'handle_legacy_redirects'], 1);
+        add_action('admin_menu', [$this, 'add_admin_menu'], 9);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_head', [$this, 'admin_head_styles']);
         add_action('admin_notices', [$this, 'show_admin_notifications']);
+        add_action('admin_page_access_denied', [$this, 'handle_access_denied_fallback']);
     }
 
     public function handle_legacy_redirects() {
-        if (isset($_GET['page']) && is_admin()) {
+        if (isset($_GET['page'])) {
             $page = sanitize_text_field($_GET['page']);
             $legacy_pages = [
                 'waf-firewall-rules', 'waf-firewall-blacklist', 'waf-firewall-logs',
@@ -29,9 +30,17 @@ class WAF_FW_Admin {
                 'waf-firewall-tools', 'waf-firewall-settings', 'waf-firewall-about'
             ];
             if (in_array($page, $legacy_pages, true)) {
-                wp_safe_redirect(admin_url('admin.php?page=waf-firewall'));
+                $extra = !empty($_GET['waf_setup']) ? '&waf_setup=1' : '';
+                wp_safe_redirect(admin_url('admin.php?page=waf-firewall' . $extra));
                 exit;
             }
+        }
+    }
+
+    public function handle_access_denied_fallback() {
+        if (isset($_GET['page']) && strpos($_GET['page'], 'waf-firewall') === 0) {
+            wp_safe_redirect(admin_url('admin.php?page=waf-firewall'));
+            exit;
         }
     }
 
@@ -91,6 +100,10 @@ class WAF_FW_Admin {
                 font-weight: 700;
                 letter-spacing: 0.3px;
             }
+            /* Keep WordPress sidebar clean: hide legacy redirect aliases */
+            #adminmenu .wp-submenu li a[href*="page=waf-firewall-"] {
+                display: none !important;
+            }
         </style>
         <?php
     }
@@ -107,8 +120,8 @@ class WAF_FW_Admin {
             100
         );
 
-        // Register legacy subpage slugs with parent = null so WordPress capability check succeeds
-        // without showing any extra submenus in the admin sidebar menu!
+        // Register legacy subpage slugs with parent 'waf-firewall' so WordPress capability and hook checks succeed 100%
+        // while CSS keeps the admin sidebar completely clean without duplicate submenus!
         $legacy_pages = [
             'waf-firewall-settings', 'waf-firewall-rules', 'waf-firewall-blacklist',
             'waf-firewall-logs', 'waf-firewall-scan', 'waf-firewall-hardening',
@@ -116,7 +129,7 @@ class WAF_FW_Admin {
         ];
         foreach ($legacy_pages as $slug) {
             add_submenu_page(
-                null,
+                'waf-firewall',
                 'MDefender-Pro',
                 'MDefender-Pro',
                 'manage_options',

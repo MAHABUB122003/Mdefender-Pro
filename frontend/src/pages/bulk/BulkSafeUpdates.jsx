@@ -105,26 +105,7 @@ export default function BulkSafeUpdates() {
       setHistory(Array.isArray(items) ? items : [])
     } catch (err) {
       console.warn('Failed to load safe update history:', err)
-      // Provide resilient mock fallback if server hasn't executed runs yet
-      setHistory([
-        {
-          id: 'su-101',
-          component_type: 'plugin',
-          component_slug: 'akismet',
-          component_name: 'Akismet Anti-Spam',
-          from_version: '5.3.1',
-          to_version: '5.3.2',
-          snapshot_file: 'mdf_safe_20261105_123856_964ff1.zip',
-          snapshot_size_bytes: 421040,
-          pre_latency_ms: 18,
-          post_latency_ms: 19,
-          regression_detected: false,
-          rollback_triggered: false,
-          status: 'verified_clean',
-          created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-          probes_summary: '3 of 3 synthetic probes responded HTTP 200 OK (18ms avg)'
-        }
-      ])
+      setHistory([])
     } finally {
       setLoading(false)
     }
@@ -136,44 +117,84 @@ export default function BulkSafeUpdates() {
     }
   }, [targetSiteId])
 
-  // Sample pending updates for demonstration & execution
+  // Real WordPress installed plugins and themes dynamically populated
   const pendingUpdates = useMemo(() => {
-    return [
-      {
-        id: 'plug-1',
+    const list = []
+    
+    // 1. Real Plugins from connected site
+    const plugins = Array.isArray(currentSite?.plugins) ? currentSite.plugins : []
+    plugins.forEach((p, idx) => {
+      const pSlug = p.slug || p.file || p.name || `plugin-${idx}`
+      const pName = p.name || p.slug || 'WordPress Plugin'
+      const curVer = p.version || '1.0.0'
+      const newVer = p.new_version || p.latest_version || (p.has_update ? p.new_version : curVer)
+      const hasUp = Boolean(p.has_update || (p.new_version && p.new_version !== curVer))
+      
+      list.push({
+        id: `plug-${idx}-${pSlug}`,
         type: 'plugin',
-        slug: 'contact-form-7',
-        name: 'Contact Form 7',
-        current_version: '5.9.6',
-        new_version: '5.9.8',
-        risk_level: 'Low',
-        vulnerability_patched: true,
-        changelog: 'Security fix for submission sanitizer & REST token renewal.'
-      },
-      {
-        id: 'plug-2',
-        type: 'plugin',
-        slug: 'woocommerce',
-        name: 'WooCommerce Core',
-        current_version: '9.3.2',
-        new_version: '9.3.3',
-        risk_level: 'Medium',
-        vulnerability_patched: false,
-        changelog: 'Performance optimizations for cart block & orders table caching.'
-      },
-      {
-        id: 'theme-1',
+        slug: pSlug,
+        file: p.file || '',
+        name: pName,
+        current_version: curVer,
+        new_version: newVer,
+        risk_level: p.vulnerability ? 'Critical' : (hasUp ? 'Medium' : 'Low'),
+        vulnerability_patched: Boolean(p.vulnerability),
+        has_update: hasUp,
+        status: p.is_active ? 'Active' : 'Inactive',
+        changelog: hasUp 
+          ? `Pending update available to v${newVer}. Zero-downtime regression guard armed.`
+          : 'Verified operational. Autonomous snapshot and rollback guard ready.'
+      })
+    })
+
+    // 2. Real Themes from connected site
+    const themes = Array.isArray(currentSite?.themes) ? currentSite.themes : []
+    themes.forEach((t, idx) => {
+      const tSlug = t.stylesheet || t.slug || t.name || `theme-${idx}`
+      const tName = t.name || t.slug || 'WordPress Theme'
+      const curVer = t.version || '1.0.0'
+      const newVer = t.new_version || (t.has_update ? t.new_version : curVer)
+      const hasUp = Boolean(t.has_update || (t.new_version && t.new_version !== curVer))
+
+      list.push({
+        id: `theme-${idx}-${tSlug}`,
         type: 'theme',
-        slug: 'twentytwentyfive',
-        name: 'Twenty Twenty-Five',
-        current_version: '1.0.0',
-        new_version: '1.0.1',
+        slug: tSlug,
+        file: t.stylesheet || '',
+        name: tName,
+        current_version: curVer,
+        new_version: newVer,
         risk_level: 'Low',
         vulnerability_patched: false,
-        changelog: 'Refined responsive block spacing & font loading.'
-      }
-    ]
-  }, [])
+        has_update: hasUp,
+        status: t.is_active ? 'Active Theme' : 'Installed',
+        changelog: hasUp
+          ? `Pending theme update available to v${newVer}. Visual DOM probe armed.`
+          : 'Verified operational. Visual DOM regression check ready.'
+      })
+    })
+
+    // 3. Fallback: If no plugins or themes populated yet, show the MDefender Pro agent on the site
+    if (list.length === 0 && currentSite) {
+      list.push({
+        id: 'plug-mdf',
+        type: 'plugin',
+        slug: 'mdefender-pro',
+        file: 'mdefender-pro/waf-firewall.php',
+        name: 'MDefender Pro Security Agent',
+        current_version: currentSite.plugin_version || '4.3.0',
+        new_version: currentSite.plugin_version || '4.3.0',
+        risk_level: 'Low',
+        vulnerability_patched: false,
+        has_update: false,
+        status: 'Active',
+        changelog: 'MDefender Autonomous Core Engine & Threat Sensor.'
+      })
+    }
+
+    return list
+  }, [currentSite])
 
   const filteredUpdates = useMemo(() => {
     if (activeTab === 'all') return pendingUpdates
@@ -182,12 +203,12 @@ export default function BulkSafeUpdates() {
 
   // KPI Calculations
   const kpis = useMemo(() => {
-    const totalOps = history.length + 1
-    const rollbacks = history.filter(h => h.rollback_triggered).length
-    const cleanOps = history.filter(h => !h.rollback_triggered).length
+    const totalOps = history.length
+    const rollbacks = history.filter(h => h.rollback_triggered || h.status === 'rolled_back').length
+    const cleanOps = history.filter(h => !h.rollback_triggered && h.status !== 'rolled_back').length
     const avgLatency = history.length > 0
       ? Math.round(history.reduce((acc, h) => acc + (h.post_latency_ms || h.pre_latency_ms || 20), 0) / history.length)
-      : 18
+      : 20
 
     return {
       totalOps,
@@ -959,7 +980,20 @@ export default function BulkSafeUpdates() {
               </tr>
             </thead>
             <tbody>
-              {filteredUpdates.map((item) => {
+              {filteredUpdates.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: '#64748B' }}>
+                    <CheckCircle2 size={36} color="#10B981" style={{ margin: '0 auto 10px', display: 'block' }} />
+                    <strong style={{ display: 'block', fontSize: '14.5px', color: '#0F172A', marginBottom: '4px' }}>
+                      All Installed Components Up To Date
+                    </strong>
+                    <span style={{ fontSize: '12.5px', color: '#64748B' }}>
+                      All WordPress plugins and themes on this origin are operating on their verified latest versions.
+                    </span>
+                  </td>
+                </tr>
+              ) : (
+                filteredUpdates.map((item) => {
                 const isSelected = selectedItems.has(item.id)
                 return (
                   <tr
@@ -1074,7 +1108,7 @@ export default function BulkSafeUpdates() {
                     </td>
                   </tr>
                 )
-              })}
+              }))}
             </tbody>
           </table>
         </div>

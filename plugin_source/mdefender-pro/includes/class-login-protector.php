@@ -13,14 +13,12 @@ class WAF_FW_Login_Protector {
     }
 
     public function register_hooks() {
-        $has_api_key = !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
-        $is_connected = (get_option('waf_fw_connected', 'no') === 'yes') && $has_api_key;
-        $slug = trim(get_option('waf_harden_login_rename', ''));
-        $hide_login_enabled = get_option('waf_harden_hide_login_url', 'no') === 'yes' || get_option('waf_hide_login_url', 'no') === 'yes';
-        $permalink_structure = get_option('permalink_structure', '');
+        $slug = trim(get_option('waf_harden_login_rename', get_option('waf_custom_login_slug', '')));
+        $hide_login_enabled = in_array(get_option('waf_harden_hide_login_url'), ['yes', '1', 1, true], true) 
+                           || in_array(get_option('waf_hide_login_url'), ['yes', '1', 1, true], true)
+                           || !empty($slug);
 
-        // SAFETY: Only rename/hide login if connected, explicitly enabled, non-empty, permalinks active, and not default admin/login
-        if (!$is_connected || !$hide_login_enabled || empty($slug) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
+        if (!$hide_login_enabled || empty($slug) || in_array(strtolower($slug), ['wp-admin', 'wp-login.php', 'wp-login'])) {
             $slug = '';
         }
         $this->custom_login_slug = $slug;
@@ -93,8 +91,13 @@ class WAF_FW_Login_Protector {
             }
         }
 
-        // 1. Serving the custom secret login URL
-        if ($trimmed_path === $slug) {
+        // 1. Serving the custom secret login URL (matches path /secret, /secret/, /index.php/secret, or query ?secret)
+        $is_matching_slug = ($trimmed_path === $slug || strpos($trimmed_path, $slug . '/') === 0 || $trimmed_path === 'index.php/' . $slug);
+        if (!$is_matching_slug && (isset($_GET[$slug]) || (isset($_GET['login']) && $_GET['login'] === $slug))) {
+            $is_matching_slug = true;
+        }
+
+        if ($is_matching_slug) {
             if (!defined('MDEFENDER_ALLOWED_LOGIN')) {
                 define('MDEFENDER_ALLOWED_LOGIN', true);
             }

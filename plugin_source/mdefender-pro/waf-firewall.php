@@ -98,6 +98,11 @@ if (class_exists('WAF_FW_2FA')) {
     WAF_FW_2FA::instance();
 }
 
+// Initialize Custom Secret Login Gateway & Login Protector
+if (class_exists('WAF_FW_Login_Protector')) {
+    WAF_FW_Login_Protector::instance()->register_hooks();
+}
+
 // Instant Bidirectional Cloud Inventory Synchronization Hooks
 if (!function_exists('waf_fw_sync_inventory_to_cloud')) {
     function waf_fw_sync_inventory_to_cloud() {
@@ -627,39 +632,30 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $hide = !empty($cfg['hide_login_url']);
                         if ($hide && !empty($slug) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
                             update_option('waf_harden_login_rename', $slug);
+                            update_option('waf_custom_login_slug', $slug);
                             update_option('waf_harden_hide_login_url', 'yes');
                             update_option('waf_hide_login_url', 'yes');
                         } else {
                             delete_option('waf_harden_login_rename');
+                            delete_option('waf_custom_login_slug');
                             delete_option('waf_harden_hide_login_url');
                             delete_option('waf_hide_login_url');
                         }
                     }
-                }
-                if (isset($pushed_data['config']) && is_array($pushed_data['config'])) {
-                    $cfg = $pushed_data['config'];
-                    if (isset($cfg['custom_login_slug'])) {
-                        $slug = sanitize_title($cfg['custom_login_slug']);
-                        if (!empty($cfg['hide_login_url']) && !empty($slug) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
-                            update_option('waf_harden_login_rename', $slug);
-                        } else {
-                            delete_option('waf_harden_login_rename');
-        }
-        if (get_option('waf_harden_admin_ip_enabled', 'disabled') !== 'disabled') {
-            update_option('waf_harden_admin_ip_enabled', 'disabled');
-        }
+                    if (isset($cfg['login_redirect_type'])) {
+                        update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));
                     }
                     if (isset($cfg['admin_ip_whitelist_enabled'])) {
-        update_option('waf_harden_admin_ip_enabled', !empty($cfg['admin_ip_whitelist_enabled']) ? 'enabled' : 'disabled');
-    }
-    if (isset($cfg['admin_ip_whitelist'])) {
-        $wl = $cfg['admin_ip_whitelist'];
-        $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
-        update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
-        if (empty($wl_str)) {
-            update_option('waf_harden_admin_ip_enabled', 'disabled');
-        }
-    }
+                        update_option('waf_harden_admin_ip_enabled', !empty($cfg['admin_ip_whitelist_enabled']) ? 'enabled' : 'disabled');
+                    }
+                    if (isset($cfg['admin_ip_whitelist'])) {
+                        $wl = $cfg['admin_ip_whitelist'];
+                        $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
+                        update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
+                        if (!empty($wl_str) && isset($cfg['admin_ip_whitelist_enabled']) && $cfg['admin_ip_whitelist_enabled']) {
+                            update_option('waf_harden_admin_ip_enabled', 'enabled');
+                        }
+                    }
     if (isset($cfg['login_redirect_type'])) {
                         update_option('waf_harden_login_redirect_type', sanitize_text_field($cfg['login_redirect_type']));
                     }
@@ -3943,6 +3939,32 @@ function waf_fw_cloud_heartbeat() {
             if (isset($config['block_uploads_php'])) {
                 update_option('waf_harden_block_uploads_php', $config['block_uploads_php'] ? 'yes' : 'no');
             }
+            if (isset($config['custom_login_slug']) || isset($config['hide_login_url'])) {
+                $slug = sanitize_title($config['custom_login_slug'] ?? '');
+                $hide = !empty($config['hide_login_url']);
+                if ($hide && !empty($slug) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
+                    update_option('waf_harden_login_rename', $slug);
+                    update_option('waf_custom_login_slug', $slug);
+                    update_option('waf_harden_hide_login_url', 'yes');
+                    update_option('waf_hide_login_url', 'yes');
+                } else {
+                    delete_option('waf_harden_login_rename');
+                    delete_option('waf_custom_login_slug');
+                    delete_option('waf_harden_hide_login_url');
+                    delete_option('waf_hide_login_url');
+                }
+            }
+            if (isset($config['login_redirect_type'])) {
+                update_option('waf_harden_login_redirect_type', sanitize_text_field($config['login_redirect_type']));
+            }
+            if (isset($config['admin_ip_whitelist_enabled'])) {
+                update_option('waf_harden_admin_ip_enabled', !empty($config['admin_ip_whitelist_enabled']) ? 'enabled' : 'disabled');
+            }
+            if (isset($config['admin_ip_whitelist'])) {
+                $wl = $config['admin_ip_whitelist'];
+                $wl_str = is_array($wl) ? implode("\n", array_map('trim', $wl)) : trim((string)$wl);
+                update_option('waf_harden_admin_whitelist', sanitize_textarea_field($wl_str));
+            }
         }
 
         // Sync local IP blacklist cache & database table
@@ -4053,6 +4075,12 @@ function waf_fw_maybe_redirect_setup() {
     }
 }
 add_action('admin_init', 'waf_fw_maybe_redirect_setup');
+
+add_filter('plugin_action_links_' . plugin_basename(WAF_FW_MAIN_FILE), function ($links) {
+    $settings_link = '<a href="' . esc_url(admin_url('admin.php?page=waf-firewall')) . '" style="font-weight:700;color:#0284c7;">' . __('Agent Connect', 'waf-firewall') . '</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+});
 
 if (!function_exists('waf_fw_bump_stat')) {
     function waf_fw_bump_stat($which, $amount = 1) {

@@ -526,12 +526,13 @@ export default function BulkLoginGateway() {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0F172A', marginBottom: '6px' }}>
                     Unauthorized Access Action
                   </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <select
                       value={loginRedirectType}
                       onChange={(e) => setLoginRedirectType(e.target.value)}
                       style={{
-                        flex: 1,
+                        flex: '1 1 200px',
+                        minWidth: '180px',
                         height: '40px',
                         padding: '0 12px',
                         borderRadius: '8px',
@@ -554,6 +555,7 @@ export default function BulkLoginGateway() {
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: '6px',
                         padding: '0 18px',
                         height: '40px',
@@ -565,7 +567,8 @@ export default function BulkLoginGateway() {
                         fontWeight: 700,
                         cursor: savingSecret || !customLoginSlug.trim() ? 'not-allowed' : 'pointer',
                         opacity: !customLoginSlug.trim() ? 0.6 : 1,
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        flex: '0 0 auto'
                       }}
                     >
                       <Save size={14} />
@@ -608,22 +611,18 @@ export default function BulkLoginGateway() {
 
                 {activeSecretGateways.length === 0 ? (
                   <div style={{
-                    padding: '38px 20px',
-                    textAlign: 'center',
+                    padding: '14px 18px',
                     background: '#FFFFFF',
-                    borderRadius: '12px',
-                    border: '1px dashed #CBD5E1',
-                    margin: '8px 0'
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    color: '#64748B',
+                    fontSize: '13px'
                   }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#F1F5F9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-                      <Key size={20} color="#64748B" />
-                    </div>
-                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '14.5px', marginBottom: '4px' }}>
-                      No Custom Secret Gateways Configured
-                    </div>
-                    <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
-                      Standard /wp-login.php is currently active. Type a custom directory slug above and click "Save Secret Gateway" to conceal your administrator login URL.
-                    </p>
+                    <Key size={18} color="#94A3B8" />
+                    <span>No custom secret login slug configured yet. Standard <code>/wp-login.php</code> is active. Enter a slug above and click Save to conceal it.</span>
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto', overflowY: 'visible', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
@@ -939,22 +938,18 @@ export default function BulkLoginGateway() {
 
                 {displayedIpRules.length === 0 ? (
                   <div style={{
-                    padding: '38px 20px',
-                    textAlign: 'center',
+                    padding: '14px 18px',
                     background: '#FFFFFF',
-                    borderRadius: '12px',
-                    border: '1px dashed #CBD5E1',
-                    margin: '8px 0'
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    color: '#64748B',
+                    fontSize: '13px'
                   }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#F1F5F9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-                      <ShieldCheck size={20} color="#10B981" />
-                    </div>
-                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '14.5px', marginBottom: '4px' }}>
-                      No IP Restrictions Active (Unrestricted Access)
-                    </div>
-                    <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
-                      WordPress administrative login is currently open from any IP address. Click "+ Add My Current IP" or enter an authorized IP address above to restrict login strictly to trusted IPs.
-                    </p>
+                    <ShieldCheck size={18} color="#94A3B8" />
+                    <span>No IP restrictions active. WordPress admin login is accessible from all IP addresses. Add an IP above to lock access.</span>
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto', overflowY: 'visible', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
