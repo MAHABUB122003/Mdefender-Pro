@@ -429,10 +429,12 @@ function waf_fw_apply_config_payload($cfg) {
         $hide = !empty($cfg['hide_login_url']);
         if ($hide && !empty($slug) && !in_array($slug, ['wp-admin', 'wp-login.php', 'wp-login'])) {
             update_option('waf_harden_login_rename', $slug);
+            update_option('waf_custom_login_slug', $slug);
             update_option('waf_harden_hide_login_url', 'yes');
             update_option('waf_hide_login_url', 'yes');
         } else {
             delete_option('waf_harden_login_rename');
+            delete_option('waf_custom_login_slug');
             delete_option('waf_harden_hide_login_url');
             delete_option('waf_hide_login_url');
         }

@@ -133,25 +133,26 @@ export default function BulkLoginGateway() {
   // ACTIONS FOR CUSTOM SECRET LOGIN GATEWAY
   // =========================================================================
   const getComputedLoginUrl = (site, slug) => {
-    const rawUrl = site?.url || ''
-    const domain = site?.domain || 'your-domain.com'
-    let base = rawUrl ? rawUrl.replace(/\/$/, '') : ''
-    if (!base) {
-      const scheme = domain.startsWith('localhost') || domain.startsWith('127.0.0.1') ? 'http://' : 'https://'
-      base = `${scheme}${domain}`
-    }
+    let domain = (site?.domain || site?.url || '').trim()
+    domain = domain.replace(/^https?:\/\//i, '').replace(/\/$/, '')
+    if (!domain) domain = 'your-domain.com'
+    const isLocal = domain.startsWith('localhost') || domain.startsWith('127.0.0.1')
+    const scheme = isLocal ? 'http://' : 'https://'
+    const base = `${scheme}${domain}`
     if (slug) {
-      return `${base}/${slug}`
+      const cleanSlug = String(slug).trim().replace(/^\/+/, '').replace(/\/+$/, '')
+      return `${base}/${cleanSlug}`
     }
     return `${base}/wp-login.php`
   }
 
   const copyLoginUrl = (url, id) => {
+    const validUrl = url && (url.startsWith('http://') || url.startsWith('https://')) ? url : `https://${url || ''}`
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(url)
+      navigator.clipboard.writeText(validUrl)
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
-      showToast('Login URL copied to clipboard!')
+      showToast('Login URL copied to clipboard: ' + validUrl)
     }
   }
 
@@ -683,9 +684,18 @@ export default function BulkLoginGateway() {
                                 </span>
                               </td>
                               <td style={{ padding: '14px' }}>
-                                <code style={{ fontSize: '12.5px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '3px 8px', borderRadius: '4px', border: '1px solid #BBF7D0' }}>
-                                  {activeUrl}
-                                </code>
+                                <a
+                                  href={activeUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ textDecoration: 'none', display: 'inline-block' }}
+                                  title="Click to test secret login in new tab"
+                                >
+                                  <code style={{ fontSize: '12.5px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '4px 9px', borderRadius: '4px', border: '1px solid #BBF7D0', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                    {activeUrl}
+                                    <ExternalLink size={12} color="#16A34A" />
+                                  </code>
+                                </a>
                               </td>
                               <td style={{ padding: '14px', color: '#334155', fontWeight: 600 }}>
                                 {(site.login_redirect_type === 'home' || site.hardening?.login_redirect_type === 'home') ? 'Homepage (301)' : 'Stealth (404)'}

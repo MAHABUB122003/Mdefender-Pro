@@ -44,6 +44,7 @@ class WAF_FW_Login_Protector {
             add_action('wp_logout', [$this, 'on_logout_redirect']);
         }
 
+        $is_connected = in_array(get_option('waf_fw_connected', 'no'), ['yes', '1', 1, true], true);
         $hold_press_active = $is_connected && (get_option('waf_hold_press_enabled', 'no') === 'yes');
         $captcha_active = $is_connected && (get_option('waf_harden_login_captcha', 'no') === 'yes');
         if ($hold_press_active || $captcha_active) {
