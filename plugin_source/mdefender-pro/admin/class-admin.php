@@ -106,6 +106,24 @@ class WAF_FW_Admin {
             $icon_url,
             100
         );
+
+        // Register legacy subpage slugs with parent = null so WordPress capability check succeeds
+        // without showing any extra submenus in the admin sidebar menu!
+        $legacy_pages = [
+            'waf-firewall-settings', 'waf-firewall-rules', 'waf-firewall-blacklist',
+            'waf-firewall-logs', 'waf-firewall-scan', 'waf-firewall-hardening',
+            'waf-firewall-backup', 'waf-firewall-tools', 'waf-firewall-about'
+        ];
+        foreach ($legacy_pages as $slug) {
+            add_submenu_page(
+                null,
+                'MDefender-Pro',
+                'MDefender-Pro',
+                'manage_options',
+                $slug,
+                [$this, 'render_agent_dashboard']
+            );
+        }
     }
 
     public function enqueue_assets($hook) {

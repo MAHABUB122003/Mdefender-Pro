@@ -4048,7 +4048,7 @@ function waf_fw_maybe_redirect_setup() {
     if (get_option('waf_fw_do_setup_redirect', 'no') !== 'yes') return;
     delete_option('waf_fw_do_setup_redirect');
     if (current_user_can('manage_options')) {
-        wp_safe_redirect(admin_url('admin.php?page=waf-firewall-settings&waf_setup=1'));
+        wp_safe_redirect(admin_url('admin.php?page=waf-firewall&waf_setup=1'));
         exit;
     }
 }
