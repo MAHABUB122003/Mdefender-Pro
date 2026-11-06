@@ -28,8 +28,8 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
         $api_key = sanitize_text_field(trim($_POST['waf_api_key'] ?? ''));
         $cloud_url = esc_url_raw(trim($_POST['waf_cloud_url'] ?? ''));
         
-        if (empty($cloud_url)) {
-            $cloud_url = 'http://localhost:5173'; // Default MDefender Cloud Portal URL
+        if (empty($cloud_url) || strpos($cloud_url, 'localhost') !== false) {
+            $cloud_url = 'https://mdefender-pro.crafix.tech'; // Default MDefender Cloud Production URL
         }
 
         if (empty($api_key)) {
@@ -37,7 +37,9 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
             $notice_type = 'error';
         } else {
             update_option('waf_fw_api_key', $api_key);
+            update_option('waf_fw_ml_api_key', $api_key);
             update_option('waf_fw_cloud_api_url', $cloud_url);
+            update_option('waf_fw_ml_api_url', $cloud_url);
             update_option('waf_fw_connected', 'yes');
             update_option('waf_fw_last_sync', current_time('mysql'));
             $notice_msg = __('Successfully connected to MDefender Pro Cloud! Agent is actively synchronized.', 'mdefender-pro');
@@ -45,14 +47,19 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
         }
     } elseif ($action === 'disconnect') {
         update_option('waf_fw_api_key', '');
+        update_option('waf_fw_ml_api_key', '');
         update_option('waf_fw_connected', 'no');
         $notice_msg = __('Disconnected from MDefender Pro Cloud. Agent is now in standalone standby mode.', 'mdefender-pro');
         $notice_type = 'warning';
     }
 }
 
-$api_key = get_option('waf_fw_api_key', '');
-$cloud_url = get_option('waf_fw_cloud_api_url', 'http://localhost:5173');
+$api_key = get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''));
+$cloud_url = get_option('waf_fw_cloud_api_url', 'https://mdefender-pro.crafix.tech');
+if (empty($cloud_url) || strpos($cloud_url, 'localhost') !== false) {
+    $cloud_url = 'https://mdefender-pro.crafix.tech';
+    update_option('waf_fw_cloud_api_url', $cloud_url);
+}
 $is_connected = get_option('waf_fw_connected', 'no') === 'yes' && !empty($api_key);
 $site_token = get_option('waf_fw_site_token', '');
 if (empty($site_token)) {
@@ -410,60 +417,65 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
 
         <!-- Connection Settings Form -->
         <h4 style="font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 14px; border-top: 1px solid #F1F5F9; padding-top: 20px;">
-            Cloud Agent Configuration
+            Cloud Agent Activation
         </h4>
         <form method="post" action="">
             <?php wp_nonce_field('waf_connector_nonce_action', 'waf_connector_nonce'); ?>
             <input type="hidden" name="waf_connector_action" value="save_connection">
+            <input type="hidden" name="waf_cloud_url" value="<?php echo esc_attr($cloud_url); ?>">
 
             <div class="mdf-form-group">
-                <label for="waf_api_key">MDefender Pro Cloud API Key</label>
-                <input 
-                    type="password" 
-                    id="waf_api_key" 
-                    name="waf_api_key" 
-                    value="<?php echo esc_attr($api_key); ?>" 
-                    class="mdf-input-text" 
-                    placeholder="Enter your API Key (e.g. mdf_live_...)" 
-                    autocomplete="off"
-                />
-                <p style="margin: 6px 0 0; font-size: 12px; color: #64748B;">
-                    Found in your MDefender Pro Cloud Dashboard under <strong>Settings &rarr; API Keys</strong>.
+                <label for="waf_api_key" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>MDefender Pro Cloud API Key</span>
+                    <a href="https://mdefender-pro.crafix.tech/user/settings" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: 600; color: #059669; text-decoration: none;">
+                        Get API Key &rarr;
+                    </a>
+                </label>
+                <div style="display: flex; gap: 8px; max-width: 650px;">
+                    <input 
+                        type="password" 
+                        id="waf_api_key" 
+                        name="waf_api_key" 
+                        value="<?php echo esc_attr($api_key); ?>" 
+                        class="mdf-input-text" 
+                        placeholder="Paste your MDefender Cloud API Key here (e.g. mdf_live_...)" 
+                        autocomplete="off"
+                        style="flex: 1;"
+                    />
+                    <button type="button" id="mdf-toggle-key-btn" style="padding: 0 14px; background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: #475569;">
+                        Show
+                    </button>
+                </div>
+                <p style="margin: 8px 0 0; font-size: 12px; color: #64748B; line-height: 1.4;">
+                    Paste your API Key generated from <a href="https://mdefender-pro.crafix.tech/user/settings" target="_blank" rel="noopener noreferrer" style="color: #059669; font-weight: 600; text-decoration: none;">mdefender-pro.crafix.tech</a>. Connecting will activate real-time AI threat telemetry and sync defense rules automatically.
                 </p>
-            </div>
-
-            <div class="mdf-form-group">
-                <label for="waf_cloud_url">Cloud Dashboard Base URL</label>
-                <input 
-                    type="url" 
-                    id="waf_cloud_url" 
-                    name="waf_cloud_url" 
-                    value="<?php echo esc_attr($cloud_url); ?>" 
-                    class="mdf-input-text" 
-                    placeholder="http://localhost:5173"
-                />
-                <p style="margin: 6px 0 0; font-size: 12px; color: #64748B;">
-                    Default: <code>http://localhost:5173</code> (or your custom MDefender Pro SaaS production URL).
-                </p>
-            </div>
-
-            <div class="mdf-form-group">
-                <label>Agent Verification Token (Read-Only)</label>
-                <input 
-                    type="text" 
-                    value="<?php echo esc_attr($site_token); ?>" 
-                    class="mdf-input-text" 
-                    readonly 
-                    style="background: #F8FAFC; color: #64748B; font-family: monospace;"
-                />
             </div>
 
             <div class="mdf-actions-row">
-                <button type="submit" class="mdf-btn-primary">
-                    <?php echo $is_connected ? 'Save & Synchronize' : 'Connect to MDefender Cloud'; ?>
+                <button type="submit" class="mdf-btn-primary" style="background: #059669; padding: 12px 24px; font-size: 14px;">
+                    <span class="dashicons dashicons-shield" style="font-size: 18px; line-height: 1.2; margin-right: 4px;"></span>
+                    <?php echo $is_connected ? 'Update & Synchronize' : 'Connect to MDefender Cloud'; ?>
                 </button>
             </div>
         </form>
+
+        <script>
+            (function() {
+                var toggleBtn = document.getElementById('mdf-toggle-key-btn');
+                var keyInput = document.getElementById('waf_api_key');
+                if (toggleBtn && keyInput) {
+                    toggleBtn.addEventListener('click', function() {
+                        if (keyInput.type === 'password') {
+                            keyInput.type = 'text';
+                            toggleBtn.textContent = 'Hide';
+                        } else {
+                            keyInput.type = 'password';
+                            toggleBtn.textContent = 'Show';
+                        }
+                    });
+                }
+            })();
+        </script>
 
         <?php if ($is_connected): ?>
             <form method="post" action="" style="margin-top: 14px;" onsubmit="return confirm('Are you sure you want to disconnect this website from MDefender Pro Cloud?');">

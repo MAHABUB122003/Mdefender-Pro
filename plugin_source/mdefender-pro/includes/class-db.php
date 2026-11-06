@@ -535,6 +535,7 @@ class WAF_FW_DB {
             'waf_turnstile_theme' => 'auto',
             'waf_fw_main_waf_api_url' => 'https://mdefender-pro.crafix.tech/api',
             'waf_fw_main_waf_admin_url' => 'https://mdefender-pro.crafix.tech',
+            'waf_fw_cloud_api_url' => 'https://mdefender-pro.crafix.tech',
         ];
         foreach ($defaults as $key => $value) {
             $existing = get_option($key);
