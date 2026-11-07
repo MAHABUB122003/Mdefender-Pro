@@ -152,12 +152,19 @@ export default function UserWebsites() {
 
 
   // Three-dots dropdown menu state
-
   const [activeMenuSiteId, setActiveMenuSiteId] = useState(null)
   const [ssoLoadingId, setSsoLoadingId] = useState(null)
   const [copiedAccountKey, setCopiedAccountKey] = useState(false)
   const [showAccountKey, setShowAccountKey] = useState(false)
   const [showManualForm, setShowManualForm] = useState(false)
+  const [currentAccountKey, setCurrentAccountKey] = useState(() => accountApiKey)
+  const [regeneratingAccountKey, setRegeneratingAccountKey] = useState(false)
+
+  useEffect(() => {
+    if (accountApiKey && !currentAccountKey) {
+      setCurrentAccountKey(accountApiKey)
+    }
+  }, [accountApiKey, currentAccountKey])
 
 
 
@@ -646,24 +653,119 @@ export default function UserWebsites() {
     if (!siteId) return
     setSsoLoadingId(siteId)
     setFeedbackMsg(null)
+
+    // Synchronously open tab immediately on click to prevent browser popup block & lag
+    const newTab = window.open('about:blank', '_blank')
+    if (newTab) {
+      try {
+        newTab.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>MDefender Pro &bull; Opening WP Admin</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                background: #0B2522;
+                color: #FFFFFF;
+              }
+              .box {
+                text-align: center;
+                padding: 32px 36px;
+                background: #10201E;
+                border: 1px solid #1E3A34;
+                border-radius: 12px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+                max-width: 360px;
+              }
+              .spinner {
+                width: 34px;
+                height: 34px;
+                border: 3px solid rgba(255,255,255,0.15);
+                border-top-color: #10B981;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+                margin: 0 auto 16px;
+              }
+              @keyframes spin { to { transform: rotate(360deg); } }
+              h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: #FFFFFF; }
+              p { margin: 0; font-size: 12.5px; color: #94A3B8; line-height: 1.4; }
+            </style>
+          </head>
+          <body>
+            <div class="box">
+              <div class="spinner"></div>
+              <h3>Connecting WP Admin...</h3>
+              <p>Authenticating remote session via cryptographic single-use token.</p>
+            </div>
+          </body>
+          </html>
+        `)
+      } catch (e) {
+        // Safe fallback
+      }
+    }
+
+    const fallbackUrl = ((w.url || ('https://' + w.domain)).replace(/\/+$/, '')) + '/wp-login.php'
+
     try {
       const res = await api.getWordpressSsoToken(siteId)
       const ssoUrl = res?.data?.sso_url || res?.sso_url || res?.data?.url || res?.url
       if (ssoUrl) {
-        window.open(ssoUrl, '_blank', 'noopener,noreferrer')
+        if (newTab) {
+          newTab.location.href = ssoUrl
+        } else {
+          window.open(ssoUrl, '_blank', 'noopener,noreferrer')
+        }
       } else {
+        if (newTab) {
+          newTab.location.href = fallbackUrl
+        }
         setFeedbackMsg({
-          type: 'error',
-          text: res?.message || res?.detail || 'Failed to generate 1-Click SSO link. Verify plugin is connected.'
+          type: 'warning',
+          text: 'Remote SSO is disabled on this site. Opened standard WordPress login.'
         })
       }
     } catch (err) {
+      if (newTab) {
+        newTab.location.href = fallbackUrl
+      }
       setFeedbackMsg({
-        type: 'error',
-        text: err.message || '1-Click SSO access failed. Ensure remote SSO is enabled in WordPress.'
+        type: 'warning',
+        text: 'Remote SSO unavailable. Opened standard WordPress login.'
       })
     } finally {
       setSsoLoadingId(null)
+    }
+  }
+
+  const handleRegenerateAccountKey = async () => {
+    if (!confirm('Are you sure you want to regenerate your MDefender Pro API Key? Any connected WordPress sites using the current key will need to be updated with the new key.')) {
+      return
+    }
+    setRegeneratingAccountKey(true)
+    try {
+      const res = await api.regenerateApiKey()
+      const newKey = res?.api_key || res?.data?.api_key
+      if (newKey) {
+        setCurrentAccountKey(newKey)
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('mdefender_api_key', newKey)
+        }
+        setFeedbackMsg({ type: 'success', text: 'MDefender Pro API Key regenerated successfully!' })
+      } else {
+        setFeedbackMsg({ type: 'error', text: 'Failed to regenerate API Key.' })
+      }
+    } catch (err) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Error regenerating API Key' })
+    } finally {
+      setRegeneratingAccountKey(false)
     }
   }
 
@@ -1197,48 +1299,51 @@ export default function UserWebsites() {
 
 
 
-        {/* Zero-Touch Master Account Key Pairing Banner */}
+        {/* Clean MDefender Pro API Key Card */}
         <div style={{
-          background: '#F8FAFC',
-          border: '1.5px solid #E2E8F0',
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
           borderRadius: '12px',
           padding: '16px 20px',
-          marginBottom: '20px'
+          marginBottom: '20px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Key size={15} color="#059669" />
-              <span>Your Account Master Connect Key (Zero-Touch Auto-Pairing)</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Key size={14} color="#059669" />
+              </div>
+              <span>MDefender Pro API Key</span>
               <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '999px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
-                Auto-Discovered
+                Active
               </span>
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B' }}>
-              No manual domain setup required — just paste this key into your WordPress site!
+            <div style={{ fontSize: '12.5px', color: '#64748B' }}>
+              Paste this key into your WordPress plugin to connect your website.
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{
-              flex: '1 1 300px', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px',
-              padding: '9px 14px', fontFamily: 'Consolas, monospace', fontSize: '12.5px', color: '#1E293B',
+              flex: '1 1 320px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '8px',
+              padding: '9px 14px', fontFamily: 'Consolas, monospace', fontSize: '13px', color: '#1E293B',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between'
             }}>
-              <span>{showAccountKey ? (accountApiKey || 'mdf_live_sec_master_key') : ((accountApiKey || 'mdf_live_sec_master_key').substring(0, 14) + '••••••••••••••••••••••••')}</span>
+              <span>{showAccountKey ? (currentAccountKey || accountApiKey || 'mdf_live_sec_key') : (((currentAccountKey || accountApiKey || 'mdf_live_sec_key')).substring(0, 14) + '••••••••••••••••••••••••')}</span>
               <button
                 type="button"
                 onClick={() => setShowAccountKey(!showAccountKey)}
                 title={showAccountKey ? 'Mask Key' : 'Reveal Key'}
                 style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 4px' }}
               >
-                {showAccountKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                {showAccountKey ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
 
             <button
               type="button"
               onClick={() => {
-                const keyToCopy = accountApiKey || 'mdf_live_sec_master_key'
+                const keyToCopy = currentAccountKey || accountApiKey || 'mdf_live_sec_key'
                 copyToClipboard(keyToCopy)
                 setCopiedAccountKey(true)
                 setTimeout(() => setCopiedAccountKey(false), 2000)
@@ -1247,163 +1352,173 @@ export default function UserWebsites() {
                 padding: '9px 18px', background: '#059669', color: '#FFFFFF', border: 'none',
                 borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
-                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+                boxShadow: '0 1px 3px rgba(5, 150, 105, 0.25)',
                 transition: 'all 0.15s ease'
               }}
             >
               {copiedAccountKey ? <Check size={14} /> : <Copy size={14} />}
-              <span>{copiedAccountKey ? 'Copied Master Key!' : 'Copy Master Key'}</span>
+              <span>{copiedAccountKey ? 'Copied Key!' : 'Copy API Key'}</span>
             </button>
-          </div>
-
-          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ fontSize: '12px', color: '#475569', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <span><strong>1.</strong> Download &amp; install plugin</span>
-              <span><strong>2.</strong> Paste Master Key in Settings</span>
-              <span><strong>3.</strong> Click Connect &rarr; Site appears below automatically!</span>
-            </div>
 
             <button
               type="button"
-              onClick={() => setShowManualForm(!showManualForm)}
-              style={{ background: 'none', border: 'none', color: '#059669', fontSize: '12px', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={handleRegenerateAccountKey}
+              disabled={regeneratingAccountKey}
+              style={{
+                padding: '9px 14px', background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1',
+                borderRadius: '8px', fontSize: '12.5px', fontWeight: '600', cursor: regeneratingAccountKey ? 'wait' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+              title="Regenerate your account API key"
             >
-              {showManualForm ? 'Hide manual domain form' : 'Or pre-register domain manually &rarr;'}
+              <RotateCw size={13} className={regeneratingAccountKey ? 'animate-spin' : ''} />
+              <span>{regeneratingAccountKey ? 'Regenerating...' : 'Regenerate Key'}</span>
             </button>
+
+            <div style={{ marginLeft: 'auto' }}>
+              <button
+                type="button"
+                onClick={() => setShowManualForm(!showManualForm)}
+                style={{ background: 'none', border: 'none', color: '#059669', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                {showManualForm ? 'Hide manual domain form' : '+ Add Domain Manually'}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Optional Manual Pre-registration Form */}
         {showManualForm && (
-        <div style={{ marginBottom: '16px', padding: '16px', background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>
-          Pre-register a WordPress domain manually:
-        </div>
+          <div style={{ marginBottom: '16px', padding: '16px', background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>
+              Pre-register a WordPress domain manually:
+            </div>
 
 
 
-        <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
 
-          <div style={{ flex: '1 1 320px', position: 'relative' }}>
+              <div style={{ flex: '1 1 320px', position: 'relative' }}>
 
-            <Globe size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#87948D' }} />
+                <Globe size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#87948D' }} />
 
-            <input
+                <input
 
-              type="text"
+                  type="text"
 
-              placeholder="e.g. mahabub.shop or blog.company.com"
+                  placeholder="e.g. mahabub.shop or blog.company.com"
 
-              value={newWebsite}
+                  value={newWebsite}
 
-              onChange={e => setNewWebsite(e.target.value)}
+                  onChange={e => setNewWebsite(e.target.value)}
 
-              style={{
+                  style={{
 
-                width: '100%',
+                    width: '100%',
 
-                height: '44px',
+                    height: '44px',
 
-                padding: '0 16px 0 40px',
+                    padding: '0 16px 0 40px',
 
-                border: '1.5px solid #D9E1DC',
+                    border: '1.5px solid #D9E1DC',
 
-                borderRadius: '10px',
+                    borderRadius: '10px',
 
-                fontSize: '13.5px',
+                    fontSize: '13.5px',
 
-                fontFamily: 'inherit',
+                    fontFamily: 'inherit',
 
-                background: '#FAFBF9',
+                    background: '#FAFBF9',
 
-                color: '#10201E',
+                    color: '#10201E',
 
-                fontWeight: '600',
+                    fontWeight: '600',
 
-                boxSizing: 'border-box',
+                    boxSizing: 'border-box',
 
-                outline: 'none',
+                    outline: 'none',
 
-                transition: 'border-color 0.15s ease'
+                    transition: 'border-color 0.15s ease'
 
-              }}
+                  }}
 
-              required
+                  required
 
-            />
+                />
 
+              </div>
+
+
+
+              <button
+
+                type="submit"
+
+                disabled={adding}
+
+                style={{
+
+                  height: '44px',
+
+                  padding: '0 24px',
+
+                  borderRadius: '10px',
+
+                  fontSize: '13px',
+
+                  fontWeight: '700',
+
+                  display: 'inline-flex',
+
+                  alignItems: 'center',
+
+                  gap: '8px',
+
+                  cursor: adding ? 'not-allowed' : 'pointer',
+
+                  background: '#10201E',
+
+                  color: '#FFFFFF',
+
+                  border: 'none',
+
+                  boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)',
+
+                  flexShrink: 0,
+
+                  transition: 'all 0.15s ease'
+
+                }}
+
+              >
+
+                {adding ? (
+
+                  <>
+
+                    <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+
+                    <span>Connecting...</span>
+
+                  </>
+
+                ) : (
+
+                  <>
+
+                    <WordPressLogo size={18} variant="stencil" color="#FFFFFF" />
+
+                    <span>Connect WordPress Site</span>
+
+                  </>
+
+                )}
+
+              </button>
+
+            </form>
           </div>
-
-
-
-          <button
-
-            type="submit"
-
-            disabled={adding}
-
-            style={{
-
-              height: '44px',
-
-              padding: '0 24px',
-
-              borderRadius: '10px',
-
-              fontSize: '13px',
-
-              fontWeight: '700',
-
-              display: 'inline-flex',
-
-              alignItems: 'center',
-
-              gap: '8px',
-
-              cursor: adding ? 'not-allowed' : 'pointer',
-
-              background: '#10201E',
-
-              color: '#FFFFFF',
-
-              border: 'none',
-
-              boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)',
-
-              flexShrink: 0,
-
-              transition: 'all 0.15s ease'
-
-            }}
-
-          >
-
-            {adding ? (
-
-              <>
-
-                <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
-
-                <span>Connecting...</span>
-
-              </>
-
-            ) : (
-
-              <>
-
-                <WordPressLogo size={18} variant="stencil" color="#FFFFFF" />
-
-                <span>Connect WordPress Site</span>
-
-              </>
-
-            )}
-
-          </button>
-
-        </form>
-        </div>
         )}
 
       </div>
@@ -2587,7 +2702,7 @@ export default function UserWebsites() {
 
             <div style={{ padding: '22px 26px' }}>
 
-              
+
 
               {/* API Key Vault Card */}
 
@@ -2727,13 +2842,13 @@ export default function UserWebsites() {
 
                       ? (modalKey
 
-                          ? (modalKey.startsWith('mdf_live_sec_')
+                        ? (modalKey.startsWith('mdf_live_sec_')
 
-                              ? `mdf_live_sec_••••••••••••${modalKey.slice(-4)}`
+                          ? `mdf_live_sec_••••••••••••${modalKey.slice(-4)}`
 
-                              : `${modalKey.slice(0, 8)}••••••••••••${modalKey.slice(-4)}`)
+                          : `${modalKey.slice(0, 8)}••••••••••••${modalKey.slice(-4)}`)
 
-                          : '••••••••••••••••••••••••••••••••')
+                        : '••••••••••••••••••••••••••••••••')
 
                       : (modalKey || 'No API key generated')}
 

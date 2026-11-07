@@ -106,6 +106,9 @@ if (class_exists('WAF_FW_Login_Protector')) {
 // Instant Bidirectional Cloud Inventory Synchronization Hooks
 if (!function_exists('waf_fw_sync_inventory_to_cloud')) {
     function waf_fw_sync_inventory_to_cloud() {
+        if (get_option('waf_fw_connected', 'no') !== 'yes') {
+            return;
+        }
         if (class_exists('WAF_FW_ML_Api_Client')) {
             $client = WAF_FW_ML_Api_Client::instance();
             if ($client && $client->is_available()) {

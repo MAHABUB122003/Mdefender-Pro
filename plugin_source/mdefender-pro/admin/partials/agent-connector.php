@@ -34,8 +34,8 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
             $cloud_url = 'https://mdefender-pro.crafix.tech'; // Default MDefender Cloud Production URL
         }
 
-        if (empty($api_key)) {
-            $notice_msg = __('API Key cannot be empty. Please enter your valid MDefender Pro API Key.', 'mdefender-pro');
+        if (empty($api_key) || strlen($api_key) < 16) {
+            $notice_msg = __('Valid MDefender Pro API Key required (minimum 16 characters).', 'mdefender-pro');
             $notice_type = 'error';
         } else {
             // Live Handshake with MDefender Cloud Fleet
@@ -82,6 +82,9 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
                     $notice_msg = 'Cloud pairing error: ' . esc_html($decoded['detail'] ?? $decoded['message'] ?? 'Authentication failed');
                     $notice_type = 'error';
                 }
+            } else {
+                $notice_msg = 'Connection error: ' . esc_html($response->get_error_message());
+                $notice_type = 'error';
             }
 
             if ($handshake_ok) {
@@ -107,22 +110,48 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
                 );
                 $notice_type = 'success';
             } elseif (empty($notice_msg)) {
-                // Fallback to local save if network timed out
-                update_option('waf_fw_api_key', $api_key);
-                update_option('waf_fw_ml_api_key', $api_key);
-                update_option('waf_fw_cloud_api_url', $cloud_url);
-                update_option('waf_fw_ml_api_url', $cloud_url);
-                update_option('waf_fw_connected', 'yes');
-                update_option('waf_fw_last_sync', current_time('mysql'));
-                $notice_msg = __('API Key saved. Connected in local cache mode (Cloud handshake pending).', 'mdefender-pro');
-                $notice_type = 'warning';
+                $notice_msg = __('Cloud authentication failed. Please check your API Key and ensure outbound HTTPS requests are allowed.', 'mdefender-pro');
+                $notice_type = 'error';
             }
         }
     } elseif ($action === 'disconnect') {
-        update_option('waf_fw_api_key', '');
-        update_option('waf_fw_ml_api_key', '');
+        $api_key = get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''));
+        $cloud_url = get_option('waf_fw_cloud_api_url', 'https://mdefender-pro.crafix.tech');
+        $site_token = get_option('waf_fw_site_token', '');
+        $website_id = get_option('waf_fw_website_id', '');
+
+        // Notify cloud backend about intentional disconnect
+        if (!empty($cloud_url)) {
+            $host = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            wp_remote_post(rtrim($cloud_url, '/') . '/api/v1/wordpress/disconnect', [
+                'timeout' => 5,
+                'sslverify' => false,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $api_key
+                ],
+                'body' => wp_json_encode([
+                    'api_key' => $api_key,
+                    'domain' => $host,
+                    'website_id' => $website_id,
+                    'site_token' => $site_token
+                ])
+            ]);
+        }
+
+        // Clean slate local credentials
+        delete_option('waf_fw_api_key');
+        delete_option('waf_fw_ml_api_key');
+        delete_option('waf_fw_site_token');
+        delete_option('waf_fw_website_id');
+        delete_option('waf_fw_trial_days_remaining');
+        delete_option('waf_fw_subscription_status');
+        delete_option('waf_allow_cloud_sso');
+        delete_option('waf_fw_last_sync');
         update_option('waf_fw_connected', 'no');
-        $notice_msg = __('Disconnected from MDefender Pro Cloud. Agent is now in standalone standby mode.', 'mdefender-pro');
+        wp_clear_scheduled_hook('waf_fw_cloud_heartbeat');
+
+        $notice_msg = __('Disconnected from MDefender Pro Cloud. Agent credentials cleared and local agent returned to standalone mode.', 'mdefender-pro');
         $notice_type = 'warning';
     }
 }
@@ -135,10 +164,6 @@ if (empty($cloud_url) || strpos($cloud_url, 'localhost') !== false) {
 }
 $is_connected = get_option('waf_fw_connected', 'no') === 'yes' && !empty($api_key);
 $site_token = get_option('waf_fw_site_token', '');
-if (empty($site_token)) {
-    $site_token = wp_generate_password(32, false);
-    update_option('waf_fw_site_token', $site_token);
-}
 
 $last_sync = get_option('waf_fw_last_sync', '');
 $last_sync_display = !empty($last_sync) ? date_i18n('M j, Y - H:i:s', strtotime($last_sync)) : __('Awaiting First Sync', 'mdefender-pro');
@@ -165,7 +190,7 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             border: 1px solid #E2E8F0;
             border-radius: 12px;
             padding: 28px 32px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
             margin-bottom: 24px;
         }
         .mdf-header {
@@ -175,27 +200,21 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             border-bottom: 1px solid #F1F5F9;
             padding-bottom: 20px;
             margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
         .mdf-header-left {
             display: flex;
             align-items: center;
             gap: 16px;
         }
-        .mdf-logo-badge {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #059669 0%, #10B981 100%);
-            border-radius: 12px;
+        .mdf-header-logo-wrap {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #FFFFFF;
-            font-weight: 800;
-            font-size: 20px;
-            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
         }
         .mdf-title-block h1 {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 700;
             margin: 0 0 4px;
             color: #0F172A;
@@ -222,9 +241,9 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             border: 1px solid #A7F3D0;
         }
         .mdf-status-pill.disconnected {
-            background: #FFFBEB;
-            color: #92400E;
-            border: 1px solid #FDE68A;
+            background: #F8FAFC;
+            color: #475569;
+            border: 1px solid #CBD5E1;
         }
         .mdf-status-dot {
             width: 8px;
@@ -236,22 +255,24 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
         }
         .mdf-status-pill.disconnected .mdf-status-dot {
-            background: #F59E0B;
+            background: #94A3B8;
         }
 
         .mdf-launcher-box {
-            background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
-            border: 1px solid #CBD5E1;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
             border-radius: 10px;
-            padding: 24px;
+            padding: 22px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
         .mdf-launcher-text h3 {
             margin: 0 0 6px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             color: #0F172A;
         }
@@ -266,21 +287,22 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: #059669;
-            color: #FFFFFF !important;
+            background: #FFFFFF;
+            color: #0F172A !important;
+            border: 1px solid #CBD5E1;
             text-decoration: none;
-            padding: 12px 22px;
+            padding: 10px 18px;
             border-radius: 8px;
             font-weight: 600;
-            font-size: 14px;
-            box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
-            transition: all 0.2s ease;
+            font-size: 13.5px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.15s ease;
             white-space: nowrap;
         }
         .mdf-btn-launch:hover {
-            background: #047857;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            color: #0F172A !important;
         }
 
         .mdf-grid-engines {
@@ -296,8 +318,8 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             padding: 16px;
         }
         .mdf-engine-title {
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 11.5px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: #64748B;
@@ -333,7 +355,7 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             padding: 10px 14px;
             border: 1px solid #CBD5E1;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13.5px;
             color: #0F172A;
             background: #FFFFFF;
             transition: border-color 0.2s;
@@ -347,32 +369,35 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-top: 24px;
+            margin-top: 20px;
         }
-        .mdf-btn-primary {
-            background: #0F172A;
+        .mdf-btn-save {
+            background: #059669;
             color: #FFFFFF;
             border: none;
-            padding: 10px 20px;
+            padding: 10px 22px;
             border-radius: 6px;
-            font-weight: 600;
-            font-size: 13px;
+            font-weight: 700;
+            font-size: 13.5px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-        .mdf-btn-primary:hover {
-            background: #1E293B;
+        .mdf-btn-save:hover {
+            background: #047857;
         }
         .mdf-btn-danger {
             background: #FFFFFF;
             color: #DC2626;
             border: 1px solid #FECACA;
-            padding: 10px 18px;
+            padding: 9px 16px;
             border-radius: 6px;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12.5px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s ease;
         }
         .mdf-btn-danger:hover {
             background: #FEF2F2;
@@ -406,10 +431,12 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
         <!-- Header -->
         <div class="mdf-header">
             <div class="mdf-header-left">
-                <div class="mdf-logo-badge">M</div>
+                <div class="mdf-header-logo-wrap">
+                    <img src="<?php echo esc_url(WAF_FW_PLUGIN_URL . 'assets/images/mdefender-logo.png'); ?>" alt="MDefender Pro" style="height: 38px; width: auto; max-width: 190px; object-fit: contain;" />
+                </div>
                 <div class="mdf-title-block">
                     <h1>MDefender Pro Security Agent</h1>
-                    <p>Endpoint Threat Sensor, Autonomous Firewall & Cloud Connector</p>
+                    <p>Endpoint Threat Sensor, Autonomous Firewall & Cloud Fleet Connector</p>
                 </div>
             </div>
             <div>
@@ -466,7 +493,7 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
         </div>
 
         <!-- Local Autonomous Engines Status (Read-Only Radar) -->
-        <h4 style="font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px;">
+        <h4 style="font-size: 12.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 12px;">
             Local Execution Engines & Buffer Status
         </h4>
         <div class="mdf-grid-engines">
@@ -504,7 +531,7 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
         </div>
 
         <!-- Connection Settings Form -->
-        <h4 style="font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 14px; border-top: 1px solid #F1F5F9; padding-top: 20px;">
+        <h4 style="font-size: 12.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 14px; border-top: 1px solid #F1F5F9; padding-top: 20px;">
             Cloud Agent Activation
         </h4>
         <form method="post" action="">
@@ -514,8 +541,8 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
 
             <div class="mdf-form-group">
                 <label for="waf_api_key" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>MDefender Pro Cloud API Key</span>
-                    <a href="https://mdefender-pro.crafix.tech/user/settings" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: 600; color: #059669; text-decoration: none;">
+                    <span>MDefender Pro API Key</span>
+                    <a href="<?php echo esc_url($cloud_url . '/user/bulk/dashboard'); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 11.5px; font-weight: 600; color: #059669; text-decoration: none;">
                         Get API Key &rarr;
                     </a>
                 </label>
@@ -526,16 +553,16 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
                         name="waf_api_key" 
                         value="<?php echo esc_attr($api_key); ?>" 
                         class="mdf-input-text" 
-                        placeholder="Paste your MDefender Cloud API Key here (e.g. mdf_live_...)" 
+                        placeholder="Paste your MDefender Pro API Key here (e.g. mdf_live_...)" 
                         autocomplete="off"
                         style="flex: 1;"
                     />
-                    <button type="button" id="mdf-toggle-key-btn" style="padding: 0 14px; background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: #475569;">
+                    <button type="button" id="mdf-toggle-key-btn" style="padding: 0 14px; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: #475569;">
                         Show
                     </button>
                 </div>
                 <p style="margin: 8px 0 0; font-size: 12px; color: #64748B; line-height: 1.4;">
-                    Paste your API Key generated from <a href="https://mdefender-pro.crafix.tech/user/settings" target="_blank" rel="noopener noreferrer" style="color: #059669; font-weight: 600; text-decoration: none;">mdefender-pro.crafix.tech</a>. Connecting will activate real-time AI threat telemetry and sync defense rules automatically.
+                    Paste your API Key generated from <a href="<?php echo esc_url($cloud_url . '/user/bulk/dashboard'); ?>" target="_blank" rel="noopener noreferrer" style="color: #059669; font-weight: 600; text-decoration: none;">your MDefender Pro dashboard</a>. Connecting activates autonomous threat mitigation and syncs fleet security policies.
                 </p>
             </div>
 
@@ -543,8 +570,8 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             <div style="margin: 20px 0 24px; padding: 18px 20px; background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                     <label for="waf_allow_cloud_sso" style="font-size: 13.5px; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <span style="color: #0284C7; font-size: 16px;">⚡</span>
-                        <span>MDefender Cloud 1-Click Remote Admin SSO</span>
+                        <span style="color: #059669; font-size: 15px;">⚡</span>
+                        <span>Remote 1-Click WordPress Admin SSO</span>
                     </label>
                     <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: #1E293B;">
                         <input type="checkbox" id="waf_allow_cloud_sso" name="waf_allow_cloud_sso" value="1" <?php checked(get_option('waf_allow_cloud_sso', 'yes'), 'yes'); ?> style="width: 17px; height: 17px; accent-color: #059669;" />
@@ -557,9 +584,9 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
             </div>
 
             <div class="mdf-actions-row">
-                <button type="submit" class="mdf-btn-primary" style="background: #059669; padding: 12px 24px; font-size: 14px;">
-                    <span class="dashicons dashicons-shield" style="font-size: 18px; line-height: 1.2; margin-right: 4px;"></span>
-                    <?php echo $is_connected ? 'Update & Synchronize' : 'Connect to MDefender Cloud'; ?>
+                <button type="submit" class="mdf-btn-save">
+                    <span class="dashicons dashicons-shield" style="font-size: 17px; line-height: 1.2;"></span>
+                    <span><?php echo $is_connected ? 'Save & Sync Connection' : 'Connect to MDefender Cloud'; ?></span>
                 </button>
             </div>
         </form>
@@ -583,13 +610,18 @@ $current_log_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table")
         </script>
 
         <?php if ($is_connected): ?>
-            <form method="post" action="" style="margin-top: 14px;" onsubmit="return confirm('Are you sure you want to disconnect this website from MDefender Pro Cloud?');">
-                <?php wp_nonce_field('waf_connector_nonce_action', 'waf_connector_nonce'); ?>
-                <input type="hidden" name="waf_connector_action" value="disconnect">
-                <button type="submit" class="mdf-btn-danger">
-                    Disconnect Agent from Cloud
-                </button>
-            </form>
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px dashed #E2E8F0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="font-size: 12px; color: #64748B;">
+                    Last fleet heartbeat: <strong><?php echo esc_html($last_sync_display); ?></strong>
+                </div>
+                <form method="post" action="" onsubmit="return confirm('Are you sure you want to disconnect this website from MDefender Pro Cloud?');">
+                    <?php wp_nonce_field('waf_connector_nonce_action', 'waf_connector_nonce'); ?>
+                    <input type="hidden" name="waf_connector_action" value="disconnect">
+                    <button type="submit" class="mdf-btn-danger">
+                        Disconnect Agent from Cloud
+                    </button>
+                </form>
+            </div>
         <?php endif; ?>
     </div>
 </div>

@@ -21,6 +21,11 @@ if (!function_exists('esc_attr')) {
         return htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8');
     }
 }
+if (!function_exists('esc_js')) {
+    function esc_js($text) {
+        return addcslashes((string)$text, "\\'\"&\n\r<>");
+    }
+}
 
 // Variables available:
 // $client_ip      - Visitor's IP address

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { useTheme } from '../contexts/ThemeContext'
-import api from '../api/api'
-import userStore from '../utils/userStore'
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
+import api from '../api/api';
+import userStore from '../utils/userStore';
+import PaymentModal from '../components/PaymentModal';
 import {
   Shield,
   Check,
@@ -17,275 +18,189 @@ import {
   AlertTriangle,
   CreditCard,
   Lock,
-} from 'lucide-react'
+  Plus,
+  Minus,
+  Layers,
+  Database,
+  RotateCcw,
+  Activity,
+  ShieldCheck,
+  CheckCircle2,
+} from 'lucide-react';
 
-const DEFAULT_USER_PLANS = [
+const CAPABILITIES = [
   {
-    id: 'free',
-    name: '14-Day Free Trial',
-    badge: '14 Days Full Access',
-    badgeColor: '#64748b',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    description: 'Essential L7 edge protection and trial access for testing security & WordPress features.',
-    features: [
-      '1 Protected Website / Origin',
-      '10,000 Edge Requests / Trial',
-      'Core WAF Rule Engine (OWASP Top 10)',
-      'Global IP Blacklist & Whitelist',
-      'Country Blocking & Geo-Fencing Preview',
-      'Real-Time Edge Security Block Page',
-      'Community Forum Support'
-    ],
-    notIncluded: [
-      'Autonomous ML Threat Engine',
-      'AI Prompt Injection Shield',
-      'WordPress Multi-Site Fleet Management',
-      'Layer 7 DDoS Volumetric Mitigation',
-      '24/7 Dedicated SLA Response'
-    ]
+    title: 'Next-Gen WAF & Layer-7 DDoS Shield',
+    desc: 'Sub-millisecond (<0.12ms) line-rate inspection with AST machine learning and PoW bot challenge.',
+    icon: Shield,
+    color: '#059669',
   },
   {
-    id: 'go',
-    name: 'Developer Go',
-    badge: 'Growing Apps',
-    badgeColor: '#0ea5e9',
-    monthlyPrice: 9,
-    yearlyPrice: 90,
-    description: 'Advanced edge security, bot defense, and rate limiting for growing web services.',
-    features: [
-      '5 Protected Websites & WordPress Sites',
-      '100,000 Edge Clean Requests / Month',
-      'Autonomous Machine Learning Threat Engine',
-      'Centralized WordPress Fleet Console (5 Sites)',
-      'Country Blocking & Geographic Geo-Fencing',
-      'Global IP Blacklist & Whitelist Management',
-      'Token-Bucket Rate Limiter & Scraper Ban',
-      'OWASP Top 10 + AI Prompt Injection Guard',
-      'Priority Email Support (4-hour SLA)'
-    ],
-    notIncluded: [
-      'Sub-Millisecond Line-Rate DFA Inspection',
-      'Layer 7 DDoS Volumetric Scrubber',
-      '24/7 Dedicated SLA Response'
-    ]
+    title: 'IP Blacklist / Whitelist & Geo-Fencing',
+    desc: 'CIDR subnet blocking, sovereign country fences, and instant automated IP reputation bans.',
+    icon: Globe,
+    color: '#E8792F',
   },
   {
-    id: 'pro',
-    name: 'Enterprise Pro',
-    badge: 'Most Popular',
-    badgeColor: '#E8792F',
-    isPopular: true,
-    monthlyPrice: 20,
-    yearlyPrice: 190,
-    description: 'Maximum cyber defense for mission-critical SaaS, multi-site agencies, and high-traffic stores.',
-    features: [
-      '10 Protected Websites & WordPress Fleets',
-      '1,000,000 Clean Requests / Month',
-      'Sub-Millisecond (<0.12ms) Line-Rate DFA Inspection',
-      '10-Site WordPress Fleet Safe-Updates & Rollback',
-      'Deep 5.2M+ Checksum Malware & Backdoor Hunter',
-      'Granular Country Blocking & ASN Geo-Fencing',
-      'Unlimited IP Blacklist & Whitelist Rules',
-      'Advanced WordPress RASP Host Memory Shield',
-      'Layer 7 Volumetric DDoS Mitigation',
-      '24/7 Priority Dedicated SLA (1-hour response)'
-    ],
-    notIncluded: []
+    title: '5.24M+ Checksum Malware Hunter',
+    desc: 'Instant 0.01ms file integrity checks against official WP core hashes with AST code analysis.',
+    icon: Database,
+    color: '#2563EB',
   },
   {
-    id: 'enterprise',
-    name: 'Business & Agency',
-    badge: 'Agency & Scale',
-    badgeColor: '#10201E',
-    monthlyPrice: 49,
-    yearlyPrice: 470,
-    description: 'Dedicated security infrastructure, multi-site agency management, and guaranteed enterprise incident response.',
-    features: [
-      '20 Protected Websites & WordPress Fleets',
-      '5,000,000+ Clean Requests / Month',
-      'Full Centralized WordPress Fleet Command (20 Sites)',
-      'Granular Country & Regional Geo-Fencing',
-      'Unlimited Global IP Blacklist & Whitelisting',
-      'Custom Zero-Day Virtual Patching Engine',
-      'White-Label Automated Client Security PDF Reports',
-      'Custom SIEM Log Export (Splunk, Datadog)',
-      '15-Minute Guaranteed Critical SLA Response'
-    ],
-    notIncluded: []
-  }
-]
+    title: 'Post-Hack Recovery & Rapid Clean',
+    desc: '1-click compromised site disinfection, secret salts rotation, and rogue admin purge.',
+    icon: RotateCcw,
+    color: '#DC2626',
+  },
+  {
+    title: 'Live Logs & Forensic Event Stream',
+    desc: 'Real-time HTTP request inspector, raw payload dumps, and multi-channel instant alerts.',
+    icon: Activity,
+    color: '#0284C7',
+  },
+  {
+    title: 'WordPress Hardening & RASP',
+    desc: 'Stealth admin gateway, native RFC-6238 2FA, uploads PHP lockdown, and security headers.',
+    icon: Lock,
+    color: '#7C3AED',
+  },
+  {
+    title: 'Multi-Site Fleet Safe Updates',
+    desc: 'Bulk 1-click plugin/theme updates with automated pre-update snapshot safety rollback.',
+    icon: Layers,
+    color: '#0F2C26',
+  },
+  {
+    title: 'Dark Web Breach Intel & Reports',
+    desc: 'Credential leak monitoring, fleet-wide 404 crawler, and white-label client PDF audit exports.',
+    icon: Sparkles,
+    color: '#D97706',
+  },
+];
 
 export default function UserPricing() {
-  const { dark } = useTheme()
-  const [searchParams] = useSearchParams()
-  const initialPlanParam = searchParams.get('plan') || null
-  const initialCycleParam = searchParams.get('cycle') || 'monthly'
+  const { dark } = useTheme();
+  const [searchParams] = useSearchParams();
 
-  const cachedUser = userStore.get('profile') || userStore.get('dashboard')?.user || null
-  const [profile, setProfile] = useState(() => cachedUser)
-  const [plansList, setPlansList] = useState(DEFAULT_USER_PLANS)
-  const [billingCycle, setBillingCycle] = useState(initialCycleParam)
-  const [billingData, setBillingData] = useState(null)
-  const [paymentHistory, setPaymentHistory] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState(null)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [toastMessage, setToastMessage] = useState(null)
-  const [onboardingNotice, setOnboardingNotice] = useState(null)
+  // URL parameters if coming from public pricing page
+  const initialSitesParam = parseInt(searchParams.get('sites') || '3', 10);
+  const initialCycleParam = searchParams.get('cycle') || 'monthly';
+
+  const cachedUser = userStore.get('profile') || userStore.get('dashboard')?.user || null;
+  const [profile, setProfile] = useState(() => cachedUser);
+  const [billingCycle, setBillingCycle] = useState(initialCycleParam);
+  const [sitesCount, setSitesCount] = useState(isNaN(initialSitesParam) || initialSitesParam < 1 ? 3 : initialSitesParam);
+  const [billingData, setBillingData] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [onboardingNotice, setOnboardingNotice] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const showToast = (text, isError = false) => {
-    setToastMessage({ text, isError })
-    setTimeout(() => setToastMessage(null), 5000)
-  }
+    setToastMessage({ text, isError });
+    setTimeout(() => setToastMessage(null), 5000);
+  };
 
-  const isYearly = billingCycle === 'yearly'
+  const isYearly = billingCycle === 'yearly';
+
+  // Pricing configuration: $4/month or $40/year per site
+  const monthlyRate = 4;
+  const yearlyRate = 40; // $3.33/mo equivalent (2 months free)
+
+  const totalPrice = isYearly ? sitesCount * yearlyRate : sitesCount * monthlyRate;
+  const effectiveMonthly = isYearly ? (totalPrice / 12).toFixed(2) : totalPrice.toFixed(2);
+  const savingsAmount = isYearly ? sitesCount * (monthlyRate * 12 - yearlyRate) : 0;
 
   const fetchBilling = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [profRes, billRes, histRes] = await Promise.allSettled([
         api.getProfile(),
         api.getBillingSubscription(),
-        api.getPaymentHistory()
-      ])
+        api.getPaymentHistory(),
+      ]);
 
-      if (profRes.status === 'fulfilled' && profRes.value) {
-        const u = profRes.value.user || profRes.value
-        setProfile(u)
-        userStore.set('profile', u)
-        if (u.plan) localStorage.setItem('mdefender_user_plan', u.plan)
+      if (profRes.status === 'fulfilled' && profRes.value?.data) {
+        setProfile(profRes.value.data);
+        userStore.set('profile', profRes.value.data);
       }
-
-      if (billRes.status === 'fulfilled' && billRes.value) {
-        const b = billRes.value.data || billRes.value
-        setBillingData(b)
+      if (billRes.status === 'fulfilled') {
+        setBillingData(billRes.value?.data || billRes.value);
       }
-
-      if (histRes.status === 'fulfilled' && histRes.value) {
-        setPaymentHistory(histRes.value || [])
+      if (histRes.status === 'fulfilled') {
+        const hist = histRes.value?.data || histRes.value?.payments || [];
+        setPaymentHistory(Array.isArray(hist) ? hist : []);
       }
     } catch (e) {
-      console.warn('Failed to fetch billing details:', e)
+      console.warn('Failed to fetch billing info:', e);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchBilling()
-  }, [])
+    fetchBilling();
+  }, []);
 
-  // Dynamic admin pricing sync: reflect any live overrides from Admin Pricing panel
-  useEffect(() => {
-    api.getPublicPricing()
-      .then(res => {
-        if (res?.data?.plans) {
-          const raw = res.data.plans
-          setPlansList(prev => prev.map(p => {
-            const match = Array.isArray(raw) ? raw.find(r => r.id === p.id) : raw[p.id]
-            if (match) {
-              return {
-                ...p,
-                name: match.name || match.display_name || p.name,
-                monthlyPrice: match.monthly_price !== undefined ? match.monthly_price : p.monthlyPrice,
-                yearlyPrice: match.yearly_price !== undefined ? match.yearly_price : p.yearlyPrice,
-              }
-            }
-            return p
-          }))
-        }
-      })
-      .catch(() => {})
-  }, [])
+  const currentPlanId = (profile?.plan || billingData?.plan_id || 'free').toLowerCase();
+  const isPaidActive = currentPlanId !== 'free' && profile?.payment_status === 'active';
+  const allocatedSlots = profile?.website_limit || profile?.website_slots || (currentPlanId === 'free' ? 1 : 10);
 
-  // Auto-init Paddle SDK once config is fetched
-  useEffect(() => {
-    api.getBillingConfig()
-      .then(res => {
-        const cfg = res?.data || res
-        if (cfg?.client_token && window.Paddle) {
-          try {
-            if (cfg.environment === 'sandbox') {
-              window.Paddle.Environment.set('sandbox')
-            }
-            window.Paddle.Initialize({
-              token: cfg.client_token
-            })
-          } catch (e) {
-            console.warn('Paddle Init Warning:', e)
-          }
-        }
-      })
-      .catch(() => {})
-  }, [])
-
-  const currentPlanId = (profile?.plan || billingData?.plan_id || 'free').toLowerCase()
-  const isPaidActive = currentPlanId !== 'free' && profile?.payment_status === 'active'
-
-  // Direct 1-Click Paddle Checkout Handler
-  const handleCheckout = async (planId) => {
-    if (planId === currentPlanId) {
-      showToast(`You are currently on the ${planId.toUpperCase()} plan.`, false)
-      return
+  const handleSitesChange = (val) => {
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num >= 1 && num <= 500) {
+      setSitesCount(num);
     }
+  };
 
-    if (planId === 'free') {
-      if (!confirm('Are you sure you want to downgrade to Starter Free? High-volume protection and premium engines will be paused.')) return
-      setActionLoading(true)
-      try {
-        await api.downgradePlan()
-        showToast('Downgraded to Free Starter plan.')
-        fetchBilling()
-      } catch (err) {
-        showToast(err.message || 'Downgrade failed', true)
-      } finally {
-        setActionLoading(false)
-      }
-      return
-    }
-
-    setCheckoutLoadingPlan(planId)
-    setOnboardingNotice(null)
+  // Launch direct checkout for the selected number of websites
+  const handleLaunchCheckout = async () => {
+    setCheckoutLoading(true);
+    setOnboardingNotice(null);
 
     try {
-      // 1. Fetch live config and ensure Paddle SDK is ready
-      const cfgRes = await api.getBillingConfig()
-      const cfg = cfgRes?.data || cfgRes
+      // 1. Fetch live config and ensure payment SDK is ready
+      const cfgRes = await api.getBillingConfig();
+      const cfg = cfgRes?.data || cfgRes;
       if (window.Paddle && cfg?.client_token) {
         try {
           if (cfg.environment === 'sandbox') {
-            window.Paddle.Environment.set('sandbox')
+            window.Paddle.Environment.set('sandbox');
           }
-          window.Paddle.Initialize({ token: cfg.client_token })
+          window.Paddle.Initialize({ token: cfg.client_token });
         } catch (initErr) {
-          console.warn('Paddle init error:', initErr)
+          console.warn('Init error:', initErr);
         }
       }
 
-      // 2. Request backend to create transaction
+      // 2. Request backend to create transaction with custom quantity
       const res = await api.createPaddleCheckout({
-        plan: planId,
+        plan: 'pro',
+        quantity: sitesCount,
+        sites: sitesCount,
         billing_cycle: billingCycle,
         return_url: window.location.href,
-        success_url: window.location.origin + '/payment/success?plan=' + planId + '&cycle=' + billingCycle
-      })
+        success_url: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}`,
+      });
 
       if (!res.success && res.error) {
         if (res.error.code === 'transaction_checkout_not_enabled') {
           setOnboardingNotice({
-            title: 'Paddle Live Onboarding Pending',
-            message: res.error.message || 'Checkouts are not enabled for your live Paddle account. Please complete your business verification and website domain approval in your Paddle Dashboard.',
-            url: 'https://vendors.paddle.com'
-          })
-          return
+            title: 'Payment Gateway Setup Pending',
+            message: res.error.message || 'Payment checkouts are currently being configured for your account. Please try again shortly or contact support.',
+            url: '#',
+          });
+          return;
         }
-        throw new Error(res.error.message || 'Failed to initiate checkout.')
+        throw new Error(res.error.message || 'Failed to initiate checkout.');
       }
 
-      const checkoutData = res.data || res
+      const checkoutData = res.data || res;
 
-      // 3. Open Paddle Checkout directly
+      // 3. Open Checkout Overlay
       if (checkoutData.checkout_id && window.Paddle) {
         try {
           window.Paddle.Checkout.open({
@@ -293,110 +208,108 @@ export default function UserPricing() {
             settings: {
               displayMode: 'overlay',
               theme: 'light',
-              successUrl: window.location.origin + '/payment/success?plan=' + planId + '&cycle=' + billingCycle
-            }
-          })
-          return
+              successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}`,
+            },
+          });
+          return;
         } catch (overlayErr) {
-          console.warn('Overlay error, falling back to URL:', overlayErr)
+          console.warn('Overlay error, falling back to URL:', overlayErr);
         }
       }
 
       if (checkoutData.checkout_url) {
-        window.location.href = checkoutData.checkout_url
-        return
+        window.location.href = checkoutData.checkout_url;
+        return;
       }
 
       if (checkoutData.price_id && window.Paddle) {
         window.Paddle.Checkout.open({
-          items: [{ priceId: checkoutData.price_id, quantity: 1 }],
+          items: [{ priceId: checkoutData.price_id, quantity: sitesCount }],
           settings: {
             displayMode: 'overlay',
             theme: 'light',
-            successUrl: window.location.origin + '/payment/success?plan=' + planId + '&cycle=' + billingCycle
-          }
-        })
-        return
+            successUrl: `${window.location.origin}/payment/success?plan=pro&cycle=${billingCycle}&sites=${sitesCount}`,
+          },
+        });
+        return;
       }
 
-      if (checkoutData.message && !checkoutData.checkout_url && !checkoutData.checkout_id && !checkoutData.price_id) {
-        showToast(checkoutData.message, true)
-        return
-      }
-
-      throw new Error('Unable to launch checkout session. Please try again.')
+      // Fallback: Open Card & Bank Payment Modal
+      setPaymentModalOpen(true);
     } catch (err) {
-      showToast(err.message || 'Failed to launch Paddle Checkout', true)
+      // Fallback to internal card modal
+      setPaymentModalOpen(true);
     } finally {
-      setCheckoutLoadingPlan(null)
+      setCheckoutLoading(false);
     }
-  }
-
-  // Trigger checkout automatically if query param present
-  useEffect(() => {
-    if (initialPlanParam && initialPlanParam !== 'free' && initialPlanParam !== currentPlanId) {
-      handleCheckout(initialPlanParam)
-    }
-  }, [initialPlanParam])
+  };
 
   return (
-    <div style={{
-      maxWidth: '1240px',
-      margin: '0 auto',
-      padding: '28px 24px 68px',
-      color: '#10201E',
-      fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif"
-    }}>
+    <div
+      style={{
+        maxWidth: '1240px',
+        margin: '0 auto',
+        padding: '28px 24px 68px',
+        color: '#10201E',
+        fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
+      }}
+    >
       {/* Toast Notification */}
       {toastMessage && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          background: toastMessage.isError ? '#A34F22' : '#0B2522',
-          color: '#ffffff',
-          padding: '12px 20px',
-          borderRadius: '10px',
-          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.25)',
-          zIndex: 9999,
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          fontSize: '13.5px'
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: toastMessage.isError ? '#A34F22' : '#0B2522',
+            color: '#ffffff',
+            padding: '12px 20px',
+            borderRadius: '10px',
+            boxShadow: '0 8px 24px rgba(11, 37, 34, 0.25)',
+            zIndex: 9999,
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontSize: '13.5px',
+          }}
+        >
           {toastMessage.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMessage.text}</span>
         </div>
       )}
 
-      {/* Paddle Onboarding Pending Notice Banner */}
+      {/* Payment Gateway Setup Pending Notice */}
       {onboardingNotice && (
-        <div style={{
-          background: '#FFF8F4',
-          border: '1.5px solid #FCD3B6',
-          borderRadius: '14px',
-          padding: '20px 24px',
-          marginBottom: '24px',
-          boxShadow: '0 4px 16px rgba(232, 121, 47, 0.08)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
+        <div
+          style={{
+            background: '#FFF8F4',
+            border: '1.5px solid #FCD3B6',
+            borderRadius: '14px',
+            padding: '20px 24px',
+            marginBottom: '24px',
+            boxShadow: '0 4px 16px rgba(232, 121, 47, 0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flex: 1, minWidth: '280px' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: '#FFF4ED',
-              color: '#E8792F',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#FFF4ED',
+                color: '#E8792F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
               <AlertTriangle size={20} strokeWidth={2.4} />
             </div>
             <div>
@@ -409,37 +322,32 @@ export default function UserPricing() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <a
-              href={onboardingNotice.url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => setPaymentModalOpen(true)}
               style={{
                 padding: '9px 18px',
                 borderRadius: '8px',
                 background: '#0B2522',
                 color: '#ffffff',
-                textDecoration: 'none',
+                border: 'none',
                 fontWeight: '700',
                 fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                cursor: 'pointer',
               }}
             >
-              <span>Complete in Paddle</span>
-              <ArrowUpRight size={13} strokeWidth={2.4} />
-            </a>
+              <span>Pay with Card / Bank Transfer</span>
+            </button>
             <button
               onClick={() => setOnboardingNotice(null)}
               style={{
                 padding: '9px 14px',
                 borderRadius: '8px',
+                border: '1px solid #CBD8CF',
                 background: '#ffffff',
-                border: '1px solid #D9E1DC',
-                color: '#10201E',
-                fontSize: '13px',
+                color: '#60716B',
                 fontWeight: '600',
-                cursor: 'pointer'
+                fontSize: '13px',
+                cursor: 'pointer',
               }}
             >
               Dismiss
@@ -448,362 +356,485 @@ export default function UserPricing() {
         </div>
       )}
 
-      {/* Header Banner */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        padding: '28px 32px',
-        marginBottom: '28px',
-        border: '1px solid #D9E1DC',
-        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '20px'
-      }}>
+      {/* Header Banner & Status Bar */}
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: '20px',
+          padding: '28px 32px',
+          marginBottom: '28px',
+          border: '1px solid #D9E1DC',
+          boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '20px',
+        }}
+      >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '800',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              background: '#E8EEE8',
-              color: '#0B2522',
-              border: '1px solid #D9E1DC',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <Shield size={12} strokeWidth={2.4} style={{ color: '#2A8B68' }} />
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: '800',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background: '#E8EEE8',
+                color: '#0B2522',
+                border: '1px solid #D9E1DC',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <ShieldCheck size={13} strokeWidth={2.4} style={{ color: '#059669' }} />
               <span>Active Security Workspace</span>
             </span>
-            <span style={{
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '800',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              background: isPaidActive ? '#E8F3EC' : '#F7F6F1',
-              color: isPaidActive ? '#2A8B68' : '#60716B',
-              border: `1px solid ${isPaidActive ? '#CFE2D4' : '#D9E1DC'}`
-            }}>
-              Current Plan: {currentPlanId.toUpperCase()}
+
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: '20px',
+                fontSize: '11px',
+                fontWeight: '800',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background: isPaidActive ? '#E8F3EC' : '#FFF4ED',
+                color: isPaidActive ? '#059669' : '#E8792F',
+                border: `1px solid ${isPaidActive ? '#CFE2D4' : '#FCD3B6'}`,
+              }}
+            >
+              {isPaidActive ? 'PRO SUBSCRIPTION ACTIVE' : '14-DAY FREE TRIAL'}
             </span>
           </div>
 
           <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.03em' }}>
-            Subscription &amp; Protection Plans
+            Subscription &amp; Website Slots
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#60716B', maxWidth: '640px', lineHeight: '1.55' }}>
-            Self-service upgrade with instant activation. Protect more websites, manage multi-site WordPress fleets, and unlock sub-millisecond line-rate edge defense.
+            Predictable per-website licensing: exactly <strong>$4 / website / month</strong>. Scale up or down anytime.
+            Every connected website receives full enterprise AI WAF, 5.24M checksum malware scanning, and post-hack recovery.
           </p>
         </div>
 
-        {/* Quick User Plan Card */}
-        <div style={{
-          background: '#FBFCFA',
-          border: '1px solid #D9E1DC',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          minWidth: '220px'
-        }}>
+        {/* Current Account Status Quick Box */}
+        <div
+          style={{
+            background: '#F7F6F1',
+            border: '1px solid #D9E1DC',
+            borderRadius: '14px',
+            padding: '16px 22px',
+            minWidth: '240px',
+          }}
+        >
           <div style={{ fontSize: '11px', color: '#60716B', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.08em', marginBottom: '4px' }}>
-            Account Status
+            Allocated Website Licenses
           </div>
-          <div style={{ fontSize: '17px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: isPaidActive ? '#0B2522' : '#E8792F',
-              boxShadow: isPaidActive ? '0 0 6px rgba(11, 37, 34, 0.4)' : 'none'
-            }} />
-            <span>{currentPlanId === 'go' ? 'Developer Go' : currentPlanId === 'enterprise' ? 'Dedicated Enterprise' : currentPlanId === 'pro' ? 'Enterprise Pro' : 'Starter Free'}</span>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isPaidActive ? '#059669' : '#E8792F',
+                boxShadow: isPaidActive ? '0 0 6px rgba(5, 150, 105, 0.4)' : 'none',
+              }}
+            />
+            <span>{allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}</span>
           </div>
           {profile?.plan_expires && (
             <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>
-              Valid through: {new Date(profile.plan_expires).toLocaleDateString()}
+              Current cycle valid through: {new Date(profile.plan_expires).toLocaleDateString()}
             </div>
           )}
         </div>
       </div>
 
-      {/* Monthly / Annual Billing Toggle */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '12px',
-        marginBottom: '32px'
-      }}>
-        <div style={{
-          background: '#E8EEE8',
-          padding: '5px',
-          borderRadius: '999px',
-          display: 'inline-flex',
-          gap: '5px',
-          border: '1px solid #D9E1DC',
-          boxShadow: 'inset 0 1px 3px rgba(11, 37, 34, 0.05)'
-        }}>
-          <button
-            type="button"
-            onClick={() => setBillingCycle('monthly')}
+      {/* ===================== INTERACTIVE UPGRADE & SCALE CALCULATOR ===================== */}
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: '20px',
+          border: '2px solid #E6ECE8',
+          boxShadow: '0 16px 45px rgba(11, 37, 34, 0.06)',
+          padding: 'clamp(28px, 4vw, 40px)',
+          marginBottom: '36px',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1.2fr 1fr',
+            gap: '36px',
+            alignItems: 'center',
+          }}
+        >
+          {/* Left: Site Counter & Billing Cycle Toggle */}
+          <div>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+                color: '#E8792F',
+                marginBottom: '6px',
+              }}
+            >
+              Expand or Renew Your Fleet
+            </div>
+            <h2
+              style={{
+                fontSize: '22px',
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                color: '#10201E',
+                margin: '0 0 10px',
+              }}
+            >
+              Select Number of Websites to Protect
+            </h2>
+            <p style={{ fontSize: '14px', color: '#60716B', lineHeight: '1.55', margin: '0 0 22px' }}>
+              Need to protect 1, 5, or 25 client websites? Add or remove site licenses dynamically at $4/month per site.
+            </p>
+
+            {/* Billing Cycle Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '22px' }}>
+              <div
+                style={{
+                  background: '#E8EEE8',
+                  padding: '4px',
+                  borderRadius: '999px',
+                  display: 'inline-flex',
+                  gap: '4px',
+                  border: '1px solid #D9E1DC',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('monthly')}
+                  style={{
+                    padding: '7px 20px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: !isYearly ? '#0B2522' : 'transparent',
+                    color: !isYearly ? '#ffffff' : '#60716B',
+                    fontWeight: '700',
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Monthly ($4 / site)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('yearly')}
+                  style={{
+                    padding: '7px 20px',
+                    borderRadius: '999px',
+                    border: 'none',
+                    background: isYearly ? '#0B2522' : 'transparent',
+                    color: isYearly ? '#ffffff' : '#60716B',
+                    fontWeight: '700',
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>Annual ($40 / site)</span>
+                  <span
+                    style={{
+                      background: '#E8792F',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      fontWeight: '800',
+                    }}
+                  >
+                    Save 17%
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Counter Widget */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+              <button
+                type="button"
+                onClick={() => setSitesCount((prev) => Math.max(1, prev - 1))}
+                disabled={sitesCount <= 1}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #CBD8CF',
+                  background: sitesCount <= 1 ? '#F7F6F1' : '#FFFFFF',
+                  color: sitesCount <= 1 ? '#CBD8CF' : '#0B2522',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: sitesCount <= 1 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <Minus size={18} strokeWidth={2.6} />
+              </button>
+
+              <input
+                type="number"
+                min="1"
+                max="500"
+                value={sitesCount}
+                onChange={(e) => handleSitesChange(e.target.value)}
+                style={{
+                  width: '100px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  border: '2px solid #0B2522',
+                  background: '#FBFCFA',
+                  textAlign: 'center',
+                  fontSize: '19px',
+                  fontWeight: 800,
+                  color: '#0B2522',
+                  outline: 'none',
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => setSitesCount((prev) => Math.min(500, prev + 1))}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #0B2522',
+                  background: '#0B2522',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <Plus size={18} strokeWidth={2.6} />
+              </button>
+
+              <span style={{ fontSize: '15.5px', fontWeight: 700, color: '#10201E', marginLeft: '6px' }}>
+                {sitesCount === 1 ? 'Website License' : 'Website Licenses'}
+              </span>
+            </div>
+
+            {/* Quick preset buttons */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#7A928B', alignSelf: 'center' }}>Presets:</span>
+              {[1, 3, 5, 10, 20, 50].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setSitesCount(num)}
+                  style={{
+                    padding: '3px 12px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    border: sitesCount === num ? '1.5px solid #059669' : '1px solid #D9E1DC',
+                    background: sitesCount === num ? '#E8EEE8' : '#FFFFFF',
+                    color: sitesCount === num ? '#059669' : '#4A5D5A',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {num} {num === 1 ? 'Site' : 'Sites'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Price Total & Checkout CTA Box */}
+          <div
             style={{
-              padding: '8px 22px',
-              borderRadius: '999px',
-              border: 'none',
-              background: !isYearly ? '#0B2522' : 'transparent',
-              color: !isYearly ? '#ffffff' : '#60716B',
-              fontWeight: '700',
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: !isYearly ? '0 2px 8px rgba(11, 37, 34, 0.2)' : 'none',
-              transition: 'all 0.18s ease'
+              background: '#F7F6F1',
+              borderRadius: '18px',
+              border: '1px solid #D9E1DC',
+              padding: '28px 24px',
+              textAlign: 'center',
             }}
           >
-            Monthly Billing
-          </button>
-          <button
-            type="button"
-            onClick={() => setBillingCycle('yearly')}
-            style={{
-              padding: '8px 22px',
-              borderRadius: '999px',
-              border: 'none',
-              background: isYearly ? '#0B2522' : 'transparent',
-              color: isYearly ? '#ffffff' : '#60716B',
-              fontWeight: '700',
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: isYearly ? '0 2px 8px rgba(11, 37, 34, 0.2)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.18s ease'
-            }}
-          >
-            <span>Annual Billing</span>
-            <span style={{
-              background: '#E8792F',
-              color: '#ffffff',
-              fontSize: '10px',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              fontWeight: '800',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase'
-            }}>
-              SAVE 20%
-            </span>
-          </button>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#FFFFFF',
+                border: '1px solid #CBD8CF',
+                padding: '4px 12px',
+                borderRadius: '999px',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#059669',
+                textTransform: 'uppercase',
+                marginBottom: '12px',
+              }}
+            >
+              <CheckCircle2 size={13} strokeWidth={2.4} />
+              <span>Full Enterprise Capabilities Included</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '4px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '52px', fontWeight: 900, color: '#10201E', letterSpacing: '-0.05em', lineHeight: 1 }}>
+                ${totalPrice}
+              </span>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#5B756E' }}>
+                {isYearly ? '/ year total' : '/ month total'}
+              </span>
+            </div>
+
+            <div style={{ fontSize: '13px', color: '#5B756E', fontWeight: 600, marginBottom: '20px' }}>
+              {isYearly ? (
+                <span>
+                  Effective <strong>${effectiveMonthly}/mo</strong> (${(yearlyRate / 12).toFixed(2)}/site/mo) ·{' '}
+                  <strong style={{ color: '#E8792F' }}>Save ${savingsAmount}/yr</strong>
+                </span>
+              ) : (
+                <span>
+                  Billed monthly at <strong>${monthlyRate}.00 per website</strong> · Cancel anytime
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLaunchCheckout}
+              disabled={checkoutLoading}
+              style={{
+                width: '100%',
+                height: '48px',
+                borderRadius: '12px',
+                background: '#0B2522',
+                color: '#FFFFFF',
+                fontSize: '14.5px',
+                fontWeight: 800,
+                border: 'none',
+                cursor: checkoutLoading ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 6px 18px rgba(11, 37, 34, 0.2)',
+                transition: 'all 0.18s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#153B34')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#0B2522')}
+            >
+              {checkoutLoading ? (
+                <span>Preparing Secure Checkout...</span>
+              ) : (
+                <>
+                  <span>Activate &amp; Pay for {sitesCount} {sitesCount === 1 ? 'Site' : 'Sites'}</span>
+                  <ArrowRight size={16} strokeWidth={2.4} />
+                </>
+              )}
+            </button>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '12px',
+                fontSize: '11.5px',
+                color: '#5B756E',
+                fontWeight: 600,
+                marginTop: '14px',
+              }}
+            >
+              <span>✓ Instant Slot Activation</span>
+              <span>✓ 256-Bit Encrypted</span>
+              <span>✓ Card &amp; Bank Transfer</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 4 Pricing Plan Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(265px, 1fr))',
-        gap: '20px',
-        marginBottom: '40px'
-      }}>
-        {plansList.map(plan => {
-          const isCurrent = plan.id === currentPlanId
-          const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
-          const isPopular = plan.isPopular
-          const isCheckingOut = checkoutLoadingPlan === plan.id
-          const PlanIcon = plan.id === 'go' ? Zap : plan.id === 'enterprise' ? Globe : plan.id === 'pro' ? Sparkles : Shield
+      {/* ===================== 8 ENTERPRISE CAPABILITIES SNAPSHOT ===================== */}
+      <div style={{ marginBottom: '44px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#10201E', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+            What is Included with Every Website License ($4/mo)
+          </h3>
+          <p style={{ margin: 0, fontSize: '13.5px', color: '#60716B' }}>
+            Zero tiered limitations. Every single connected website receives 100% of our enterprise tools.
+          </p>
+        </div>
 
-          return (
-            <div
-              key={plan.id}
-              style={{
-                background: '#ffffff',
-                border: isPopular
-                  ? '1.5px solid #E8792F'
-                  : isCurrent
-                    ? '1.5px solid #2A8B68'
-                    : '1px solid #D9E1DC',
-                borderRadius: '16px',
-                padding: '26px 24px 22px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                position: 'relative',
-                boxShadow: isPopular
-                  ? '0 16px 40px rgba(232, 121, 47, 0.12), 0 4px 18px rgba(11, 37, 34, 0.04)'
-                  : isCurrent
-                    ? '0 10px 30px rgba(42, 139, 104, 0.08)'
-                    : '0 4px 20px rgba(11, 37, 34, 0.04)',
-                transition: 'transform 0.2s, box-shadow 0.2s'
-              }}
-            >
-              <div>
-                {/* Header Row: Icon & Badge */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div style={{
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: '16px',
+          }}
+        >
+          {CAPABILITIES.map((cap, idx) => {
+            const IconComp = cap.icon;
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: '#FFFFFF',
+                  borderRadius: '14px',
+                  border: '1px solid #D9E1DC',
+                  padding: '20px',
+                  boxShadow: '0 2px 10px rgba(11, 37, 34, 0.02)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '14px',
+                }}
+              >
+                <div
+                  style={{
                     width: '38px',
                     height: '38px',
                     borderRadius: '10px',
-                    background: isPopular ? '#FFF4ED' : '#E8EEE8',
-                    border: isPopular ? '1px solid #FCD3B6' : '1px solid #D9E1DC',
+                    background: '#F7F6F1',
+                    border: '1px solid #E6ECE8',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isPopular ? '#E8792F' : '#0B2522'
-                  }}>
-                    <PlanIcon size={19} strokeWidth={2.4} />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {isCurrent && (
-                      <span style={{
-                        padding: '3px 8px',
-                        borderRadius: '999px',
-                        fontSize: '10px',
-                        fontWeight: '800',
-                        background: '#E8F3EC',
-                        color: '#2A8B68',
-                        border: '1px solid #CFE2D4',
-                        letterSpacing: '0.04em'
-                      }}>
-                        ACTIVE PLAN
-                      </span>
-                    )}
-                    <span style={{
-                      padding: '3px 9px',
-                      borderRadius: '999px',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      background: isPopular ? '#E8792F' : '#E8EEE8',
-                      color: isPopular ? '#ffffff' : '#60716B',
-                      boxShadow: isPopular ? '0 2px 6px rgba(232, 121, 47, 0.3)' : 'none'
-                    }}>
-                      {plan.badge}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Title & Description */}
-                <div style={{ marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '19px', fontWeight: '800', margin: '0 0 6px', color: '#10201E', letterSpacing: '-0.02em' }}>
-                    {plan.name}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: '#60716B', margin: 0, minHeight: '36px', lineHeight: '1.5' }}>
-                    {plan.description}
-                  </p>
-                </div>
-
-                {/* Price display */}
-                <div style={{
-                  marginBottom: '20px',
-                  padding: '14px 0',
-                  borderTop: '1px solid #D9E1DC',
-                  borderBottom: '1px solid #D9E1DC'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '38px', fontWeight: '850', color: '#10201E', letterSpacing: '-0.04em', lineHeight: 1 }}>
-                      ${price}
-                    </span>
-                    <span style={{ fontSize: '12.5px', color: '#60716B', fontWeight: '600' }}>
-                      {plan.monthlyPrice === 0 ? '/ 14-day trial' : isYearly ? '/ year' : '/ month'}
-                    </span>
-                  </div>
-                  {isYearly && plan.monthlyPrice > 0 && (
-                    <div style={{ fontSize: '11.5px', color: '#E8792F', fontWeight: '700', marginTop: '4px' }}>
-                      ${(price / 12).toFixed(2)}/mo &middot; Save ${plan.monthlyPrice * 12 - plan.yearlyPrice}/yr
-                    </div>
-                  )}
-                  {plan.monthlyPrice === 0 && (
-                    <div style={{ fontSize: '11.5px', color: '#2A8B68', fontWeight: '600', marginTop: '4px' }}>
-                      14-Day Free Access
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Button */}
-                <button
-                  type="button"
-                  onClick={() => handleCheckout(plan.id)}
-                  disabled={isCurrent || isCheckingOut || actionLoading}
-                  style={{
-                    width: '100%',
-                    height: '46px',
-                    borderRadius: '10px',
-                    border: isCurrent ? '1px solid #D9E1DC' : 'none',
-                    fontSize: '13.5px',
-                    fontWeight: '700',
-                    cursor: isCurrent ? 'default' : isCheckingOut ? 'wait' : 'pointer',
-                    background: isCurrent
-                      ? '#E8EEE8'
-                      : '#0B2522',
-                    color: isCurrent ? '#60716B' : '#ffffff',
-                    boxShadow: isCurrent ? 'none' : '0 4px 14px rgba(11, 37, 34, 0.2)',
-                    marginBottom: '22px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.18s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isCurrent && !isCheckingOut) e.currentTarget.style.background = '#153B34'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isCurrent && !isCheckingOut) e.currentTarget.style.background = '#0B2522'
+                    color: cap.color,
+                    flexShrink: 0,
                   }}
                 >
-                  {isCheckingOut ? (
-                    <><span>Launching Checkout...</span></>
-                  ) : isCurrent ? (
-                    <><Check size={15} strokeWidth={2.4} style={{ color: '#2A8B68' }} /><span>Current Active Plan</span></>
-                  ) : plan.id === 'free' ? (
-                    'Downgrade to Free'
-                  ) : (
-                    <><span>Deploy &amp; Activate Plan</span><ArrowRight size={14} strokeWidth={2.4} /></>
-                  )}
-                </button>
-
-                {/* Feature List */}
+                  <IconComp size={20} strokeWidth={2.4} />
+                </div>
                 <div>
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', color: '#10201E', letterSpacing: '0.1em', marginBottom: '12px' }}>
-                    Capabilities Snapshot
-                  </div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '13px' }}>
-                    {plan.features.map((feat, i) => (
-                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10201E' }}>
-                        <Check size={14} strokeWidth={2.6} style={{ color: '#2A8B68', flexShrink: 0 }} />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                    {plan.notIncluded.map((feat, i) => (
-                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#87948D', textDecoration: 'line-through' }}>
-                        <X size={14} strokeWidth={2} style={{ color: '#CBD8CF', flexShrink: 0 }} />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
+                    {cap.title}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#5B756E', lineHeight: '1.5' }}>
+                    {cap.desc}
+                  </p>
                 </div>
               </div>
-            </div>
-          )
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Invoices & Transaction History */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #D9E1DC',
-        padding: '26px 28px',
-        boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
-      }}>
+      {/* ===================== INVOICES & TRANSACTION HISTORY ===================== */}
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: '16px',
+          border: '1px solid #D9E1DC',
+          padding: '26px 28px',
+          boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -829,7 +860,7 @@ export default function UserPricing() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = '#E8EEE8')}
             onMouseLeave={(e) => (e.currentTarget.style.background = '#FBFCFA')}
@@ -861,22 +892,24 @@ export default function UserPricing() {
                       {inv.created_at || inv.billed_at || 'Recent'}
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: '750', color: '#10201E' }}>
-                      ${inv.amount || 20}.00 USD
+                      ${inv.amount || totalPrice}.00 USD
                     </td>
                     <td style={{ padding: '14px 16px', color: '#60716B' }}>
                       <CreditCard size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
                       <span>Electronic Gateway</span>
                     </td>
                     <td style={{ padding: '14px 16px' }}>
-                      <span style={{
-                        padding: '3px 9px',
-                        borderRadius: '999px',
-                        background: '#E8F3EC',
-                        color: '#28745D',
-                        border: '1px solid #CFE2D4',
-                        fontSize: '11px',
-                        fontWeight: '800'
-                      }}>
+                      <span
+                        style={{
+                          padding: '3px 9px',
+                          borderRadius: '999px',
+                          background: '#E8F3EC',
+                          color: '#28745D',
+                          border: '1px solid #CFE2D4',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                        }}
+                      >
                         PAID &amp; ACTIVE
                       </span>
                     </td>
@@ -886,7 +919,7 @@ export default function UserPricing() {
                 <tr>
                   <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', color: '#60716B' }}>
                     <FileText size={24} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.5 }} />
-                    No prior invoices recorded. Your account is on {currentPlanId.toUpperCase()} tier.
+                    No prior invoices recorded. Your account has {allocatedSlots} website {allocatedSlots === 1 ? 'slot' : 'slots'} available.
                   </td>
                 </tr>
               )}
@@ -894,6 +927,19 @@ export default function UserPricing() {
           </table>
         </div>
       </div>
+
+      {/* Internal Payment Modal for Card/Bank Checkout */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        plan="pro"
+        billingCycle={isYearly ? 'yearly' : 'monthly'}
+        onSuccess={() => {
+          setPaymentModalOpen(false);
+          showToast(`Successfully upgraded to ${sitesCount} website licenses!`, false);
+          fetchBilling();
+        }}
+      />
     </div>
-  )
+  );
 }

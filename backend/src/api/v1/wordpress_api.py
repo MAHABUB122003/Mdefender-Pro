@@ -243,6 +243,13 @@ class HeartbeatRequest(BaseModel):
     backups: list | None = None
 
 
+class AgentDisconnectRequest(BaseModel):
+    api_key: str | None = None
+    domain: str | None = None
+    website_id: str | None = None
+    site_token: str | None = None
+
+
 
 
 
@@ -257,6 +264,9 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
 
     api_key = (body.api_key or bearer_key or "").strip()
+
+    if not api_key or len(api_key) < 16:
+        raise HTTPException(status_code=401, detail="Valid MDefender Pro API Key is required (minimum 16 characters).")
 
     # 1. Primary: Verify through standard verify_api_key
     auth_data = verify_api_key(db, api_key, body.domain)
@@ -368,6 +378,8 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         trial_ends_at = now + timedelta(days=14)
 
     update_fields = {
+
+        "status": "active",
 
         "user_id": str(auth_data["user_id"]),
 
@@ -608,6 +620,9 @@ async def heartbeat(body: HeartbeatRequest, request: Request):
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
 
     api_key = (body.api_key or bearer_key or "").strip()
+
+    if not api_key or len(api_key) < 16:
+        raise HTTPException(status_code=401, detail="Valid MDefender Pro API Key is required (minimum 16 characters).")
 
     # 1. Primary: Verify through standard verify_api_key
     auth_data = verify_api_key(db, api_key, body.domain)
@@ -2298,6 +2313,49 @@ async def disconnect_wordpress(website_id: str, user=Depends(get_current_user)):
         pass
 
     return success(message="WordPress connection removed")
+
+
+@router.post("/disconnect")
+async def agent_disconnect_wordpress(body: AgentDisconnectRequest, request: Request):
+    """Allows WordPress agent to signal cloud upon user disconnect or deactivation."""
+    db = MongoDB()
+    auth_header = request.headers.get("Authorization", "")
+    bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
+    api_key = (body.api_key or bearer_key or "").strip()
+
+    website = None
+    if body.website_id:
+        website = db.websites.find_one({"_id": body.website_id}) or db.websites.find_one({"id": body.website_id})
+
+    if not website and body.domain and api_key and len(api_key) >= 16:
+        auth_data = verify_api_key(db, api_key, body.domain)
+        if auth_data and auth_data.get("website"):
+            website = auth_data["website"]
+
+    if not website and body.domain:
+        raw_dom = body.domain or ""
+        clean_dom = re.sub(r"^https?:\/\/", "", raw_dom, flags=re.I).split("/")[0].split(":")[0].strip().lower()
+        clean_dom = re.sub(r"^www\.", "", clean_dom, flags=re.I)
+        if clean_dom:
+            website = db.websites.find_one({"domain": clean_dom}) or db.websites.find_one({"domain": f"www.{clean_dom}"})
+
+    if website:
+        site_id = website.get("_id") or website.get("id")
+        db.websites.update_one(
+            {"_id": site_id},
+            {"$set": {
+                "wordpress_connection.connected": False,
+                "status": "disconnected",
+                "updated_at": datetime.now()
+            }}
+        )
+        db.wordpress_sites.update_one(
+            {"website_id": str(site_id)},
+            {"$set": {"connected": False, "status": "offline"}}
+        )
+        return success(message="Agent successfully disconnected from cloud fleet.")
+
+    return success(message="Disconnected locally.")
 
 
 @router.post("/site/{website_id}/sso-token")
