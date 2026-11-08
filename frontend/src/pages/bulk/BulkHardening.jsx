@@ -137,28 +137,47 @@ export default function BulkHardening() {
       const data = res?.data || res || {}
       setOverview(data)
       if (data.active_profile) setActiveProfile(data.active_profile)
+
+      if (data.details && Array.isArray(data.details)) {
+        const mapped = {}
+        data.details.forEach(item => {
+          const isEnabled = item.status === 'enabled'
+          if (item.feature === 'uploads') mapped.uploads_php = isEnabled
+          if (item.feature === 'xmlrpc') {
+            mapped.smart_xmlrpc = isEnabled
+            mapped.disable_xmlrpc = isEnabled
+          }
+          if (item.feature === 'version_hiding') mapped.hide_wp_version = isEnabled
+          if (item.feature === 'security_headers') mapped.security_headers = isEnabled
+          if (item.feature === 'sensitive_files') mapped.protect_sensitive_files = isEnabled
+          if (item.feature === 'php_files') mapped.disable_file_editor = isEnabled
+          if (item.feature === 'file_perms') mapped.file_permissions = isEnabled
+          if (item.feature === 'directory_browsing') mapped.disable_directory_listing = isEnabled
+          if (item.feature === 'rest_api') mapped.rest_users_block = isEnabled
+          if (item.feature === 'admin_protect') mapped.custom_login_slug = isEnabled
+          if (item.feature === 'user_accounts') mapped.author_enum_trap = isEnabled
+        })
+        setControls(prev => ({ ...prev, ...mapped }))
+      } else if (currentSite?.hardening && typeof currentSite.hardening === 'object') {
+        const h = currentSite.hardening
+        setControls(prev => ({
+          ...prev,
+          uploads_php: h.block_uploads_php !== undefined ? !!h.block_uploads_php : prev.uploads_php,
+          disable_xmlrpc: h.disable_xmlrpc !== undefined ? !!h.disable_xmlrpc : prev.disable_xmlrpc,
+          smart_xmlrpc: h.disable_xmlrpc !== undefined ? !!h.disable_xmlrpc : prev.smart_xmlrpc,
+          hide_wp_version: h.hide_wp_version !== undefined ? !!h.hide_wp_version : prev.hide_wp_version,
+          security_headers: h.security_headers !== undefined ? !!h.security_headers : prev.security_headers,
+          disable_file_editor: h.disable_file_editing !== undefined ? !!h.disable_file_editing : prev.disable_file_editor,
+          disable_directory_listing: h.disable_directory_listing !== undefined ? !!h.disable_directory_listing : prev.disable_directory_listing,
+          rest_users_block: h.prevent_user_enumeration !== undefined ? !!h.prevent_user_enumeration : prev.rest_users_block,
+          author_enum_trap: h.prevent_user_enumeration !== undefined ? !!h.prevent_user_enumeration : prev.author_enum_trap,
+          custom_login_slug: h.hide_login_url !== undefined ? !!h.hide_login_url : prev.custom_login_slug,
+        }))
+      }
     } catch (err) {
       console.warn('Failed to load hardening overview:', err)
-      // Resilient fallback overview
-      setOverview({
-        score: 90,
-        grade: 'A+',
-        active_profile: 'balanced',
-        total_controls: 20,
-        enabled_count: 18,
-        failed_count: 2,
-        drift_detected: false,
-        rescue_url: `${currentSite?.domain || 'http://localhost'}/wp-login.php?mdf_safe_mode=cbby_secure_rescue_key`,
-        server_info: {
-          software: 'Apache/2.4 (LiteSpeed / Nginx Dual-Kernel)',
-          php_version: '8.0.30',
-          is_ssl: false,
-          db_prefix: 'wp_',
-          is_default_prefix: true,
-          disallow_file_edit: true,
-          disallow_file_mods: false
-        }
-      })
+      setOverview(null)
+      showToast('Failed to load live hardening status from WordPress agent.', true)
     } finally {
       setLoading(false)
     }
@@ -293,34 +312,20 @@ export default function BulkHardening() {
     try {
       const res = await api.verifyHardeningProbes(targetSiteId)
       const data = res?.data || res || {}
-      
-      // Simulate progressive probe rendering
-      const liveProbes = data.probes || [
-        { id: 1, name: 'Uploads Directory PHP Execution Block', vector: 'GET /wp-content/uploads/probe_shell.php', passed: true, http_code: 403, message: 'PHP execution in uploads strictly blocked (HTTP 403)' },
-        { id: 2, name: 'Author Username Enumeration Block', vector: 'GET /?author=1', passed: true, http_code: 403, message: 'Author enumeration queries blocked with 403 Access Denied' },
-        { id: 3, name: 'WP REST API User Listing Shield', vector: 'GET /wp-json/wp/v2/users', passed: true, http_code: 401, message: 'Unauthenticated REST user schema blocked' },
-        { id: 4, name: 'XML-RPC Pingback & Multicall Shield', vector: 'POST /xmlrpc.php (system.multicall)', passed: true, http_code: 403, message: 'XML-RPC brute-force amplification disabled' },
-        { id: 5, name: 'Sensitive Configuration Files Shield', vector: 'GET /wp-config.php & /.env', passed: true, http_code: 403, message: 'Direct access to wp-config.php and environment secrets forbidden' },
-        { id: 6, name: 'Debug & Error Log Exposure Guard', vector: 'GET /wp-content/debug.log', passed: true, http_code: 404, message: 'WP_DEBUG_DISPLAY disabled; server trace errors hidden' },
-        { id: 7, name: 'WordPress Generator Fingerprint Stripping', vector: 'Inspect <meta name="generator">', passed: true, http_code: 200, message: 'Core version generator tags stripped' },
-        { id: 8, name: 'Anti-Clickjacking Frame Protection', vector: 'Header: X-Frame-Options: SAMEORIGIN', passed: true, http_code: 200, message: 'X-Frame-Options header actively prevents iframe embedding attacks' },
-        { id: 9, name: 'MIME Sniffing Prevention Header', vector: 'Header: X-Content-Type-Options: nosniff', passed: true, http_code: 200, message: 'X-Content-Type-Options nosniff header active' },
-        { id: 10, name: 'Strict Transport Security (HSTS)', vector: 'Header: Strict-Transport-Security', passed: overview?.server_info?.is_ssl || false, http_code: 200, message: overview?.server_info?.is_ssl ? 'HSTS enforced over encrypted HTTPS' : 'HSTS inactive (awaiting live SSL cert verification)' }
-      ]
-
-      await new Promise(r => setTimeout(r, 1200))
+      const liveProbes = Array.isArray(data.probes) ? data.probes : []
 
       setVerifyModal({
         open: true,
         running: false,
-        step: 10,
-        score: data.score || 90,
-        grade: data.grade || 'A+',
+        step: liveProbes.length || 10,
+        score: data.score !== undefined ? data.score : 0,
+        grade: data.grade || 'N/A',
         probes: liveProbes
       })
-    } catch {
-      setVerifyModal(prev => ({ ...prev, running: false }))
-      showToast('Live verification probes completed with verified telemetry.', false)
+      showToast(data.message || 'Authentic origin penetration probes executed successfully.', false)
+    } catch (err) {
+      setVerifyModal(prev => ({ ...prev, open: false, running: false }))
+      showToast(`Verification probes failed: ${err.message || 'Origin agent unreachable'}`, true)
     }
   }
 

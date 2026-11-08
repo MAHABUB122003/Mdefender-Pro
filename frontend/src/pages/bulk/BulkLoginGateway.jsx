@@ -18,7 +18,9 @@ import {
   Layers,
   MoreVertical,
   ShieldAlert,
-  ShieldOff
+  ShieldOff,
+  Search,
+  X
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -57,6 +59,10 @@ export default function BulkLoginGateway() {
   const [selectedGatewaySite, setSelectedGatewaySite] = useState(null)
   const [gatewayDropdownPos, setGatewayDropdownPos] = useState({ top: 0, right: 0 })
   const gatewayDropdownRef = useRef(null)
+
+  // Real-Time Table Search State
+  const [gatewaySearchQuery, setGatewaySearchQuery] = useState('')
+  const [ipSearchQuery, setIpSearchQuery] = useState('')
 
   const [openIpDropdownId, setOpenIpDropdownId] = useState(null)
   const [selectedIpRule, setSelectedIpRule] = useState(null)
@@ -376,6 +382,17 @@ export default function BulkLoginGateway() {
     return list
   }, [wpWebsites, selectedSiteId])
 
+  const filteredSecretGateways = useMemo(() => {
+    if (!gatewaySearchQuery.trim()) return activeSecretGateways
+    const q = gatewaySearchQuery.trim().toLowerCase()
+    return activeSecretGateways.filter(site => {
+      const dom = (site.domain || site.url || '').toLowerCase()
+      const slug = (site.custom_login_slug || site.hardening?.custom_login_slug || '').toLowerCase()
+      const title = (site.site_title || site.name || '').toLowerCase()
+      return dom.includes(q) || slug.includes(q) || title.includes(q)
+    })
+  }, [activeSecretGateways, gatewaySearchQuery])
+
   // Active IP Rules List
   const allFleetIpRules = useMemo(() => {
     const list = []
@@ -397,6 +414,16 @@ export default function BulkLoginGateway() {
     }
     return allFleetIpRules
   }, [allFleetIpRules, selectedSiteId])
+
+  const filteredIpRules = useMemo(() => {
+    if (!ipSearchQuery.trim()) return displayedIpRules
+    const q = ipSearchQuery.trim().toLowerCase()
+    return displayedIpRules.filter(({ ip, site }) => {
+      const ipStr = String(ip || '').toLowerCase()
+      const dom = (site?.domain || site?.url || '').toLowerCase()
+      return ipStr.includes(q) || dom.includes(q)
+    })
+  }, [displayedIpRules, ipSearchQuery])
 
   // Card Styles
   const contentCardStyle = {
@@ -600,9 +627,31 @@ export default function BulkLoginGateway() {
                       </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', width: '220px' }}>
+                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                      <input
+                        type="text"
+                        placeholder="Search gateways..."
+                        value={gatewaySearchQuery}
+                        onChange={(e) => setGatewaySearchQuery(e.target.value)}
+                        style={{
+                          width: '100%', height: '32px', padding: '0 26px 0 30px', borderRadius: '6px',
+                          border: '1px solid #D9E1DC', background: '#FFFFFF', fontSize: '12px', color: '#10201E', outline: 'none'
+                        }}
+                      />
+                      {gatewaySearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setGatewaySearchQuery('')}
+                          style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94A3B8' }}
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#E8F3EC', color: '#2A8B68', border: '1px solid #CFE2D4' }}>
-                      {activeSecretGateways.length} Gateways Protected
+                      {filteredSecretGateways.length} / {activeSecretGateways.length} Protected
                     </span>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: '#F1F5F3', color: '#60716B', border: '1px solid #D9E1DC' }}>
                       Active Registry
@@ -625,6 +674,27 @@ export default function BulkLoginGateway() {
                     <Key size={18} color="#94A3B8" />
                     <span>No custom secret login slug configured yet. Standard <code>/wp-login.php</code> is active. Enter a slug above and click Save to conceal it.</span>
                   </div>
+                ) : filteredSecretGateways.length === 0 ? (
+                  <div style={{
+                    padding: '14px 18px',
+                    background: '#FFFFFF',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    color: '#64748B',
+                    fontSize: '13px'
+                  }}>
+                    <span>No matching secret login gateways found for "<strong>{gatewaySearchQuery}</strong>"</span>
+                    <button
+                      type="button"
+                      onClick={() => setGatewaySearchQuery('')}
+                      style={{ background: 'none', border: 'none', color: '#2A8B68', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      Clear search
+                    </button>
+                  </div>
                 ) : (
                   <div style={{ overflowX: 'auto', overflowY: 'visible', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
@@ -639,7 +709,7 @@ export default function BulkLoginGateway() {
                         </tr>
                       </thead>
                       <tbody>
-                        {activeSecretGateways.map((site, idx) => {
+                        {filteredSecretGateways.map((site, idx) => {
                           const effectiveSlug = site.custom_login_slug || site.hardening?.custom_login_slug || ''
                           const activeUrl = getComputedLoginUrl(site, effectiveSlug)
                           const siteKey = site.id || site._id || idx
@@ -916,9 +986,31 @@ export default function BulkLoginGateway() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', width: '220px' }}>
+                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                      <input
+                        type="text"
+                        placeholder="Search IP / domain..."
+                        value={ipSearchQuery}
+                        onChange={(e) => setIpSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%', height: '32px', padding: '0 26px 0 30px', borderRadius: '6px',
+                          border: '1px solid #D9E1DC', background: '#FFFFFF', fontSize: '12px', color: '#10201E', outline: 'none'
+                        }}
+                      />
+                      {ipSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setIpSearchQuery('')}
+                          style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94A3B8' }}
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
                     <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: displayedIpRules.length > 0 ? '#E8F3EC' : '#F1F5F3', color: displayedIpRules.length > 0 ? '#2A8B68' : '#64748B', border: '1px solid #CFE2D4' }}>
-                      {displayedIpRules.length > 0 ? `${displayedIpRules.length} Authorized IPs` : 'Allow All IPs (Unrestricted)'}
+                      {filteredIpRules.length} / {displayedIpRules.length} Authorized IPs
                     </span>
                     {displayedIpRules.length > 0 && (
                       <button
@@ -961,6 +1053,27 @@ export default function BulkLoginGateway() {
                     <ShieldCheck size={18} color="#94A3B8" />
                     <span>No IP restrictions active. WordPress admin login is accessible from all IP addresses. Add an IP above to lock access.</span>
                   </div>
+                ) : filteredIpRules.length === 0 ? (
+                  <div style={{
+                    padding: '14px 18px',
+                    background: '#FFFFFF',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    color: '#64748B',
+                    fontSize: '13px'
+                  }}>
+                    <span>No matching IP rules found for "<strong>{ipSearchQuery}</strong>"</span>
+                    <button
+                      type="button"
+                      onClick={() => setIpSearchQuery('')}
+                      style={{ background: 'none', border: 'none', color: '#2A8B68', fontWeight: 700, cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      Clear search
+                    </button>
+                  </div>
                 ) : (
                   <div style={{ overflowX: 'auto', overflowY: 'visible', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
@@ -975,7 +1088,7 @@ export default function BulkLoginGateway() {
                         </tr>
                       </thead>
                       <tbody>
-                        {displayedIpRules.map(({ ip, site }, idx) => {
+                        {filteredIpRules.map(({ ip, site }, idx) => {
                           const isCurrent = detectedClientIp && ip === detectedClientIp
                           const ruleKey = `${site?.id || site?.domain || idx}-${ip}`
                           const isDropdownOpen = openIpDropdownId === ruleKey

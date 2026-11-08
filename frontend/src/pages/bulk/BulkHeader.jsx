@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import userStore from '../../utils/userStore'
 import api from '../../api/api'
+import useBulkFleet from './useBulkFleet'
 import EmptyFleetState from './EmptyFleetState'
 
 export { EmptyFleetState }
@@ -31,41 +32,16 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
   const location = useLocation()
   const currentPath = location.pathname
 
-  const cachedDashboard = userStore.get('dashboard') || userStore.get('websites')
-  const [data, setData] = useState(() => cachedDashboard)
-  const [selectedSiteId, setSelectedSiteId] = useState(() => {
-    return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || 'all') : 'all'
-  })
-  const [refreshing, setRefreshing] = useState(false)
+  const { wpWebsites, selectedSiteId, refreshing, fetchFleet } = useBulkFleet()
   const [toastMsg, setToastMsg] = useState(null)
-
-  // Listen to sidebar changes
-  useEffect(() => {
-    const handleDomainSync = () => {
-      setSelectedSiteId(localStorage.getItem('mdf_bulk_selected_site') || 'all')
-    }
-    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync)
-    return () => window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync)
-  }, [])
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
     setTimeout(() => setToastMsg(null), 3500)
   }
 
-    // Extract WordPress websites
-  const wpWebsites = useMemo(() => {
-    const list = Array.isArray(data?.websites) ? data.websites : []
-    return list.filter(w => {
-      if (!w || typeof w !== 'object') return false
-      const p = String(w.platform || '').toLowerCase()
-      return p === 'wordpress' || p === 'wp' || p.includes('wordpress') || !w.platform
-    })
-  }, [data])
-
   const handleDomainChange = (e) => {
     const newId = e.target.value
-    setSelectedSiteId(newId)
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('mdf_bulk_selected_site', newId)
       window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
@@ -73,17 +49,11 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
   }
 
   const handleFleetSync = async () => {
-    setRefreshing(true)
     try {
-      const res = await api.getUserDashboard({ refresh: '1' })
-      setData(res)
-      userStore.set('dashboard', res)
-      userStore.set('websites', res)
+      await fetchFleet(true)
       showToast('Fleet status & remote WordPress telemetry synchronized!')
     } catch {
       showToast('Fleet sync dispatched to all connected sites.')
-    } finally {
-      setTimeout(() => setRefreshing(false), 500)
     }
   }
 

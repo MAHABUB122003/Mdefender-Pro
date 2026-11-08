@@ -156,7 +156,7 @@ export default function BulkScanner() {
         setFindings(Array.isArray(latestFindings) ? latestFindings : [])
         const score = latest.score ?? latest.health_score ?? (latestFindings.length === 0 ? 100 : Math.max(20, 100 - latestFindings.length * 15))
         const metrics = latest.real_metrics || {}
-        const totalScanned = latest.total_scanned || latest.files_scanned || metrics.total_files || (latestFindings.length > 0 ? latestFindings.length : 4818)
+        const totalScanned = latest.total_scanned || latest.files_scanned || metrics.total_files || (latestFindings.length > 0 ? latestFindings.length : 0)
         const pluginFiles = metrics.plugin_files || 0
         const themeFiles = metrics.theme_files || 0
         const activeThreatsCount = latestFindings.filter(f => f.status !== 'quarantined').length
@@ -166,8 +166,8 @@ export default function BulkScanner() {
           healthSub: score >= 90 ? 'A+ Pristine Integrity' : (score >= 70 ? 'Good Security Posture' : 'Action Required'),
           filesScanned: totalScanned,
           componentFilesScanned: pluginFiles + themeFiles,
-          usersChecked: metrics.users_checked ?? latest.users_checked ?? 1,
-          databaseTables: metrics.database_tables ?? latest.database_tables ?? 25,
+          usersChecked: metrics.users_checked ?? latest.users_checked ?? 0,
+          databaseTables: metrics.database_tables ?? latest.database_tables ?? 0,
           postsScanned: metrics.posts_scanned ?? null,
           commentsScanned: metrics.comments_scanned ?? null,
           unresolvedChanges: activeThreatsCount,
@@ -456,8 +456,7 @@ export default function BulkScanner() {
       })
       .catch(err => {
         console.warn('Scan trigger background note:', err)
-        // If error, store fallback to ensure presentation continuity
-        cachedResultRef.current = { status: 'completed', findings: [], error: err?.message }
+        cachedResultRef.current = { status: 'failed', error: err?.message || 'Failed to dispatch scan to WordPress origin' }
         setCanSkipWait(true)
       })
 
@@ -511,11 +510,19 @@ export default function BulkScanner() {
       setStageDetail('Correlating cross-domain risk vectors and updating baseline database.')
 
       let data = cachedResultRef.current || {}
-      if ((!data.findings || !data.findings.length || data.status === 'queued') && targetSiteId) {
+      if (data.status === 'failed' || (data.error && !data.findings)) {
+        setStreamLog(`Scan aborted: ${data.error || 'WordPress origin agent unreachable'}`)
+        showToast(data.error || 'Deep scan failed on target site.', true)
+        setScanning(false)
+        setCanSkipWait(false)
+        return
+      }
+
+      if ((!data.findings || data.status === 'queued') && targetSiteId) {
         try {
           const fresh = await api.getWebsiteScans(targetSiteId)
           const scansList = fresh?.data?.scans || fresh?.scans || (Array.isArray(fresh?.data) ? fresh.data : [])
-          const completed = scansList.find(s => s.status === 'completed' || (s.findings && s.findings.length > 0))
+          const completed = scansList.find(s => s.status === 'completed') || scansList[0]
           if (completed) {
             data = completed
           }
@@ -523,7 +530,7 @@ export default function BulkScanner() {
       }
       const rawFindings = data.findings || []
       const metrics = data.real_metrics || {}
-      const totalScanned = metrics.total_files || data.total_scanned || data.files_scanned || totalExpectedFiles
+      const totalScanned = metrics.total_files || data.total_scanned || data.files_scanned || totalExpectedFiles || 0
       const pluginFiles = metrics.plugin_files || 0
       const themeFiles = metrics.theme_files || 0
       const score = data.health_score ?? data.score ?? (rawFindings.length === 0 ? 100 : Math.max(20, 100 - rawFindings.length * 15))
@@ -540,8 +547,8 @@ export default function BulkScanner() {
         healthSub: score >= 90 ? 'A+ Pristine Integrity' : (score >= 70 ? 'Good Security Posture' : 'Action Required'),
         filesScanned: totalScanned,
         componentFilesScanned: pluginFiles + themeFiles,
-        usersChecked: metrics.users_checked ?? data.users_checked ?? 1,
-        databaseTables: metrics.database_tables ?? data.database_tables ?? 25,
+        usersChecked: metrics.users_checked ?? data.users_checked ?? 0,
+        databaseTables: metrics.database_tables ?? data.database_tables ?? 0,
         postsScanned: metrics.posts_scanned ?? null,
         commentsScanned: metrics.comments_scanned ?? null,
         unresolvedChanges: rawFindings.filter(f => f.status !== 'quarantined').length,

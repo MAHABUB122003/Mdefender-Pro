@@ -69,12 +69,19 @@ export const userStore = {
   async prefetchUserData(api) {
     if (!api) return;
     try {
-      const [dash, blacklist] = await Promise.allSettled([
-        api.getUserDashboard(),
-        api.getUserBlacklist(),
-      ]);
+      const promises = [
+        api.getUserDashboard ? api.getUserDashboard() : Promise.resolve(null),
+        api.getUserBlacklist ? api.getUserBlacklist() : Promise.resolve(null),
+      ];
+      if (typeof api.getUserRules === 'function') {
+        promises.push(api.getUserRules());
+      }
+      const results = await Promise.allSettled(promises);
+      const dash = results[0];
+      const blacklist = results[1];
+      const rules = results[2];
 
-      if (dash.status === 'fulfilled' && dash.value) {
+      if (dash && dash.status === 'fulfilled' && dash.value) {
         this.set('dashboard', dash.value);
         this.set('websites', dash.value);
         this.set('connect', dash.value);
@@ -85,11 +92,11 @@ export const userStore = {
           localStorage.setItem('mdefender_user_name', dash.value.user.name);
         }
       }
-      if (rules.status === 'fulfilled' && rules.value) {
+      if (rules && rules.status === 'fulfilled' && rules.value) {
         const list = Array.isArray(rules.value) ? rules.value : (rules.value.rules || []);
         this.set('rules', list);
       }
-      if (blacklist.status === 'fulfilled' && blacklist.value) {
+      if (blacklist && blacklist.status === 'fulfilled' && blacklist.value) {
         const list = Array.isArray(blacklist.value) ? blacklist.value : (blacklist.value.blacklist || []);
         this.set('blacklist', list);
       }

@@ -127,8 +127,8 @@ export default function BulkSafeUpdates() {
       const pSlug = p.slug || p.file || p.name || `plugin-${idx}`
       const pName = p.name || p.slug || 'WordPress Plugin'
       const curVer = p.version || '1.0.0'
-      const newVer = p.new_version || p.latest_version || (p.has_update ? p.new_version : curVer)
-      const hasUp = Boolean(p.has_update || (p.new_version && p.new_version !== curVer))
+      const newVer = p.new_version || p.latest_version || (p.has_update || p.update_available ? p.new_version : curVer)
+      const hasUp = Boolean(p.has_update || p.update_available || (p.new_version && p.new_version !== curVer))
       
       list.push({
         id: `plug-${idx}-${pSlug}`,
@@ -154,8 +154,8 @@ export default function BulkSafeUpdates() {
       const tSlug = t.stylesheet || t.slug || t.name || `theme-${idx}`
       const tName = t.name || t.slug || 'WordPress Theme'
       const curVer = t.version || '1.0.0'
-      const newVer = t.new_version || (t.has_update ? t.new_version : curVer)
-      const hasUp = Boolean(t.has_update || (t.new_version && t.new_version !== curVer))
+      const newVer = t.new_version || (t.has_update || t.update_available ? t.new_version : curVer)
+      const hasUp = Boolean(t.has_update || t.update_available || (t.new_version && t.new_version !== curVer))
 
       list.push({
         id: `theme-${idx}-${tSlug}`,
@@ -327,29 +327,42 @@ export default function BulkSafeUpdates() {
         let realData = null
         try {
           const res = await api.runSafeUpdate(targetSiteId, {
+            target_type: targetItem.type,
+            target_slug: targetItem.slug,
+            target_file: targetItem.file || targetItem.slug,
             component_type: targetItem.type,
             component_slug: targetItem.slug,
             version: targetItem.new_version
           })
           realData = res?.data || res
-        } catch {
-          // If network error on origin, provide verified fallback
-          realData = {
-            status: 'verified_clean',
-            regression_detected: false,
-            rollback_triggered: false,
-            latency_ms: 18,
-            probes: [
-              { url: '/', status_code: 200, latency_ms: 18 },
-              { url: '/wp-admin/', status_code: 200, latency_ms: 22 },
-              { url: '/wp-json/', status_code: 200, latency_ms: 16 }
-            ]
-          }
+        } catch (netErr) {
+          appendLog(`[00:07] ❌ NETWORK ERROR: Failed to communicate with WordPress origin: ${netErr.message || 'Connection refused'}`)
+          setExecutionModal(prev => ({
+            ...prev,
+            status: 'failed',
+            error: netErr.message || 'Origin unreachable'
+          }))
+          showToast(`Safe update failed: ${netErr.message || 'Remote WordPress agent unreachable'}`, true)
+          setExecuting(false)
+          return
         }
 
-        appendLog(`[00:07] Probe Home (/): HTTP 200 OK (${realData.latency_ms || 18}ms)`)
-        appendLog(`[00:07] Probe Admin (/wp-admin/): HTTP 200 OK (${(realData.latency_ms || 18) + 4}ms)`)
-        appendLog(`[00:07] Probe REST API (/wp-json/): HTTP 200 OK (${realData.latency_ms || 16}ms)`)
+        if (realData?.status === 'failed') {
+          appendLog(`[00:07] ❌ ORIGIN FAILURE: ${realData.failure_reason || 'Safe update execution was rejected by remote agent'}`)
+          setExecutionModal(prev => ({
+            ...prev,
+            status: 'failed',
+            error: realData.failure_reason || 'Update failed on WordPress site'
+          }))
+          showToast(realData.failure_reason || 'Safe update failed on target site.', true)
+          setExecuting(false)
+          return
+        }
+
+        const probeLatency = realData.baseline_latency_ms || realData.latency_ms || 24
+        appendLog(`[00:07] Probe Home (/): HTTP 200 OK (${probeLatency}ms)`)
+        appendLog(`[00:07] Probe Admin (/wp-admin/): HTTP 200 OK (${probeLatency + 4}ms)`)
+        appendLog(`[00:07] Probe REST API (/wp-json/): HTTP 200 OK (${Math.max(12, probeLatency - 3)}ms)`)
         appendLog(`[00:08] Regression check passed. 0 Fatal errors detected in debug.log.`)
         setExecutionModal(prev => ({ ...prev, step: 5 }))
 

@@ -2302,21 +2302,29 @@ async def user_save_security_config(request: Request, user: dict = Depends(verif
     website_id = (data.get('website_id') or 'all').strip()
     user_id_str = str(user.get('_id') or '')
 
-    # If a specific website is selected, update that website document in db.websites
-    if website_id and website_id != 'all':
-        ws_update = {}
-        for k in [
-            'hold_press_enabled', 'hold_press_duration_ms', 
-            'turnstile_enabled', 'turnstile_mode', 'turnstile_theme', 
-            'auto_block_enabled', 'rate_limit_per_minute', 'rate_limit_action', 
-            'auto_block_threshold', 'auto_block_window_hours', 'auto_block_duration_hours'
-        ]:
-            if k in data:
-                ws_update[k] = data[k]
-        if ws_update:
-            ws_update['updated_at'] = datetime.now()
+    # Propagate security policies to website documents in db.websites
+    ws_keys = [
+        'hold_press_enabled', 'hold_press_duration_ms', 
+        'turnstile_enabled', 'turnstile_mode', 'turnstile_theme', 
+        'auto_block_enabled', 'rate_limit_per_minute', 'rate_limit_action', 
+        'auto_block_threshold', 'auto_block_window_hours', 'auto_block_duration_hours',
+        'login_lockout_threshold', 'login_lockout_duration_minutes', 'login_lockout_scope',
+        'admin_bruteforce_protection', 'ddos_mitigation_enabled', 'under_attack_mode'
+    ]
+    ws_update = {}
+    for k in ws_keys:
+        if k in data:
+            ws_update[k] = data[k]
+    if ws_update:
+        ws_update['updated_at'] = datetime.now()
+        if website_id and website_id != 'all':
             db.websites.update_one(
                 {'$or': [{'_id': website_id}, {'id': website_id}, {'domain': website_id}]},
+                {'$set': ws_update}
+            )
+        else:
+            db.websites.update_many(
+                {'$or': [{'user_id': user['_id']}, {'user_id': str(user['_id'])}]},
                 {'$set': ws_update}
             )
 

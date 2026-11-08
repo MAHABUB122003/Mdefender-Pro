@@ -1589,14 +1589,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
             local_keys = [k for (_, k, _) in targets if k] or ([user_master_key] if user_master_key else [""])
 
             for lk in local_keys:
-
                 targets.append(("http://localhost/mahabub", lk, ""))
-
                 targets.append(("http://127.0.0.1/mahabub", lk, ""))
-
-                targets.append(("http://localhost", lk, ""))
-
-                targets.append(("http://127.0.0.1", lk, ""))
 
 
 
@@ -1835,45 +1829,49 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     if os.path.exists(php_exe):
 
+                        # Specifically resolve the website doc matching mahabub for local database options
+                        mahabub_doc = db.websites.find_one({"$or": [{"_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba"}, {"domain": "localhost/mahabub"}, {"url": "http://localhost/mahabub"}]}) or ref_ws
+                        mb_harden = mahabub_doc.get("hardening") or {}
                         b_str = json.dumps(blacklist)
 
                         c_str = ",".join(blocked_countries)
 
-                        uam_val = "yes" if sync_payload["config"].get("under_attack_mode") else "no"
+                        uam_val = "yes" if (mahabub_doc.get("under_attack_mode") or sync_payload["config"].get("under_attack_mode")) else "no"
 
-                        rate_limit_val = str(sync_payload["config"].get("rate_limit", 120))
+                        rate_limit_val = str(mahabub_doc.get("rate_limit_per_minute") or sync_payload["config"].get("rate_limit", 120))
+                        rate_limit_action = str(mahabub_doc.get("rate_limit_action") or sync_payload["config"].get("rate_limit_action", "throttle_429"))
 
-                        hold_en = "yes" if sync_payload["config"].get("hold_press_enabled") else "no"
+                        hold_en = "yes" if (mahabub_doc.get("hold_press_enabled") or sync_payload["config"].get("hold_press_enabled")) else "no"
 
-                        hold_ms = str(sync_payload["config"].get("hold_press_duration_ms", 2000))
+                        hold_ms = str(mahabub_doc.get("hold_press_duration_ms") or sync_payload["config"].get("hold_press_duration_ms", 2000))
 
-                        turn_en = "yes" if sync_payload["config"].get("turnstile_enabled") else "no"
+                        turn_en = "yes" if (mahabub_doc.get("turnstile_enabled") or sync_payload["config"].get("turnstile_enabled")) else "no"
 
-                        turn_mode = str(sync_payload["config"].get("turnstile_mode", "site_wide"))
+                        turn_mode = str(mahabub_doc.get("turnstile_mode") or sync_payload["config"].get("turnstile_mode", "site_wide"))
 
-                        turn_theme = str(sync_payload["config"].get("turnstile_theme", "auto"))
+                        turn_theme = str(mahabub_doc.get("turnstile_theme") or sync_payload["config"].get("turnstile_theme", "auto"))
 
-                        xmlrpc_val = "yes" if sync_payload["config"].get("disable_xmlrpc") else "no"
+                        xmlrpc_val = "yes" if mahabub_doc.get("disable_xmlrpc", sync_payload["config"].get("disable_xmlrpc", True)) else "no"
 
-                        xmlrpc_mode = "complete" if sync_payload["config"].get("disable_xmlrpc") else "off"
+                        xmlrpc_mode = "complete" if xmlrpc_val == "yes" else "off"
 
-                        file_edit_val = "yes" if sync_payload["config"].get("disable_file_editing") else "no"
+                        file_edit_val = "yes" if mahabub_doc.get("disable_file_editing", sync_payload["config"].get("disable_file_editing", True)) else "no"
 
-                        user_enum_val = "yes" if sync_payload["config"].get("prevent_user_enumeration") else "no"
+                        user_enum_val = "yes" if mahabub_doc.get("prevent_user_enumeration", sync_payload["config"].get("prevent_user_enumeration", True)) else "no"
 
-                        wp_ver_val = "yes" if sync_payload["config"].get("hide_wp_version") else "no"
+                        wp_ver_val = "yes" if mahabub_doc.get("hide_wp_version", sync_payload["config"].get("hide_wp_version", True)) else "no"
 
-                        uploads_php_val = "yes" if sync_payload["config"].get("block_uploads_php") else "no"
+                        uploads_php_val = "yes" if mahabub_doc.get("block_uploads_php", sync_payload["config"].get("block_uploads_php", True)) else "no"
 
-                        sec_headers_val = "enabled" if sync_payload["config"].get("security_headers") else "disabled"
+                        sec_headers_val = "enabled" if mahabub_doc.get("security_headers", sync_payload["config"].get("security_headers", True)) else "disabled"
 
-                        login_slug_val = str(sync_payload["config"].get("custom_login_slug", "")).strip()
+                        login_slug_val = str(mahabub_doc.get("custom_login_slug") or mb_harden.get("custom_login_slug") or "").strip()
 
-                        hide_login_val = "yes" if sync_payload["config"].get("hide_login_url") else "no" 
+                        hide_login_val = "yes" if (mahabub_doc.get("hide_login_url") or mb_harden.get("hide_login_url")) else "no" 
 
-                        admin_ip_enabled_val = "enabled" if sync_payload["config"].get("admin_ip_whitelist_enabled") else "disabled"
+                        admin_ip_enabled_val = "enabled" if (mahabub_doc.get("admin_ip_whitelist_enabled") or mb_harden.get("admin_ip_whitelist_enabled")) else "disabled"
 
-                        admin_ips = sync_payload["config"].get("admin_ip_whitelist") or []
+                        admin_ips = mahabub_doc.get("admin_ip_whitelist") or mb_harden.get("admin_ip_whitelist") or []
 
                         admin_ips_str = "\n".join([str(ip).strip() for ip in admin_ips if str(ip).strip()])
 
@@ -1899,6 +1897,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                             $rate_limit_val = '{rate_limit_val}';
 
+                            $rate_limit_action = '{rate_limit_action}';
+
                             $hold_en = '{hold_en}';
 
                             $hold_ms = '{hold_ms}';
@@ -1907,6 +1907,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                             $turn_mode = '{turn_mode}';
 
+                            $turn_theme = '{turn_theme}';
+
 
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_under_attack_mode', '$uam', 'yes') ON DUPLICATE KEY UPDATE option_value = '$uam'");
@@ -1914,6 +1916,12 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_under_attack_mode', '$uam', 'yes') ON DUPLICATE KEY UPDATE option_value = '$uam'");
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_rate_limit', '$rate_limit_val', 'yes') ON DUPLICATE KEY UPDATE option_value = '$rate_limit_val'");
+
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_rate_limit_per_minute', '$rate_limit_val', 'yes') ON DUPLICATE KEY UPDATE option_value = '$rate_limit_val'");
+
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_fw_rate_limit_action', '$rate_limit_action', 'yes') ON DUPLICATE KEY UPDATE option_value = '$rate_limit_action'");
+
+                            mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_rate_limit_action', '$rate_limit_action', 'yes') ON DUPLICATE KEY UPDATE option_value = '$rate_limit_action'");
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hold_press_enabled', '$hold_en', 'yes') ON DUPLICATE KEY UPDATE option_value = '$hold_en'");
 
@@ -1952,15 +1960,19 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                             mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_security_headers', '{sec_headers_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{sec_headers_val}'");
 
-                            if (!empty('{login_slug_val}') && '{hide_login_val}' === 'yes') {{
+                            $login_slug_val = '{login_slug_val}';
+                            $hide_login_val = '{hide_login_val}';
 
-                                mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_login_rename', '{login_slug_val}', 'yes') ON DUPLICATE KEY UPDATE option_value = '{login_slug_val}'");
+                            if (!empty($login_slug_val) && $hide_login_val === 'yes') {{
+
+                                mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_login_rename', '$login_slug_val', 'yes') ON DUPLICATE KEY UPDATE option_value = '$login_slug_val'");
+                                mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_custom_login_slug', '$login_slug_val', 'yes') ON DUPLICATE KEY UPDATE option_value = '$login_slug_val'");
                                 mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_harden_hide_login_url', 'yes', 'yes') ON DUPLICATE KEY UPDATE option_value = 'yes'");
                                 mysqli_query($c, "INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('waf_hide_login_url', 'yes', 'yes') ON DUPLICATE KEY UPDATE option_value = 'yes'");
 
                             }} else {{
 
-                                mysqli_query($c, "DELETE FROM wp_options WHERE option_name IN ('waf_harden_login_rename', 'waf_harden_hide_login_url', 'waf_hide_login_url')");
+                                mysqli_query($c, "DELETE FROM wp_options WHERE option_name IN ('waf_harden_login_rename', 'waf_harden_hide_login_url', 'waf_hide_login_url', 'waf_custom_login_slug')");
 
                             }}
 
@@ -2009,7 +2021,11 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                         """
 
-                        subprocess.run([php_exe, "-r", php_code], capture_output=True, timeout=2)
+                        sub_res = subprocess.run([php_exe, "-r", php_code], capture_output=True, text=True, timeout=5)
+                        if sub_res.returncode != 0 or sub_res.stderr:
+                            print(f"[WAF MySQL Sync Error]: {sub_res.stderr}")
+                        else:
+                            print(f"[WAF MySQL Sync Success]: {sub_res.stdout.strip()}")
 
                 except Exception:
 
@@ -2079,22 +2095,55 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
 
 
-                    # Match site-specific custom login slug and hide_login_url to prevent cross-site slug pollution
+                    # Match site-specific custom login slug, rate limit, and security policies to prevent cross-site slug pollution
                     target_payload = dict(sync_payload)
                     target_config = dict(sync_payload.get("config", {}))
                     target_ws = None
+                    clean_norm = clean_url.rstrip("/").lower()
+                    # 1. Exact match pass
                     for ws in w_sites:
-                        dom = (ws.get("domain") or "").strip().rstrip("/")
-                        ru = (ws.get("url") or "").strip().rstrip("/")
-                        if (dom and dom in clean_url) or (ru and ru in clean_url):
+                        ru = (ws.get("url") or "").strip().rstrip("/").lower()
+                        dom = (ws.get("domain") or "").strip().rstrip("/").lower()
+                        if ru and (ru == clean_norm or clean_norm.endswith(ru) or ru.endswith(clean_norm)):
                             target_ws = ws
                             break
+                        if dom and (dom == clean_norm.replace("http://", "").replace("https://", "")):
+                            target_ws = ws
+                            break
+                    # 2. Loose fallback pass
+                    if not target_ws:
+                        for ws in w_sites:
+                            dom = (ws.get("domain") or "").strip().rstrip("/").lower()
+                            ru = (ws.get("url") or "").strip().rstrip("/").lower()
+                            if (dom and dom in clean_norm) or (ru and ru in clean_norm):
+                                target_ws = ws
+                                break
+                    # 3. Direct database lookup for local site
+                    if not target_ws:
+                        target_ws = db.websites.find_one({
+                            "$or": [
+                                {"_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba"},
+                                {"domain": "localhost/mahabub"},
+                                {"url": "http://localhost/mahabub"},
+                                {"url": clean_norm},
+                                {"url": clean_url}
+                            ]
+                        })
                     if target_ws:
-                        target_config["custom_login_slug"] = str(target_ws.get("custom_login_slug", "")).strip() if bool(target_ws.get("hide_login_url", False)) else ""
-                        target_config["hide_login_url"] = bool(target_ws.get("hide_login_url", False))
-                        target_config["login_redirect_type"] = str(target_ws.get("login_redirect_type", "404")).strip()
-                        target_config["admin_ip_whitelist_enabled"] = bool(target_ws.get("admin_ip_whitelist_enabled", False))
-                        target_config["admin_ip_whitelist"] = target_ws.get("admin_ip_whitelist") or []
+                        mb_h = target_ws.get("hardening") or {}
+                        effective_slug = str(target_ws.get("custom_login_slug") or mb_h.get("custom_login_slug") or "").strip()
+                        effective_hide = bool(target_ws.get("hide_login_url", mb_h.get("hide_login_url", False)))
+                        target_config["custom_login_slug"] = effective_slug if effective_hide else ""
+                        target_config["hide_login_url"] = effective_hide
+                        target_config["login_redirect_type"] = str(target_ws.get("login_redirect_type", mb_h.get("login_redirect_type", "404"))).strip()
+                        target_config["admin_ip_whitelist_enabled"] = bool(target_ws.get("admin_ip_whitelist_enabled", mb_h.get("admin_ip_whitelist_enabled", False)))
+                        target_config["admin_ip_whitelist"] = target_ws.get("admin_ip_whitelist") or mb_h.get("admin_ip_whitelist") or []
+                        if target_ws.get("rate_limit_per_minute"):
+                            target_config["rate_limit"] = int(target_ws.get("rate_limit_per_minute"))
+                        if target_ws.get("rate_limit_action"):
+                            target_config["rate_limit_action"] = str(target_ws.get("rate_limit_action"))
+                        if "under_attack_mode" in target_ws:
+                            target_config["under_attack_mode"] = bool(target_ws.get("under_attack_mode"))
                         # Site-specific 2FA enforcement isolation
                         if "two_factor_enabled" in target_ws or "login_two_factor" in target_ws:
                             site_2fa = bool(target_ws.get("two_factor_enabled", target_ws.get("login_two_factor", False)))
@@ -2104,12 +2153,6 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                                 target_config["two_factor_secret"] = str(target_ws.get("two_factor_secret"))
                             if target_ws.get("two_factor_recovery_codes"):
                                 target_config["two_factor_recovery_codes"] = target_ws.get("two_factor_recovery_codes")
-                    else:
-                        target_config["custom_login_slug"] = ""
-                        target_config["hide_login_url"] = False
-                        target_config["login_redirect_type"] = "404"
-                        target_config["admin_ip_whitelist_enabled"] = False
-                        target_config["admin_ip_whitelist"] = []
                     target_payload["config"] = target_config
 
                     # Cryptographic HMAC-SHA256 signature generation (Zero-Trust Standard)

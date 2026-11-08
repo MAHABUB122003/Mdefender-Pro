@@ -334,22 +334,11 @@ function SpeedometerGauge({ responseTimeMs = 155 }) {
 function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
   const [hoveredPoint, setHoveredPoint] = useState(null)
 
-  // Default fallback points if history is still initializing
   const points = useMemo(() => {
-    if (Array.isArray(history) && history.length >= 4) {
+    if (Array.isArray(history) && history.length > 0) {
       return history
     }
-    return [
-      { date: '30 Oct', ms: 751 },
-      { date: '31 Oct', ms: 140 },
-      { date: '01 Nov', ms: 135 },
-      { date: '02 Nov', ms: 160 },
-      { date: '03 Nov', ms: 145 },
-      { date: '04 Nov', ms: 155 },
-      { date: '05 Nov', ms: 38 },
-      { date: '06 Nov', ms: 165 },
-      { date: '07 Nov', ms: 175 }
-    ]
+    return []
   }, [history])
 
   // Coordinate calculations
@@ -373,6 +362,14 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
       return { x, y, ...p }
     })
   }, [points, plotWidth, plotHeight, maxScaleMs, paddingLeft, paddingTop])
+
+  if (points.length === 0) {
+    return (
+      <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#889893', fontSize: '13px' }}>
+        No telemetry history recorded yet for this endpoint. Run a live audit to capture response metrics.
+      </div>
+    )
+  }
 
   // Generate smooth cubic Bezier path
   const { linePath, areaPath } = useMemo(() => {

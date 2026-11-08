@@ -1,6 +1,6 @@
-/**
- * MDefender Pro - Comprehensive Full-Stack WordPress Live Diagnostic Suite
- */
+"""
+MDefender Pro - Comprehensive Full-Stack WordPress Live Diagnostic Suite
+"""
 import sys
 import requests
 import json
@@ -24,7 +24,7 @@ if not user:
 user_id = str(user['_id'])
 print(f"[1] Authenticated User: {user.get('name', 'User')} ({user.get('email')}) [ID: {user_id}]")
 
-website = db.websites.find_one({'domain': {'$in': ['localhost/mahabub', 'localhost']}})
+website = db.websites.find_one({'user_id': str(user['_id']), 'domain': {'$in': ['localhost/mahabub', 'localhost']}})
 if not website:
     print("[-] Website for localhost/mahabub not found!")
     sys.exit(1)
@@ -51,7 +51,7 @@ for idx, l in enumerate(logs_list[:5]):
 
 # 3. Test Dashboard Stats Query
 print("\n[4] Testing User Dashboard Data (/api/user/dashboard)...")
-dash = uapi.get_user_dashboard(user)
+dash = uapi.get_dashboard_stats(user)
 print(f"[✓] Dashboard Stats:")
 print(f"    - Total Attacks Blocked: {dash.get('stats', {}).get('total_attacks', 0)}")
 print(f"    - Total Requests: {dash.get('stats', {}).get('total_requests', 0)}")
@@ -60,13 +60,13 @@ print(f"    - Mean Latency: {dash.get('stats', {}).get('mean_latency', '<0.12ms'
 
 # 4. Test 1-Click WordPress Admin SSO
 print("\n[5] Testing 1-Click WP-Admin SSO Handshake...")
-from src.api.v1.wordpress_api import generate_sso_login
+from src.api.v1.wordpress_api import generate_wordpress_sso_token
 import asyncio
 
 try:
-    sso_res = asyncio.run(generate_sso_login(website_id=website_id, user=user))
-    sso_data = getattr(sso_res, 'body', None) or sso_res
-    print(f"[✓] SSO Login Token Generated: {sso_res.get('sso_url', 'Generated')[:80]}...")
+    sso_res = asyncio.run(generate_wordpress_sso_token(website_id=website_id, user=user))
+    sso_data = sso_res.get('data', sso_res) if isinstance(sso_res, dict) else sso_res
+    print(f"[✓] SSO Login Token Generated: {str(sso_data)[:80]}...")
 except Exception as e:
     print(f"[-] SSO test: {e}")
 

@@ -50,7 +50,8 @@ export default function BulkThemes() {
   const targetSites = useMemo(() => {
     if (!hasWebsites) return []
     if (selectedSiteId === 'all') return wpWebsites
-    return wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+    const matched = wpWebsites.filter(w => (w.id || w._id) === selectedSiteId)
+    return matched.length > 0 ? matched : wpWebsites
   }, [hasWebsites, wpWebsites, selectedSiteId])
 
   // Current active target name

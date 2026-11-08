@@ -52,10 +52,12 @@ export default function useBulkFleet() {
 
   const hasWebsites = wpWebsites.length > 0
 
-  // Active target
+  // Active target - safely matches selected site, or falls back to first WordPress site if not found
   const activeWebsite = useMemo(() => {
-    if (selectedSiteId === 'all') return null
-    return wpWebsites.find(w => w && (w.id === selectedSiteId || w._id === selectedSiteId)) || null
+    if (!wpWebsites || wpWebsites.length === 0) return null
+    if (selectedSiteId === 'all') return wpWebsites[0] || null
+    const matched = wpWebsites.find(w => w && (w.id === selectedSiteId || w._id === selectedSiteId))
+    return matched || wpWebsites[0] || null
   }, [selectedSiteId, wpWebsites])
 
   // Directly update fleet websites without waiting for re-fetch

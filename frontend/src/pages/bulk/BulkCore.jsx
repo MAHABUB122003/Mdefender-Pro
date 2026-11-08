@@ -83,7 +83,8 @@ export default function BulkCore() {
   const displayedSites = useMemo(() => {
     if (!coreData.sites || coreData.sites.length === 0) return []
     if (selectedSiteId === 'all') return coreData.sites
-    return coreData.sites.filter(s => s.site_id === selectedSiteId)
+    const matched = coreData.sites.filter(s => s.site_id === selectedSiteId)
+    return matched.length > 0 ? matched : coreData.sites
   }, [coreData.sites, selectedSiteId])
 
   // Scope label for current dropdown target

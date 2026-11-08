@@ -97,6 +97,7 @@ import re
 import time
 import os
 import sys
+import requests
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from bson import ObjectId
@@ -3847,36 +3848,24 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
     if body.custom_login_slug is not None:
         clean_slug = str(body.custom_login_slug).strip().lower()
         updates["custom_login_slug"] = clean_slug
+        updates["hardening.custom_login_slug"] = clean_slug
         if not clean_slug or clean_slug in ["wp-admin", "wp-login.php", "wp-login"]:
             updates["hide_login_url"] = False
+            updates["hardening.hide_login_url"] = False
         elif body.hide_login_url is not None:
             updates["hide_login_url"] = bool(body.hide_login_url)
+            updates["hardening.hide_login_url"] = bool(body.hide_login_url)
         else:
             updates["hide_login_url"] = True
-
-
-
-
-
-
+            updates["hardening.hide_login_url"] = True
 
     if body.hide_login_url is not None:
-
-
-
-
-
-
-
         updates["hide_login_url"] = bool(body.hide_login_url)
-
-
-
-
-
-
+        updates["hardening.hide_login_url"] = bool(body.hide_login_url)
 
     if body.login_redirect_type is not None:
+        updates["login_redirect_type"] = str(body.login_redirect_type).strip()
+        updates["hardening.login_redirect_type"] = str(body.login_redirect_type).strip()
 
 
 
@@ -4042,14 +4031,19 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
     if body.admin_ip_whitelist is not None:
         cleaned_ips = [str(ip).strip() for ip in body.admin_ip_whitelist if str(ip).strip()]
         updates["admin_ip_whitelist"] = cleaned_ips
+        updates["hardening.admin_ip_whitelist"] = cleaned_ips
         if not cleaned_ips:
             updates["admin_ip_whitelist_enabled"] = False
+            updates["hardening.admin_ip_whitelist_enabled"] = False
         elif body.admin_ip_whitelist_enabled is not None:
             updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
+            updates["hardening.admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
         else:
             updates["admin_ip_whitelist_enabled"] = True
+            updates["hardening.admin_ip_whitelist_enabled"] = True
     elif body.admin_ip_whitelist_enabled is not None:
         updates["admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
+        updates["hardening.admin_ip_whitelist_enabled"] = bool(body.admin_ip_whitelist_enabled)
     if body.two_factor_enabled is not None:
         updates["two_factor_enabled"] = bool(body.two_factor_enabled)
         updates["login_two_factor"] = bool(body.two_factor_enabled)
@@ -4356,13 +4350,11 @@ async def update_security_settings(website_id: str, body: SecuritySettingsUpdate
 
 
             "blocked_countries": updated_doc.get("blocked_countries", []),
-
-
-
-
-
-
-
+            "custom_login_slug": updated_doc.get("custom_login_slug", ""),
+            "hide_login_url": bool(updated_doc.get("hide_login_url", False)),
+            "login_redirect_type": updated_doc.get("login_redirect_type", "404"),
+            "admin_ip_whitelist_enabled": bool(updated_doc.get("admin_ip_whitelist_enabled", False)),
+            "admin_ip_whitelist": updated_doc.get("admin_ip_whitelist", []),
         },
 
 
@@ -10291,7 +10283,6 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
         else:
             candidates = [
                 f"{clean_target}/index.php?{url_params}",
-                f"{clean_target}/index.php?waf_cloud_sync=1&action=trigger_scan&scan_type=quick" + (f"&api_key={api_key}" if api_key else "") + (f"&site_token={site_token}" if site_token else ""),
                 f"{clean_target}/?{url_params}",
                 f"{clean_target}/wp-json/waf-fw/v1/sync?{url_params}",
             ]
@@ -10366,7 +10357,11 @@ async def execute_remote_action(website_id: str, body: RemoteActionRequest, user
     except Exception:
         pass
 
-    fresh_websites = [_website_out(db.websites.find_one({"_id": ws["_id"]})) for ws in websites]
+    u_cond = [{"user_id": str(user["id"])}]
+    if ObjectId.is_valid(str(user["id"])):
+        u_cond.append({"user_id": ObjectId(str(user["id"]))})
+    all_user_websites = list(db.websites.find({"$or": u_cond}))
+    fresh_websites = [_website_out(w) for w in all_user_websites]
     return success({
         "action": body.action,
         "results": results,
@@ -13068,6 +13063,9 @@ class SafeUpdateRequest(BaseModel):
     target_type: str = "plugin"  # "plugin" | "theme" | "core"
     target_slug: str = ""
     target_file: str = ""
+    component_type: Optional[str] = None
+    component_slug: Optional[str] = None
+    version: Optional[str] = None
     probe_urls: Optional[List[str]] = None
 
     class Config:
@@ -13136,13 +13134,17 @@ async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, use
 
     checkpoint_id = f"mdf_safe_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
     
+    t_type = body.target_type or body.component_type or "plugin"
+    t_slug = body.target_slug or body.component_slug or ""
+    t_file = body.target_file or (t_slug if "." in t_slug else "")
+
     # Forward to WordPress origin
     payload = {
         "action": "safe_update_pipeline",
         "cloud_action": "safe_update_pipeline",
-        "target_type": body.target_type,
-        "target_slug": body.target_slug,
-        "target_file": body.target_file,
+        "target_type": t_type,
+        "target_slug": t_slug,
+        "target_file": t_file,
         "checkpoint_id": checkpoint_id
     }
 
@@ -13150,8 +13152,8 @@ async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, use
         "id": checkpoint_id,
         "website_id": str(website["_id"]),
         "domain": website.get("domain", ""),
-        "target_type": body.target_type,
-        "target_name": body.target_slug or body.target_file,
+        "target_type": t_type,
+        "target_name": t_slug or t_file,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "status": "verified_clean",
         "regression_detected": False,
@@ -13175,8 +13177,16 @@ async def run_safe_update_pipeline(website_id: str, body: SafeUpdateRequest, use
             res_json = resp.json().get("action_result", {})
             if res_json:
                 result_data.update(res_json)
+            else:
+                result_data["status"] = "failed"
+                result_data["failure_reason"] = "Empty action result from WordPress agent"
+        else:
+            result_data["status"] = "failed"
+            result_data["failure_reason"] = f"Origin agent returned HTTP {resp.status_code}"
     except Exception as e:
-        logger.warning(f"[SafeUpdates] Remote dispatch fallback: {e}")
+        logger.warning(f"[SafeUpdates] Remote dispatch error: {e}")
+        result_data["status"] = "failed"
+        result_data["failure_reason"] = f"Failed to connect to origin WordPress agent: {str(e)}"
 
     # Persist in DB
     try:
@@ -13237,39 +13247,22 @@ async def get_website_hardening_overview(website_id: str, user=Depends(get_curre
     api_key = website.get("api_key") or ""
     site_token = website.get("site_token") or ""
 
-    overview = {
-        "score": 90,
-        "grade": "A+",
-        "active_profile": "balanced",
-        "total_controls": 20,
-        "enabled_count": 18,
-        "failed_count": 2,
-        "drift_detected": False,
-        "rescue_url": f"{target_url}/wp-login.php?mdf_safe_mode=cbby_secure_rescue_key",
-        "server_info": {
-            "software": "Apache / LiteSpeed / Nginx",
-            "php_version": "8.0+",
-            "is_ssl": target_url.startswith("https"),
-            "db_prefix": "wp_",
-            "is_default_prefix": True,
-            "disallow_file_edit": True,
-            "disallow_file_mods": False
-        }
-    }
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Website target URL is not configured.")
 
-    if target_url:
-        try:
-            sep = "&" if "?" in target_url else "?"
-            remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
-            resp = requests.get(remote_url, timeout=6, verify=False)
-            if resp.status_code == 200:
-                res_json = resp.json().get("action_result", {})
-                if res_json:
-                    overview.update(res_json)
-        except Exception:
-            pass
-
-    return success(overview)
+    try:
+        sep = "&" if "?" in target_url else "?"
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
+        resp = requests.get(remote_url, timeout=8, verify=False)
+        if resp.status_code == 200:
+            res_json = resp.json().get("action_result", {})
+            if res_json:
+                return success(res_json)
+        raise HTTPException(status_code=resp.status_code, detail=f"WordPress agent returned status {resp.status_code}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to communicate with origin WordPress agent: {str(exc)}")
 
 
 @router.post("/{website_id}/hardening/apply-preset")
@@ -13282,27 +13275,22 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
     api_key = website.get("api_key") or ""
     site_token = website.get("site_token") or ""
 
-    resp_data = {
-        "success": True,
-        "profile": body.profile,
-        "score": 95 if body.profile == "strict" else (85 if body.profile == "balanced" else 75),
-        "grade": "A+" if body.profile == "strict" else "A",
-        "message": f"{body.profile.capitalize()} security profile successfully enforced across origin."
-    }
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Website target URL is not configured.")
 
-    if target_url:
-        try:
-            sep = "&" if "?" in target_url else "?"
-            remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=apply_hardening_profile&profile={body.profile}&site_token={site_token}&api_key={api_key}"
-            resp = requests.post(remote_url, timeout=12, verify=False)
-            if resp.status_code == 200:
-                data = resp.json().get("action_result", {})
-                if data:
-                    resp_data.update(data)
-        except Exception:
-            pass
-
-    return success(resp_data)
+    try:
+        sep = "&" if "?" in target_url else "?"
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=apply_hardening_profile&profile={body.profile}&site_token={site_token}&api_key={api_key}"
+        resp = requests.post(remote_url, timeout=12, verify=False)
+        if resp.status_code == 200:
+            data = resp.json().get("action_result", {})
+            if data:
+                return success(data)
+        raise HTTPException(status_code=resp.status_code, detail=f"Preset enforcement failed: HTTP {resp.status_code}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to communicate with origin: {str(exc)}")
 
 
 @router.post("/{website_id}/hardening/toggle")
@@ -13315,28 +13303,22 @@ async def toggle_hardening_control(website_id: str, body: HardeningToggleRequest
     api_key = website.get("api_key") or ""
     site_token = website.get("site_token") or ""
 
-    resp_data = {
-        "success": True,
-        "control": body.control,
-        "enabled": body.enabled,
-        "score": 90,
-        "grade": "A+",
-        "message": f"Hardening directive '{body.control}' updated to {'ENFORCED' if body.enabled else 'DISABLED'}."
-    }
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Website target URL is not configured.")
 
-    if target_url:
-        try:
-            sep = "&" if "?" in target_url else "?"
-            remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=toggle_hardening_control&control={body.control}&enabled={'1' if body.enabled else '0'}&site_token={site_token}&api_key={api_key}"
-            resp = requests.post(remote_url, timeout=10, verify=False)
-            if resp.status_code == 200:
-                data = resp.json().get("action_result", {})
-                if data:
-                    resp_data.update(data)
-        except Exception:
-            pass
-
-    return success(resp_data)
+    try:
+        sep = "&" if "?" in target_url else "?"
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=toggle_hardening_control&control={body.control}&enabled={'1' if body.enabled else '0'}&site_token={site_token}&api_key={api_key}"
+        resp = requests.post(remote_url, timeout=10, verify=False)
+        if resp.status_code == 200:
+            data = resp.json().get("action_result", {})
+            if data:
+                return success(data)
+        raise HTTPException(status_code=resp.status_code, detail=f"Directive toggle failed on origin: HTTP {resp.status_code}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to toggle directive on origin: {str(exc)}")
 
 
 @router.post("/{website_id}/hardening/verify-probes")
@@ -13349,31 +13331,22 @@ async def verify_hardening_probes(website_id: str, user=Depends(get_current_user
     api_key = website.get("api_key") or ""
     site_token = website.get("site_token") or ""
 
-    probe_result = {
-        "success": True,
-        "total_probes": 10,
-        "passed_count": 9,
-        "failed_count": 1,
-        "score": 90,
-        "grade": "A+",
-        "verdict": "Optimal Enterprise Posture",
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "probes": []
-    }
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Website target URL is not configured.")
 
-    if target_url:
-        try:
-            sep = "&" if "?" in target_url else "?"
-            remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=verify_hardening_probes&site_token={site_token}&api_key={api_key}"
-            resp = requests.post(remote_url, timeout=15, verify=False)
-            if resp.status_code == 200:
-                data = resp.json().get("action_result", {})
-                if data:
-                    probe_result.update(data)
-        except Exception:
-            pass
-
-    return success(probe_result)
+    try:
+        sep = "&" if "?" in target_url else "?"
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=verify_hardening_probes&site_token={site_token}&api_key={api_key}"
+        resp = requests.post(remote_url, timeout=15, verify=False)
+        if resp.status_code == 200:
+            data = resp.json().get("action_result", {})
+            if data:
+                return success(data)
+        raise HTTPException(status_code=resp.status_code, detail=f"Live probe suite failed: HTTP {resp.status_code}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Live probe suite failed to reach origin: {str(exc)}")
 
 
 @router.post("/{website_id}/hardening/rotate-salts")
@@ -13386,25 +13359,22 @@ async def rotate_website_salts(website_id: str, user=Depends(get_current_user)):
     api_key = website.get("api_key") or ""
     site_token = website.get("site_token") or ""
 
-    result = {
-        "success": True,
-        "rotated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "message": "Cryptographic security keys & salts rotated successfully with zero downtime."
-    }
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Website target URL is not configured.")
 
-    if target_url:
-        try:
-            sep = "&" if "?" in target_url else "?"
-            remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=rotate_security_salts&site_token={site_token}&api_key={api_key}"
-            resp = requests.post(remote_url, timeout=10, verify=False)
-            if resp.status_code == 200:
-                data = resp.json().get("action_result", {})
-                if data:
-                    result.update(data)
-        except Exception:
-            pass
-
-    return success(result)
+    try:
+        sep = "&" if "?" in target_url else "?"
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=rotate_security_salts&site_token={site_token}&api_key={api_key}"
+        resp = requests.post(remote_url, timeout=10, verify=False)
+        if resp.status_code == 200:
+            data = resp.json().get("action_result", {})
+            if data:
+                return success(data)
+        raise HTTPException(status_code=resp.status_code, detail=f"Cryptographic key rotation failed: HTTP {resp.status_code}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Key rotation failed to reach origin: {str(exc)}")
 
 
 

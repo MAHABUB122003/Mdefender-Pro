@@ -99,6 +99,16 @@ class WAF_FW_Login_Protector {
         }
 
         if ($is_matching_slug) {
+            // Wait for init action so WordPress constants and script dependencies are initialized
+            if (!did_action('init')) {
+                return;
+            }
+            if (!defined('AUTOSAVE_INTERVAL')) {
+                define('AUTOSAVE_INTERVAL', 60);
+            }
+            if (function_exists('wp_functionality_constants')) {
+                wp_functionality_constants();
+            }
             if (!defined('MDEFENDER_ALLOWED_LOGIN')) {
                 define('MDEFENDER_ALLOWED_LOGIN', true);
             }
