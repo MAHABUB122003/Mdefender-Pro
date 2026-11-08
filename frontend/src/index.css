@@ -148,6 +148,91 @@ body {
 }
 .sidebar-footer .logout-btn:hover { background: rgba(239,68,68,0.2); }
 
+/* ===== TECH-GIANT PROFILE TRIGGER & ELEVATED POPOVER ===== */
+.profile-trigger-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  user-select: none;
+}
+.profile-trigger-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.profile-trigger-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(243, 138, 62, 0.4);
+  box-shadow: 0 0 0 1px rgba(243, 138, 62, 0.2);
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  user-select: none;
+}
+.popover-item svg {
+  color: #6A7D78;
+  transition: color 0.14s ease;
+}
+.popover-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #FFFFFF;
+}
+.popover-item:hover svg {
+  color: #F38A3E !important;
+}
+
+.popover-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: #f87171;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.14s ease;
+  outline: none;
+  user-select: none;
+}
+.popover-logout-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 
 /* ===== MODERN USER SIDEBAR NAVIGATION ===== */
 .sidebar-nav {
@@ -1596,3 +1681,226 @@ a { color: inherit; text-decoration: none; }
 .cyber-radar-ping {
   animation: cyberRadarPulse 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
+
+/* =========================================================================
+   MDEFENDER ENTERPRISE SAAS TYPOGRAPHY TOKENS (Cloudflare / Stripe Tier)
+   ========================================================================= */
+.mdf-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: #10201E;
+}
+
+.mdf-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #10201E;
+}
+
+.mdf-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #10201E;
+}
+
+.mdf-stat-hero {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.mdf-stat-large {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.mdf-body {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.mdf-subtext {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #60716B;
+}
+
+.mdf-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mdf-caption {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.mdf-code {
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================================
+   MDEFENDER ENTERPRISE WIDESCREEN & SOC RESPONSIVE ARCHITECTURE
+   ========================================================================= */
+.mdf-dashboard-container {
+  width: 100%;
+  max-width: 1760px;
+  margin: 0 auto;
+  padding: 0 0 60px;
+  box-sizing: border-box;
+  transition: max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 1920px) {
+  .mdf-dashboard-container {
+    max-width: 1860px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .mdf-dashboard-container {
+    max-width: 2200px;
+  }
+}
+
+/* 4-Stat Cards Fluid Enterprise Grid */
+.mdf-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 1360px) {
+  .mdf-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .mdf-stat-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* Primary Analytics Grid: Traffic Line Chart (1.38fr) + Threat Breakdown (0.82fr) */
+.mdf-analytics-grid {
+  display: grid;
+  grid-template-columns: 1.38fr 0.82fr;
+  gap: 20px;
+  margin-bottom: 28px;
+  align-items: stretch;
+}
+
+@media (max-width: 1180px) {
+  .mdf-analytics-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Security Operations: Top Hostile IPs (1fr) + Live Quarantined Events (1fr) */
+.mdf-operations-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+  align-items: stretch;
+}
+
+@media (max-width: 1080px) {
+  .mdf-operations-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Responsive Table Wrapper for Hostile IPs */
+.mdf-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mdf-table-responsive::-webkit-scrollbar {
+  height: 5px;
+}
+
+.mdf-table-responsive::-webkit-scrollbar-track {
+  background: #F1F5F3;
+  border-radius: 4px;
+}
+
+.mdf-table-responsive::-webkit-scrollbar-thumb {
+  background: #CFE2D4;
+  border-radius: 4px;
+}
+
+.mdf-table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #A9C7B2;
+}
+
+/* Dashboard Header Banner Responsive */
+.mdf-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .mdf-dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Posture Dock Responsive */
+.mdf-posture-dock {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .mdf-posture-dock {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Main Content Spacing on Ultra-Wide & Standard Desktops */
+@media (min-width: 1440px) {
+  .main-content {
+    padding: 22px 32px 40px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .main-content {
+    padding: 26px 40px 48px;
+  }
+}
+
+

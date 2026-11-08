@@ -463,7 +463,7 @@ export default function BulkHardening() {
                 border: '1.5px solid #10B981',
                 background: '#ffffff',
                 color: '#0B2522',
-                fontSize: '13.5px',
+                fontSize: '13px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 outline: 'none',
@@ -539,7 +539,7 @@ export default function BulkHardening() {
               color: '#B45309',
               padding: '7px 14px',
               borderRadius: '8px',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: 800,
               display: 'flex',
               alignItems: 'center',
@@ -561,7 +561,7 @@ export default function BulkHardening() {
               color: '#374151',
               padding: '7px 14px',
               borderRadius: '8px',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
@@ -586,10 +586,10 @@ export default function BulkHardening() {
         gap: '16px'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#0B2522', letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0B2522', letterSpacing: '-0.5px' }}>
             WordPress Security <span style={{ color: '#059669' }}>Hardening.</span>
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#60716B', maxWidth: '680px' }}>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '680px' }}>
             Cross-server PHP sandboxing, granular REST and XML-RPC gateways, dual-mode CSP, cryptographic salts lifecycle, and sub-3s autonomous rollback.
           </p>
         </div>
@@ -654,7 +654,7 @@ export default function BulkHardening() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>ZERO-TRUST SCORE</span>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#059669' }}>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
             {postureScore}% <span style={{ fontSize: '16px', fontWeight: 800, color: '#0B2522' }}>({postureGrade})</span>
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -670,7 +670,7 @@ export default function BulkHardening() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>CONTROLS ENFORCED</span>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
             {overview?.enabled_count || activeCount} <span style={{ fontSize: '14px', fontWeight: 600, color: '#889892' }}>of {overview?.total_controls || totalControlsCount}</span>
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -686,7 +686,7 @@ export default function BulkHardening() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>VECTORS BLOCKED</span>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
             10 of 10
           </div>
           <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700, marginTop: '4px' }}>
@@ -702,7 +702,7 @@ export default function BulkHardening() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SECURITY HEADERS</span>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 900, color: '#059669' }}>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
             A+ Grade
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -722,8 +722,8 @@ export default function BulkHardening() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#059669', letterSpacing: '0.5px' }}>ENTERPRISE PROFILE ENGINE</span>
-            <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: '#0B2522' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#059669', letterSpacing: '0.5px' }}>ENTERPRISE PROFILE ENGINE</span>
+            <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: '700', color: '#0B2522' }}>
               Select Security Policy Preset
             </h3>
           </div>
@@ -799,7 +799,7 @@ export default function BulkHardening() {
                     {isSelected && <CheckCircle2 size={16} color="#059669" />}
                   </div>
                   <strong style={{ fontSize: '14px', color: '#0B2522' }}>{p.title}</strong>
-                  <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: '#60716B', lineHeight: '1.4' }}>{p.desc}</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>{p.desc}</p>
                 </div>
               </div>
             )
@@ -836,7 +836,7 @@ export default function BulkHardening() {
                 border: `1px solid ${isActive ? '#0B2522' : '#D9E1DC'}`,
                 padding: '8px 16px',
                 borderRadius: '8px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: 700,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1147,7 +1147,7 @@ export default function BulkHardening() {
                   <Terminal size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
                     Live Proof-of-Protection Penetration Suite
                   </h3>
                   <span style={{ fontSize: '12px', color: '#60716B' }}>
@@ -1179,7 +1179,7 @@ export default function BulkHardening() {
             }}>
               <div>
                 <span style={{ fontSize: '11px', color: '#10B981', fontWeight: 800, letterSpacing: '0.6px' }}>VERIFICATION SCORE</span>
-                <div style={{ fontSize: '26px', fontWeight: 900, color: '#ffffff' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#ffffff' }}>
                   {verifyModal.score !== null ? `${verifyModal.score}% (${verifyModal.grade})` : 'Auditing...'}
                 </div>
               </div>
@@ -1270,7 +1270,7 @@ export default function BulkHardening() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Key size={20} color="#D97706" />
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
                   Emergency Safe-Mode Rescue URL
                 </h3>
               </div>
@@ -1376,7 +1376,7 @@ export default function BulkHardening() {
             </span>
           </div>
 
-          <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0B2522' }}>
+          <div style={{ fontSize: '14px', fontWeight: 800, color: '#0B2522' }}>
             {item.title}
           </div>
           <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
@@ -1385,7 +1385,7 @@ export default function BulkHardening() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
-          <span style={{ fontSize: '11.5px', color: '#60716B', fontWeight: 600 }}>
+          <span style={{ fontSize: '11px', color: '#60716B', fontWeight: 600 }}>
             {item.active ? 'Directives active on origin' : 'Click toggle to activate'}
           </span>
           <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '26px', flexShrink: 0 }}>

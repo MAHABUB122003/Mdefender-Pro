@@ -86,7 +86,7 @@ export default function EmptyFleetState({
             background: '#10201E',
             color: '#ffffff',
             fontWeight: '700',
-            fontSize: '13.5px',
+            fontSize: '13px',
             textDecoration: 'none',
             boxShadow: '0 2px 10px rgba(16, 32, 30, 0.2)',
             transition: 'all 0.15s ease'
@@ -109,7 +109,7 @@ export default function EmptyFleetState({
             border: '1px solid #D9E1DC',
             color: '#10201E',
             fontWeight: '700',
-            fontSize: '13.5px',
+            fontSize: '13px',
             textDecoration: 'none',
             transition: 'all 0.15s ease'
           }}
@@ -164,10 +164,10 @@ export default function EmptyFleetState({
             }}>
               1
             </div>
-            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
               Add Your Domain
             </div>
-            <div style={{ fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
+            <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
               Go to <Link to="/user/websites" style={{ color: '#E8792F', fontWeight: '700', textDecoration: 'none' }}>Websites</Link> and enter your WordPress domain to generate your dedicated API key.
             </div>
           </div>
@@ -193,10 +193,10 @@ export default function EmptyFleetState({
             }}>
               2
             </div>
-            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
               Install Plugin
             </div>
-            <div style={{ fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
+            <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
               Upload <code>mdefender-pro.zip</code> into your WordPress Admin (<code>Plugins &gt; Add New &gt; Upload</code>) and activate.
             </div>
           </div>
@@ -222,10 +222,10 @@ export default function EmptyFleetState({
             }}>
               3
             </div>
-            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E', marginBottom: '4px' }}>
               Activate {featureName}
             </div>
-            <div style={{ fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
+            <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
               Paste your Site API Key into the plugin settings. Real-time telemetry, plugins, themes, and health metrics will appear here automatically.
             </div>
           </div>

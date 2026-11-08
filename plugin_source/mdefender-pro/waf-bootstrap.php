@@ -27,10 +27,11 @@ if (@file_exists($mdefender_wp_root . '/wp-load.php')) {
 }
 
 
-// Bypass bootstrap for cloud synchronization webhooks & internal API endpoints
+// Bypass bootstrap for cloud synchronization webhooks & internal API endpoints, cron & background jobs
 if (isset($_GET['waf_cloud_sync']) || isset($_GET['waf_sync']) || isset($_POST['waf_cloud_sync']) || 
     (isset($_GET['action']) && $_GET['action'] === 'waf_cloud_sync') || 
-    (isset($_SERVER['REQUEST_URI']) && (strpos($_SERVER['REQUEST_URI'], 'waf-fw') !== false || strpos($_SERVER['REQUEST_URI'], 'waf_cloud_sync') !== false))) {
+    isset($_GET['doing_wp_cron']) || (defined('DOING_CRON') && DOING_CRON) ||
+    (isset($_SERVER['REQUEST_URI']) && (strpos($_SERVER['REQUEST_URI'], 'waf-fw') !== false || strpos($_SERVER['REQUEST_URI'], 'waf_cloud_sync') !== false || strpos($_SERVER['REQUEST_URI'], 'wp-cron.php') !== false))) {
     return;
 }
 
@@ -151,10 +152,16 @@ if (!empty($_COOKIE) && is_array($_COOKIE)) {
 
 // Key request headers for inspection
 $mdefender_headers_flat = '';
+$mdefender_cur_host = $_SERVER['HTTP_HOST'] ?? '';
 $inspect_hdr_keys = ['HTTP_USER_AGENT', 'HTTP_REFERER', 'HTTP_HOST', 'HTTP_COOKIE', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED_HOST', 'HTTP_AUTHORIZATION'];
 foreach ($inspect_hdr_keys as $h_key) {
     if (!empty($_SERVER[$h_key])) {
-        $mdefender_headers_flat .= ' ' . $_SERVER[$h_key];
+        $h_val = (string) $_SERVER[$h_key];
+        if ($h_key === 'HTTP_REFERER' && !empty($mdefender_cur_host)) {
+            // Strip own site host from referer so legitimate local/site navigation doesn't trip SSRF false positives
+            $h_val = preg_replace('#^https?://' . preg_quote($mdefender_cur_host, '#') . '#i', '', $h_val);
+        }
+        $mdefender_headers_flat .= ' ' . $h_val;
     }
 }
 foreach ($_SERVER as $k => $v) {

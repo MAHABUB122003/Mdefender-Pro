@@ -470,10 +470,10 @@ export default function BulkLoginGateway() {
                   <Key size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '700', color: '#0F172A' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>
                     WP Admin Hide & Custom Secret Login Gateway
                   </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B', lineHeight: '1.45' }}>
                     Conceal <code>/wp-admin</code> and <code>/wp-login.php</code> behind a private secret slug. Unauthorized requests are blocked with 404 or redirected to homepage.
                   </p>
                 </div>
@@ -497,7 +497,7 @@ export default function BulkLoginGateway() {
                     Custom Secret Directory Slug
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px', overflow: 'hidden' }}>
-                    <span style={{ padding: '0 12px', fontSize: '12.5px', color: '#64748B', fontWeight: 600, background: '#F1F5F9', height: '40px', display: 'flex', alignItems: 'center', borderRight: '1px solid #CBD5E1', whiteSpace: 'nowrap' }}>
+                    <span style={{ padding: '0 12px', fontSize: '12px', color: '#64748B', fontWeight: 600, background: '#F1F5F9', height: '40px', display: 'flex', alignItems: 'center', borderRight: '1px solid #CBD5E1', whiteSpace: 'nowrap' }}>
                       {isAllTarget ? '[domain]' : activeTargetSite.domain}/
                     </span>
                     <input
@@ -511,13 +511,13 @@ export default function BulkLoginGateway() {
                         padding: '0 12px',
                         border: 'none',
                         outline: 'none',
-                        fontSize: '13.5px',
+                        fontSize: '13px',
                         fontWeight: 700,
                         color: '#0F172A'
                       }}
                     />
                   </div>
-                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
+                  <small style={{ color: '#64748B', fontSize: '11px', marginTop: '5px', display: 'block' }}>
                     Target Scope: <strong>{isAllTarget ? 'All Domains' : activeTargetSite.domain}</strong>. Only requests to this path will show WordPress login.
                   </small>
                 </div>
@@ -564,7 +564,7 @@ export default function BulkLoginGateway() {
                         background: '#0F172A',
                         color: '#FFFFFF',
                         border: 'none',
-                        fontSize: '12.5px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         cursor: savingSecret || !customLoginSlug.trim() ? 'not-allowed' : 'pointer',
                         opacity: !customLoginSlug.trim() ? 0.6 : 1,
@@ -576,7 +576,7 @@ export default function BulkLoginGateway() {
                       <span>{savingSecret ? 'Saving...' : 'Save Secret Gateway'}</span>
                     </button>
                   </div>
-                  <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
+                  <small style={{ color: '#64748B', fontSize: '11px', marginTop: '5px', display: 'block' }}>
                     What unauthorized visitors see when attempting to access default /wp-admin.
                   </small>
                 </div>
@@ -595,7 +595,7 @@ export default function BulkLoginGateway() {
                       <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
                         Active Secret Login Gateways & Fleet Registry
                       </h4>
-                      <span style={{ fontSize: '11.5px', color: '#60716B' }}>
+                      <span style={{ fontSize: '11px', color: '#60716B' }}>
                         Concealed WordPress login paths actively protected by MDefender WAF
                       </span>
                     </div>
@@ -663,7 +663,7 @@ export default function BulkLoginGateway() {
                                     <Globe size={14} color="#0F172A" />
                                   </div>
                                   <div>
-                                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '13.5px' }}>
+                                    <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '13px' }}>
                                       {site.domain || site.url || 'Connected Site'}
                                     </div>
                                     <span style={{ fontSize: '11px', color: '#64748B' }}>
@@ -677,7 +677,7 @@ export default function BulkLoginGateway() {
                                   display: 'inline-flex', alignItems: 'center', gap: '6px',
                                   padding: '3px 10px', borderRadius: '16px',
                                   background: '#DCFCE7', color: '#166534',
-                                  border: '1px solid #86EFAC', fontSize: '11.5px', fontWeight: 700
+                                  border: '1px solid #86EFAC', fontSize: '11px', fontWeight: 700
                                 }}>
                                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16A34A' }} />
                                   Active & Concealed (/{effectiveSlug})
@@ -691,7 +691,7 @@ export default function BulkLoginGateway() {
                                   style={{ textDecoration: 'none', display: 'inline-block' }}
                                   title="Click to test secret login in new tab"
                                 >
-                                  <code style={{ fontSize: '12.5px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '4px 9px', borderRadius: '4px', border: '1px solid #BBF7D0', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                  <code style={{ fontSize: '12px', fontWeight: 700, color: '#15803D', background: '#F0FDF4', padding: '4px 9px', borderRadius: '4px', border: '1px solid #BBF7D0', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                                     {activeUrl}
                                     <ExternalLink size={12} color="#16A34A" />
                                   </code>
@@ -756,10 +756,10 @@ export default function BulkLoginGateway() {
                   <ShieldCheck size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '700', color: '#0F172A' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>
                     Restrict Admin Panel & Login Access by IP
                   </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B', lineHeight: '1.45' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B', lineHeight: '1.45' }}>
                     Limit access to <code>/wp-admin</code> and login gateways strictly to authorized IP addresses. Unauthorized visitors are blocked with 403.
                   </p>
                 </div>
@@ -857,7 +857,7 @@ export default function BulkLoginGateway() {
                       background: '#0F172A',
                       color: '#FFFFFF',
                       border: 'none',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap'
@@ -881,7 +881,7 @@ export default function BulkLoginGateway() {
                       background: '#0F172A',
                       color: '#FFFFFF',
                       border: 'none',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 700,
                       cursor: savingIp ? 'not-allowed' : 'pointer',
                       boxShadow: '0 1px 2px rgba(15, 23, 42, 0.1)',
@@ -892,7 +892,7 @@ export default function BulkLoginGateway() {
                     <span>{savingIp ? 'Saving...' : 'Save Authorized IPs'}</span>
                   </button>
                 </div>
-                <small style={{ color: '#64748B', fontSize: '11.5px', marginTop: '5px', display: 'block' }}>
+                <small style={{ color: '#64748B', fontSize: '11px', marginTop: '5px', display: 'block' }}>
                   Target Scope: <strong>{isAllTarget ? 'All Domains' : (activeTargetSite.domain || 'Selected Site')}</strong>. Accepts single IPv4, IPv6, or CIDR blocks.
                 </small>
               </div>
@@ -910,7 +910,7 @@ export default function BulkLoginGateway() {
                       <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
                         Authorized Admin IP Access Registry
                       </h4>
-                      <span style={{ fontSize: '11.5px', color: '#60716B' }}>
+                      <span style={{ fontSize: '11px', color: '#60716B' }}>
                         Strict IP whitelist rules for WordPress administrator login gateways
                       </span>
                     </div>
@@ -934,7 +934,7 @@ export default function BulkLoginGateway() {
                           background: '#F1F5F9',
                           border: '1px solid #CBD5E1',
                           color: '#0F172A',
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 600,
                           cursor: resettingAllIps ? 'not-allowed' : 'pointer'
                         }}
@@ -1001,7 +1001,7 @@ export default function BulkLoginGateway() {
                                     {ip}
                                   </code>
                                   {isCurrent && (
-                                    <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 7px', borderRadius: '12px', background: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '12px', background: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}>
                                       YOUR CURRENT IP
                                     </span>
                                   )}
@@ -1015,7 +1015,7 @@ export default function BulkLoginGateway() {
                                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                                   padding: '3px 9px', borderRadius: '14px',
                                   background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0',
-                                  fontSize: '11.5px', fontWeight: 700
+                                  fontSize: '11px', fontWeight: 700
                                 }}>
                                   <ShieldCheck size={13} color="#16A34A" />
                                   Admin Login Allowed
@@ -1098,7 +1098,7 @@ export default function BulkLoginGateway() {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: 'none', background: 'transparent', textAlign: 'left',
-                  fontSize: '12.5px', fontWeight: 600, color: '#0F172A',
+                  fontSize: '12px', fontWeight: 600, color: '#0F172A',
                   display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                   textDecoration: 'none', boxSizing: 'border-box'
                 }}
@@ -1120,7 +1120,7 @@ export default function BulkLoginGateway() {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: 'none', background: 'transparent', textAlign: 'left',
-                  fontSize: '12.5px', fontWeight: 600, color: '#0F172A',
+                  fontSize: '12px', fontWeight: 600, color: '#0F172A',
                   display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
@@ -1140,7 +1140,7 @@ export default function BulkLoginGateway() {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: 'none', background: 'transparent', textAlign: 'left',
-                  fontSize: '12.5px', fontWeight: 700, color: '#DC2626',
+                  fontSize: '12px', fontWeight: 700, color: '#DC2626',
                   display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
@@ -1186,7 +1186,7 @@ export default function BulkLoginGateway() {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: 'none', background: 'transparent', textAlign: 'left',
-                  fontSize: '12.5px', fontWeight: 600, color: '#0F172A',
+                  fontSize: '12px', fontWeight: 600, color: '#0F172A',
                   display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#F1F5F9'}
@@ -1208,7 +1208,7 @@ export default function BulkLoginGateway() {
                 style={{
                   width: '100%', padding: '8px 10px', borderRadius: '6px',
                   border: 'none', background: 'transparent', textAlign: 'left',
-                  fontSize: '12.5px', fontWeight: 700, color: '#DC2626',
+                  fontSize: '12px', fontWeight: 700, color: '#DC2626',
                   display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}

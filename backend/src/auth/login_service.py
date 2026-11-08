@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Optional
 import secrets
 from src.database.mongodb_connection import MongoDB
@@ -202,11 +202,13 @@ class LoginService:
         )
 
         access_token = self.jwt_service.create_access_token(
-            user_id, user['email'], role=user.get('role', 'user')
+            user_id, user['email'], role=user.get('role', 'user'),
+            remember_me=remember_me
         )
         refresh_token = self.jwt_service.create_refresh_token(
             user_id, str(session['_id']),
-            token_version=user.get('token_version', 0)
+            token_version=user.get('token_version', 0),
+            remember_me=remember_me
         )
 
         self.db.users.update_one(
@@ -230,6 +232,30 @@ class LoginService:
         user_full_name = user.get('full_name') or user.get('name', '')
         user_uname = user.get('username') or (user.get('email', '').split('@')[0] if user.get('email') else '')
 
+        now_dt = datetime.now(timezone.utc)
+        user_created = user.get('created_at') or now_dt
+        if isinstance(user_created, str):
+            try:
+                user_created = datetime.fromisoformat(user_created)
+            except Exception:
+                user_created = now_dt
+        if hasattr(user_created, 'tzinfo') and user_created.tzinfo is None:
+            user_created = user_created.replace(tzinfo=timezone.utc)
+
+        trial_ends = user.get('trial_ends_at')
+        if not trial_ends:
+            trial_ends = user_created + timedelta(days=14)
+        elif isinstance(trial_ends, str):
+            try:
+                trial_ends = datetime.fromisoformat(trial_ends)
+            except Exception:
+                trial_ends = user_created + timedelta(days=14)
+        if hasattr(trial_ends, 'tzinfo') and trial_ends.tzinfo is None:
+            trial_ends = trial_ends.replace(tzinfo=timezone.utc)
+
+        import math
+        trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
+
         return {
             'success': True,
             'access_token': access_token,
@@ -244,6 +270,9 @@ class LoginService:
                 'plan': user.get('plan', 'free'),
                 'email_verified': user.get('email_verified', False),
                 'api_key': api_key,
+                'trial_days_remaining': trial_days_remaining,
+                'trial_ends_at': trial_ends.isoformat() if hasattr(trial_ends, 'isoformat') else str(trial_ends),
+                'created_at': user_created.isoformat() if hasattr(user_created, 'isoformat') else str(user_created),
             },
         }
 

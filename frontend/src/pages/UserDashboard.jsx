@@ -150,10 +150,10 @@ function StatCard({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <span style={{
             fontSize: '11px',
-            fontWeight: '800',
+            fontWeight: '700',
             color: brandTokens.bodyColor,
             textTransform: 'uppercase',
-            letterSpacing: '0.08em'
+            letterSpacing: '0.06em'
           }}>
             {label}
           </span>
@@ -174,7 +174,7 @@ function StatCard({
 
         {/* Primary Metric Number */}
         <div style={{
-          fontSize: '23px',
+          fontSize: '24px',
           fontWeight: '700',
           fontVariantNumeric: 'tabular-nums',
           color: isThreat && value > 0 ? brandTokens.dangerRed : brandTokens.headingColor,
@@ -187,7 +187,7 @@ function StatCard({
         {/* Sublabel / Context */}
         {sublabel && (
           <div style={{
-            fontSize: '12.5px',
+            fontSize: '12px',
             color: brandTokens.bodyColor,
             marginTop: '6px',
             fontWeight: '500'
@@ -300,6 +300,8 @@ export default function UserDashboard() {
       if (result?.user?.name) localStorage.setItem('mdefender_user_name', result.user.name);
       const freshPlan = result?.user?.plan || result?.plan;
       if (freshPlan) localStorage.setItem('mdefender_user_plan', freshPlan);
+      if (result?.user?.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', result.user.trial_days_remaining);
+      if (result?.user?.created_at) localStorage.setItem('mdefender_user_created_at', result.user.created_at);
     } catch (err) {
       console.error('Telemetry fetch error:', err);
     } finally {
@@ -567,23 +569,18 @@ export default function UserDashboard() {
     : '100.0';
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '0 0 60px' }}>
+    <div className="mdf-dashboard-container">
       
       {/* ========================================================================= */}
       {/* 1. HEADER BANNER — MATCHING UserPricing HEADER DESIGN                     */}
       {/* ========================================================================= */}
-      <div style={{
+      <div className="mdf-dashboard-header" style={{
         background: brandTokens.cardBg,
         borderRadius: brandTokens.cardRadius,
         padding: '18px 24px',
         marginBottom: '18px',
         border: brandTokens.cardBorder,
-        boxShadow: brandTokens.cardShadow,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '20px'
+        boxShadow: brandTokens.cardShadow
       }}>
         <div>
           {/* Top Pill Badges */}
@@ -639,10 +636,10 @@ export default function UserDashboard() {
             </span>
           </div>
 
-          <h1 style={{ fontSize: '19px', fontWeight: '700', margin: '0 0 3px', color: brandTokens.headingColor, letterSpacing: '-0.02em', lineHeight: '1.25' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 4px', color: brandTokens.headingColor, letterSpacing: '-0.02em', lineHeight: '1.25' }}>
             Security &amp; Threat Overview
           </h1>
-          <p style={{ margin: 0, fontSize: '12.5px', color: brandTokens.bodyColor, maxWidth: '680px', lineHeight: '1.45' }}>
+          <p style={{ margin: 0, fontSize: '12px', color: brandTokens.bodyColor, maxWidth: '680px', lineHeight: '1.45' }}>
             Real-time edge telemetry, malicious payload mitigation, and active posture across your connected WordPress fleet.
           </p>
         </div>
@@ -683,8 +680,8 @@ export default function UserDashboard() {
               <span style={{
                 padding: '2px 7px',
                 borderRadius: '6px',
-                fontSize: '9.5px',
-                fontWeight: '800',
+                fontSize: '10px',
+                fontWeight: '700',
                 letterSpacing: '0.04em',
                 background: isSelectedSiteAttacked ? '#E8F3EC' : '#F1F5F3',
                 color: isSelectedSiteAttacked ? '#2A8B68' : brandTokens.mutedText,
@@ -721,8 +718,8 @@ export default function UserDashboard() {
                 border: isSelectedSiteAttacked ? '1px solid #D9E1DC' : 'none',
                 background: isSelectedSiteAttacked ? '#FFFFFF' : '#0B2522',
                 color: isSelectedSiteAttacked ? '#10201E' : '#FFFFFF',
-                fontSize: '11.5px',
-                fontWeight: '700',
+                fontSize: '11px',
+                fontWeight: '600',
                 cursor: ddosToggling ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -863,10 +860,10 @@ export default function UserDashboard() {
           boxShadow: brandTokens.cardShadow
         }}>
           <div>
-            <div style={{ fontSize: '16px', fontWeight: '800', color: brandTokens.headingColor }}>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: brandTokens.headingColor }}>
               No WordPress Websites Connected Yet
             </div>
-            <div style={{ fontSize: '13.5px', color: brandTokens.bodyColor, marginTop: '4px' }}>
+            <div style={{ fontSize: '13px', color: brandTokens.bodyColor, marginTop: '4px' }}>
               Install the MDefender Pro plugin on your WordPress site to activate edge telemetry and two-way threat defense.
             </div>
           </div>
@@ -909,12 +906,7 @@ export default function UserDashboard() {
       {/* ========================================================================= */}
       {/* 2. 4 STAT CARDS — MATCHING UserPricing CARD COLOR & ELEVATION             */}
       {/* ========================================================================= */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        gap: '20px',
-        marginBottom: '28px'
-      }}>
+      <div className="mdf-stat-grid">
         <StatCard
           icon={Activity}
           label="Total Ingress Requests"
@@ -956,12 +948,7 @@ export default function UserDashboard() {
       {/* ========================================================================= */}
       {/* 3. PRIMARY ANALYTICS ROW: 2D TRAFFIC TIMELINE & THREAT BREAKDOWN          */}
       {/* ========================================================================= */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1.25fr 0.75fr',
-        gap: '20px',
-        marginBottom: '28px'
-      }} className="responsive-dashboard-grid">
+      <div className="mdf-analytics-grid responsive-dashboard-grid">
         
         {/* Left: 2D High-Precision Area Chart */}
         <div style={{
@@ -985,7 +972,7 @@ export default function UserDashboard() {
               gap: '12px'
             }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
                   Traffic &amp; Threat Volume (7 Days)
                 </h3>
                 <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
@@ -1011,8 +998,8 @@ export default function UserDashboard() {
                     border: 'none',
                     background: chartMetric === 'both' ? brandTokens.brandForest : 'transparent',
                     color: chartMetric === 'both' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11.5px',
-                    fontWeight: '700',
+                    fontSize: '11px',
+                    fontWeight: '600',
                     cursor: 'pointer',
                     boxShadow: chartMetric === 'both' ? '0 2px 6px rgba(11, 37, 34, 0.2)' : 'none',
                     transition: 'all 0.15s ease'
@@ -1029,8 +1016,8 @@ export default function UserDashboard() {
                     border: 'none',
                     background: chartMetric === 'clean' ? brandTokens.brandForest : 'transparent',
                     color: chartMetric === 'clean' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11.5px',
-                    fontWeight: '700',
+                    fontSize: '11px',
+                    fontWeight: '600',
                     cursor: 'pointer',
                     boxShadow: chartMetric === 'clean' ? '0 2px 6px rgba(11, 37, 34, 0.2)' : 'none',
                     transition: 'all 0.15s ease'
@@ -1047,8 +1034,8 @@ export default function UserDashboard() {
                     border: 'none',
                     background: chartMetric === 'threats' ? brandTokens.dangerRed : 'transparent',
                     color: chartMetric === 'threats' ? '#ffffff' : brandTokens.bodyColor,
-                    fontSize: '11.5px',
-                    fontWeight: '700',
+                    fontSize: '11px',
+                    fontWeight: '600',
                     cursor: 'pointer',
                     boxShadow: chartMetric === 'threats' ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
                     transition: 'all 0.15s ease'
@@ -1060,7 +1047,7 @@ export default function UserDashboard() {
             </div>
 
             {/* High-Precision 2D Area Chart */}
-            <div style={{ height: '235px', position: 'relative' }}>
+            <div style={{ height: '260px', position: 'relative' }}>
               <Line data={dailyChartData} options={lineOptions} />
             </div>
           </div>
@@ -1107,7 +1094,7 @@ export default function UserDashboard() {
         }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: '700', color: brandTokens.headingColor, margin: 0, letterSpacing: '-0.01em' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: 0, letterSpacing: '-0.01em' }}>
                 Threat Breakdown
               </h3>
               <span style={{
@@ -1136,10 +1123,10 @@ export default function UserDashboard() {
                   justifyContent: 'center',
                   pointerEvents: 'none'
                 }}>
-                  <span style={{ fontSize: '20px', fontWeight: '850', color: brandTokens.headingColor, lineHeight: '1' }}>
+                  <span style={{ fontSize: '20px', fontWeight: '700', color: brandTokens.headingColor, lineHeight: '1' }}>
                     {totalAttacksCount.toLocaleString()}
                   </span>
-                  <span style={{ fontSize: '9.5px', color: brandTokens.bodyColor, textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.06em', marginTop: '3px' }}>
+                  <span style={{ fontSize: '10px', color: brandTokens.bodyColor, textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.06em', marginTop: '3px' }}>
                     QUARANTINED
                   </span>
                 </div>
@@ -1177,7 +1164,7 @@ export default function UserDashboard() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
                         <span style={{ fontWeight: '800' }}>{count}</span>
-                        <span style={{ fontSize: '10.5px', color: brandTokens.bodyColor }}>({pct}%)</span>
+                        <span style={{ fontSize: '10px', color: brandTokens.bodyColor }}>({pct}%)</span>
                       </div>
                     </Link>
                   );
@@ -1207,12 +1194,7 @@ export default function UserDashboard() {
       {/* ========================================================================= */}
       {/* 4. SECURITY OPERATIONS: TOP ATTACKERS & RECENT BLOCKED EVENTS             */}
       {/* ========================================================================= */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
-        gap: '20px',
-        marginBottom: '28px'
-      }}>
+      <div className="mdf-operations-grid">
         {/* Left: Top Hostile IPs */}
         <div style={{
           background: brandTokens.cardBg,
@@ -1227,7 +1209,7 @@ export default function UserDashboard() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
                   Top Attacking IPs
                 </h3>
                 <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
@@ -1251,7 +1233,7 @@ export default function UserDashboard() {
               </Link>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div className="mdf-table-responsive">
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
                   <tr style={{
@@ -1276,7 +1258,7 @@ export default function UserDashboard() {
 
                     return (
                       <tr key={i} style={{ borderBottom: '1px solid #E8EEE8' }}>
-                        <td style={{ padding: '12px 6px', color: brandTokens.bodyColor, fontWeight: '700', fontSize: '11.5px' }}>
+                        <td style={{ padding: '12px 6px', color: brandTokens.bodyColor, fontWeight: '600', fontSize: '11px' }}>
                           #{i + 1}
                         </td>
                         <td style={{ padding: '12px 12px' }}>
@@ -1299,7 +1281,7 @@ export default function UserDashboard() {
                             <div style={{ width: '65px', height: '6px', background: brandTokens.pillBg, borderRadius: '4px', overflow: 'hidden' }}>
                               <div style={{ width: `${ratio}%`, height: '100%', background: brandTokens.dangerRed }} />
                             </div>
-                            <span style={{ fontWeight: '800', color: brandTokens.headingColor, fontSize: '12.5px' }}>
+                            <span style={{ fontWeight: '700', color: brandTokens.headingColor, fontSize: '13px' }}>
                               {attacker.count}
                             </span>
                           </div>
@@ -1319,8 +1301,8 @@ export default function UserDashboard() {
                                 background: '#FEF2F2',
                                 color: brandTokens.dangerRed,
                                 border: '1px solid #FECACA',
-                                fontSize: '11.5px',
-                                fontWeight: '700',
+                                fontSize: '11px',
+                                fontWeight: '600',
                                 cursor: 'pointer'
                               }}
                             >
@@ -1357,7 +1339,7 @@ export default function UserDashboard() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: '0 0 3px', letterSpacing: '-0.01em' }}>
                   Recent Blocked Events
                 </h3>
                 <div style={{ fontSize: '13px', color: brandTokens.bodyColor }}>
@@ -1416,7 +1398,7 @@ export default function UserDashboard() {
                       borderRadius: '10px',
                       background: brandTokens.subCardBg,
                       border: '1px solid #D9E1DC',
-                      fontSize: '12.5px'
+                      fontSize: '12px'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
@@ -1450,7 +1432,7 @@ export default function UserDashboard() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <span style={{ color: brandTokens.bodyColor, fontSize: '11.5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: brandTokens.bodyColor, fontSize: '12px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {method} {log.url || '/'}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1497,16 +1479,11 @@ export default function UserDashboard() {
       {/* ========================================================================= */}
       {/* 5. SYSTEM POSTURE DOCK — MATCHING UserPricing FOOTER DOCK                */}
       {/* ========================================================================= */}
-      <div style={{
+      <div className="mdf-posture-dock" style={{
         background: brandTokens.cardBg,
         borderRadius: brandTokens.cardRadius,
         border: brandTokens.cardBorder,
         padding: '18px 26px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
         fontSize: '13px',
         boxShadow: brandTokens.cardShadow
       }}>
@@ -1529,11 +1506,11 @@ export default function UserDashboard() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link to="/user/websites" style={{ color: brandTokens.headingColor, textDecoration: 'none', fontWeight: '700', fontSize: '12.5px' }}>
+          <Link to="/user/websites" style={{ color: brandTokens.headingColor, textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
             WordPress Sites ({websitesList.length})
           </Link>
           <span style={{ color: '#D9E1DC' }}>|</span>
-          <Link to="/user/security/bot-shield" style={{ color: brandTokens.brandEmerald, textDecoration: 'none', fontWeight: '700', fontSize: '12.5px' }}>
+          <Link to="/user/security/bot-shield" style={{ color: brandTokens.brandEmerald, textDecoration: 'none', fontWeight: '600', fontSize: '12px' }}>
             Bot Defense &amp; Rate Limit Settings →
           </Link>
         </div>
@@ -1569,7 +1546,7 @@ export default function UserDashboard() {
                   <Ban size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#10201E' }}>
                     Quarantine Attacker IP
                   </h3>
                   <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#60716B' }}>
@@ -1600,7 +1577,7 @@ export default function UserDashboard() {
               }}>
                 <div>
                   <span style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target IP Address</span>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '15px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '14px', fontWeight: '700', color: '#10201E', marginTop: '2px' }}>
                     {blockForm.ip}
                   </div>
                 </div>
@@ -1611,7 +1588,7 @@ export default function UserDashboard() {
 
               {/* Scoped Website Choice */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '8px' }}>
                   Quarantine Scope
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
@@ -1627,7 +1604,7 @@ export default function UserDashboard() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: blockForm.website_id !== 'all' ? '#0B2522' : '#10201E' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: blockForm.website_id !== 'all' ? '#0B2522' : '#10201E' }}>
                         This Website Only
                       </span>
                       <input
@@ -1654,7 +1631,7 @@ export default function UserDashboard() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: blockForm.website_id === 'all' ? '#DC2626' : '#10201E' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: blockForm.website_id === 'all' ? '#DC2626' : '#10201E' }}>
                         Global Fleet-Wide
                       </span>
                       <input
@@ -1673,7 +1650,7 @@ export default function UserDashboard() {
 
               {/* Action Mode */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '6px' }}>
                   Enforcement Action
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -1692,8 +1669,8 @@ export default function UserDashboard() {
                         border: blockForm.action_type === act.key ? `2px solid ${act.color}` : '1px solid #D9E1DC',
                         background: blockForm.action_type === act.key ? '#FFFFFF' : '#FAFBF9',
                         color: blockForm.action_type === act.key ? act.color : '#60716B',
-                        fontSize: '11.5px',
-                        fontWeight: '700',
+                        fontSize: '11px',
+                        fontWeight: '600',
                         cursor: 'pointer',
                         textAlign: 'center'
                       }}
@@ -1707,7 +1684,7 @@ export default function UserDashboard() {
               {/* Duration */}
               {blockForm.action_type !== 'whitelist' && (
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '6px' }}>
                     Ban Duration
                   </label>
                   <select
@@ -1736,7 +1713,7 @@ export default function UserDashboard() {
 
               {/* Note */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#10201E', marginBottom: '6px' }}>
                   Quarantine Reason / Note
                 </label>
                 <input
@@ -1764,7 +1741,7 @@ export default function UserDashboard() {
                     background: '#FAFBF9',
                     border: '1px solid #D9E1DC',
                     borderRadius: '10px',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: '600',
                     color: '#60716B',
                     cursor: 'pointer'
@@ -1781,8 +1758,8 @@ export default function UserDashboard() {
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '10px',
-                    fontSize: '12.5px',
-                    fontWeight: '800',
+                    fontSize: '12px',
+                    fontWeight: '700',
                     cursor: submittingBlock ? 'not-allowed' : 'pointer',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
                   }}

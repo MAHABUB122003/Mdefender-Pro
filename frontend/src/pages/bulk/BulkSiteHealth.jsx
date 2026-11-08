@@ -185,7 +185,7 @@ export default function BulkSiteHealth() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMsg.text}</span>
@@ -227,7 +227,7 @@ export default function BulkSiteHealth() {
                   gap: '8px',
                   padding: '9px 18px',
                   borderRadius: '9px',
-                  fontSize: '13.5px',
+                  fontSize: '13px',
                   fontWeight: '700',
                   border: 'none',
                   cursor: 'pointer',
@@ -249,7 +249,7 @@ export default function BulkSiteHealth() {
                   gap: '8px',
                   padding: '9px 18px',
                   borderRadius: '9px',
-                  fontSize: '13.5px',
+                  fontSize: '13px',
                   fontWeight: '700',
                   border: 'none',
                   cursor: 'pointer',
@@ -618,7 +618,7 @@ export default function BulkSiteHealth() {
                       >
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <strong style={{ fontSize: '13.5px', color: '#0F172A' }}>{rec.title}</strong>
+                            <strong style={{ fontSize: '13px', color: '#0F172A' }}>{rec.title}</strong>
                             <span style={{
                               fontSize: '10px',
                               fontWeight: '800',
@@ -630,7 +630,7 @@ export default function BulkSiteHealth() {
                               {rec.impact} IMPACT
                             </span>
                           </div>
-                          <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                             {rec.description}
                           </div>
                         </div>
@@ -696,7 +696,7 @@ export default function BulkSiteHealth() {
                   <div style={{ fontSize: '22px', fontWeight: '800', color: phpVer ? '#0F172A' : '#64748B', marginTop: '6px' }}>
                     {phpVer ? `PHP ${phpVer}` : 'Not Connected'}
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     {isPluginConnected ? `Memory: ${memLimit || '—'} • OPcache: ${opcache ? 'Active' : 'Disabled'}` : 'Awaiting plugin diagnostic sync'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
@@ -718,7 +718,7 @@ export default function BulkSiteHealth() {
                   <div style={{ fontSize: '22px', fontWeight: '800', color: ttfb ? '#0F172A' : '#64748B', marginTop: '6px' }}>
                     {ttfb ? `${ttfb} ms` : '—'} <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748B' }}>TTFB</span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     {ttfb ? `Total: ${totalLatency || ttfb} ms • Status: ${healthData?.status_code || 200} OK` : 'Run diagnostics to probe server latency'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
@@ -740,7 +740,7 @@ export default function BulkSiteHealth() {
                   <div style={{ fontSize: '22px', fontWeight: '800', color: totalOutdated !== null ? '#0F172A' : '#64748B', marginTop: '6px' }}>
                     {totalOutdated !== null ? `${totalOutdated} Updates` : '—'}
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     {isPluginConnected ? `${pluginsOutdated} Plugins • ${themesOutdated} Themes Outdated` : 'Connect WordPress plugin to audit updates'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
@@ -764,7 +764,7 @@ export default function BulkSiteHealth() {
                   <div style={{ fontSize: '22px', fontWeight: '800', color: score !== null ? '#0F172A' : '#64748B', marginTop: '6px' }}>
                     {score !== null ? `${score} / 100` : '— / 100'}
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                     {isPluginConnected ? `MySQL ${mysqlVer || '—'} • WP ${wpVer || '—'}` : 'Connect plugin to compute score'}
                   </div>
                   <div style={{ marginTop: '14px' }}>
@@ -871,7 +871,7 @@ export default function BulkSiteHealth() {
                           />
                           <strong style={{ fontSize: '14px', color: '#0F172A' }}>{check.label}</strong>
                         </div>
-                        <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px', paddingLeft: '24px' }}>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', paddingLeft: '24px' }}>
                           {check.detail}
                         </div>
                       </div>
@@ -897,7 +897,7 @@ export default function BulkSiteHealth() {
                       Origin Directory &amp; File Permissions Inspector
                     </h3>
                   </div>
-                  <p style={{ margin: '0 0 16px', fontSize: '12.5px', color: '#64748B' }}>
+                  <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#64748B' }}>
                     Live POSIX filesystem permission masks audited directly on origin server for security compliance:
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>

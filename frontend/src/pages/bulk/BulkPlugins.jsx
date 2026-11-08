@@ -465,7 +465,7 @@ export default function BulkPlugins() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} color="#FCA5A5" /> : <Check size={16} color="#34D399" />}
           <span>{toastMsg.text}</span>
@@ -610,7 +610,7 @@ export default function BulkPlugins() {
 
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: '700', color: '#10201E', fontSize: '13.5px' }}>
+                              <span style={{ fontWeight: '700', color: '#10201E', fontSize: '13px' }}>
                                 {plugin.name}
                               </span>
                               {plugin.verified && (
@@ -735,7 +735,7 @@ export default function BulkPlugins() {
                               border: '1px solid #D9E1DC',
                               padding: '5px 11px',
                               borderRadius: '6px',
-                              fontSize: '11.5px',
+                              fontSize: '11px',
                               fontWeight: '700',
                               cursor: plugin.id === 'mdefender-pro' ? 'not-allowed' : 'pointer',
                               color: plugin.status === 'active' ? '#B91C1C' : '#0B2522',
@@ -756,7 +756,7 @@ export default function BulkPlugins() {
                                 border: '1px solid #FECACA',
                                 padding: '5px 8px',
                                 borderRadius: '6px',
-                                fontSize: '11.5px',
+                                fontSize: '11px',
                                 cursor: 'pointer',
                                 color: '#DC2626',
                                 display: 'inline-flex',
@@ -833,7 +833,7 @@ export default function BulkPlugins() {
             </p>
 
             <form onSubmit={handleInstallPlugin}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                 Plugin Directory Slug:
               </label>
               <input
@@ -848,7 +848,7 @@ export default function BulkPlugins() {
                   borderRadius: '8px',
                   border: '1px solid #CBD5E1',
                   padding: '0 12px',
-                  fontSize: '13.5px',
+                  fontSize: '13px',
                   marginBottom: '10px',
                   boxSizing: 'border-box',
                   outline: 'none'
@@ -1130,7 +1130,7 @@ export default function BulkPlugins() {
               padding: '12px 14px',
               borderRadius: '8px',
               fontFamily: 'Consolas, monospace',
-              fontSize: '11.5px',
+              fontSize: '11px',
               maxHeight: '160px',
               overflowY: 'auto',
               lineHeight: 1.6
@@ -1199,7 +1199,7 @@ const primaryButtonStyle = {
   border: 'none',
   padding: '8px 18px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1228,7 +1228,7 @@ const badgeStyle = (bg, color, border) => ({
   display: 'inline-block',
   padding: '2px 8px',
   borderRadius: '999px',
-  fontSize: '10.5px',
+  fontSize: '10px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,

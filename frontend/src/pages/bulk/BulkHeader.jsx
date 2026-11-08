@@ -118,7 +118,7 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMsg.text}</span>
@@ -148,9 +148,9 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
                 padding: '4px 10px',
                 borderRadius: '20px',
                 fontSize: '11px',
-                fontWeight: '800',
+                fontWeight: '700',
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.06em',
                 background: '#E8EEE8',
                 color: '#0B2522',
                 border: '1px solid #D9E1DC',
@@ -166,9 +166,9 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
                 padding: '4px 10px',
                 borderRadius: '20px',
                 fontSize: '11px',
-                fontWeight: '800',
+                fontWeight: '700',
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.06em',
                 background: wpWebsites.length > 0 ? '#E8F3EC' : '#FEF3EB',
                 color: wpWebsites.length > 0 ? '#2A8B68' : '#D97706',
                 border: wpWebsites.length > 0 ? '1px solid #CFE2D4' : '1px solid #FCD8BF'
@@ -177,10 +177,10 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
               </span>
             </div>
 
-            <h1 style={{ fontSize: '19px', fontWeight: '700', margin: '0 0 3px', color: '#10201E', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 4px', color: '#10201E', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
               {title}
             </h1>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#60716B', maxWidth: '680px', lineHeight: '1.45' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#60716B', maxWidth: '680px', lineHeight: '1.45' }}>
               {subtitle}
             </p>
           </div>
@@ -229,7 +229,7 @@ export default function BulkHeader({ title, subtitle, icon: Icon, activeBadge = 
                 border: '1px solid #D9E1DC',
                 background: wpWebsites.length === 0 ? '#F1F5F3' : '#FAFAFA',
                 color: wpWebsites.length === 0 ? '#87948D' : '#10201E',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: '600',
                 cursor: wpWebsites.length === 0 ? 'not-allowed' : 'pointer',
                 outline: 'none'

@@ -1350,6 +1350,18 @@ class UserAPI:
         from src.services.subscription_service import SubscriptionService
         effective_plan = SubscriptionService(self.db).effective_plan(user_doc)
 
+        now_dt = datetime.now()
+        u_created = user_doc.get('created_at') or now_dt
+        if isinstance(u_created, str):
+            try: u_created = datetime.fromisoformat(u_created)
+            except Exception: u_created = now_dt
+        trial_ends = user_doc.get('trial_ends_at') or (u_created + timedelta(days=14))
+        if isinstance(trial_ends, str):
+            try: trial_ends = datetime.fromisoformat(trial_ends)
+            except Exception: trial_ends = u_created + timedelta(days=14)
+        import math
+        t_days_rem = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
+
         result = {
             'user': {
                 'id': str(user_doc['_id']),
@@ -1359,6 +1371,8 @@ class UserAPI:
                 'username': user_uname,
                 'email_verified': user_doc.get('email_verified', False),
                 'plan': effective_plan,
+                'trial_days_remaining': t_days_rem,
+                'trial_ends_at': self._format_dt(trial_ends, '%Y-%m-%d'),
                 'created_at': self._format_dt(user_doc.get('created_at'), '%Y-%m-%d'),
                 'last_login': self._format_dt(user_doc.get('last_login')),
             },
@@ -1565,8 +1579,7 @@ class UserAPI:
                     if surl:
                         target_domains.append(surl)
 
-            # High-performance Remote Log Query Proxy:
-            # Query the WordPress plugin directly for authentic local logs without loading the central MongoDB database!
+            # 2. Query the WordPress plugin directly for authentic local logs without loading the central MongoDB database!
             if target_site and (target_site.get('url') or target_site.get('domain')):
                 raw_url = str(target_site.get('url') or target_site.get('domain') or '').strip().rstrip('/')
                 site_url = ('https://' + raw_url) if not raw_url.startswith(('http://', 'https://')) else raw_url

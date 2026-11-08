@@ -1407,8 +1407,8 @@ class WAF_FW_Scanner {
         }
 
         // Shell Execution Operator: Backticks with user input or variable
-        if (preg_match('/(?<![\w`"\'\\])`[^`\r\n]{1,80}\$_(?:GET|POST|REQUEST|COOKIE)[^`\r\n]{0,80}`(?![\w`"\'\\])/i', $code_no_comments) ||
-            preg_match('/\$([a-zA-Z0-9_]+)\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,120}(?<![\w`"\'\\])`[^`\r\n]{0,80}\$\1[^`\r\n]{0,80}`(?![\w`"\'\\])/i', $code_no_comments)) {
+        if (preg_match('/(?<![\w`"\'\\\\])`[^`\r\n]{1,80}\$_(?:GET|POST|REQUEST|COOKIE)[^`\r\n]{0,80}`(?![\w`"\'\\\\])/i', $code_no_comments) ||
+            preg_match('/\$([a-zA-Z0-9_]+)\s*=\s*\$_(?:GET|POST|REQUEST|COOKIE)[\s\S]{0,120}(?<![\w`"\'\\\\])`[^`\r\n]{0,80}\$\1[^`\r\n]{0,80}`(?![\w`"\'\\\\])/i', $code_no_comments)) {
             $score = max($score, 95);
             $confidence = 'HIGH';
             $classification = 'CONFIRMED_MALWARE';
@@ -1655,6 +1655,78 @@ class WAF_FW_Scanner {
                     '#(?:[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]{6,}.*?(?:激安|通販|送料無料|人気|ブランド|セール|正規品))#u',
                     '#<iframe\b[^>]*(?:display\s*:\s*none|width\s*:\s*0|left\s*:\s*-9999px|visibility\s*:\s*hidden)[^>]*>#i',
                     '#(?:display\s*:\s*none|position\s*:\s*absolute\s*;\s*left\s*:\s*-9999px|font-size\s*:\s*0px)[\s\S]{0,500}(?:viagra|cialis|levitra|online-casino|casino|payday\s+loans|replica\s+rolex|fake\s+bags|tramadol)#i',
+                ],
+            ],
+            'stream_wrapper_abuse' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#(?:include|require|include_once|require_once|load_template|file_get_contents|fopen|readfile)\s*\(?\s*[\x27\x22]?(?:compress\.(?:bzip2|zlib)|phar|data|glob|ogg)://#i',
+                    '#(?:compress\.(?:bzip2|zlib)|phar|zip)://[^\x27\x22]*\.(?:webp|jpg|jpeg|png|gif|ico|bin|dat)#i',
+                    '#php://filter[^\x27\x22]*convert\.(?:base64|iconv|quoted)#i',
+                    '#[\x27\x22](?:bzip2|zlib|compress|phar|zip)[\x27\x22]\s*\.\s*[\x27\x22]?://#i',
+                ],
+            ],
+            'wp_vcd' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#\bwp[-_]vcd\b#i',
+                    '#class_exists\s*\(\s*[\x27\x22]WPTemplatesOptions[\x27\x22]#i',
+                    '#\$install_code\s*=\s*#i',
+                    '#\$install_hash\s*=\s*#i',
+                    '#function\s+action_function\b[\s\S]{0,100}\$install_hash#i',
+                ],
+            ],
+            'auto_login_backdoor' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#wp_set_current_user\s*\([^)]*\)\s*;[^\r\n]{0,80}wp_set_auth_cookie#i',
+                    '#get_users\s*\(\s*\[?\s*[\x27\x22]role[\x27\x22]\s*=>\s*[\x27\x22]administrator[\x27\x22][\s\S]{0,200}wp_set_auth_cookie#i',
+                    '#foreach\s*\(\s*\$users[^)]*\)[^{]*\{[^}]*wp_set_auth_cookie#i',
+                ],
+            ],
+            'fake_core_function_loader' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#(?:load_template|locate_template)\s*\([^)]*\.\s*[\x27\x22]?[a-z0-9]*://#i',
+                    '#get_option\s*\([^)]*get_stylesheet\s*\(\s*\)[\s\S]{0,220}(?:load_template|locate_template|include|require)#i',
+                    '#!\s*function_exists\s*\(\s*[\x27\x22](?:wpengine_update|wp_cache_init|wp_theme_setup|_wp_load|wp_auto_update)[\x27\x22]\s*\)[\s\S]{0,150}(?:load_template|eval|include)#i',
+                ],
+            ],
+            'rogue_rest_backdoor' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#register_rest_route[\s\S]{0,400}permission_callback[\x27\x22]?\s*=>\s*[\x27\x22]__return_true[\x27\x22][\s\S]{0,300}(?:file_put_contents|unserialize|eval|assert|system|exec|wp_create_user|update_option)#i',
+                ],
+            ],
+            'object_injection' => [
+                'weight' => 95,
+                'patterns' => [
+                    '#@?unserialize\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                    '#@?unserialize\s*\(\s*(?:base64_decode|stripslashes)\s*\(\s*\$_#i',
+                    '#maybe_unserialize\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)#i',
+                ],
+            ],
+            'cloaking_router' => [
+                'weight' => 92,
+                'patterns' => [
+                    '#\$bot_user_agents\s*=\s*(?:array|\[)#i',
+                    '#(?:Googlebot|Bingbot|facebookexternalhit|Slurp|DuckDuckBot|YandexBot|AhrefsBot)[^\r\n]{0,200}(?:Googlebot|Bingbot|facebookexternalhit)#i',
+                    '#if\s*\(\s*is_bot\s*\([^)]*\)\s*\)\s*\{?\s*(?:include|require)\s*[\x27\x22]index#i',
+                    '#(?:include|require)\s+[\x27\x22]indexx{1,3}\.php[\x27\x22]#i',
+                ],
+            ],
+            'ssh_key_backdoor' => [
+                'weight' => 90,
+                'patterns' => [
+                    '#ssh-(?:rsa|ed25519|dss)\s+[A-Za-z0-9+/]{100,}#',
+                ],
+            ],
+            'card_skimmer_magecart' => [
+                'weight' => 98,
+                'patterns' => [
+                    '#addEventListener\s*\(\s*[\x27\x22](?:submit|change|blur|keyup)[\x27\x22][\s\S]{0,200}(?:cardnumber|cc-num|cc-number|cvv|cvc)#i',
+                    '#(?:new\s+Image\(\)|fetch\s*\(|XMLHttpRequest)[^\r\n]{0,150}(?:cvv|cardnumber|billing)[^\r\n]{0,150}https?://#i',
+                    '#document\.querySelector[\s\S]{0,80}(?:cardnumber|cc-number|cvv|cvc)#i',
                 ],
             ],
         ];
@@ -2074,7 +2146,21 @@ class WAF_FW_Scanner {
                 }
             } else {
                 // Polyglot Media/Carrier containing embedded PHP execution headers or base64 PHP markers
-                if (preg_match('/(<\?(?:php\b|=|\s)|<script\s+language\s*=\s*["\']?php["\']?|__halt_compiler\s*\(\s*\)|(?:PD9waH|c3lzdGVtKA|ZXZhbC|c2hlbGxfZXhlY))/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                $has_polyglot = false;
+                $poly_m = [];
+                // 1. Explicit PHP tags with execution sinks or tainted inputs
+                if (preg_match('/<\?(?:php|=)[\s\S]{0,1000}?(?:eval|assert|system|passthru|shell_exec|exec|popen|proc_open|\$_(?:GET|POST|REQUEST|COOKIE|SERVER)|base64_decode|gzinflate|str_rot13|include|require|file_put_contents)\b/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $has_polyglot = true;
+                } elseif (preg_match('/<script\s+language\s*=\s*["\']?php["\']?[\s\S]{0,500}?(?:eval|assert|system|passthru|shell_exec|exec|\$_(?:GET|POST|REQUEST|COOKIE))/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $has_polyglot = true;
+                } elseif (preg_match('/__halt_compiler\s*\(\s*\)/i', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    $has_polyglot = true;
+                } elseif (preg_match('/(?:PD9waHA[A-Za-z0-9+\/]{8,}|c3lzdGVtKA|c2hlbGxfZXhlY)/', $content, $poly_m, PREG_OFFSET_CAPTURE)) {
+                    // Valid base64 webshell markers: PD9waHA is '<?php', c3lzdGVtKA is 'system(', c2hlbGxfZXhlY is 'shell_exec'
+                    $has_polyglot = true;
+                }
+
+                if ($has_polyglot && !empty($poly_m)) {
                     $line_num = substr_count(substr($content, 0, $poly_m[0][1]), "\n") + 1;
                     $raw_snip = substr($content, $poly_m[0][1], 120);
                     $snippet = preg_replace('/[^\x20-\x7E\t\r\n]/', '', $raw_snip);
@@ -2139,11 +2225,12 @@ class WAF_FW_Scanner {
                     $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html'];
                     if (!in_array($name, $legit_root_extras, true)) {
                         $is_core_anomaly = true;
-                        if (in_array($ext, ['php', 'phtml', 'inc'])) {
+                        $is_exec_anomaly = in_array($ext, ['php', 'phtml', 'inc', 'sh', 'bash', 'py', 'pl', 'cgi', 'asp', 'aspx', 'jsp', 'exe', 'bat', 'cmd', 'ps1', 'vbs']);
+                        if ($is_exec_anomaly) {
                             $total_score = max($total_score, 95);
                             $classification = 'CONFIRMED_MALWARE';
                             $confidence = 'HIGH';
-                            $findings[] = 'Rogue Core File: Unauthorized PHP executable found inside WordPress directory (' . $rel_path . ')';
+                            $findings[] = 'Rogue Core File: Unauthorized ' . strtoupper($ext) . ' executable found inside WordPress directory (' . $rel_path . ')';
                         }
                     }
                 }
@@ -2167,11 +2254,17 @@ class WAF_FW_Scanner {
                 }
             }
 
+            $is_non_php_executable = in_array($ext, ['sh', 'bash', 'py', 'pl', 'cgi', 'asp', 'aspx', 'jsp', 'exe', 'bat', 'cmd', 'ps1', 'vbs', 'dll', 'so', 'elf']);
             if ($is_php) {
                 $total_score = max($total_score, 90);
                 $confidence = 'HIGH';
                 $classification = 'CONFIRMED_MALWARE';
                 $findings[] = 'Critical Threat: Executable PHP script located inside uploads directory (' . $name . ')';
+            } elseif ($is_non_php_executable) {
+                $total_score = max($total_score, 95);
+                $confidence = 'HIGH';
+                $classification = 'CONFIRMED_MALWARE';
+                $findings[] = 'Critical Threat: Unauthorized executable script (' . strtoupper($ext) . ') located inside uploads directory (' . $name . ')';
             } elseif ($name !== 'web.config' && $name !== '.htaccess' && (in_array($ext, ['env', 'sql', 'bak', 'backup', 'key', 'pem']) || strpos($name, '.env') === 0)) {
                 $total_score = max($total_score, 85);
                 $confidence = 'HIGH';

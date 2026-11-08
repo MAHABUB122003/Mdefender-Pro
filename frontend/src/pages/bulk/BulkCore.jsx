@@ -308,7 +308,7 @@ export default function BulkCore() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMsg.text}</span>
@@ -344,16 +344,16 @@ export default function BulkCore() {
                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>WP.ORG LIVE</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: '900', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                   WordPress {latestOfficialVer}
                 </span>
               </div>
-              <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <span>PHP {coreData.official_info?.php_required || '7.4'}+</span>
                 <span>•</span>
                 <span>MySQL {coreData.official_info?.mysql_required || '5.5.5'}+</span>
               </div>
-              <div style={{ marginTop: '12px', fontSize: '11.5px', color: '#889892', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ marginTop: '12px', fontSize: '11px', color: '#889892', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <CheckCircle2 size={13} color="#2A8B68" />
                 <span>Verified via official WordPress.org Version API</span>
               </div>
@@ -372,7 +372,7 @@ export default function BulkCore() {
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: '900', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                   {coreData.up_to_date_count} / {coreData.total_sites || displayedSites.length}
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#60716B' }}>Sites Updated</span>
@@ -386,7 +386,7 @@ export default function BulkCore() {
                   transition: 'width 0.4s ease'
                 }} />
               </div>
-              <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#60716B' }}>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#60716B' }}>
                 {coreData.fleet_integrity_pct}% fleet compliance rate across all connected origins
               </div>
             </div>
@@ -398,15 +398,15 @@ export default function BulkCore() {
                 <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>3,224 HASHES</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '28px', fontWeight: '900', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                   100%
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#2A8B68' }}>Integrity Target</span>
               </div>
-              <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#60716B' }}>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#60716B' }}>
                 Cryptographic MD5 verification against official SVN release manifests
               </div>
-              <div style={{ marginTop: '12px', fontSize: '11.5px', color: '#889892', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ marginTop: '12px', fontSize: '11px', color: '#889892', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <ShieldCheck size={13} color="#0284C7" />
                 <span>wp-admin, wp-includes &amp; root files</span>
               </div>
@@ -471,7 +471,7 @@ export default function BulkCore() {
                   {displayedSites.length} {displayedSites.length === 1 ? 'Site' : 'Sites'}
                 </span>
               </div>
-              <div style={{ fontSize: '12.5px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ fontSize: '12px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span>Official WP.org Source:</span>
                 <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: '#0B2522' }}>
                   api.wordpress.org/core/checksums/1.0/
@@ -532,7 +532,7 @@ export default function BulkCore() {
                                   </a>
                                 )}
                               </div>
-                              <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{
                                   width: '6px',
                                   height: '6px',
@@ -562,7 +562,7 @@ export default function BulkCore() {
                                 </span>
                               )}
                             </div>
-                            <span style={{ fontSize: '11.5px', color: '#889892' }}>
+                            <span style={{ fontSize: '11px', color: '#889892' }}>
                               {hasUpdate ? 'Security & feature release pending' : 'Running official release'}
                             </span>
                           </div>
@@ -579,7 +579,7 @@ export default function BulkCore() {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Database size={13} color="#889892" />
-                              <span style={{ fontSize: '11.5px', color: '#60716B' }}>
+                              <span style={{ fontSize: '11px', color: '#60716B' }}>
                                 {site.db_engine}
                               </span>
                             </div>
@@ -593,14 +593,14 @@ export default function BulkCore() {
                               {site.checksum_status === 'verified' ? (
                                 <>
                                   <CheckCircle2 size={14} color="#2A8B68" />
-                                  <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#2A8B68' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#2A8B68' }}>
                                     3,224 Files Verified
                                   </span>
                                 </>
                               ) : (
                                 <>
                                   <AlertTriangle size={14} color="#EA580C" />
-                                  <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#EA580C' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#EA580C' }}>
                                     {site.modified_files_count || 12} Modified Files Found
                                   </span>
                                 </>
@@ -716,7 +716,7 @@ export default function BulkCore() {
                       <div style={{ fontSize: '11px', fontWeight: '800', color: '#889892', letterSpacing: '0.04em' }}>
                         OFFICIAL API SOURCE
                       </div>
-                      <code style={{ fontSize: '11.5px', color: '#0B2522', wordBreak: 'break-all' }}>
+                      <code style={{ fontSize: '11px', color: '#0B2522', wordBreak: 'break-all' }}>
                         https://api.wordpress.org/core/checksums/1.0/?version={auditModalSite.installed_version}&amp;locale=en_US
                       </code>
                     </div>
@@ -805,7 +805,7 @@ export default function BulkCore() {
                                   border: 'none',
                                   padding: '6px 12px',
                                   borderRadius: '6px',
-                                  fontSize: '11.5px',
+                                  fontSize: '11px',
                                   fontWeight: '700',
                                   cursor: isRep ? 'not-allowed' : 'pointer',
                                   display: 'inline-flex',
@@ -825,7 +825,7 @@ export default function BulkCore() {
 
                   {/* Verified core files list */}
                   <div>
-                    <div style={{ fontSize: '12.5px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
                       Critical Core Engine Files Verified Against SVN:
                     </div>
                     <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #EAEFEB', borderRadius: '8px', background: '#FAFCFB' }}>
@@ -882,7 +882,7 @@ export default function BulkCore() {
                         border: 'none',
                         padding: '8px 18px',
                         borderRadius: '6px',
-                        fontSize: '12.5px',
+                        fontSize: '12px',
                         fontWeight: '700',
                         cursor: 'pointer'
                       }}
@@ -940,7 +940,7 @@ const primaryFleetButtonStyle = {
   border: 'none',
   padding: '9px 16px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -956,7 +956,7 @@ const secondaryFleetButtonStyle = {
   border: '1px solid #D9E1DC',
   padding: '9px 16px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1024,7 +1024,7 @@ const badgeStyle = (bg, color, border) => ({
   display: 'inline-block',
   padding: '3px 8px',
   borderRadius: '999px',
-  fontSize: '10.5px',
+  fontSize: '10px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,

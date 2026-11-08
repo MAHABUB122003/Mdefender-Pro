@@ -125,6 +125,8 @@ class MongoDB:
         _idx('websites', 'user_id')
         _idx('websites', [('user_id', 1), ('domain', 1), ('platform', 1)])
         _idx('websites', 'domain')
+        _idx('websites', 'site_token', sparse=True)
+        _idx('websites', 'api_key', sparse=True)
         _idx('wordpress_sites', 'user_id')
         _idx('wordpress_sites', 'domain')
         _idx('wordpress_sites', 'api_key')

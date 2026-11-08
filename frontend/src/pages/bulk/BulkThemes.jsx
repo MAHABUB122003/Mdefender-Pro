@@ -467,7 +467,7 @@ export default function BulkThemes() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} color="#FCA5A5" /> : <Check size={16} color="#34D399" />}
           <span>{toastMsg.text}</span>
@@ -617,7 +617,7 @@ export default function BulkThemes() {
 
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: '800', color: '#10201E', fontSize: '13.5px' }}>
+                              <span style={{ fontWeight: '800', color: '#10201E', fontSize: '13px' }}>
                                 {theme.name}
                               </span>
                               {isActive && (
@@ -736,7 +736,7 @@ export default function BulkThemes() {
                               border: `1px solid ${isActive ? '#0B2522' : '#D9E1DC'}`,
                               padding: '5px 12px',
                               borderRadius: '6px',
-                              fontSize: '11.5px',
+                              fontSize: '11px',
                               fontWeight: '700',
                               cursor: isActive ? 'default' : 'pointer',
                               color: isActive ? '#FFFFFF' : '#10201E',
@@ -766,7 +766,7 @@ export default function BulkThemes() {
                                 border: '1px solid #FECACA',
                                 padding: '5px 8px',
                                 borderRadius: '6px',
-                                fontSize: '11.5px',
+                                fontSize: '11px',
                                 cursor: 'pointer',
                                 color: '#DC2626',
                                 display: 'inline-flex',
@@ -851,7 +851,7 @@ export default function BulkThemes() {
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
                   Install New WordPress Theme
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#64748B' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748B' }}>
                   Direct install from WordPress.org repository to {scopeLabel}
                 </p>
               </div>
@@ -859,7 +859,7 @@ export default function BulkThemes() {
 
             <form onSubmit={handleInstallTheme}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Theme Directory Slug (WordPress.org)
                 </label>
                 <input
@@ -874,7 +874,7 @@ export default function BulkThemes() {
                     padding: '10px 14px',
                     borderRadius: '8px',
                     border: '1px solid #CBD5E1',
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     fontFamily: 'monospace',
                     boxSizing: 'border-box'
                   }}
@@ -1119,7 +1119,7 @@ export default function BulkThemes() {
               padding: '12px 14px',
               borderRadius: '8px',
               fontFamily: 'Consolas, monospace',
-              fontSize: '11.5px',
+              fontSize: '11px',
               maxHeight: '160px',
               overflowY: 'auto',
               lineHeight: 1.6
@@ -1188,7 +1188,7 @@ const primaryButtonStyle = {
   border: 'none',
   padding: '8px 18px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1217,7 +1217,7 @@ const badgeStyle = (bg, color, border) => ({
   display: 'inline-block',
   padding: '2px 8px',
   borderRadius: '999px',
-  fontSize: '10.5px',
+  fontSize: '10px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,

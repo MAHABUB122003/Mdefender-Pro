@@ -8,7 +8,7 @@ import userStore from '../utils/userStore'
 
 import copyToClipboard from '../utils/clipboard'
 
-import DnsZoneDrawer from '../components/DnsZoneDrawer'
+// DnsZoneDrawer removed
 
 import WordPressLogo from '../components/WordPressLogo'
 
@@ -86,22 +86,10 @@ export default function UserWebsites() {
 
 
 
-  // Dedicated WordPress Websites (Fall back to all websites so no domain is ever hidden)
-
+  // Dedicated WordPress Websites
   const wpWebsites = useMemo(() => {
-
     const list = data?.websites || []
-
-    const strictlyWp = list.filter(w => {
-
-      const p = (w.platform || '').toLowerCase()
-
-      return p === 'wordpress' || p === 'wp' || p.startsWith('wordpress')
-
-    })
-
-    return strictlyWp.length > 0 ? strictlyWp : list
-
+    return list.filter(w => (w.platform || '').toLowerCase() === 'wordpress' || (w.platform || '').toLowerCase().startsWith('wp'))
   }, [data])
 
 
@@ -455,25 +443,15 @@ export default function UserWebsites() {
 
 
   const handleOpenKeyModal = (w) => {
-
     const domain = w.domain || w.name || w.url || 'My Website'
-
     const id = w.id || w._id || ''
-
     setModalDomain(domain)
-
     setModalWebsiteId(id)
-
     const key = w.api_key || data?.api_key || ''
-
     setModalKey(key)
-
     setIsMasked(true)
-
-    setModalTab('wordpress')
-
+    setModalTab(w.platform === 'custom_sdk' ? 'sdk' : 'wordpress')
     setShowKeyModal(true)
-
   }
 
 
@@ -991,7 +969,7 @@ export default function UserWebsites() {
 
             <div>
 
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400e' }}>Free Tier Active</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#92400e' }}>Free Tier Active</div>
 
               <div style={{ fontSize: '12px', color: '#b45309', marginTop: '2px' }}>Upgrade to Enterprise Pro for up to 10 protected domains, real-time ML rules &amp; priority telemetry.</div>
 
@@ -1023,7 +1001,7 @@ export default function UserWebsites() {
 
         <div style={{
 
-          padding: '12px 18px', borderRadius: '10px', marginBottom: '20px', fontSize: '13.5px', fontWeight: '600',
+          padding: '12px 18px', borderRadius: '10px', marginBottom: '20px', fontSize: '13px', fontWeight: '600',
 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
 
@@ -1175,7 +1153,7 @@ export default function UserWebsites() {
 
                 <span style={{
 
-                  fontSize: '10.5px',
+                  fontSize: '10px',
 
                   fontWeight: '800',
 
@@ -1197,7 +1175,7 @@ export default function UserWebsites() {
 
               </div>
 
-              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '3px' }}>
 
                 Kernel-level PHP AST engine, real-time Layer 7 WAF, and autonomous malware quarantine.
 
@@ -1227,7 +1205,7 @@ export default function UserWebsites() {
 
                 borderRadius: '9px',
 
-                fontSize: '12.5px',
+                fontSize: '12px',
 
                 fontWeight: '700',
 
@@ -1253,46 +1231,6 @@ export default function UserWebsites() {
 
             </a>
 
-
-
-            <Link
-
-              to="/user/domains"
-
-              style={{
-
-                padding: '9px 16px',
-
-                background: '#FAFBF9',
-
-                border: '1px solid #D9E1DC',
-
-                color: '#10201E',
-
-                borderRadius: '9px',
-
-                fontSize: '12.5px',
-
-                fontWeight: '700',
-
-                textDecoration: 'none',
-
-                display: 'inline-flex',
-
-                alignItems: 'center',
-
-                gap: '6px'
-
-              }}
-
-            >
-
-              <Globe size={14} color="#2A8B68" />
-
-              <span>Cloud WAF Domains &rarr;</span>
-
-            </Link>
-
           </div>
 
         </div>
@@ -1309,7 +1247,7 @@ export default function UserWebsites() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Key size={14} color="#059669" />
               </div>
@@ -1318,7 +1256,7 @@ export default function UserWebsites() {
                 Active
               </span>
             </div>
-            <div style={{ fontSize: '12.5px', color: '#64748B' }}>
+            <div style={{ fontSize: '12px', color: '#64748B' }}>
               Paste this key into your WordPress plugin to connect your website.
             </div>
           </div>
@@ -1350,7 +1288,7 @@ export default function UserWebsites() {
               }}
               style={{
                 padding: '9px 18px', background: '#059669', color: '#FFFFFF', border: 'none',
-                borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
+                borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 boxShadow: '0 1px 3px rgba(5, 150, 105, 0.25)',
                 transition: 'all 0.15s ease'
@@ -1366,7 +1304,7 @@ export default function UserWebsites() {
               disabled={regeneratingAccountKey}
               style={{
                 padding: '9px 14px', background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1',
-                borderRadius: '8px', fontSize: '12.5px', fontWeight: '600', cursor: regeneratingAccountKey ? 'wait' : 'pointer',
+                borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: regeneratingAccountKey ? 'wait' : 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 transition: 'all 0.15s ease'
               }}
@@ -1425,7 +1363,7 @@ export default function UserWebsites() {
 
                     borderRadius: '10px',
 
-                    fontSize: '13.5px',
+                    fontSize: '13px',
 
                     fontFamily: 'inherit',
 
@@ -1593,7 +1531,7 @@ export default function UserWebsites() {
 
             </h3>
 
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748B' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
 
               Manage WordPress site API keys, edge security status, and Under Attack enforcement.
 
@@ -1696,52 +1634,32 @@ export default function UserWebsites() {
                     borderRadius: '12px',
 
                     background: '#FAFBF9',
-
                     border: '1.5px solid #D9E1DC',
-
                     display: 'flex',
-
                     alignItems: 'center',
-
                     justifyContent: 'center',
-
                     boxShadow: '0 1px 3px rgba(16, 32, 30, 0.04)',
-
                     position: 'relative',
-
                     flexShrink: 0
-
                   }}>
-
                     <WordPressLogo size={28} color="#10201E" />
-
                     <span style={{
-
                       position: 'absolute',
-
                       bottom: '-2px',
-
                       right: '-2px',
-
                       width: '9px',
-
                       height: '9px',
-
                       borderRadius: '50%',
-
                       background: '#10B981',
-
                       border: '2px solid #FFFFFF'
-
                     }} />
-
                   </div>
 
 
 
                   <div>
 
-                    <div style={{ fontSize: '14.5px', fontWeight: '700', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 
                       <a
 
@@ -1777,7 +1695,7 @@ export default function UserWebsites() {
 
                       <span style={{
 
-                        fontSize: '10.5px',
+                        fontSize: '10px',
 
                         padding: '2px 8px',
 
@@ -1808,37 +1726,24 @@ export default function UserWebsites() {
 
 
                       <span style={{
-
-                        fontSize: '10.5px',
-
+                        fontSize: '10px',
                         padding: '2px 8px',
-
                         borderRadius: '6px',
-
                         background: '#F1F5F3',
-
                         color: '#1E293B',
-
                         border: '1px solid #D9E1DC',
-
                         fontWeight: '700',
-
                         display: 'inline-flex',
-
                         alignItems: 'center',
-
                         gap: '5px'
-
                       }}>
-
                         <WordPressLogo size={12} color="#10201E" />
-
                         <span>WordPress Plugin</span>
                       </span>
 
                       {(w.trial_days_remaining !== undefined && w.trial_days_remaining !== null) ? (
                         <span style={{
-                          fontSize: '10.5px',
+                          fontSize: '10px',
                           padding: '2px 8px',
                           borderRadius: '6px',
                           background: w.trial_days_remaining > 0 ? '#EFF6FF' : '#FEF2F2',
@@ -1854,7 +1759,7 @@ export default function UserWebsites() {
                         </span>
                       ) : (w.subscription_status === 'active' || isPremium) ? (
                         <span style={{
-                          fontSize: '10.5px',
+                          fontSize: '10px',
                           padding: '2px 8px',
                           borderRadius: '6px',
                           background: '#F0FDF4',
@@ -1876,7 +1781,7 @@ export default function UserWebsites() {
 
                         <span style={{
 
-                          fontSize: '10.5px',
+                          fontSize: '10px',
 
                           padding: '2px 8px',
 
@@ -1910,7 +1815,7 @@ export default function UserWebsites() {
 
 
 
-                    <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                    <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px' }}>
 
                       Connected: {w.added_at ? (typeof w.added_at === 'string' ? w.added_at.split('T')[0] : 'Protected') : 'Protected'} &bull; Real-time Edge WAF Synced
 
@@ -2022,7 +1927,7 @@ export default function UserWebsites() {
 
                       borderRadius: '8px',
 
-                      fontSize: '12.5px',
+                      fontSize: '12px',
 
                       fontWeight: '700',
 
@@ -2170,7 +2075,7 @@ export default function UserWebsites() {
 
                             color: '#10201E',
 
-                            fontSize: '12.5px',
+                            fontSize: '12px',
 
                             fontWeight: '600',
 
@@ -2214,7 +2119,7 @@ export default function UserWebsites() {
                             border: 'none',
                             borderRadius: '8px',
                             color: '#047857',
-                            fontSize: '12.5px',
+                            fontSize: '12px',
                             fontWeight: '700',
                             cursor: 'pointer',
                             display: 'flex',
@@ -2258,7 +2163,7 @@ export default function UserWebsites() {
 
                             color: '#10201E',
 
-                            fontSize: '12.5px',
+                            fontSize: '12px',
 
                             fontWeight: '600',
 
@@ -2308,7 +2213,7 @@ export default function UserWebsites() {
 
                             color: '#10201E',
 
-                            fontSize: '12.5px',
+                            fontSize: '12px',
 
                             fontWeight: '600',
 
@@ -2342,58 +2247,6 @@ export default function UserWebsites() {
 
 
 
-                        <a
-
-                          href="/user/rules"
-
-                          style={{
-
-                            width: '100%',
-
-                            padding: '8px 12px',
-
-                            background: 'none',
-
-                            border: 'none',
-
-                            borderRadius: '8px',
-
-                            color: '#10201E',
-
-                            fontSize: '12.5px',
-
-                            fontWeight: '600',
-
-                            textDecoration: 'none',
-
-                            display: 'flex',
-
-                            alignItems: 'center',
-
-                            gap: '8px',
-
-                            textAlign: 'left',
-
-                            boxSizing: 'border-box',
-
-                            transition: 'background 0.12s ease'
-
-                          }}
-
-                          onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3' }}
-
-                          onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
-
-                        >
-
-                          <Sliders size={14} color="#6366F1" />
-
-                          <span>Configure WAF Rules</span>
-
-                        </a>
-
-
-
                         <div style={{ height: '1px', background: '#F1F5F2', margin: '4px 0' }} />
 
 
@@ -2418,7 +2271,7 @@ export default function UserWebsites() {
 
                             color: '#DC2626',
 
-                            fontSize: '12.5px',
+                            fontSize: '12px',
 
                             fontWeight: '700',
 
@@ -2520,766 +2373,252 @@ export default function UserWebsites() {
 
       {/* ========================================================================= */}
 
-      {showKeyModal && (
-
+            {showKeyModal && (
         <div
-
           onClick={() => setShowKeyModal(false)}
-
           style={{
-
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-
-            backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)',
-
+            backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
-
-            padding: '24px 16px',
-
+            padding: '20px 16px',
             animation: 'fadeIn 0.2s ease-out'
-
           }}
-
         >
-
           <div
-
             onClick={e => e.stopPropagation()}
-
             style={{
-
-              background: '#ffffff', borderRadius: '20px',
-
-              border: '1px solid #e2e8f0',
-
-              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8)',
-
-              width: '100%', maxWidth: '720px', maxHeight: '90vh',
-
-              overflowY: 'auto', display: 'flex', flexDirection: 'column',
-
-              color: '#0f172a',
-
-              position: 'relative'
-
+              background: '#ffffff', borderRadius: '18px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.6)',
+              width: '100%', maxWidth: '540px',
+              display: 'flex', flexDirection: 'column',
+              color: '#0F172A',
+              position: 'relative',
+              overflow: 'hidden'
             }}
-
           >
-
             {/* Modal Header */}
-
             <div style={{
-
-              padding: '20px 26px',
-
-              borderBottom: '1px solid #D9E1DC',
-
+              padding: '18px 24px',
+              borderBottom: '1px solid #F1F5F9',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-
               background: '#FFFFFF'
-
             }}>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
-
-                  width: '44px', height: '44px', borderRadius: '12px',
-
-                  background: '#FAFBF9',
-
-                  border: '1.5px solid #D9E1DC',
-
-                  boxShadow: '0 2px 6px rgba(16, 32, 30, 0.04)',
-
+                  width: '40px', height: '40px', borderRadius: '10px',
+                  background: '#F8FAFC',
+                  border: '1.5px solid #E2E8F0',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-
                   position: 'relative'
-
                 }}>
-
-                  <WordPressLogo size={28} color="#10201E" />
-
+                  <WordPressLogo size={24} color="#0F172A" />
                   <span style={{
-
                     position: 'absolute', bottom: '-2px', right: '-2px',
-
-                    width: '9px', height: '9px', borderRadius: '50%',
-
+                    width: '8px', height: '8px', borderRadius: '50%',
                     background: '#10B981', border: '2px solid #FFFFFF'
-
                   }} />
-
                 </div>
-
                 <div>
-
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E', letterSpacing: '-0.2px' }}>
-
-                      WordPress Security &amp; API Integration Hub
-
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0F172A', letterSpacing: '-0.2px' }}>
+                      WordPress API Key
                     </h3>
-
                     <span style={{
-
-                      fontSize: '10.5px', fontWeight: '800', color: '#15803D',
-
-                      background: '#F0FDF4', border: '1px solid #DCFCE7',
-
-                      padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px'
-
+                      fontSize: '10px', fontWeight: '700', color: '#059669',
+                      background: '#ECFDF5', border: '1px solid #A7F3D0',
+                      padding: '2px 7px', borderRadius: '5px', display: 'inline-flex', alignItems: 'center', gap: '4px'
                     }}>
-
                       <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
-
                       Active WAF
-
                     </span>
-
                   </div>
-
-                  <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>Target Host:</span>
-
-                    <strong style={{
-
-                      color: '#10201E', background: '#FAFBF9', padding: '1px 8px',
-
-                      borderRadius: '6px', border: '1px solid #D9E1DC', fontFamily: 'Consolas, Monaco, monospace'
-
+                    <code style={{
+                      color: '#0F172A', background: '#F1F5F9', padding: '1px 6px',
+                      borderRadius: '5px', fontFamily: 'Consolas, Monaco, monospace', fontSize: '11px', fontWeight: '600'
                     }}>
-
                       {modalDomain}
-
-                    </strong>
-
+                    </code>
                   </div>
-
                 </div>
-
               </div>
-
-
 
               {/* Close Button */}
-
               <button
-
                 onClick={() => setShowKeyModal(false)}
-
                 aria-label="Close modal"
-
                 style={{
-
-                  background: '#FAFBF9', border: '1px solid #D9E1DC',
-
-                  color: '#64748B', width: '34px', height: '34px', borderRadius: '10px',
-
-                  cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-
+                  background: '#F8FAFC', border: '1px solid #E2E8F0',
+                  color: '#64748B', width: '32px', height: '32px', borderRadius: '8px',
+                  cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s ease'
-
                 }}
-
-                onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3'; e.currentTarget.style.color = '#10201E'; }}
-
-                onMouseLeave={e => { e.currentTarget.style.background = '#FAFBF9'; e.currentTarget.style.color = '#64748B'; }}
-
+                onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#0F172A'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}
               >
-
                 <i className="fas fa-xmark"></i>
-
               </button>
-
             </div>
-
-
 
             {/* Modal Body */}
-
-            <div style={{ padding: '22px 26px' }}>
-
-
-
+            <div style={{ padding: '22px 24px' }}>
               {/* API Key Vault Card */}
-
               <div style={{
-
-                background: '#FAFBF9',
-
-                border: '1px solid #D9E1DC',
-
-                borderRadius: '14px', padding: '16px 18px', marginBottom: '20px',
-
-                boxShadow: '0 1px 3px rgba(16, 32, 30, 0.02)'
-
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '12px', padding: '16px',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
               }}>
-
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-
-                    <i className="fas fa-lock" style={{ fontSize: '12px', color: '#10201E' }}></i>
-
-                    <span style={{ fontSize: '11.5px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#10201E' }}>
-
-                      Dedicated WordPress API Key
-
+                    <i className="fas fa-key" style={{ fontSize: '11px', color: '#059669' }}></i>
+                    <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#0F172A' }}>
+                      Site Secret API Key
                     </span>
-
-                    <span style={{
-
-                      fontSize: '10px', fontWeight: '800', color: '#15803D',
-
-                      background: '#F0FDF4', border: '1px solid #DCFCE7', padding: '1px 6px', borderRadius: '4px',
-
-                      marginLeft: '4px'
-
-                    }}>
-
-                      PRODUCTION
-
-                    </span>
-
-                    <span style={{
-
-                      fontSize: '10px', fontWeight: '800', color: '#0369A1',
-
-                      background: '#F0F9FF', border: '1px solid #BAE6FD', padding: '1px 6px', borderRadius: '4px',
-
-                      marginLeft: '4px'
-
-                    }}>
-
-                      SHA-256 HASHED
-
-                    </span>
-
-                    <span style={{
-
-                      fontSize: '10px', fontWeight: '800', color: '#6366F1',
-
-                      background: '#EEF2FF', border: '1px solid #C7D2FE', padding: '1px 6px', borderRadius: '4px',
-
-                      marginLeft: '4px'
-
-                    }}>
-
-                      238-BIT ENTROPY
-
-                    </span>
-
                   </div>
 
-
-
                   <button
-
                     type="button"
-
                     onClick={() => setIsMasked(!isMasked)}
-
                     style={{
-
-                      background: '#FFFFFF', border: '1px solid #D9E1DC',
-
+                      background: '#FFFFFF', border: '1px solid #CBD5E1',
                       color: '#475569', padding: '4px 10px', borderRadius: '6px',
-
-                      fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
-
+                      fontSize: '11px', fontWeight: '700', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '5px',
-
                       transition: 'all 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-
                     }}
-
-                    onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F3'; e.currentTarget.style.color = '#10201E'; }}
-
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#0F172A'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#475569'; }}
-
                   >
-
                     <i className={`fas ${isMasked ? 'fa-eye' : 'fa-eye-slash'}`}></i>
-
                     <span>{isMasked ? 'Reveal Key' : 'Hide Key'}</span>
-
                   </button>
-
                 </div>
-
-
 
                 {/* Key Display & One-Click Copy */}
-
                 <div style={{
-
                   display: 'flex', alignItems: 'center', gap: '10px',
-
-                  background: '#FFFFFF', border: '1.5px solid #D9E1DC',
-
-                  borderRadius: '10px', padding: '6px 6px 6px 14px',
-
-                  boxShadow: 'inset 0 1px 2px rgba(16, 32, 30, 0.02)'
-
+                  background: '#FFFFFF', border: '1.5px solid #CBD5E1',
+                  borderRadius: '10px', padding: '6px 6px 6px 12px',
+                  boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.03)'
                 }}>
-
                   <div style={{
-
                     flex: 1, fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-
-                    fontSize: '13px', color: isMasked ? '#87948D' : '#10201E',
-
+                    fontSize: '13px', color: isMasked ? '#94A3B8' : '#0F172A',
                     letterSpacing: isMasked ? '2px' : '0.4px', wordBreak: 'break-all',
-
                     fontWeight: '700', userSelect: isMasked ? 'none' : 'all'
-
                   }}>
-
                     {isMasked
-
                       ? (modalKey
-
                         ? (modalKey.startsWith('mdf_live_sec_')
-
                           ? `mdf_live_sec_••••••••••••${modalKey.slice(-4)}`
-
                           : `${modalKey.slice(0, 8)}••••••••••••${modalKey.slice(-4)}`)
-
                         : '••••••••••••••••••••••••••••••••')
-
                       : (modalKey || 'No API key generated')}
-
                   </div>
 
-
-
                   <button
-
                     type="button"
-
                     onClick={handleCopyKey}
-
                     style={{
-
-                      padding: '8px 16px',
-
-                      background: copiedKey ? '#15803D' : '#10201E',
-
-                      color: '#FFFFFF', border: 'none', borderRadius: '8px',
-
+                      padding: '7px 14px',
+                      background: copiedKey ? '#ECFDF5' : '#2563EB',
+                      color: copiedKey ? '#059669' : '#FFFFFF',
+                      border: `1px solid ${copiedKey ? '#A7F3D0' : '#2563EB'}`,
+                      borderRadius: '7px',
                       cursor: 'pointer', fontWeight: '700', fontSize: '12px',
-
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
-
-                      boxShadow: '0 2px 6px rgba(16, 32, 30, 0.15)',
-
+                      boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
                       transition: 'all 0.15s ease', whiteSpace: 'nowrap', flexShrink: 0
-
                     }}
-
                   >
-
                     <i className={`fas ${copiedKey ? 'fa-check' : 'fa-copy'}`}></i>
-
                     <span>{copiedKey ? 'Copied!' : 'Copy Key'}</span>
-
                   </button>
-
                 </div>
 
-
-
-                {/* Security footer under key */}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
-
-                  <div style={{ fontSize: '11.5px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-
-                    <i className="fas fa-shield-halved" style={{ color: '#15803D' }}></i>
-
+                {/* Actions & Hint */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fas fa-shield-halved" style={{ color: '#059669' }}></i>
                     <span>Enter this key inside MDefender Pro WordPress plugin settings.</span>
-
                   </div>
-
-
 
                   <button
-
                     type="button"
-
                     onClick={handleRegenerateKey}
-
                     disabled={regenerating}
-
                     style={{
-
                       background: 'none', border: 'none', color: '#DC2626',
-
-                      fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
-
+                      fontSize: '11px', fontWeight: '700', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: '4px',
-
                       opacity: regenerating ? 0.6 : 1
-
                     }}
-
                   >
-
                     <i className={`fas ${regenerating ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'}`}></i>
-
                     <span>{regenerating ? 'Regenerating...' : 'Regenerate Key'}</span>
-
                   </button>
-
                 </div>
-
               </div>
 
-
-
-              {/* Integration Guides Hub */}
-
-              <div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-
-                  <div>
-
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
-
-                      <WordPressLogo size={18} color="#10201E" />
-
-                      <span>WordPress Plugin Setup (3 Easy Steps)</span>
-
-                    </div>
-
-                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-
-                      Follow these simple steps to connect and arm MDefender Pro on your WordPress site.
-
-                    </div>
-
+              {/* Status Metadata Strip */}
+              <div style={{
+                marginTop: '16px',
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px'
+              }}>
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Integration</div>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#0F172A', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <WordPressLogo size={14} color="#0F172A" /> WordPress
                   </div>
-
                 </div>
 
-
-
-                {/* WordPress Setup Guide Card */}
-
-                <div style={{
-
-                  background: '#FFFFFF', border: '1px solid #D9E1DC',
-
-                  borderRadius: '14px', padding: '18px', color: '#334155'
-
-                }}>
-
-                  {/* WordPress Download Card */}
-
-                  <div style={{
-
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-
-                    background: '#FAFBF9',
-
-                    border: '1px solid #D9E1DC', borderRadius: '12px',
-
-                    padding: '14px 16px', marginBottom: '16px', flexWrap: 'wrap', gap: '12px'
-
-                  }}>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-
-                      <div style={{
-
-                        width: '42px', height: '42px', borderRadius: '10px',
-
-                        background: '#FAFBF9',
-
-                        border: '1px solid #D9E1DC',
-
-                        display: 'flex', alignItems: 'center',
-
-                        justifyContent: 'center', flexShrink: 0
-
-                      }}>
-
-                        <WordPressLogo size={30} color="#10201E" />
-
-                      </div>
-
-                      <div>
-
-                        <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E' }}>
-
-                          MDefender Pro WordPress Security Plugin
-
-                        </div>
-
-                        <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
-
-                          Official release v2.0 &bull; Real-time Layer 7 WAF &amp; Malware scanner
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <a
-
-                      href="/api/v1/wordpress/download"
-
-                      download="mdefender-pro.zip"
-
-                      style={{
-
-                        padding: '8px 16px', background: '#0B2522',
-
-                        color: '#FFFFFF', borderRadius: '8px', fontSize: '12px', fontWeight: '700',
-
-                        textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px',
-
-                        boxShadow: '0 2px 6px rgba(11, 37, 34, 0.15)',
-
-                        transition: 'all 0.15s ease'
-
-                      }}
-
-                    >
-
-                      <Download size={14} />
-
-                      <span>Download Plugin (.ZIP)</span>
-
-                    </a>
-
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Authentication</div>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#0F172A', marginTop: '2px' }}>
+                    Bearer Token
                   </div>
-
-
-
-                  {/* Step-by-Step Setup */}
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-                    <div style={{ display: 'flex', gap: '12px' }}>
-
-                      <span style={{
-
-                        width: '22px', height: '22px', borderRadius: '50%', background: '#F1F5F3',
-
-                        color: '#10201E', border: '1px solid #D9E1DC', fontSize: '11px', fontWeight: '800', display: 'inline-flex',
-
-                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
-
-                      }}>1</span>
-
-                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155' }}>
-
-                        Upload the plugin in your WordPress Dashboard under <strong>Plugins &rarr; Add New Plugin &rarr; Upload Plugin</strong> and click <strong>Activate</strong>.
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div style={{ display: 'flex', gap: '12px' }}>
-
-                      <span style={{
-
-                        width: '22px', height: '22px', borderRadius: '50%', background: '#F1F5F3',
-
-                        color: '#10201E', border: '1px solid #D9E1DC', fontSize: '11px', fontWeight: '800', display: 'inline-flex',
-
-                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
-
-                      }}>2</span>
-
-                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
-
-                        In WP Admin &rarr; <strong>MDefender Pro &rarr; Settings</strong>, paste your <strong>Site Secret API Key</strong>:
-
-                        <div style={{
-
-                          marginTop: '6px', background: '#FAFBF9', border: '1px solid #D9E1DC',
-
-                          borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
-
-                          alignItems: 'center', gap: '8px'
-
-                        }}>
-
-                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#10201E', wordBreak: 'break-all', fontWeight: '700' }}>
-
-                            {modalKey || 'API_KEY_HERE'}
-
-                          </span>
-
-                          <button
-
-                            type="button"
-
-                            onClick={handleCopyKey}
-
-                            style={{
-
-                              background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E',
-
-                              padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-
-                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-
-                            }}
-
-                          >
-
-                            <i className={`fas ${copiedKey ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
-
-                            {copiedKey ? 'Copied' : 'Copy'}
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-
-
-                    <div style={{ display: 'flex', gap: '12px' }}>
-
-                      <span style={{
-
-                        width: '22px', height: '22px', borderRadius: '50%', background: '#F1F5F3',
-
-                        color: '#10201E', border: '1px solid #D9E1DC', fontSize: '11px', fontWeight: '800', display: 'inline-flex',
-
-                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
-
-                      }}>3</span>
-
-                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#334155', flex: 1 }}>
-
-                        Set <strong>API Endpoint URL</strong> to:
-
-                        <div style={{
-
-                          marginTop: '6px', background: '#FAFBF9', border: '1px solid #D9E1DC',
-
-                          borderRadius: '8px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between',
-
-                          alignItems: 'center', gap: '8px'
-
-                        }}>
-
-                          <span style={{ fontFamily: 'Consolas, monospace', fontSize: '12px', color: '#10201E', fontWeight: '700' }}>
-
-                            {apiEndpoint}
-
-                          </span>
-
-                          <button
-
-                            type="button"
-
-                            onClick={handleCopyEndpoint}
-
-                            style={{
-
-                              background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#10201E',
-
-                              padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700',
-
-                              cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-
-                            }}
-
-                          >
-
-                            <i className={`fas ${copiedEndpoint ? 'fa-check text-green-600' : 'fa-copy'}`} style={{ marginRight: '4px' }}></i>
-
-                            {copiedEndpoint ? 'Copied' : 'Copy'}
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
                 </div>
 
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>WAF Shield</div>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#059669', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span> Armed
+                  </div>
+                </div>
               </div>
-
             </div>
-
-
 
             {/* Modal Footer */}
-
             <div style={{
-
-              padding: '14px 26px',
-
-              borderTop: '1px solid #D9E1DC',
-
-              background: '#FAFBF9',
-
-              borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px',
-
+              padding: '14px 24px',
+              borderTop: '1px solid #F1F5F9',
+              background: '#F8FAFC',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-
             }}>
-
-              <div style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-
-                <i className="fas fa-book-open" style={{ color: '#10201E' }}></i>
-
-                <span>Need setup help? Check the <a href="/docs" target="_blank" rel="noreferrer" style={{ color: '#15803D', textDecoration: 'none', fontWeight: '700' }}>WAF Documentation &rarr;</a></span>
-
+              <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-lock" style={{ color: '#94A3B8' }}></i>
+                <span>Keep this key private. Never expose it in client code.</span>
               </div>
 
-
-
               <button
-
+                type="button"
                 onClick={() => setShowKeyModal(false)}
-
                 style={{
-
-                  height: '38px', padding: '0 24px', borderRadius: '9px', fontSize: '13px', fontWeight: '800',
-
-                  background: '#10201E', color: '#FFFFFF',
-
-                  border: 'none', boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)', cursor: 'pointer',
-
+                  height: '36px', padding: '0 22px', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
+                  background: '#0F172A', color: '#FFFFFF',
+                  border: 'none', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.15)', cursor: 'pointer',
                   transition: 'all 0.15s ease'
-
                 }}
-
               >
-
-                Done &amp; Activated
-
+                Done
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
 
 
@@ -3342,7 +2681,7 @@ export default function UserWebsites() {
 
             </h3>
 
-            <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.6', margin: '0 0 24px' }}>
+            <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', margin: '0 0 24px' }}>
 
               Your current plan website limit has been reached. Upgrade to Enterprise Pro to connect up to 10 protected domains, unlock real-time ML threat detection, and priority support.
 
@@ -3486,7 +2825,7 @@ export default function UserWebsites() {
 
                   </h3>
 
-                  <div style={{ fontSize: '11.5px', color: '#B91C1C', marginTop: '1px' }}>
+                  <div style={{ fontSize: '11px', color: '#B91C1C', marginTop: '1px' }}>
 
                     Irreversible destructive action
 
@@ -3536,7 +2875,7 @@ export default function UserWebsites() {
 
                 borderRadius: '10px', padding: '12px 14px', marginBottom: '16px',
 
-                fontSize: '12.5px', color: '#10201E'
+                fontSize: '12px', color: '#10201E'
 
               }}>
 
@@ -3580,7 +2919,7 @@ export default function UserWebsites() {
 
                   border: '1.5px solid ' + (deleteConfirmInput.trim().toLowerCase() === (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase() ? '#DC2626' : '#D9E1DC'),
 
-                  borderRadius: '9px', fontSize: '13.5px', fontWeight: '600',
+                  borderRadius: '9px', fontSize: '13px', fontWeight: '600',
 
                   background: '#FFFFFF', color: '#10201E', outline: 'none',
 
@@ -3618,7 +2957,7 @@ export default function UserWebsites() {
 
                   padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
 
-                  borderRadius: '8px', fontSize: '12.5px', fontWeight: '700',
+                  borderRadius: '8px', fontSize: '12px', fontWeight: '700',
 
                   color: '#475569', cursor: 'pointer'
 
@@ -3652,7 +2991,7 @@ export default function UserWebsites() {
 
                   background: deleteConfirmInput.trim().toLowerCase() === (deleteModalSite.domain || deleteModalSite.name || '').toLowerCase() ? '#DC2626' : '#FCA5A5',
 
-                  border: 'none', borderRadius: '8px', fontSize: '12.5px', fontWeight: '800',
+                  border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '800',
 
                   color: '#FFFFFF',
 
@@ -3704,25 +3043,7 @@ export default function UserWebsites() {
 
 
 
-      <DnsZoneDrawer
 
-        isOpen={!!selectedZoneWebsite}
-
-        website={selectedZoneWebsite}
-
-        onClose={() => setSelectedZoneWebsite(null)}
-
-        onRecordUpdated={async () => {
-
-          userStore.invalidate('websites')
-
-          userStore.invalidate('dashboard')
-
-          await fetchData()
-
-        }}
-
-      />
 
     </div>
 

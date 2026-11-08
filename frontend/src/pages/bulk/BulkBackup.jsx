@@ -446,7 +446,7 @@ export default function BulkBackup() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMsg.text}</span>
@@ -526,13 +526,13 @@ export default function BulkBackup() {
                 <span style={kpiHeaderLabelStyle}>STORED BACKUPS</span>
                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>STORAGE LIVE</span>
               </div>
-              <div style={{ fontSize: '26px', fontWeight: '900', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {backups.length} {backups.length === 1 ? 'Archive' : 'Archives'}
               </div>
               <div style={{ marginTop: '8px', fontSize: '13px', color: '#2A8B68', fontWeight: '700' }}>
                 {totalSize} Total Storage
               </div>
-              <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#889892' }}>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
                 Stored in isolated filesystem storage
               </div>
             </div>
@@ -549,7 +549,7 @@ export default function BulkBackup() {
               <div style={{ marginTop: '8px', fontSize: '13px', color: '#4F46E5', fontWeight: '700' }}>
                 {latestBackup ? `${(latestBackup.type || 'full').toUpperCase()} Snapshot (${latestBackup.size})` : 'Create your first backup'}
               </div>
-              <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#889892' }}>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
                 {latestBackup ? latestBackup.filename : 'Ready for capture'}
               </div>
             </div>
@@ -566,13 +566,13 @@ export default function BulkBackup() {
                   {schedule.enabled ? 'ACTIVE' : 'DISABLED'}
                 </span>
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '900', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {schedule.enabled ? `● ${schedule.frequency.toUpperCase()}` : 'Manual Only'}
               </div>
               <div style={{ marginTop: '8px', fontSize: '13px', color: '#60716B', fontWeight: '600' }}>
                 Retention: Keep last {schedule.retention} backups
               </div>
-              <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#889892' }}>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
                 Background execution managed via WP-Cron
               </div>
             </div>
@@ -583,13 +583,13 @@ export default function BulkBackup() {
                 <span style={kpiHeaderLabelStyle}>ENGINE CAPABILITIES</span>
                 <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>ZIP / SQL</span>
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '900', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 ZipArchive: Active
               </div>
               <div style={{ marginTop: '8px', fontSize: '12px', color: '#60716B' }}>
                 <code>wp-content/mdefender-backups/</code>
               </div>
-              <div style={{ marginTop: '10px', fontSize: '11.5px', color: '#889892' }}>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
                 Direct access protected by .htaccess &amp; web.config
               </div>
             </div>
@@ -706,7 +706,7 @@ export default function BulkBackup() {
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '800', color: '#10201E' }}>
                     No Backups Created Yet
                   </h4>
-                  <p style={{ margin: '0 0 20px 0', fontSize: '13.5px', color: '#60716B', maxWidth: '480px', marginInline: 'auto' }}>
+                  <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#60716B', maxWidth: '480px', marginInline: 'auto' }}>
                     Protect your website from data loss, broken plugin updates, and security emergencies by generating your first full site backup snapshot now.
                   </p>
                   <button
@@ -755,7 +755,7 @@ export default function BulkBackup() {
                                 </div>
                                 <div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <strong style={{ fontSize: '13.5px', color: '#10201E', fontFamily: 'monospace' }}>
+                                    <strong style={{ fontSize: '13px', color: '#10201E', fontFamily: 'monospace' }}>
                                       {bk.filename}
                                     </strong>
                                     {bk.domain && (
@@ -764,7 +764,7 @@ export default function BulkBackup() {
                                       </span>
                                     )}
                                   </div>
-                                  <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '3px' }}>
+                                  <div style={{ fontSize: '11px', color: '#60716B', marginTop: '3px' }}>
                                     {bk.note || 'Disaster Recovery Snapshot'}
                                   </div>
                                 </div>
@@ -802,7 +802,7 @@ export default function BulkBackup() {
 
                             {/* 5. Date Created */}
                             <td style={tdStyle}>
-                              <div style={{ fontSize: '12.5px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ fontSize: '12px', color: '#60716B', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <Clock size={12} color="#889892" />
                                 <span>{bk.created_at || 'Recent'}</span>
                               </div>
@@ -1153,7 +1153,7 @@ export default function BulkBackup() {
                   <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
                     Drag &amp; Drop Backup Archive (.zip / .sql / .sql.gz)
                   </h4>
-                  <p style={{ margin: '0 0 12px 0', fontSize: '12.5px', color: '#60716B' }}>
+                  <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#60716B' }}>
                     or click to browse your computer
                   </p>
                   <input
@@ -1170,7 +1170,7 @@ export default function BulkBackup() {
                       color: '#2A8B68',
                       padding: '6px 14px',
                       borderRadius: '8px',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: '700'
                     }}>
                       Selected: {uploadFile.name} ({(uploadFile.size / (1024 * 1024)).toFixed(2)} MB)
@@ -1239,13 +1239,13 @@ export default function BulkBackup() {
                   </p>
                 </div>
 
-                <div style={{ background: '#F8FAF9', borderRadius: '8px', padding: '12px 14px', border: '1px solid #D9E1DC', marginBottom: '16px', fontSize: '12.5px' }}>
+                <div style={{ background: '#F8FAF9', borderRadius: '8px', padding: '12px 14px', border: '1px solid #D9E1DC', marginBottom: '16px', fontSize: '12px' }}>
                   <div><strong>Selected Snapshot:</strong> <code style={{ color: '#0B2522' }}>{restoreModalData.filename}</code></div>
                   <div style={{ marginTop: '4px' }}><strong>Archive Size:</strong> {restoreModalData.size}</div>
                   <div style={{ marginTop: '4px' }}><strong>Created Date:</strong> {restoreModalData.created_at}</div>
                 </div>
 
-                <ul style={{ margin: '0 0 20px 18px', color: '#60716B', fontSize: '12.5px', lineHeight: '1.6' }}>
+                <ul style={{ margin: '0 0 20px 18px', color: '#60716B', fontSize: '12px', lineHeight: '1.6' }}>
                   <li>Database tables will be reconstructed and populated.</li>
                   <li>WordPress core, plugins, themes, and uploaded files will be overwritten.</li>
                   <li>Bytecode opcache and object cache will be reset upon completion.</li>
@@ -1309,7 +1309,7 @@ export default function BulkBackup() {
                       <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
                         {downloadTracker.status === 'completed' ? 'Download Complete!' : (downloadTracker.status === 'error' ? 'Download Interrupted' : 'Downloading Archive...')}
                       </h4>
-                      <div style={{ fontSize: '11.5px', color: '#68827B', marginTop: '2px', wordBreak: 'break-all' }}>
+                      <div style={{ fontSize: '11px', color: '#68827B', marginTop: '2px', wordBreak: 'break-all' }}>
                         {downloadTracker.filename}
                       </div>
                     </div>
@@ -1473,7 +1473,7 @@ const formCardStyle = {
 
 const formLabelStyle = {
   display: 'block',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   color: '#10201E',
   marginBottom: '6px'
@@ -1513,7 +1513,7 @@ const primaryActionButtonStyle = {
   border: 'none',
   padding: '9px 16px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1529,7 +1529,7 @@ const secondaryActionButtonStyle = {
   padding: '8px 16px',
   borderRadius: '8px',
   boxShadow: '0 1px 3px rgba(11, 37, 34, 0.04)',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1543,7 +1543,7 @@ const dangerActionButtonStyle = {
   border: 'none',
   padding: '9px 16px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1606,7 +1606,7 @@ const badgeStyle = (bg, color, border) => ({
   display: 'inline-block',
   padding: '3px 8px',
   borderRadius: '999px',
-  fontSize: '10.5px',
+  fontSize: '10px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,

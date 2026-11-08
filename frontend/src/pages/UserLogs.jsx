@@ -719,15 +719,14 @@ export default function UserLogs() {
               </span>
             </div>
             <h1 style={{
-              fontSize: '19px',
-              fontWeight: '700',
+              fontSize: '20px', fontWeight: '700',
               color: '#10201E',
               margin: '4px 0 2px',
               letterSpacing: '-0.3px'
             }}>
               Global Ingress Traffic &amp; Security Incident Logs
             </h1>
-            <p style={{ fontSize: '12.5px', color: '#60716B', margin: 0, lineHeight: '1.45' }}>
+            <p style={{ fontSize: '12px', color: '#60716B', margin: 0, lineHeight: '1.45' }}>
               Real-time ingress telemetry, blocked brute-force login attempts, and WAF inspection audit trail.
             </p>
           </div>
@@ -1172,7 +1171,7 @@ export default function UserLogs() {
               borderRadius: '10px',
               border: '1px solid #D9E1DC',
               background: '#FAFBF9',
-              fontSize: '12.5px',
+              fontSize: '12px',
               color: '#10201E',
               outline: 'none'
             }}
@@ -1189,7 +1188,7 @@ export default function UserLogs() {
               borderRadius: '10px',
               border: '1px solid #D9E1DC',
               background: '#FAFBF9',
-              fontSize: '12.5px',
+              fontSize: '12px',
               color: '#10201E',
               outline: 'none'
             }}
@@ -1272,10 +1271,10 @@ export default function UserLogs() {
               <Lock size={20} />
             </div>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#10201E' }}>
                 Deep Forensic Inspection &amp; Live Ingress Telemetry is Locked
               </div>
-              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '3px' }}>
                 Your current plan is Starter Free. Upgrade to Developer Go, Enterprise Pro, or Dedicated to unlock real-time payload payloads, ASN geolocation, and forensic query export.
               </div>
             </div>
@@ -1354,8 +1353,8 @@ export default function UserLogs() {
                     <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#FEF3EB', border: '1px solid #FCD8BF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: '#D97735' }}>
                       <ShieldCheck size={26} />
                     </div>
-                    <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>No matching attack or ingress records found</div>
-                    <p style={{ fontSize: '12.5px', color: '#87948D', margin: '4px 0 0' }}>All inbound traffic is currently clean or filters returned zero matches.</p>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#10201E' }}>No matching attack or ingress records found</div>
+                    <p style={{ fontSize: '12px', color: '#87948D', margin: '4px 0 0' }}>All inbound traffic is currently clean or filters returned zero matches.</p>
                   </td>
                 </tr>
               ) : logsList.map((log, i) => {
@@ -1397,7 +1396,7 @@ export default function UserLogs() {
                             border: '1px solid #D9E1DC',
                             borderRadius: '9999px',
                             padding: '4px 12px',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             fontWeight: '700'
                           }}>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0B2522', flexShrink: 0 }} />
@@ -1413,7 +1412,7 @@ export default function UserLogs() {
                             border: '1px solid #D9E1DC',
                             borderRadius: '9999px',
                             padding: '4px 12px',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             fontWeight: '600'
                           }}>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#60716B', flexShrink: 0 }} />
@@ -1430,7 +1429,7 @@ export default function UserLogs() {
                           border: '1px solid #E2E8F0',
                           borderRadius: '6px',
                           padding: '3px 10px',
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: '700',
                           whiteSpace: 'nowrap',
                           display: 'inline-block'
@@ -1466,7 +1465,7 @@ export default function UserLogs() {
                           title={urlStr}
                           style={{
                             fontFamily: "'JetBrains Mono', Menlo, Monaco, Consolas, monospace",
-                            fontSize: '12.5px',
+                            fontSize: '12px',
                             color: '#334155',
                             fontWeight: '500',
                             maxWidth: '280px',
@@ -1482,10 +1481,10 @@ export default function UserLogs() {
 
                       {/* TIME */}
                       <td style={{ padding: '16px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontSize: '11.5px', color: '#475569', lineHeight: 1.35, whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '11px', color: '#475569', lineHeight: 1.35, whiteSpace: 'nowrap' }}>
                           <div>{timeInfo.main}</div>
                           {timeInfo.period && (
-                            <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: '600' }}>
+                            <div style={{ fontSize: '10px', color: '#64748B', fontWeight: '600' }}>
                               {timeInfo.period}
                             </div>
                           )}
@@ -1497,7 +1496,7 @@ export default function UserLogs() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
                             fontFamily: "'JetBrains Mono', Menlo, Monaco, Consolas, monospace",
-                            fontSize: '12.5px',
+                            fontSize: '12px',
                             fontWeight: '800',
                             color: '#0F172A',
                             letterSpacing: '0.2px'
@@ -1529,7 +1528,7 @@ export default function UserLogs() {
                       {/* RESPONSE */}
                       <td style={{ padding: '16px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
                         <span style={{
-                          fontSize: '13.5px',
+                          fontSize: '13px',
                           fontWeight: '800',
                           color: '#10201E',
                           letterSpacing: '0.4px',
@@ -1621,19 +1620,19 @@ export default function UserLogs() {
                                   {isBlocked ? '403 QUARANTINED' : '200 PASSED CLEAN'}
                                 </span>
 
-                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#0F172A' }}>
+                                <span style={{ fontSize: '12px', fontWeight: '800', color: '#0F172A' }}>
                                   {log?.attack_type || 'Clean Request'}
                                 </span>
 
                                 <span style={{ fontSize: '11px', color: '#CBD5E1' }}>&bull;</span>
 
-                                <span style={{ fontSize: '11.5px', color: '#64748B' }}>
+                                <span style={{ fontSize: '11px', color: '#64748B' }}>
                                   Confidence: <strong style={{ color: '#0F172A' }}>{log?.confidence != null ? `${(Number(log.confidence) * 100).toFixed(1)}%` : '99.4%'}</strong>
                                 </span>
 
                                 <span style={{ fontSize: '11px', color: '#CBD5E1' }}>&bull;</span>
 
-                                <span style={{ fontSize: '11.5px', color: '#64748B' }}>
+                                <span style={{ fontSize: '11px', color: '#64748B' }}>
                                   Signature: <code style={{ color: '#10201E', fontWeight: '700', fontSize: '11px' }}>{log?.rule_matched || (isBlocked ? 'WAF-L7-EXPLOIT-HEURISTIC' : 'CLEAN-ANYCAST-PASS')}</code>
                                 </span>
                               </div>
@@ -1767,7 +1766,7 @@ export default function UserLogs() {
                                 gap: '3px'
                               }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span style={{ fontSize: '10.5px', fontWeight: '800', textTransform: 'uppercase', color: '#64748B' }}>
+                                  <span style={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase', color: '#64748B' }}>
                                     Ingress URL / Payload
                                   </span>
                                   <button
@@ -1780,7 +1779,7 @@ export default function UserLogs() {
                                   </button>
                                 </div>
                                 <code style={{
-                                  fontSize: '11.5px',
+                                  fontSize: '11px',
                                   color: '#0F172A',
                                   fontFamily: 'JetBrains Mono, monospace',
                                   wordBreak: 'break-all',
@@ -1829,7 +1828,7 @@ export default function UserLogs() {
                                 border: '1px solid #E2E8F0',
                                 borderRadius: '6px',
                                 padding: '4px 10px',
-                                fontSize: '10.5px'
+                                fontSize: '10px'
                               }}>
                                 <span style={{ fontWeight: '700', color: '#64748B', whiteSpace: 'nowrap' }}>User-Agent:</span>
                                 <span style={{
@@ -1875,7 +1874,7 @@ export default function UserLogs() {
             flexWrap: 'wrap',
             gap: '12px'
           }}>
-            <div style={{ fontSize: '12.5px', color: '#64748B', fontWeight: '600' }}>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>
               Showing Page <strong style={{ color: '#10201E' }}>{page}</strong> of <strong style={{ color: '#10201E' }}>{logs.total_pages}</strong> ({logs.total.toLocaleString()} total security events)
             </div>
 
@@ -2025,7 +2024,7 @@ export default function UserLogs() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 color: '#D97735'
               }}>
                 <Globe size={14} />
@@ -2034,7 +2033,7 @@ export default function UserLogs() {
                 </span>
               </div>
 
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '800', color: '#10201E', marginBottom: '8px' }}>
                 Retention / Cleanup Timeframe:
               </label>
 
@@ -2067,7 +2066,7 @@ export default function UserLogs() {
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '12.5px', fontWeight: '700', color: isSelected ? '#D97735' : '#10201E' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '700', color: isSelected ? '#D97735' : '#10201E' }}>
                           {opt.label}
                         </span>
                         <input
@@ -2078,7 +2077,7 @@ export default function UserLogs() {
                           style={{ accentColor: '#E8792F', cursor: 'pointer' }}
                         />
                       </div>
-                      <span style={{ fontSize: '10.5px', color: '#87948D' }}>{opt.desc}</span>
+                      <span style={{ fontSize: '10px', color: '#87948D' }}>{opt.desc}</span>
                     </div>
                   );
                 })}
@@ -2112,7 +2111,7 @@ export default function UserLogs() {
                     background: '#2563EB',
                     color: '#FFFFFF',
                     border: 'none',
-                    fontSize: '11.5px',
+                    fontSize: '11px',
                     fontWeight: '700',
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -2244,7 +2243,7 @@ export default function UserLogs() {
                   <SlidersHorizontal size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#10201E' }}>
                     Auto-Recycle &amp; Log Retention Rules
                   </h3>
                   <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#87948D' }}>
@@ -2315,7 +2314,7 @@ export default function UserLogs() {
 
               {/* Retention Days */}
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Historical Retention Window
                 </label>
                 <select
@@ -2346,7 +2345,7 @@ export default function UserLogs() {
 
               {/* Max Logs Capacity */}
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Maximum Log Buffer Ceiling (Rows)
                 </label>
                 <select
@@ -2477,7 +2476,7 @@ export default function UserLogs() {
                   <Ban size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#10201E' }}>
                     Blacklist Hostile IP Address
                   </h3>
                   <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#87948D' }}>
@@ -2602,7 +2601,7 @@ export default function UserLogs() {
                     background: '#FAFBF9',
                     border: '1px solid #D9E1DC',
                     borderRadius: '10px',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: '600',
                     color: '#475569',
                     cursor: 'pointer'
@@ -2619,7 +2618,7 @@ export default function UserLogs() {
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '10px',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: '800',
                     cursor: submittingBlock ? 'not-allowed' : 'pointer',
                     boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)'

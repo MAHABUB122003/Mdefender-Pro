@@ -189,7 +189,7 @@ export default function BulkPostHack() {
             background: toastMsg.isError ? '#DC2626' : '#0B2522',
             color: '#FFFFFF',
             boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-            fontSize: '13.5px',
+            fontSize: '13px',
             fontWeight: 600,
             animation: 'fadeIn 0.2s ease-out'
           }}
@@ -262,7 +262,7 @@ export default function BulkPostHack() {
               </div>
             </div>
 
-            <p style={{ fontSize: '13.5px', lineHeight: 1.6, color: '#475569', margin: '0 0 24px' }}>
+            <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#475569', margin: '0 0 24px' }}>
               {confirmModal.description}
             </p>
 
@@ -276,7 +276,7 @@ export default function BulkPostHack() {
                   border: '1px solid #CBD5E1',
                   background: '#FFFFFF',
                   color: '#475569',
-                  fontSize: '13.5px',
+                  fontSize: '13px',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
@@ -293,7 +293,7 @@ export default function BulkPostHack() {
                   border: 'none',
                   background: confirmModal.dangerLevel === 'high' ? '#DC2626' : '#E8792F',
                   color: '#FFFFFF',
-                  fontSize: '13.5px',
+                  fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
@@ -776,10 +776,10 @@ export default function BulkPostHack() {
                 <Users size={18} color="#EA580C" />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '15.5px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
                   Administrator Security Audit &amp; Active Device Roster
                 </h4>
-                <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#64748B' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748B' }}>
                   Audits privilege exposure, predictable usernames, and active sessions across all administrator accounts.
                 </p>
               </div>
@@ -933,7 +933,7 @@ export default function BulkPostHack() {
               <Key size={18} />
             </div>
             <div>
-              <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0F172A' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
                 Proactive Credential Protection: Have I Been Pwned (HIBP)
               </div>
               <div style={{ fontSize: '12px', color: '#64748B' }}>
@@ -952,7 +952,7 @@ export default function BulkPostHack() {
               borderRadius: '8px',
               background: '#0D9488',
               color: '#FFFFFF',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: 700,
               textDecoration: 'none',
               boxShadow: '0 2px 8px rgba(13,148,136,0.2)'

@@ -67,6 +67,40 @@ export function clearTokens() {
   }
 }
 
+// Singleton lock & queue for background silent token refresh
+let isRefreshingToken = false;
+let refreshPromise = null;
+
+async function executeSilentRefresh() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Refresh-Token': refreshToken,
+      'Authorization': `Bearer ${refreshToken}`
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+    credentials: 'include'
+  });
+
+  if (!res.ok) {
+    throw new Error('Refresh token session invalid or expired');
+  }
+
+  const data = await res.json();
+  if (data && data.access_token) {
+    storeTokens(data);
+    if (data.csrf_token) setCsrfToken(data.csrf_token);
+    return data.access_token;
+  }
+  throw new Error('No access token returned from refresh');
+}
+
 async function apiCall(endpoint, options = {}) {
   const accessToken = getAccessToken();
   const headers = {
@@ -126,13 +160,47 @@ async function apiCall(endpoint, options = {}) {
       '/api/auth/register', '/api/auth/verify-email',
       '/api/auth/resend-verification', '/api/auth/forgot-password',
       '/api/auth/reset-password', '/api/auth/mfa/verify',
-      '/api/auth/google/callback',
+      '/api/auth/google/callback', '/api/auth/refresh'
     ];
     if (authFlowEndpoints.includes(endpoint)) {
       if (!response.ok) {
         throw new Error(data.detail || data.message || data.error || `Request failed (${response.status})`);
       }
       return data;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SEAMLESS SILENT REFRESH (Enterprise SaaS Interceptor Pattern)
+    // If the access token expired, transparently refresh it using refresh_token
+    // and retry the original failed request without interrupting the user.
+    // ─────────────────────────────────────────────────────────────────────────
+    const refreshToken = getRefreshToken();
+    if (!options._isRetry && refreshToken && endpoint !== '/api/auth/refresh' && endpoint !== '/api/auth/logout') {
+      try {
+        if (!isRefreshingToken) {
+          isRefreshingToken = true;
+          refreshPromise = executeSilentRefresh().finally(() => {
+            isRefreshingToken = false;
+            refreshPromise = null;
+          });
+        }
+
+        const newAccessToken = await refreshPromise;
+        if (newAccessToken) {
+          // Re-issue original request with updated token
+          const retryHeaders = {
+            ...headers,
+            'Authorization': `Bearer ${newAccessToken}`
+          };
+          return await apiCall(endpoint, {
+            ...options,
+            headers: retryHeaders,
+            _isRetry: true
+          });
+        }
+      } catch (refreshErr) {
+        // Refresh token itself is dead/expired -> fall through to clean logout
+      }
     }
 
     const publicPaths = ['/', '/pricing', '/about', '/blog', '/docs', '/blocked', '/register', '/user/login', '/admin/login', '/payment/success'];
@@ -473,6 +541,9 @@ export const api = {
     apiCall(`/api/v1/websites/breach-intelligence/fleet-admins/${websiteId}`),
 
   // Cloudflare-Style Domain & DNS Zone Management APIs
+  registerSdkApp: (data) => apiCall('/api/v1/sdk/apps', { method: 'POST', body: JSON.stringify(data) }),
+  listSdkApps: () => apiCall('/api/v1/sdk/apps'),
+  updateSdkAppSettings: (id, data) => apiCall(`/api/v1/sdk/apps/${id}/settings`, { method: 'PUT', body: JSON.stringify(data) }),
   getDomainsOverview: () => apiCall('/api/v1/domains/overview'),
   getDomains: () => apiCall('/api/v1/domains'),
   createDomain: (data) => apiCall('/api/v1/domains', { method: 'POST', body: JSON.stringify(data) }),
@@ -551,10 +622,6 @@ export const api = {
   userCleanLogs: (data) => apiCall('/api/user/clean-logs', { method: 'POST', body: JSON.stringify(data) }),
   getLogRecycleSettings: (websiteId) => apiCall(`/api/user/log-recycle-settings${websiteId ? '?website_id=' + encodeURIComponent(websiteId) : ''}`),
   updateLogRecycleSettings: (data) => apiCall('/api/user/log-recycle-settings', { method: 'POST', body: JSON.stringify(data) }),
-  getUserRules: () => apiCall('/api/user/rules'),
-  createUserRule: (data) => apiCall('/api/user/rules', { method: 'POST', body: JSON.stringify(data) }),
-  updateUserRule: (id, data) => apiCall(`/api/user/rules?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteUserRule: (id) => apiCall(`/api/user/rules?id=${id}`, { method: 'DELETE' }),
   userBlockIP: (ip, reason = 'Automated IP Quarantine via Dashboard', duration = 0, websiteId = '') => {
     const payload = typeof ip === 'object' ? ip : { ip, reason, duration, website_id: websiteId };
     return apiCall('/api/user/block-ip', { method: 'POST', body: JSON.stringify(payload) });

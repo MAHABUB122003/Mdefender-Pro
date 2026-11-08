@@ -504,25 +504,15 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
         )
 
     except Exception as e:
-
-        if "E11000 duplicate key error" in str(e) and body.domain == "localhost":
-
-            # Ignore duplicate key for localhost
-
+        if "11000" in str(e) or "duplicate key" in str(e).lower():
+            # Gracefully handle duplicate domain/url index during local fleet pairing
             update_fields.pop("domain", None)
-
             update_fields.pop("url", None)
-
             db.websites.update_one(
-
                 w_cond,
-
                 {"$set": update_fields},
-
             )
-
         else:
-
             raise
 
 
@@ -2366,17 +2356,21 @@ async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current
 
     # 1. Resolve site domain and base target URL
     raw_domain = website.get("domain") or website.get("url") or ""
-    clean_domain = re.sub(r"^https?:\/\/", "", raw_domain, flags=re.IGNORECASE).strip().rstrip("/")
-    site_url = website.get("url") or f"https://{clean_domain}"
+    site_url = website.get("url") or f"https://{raw_domain}"
     if not site_url.startswith(("http://", "https://")):
         site_url = f"https://{site_url}"
+
+    import urllib.parse
+    parsed_target = urllib.parse.urlparse(site_url)
+    clean_host = (parsed_target.hostname or raw_domain.split("/")[0]).strip()
+    clean_host = re.sub(r"^www\.", "", clean_host, flags=re.IGNORECASE).strip()
 
     # 2. Resolve secret token (from site_token, raw_site_token, or website api_key)
     conn = website.get("wordpress_connection", {})
     site_token = conn.get("raw_site_token") or website.get("site_token") or website.get("api_key") or ""
 
     if not site_token:
-        wp_site = db.wordpress_sites.find_one({"$or": [{"website_id": website_id}, {"domain": clean_domain}]})
+        wp_site = db.wordpress_sites.find_one({"$or": [{"website_id": website_id}, {"domain": clean_host}]})
         if wp_site:
             site_token = wp_site.get("site_token") or wp_site.get("api_key") or ""
             if not site_url and wp_site.get("url"):
@@ -2390,13 +2384,12 @@ async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current
     import hmac
     import hashlib
     import secrets
-    import urllib.parse
 
     ts = int(time.time())
     nonce = secrets.token_hex(16)
     user_email = user.get("email") or user.get("username") or "admin"
 
-    payload = f"{website_id}:{clean_domain}:{user_email}:{ts}:{nonce}"
+    payload = f"{website_id}:{clean_host}:{user_email}:{ts}:{nonce}"
     sig = hmac.new(site_token.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
     clean_target = site_url.rstrip("/")
@@ -2405,7 +2398,7 @@ async def generate_wordpress_sso_token(website_id: str, user=Depends(get_current
     res = success({
         "sso_url": sso_url,
         "expires_in": 60,
-        "domain": clean_domain
+        "domain": clean_host
     })
     res["sso_url"] = sso_url
     return res

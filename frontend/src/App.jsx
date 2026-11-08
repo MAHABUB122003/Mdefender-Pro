@@ -28,9 +28,7 @@ const Register = lazy(() => import('./pages/Register'))
 const UserLogin = lazy(() => import('./pages/UserLogin'))
 const UserDashboard = lazy(() => import('./pages/UserDashboard'))
 const UserWebsites = lazy(() => import('./pages/UserWebsites'))
-const UserDomains = lazy(() => import('./pages/UserDomains'))
 const UserLogs = lazy(() => import('./pages/UserLogs'))
-const UserRules = lazy(() => import('./pages/UserRules'))
 const UserSettings = lazy(() => import('./pages/UserSettings'))
 const UserPricing = lazy(() => import('./pages/UserPricing'))
 const UserConnect = lazy(() => import('./pages/UserConnect'))
@@ -216,8 +214,8 @@ function App() {
           <Route index element={<Navigate to="/user/dashboard" replace />} />
           <Route path="dashboard" element={<UserDashboard />} />
           <Route path="logs" element={<UserLogs />} />
-          <Route path="rules" element={<UserRules />} />
-          <Route path="domains" element={<UserDomains />} />
+          <Route path="rules" element={<Navigate to="/user/dashboard" replace />} />
+          <Route path="domains" element={<Navigate to="/user/websites" replace />} />
           <Route path="websites" element={<UserWebsites />} />
           <Route path="bulk-management" element={<Navigate to="/user/monitoring/uptime" replace />} />
           <Route path="bulk" element={<Navigate to="/user/monitoring/uptime" replace />} />
@@ -252,6 +250,9 @@ function App() {
           <Route path="bulk/safe-updates" element={<BulkSafeUpdates />} />
           <Route path="bulk/site-health" element={<BulkSiteHealth />} />
           <Route path="bulk/activity" element={<BulkActivity />} />
+          <Route path="activity" element={<Navigate to="/user/bulk/activity" replace />} />
+          <Route path="activity-logs" element={<Navigate to="/user/bulk/activity" replace />} />
+          <Route path="audit-logs" element={<Navigate to="/user/bulk/activity" replace />} />
           <Route path="bulk/tools" element={<LegacyToolsRedirect />} />
           <Route path="team" element={<UserTeam />} />
           <Route path="alerts" element={<UserAlerts />} />
@@ -263,8 +264,9 @@ function App() {
           <Route path="access/ip-blocklist" element={<UserBlacklist activeMode="ip" />} />
           <Route path="access/ip-allowlist" element={<UserBlacklist activeMode="whitelist" />} />
           <Route path="access/country-blocking" element={<UserBlacklist activeMode="country" />} />
+          <Route path="security/2fa" element={<Navigate to="/user/settings?tab=mfa" replace />} />
           <Route path="settings" element={<UserSettings />} />
-          <Route path="sessions" element={<SessionsPage />} />
+          <Route path="sessions" element={<Navigate to="/user/settings?tab=sessions" replace />} />
         </Route>
 
         {/* Persistent Super Admin Layout with 0ms Instant Page Switching */}

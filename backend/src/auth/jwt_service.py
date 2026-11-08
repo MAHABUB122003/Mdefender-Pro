@@ -24,15 +24,20 @@ class JWTService:
         return self.config.JWT_SECRET_KEY.encode('utf-8')
 
     def create_access_token(self, user_id: str, email: str, role: str = 'user',
-                            extra_claims: Optional[Dict] = None) -> str:
+                            extra_claims: Optional[Dict] = None, remember_me: bool = False) -> str:
         now = datetime.now(timezone.utc)
+        if remember_me:
+            exp_time = now + timedelta(days=getattr(self.config, 'ACCESS_TOKEN_EXPIRE_REMEMBER_DAYS', 7))
+        else:
+            exp_time = now + timedelta(minutes=self.config.ACCESS_TOKEN_EXPIRE_MINUTES)
         payload = {
             'sub': user_id,
             'email': email,
             'role': role,
             'type': 'access',
+            'remember_me': remember_me,
             'iat': now,
-            'exp': now + timedelta(minutes=self.config.ACCESS_TOKEN_EXPIRE_MINUTES),
+            'exp': exp_time,
             'jti': secrets.token_urlsafe(32),
         }
         if extra_claims:
@@ -40,15 +45,20 @@ class JWTService:
         return jwt.encode(payload, self.config.JWT_SECRET_KEY, algorithm=self.config.JWT_ALGORITHM)
 
     def create_refresh_token(self, user_id: str, session_id: str,
-                             token_version: int = 0) -> str:
+                             token_version: int = 0, remember_me: bool = False) -> str:
         now = datetime.now(timezone.utc)
+        if remember_me:
+            exp_time = now + timedelta(days=getattr(self.config, 'REFRESH_TOKEN_EXPIRE_REMEMBER_DAYS', 60))
+        else:
+            exp_time = now + timedelta(days=self.config.REFRESH_TOKEN_EXPIRE_DAYS)
         payload = {
             'sub': user_id,
             'session_id': session_id,
             'type': 'refresh',
+            'remember_me': remember_me,
             'token_version': token_version,
             'iat': now,
-            'exp': now + timedelta(days=self.config.REFRESH_TOKEN_EXPIRE_DAYS),
+            'exp': exp_time,
             'jti': secrets.token_urlsafe(32),
         }
         return jwt.encode(payload, self.config.JWT_SECRET_KEY, algorithm=self.config.JWT_ALGORITHM)

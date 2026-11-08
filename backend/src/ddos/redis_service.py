@@ -1,12 +1,17 @@
+import os
 import asyncio
 import time
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 try:
-    import aioredis
+    import redis.asyncio as aioredis
     AIORedis = aioredis.Redis
 except ImportError:
-    AIORedis = None
+    try:
+        import aioredis
+        AIORedis = aioredis.Redis
+    except ImportError:
+        AIORedis = None
 
 
 class InMemoryStorage:
@@ -110,7 +115,7 @@ class RedisService:
     def __init__(
         self, redis_url: str = "redis://localhost:6379", **kwargs: Any
     ) -> None:
-        self._redis_url = redis_url
+        self._redis_url = os.getenv("REDIS_URL") or redis_url
         self._redis: Optional[AIORedis] = None
         self._memory = InMemoryStorage()
         self._connected = False

@@ -49,6 +49,8 @@ export default function UserLogin({ onLoginSuccess }) {
       userStore.set('profile', user);
       if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan);
       if (user.name) localStorage.setItem('mdefender_user_name', user.name);
+      if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', user.trial_days_remaining);
+      if (user.created_at) localStorage.setItem('mdefender_user_created_at', user.created_at);
       if (!userStore.get('dashboard')) {
         userStore.set('dashboard', {
           user,
@@ -473,7 +475,7 @@ export default function UserLogin({ onLoginSuccess }) {
               background: 'none',
               border: 'none',
               color: '#60716B',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 600,
               cursor: 'pointer',
               textAlign: 'center',

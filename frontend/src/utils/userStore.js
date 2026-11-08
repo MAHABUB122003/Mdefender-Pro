@@ -69,9 +69,8 @@ export const userStore = {
   async prefetchUserData(api) {
     if (!api) return;
     try {
-      const [dash, rules, blacklist] = await Promise.allSettled([
+      const [dash, blacklist] = await Promise.allSettled([
         api.getUserDashboard(),
-        api.getUserRules(),
         api.getUserBlacklist(),
       ]);
 

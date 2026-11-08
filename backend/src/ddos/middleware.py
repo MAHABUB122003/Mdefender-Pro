@@ -1,5 +1,6 @@
 import time
 import json
+import asyncio
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, HTMLResponse
@@ -136,7 +137,7 @@ class DDoSMiddleware(BaseHTTPMiddleware):
             if await self.progressive.is_throttled(ip):
                 delay = await self.progressive.get_throttle_delay(ip)
                 if delay > 0:
-                    time.sleep(min(delay, 2.0))
+                    await asyncio.sleep(min(delay, 2.0))
         except Exception:
             pass
 

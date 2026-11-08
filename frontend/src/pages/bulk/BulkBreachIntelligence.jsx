@@ -202,7 +202,7 @@ export default function BulkBreachIntelligence() {
             background: toastMsg.isError ? '#EF4444' : '#10B981',
             color: '#FFFFFF',
             fontWeight: 600,
-            fontSize: '13.5px',
+            fontSize: '13px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
             display: 'flex',
             alignItems: 'center',
@@ -261,7 +261,7 @@ export default function BulkBreachIntelligence() {
             <Database size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
               Global Leaked Credentials
             </div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
@@ -302,7 +302,7 @@ export default function BulkBreachIntelligence() {
             <Users size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
               Monitored Administrators
             </div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
@@ -343,7 +343,7 @@ export default function BulkBreachIntelligence() {
             <Fingerprint size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
               Zero-Exposure Privacy
             </div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
@@ -384,7 +384,7 @@ export default function BulkBreachIntelligence() {
             <ShieldCheck size={22} />
           </div>
           <div>
-            <div style={{ fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', fontWeight: 700 }}>
               Breach Intelligence Feed
             </div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
@@ -420,7 +420,7 @@ export default function BulkBreachIntelligence() {
             gap: '8px',
             padding: '10px 16px',
             borderRadius: '8px',
-            fontSize: '13.5px',
+            fontSize: '13px',
             fontWeight: 700,
             border: 'none',
             cursor: 'pointer',
@@ -444,7 +444,7 @@ export default function BulkBreachIntelligence() {
             gap: '8px',
             padding: '10px 16px',
             borderRadius: '8px',
-            fontSize: '13.5px',
+            fontSize: '13px',
             fontWeight: 700,
             border: 'none',
             cursor: 'pointer',
@@ -479,7 +479,7 @@ export default function BulkBreachIntelligence() {
             gap: '8px',
             padding: '10px 16px',
             borderRadius: '8px',
-            fontSize: '13.5px',
+            fontSize: '13px',
             fontWeight: 700,
             border: 'none',
             cursor: 'pointer',
@@ -525,7 +525,7 @@ export default function BulkBreachIntelligence() {
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>
                   Cryptographic Password Breach Tester
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: '#64748B' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748B' }}>
                   Direct k-Anonymity verification against Troy Hunt&apos;s Have I Been Pwned database.
                 </p>
               </div>
@@ -561,7 +561,7 @@ export default function BulkBreachIntelligence() {
                       paddingRight: '44px',
                       borderRadius: '8px',
                       border: '1px solid #CBD5E1',
-                      fontSize: '13.5px',
+                      fontSize: '13px',
                       fontFamily: showPassword ? 'inherit' : 'monospace',
                       color: '#0F172A',
                       outline: 'none',
@@ -635,7 +635,7 @@ export default function BulkBreachIntelligence() {
               {testPassword && (
                 <div style={{ marginTop: '14px', padding: '12px 14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>
                       Complexity Analysis:
                     </span>
                     <span style={{ fontSize: '11px', fontWeight: 800, color: passwordMetrics.color }}>
@@ -677,7 +677,7 @@ export default function BulkBreachIntelligence() {
                     border: '1px solid #CBD5E1',
                     borderRadius: '6px',
                     padding: '6px 12px',
-                    fontSize: '11.5px',
+                    fontSize: '11px',
                     color: '#334155',
                     cursor: 'pointer',
                     fontWeight: 600,
@@ -698,7 +698,7 @@ export default function BulkBreachIntelligence() {
                     border: '1px solid #CBD5E1',
                     borderRadius: '6px',
                     padding: '6px 12px',
-                    fontSize: '11.5px',
+                    fontSize: '11px',
                     color: '#334155',
                     cursor: 'pointer',
                     fontWeight: 600,
@@ -719,7 +719,7 @@ export default function BulkBreachIntelligence() {
                     border: '1px solid #CBD5E1',
                     borderRadius: '6px',
                     padding: '6px 12px',
-                    fontSize: '11.5px',
+                    fontSize: '11px',
                     color: '#334155',
                     cursor: 'pointer',
                     fontWeight: 600,
@@ -765,7 +765,7 @@ export default function BulkBreachIntelligence() {
                       CRITICAL: COMPROMISED PASSWORD DETECTED
                     </h4>
                   </div>
-                  <div style={{ fontSize: '13.5px', color: '#991B1B', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: '13px', color: '#991B1B', lineHeight: 1.6 }}>
                     This password was discovered in{' '}
                     <strong style={{ fontSize: '15px', color: '#7F1D1D' }}>
                       {Number(passwordResult.count).toLocaleString()}
@@ -779,13 +779,13 @@ export default function BulkBreachIntelligence() {
                       borderRadius: '8px',
                       background: '#FFFFFF',
                       border: '1px solid #FCA5A5',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       color: '#450A0A'
                     }}
                   >
                     <strong>High Threat Risk:</strong> Automated credential stuffing bots continuously attempt this password on login gateways worldwide. Any administrator using this password should immediately reset credentials.
                   </div>
-                  <div style={{ marginTop: '12px', fontSize: '11.5px', color: '#B91C1C', fontFamily: 'monospace' }}>
+                  <div style={{ marginTop: '12px', fontSize: '11px', color: '#B91C1C', fontFamily: 'monospace' }}>
                     SHA-1 Prefix queried: {passwordResult.sha1_prefix}***** (Zero exposure k-Anonymity)
                   </div>
                 </div>
@@ -804,7 +804,7 @@ export default function BulkBreachIntelligence() {
                       SAFE: NO COMPROMISED BREACHES DISCOVERED
                     </h4>
                   </div>
-                  <div style={{ fontSize: '13.5px', color: '#166534', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: '13px', color: '#166534', lineHeight: 1.6 }}>
                     This password does <strong>not</strong> appear in any known global data breaches across the 14.5+ billion leaked credential database.
                   </div>
                   <div
@@ -814,13 +814,13 @@ export default function BulkBreachIntelligence() {
                       borderRadius: '8px',
                       background: '#FFFFFF',
                       border: '1px solid #86EFAC',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       color: '#14532D'
                     }}
                   >
                     <strong>Security Status: Clean.</strong> It is safe to use this password for WordPress administrator or user accounts. Ensure you also enforce Two-Factor Authentication (2FA) for optimal defense.
                   </div>
-                  <div style={{ marginTop: '12px', fontSize: '11.5px', color: '#15803D', fontFamily: 'monospace' }}>
+                  <div style={{ marginTop: '12px', fontSize: '11px', color: '#15803D', fontFamily: 'monospace' }}>
                     SHA-1 Prefix queried: {passwordResult.sha1_prefix}***** (Zero exposure k-Anonymity)
                   </div>
                 </div>
@@ -871,7 +871,7 @@ export default function BulkBreachIntelligence() {
                 <Users size={18} style={{ color: '#0D9488' }} />
                 <span>Connected WordPress Administrators Roster</span>
               </h3>
-              <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B' }}>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
                 Live privilege discovery across connected sites. Audit exposed emails on HIBP or enforce password resets.
               </p>
             </div>
@@ -888,7 +888,7 @@ export default function BulkBreachIntelligence() {
                 background: '#F8FAFC',
                 border: '1px solid #E2E8F0',
                 color: '#475569',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: 600,
                 cursor: loadingAdmins ? 'not-allowed' : 'pointer'
               }}
@@ -906,7 +906,7 @@ export default function BulkBreachIntelligence() {
           ) : fleetAdmins.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B' }}>
               <Users size={32} style={{ margin: '0 auto 8px', color: '#94A3B8' }} />
-              <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600 }}>No administrator data returned.</p>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>No administrator data returned.</p>
               <p style={{ margin: '4px 0 0', fontSize: '12px' }}>Verify your WordPress site is connected and online.</p>
             </div>
           ) : (
@@ -1011,7 +1011,7 @@ export default function BulkBreachIntelligence() {
                                   <span>{adm.user_login}</span>
                                 </div>
                               </td>
-                              <td style={{ padding: '12px 18px', color: '#475569', fontFamily: 'monospace', fontSize: '12.5px' }}>
+                              <td style={{ padding: '12px 18px', color: '#475569', fontFamily: 'monospace', fontSize: '12px' }}>
                                 {adm.user_email || '—'}
                               </td>
                               <td style={{ padding: '12px 18px', textAlign: 'center' }}>
@@ -1108,7 +1108,7 @@ export default function BulkBreachIntelligence() {
                 <Globe size={18} style={{ color: '#0D9488' }} />
                 <span>Global Dark Web Data Breaches Directory</span>
               </h3>
-              <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748B' }}>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
                 Verified repository of 1,000+ public corporate data leaks indexed by Have I Been Pwned.
               </p>
             </div>
@@ -1145,7 +1145,7 @@ export default function BulkBreachIntelligence() {
           ) : breachesList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B' }}>
               <Search size={32} style={{ margin: '0 auto 8px', color: '#94A3B8' }} />
-              <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600 }}>No breaches matched your search.</p>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>No breaches matched your search.</p>
               <p style={{ margin: '4px 0 0', fontSize: '12px' }}>Try searching for another service or clear the search query.</p>
             </div>
           ) : (
@@ -1194,7 +1194,7 @@ export default function BulkBreachIntelligence() {
                         <span
                           key={dcIdx}
                           style={{
-                            fontSize: '10.5px',
+                            fontSize: '10px',
                             fontWeight: 600,
                             padding: '2px 6px',
                             borderRadius: '4px',
@@ -1206,7 +1206,7 @@ export default function BulkBreachIntelligence() {
                         </span>
                       ))}
                       {(breach.DataClasses || []).length > 4 && (
-                        <span style={{ fontSize: '10.5px', color: '#94A3B8', alignSelf: 'center' }}>
+                        <span style={{ fontSize: '10px', color: '#94A3B8', alignSelf: 'center' }}>
                           +{breach.DataClasses.length - 4} more
                         </span>
                       )}
@@ -1226,7 +1226,7 @@ export default function BulkBreachIntelligence() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px',
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           color: '#0D9488',
                           textDecoration: 'none',
                           fontWeight: 600

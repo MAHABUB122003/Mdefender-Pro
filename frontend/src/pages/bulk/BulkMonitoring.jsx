@@ -242,7 +242,7 @@ export default function BulkMonitoring() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} color="#FCA5A5" /> : <Check size={16} color="#34D399" />}
           <span>{toastMsg.text}</span>
@@ -276,7 +276,7 @@ export default function BulkMonitoring() {
               <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {onlineCount} / {targetWebsites.length} Active
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Fleet Origins Live</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Fleet Origins Live</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Real-time HTTP watchdog active</div>
             </div>
 
@@ -290,7 +290,7 @@ export default function BulkMonitoring() {
               <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {avgLatency !== '0.0' ? `${avgLatency} ms` : 'Measuring...'}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Origin Response Latency</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Origin Response Latency</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Real-time TCP &amp; HTTP handshake</div>
             </div>
 
@@ -306,7 +306,7 @@ export default function BulkMonitoring() {
               <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {validSslCount > 0 ? `${validSslCount} Certificates` : 'No Active TLS'}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>SSL Certificate Health</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>SSL Certificate Health</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Verified via live TLS socket probes</div>
             </div>
 
@@ -320,7 +320,7 @@ export default function BulkMonitoring() {
               <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {currentPerf ? `${currentPerf.score} / 100` : 'Ready to Audit'}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Speed &amp; Performance</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Speed &amp; Performance</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Mobile &amp; Desktop Lighthouse audit</div>
             </div>
           </div>
@@ -611,7 +611,7 @@ export default function BulkMonitoring() {
                         background: '#ffffff',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
                       }}>
-                        <span style={{ fontSize: '28px', fontWeight: '900', color: currentPerf.badge_color || '#15803D', lineHeight: 1 }}>
+                        <span style={{ fontSize: '24px', fontWeight: '700', color: currentPerf.badge_color || '#15803D', lineHeight: 1 }}>
                           {currentPerf.score}
                         </span>
                         <span style={{ fontSize: '10px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', marginTop: '2px' }}>
@@ -626,7 +626,7 @@ export default function BulkMonitoring() {
                         <h4 style={{ margin: '2px 0 4px', fontSize: '20px', fontWeight: '800', color: '#10201E' }}>
                           {deviceStrategy.toUpperCase()} Optimization Index
                         </h4>
-                        <div style={{ fontSize: '12.5px', color: '#60716B' }}>
+                        <div style={{ fontSize: '12px', color: '#60716B' }}>
                           {currentPerf.screen_label} • Audited: {new Date(currentPerf.audited_at).toLocaleTimeString()}
                         </div>
                       </div>
@@ -670,10 +670,10 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.ttfb_ms < 300 ? 'GOOD' : currentPerf.metrics?.ttfb_ms < 800 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
                         {currentPerf.metrics?.ttfb_ms || 0} ms
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D' }}>Time to First Byte (Server speed)</div>
+                      <div style={{ fontSize: '11px', color: '#87948D' }}>Time to First Byte (Server speed)</div>
                     </div>
 
                     <div style={metricBoxStyle}>
@@ -683,10 +683,10 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.fcp_ms < 1800 ? 'GOOD' : currentPerf.metrics?.fcp_ms < 3000 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
                         {((currentPerf.metrics?.fcp_ms || 0) / 1000).toFixed(2)} s
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D' }}>First Contentful Paint</div>
+                      <div style={{ fontSize: '11px', color: '#87948D' }}>First Contentful Paint</div>
                     </div>
 
                     <div style={metricBoxStyle}>
@@ -696,10 +696,10 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.lcp_ms < 2500 ? 'GOOD' : currentPerf.metrics?.lcp_ms < 4000 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
                         {((currentPerf.metrics?.lcp_ms || 0) / 1000).toFixed(2)} s
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D' }}>Largest Contentful Paint</div>
+                      <div style={{ fontSize: '11px', color: '#87948D' }}>Largest Contentful Paint</div>
                     </div>
 
                     <div style={metricBoxStyle}>
@@ -709,10 +709,10 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.cls < 0.1 ? 'GOOD' : currentPerf.metrics?.cls < 0.25 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
                         {currentPerf.metrics?.cls || 0}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D' }}>Cumulative Layout Shift</div>
+                      <div style={{ fontSize: '11px', color: '#87948D' }}>Cumulative Layout Shift</div>
                     </div>
                   </div>
 
@@ -737,7 +737,7 @@ export default function BulkMonitoring() {
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{
-                                fontSize: '10.5px',
+                                fontSize: '10px',
                                 fontWeight: '800',
                                 padding: '2px 8px',
                                 borderRadius: '4px',
@@ -750,7 +750,7 @@ export default function BulkMonitoring() {
                                 {rec.title}
                               </span>
                             </div>
-                            <p style={{ margin: '6px 0 0', fontSize: '12.5px', color: '#60716B', lineHeight: '1.45' }}>
+                            <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
                               {rec.description}
                             </p>
                           </div>
@@ -770,7 +770,7 @@ export default function BulkMonitoring() {
                 <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FAFBF9', borderRadius: '12px', border: '1px dashed #D9E1DC' }}>
                   <Gauge size={32} color="#87948D" style={{ marginBottom: '10px' }} />
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#10201E' }}>No Audit Data Yet for this Device</div>
-                  <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px', marginBottom: '16px' }}>
                     Click below to trigger a real-world Google Lighthouse &amp; Core Web Vitals audit.
                   </div>
                   <button
@@ -859,14 +859,14 @@ export default function BulkMonitoring() {
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+                          <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
                             Issued by: <strong>{currentSsl.issuer}</strong> ({currentSsl.issuer_common_name || 'Intermediate CA'}, {currentSsl.issuer_country || 'US'})
                           </div>
                         </div>
                       </div>
 
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '28px', fontWeight: '900', color: currentSsl.expiring_soon ? '#B45309' : '#15803D', lineHeight: 1 }}>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: currentSsl.expiring_soon ? '#B45309' : '#15803D', lineHeight: 1 }}>
                           {currentSsl.days_remaining} Days
                         </div>
                         <div style={{ fontSize: '11px', fontWeight: '700', color: '#87948D', textTransform: 'uppercase', marginTop: '4px' }}>
@@ -897,7 +897,7 @@ export default function BulkMonitoring() {
                   </div>
 
                   {/* 6 Real Technical X.509 Cryptographic Details */}
-                  <h4 style={{ margin: '0 0 12px', fontSize: '14.5px', fontWeight: '800', color: '#10201E' }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '800', color: '#10201E' }}>
                     Authentic X.509 Cryptographic Parameters &amp; Trust Telemetry
                   </h4>
 
@@ -911,7 +911,7 @@ export default function BulkMonitoring() {
                       <div style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', marginTop: '5px' }}>
                         {currentSsl.tls_protocol}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px' }}>
                         Socket Handshake Latency: <strong>{currentSsl.handshake_latency_ms || 340} ms</strong>
                       </div>
                     </div>
@@ -925,7 +925,7 @@ export default function BulkMonitoring() {
                       <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E', marginTop: '5px', wordBreak: 'break-all' }}>
                         {currentSsl.cipher_name || currentSsl.cipher_suite}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px' }}>
                         Encryption Strength: <strong>{currentSsl.cipher_bits || 256}-bit AEAD Perfect Forward Secrecy</strong>
                       </div>
                     </div>
@@ -939,7 +939,7 @@ export default function BulkMonitoring() {
                       <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E', marginTop: '5px', wordBreak: 'break-all' }}>
                         {currentSsl.san_hosts?.length > 0 ? currentSsl.san_hosts.join(', ') : currentSsl.domain}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px' }}>
                         Wildcard &amp; Apex Domain Binding
                       </div>
                     </div>
@@ -951,11 +951,11 @@ export default function BulkMonitoring() {
                         <span>X.509 Certificate Serial Number</span>
                       </div>
                       <div style={{ marginTop: '5px' }}>
-                        <code style={{ fontSize: '11.5px', fontWeight: '700', color: '#10201E', background: '#F1F5F3', padding: '2px 6px', borderRadius: '4px', wordBreak: 'break-all', display: 'inline-block' }}>
+                        <code style={{ fontSize: '11px', fontWeight: '700', color: '#10201E', background: '#F1F5F3', padding: '2px 6px', borderRadius: '4px', wordBreak: 'break-all', display: 'inline-block' }}>
                           {currentSsl.serial_number || 'N/A'}
                         </code>
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px' }}>
                         Format: {currentSsl.x509_version || 'X.509 v3'} Unique CA Registration
                       </div>
                     </div>
@@ -967,11 +967,11 @@ export default function BulkMonitoring() {
                         <span>SHA-256 Fingerprint (Thumbprint)</span>
                       </div>
                       <div style={{ marginTop: '5px' }}>
-                        <code style={{ fontSize: '10.5px', fontWeight: '700', color: '#10201E', background: '#F1F5F3', padding: '2px 6px', borderRadius: '4px', wordBreak: 'break-all', display: 'inline-block' }}>
+                        <code style={{ fontSize: '10px', fontWeight: '700', color: '#10201E', background: '#F1F5F3', padding: '2px 6px', borderRadius: '4px', wordBreak: 'break-all', display: 'inline-block' }}>
                           {currentSsl.sha256_fingerprint || 'N/A'}
                         </code>
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#87948D', marginTop: '3px' }}>
+                      <div style={{ fontSize: '11px', color: '#87948D', marginTop: '3px' }}>
                         Cryptographic Hash Checksum
                       </div>
                     </div>
@@ -988,7 +988,7 @@ export default function BulkMonitoring() {
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#10201E', marginTop: '2px' }}>
                         Until: {currentSsl.valid_to_raw || 'Dec 21, 2026'}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#059669', marginTop: '3px', fontWeight: '600' }}>
+                      <div style={{ fontSize: '11px', color: '#059669', marginTop: '3px', fontWeight: '600' }}>
                         {currentSsl.ocsp_issuer ? 'OCSP Online Responder Active' : 'Trusted Public Root Chain'}
                       </div>
                     </div>
@@ -1075,7 +1075,7 @@ const primaryButtonStyle = {
   color: '#ffffff',
   padding: '8px 18px',
   borderRadius: '8px',
-  fontSize: '12.5px',
+  fontSize: '12px',
   fontWeight: '700',
   display: 'inline-flex',
   alignItems: 'center',
@@ -1118,7 +1118,7 @@ const badgeStyle = (bg, color, border) => ({
   display: 'inline-block',
   padding: '3px 8px',
   borderRadius: '999px',
-  fontSize: '10.5px',
+  fontSize: '10px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,

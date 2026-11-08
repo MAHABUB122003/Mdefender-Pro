@@ -40,7 +40,6 @@ export default function UserLayout({ children, onLogout }) {
       try {
         import('../pages/UserDashboard')
         import('../pages/UserLogs')
-        import('../pages/UserRules')
         import('../pages/UserWebsites')
         import('../pages/UserBulkManagement')
         import('../pages/bulk/BulkMonitoring')
@@ -58,7 +57,6 @@ export default function UserLayout({ children, onLogout }) {
         import('../pages/bulk/BulkActivity')
         import('../pages/UserTeam')
         import('../pages/UserAlerts')
-        import('../pages/UserDomains')
         import('../pages/UserTools')
         import('../pages/UserConnect')
         import('../pages/UserPricing')

@@ -172,7 +172,7 @@ export default function BulkActivity() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMsg.text}</span>
@@ -261,7 +261,7 @@ export default function BulkActivity() {
                     style={{
                       padding: '7px 14px',
                       borderRadius: '8px',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: '700',
                       cursor: 'pointer',
                       border: '1px solid #D9E1DC',
@@ -289,7 +289,7 @@ export default function BulkActivity() {
                       borderRadius: '8px',
                       border: '1px solid #D9E1DC',
                       background: '#ffffff',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       color: '#10201E',
                       outline: 'none',
                       width: '200px'
@@ -380,7 +380,7 @@ export default function BulkActivity() {
                           <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>
                             {log.action}
                           </div>
-                          <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '3px' }}>
+                          <div style={{ fontSize: '12px', color: '#60716B', marginTop: '3px' }}>
                             Operator: <strong>{log.user}</strong> • Target: <strong>{log.target}</strong>
                             {log.ip_address && log.ip_address !== 'system' && log.ip_address !== '127.0.0.1' && (
                               <span> • IP: <span style={{ fontFamily: 'monospace' }}>{log.ip_address}</span></span>
@@ -433,7 +433,7 @@ const primaryButtonStyle = {
   color: '#ffffff',
   border: 'none',
   fontWeight: '700',
-  fontSize: '12.5px',
+  fontSize: '12px',
   cursor: 'pointer',
   display: 'inline-flex',
   alignItems: 'center',
@@ -448,7 +448,7 @@ const secondaryButtonStyle = {
   border: '1px solid #D9E1DC',
   color: '#10201E',
   fontWeight: '600',
-  fontSize: '12.5px',
+  fontSize: '12px',
   cursor: 'pointer',
   display: 'inline-flex',
   alignItems: 'center',

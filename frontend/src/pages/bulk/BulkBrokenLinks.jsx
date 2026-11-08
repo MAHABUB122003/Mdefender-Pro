@@ -265,7 +265,7 @@ export default function BulkBrokenLinks() {
           <div style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>
             Origin Crawler Engine
           </div>
-          <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
             {currentReport?.scanned_at
               ? `Last crawl completed on ${new Date(currentReport.scanned_at).toLocaleString()}`
               : 'No crawl performed yet for this website origin.'}
@@ -346,7 +346,7 @@ export default function BulkBrokenLinks() {
                 padding: '7px 12px 7px 32px',
                 borderRadius: '8px',
                 border: '1px solid #CBD5E1',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 outline: 'none'
               }}
             />
@@ -385,7 +385,7 @@ export default function BulkBrokenLinks() {
                 ? 'Ready to Run Link Integrity Scan'
                 : 'No links match this filter criteria'}
             </div>
-            <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px', maxWidth: '460px', margin: '4px auto 0' }}>
+            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', maxWidth: '460px', margin: '4px auto 0' }}>
               {currentReport?.is_challenged
                 ? 'Your website is actively serving a Turnstile challenge to automated requests. Network reachability and origin SSL are 100% verified; to deep crawl internal hyperlinks, temporarily pause Under Attack Mode or whitelist the crawler.'
                 : filterMode === 'broken' && totalScanned > 0
@@ -414,7 +414,7 @@ export default function BulkBrokenLinks() {
                       <div style={{ fontWeight: '600', color: '#0F172A', wordBreak: 'break-all' }}>
                         {link.target_url}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
                         Found on: {link.source_url}
                       </div>
                     </td>
@@ -440,7 +440,7 @@ export default function BulkBrokenLinks() {
                     </td>
                     <td style={{ padding: '12px' }}>
                       <span style={{
-                        fontSize: '11.5px',
+                        fontSize: '11px',
                         fontWeight: '600',
                         color: link.link_type === 'internal' ? '#2563EB' : '#64748B'
                       }}>
@@ -466,7 +466,7 @@ export default function BulkBrokenLinks() {
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',
-                              fontSize: '11.5px',
+                              fontSize: '11px',
                               fontWeight: '600'
                             }}
                           >
@@ -487,7 +487,7 @@ export default function BulkBrokenLinks() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             color: '#475569'
                           }}
                         >
@@ -555,7 +555,7 @@ export default function BulkBrokenLinks() {
                   <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
                     1-Click SEO Self-Healing Redirect
                   </h3>
-                  <div style={{ fontSize: '12.5px', color: '#64748B' }}>
+                  <div style={{ fontSize: '12px', color: '#64748B' }}>
                     Push permanent 301 redirect directly to connected WordPress origin
                   </div>
                 </div>
@@ -578,7 +578,7 @@ export default function BulkBrokenLinks() {
             </div>
 
             <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
                 Redirect Destination Path or URL:
               </label>
               <input
@@ -596,7 +596,7 @@ export default function BulkBrokenLinks() {
                   fontFamily: 'monospace'
                 }}
               />
-              <div style={{ fontSize: '11.5px', color: '#64748B', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
                 Visitors and search engine crawlers accessing this broken link will be forwarded with HTTP 301.
               </div>
             </div>

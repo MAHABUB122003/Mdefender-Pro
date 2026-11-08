@@ -295,7 +295,7 @@ const handleDeleteDispatch = async (id) => {
           color: '#FFFFFF', padding: '12px 20px', borderRadius: '10px',
           boxShadow: '0 8px 24px rgba(16, 32, 30, 0.25)', zIndex: 9999,
           fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} style={{ color: '#15803D' }} />}
           <span>{toastMsg.text}</span>
@@ -361,31 +361,31 @@ const handleDeleteDispatch = async (id) => {
         gap: '14px', marginBottom: '24px'
       }}>
         <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Watchdogs</div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Watchdogs</div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>
             {alertPolicies.filter(p => p.enabled).length} of {alertPolicies.length} Active
           </div>
-          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Multi-vector threat monitoring</div>
+          <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>Multi-vector threat monitoring</div>
         </div>
 
         <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Primary Destination</div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Primary Destination</div>
           <div style={{ fontSize: '16px', fontWeight: '800', color: '#10201E', marginTop: '10px', wordBreak: 'break-all' }}>
             {emailSettings.primaryEmail}
           </div>
-          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Verified Corporate Email</div>
+          <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>Verified Corporate Email</div>
         </div>
 
         <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delivery SLA</div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Delivery SLA</div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>&lt; 15 Seconds</div>
-          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>High-priority Anycast SMTP pipeline</div>
+          <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>High-priority Anycast SMTP pipeline</div>
         </div>
 
         <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '16px', padding: '20px 22px', boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)' }}>
-          <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recorded Dispatches</div>
+          <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recorded Dispatches</div>
           <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '6px' }}>{recentDispatches.length} Events</div>
-          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>Logged in security audit trail</div>
+          <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>Logged in security audit trail</div>
         </div>
       </div>
 
@@ -408,7 +408,7 @@ const handleDeleteDispatch = async (id) => {
             onClick={() => setShowEmailEdit(true)}
             style={{
               padding: '7px 16px', borderRadius: '8px', border: '1px solid #D9E1DC',
-              background: '#FAFBF9', color: '#10201E', fontSize: '12.5px', fontWeight: '700',
+              background: '#FAFBF9', color: '#10201E', fontSize: '12px', fontWeight: '700',
               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
             }}
           >
@@ -430,18 +430,18 @@ const handleDeleteDispatch = async (id) => {
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>Corporate Email Dispatch</div>
-                  <div style={{ fontSize: '11.5px', color: '#60716B' }}>Primary incident escalation channel</div>
+                  <div style={{ fontSize: '11px', color: '#60716B' }}>Primary incident escalation channel</div>
                 </div>
               </div>
               <span style={{
-                padding: '3px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: '700',
+                padding: '3px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '700',
                 background: '#E8EEE8', color: '#0B2522', border: '1px solid #D9E1DC'
               }}>
                 ACTIVE (DEFAULT)
               </span>
             </div>
 
-            <div style={{ fontSize: '12.5px', color: '#334155', lineHeight: '1.6', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#334155', lineHeight: '1.6', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
               <div>Primary: <strong style={{ color: '#10201E' }}>{emailSettings.primaryEmail}</strong></div>
               {emailSettings.secondaryEmail && (
                 <div style={{ marginTop: '3px' }}>Secondary: <strong style={{ color: '#10201E' }}>{emailSettings.secondaryEmail}</strong></div>
@@ -449,10 +449,10 @@ const handleDeleteDispatch = async (id) => {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11.5px', padding: '2px 8px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
                 ✓ Instant Critical Alerts
               </span>
-              <span style={{ fontSize: '11.5px', padding: '2px 8px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: '#FFFFFF', border: '1px solid #D9E1DC', color: '#475569', fontWeight: '600' }}>
                 ✓ Forensics Payload Included
               </span>
             </div>
@@ -470,11 +470,11 @@ const handleDeleteDispatch = async (id) => {
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>SOC JSON Webhook</div>
-                  <div style={{ fontSize: '11.5px', color: '#60716B' }}>Slack, Microsoft Teams, PagerDuty, Splunk</div>
+                  <div style={{ fontSize: '11px', color: '#60716B' }}>Slack, Microsoft Teams, PagerDuty, Splunk</div>
                 </div>
               </div>
               <span style={{
-                padding: '3px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: '700',
+                padding: '3px 9px', borderRadius: '20px', fontSize: '10px', fontWeight: '700',
                 background: webhookSettings.enabled ? '#E8EEE8' : '#FAFBF9',
                 color: webhookSettings.enabled ? '#0B2522' : '#60716B',
                 border: '1px solid #D9E1DC'
@@ -483,7 +483,7 @@ const handleDeleteDispatch = async (id) => {
               </span>
             </div>
 
-            <div style={{ fontSize: '12.5px', color: '#60716B', lineHeight: '1.5', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#60716B', lineHeight: '1.5', background: '#FFFFFF', padding: '12px 14px', borderRadius: '9px', border: '1px solid #E2E8F0', marginBottom: '12px' }}>
               {webhookSettings.enabled && webhookSettings.url ? (
                 <div>Endpoint: <strong style={{ color: '#10201E', fontFamily: 'monospace' }}>{webhookSettings.url}</strong></div>
               ) : (
@@ -561,7 +561,7 @@ const handleDeleteDispatch = async (id) => {
                       <Icon size={18} />
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '800', color: '#10201E' }}>
+                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: '#10201E' }}>
                         {policy.title}
                       </h4>
                       <span style={{
@@ -639,7 +639,7 @@ const handleDeleteDispatch = async (id) => {
           <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FAFBF9', border: '1px dashed #D9E1DC', borderRadius: '12px' }}>
             <ShieldCheck size={36} style={{ color: '#15803D', margin: '0 auto 10px' }} />
             <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: '800', color: '#10201E' }}>No Security Alerts Dispatched Yet</h4>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#60716B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: '#60716B', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto' }}>
               All connected domains are clean and protected with zero critical incidents. Click "Send Test Alert" to verify delivery to your inbox.
             </p>
           </div>
@@ -667,7 +667,7 @@ const handleDeleteDispatch = async (id) => {
                     <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>
                       {item.title} <span style={{ color: '#60716B', fontWeight: '500' }}>on {item.target}</span>
                     </div>
-                    <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                       {item.details} • Dispatched via {item.destination}
                     </div>
                   </div>
@@ -731,7 +731,7 @@ const handleDeleteDispatch = async (id) => {
 
             <form onSubmit={handleSaveEmail} style={{ padding: '22px 24px' }}>
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Primary Incident Email
                 </label>
                 <input
@@ -748,7 +748,7 @@ const handleDeleteDispatch = async (id) => {
               </div>
 
               <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Secondary / SOC Team Backup Email (Optional)
                 </label>
                 <input
@@ -770,7 +770,7 @@ const handleDeleteDispatch = async (id) => {
                   onClick={() => setShowEmailEdit(false)}
                   style={{
                     padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#475569', cursor: 'pointer'
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', cursor: 'pointer'
                   }}
                 >
                   Cancel
@@ -779,7 +779,7 @@ const handleDeleteDispatch = async (id) => {
                   type="submit"
                   style={{
                     padding: '9px 20px', background: '#0B2522', border: '1px solid #0B2522',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#FFFFFF',
                     cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                     boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'
                   }}
@@ -834,7 +834,7 @@ const handleDeleteDispatch = async (id) => {
               style={{ padding: '22px 24px' }}
             >
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   HTTP POST Endpoint URL
                 </label>
                 <input
@@ -852,7 +852,7 @@ const handleDeleteDispatch = async (id) => {
               </div>
 
               <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   HMAC Secret / Authorization Token (Optional)
                 </label>
                 <input
@@ -874,7 +874,7 @@ const handleDeleteDispatch = async (id) => {
                   onClick={() => setShowWebhookEdit(false)}
                   style={{
                     padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#475569', cursor: 'pointer'
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', cursor: 'pointer'
                   }}
                 >
                   Cancel
@@ -883,7 +883,7 @@ const handleDeleteDispatch = async (id) => {
                   type="submit"
                   style={{
                     padding: '9px 20px', background: '#0B2522', border: '1px solid #0B2522',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#FFFFFF',
                     cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                     boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'
                   }}

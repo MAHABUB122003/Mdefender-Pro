@@ -27,8 +27,9 @@ class DeepNormalizer:
             return ""
 
         # Safe input boundary guard against ReDoS & memory bombs
-        if len(text) > 16384:
-            text = text[:16384]
+        # Combines head and tail if payload exceeds 128KB to prevent padding cutoffs
+        if len(text) > 131072:
+            text = text[:65536] + " " + text[-65536:]
 
         current = text
 
@@ -56,10 +57,25 @@ class DeepNormalizer:
         # Stage 6: SQL & C-Style comment stripping and keyword defragmentation
         current = self.strip_comments(current)
 
+        # Stage 6b: Shell keyword defragmentation & evasion stripping (who$@ami -> whoami, c'a't -> cat)
+        current = self.strip_shell_obfuscation(current)
+
         # Stage 7: Whitespace collapsing
         current = self.collapse_whitespace(current)
 
         return current
+
+    def strip_shell_obfuscation(self, text: str) -> str:
+        """Removes shell evasion tokens: $@, ${IFS}, interstitial quotes and backslashes in commands."""
+        # Remove $@ and ${} inside words (e.g. who$@ami -> whoami)
+        text = re.sub(r"(?<=[a-zA-Z0-9_/])\$(?:@|\{\})(?=[a-zA-Z0-9_/])", "", text)
+        # Convert ${IFS} and $IFS to space
+        text = re.sub(r"(?i)\$\{?IFS\}?", " ", text)
+        # Remove interstitial quotes inside words (e.g. c'a't -> cat, s'e'lect -> select)
+        text = re.sub(r"(?<=[a-zA-Z])['\"](?=[a-zA-Z])", "", text)
+        # Remove escaping backslashes inside words (e.g. c\at -> cat)
+        text = re.sub(r"(?<=[a-zA-Z0-9_/])\\(?=[a-zA-Z0-9_/])", "", text)
+        return text
 
     def get_all_normalized_variants(self, text: str) -> List[str]:
         """Returns a list of payload variants (raw, normalized, comment-stripped, compact)
@@ -67,8 +83,8 @@ class DeepNormalizer:
         if not text:
             return [""]
 
-        if len(text) > 16384:
-            text = text[:16384]
+        if len(text) > 131072:
+            text = text[:65536] + " " + text[-65536:]
 
         variants: Set[str] = set()
         variants.add(text)

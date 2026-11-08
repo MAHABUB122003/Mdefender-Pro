@@ -16,8 +16,10 @@ for _env_candidate in [_backend_dir / '.env', Path.cwd() / '.env', Path.cwd() / 
 class AuthConfig:
     JWT_SECRET_KEY: str = field(default_factory=lambda: os.getenv('JWT_SECRET_KEY', os.getenv('SECRET_KEY', '')))
     JWT_ALGORITHM: str = 'HS256'
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 Hours default for SaaS dashboard
+    ACCESS_TOKEN_EXPIRE_REMEMBER_DAYS: int = 7  # 7 Days for Remember-Me
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30 Days default refresh window
+    REFRESH_TOKEN_EXPIRE_REMEMBER_DAYS: int = 60  # 60 Days for Remember-Me
     REFRESH_TOKEN_COOKIE: str = 'mdefender_refresh'
     ACCESS_TOKEN_COOKIE: str = 'mdefender_access'
     CSRF_COOKIE: str = 'mdefender_csrf'

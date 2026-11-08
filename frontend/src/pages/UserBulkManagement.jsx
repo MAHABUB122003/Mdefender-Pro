@@ -291,7 +291,7 @@ export default function UserBulkManagement() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.type === 'error' ? <AlertTriangle size={16} /> : <Check size={16} />}
           <span>{toastMsg.text}</span>
@@ -377,7 +377,7 @@ export default function UserBulkManagement() {
               border: '1px solid #D9E1DC',
               background: '#ffffff',
               color: '#10201E',
-              fontSize: '13.5px',
+              fontSize: '13px',
               fontWeight: '700',
               cursor: 'pointer',
               outline: 'none'
@@ -391,7 +391,7 @@ export default function UserBulkManagement() {
             ))}
           </select>
 
-          <div style={{ fontSize: '11.5px', color: '#2A8B68', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
+          <div style={{ fontSize: '11px', color: '#2A8B68', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 6px #10B981' }} />
             <span>Live Sync Active • 0ms Edge Push</span>
           </div>
@@ -483,10 +483,10 @@ export default function UserBulkManagement() {
                 </div>
                 <span style={badgeStyle('#ECFDF5', '#059669', '#A7F3D0')}>OPERATIONAL</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10201E' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: '#10201E' }}>
                 {wpWebsites.length > 0 ? (wpWebsites.filter(w => w.status !== 'offline').length === wpWebsites.length ? '100%' : Math.round((wpWebsites.filter(w => w.status !== 'offline').length / wpWebsites.length) * 100) + '%') : '100%'}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Fleet Health &amp; Uptime</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Fleet Health &amp; Uptime</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
                 {wpWebsites.filter(w => w.status !== 'offline').length} of {wpWebsites.length} WordPress sites active
               </div>
@@ -499,10 +499,10 @@ export default function UserBulkManagement() {
                 </div>
                 <span style={badgeStyle('#FEF3EB', '#D97735', '#FCD8BF')}>ANYCAST EDGE</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10201E' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: '#10201E' }}>
                 {(wpWebsites.reduce((acc, w) => acc + (w.requests_today || 0), 0)).toLocaleString()}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Fleet Ingress Today</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Fleet Ingress Today</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Total requests filtered across connected sites</div>
             </div>
 
@@ -513,10 +513,10 @@ export default function UserBulkManagement() {
                 </div>
                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>PROTECTION ACTIVE</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10201E' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: '#10201E' }}>
                 {(wpWebsites.reduce((acc, w) => acc + (w.total_blocked || w.blocked_today || 0), 0)).toLocaleString()}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Mitigated Threats</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Mitigated Threats</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>SQLi, XSS &amp; bot attacks quarantined</div>
             </div>
 
@@ -527,10 +527,10 @@ export default function UserBulkManagement() {
                 </div>
                 <span style={badgeStyle('#EEF2FF', '#4F46E5', '#C7D2FE')}>TLS 1.3 CERTIFIED</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10201E' }}>
+              <div style={{ fontSize: '28px', fontWeight: '700', color: '#10201E' }}>
                 {wpWebsites.filter(w => w.ssl_active !== false).length} / {wpWebsites.length}
               </div>
-              <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>SSL Protected Fleet</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>SSL Protected Fleet</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Automatic SSL renewal &amp; HTTPS security</div>
             </div>
           </div>
@@ -542,7 +542,7 @@ export default function UserBulkManagement() {
                 <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
                   Fleet Uptime &amp; Latency Overview
                 </h3>
-                <p style={{ margin: 0, fontSize: '12.5px', color: '#60716B' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: '#60716B' }}>
                   Real-time status checks from Global Anycast Edge scrubbing centers
                 </p>
               </div>
@@ -638,7 +638,7 @@ export default function UserBulkManagement() {
             <div style={{ padding: '36px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
               <Sliders size={32} color="#2A8B68" style={{ marginBottom: '10px' }} />
               <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>No Pending Plugin Updates</div>
-              <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
                 All plugins installed across your connected WordPress fleet are verified and up to date.
               </div>
             </div>
@@ -693,7 +693,7 @@ export default function UserBulkManagement() {
                             setPluginsList(prev => prev.map(p => p.id === plugin.id ? { ...p, currentVersion: p.latestVersion, updateAvailable: false } : p))
                             showToast(`Updated ${plugin.name} to v${plugin.latestVersion}!`)
                           }}
-                          style={{ ...secondaryButtonStyle, padding: '5px 10px', fontSize: '11.5px' }}
+                          style={{ ...secondaryButtonStyle, padding: '5px 10px', fontSize: '11px' }}
                         >
                           Update
                         </button>
@@ -727,7 +727,7 @@ export default function UserBulkManagement() {
             <div style={{ padding: '36px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
               <FileCode size={32} color="#0284C7" style={{ marginBottom: '10px' }} />
               <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>Fleet Themes Verified &amp; Up to Date</div>
-              <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
                 Active themes across connected WordPress sites are verified with official WordPress.org theme directory standards.
               </div>
             </div>
@@ -826,7 +826,7 @@ export default function UserBulkManagement() {
             <div style={{ padding: '36px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
               <HardDrive size={32} color="#0284C7" style={{ marginBottom: '10px' }} />
               <div style={{ fontSize: '15px', fontWeight: '800', color: '#10201E' }}>No Snapshots Created Yet</div>
-              <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
                 Click "Create Instant Backup" above to capture an encrypted state snapshot of your firewall policies and database settings.
               </div>
             </div>
@@ -910,7 +910,7 @@ export default function UserBulkManagement() {
                       <span style={f.severity === 'CRITICAL' ? badgeStyle('#FEF2F2', '#DC2626', '#FECACA') : f.severity === 'WARNING' ? badgeStyle('#FFF4ED', '#D97706', '#FCD3B6') : badgeStyle('#ECFDF5', '#059669', '#A7F3D0')}>
                         {f.severity}
                       </span>
-                      <strong style={{ fontSize: '13.5px', color: '#10201E' }}>{f.file}</strong>
+                      <strong style={{ fontSize: '13px', color: '#10201E' }}>{f.file}</strong>
                     </div>
                     <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
                       Signature: {f.threat} • Line: {f.line}
@@ -1062,7 +1062,7 @@ export default function UserBulkManagement() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #CFE2D4', background: '#E8F3EC' }}>
               <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase' }}>PHP Compatibility</div>
-              <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>
                 {activeWebsite?.php_version || wpWebsites[0]?.php_version || 'PHP 8.2+'}
               </div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>Secure &amp; OpCache Optimized</div>
@@ -1070,13 +1070,13 @@ export default function UserBulkManagement() {
 
             <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #CFE2D4', background: '#E8F3EC' }}>
               <div style={{ fontSize: '12px', fontWeight: '800', color: '#2A8B68', textTransform: 'uppercase' }}>Vulnerable Plugins</div>
-              <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>0 Vulnerabilities</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>0 Vulnerabilities</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>No known CVE risks detected</div>
             </div>
 
             <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #D9E1DC', background: '#FBFCFA' }}>
               <div style={{ fontSize: '12px', fontWeight: '800', color: '#0B2522', textTransform: 'uppercase' }}>Failed Updates</div>
-              <div style={{ fontSize: '22px', fontWeight: '900', color: '#10201E', marginTop: '4px' }}>0 Errors</div>
+              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>0 Errors</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>Clean deployment pipeline</div>
             </div>
           </div>
@@ -1102,13 +1102,13 @@ export default function UserBulkManagement() {
               <div style={{ padding: '36px 20px', textAlign: 'center', color: '#60716B', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                 <Clock size={32} color="#60716B" style={{ marginBottom: '10px' }} />
                 <div style={{ fontSize: '15px', fontWeight: '700', color: '#10201E' }}>No Recent Activity Logs</div>
-                <div style={{ fontSize: '12.5px', marginTop: '4px' }}>Administrative actions, rule updates, and security events will be displayed here in real time.</div>
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>Administrative actions, rule updates, and security events will be displayed here in real time.</div>
               </div>
             ) : (
               activityLogs.map((log, idx) => (
                 <div key={idx} style={{ padding: '14px 18px', borderRadius: '10px', border: '1px solid #D9E1DC', background: '#FBFCFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#10201E' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
                       {log.action || log.event || log.attack_type || 'Security Event'}
                     </div>
                     <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
@@ -1169,7 +1169,7 @@ const iconBoxStyle = {
 const badgeStyle = (bg, color, border) => ({
   padding: '3px 9px',
   borderRadius: '999px',
-  fontSize: '10.5px',
+  fontSize: '10px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   background: bg,
@@ -1207,7 +1207,7 @@ const secondaryButtonStyle = {
   border: '1px solid #D9E1DC',
   color: '#10201E',
   fontWeight: '600',
-  fontSize: '12.5px',
+  fontSize: '12px',
   cursor: 'pointer',
   display: 'inline-flex',
   alignItems: 'center',

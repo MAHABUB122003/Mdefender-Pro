@@ -17,19 +17,27 @@ db = MongoDB()
 
 
 async def get_current_user(request: Request) -> dict:
-    token = cookie_service.get_access_token(request)
+    # Check Authorization header (SPA primary), Cookie (browser fallback), Query param
+    header_token = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    cookie_token = cookie_service.get_access_token(request)
+    query_token = request.query_params.get('token', '').strip()
 
-    if not token:
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    # Priority 1: Authorization Header
+    payload = None
+    if header_token:
+        payload = jwt_service.decode_access_token(header_token)
 
-    if not token:
-        token = request.query_params.get('token', '')
+    # Priority 2: Cookie if header failed or not provided
+    if not payload and cookie_token:
+        payload = jwt_service.decode_access_token(cookie_token)
 
-    if not token:
-        raise HTTPException(status_code=401, detail='Not authenticated')
+    # Priority 3: Query parameter
+    if not payload and query_token:
+        payload = jwt_service.decode_access_token(query_token)
 
-    payload = jwt_service.decode_access_token(token)
     if not payload:
+        if not header_token and not cookie_token and not query_token:
+            raise HTTPException(status_code=401, detail='Not authenticated')
         raise HTTPException(status_code=401, detail='Invalid or expired token')
 
     if payload.get('mfa_pending'):
@@ -80,16 +88,21 @@ async def get_current_user(request: Request) -> dict:
 
 
 async def get_current_admin(request: Request) -> str:
-    token = cookie_service.get_access_token(request)
+    header_token = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    cookie_token = cookie_service.get_access_token(request)
+    query_token = request.query_params.get('token', '').strip()
 
-    if not token:
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    payload = None
+    if header_token:
+        payload = jwt_service.decode_access_token(header_token)
+    if not payload and cookie_token:
+        payload = jwt_service.decode_access_token(cookie_token)
+    if not payload and query_token:
+        payload = jwt_service.decode_access_token(query_token)
 
-    if not token:
-        raise HTTPException(status_code=401, detail='Not authenticated')
-
-    payload = jwt_service.decode_access_token(token)
     if not payload:
+        if not header_token and not cookie_token and not query_token:
+            raise HTTPException(status_code=401, detail='Not authenticated')
         raise HTTPException(status_code=401, detail='Invalid or expired token')
 
     if not payload.get('is_admin'):

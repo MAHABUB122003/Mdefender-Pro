@@ -4547,7 +4547,7 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
 
-        "status": {"$in": ["queued", "running"]},
+        "status": "running",
 
 
 
@@ -4787,38 +4787,11 @@ async def trigger_website_scan(website_id: str, body: WebsiteScanTriggerRequest 
 
 
 
+        clean_target = target_url.rstrip("/")
         candidates = [
-
-
-
-
-
-
-
-            f"{target_url}{sep}{url_params}",
-
-
-
-
-
-
-
-            f"{target_url}/index.php?{url_params}",
-
-
-
-
-
-
-
-            f"{target_url}/wp-json/waf-fw/v1/sync?{url_params}",
-
-
-
-
-
-
-
+            f"{clean_target}/index.php?{url_params}",
+            f"{clean_target}/?{url_params}",
+            f"{clean_target}/wp-json/waf-fw/v1/sync?{url_params}",
         ]
 
 
@@ -5748,7 +5721,7 @@ async def get_website_scans(website_id: str, limit: int = 10, user=Depends(get_c
         from datetime import timedelta
         db.malware_scans.delete_many({
             "$or": [{"website_id": w_id}, {"domain": website.get("domain")}],
-            "status": {"$in": ["queued", "running"]},
+            "status": "running",
             "started_at": {"$lt": datetime.now() - timedelta(seconds=10)}
         })
     except Exception:

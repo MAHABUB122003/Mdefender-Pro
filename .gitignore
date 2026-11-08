@@ -59,6 +59,8 @@ scratch/
 archive/
 .pytest_cache/
 backend/.pytest_cache/
+backend/storage/
+storage/
 
 # Large Datasets & Archives
 *.csv

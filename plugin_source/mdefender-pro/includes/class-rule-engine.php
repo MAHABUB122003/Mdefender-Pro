@@ -40,19 +40,20 @@ class WAF_FW_Rule_Engine {
     private function get_default_rules() {
         return [
             // 1. SQL Injection & 2026 Evasion Ladders
-            ['name' => 'SQL Injection - Union Select', 'pattern' => '/(?:\bUNION\b[\s\t%09\/\*]+(?:\bALL\b[\s\t%09\/\*]+)?\bSELECT\b)|\bUNION\b[\s\S]{0,40}\bSELECT\b|\/\*!\d*select\b|\/\*!\d*union\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Union Select', 'pattern' => '/(?:\bUNION\b(?:\s|%09|\/\*[\s\S]*?\*\/)+(?:\bALL\b(?:\s|%09|\/\*[\s\S]*?\*\/)+)?\bSELECT\b)|\bUNION\b[\s\S]{0,40}\bSELECT\b|\/\*!\d*select\b|\/\*!\d*union\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SQL Injection - Drop Table', 'pattern' => '/(?:\bDROP\b\s+\bTABLE\b)|(?:\bTRUNCATE\b\s+\bTABLE\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Boolean Tautology', 'pattern' => '/(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]?\w+[\'"]?[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]?\w+[\'"]?)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+1[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*1\b)|(?:\b(?:OR|AND)\b[\s\t\r\n%09%0a\/\*]+[\'"]1[\'"][\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]1[\'"])|(?:\|\|[\s\t\r\n%09%0a\/\*]*[\'"]?1[\'"]?[\s\t\r\n%09%0a\/\*]*=[\s\t\r\n%09%0a\/\*]*[\'"]?1[\'"]?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Single Quote Escape', 'pattern' => '/(?:%27|\')[\s\t\r\n%09%0a\/\*]*(?:--|#|\/\*|\bOR\b|\bAND\b|\bUNION\b|\|\||;)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'SQL Injection - Boolean Tautology', 'pattern' => '/(?:\b(?:OR|AND|XOR)\b(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)+[\'"]?\w+[\'"]?(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*=(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*[\'"]?\w+[\'"]?)|(?:\b(?:OR|AND|XOR)\b(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)+1(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*=(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*1\b)|(?:\b(?:OR|AND|XOR)\b(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)+[\'"]1[\'"](?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*=(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*[\'"]1[\'"])|(?:(?:\|\||&&)(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*[\'"]?1[\'"]?(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*=(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*[\'"]?1[\'"]?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Single Quote Escape', 'pattern' => '/(?:%27|\')(?:[\s\xa0]|%0[ad9]|%a0|\/\*[\s\S]*?\*\/)*(?:--|#|\/\*|\b(?:OR|AND|XOR)\b|\bUNION\b|\|\||&&|;)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'SQL Injection - Blind Sleep / Benchmark', 'pattern' => '/(?:\b(?:SLEEP|BENCHMARK|WAITFOR\s+DELAY|PG_SLEEP|LOAD_FILE|INTO\s+OUTFILE|SCHEMA_NAME)\s*\()/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Stacked & OOB Queries', 'pattern' => '/(?:;[\s\t\r\n%09%0a\/\*]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|WAITFOR|EXEC|EXECUTE)\b)|(?:LOAD_FILE\s*\([\s\S]{0,60}\\\\)|(?:EXEC\s+(?:master\.\.)?xp_cmdshell)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Clauses & Ordering', 'pattern' => '/(?:\bHAVING\b[\s\t%09\/\*]+(?:\d+=\d+|1=1|[\'"]\w+[\'"]=[\'"]\w+[\'"]))|(?:\bORDER\b[\s\t%09\/\*]+\bBY\b[\s\t%09\/\*]+\d+[\s\t%09\/\*]*(?:--|#|\/\*|;)?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SQL Injection - Escape and Comments', 'pattern' => '/(?:[\'"][\\)\]\}]{0,4}[\s\t%09\/\*]*(?:--|#|\/\*|;))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Stacked & OOB Queries', 'pattern' => '/(?:;(?:\s|%0[ad9]|\/\*[\s\S]*?\*\/)*(?:SELECT|INSERT|UPDATE|DELETE|DROP|WAITFOR|EXEC|EXECUTE)\b)|(?:LOAD_FILE\s*\([\s\S]{0,60}\\\\)|(?:EXEC\s+(?:master\.\.)?xp_cmdshell)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Clauses & Ordering', 'pattern' => '/(?:\bHAVING\b(?:\s|%09|\/\*[\s\S]*?\*\/)+(?:\d+=\d+|1=1|[\'"]\w+[\'"]=[\'"]\w+[\'"]))|(?:\bORDER\b(?:\s|%09|\/\*[\s\S]*?\*\/)+\bBY\b(?:\s|%09|\/\*[\s\S]*?\*\/)+\d+(?:\s|%09|\/\*[\s\S]*?\*\/)*(?:--|#|\/\*|;)?)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Escape and Comments', 'pattern' => '/(?:[\'"][\\)\]\}]{0,4}(?:\s|%09|\/\*[\s\S]*?\*\/)*(?:--|#|\/\*|;))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SQL Injection - Subqueries & Exists', 'pattern' => '/(?:\b(?:AND|OR)\b\s*(?:\(?\s*SELECT\b|EXISTS\s*\(\s*SELECT\b)|\bSELECT\b[\s\S]{1,60}?\bFROM\b[\s\S]{1,60}?\bWHERE\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 2. Cross-Site Scripting (XSS 2026 Suite)
             ['name' => 'XSS - Script Tag', 'pattern' => '/(?:<[\/s]*script[\s\S]*?>[\s\S]*?<\/[\/s]*script>)|(?:<[\/s]*script[\s\S]*?>)|(?:<scr<script>ipt>)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'XSS - SVG Vectors & Context Breaking', 'pattern' => '/<svg[\s\S]*?(?:onload|onerror|onfocus|onmouseover|onmouseenter|xlink:href\s*=)[\s\S]*?>|[\x27\x22]>\s*<(?:script|svg)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XSS - Event Handlers', 'pattern' => '/(?:\bon[a-z]{3,15}[\s\t%09\/\*]*=[\s\t%09\/\*]*[\'"]?[^\'">]+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'XSS - Event Handlers', 'pattern' => '/(?:\bon[a-z]{3,15}(?:\s|%09|\/\*[\s\S]*?\*\/)*=(?:\s|%09|\/\*[\s\S]*?\*\/)*[\'"]?[^\'">]+)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'XSS - JavaScript Protocol', 'pattern' => '/(?:javascript\s*:\s*[^\s\'"]+|data:text\/html)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'XSS - Alert / Execution Functions', 'pattern' => '/(?:alert|prompt|confirm)\s*(?:\([^\)]*\)|`[^`]*`)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'XSS - Malicious Tags', 'pattern' => '/<(?:iframe|object|embed|applet|meta\s+http-equiv)[^>]*>|<(?:svg|img|body|input|link)[^>]+(?:onload|onerror|src\s*=\s*[\'"]?javascript|data:text\/html)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
@@ -65,15 +66,15 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Evasion - Overlong UTF-8 & Unicode Traversal', 'pattern' => '#%(?:c0%[a-f0-9]{2}|c1%[a-f0-9]{2}|e0%80%[a-f0-9]{2}|u002[ef]|u005c|u221[56]|uff[0-3][a-f0-9])|\xc0[\x80-\xff]|\xc1[\x80-\xff]|\xe0\x80[\x80-\xff]#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'LFI - Directory Traversal', 'pattern' => '#(?:\.{2,}[\/\\\\;])|(?:[\/\\\\;]\.{2,})|(?:\.\.[\/\\])#i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'LFI - Sensitive Files', 'pattern' => '#(?:\/etc\/(?:passwd|shadow|hosts|group|issue))|(?:c:[\/\\\\]windows[\/\\\\]win\.ini)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'LFI - PHP Wrappers', 'pattern' => '/(?:php:\/\/(?:filter|input|memory|data)|data:\/\/text\/plain|file:\/\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
+            ['name' => 'LFI - PHP Wrappers', 'pattern' => '/(?:php:\/\/(?:filter|input|memory|data)|data:\/\/text\/plain|file:\/\/|(?:zip|phar|bzip2|zlib|glob|expect|compress\.zlib|compress\.bzip2):\/\/)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Hidden Directory & Dotfile Probe', 'pattern' => '/(?:\/\.(?!well-known(?:[\/?#]|$))[\w\.-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Sensitive System & Config File Probe', 'pattern' => '/(?:\bwp-config\.php(?:\.(?:bak|old|save|swp|dist|orig|inc|txt|backup|temp|\d+)|~)?\b|\bweb\.config\b|\.htaccess\b|\.htpasswd\b|\.user\.ini\b|\bapplication\.(?:ya?ml|properties|json)\b|\bdocker-compose\.ya?ml\b|\bsecrets?\.ya?ml\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Database Backup & SQL Dump Probe', 'pattern' => '/(?:\b(?:backup|dump|database|db|users|wordpress|site|mysql|export|schema|data|tables)(?:_\d+)?\.(?:sql|sql\.gz|tar\.gz|tgz|zip|bak)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Information Disclosure & Dotfile Probes', 'pattern' => '#(?:^|[\s\t\/=\'\"`])(?:\.env|\.aws|\.kube|\.git|\.svn|\.ssh|\.bash_history|\.debug|__debug|actuator\b)|apache2\.conf|error\.log|mysql-bin\.log|iis6\.log#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Information Disclosure & Dotfile Probes', 'pattern' => '#(?:^|[\s\t\/=\'\"`])(?:\.env|\.aws|\.kube|\.git|\.svn|\.ssh|\.bash_history|\.debug|__debug|actuator\b)|apache2\.conf|error\.log|access\.log|audit\.log|syslog|messages|mysql-bin\.log|iis6\.log#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 4. Remote Command Execution & Reverse Shells
             ['name' => 'Remote Code Execution - PHP Functions', 'pattern' => '/(?:\b(?:system|exec|shell_exec|passthru|popen|proc_open|eval|assert|base64_decode|gzinflate|create_function)\s*[\(\[])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Command Injection - Backticks and Subshells', 'pattern' => '/(?:`[^`]+`|\$\([^\)]+\))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Backticks and Subshells', 'pattern' => '/(?:`[^`]+`|\$\([^\)]+\)|\$\{[^}]+\})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Reverse Shells & Netcat', 'pattern' => '/(?:\b(?:bash\s+-i|dev\/tcp\/|nc\s+-e|powershell\s+-(?:enc|nop|c|ep|e)|curl\s+[^\s|]+\s*\|\s*(?:bash|sh))\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Reverse Shell - Multi-Language Network Connectors', 'pattern' => '/(?:\b(?:python\d*|perl|ruby|lua|awk|php)\s+-(?:[a-zA-Z]*[cMe])\s*[\'"][\s\S]{0,100}?(?:socket|pty\.spawn|TCPSocket|inet\/tcp|\/bin\/sh|\/bin\/bash|exec|system)|(?:nc|ncat|socat|netcat)\b[\s\S]{0,30}?(?:-[a-zA-Z]*e\b|-c\s+bash|\/bin\/sh|\/bin\/bash|\d{2,5}\s+-e)|(?:mkfifo\s+[\/\w]+|dev\/tcp\/|dev\/udp\/|inet\/tcp\/|TCPSocket\.open|Runtime\.getRuntime\(\)|p\.waitFor\(\)))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Privilege Escalation & Tool Execution', 'pattern' => '/(?:\b(?:linpeas\.sh|winpeas|chisel|mimikatz|pspy|socat)\b|(?:\/bin\/bash\s+-p|\/bin\/sh\s+-i|sudo\s+-(?:l|u\s+root)|whoami|id[\s;\|&`]|uname\s+-a)\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
@@ -82,14 +83,14 @@ class WAF_FW_Rule_Engine {
             ['name' => 'Command Injection - Pipes and Chaining', 'pattern' => "/(?:(?:\|\||\||&&|;|\$|\$\()\s*(?:(?:\/usr)?\/bin\/)?(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell|timeout|sleep|ping)\b(?!\=)(?:\s+[\w\-\.\/]+)?)|(?:\b(?:cat|ls|dir|whoami|id|uname|ps|wget|curl|nc|bash|sh|python|perl|ruby|php|cmd|powershell|timeout|sleep|ping)\b(?!\=)\s*(?:\|\||\||&&|;))/i", 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Semicolon System Commands', 'pattern' => '/(?:(?:;|&&|\|\||\||\$|\$\()\s*(?:(?:\/usr)?\/bin\/)?(?:ls|cat|id|whoami|ping|sleep|timeout|nc|bash|sh|cmd|powershell)\b(?!\=))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
-            ['name' => 'Command Injection - Newline and Execution Delimiters', 'pattern' => '/(?:(?:^|[\r\n%0a`])\s*(?:(?:\/usr)?\/bin\/)?(?:cat|ls|id|whoami|ping|sleep|timeout|nc|bash|sh)\s+(?:\d+|[\/\w\-\.]+))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Command Injection - Newline and Execution Delimiters', 'pattern' => '/(?:(?:\r|\n|%0a|`)\s*(?:(?:\/usr)?\/bin\/)?(?:cat|ls|id|whoami|ping|sleep|timeout|nc|bash|sh)\b(?!\=)(?:\s+[\/\w\-\.]+|\s*[\r\n`;&|]|\s*$))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 8. Framework RCE & Modern Container/JVM Exploitation
             ['name' => 'Framework RCE - Spring4Shell & ClassLoader', 'pattern' => '/(?:\bclass\.classLoader\b|\bclassLoader\b|\.URLs\[|\.pipeline\.first)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Framework RCE - Apache Solr & Struts OGNL', 'pattern' => '/(?:%\{[^\}]*\}|\/solr\/(?:admin|update)|\/cores\?action=|\bmakeRO\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Privilege Escalation - Container Escape & Audit Tools', 'pattern' => '/(?:\b(?:docker\s+run|chroot\s+\/|sudoedit|getcap\s+-r|pwnkit|pspy\d*|lse\.sh|linpeas|winpeas)\b|\bfind\s+[^\s]+\s+-perm\s+-[0-9a-z]+|\bfind\s+[^\s]+\s+-u=s)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Dynamic PHP Variable Function Execution', 'pattern' => '/(?:\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\s*\(\s*\$[a-zA-Z_\x7f-\xff])/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Host Header Injection Vector', 'pattern' => '/(?:(?:^|[\r\n%0a%0d\s])Host\s*:\s*(?!localhost\b|127\.0\.0\.1\b)[a-zA-Z0-9\.\-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Host Header Injection Vector', 'pattern' => '/(?:(?:^|\r|\n|%0[ad]|\s)Host\s*:\s*(?!localhost\b|127\.0\.0\.1\b)[a-zA-Z0-9\.\-]+)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Command Injection - Isolated System Command', 'pattern' => '#(?:(?:(?:^|[\r\n;&|`\$\(\!])\s*(?:(?:\/usr)?\/bin\/)?(?:id|whoami|uname)\b(?:\s*[\r\n;&|`\$\)\!]|\s+[\w\-\.\/]+|\s*$)))|(?:\/(?:usr\/)?bin\/(?:id|whoami|uname)\b)#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 5. Server-Side Request Forgery & Template Injection
@@ -99,18 +100,18 @@ class WAF_FW_Rule_Engine {
             ['name' => 'SSRF - Cloud Metadata & Internal Endpoints', 'pattern' => '/(?:169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data|\/computeMetadata)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF & Out-of-Band Collaborator Probes', 'pattern' => '/(?:(?:burpcollaborator\.net|oastify\.com|canarytokens\.com|interact\.sh|requestcatcher\.com)\b|169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data|X-aws-ec2-metadata-token)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'SSRF - Encoded & IPv6 Loopback', 'pattern' => '/(?:\[::ffff:127\.0\.0\.1\]|\[::1\]|2130706433|0177\.0\.0\.1|0x7f000001|\b(?:gopher|dict):\/\/)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'SSRF - Private Subnets', 'pattern' => '/(?:(?:https?|ftp):\/\/.*(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|127\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'SSRF - Private Subnets', 'pattern' => '/(?:(?:https?|ftp):)?\/\/(?:[^\/\s@]+@)?(?:169\.254\.|10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|127\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0)\b/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
             // 6. Next-Gen Modern Attack Vectors & Deserialization
             ['name' => 'AI Security - Prompt Injection', 'pattern' => '/(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+instructions|disregard\s+(?:all\s+)?(?:previous|prior)\s+instructions|system\s*:\s*you\s+are\s+now|you\s+are\s+DAN\b)/i', 'action' => 'block', 'severity' => 'high', 'enabled' => true],
             ['name' => 'Prototype Pollution Attack', 'pattern' => '/(?:__proto__|constructor\s*\[\s*[\'"]?prototype[\'"]?\s*\]|prototype\s*\[\s*[\'"]?\w+[\'"]?\s*\]|constructor\.prototype|\.polluted\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'Insecure Deserialization Suite', 'pattern' => '/(?:\b(?:CakePHP|Laravel|Guzzle|Drupal|Monolog|Laminas|Symfony|ThinkPHP|Yii|CodeIgniter)\/RCE\d*|\baced[\s\t]*0005\b|\\\\xac\\\\xed\\\\x00\\\\x05|rO0AB[a-zA-Z0-9+\/]{2,}|\bO:\d+:"[^"]+":\d+:\{|\$phar->|Phar::|\bYsoSerial\b)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'Insecure Deserialization Suite', 'pattern' => '/(?:\b(?:CakePHP|Laravel|Guzzle|Drupal|Monolog|Laminas|Symfony|ThinkPHP|Yii|CodeIgniter)\/RCE\d*|\baced[\s\t]*0005\b|\\\\xac\\\\xed\\\\x00\\\\x05|rO0AB[a-zA-Z0-9+\/]{2,}|\bO:\d+:"[^"]+":\d+:\{|\$phar->|Phar::|\bYsoSerial\b|!!javax\.script|!!org\.yaml|!!com\.sun)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JNDI / Log4j Injection Probe', 'pattern' => '/(?:\$\{\s*(?:jndi|ldap|rmi|dns)\s*:[^\}]+\})/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'GraphQL Introspection Abuse', 'pattern' => '/(?:[\'"]?__schema[\'"]?\s*\{|[\'"]?__type[\'"]?\s*\(\s*name\s*:|\b__typename\b)/i', 'action' => 'block', 'severity' => 'medium', 'enabled' => true],
             ['name' => 'NoSQL Injection Extended', 'pattern' => '/(?:\[?(?:[$]|%24)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)\]?[\s\t]*(?:=|:))|(?:[\'\"\s](?:[$]|%24|%2524)(?:ne|gt|gte|lt|lte|regex|exists|where|nin|in|or|and)[\'\"\s]*[:=])|(?:db\.[a-zA-Z0-9_]+\.(?:insert|find|update|delete|drop|remove|aggregate|count)\b)|(?:this\.constructor\.constructor)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XML External Entity (XXE) Suite', 'pattern' => '/(?:<!ENTITY[\s%]+\w+[\s\S]{0,60}?(?:SYSTEM|PUBLIC)\s+[\'"][^\'"]+[\'"]|<!ENTITY\s+%\s+\w+|<!DOCTYPE\s*\w*\s*\[|&(?:lol\d+|xxe|exfil|send);|<!ENTITY%|%eval;|%error;|%remote;)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?<!:)(?:\(?\/\/[a-zA-Z0-9_\*]+\)?\[[^\]]+\])|(?:\)\s*\|\s*\(?\/\/)|(?:\/\/\*)|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
-            ['name' => 'LDAP Injection', 'pattern' => '#(?:\(\s*[&|!]\s*\([a-zA-Z0-9_-]+[\*=\)])|(?:\*\)\s*\([a-zA-Z0-9_-]+=)|(?:\(%00|\(%2500)|(?:[\x00\s%00]*\)\s*\(&)|(?:%00[%&]\()|(?:[&|!]\s*\([&|!])#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XML External Entity (XXE) Suite', 'pattern' => '/(?:<!ENTITY[\s%]+\w+[\s\S]{0,60}?(?:SYSTEM|PUBLIC)\s+[\'"][^\'"]+[\'"]|<!ENTITY\s+%\s+\w+|<!DOCTYPE\s*\w*\s*\[|&(?:lol\d+|xxe|exfil|send);|<!ENTITY%|%eval;|%error;|%remote;|\bxi:include\b|\bxmlns:xi\b|http:\/\/www\.w3\.org\/2001\/XInclude)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'XPath Injection', 'pattern' => '/(?:\b(?:count|string|contains|position|local-name|name)\s*\(\s*\/\/*)|(?<!:)(?:\(?\/\/[a-zA-Z0-9_\*]+\)?\[[^\]]+\])|(?:\)\s*\|\s*\(?\/\/)|(?:\/\/\*)|(?:\/\*\[[^\]]+\])|(?:[\'"][\s\t\r\n]*(?:or|and)[\s\t\r\n]*[\'"]?\w*[\'"]?\s*=\s*[\'"]?\w*[\'"]?\s*(?:--|\/\*|or\s+[\'"]\w+[\'"]=[\'"]\w+[\'"]))/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
+            ['name' => 'LDAP Injection', 'pattern' => '#(?:\(\s*[&|!]\s*\([a-zA-Z0-9_-]+[\*=\)])|(?:\*\)\s*\([a-zA-Z0-9_-]+=)|(?:[\'*"]?\)\s*\([a-zA-Z0-9_-]+[=*])|(?:\b(?:objectClass|sAMAccountName|userPassword)\s*=\s*\*)|(?:\(%00|\(%2500)|(?:[\x00\s%00]*\)\s*\(&)|(?:%00[%&]\()|(?:[&|!]\s*\([&|!])|(?:\*\(\)\s*[|&])#i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'Null Byte Poisoning Attack', 'pattern' => '/(?:%00|\x00|%2500|\\\\000)/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
             ['name' => 'JWT None Algorithm & Tampering', 'pattern' => '/(?:eyJhbGciOiJub25lIiw|"alg"\s*:\s*"none")/i', 'action' => 'block', 'severity' => 'critical', 'enabled' => true],
 
@@ -167,7 +168,7 @@ class WAF_FW_Rule_Engine {
                                 // Inspect custom headers and cookies for Burp Suite & API tampering
         if (!empty($data['headers']) && is_array($data['headers'])) {
             $safe_header_keys = [
-                'host', 'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
+                'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
                 'accept', 'accept-language', 'accept-encoding', 'connection',
                 'upgrade-insecure-requests', 'sec-fetch-dest',
                 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user', 'priority',
@@ -177,6 +178,17 @@ class WAF_FW_Rule_Engine {
             $inspect_headers = [];
             foreach ($data['headers'] as $k => $v) {
                 $lower_k = strtolower((string)$k);
+                if ($lower_k === 'host') {
+                    $raw_host = trim((string)$v);
+                    $host_only = strtolower(preg_replace('/:\d+$/', '', $raw_host));
+                    $site_host = function_exists('home_url') ? strtolower((string)parse_url(home_url(), PHP_URL_HOST)) : '';
+                    $is_legit_host = in_array($host_only, array_filter([$site_host, 'localhost', '127.0.0.1', '::1', '0.0.0.0']), true);
+                    $has_tamper = (strpos($raw_host, '@') !== false || substr_count($raw_host, ':') > 1 || preg_match('/[\r\n\t\x00-\x1f\x7f]/', $raw_host));
+                    if (!$is_legit_host || $has_tamper) {
+                        $inspect_headers[] = "Host: " . $raw_host;
+                    }
+                    continue;
+                }
                 if (in_array($lower_k, $safe_header_keys, true)) {
                     continue;
                 }
@@ -243,6 +255,13 @@ class WAF_FW_Rule_Engine {
                 if ($rule['action'] === 'block') {
                     return $matches;
                 }
+            } elseif (preg_last_error() === PREG_BACKTRACK_LIMIT_ERROR) {
+                return [[
+                    'rule_name' => 'WAF Evasion - PCRE ReDoS / Resource Exhaustion',
+                    'pattern' => 'PREG_BACKTRACK_LIMIT_ERROR',
+                    'action' => 'block',
+                    'severity' => 'critical',
+                ]];
             }
         }
         return $matches;

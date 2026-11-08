@@ -462,11 +462,11 @@ export default function UserBlacklist({ activeMode }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <h1 style={{ margin: 0, fontSize: '19px', fontWeight: '700', color: '#0F172A', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
+              <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#0F172A', letterSpacing: '-0.02em', lineHeight: '1.25' }}>
                 {activeTab === 'whitelist' ? 'IP Allowlist' : (activeTab === 'country' ? 'Country Blocking' : 'IP Blocklist')}
               </h1>
               <span style={{
-                fontSize: '11.5px',
+                fontSize: '11px',
                 fontWeight: '700',
                 padding: '2px 9px',
                 borderRadius: '999px',
@@ -477,7 +477,7 @@ export default function UserBlacklist({ activeMode }) {
                 {activeTab === 'whitelist' ? `${whitelistEntries.length} Whitelisted` : (activeTab === 'country' ? `${countryBlocks.length} Blocked Countries` : `${entries.length} Blocked IPs`)}
               </span>
             </div>
-            <p style={{ margin: 0, fontSize: '13.5px', color: '#64748B' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
               {activeTab === 'whitelist'
                 ? 'Manage trusted IP addresses exempt from security inspection, challenges, and rate limits.'
                 : (activeTab === 'country'
@@ -510,7 +510,7 @@ export default function UserBlacklist({ activeMode }) {
                   background: 'transparent',
                   border: 'none',
                   color: '#0F172A',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: '700',
                   cursor: 'pointer',
                   outline: 'none',
@@ -661,7 +661,7 @@ export default function UserBlacklist({ activeMode }) {
                       <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94A3B8' }}>
                         <ShieldCheck size={32} style={{ display: 'block', margin: '0 auto 10px', color: '#86EFAC' }} />
                         <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No blocked IPs</div>
-                        <div style={{ fontSize: '12.5px' }}>{search || filterDuration !== 'all' ? 'Try adjusting filters.' : 'All websites are clean.'}</div>
+                        <div style={{ fontSize: '12px' }}>{search || filterDuration !== 'all' ? 'Try adjusting filters.' : 'All websites are clean.'}</div>
                       </td>
                     </tr>
                   ) : filteredEntries.map((entry, i) => {
@@ -689,9 +689,9 @@ export default function UserBlacklist({ activeMode }) {
                             </code>
                             {isExpired && <span style={S.badge('#FEE2E2', '#DC2626', '#FECACA')}>Expired</span>}
                           </div>
-                          <div style={{ fontSize: '11.5px', color: '#94A3B8', marginTop: '2px', marginLeft: '26px' }}>{origin.name}</div>
+                          <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px', marginLeft: '26px' }}>{origin.name}</div>
                         </td>
-                        <td style={{ ...S.td, color: '#475569', maxWidth: '250px', fontSize: '12.5px' }}>
+                        <td style={{ ...S.td, color: '#475569', maxWidth: '250px', fontSize: '12px' }}>
                           {entry.reason || '—'}
                         </td>
                         <td style={S.td}>
@@ -700,7 +700,7 @@ export default function UserBlacklist({ activeMode }) {
                             {entry.duration || entry.type || (isPerm ? 'Permanent' : 'Temp')}
                           </span>
                         </td>
-                        <td style={{ ...S.td, fontSize: '12.5px' }}>
+                        <td style={{ ...S.td, fontSize: '12px' }}>
                           {isPerm
                             ? <span style={{ color: '#94A3B8' }}>Never</span>
                             : isExpired
@@ -781,7 +781,7 @@ export default function UserBlacklist({ activeMode }) {
                       background: isBlocked ? '#E8EEE8' : '#FFFFFF',
                       border: '1px solid #D9E1DC',
                       color: '#10201E',
-                      fontSize: '12.5px', padding: '6px 14px', borderRadius: '8px',
+                      fontSize: '12px', padding: '6px 14px', borderRadius: '8px',
                       cursor: 'pointer', fontWeight: '600',
                       display: 'inline-flex', alignItems: 'center', gap: '7px', transition: 'all 0.15s ease'
                     }}
@@ -814,7 +814,7 @@ export default function UserBlacklist({ activeMode }) {
                       border: selectedRegion === reg ? '1px solid #0B2522' : 'none',
                       background: selectedRegion === reg ? '#0B2522' : 'transparent',
                       color: selectedRegion === reg ? '#FFFFFF' : '#60716B',
-                      fontSize: '11.5px', fontWeight: '700', cursor: 'pointer',
+                      fontSize: '11px', fontWeight: '700', cursor: 'pointer',
                       boxShadow: selectedRegion === reg ? '0 2px 6px rgba(11, 37, 34, 0.15)' : 'none',
                       transition: 'all 0.15s ease'
                     }}
@@ -934,7 +934,7 @@ export default function UserBlacklist({ activeMode }) {
               <div style={{ textAlign: 'center', padding: '50px 20px', color: '#94A3B8', background: '#FAFBF9', borderRadius: '12px', border: '1px dashed #D9E1DC' }}>
                 <Globe size={30} style={{ display: 'block', margin: '0 auto 10px', color: '#CBD5E1' }} />
                 <div style={{ fontWeight: '700', color: '#334155', marginBottom: '4px' }}>No countries blocked</div>
-                <div style={{ fontSize: '12.5px' }}>Use the form above or click a preset to block a country.</div>
+                <div style={{ fontSize: '12px' }}>Use the form above or click a preset to block a country.</div>
               </div>
             ) : (
               <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #D9E1DC' }}>
@@ -969,7 +969,7 @@ export default function UserBlacklist({ activeMode }) {
                           <td style={S.td}>
                             <span style={S.badge('#FBFCFA', '#10201E', '#D9E1DC')}>{code}</span>
                           </td>
-                          <td style={{ ...S.td, color: '#60716B', fontSize: '12.5px', maxWidth: '280px' }}>
+                          <td style={{ ...S.td, color: '#60716B', fontSize: '12px', maxWidth: '280px' }}>
                             {block.reason || '—'}
                           </td>
                           <td style={S.td}>
@@ -1077,10 +1077,10 @@ export default function UserBlacklist({ activeMode }) {
             {filteredWhitelistEntries.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 16px', color: '#60716B' }}>
                 <ShieldCheck size={32} color="#2A8B68" style={{ margin: '0 auto 10px', display: 'block' }} />
-                <div style={{ fontWeight: '700', color: '#10201E', fontSize: '14.5px' }}>
+                <div style={{ fontWeight: '700', color: '#10201E', fontSize: '14px' }}>
                   {whitelistSearch ? 'No whitelisted IPs match your search' : 'No Whitelisted IPs Yet'}
                 </div>
-                <div style={{ fontSize: '12.5px', marginTop: '4px', maxWidth: '380px', margin: '4px auto 0' }}>
+                <div style={{ fontSize: '12px', marginTop: '4px', maxWidth: '380px', margin: '4px auto 0' }}>
                   Add your office IP, monitoring servers, or developer machines to ensure legitimate administrative traffic is never blocked.
                 </div>
               </div>
@@ -1088,7 +1088,7 @@ export default function UserBlacklist({ activeMode }) {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11.5px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <tr style={{ borderBottom: '1px solid #D9E1DC', color: '#60716B', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       <th style={{ padding: '10px 12px', fontWeight: '700' }}>Whitelisted IP</th>
                       <th style={{ padding: '10px 12px', fontWeight: '700' }}>Reason & Description</th>
                       <th style={{ padding: '10px 12px', fontWeight: '700' }}>Added By</th>
@@ -1123,7 +1123,7 @@ export default function UserBlacklist({ activeMode }) {
                               color: '#BE123C',
                               padding: '5px 10px',
                               borderRadius: '6px',
-                              fontSize: '11.5px',
+                              fontSize: '11px',
                               fontWeight: '700',
                               cursor: 'pointer'
                             }}

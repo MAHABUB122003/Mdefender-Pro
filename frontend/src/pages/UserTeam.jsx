@@ -211,7 +211,7 @@ export default function UserTeam() {
           color: '#FFFFFF', padding: '12px 20px', borderRadius: '10px',
           boxShadow: '0 8px 24px rgba(16, 32, 30, 0.25)', zIndex: 9999,
           fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px',
-          fontSize: '13.5px'
+          fontSize: '13px'
         }}>
           {toastMsg.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} style={{ color: '#15803D' }} />}
           <span>{toastMsg.text}</span>
@@ -287,7 +287,7 @@ export default function UserTeam() {
             <span>Seats: {usedSeats} / {seatLimit} Used</span>
           </div>
           <div>
-            <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '4px' }}>
               Enterprise Multi-User License
             </div>
             <div style={{ width: '160px', height: '6px', borderRadius: '3px', background: '#E2E8F0', overflow: 'hidden' }}>
@@ -371,7 +371,7 @@ export default function UserTeam() {
                   onChange={e => setSearchQuery(e.target.value)}
                   style={{
                     width: '100%', height: '36px', padding: '0 12px 0 34px',
-                    borderRadius: '8px', border: '1px solid #D9E1DC', fontSize: '12.5px',
+                    borderRadius: '8px', border: '1px solid #D9E1DC', fontSize: '12px',
                     background: '#FAFBF9', color: '#10201E', outline: 'none', boxSizing: 'border-box'
                   }}
                 />
@@ -385,7 +385,7 @@ export default function UserTeam() {
                   style={{
                     height: '36px', padding: '0 12px', borderRadius: '8px',
                     border: '1px solid #D9E1DC', background: '#FFFFFF', color: '#10201E',
-                    fontSize: '12.5px', fontWeight: '600', outline: 'none'
+                    fontSize: '12px', fontWeight: '600', outline: 'none'
                   }}
                 >
                   <option value="all">All Roles</option>
@@ -429,10 +429,10 @@ export default function UserTeam() {
                           </div>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontSize: '13.5px', fontWeight: '800', color: '#10201E' }}>{m.name}</span>
+                              <span style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>{m.name}</span>
                               {m.isOwner && (
                                 <span style={{
-                                  fontSize: '9.5px', fontWeight: '800', padding: '1px 6px',
+                                  fontSize: '10px', fontWeight: '800', padding: '1px 6px',
                                   borderRadius: '4px', background: '#F0FDF4', color: '#15803D',
                                   border: '1px solid #DCFCE7'
                                 }}>
@@ -460,7 +460,7 @@ export default function UserTeam() {
                       <td style={{ padding: '16px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Globe size={13} style={{ color: '#60716B' }} />
-                          <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#10201E' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
                             {m.scope}
                           </span>
                         </div>
@@ -501,7 +501,7 @@ export default function UserTeam() {
                             style={{
                               padding: '6px 12px', borderRadius: '7px',
                               background: '#FFFFFF', border: '1px solid #D9E1DC',
-                              color: '#DC2626', fontSize: '11.5px', fontWeight: '700',
+                              color: '#DC2626', fontSize: '11px', fontWeight: '700',
                               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
                               transition: 'all 0.12s ease'
                             }}
@@ -510,7 +510,7 @@ export default function UserTeam() {
                             <span>Revoke Access</span>
                           </button>
                         ) : (
-                          <span style={{ fontSize: '11.5px', color: '#94A3B8', fontWeight: '600' }}>Master Key</span>
+                          <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: '600' }}>Master Key</span>
                         )}
                       </td>
                     </tr>
@@ -528,7 +528,7 @@ export default function UserTeam() {
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#60716B' }}>
                 <Mail size={32} style={{ color: '#94A3B8', marginBottom: '8px' }} />
                 <div style={{ fontWeight: '700', color: '#10201E' }}>No pending invitations</div>
-                <div style={{ fontSize: '12.5px', marginTop: '4px' }}>All invited colleagues have accepted their workspace access links.</div>
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>All invited colleagues have accepted their workspace access links.</div>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '12px' }}>
@@ -610,7 +610,7 @@ export default function UserTeam() {
                       {role.badge}
                     </span>
                   </div>
-                  <p style={{ fontSize: '12.5px', color: '#475569', lineHeight: '1.45', margin: '0 0 16px' }}>
+                  <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.45', margin: '0 0 16px' }}>
                     {role.desc}
                   </p>
 
@@ -637,7 +637,7 @@ export default function UserTeam() {
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#60716B' }}>
                 <Activity size={32} style={{ color: '#94A3B8', marginBottom: '8px' }} />
                 <div style={{ fontWeight: '700', color: '#10201E' }}>No Audit Events Yet</div>
-                <div style={{ fontSize: '12.5px', marginTop: '4px' }}>Administrative actions and team changes will be securely logged here.</div>
+                <div style={{ fontSize: '12px', marginTop: '4px' }}>Administrative actions and team changes will be securely logged here.</div>
               </div>
             ) : (
               <div style={{ display: 'grid', gap: '10px' }}>
@@ -655,7 +655,7 @@ export default function UserTeam() {
                         <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
                           <strong style={{ color: '#0284C7' }}>{log.user}:</strong> {log.action}
                         </div>
-                        <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                           Logged from client IP: <span style={{ fontFamily: 'monospace' }}>{log.ip}</span>
                         </div>
                       </div>
@@ -702,7 +702,7 @@ export default function UserTeam() {
 
             <form onSubmit={handleInviteSubmit} style={{ padding: '22px 24px' }}>
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Full Name
                 </label>
                 <input
@@ -720,7 +720,7 @@ export default function UserTeam() {
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Corporate Email Address
                 </label>
                 <input
@@ -738,7 +738,7 @@ export default function UserTeam() {
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Select RBAC Security Role
                 </label>
                 <select
@@ -757,7 +757,7 @@ export default function UserTeam() {
               </div>
 
               <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#10201E', marginBottom: '6px' }}>
                   Domain Access Boundary Scope
                 </label>
                 <select
@@ -784,7 +784,7 @@ export default function UserTeam() {
                   onChange={e => setInviteForm({ ...inviteForm, require2fa: e.target.checked })}
                   style={{ accentColor: '#10201E', width: '15px', height: '15px' }}
                 />
-                <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#10201E' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#10201E' }}>
                   Require Two-Factor Authentication (2FA) verification on first sign-in
                 </span>
               </label>
@@ -795,7 +795,7 @@ export default function UserTeam() {
                   onClick={() => setShowInviteModal(false)}
                   style={{
                     padding: '9px 18px', background: '#FFFFFF', border: '1px solid #D9E1DC',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#475569', cursor: 'pointer'
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#475569', cursor: 'pointer'
                   }}
                 >
                   Cancel
@@ -805,7 +805,7 @@ export default function UserTeam() {
                   disabled={submittingInvite}
                   style={{
                     padding: '9px 20px', background: submittingInvite ? '#64748B' : '#10201E', border: 'none',
-                    borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', color: '#FFFFFF',
+                    borderRadius: '8px', fontSize: '12px', fontWeight: '700', color: '#FFFFFF',
                     cursor: submittingInvite ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                     boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)'
                   }}

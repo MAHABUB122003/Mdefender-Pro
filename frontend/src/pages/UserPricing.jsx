@@ -271,7 +271,7 @@ export default function UserPricing() {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            fontSize: '13.5px',
+            fontSize: '13px',
           }}
         >
           {toastMessage.isError ? <AlertTriangle size={16} /> : <Check size={16} />}
@@ -446,7 +446,7 @@ export default function UserPricing() {
             <span>{allocatedSlots} Website {allocatedSlots === 1 ? 'Slot' : 'Slots'}</span>
           </div>
           {profile?.plan_expires && (
-            <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '4px' }}>
+            <div style={{ fontSize: '11px', color: '#60716B', marginTop: '4px' }}>
               Current cycle valid through: {new Date(profile.plan_expires).toLocaleDateString()}
             </div>
           )}
@@ -523,7 +523,7 @@ export default function UserPricing() {
                     background: !isYearly ? '#0B2522' : 'transparent',
                     color: !isYearly ? '#ffffff' : '#60716B',
                     fontWeight: '700',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
@@ -540,7 +540,7 @@ export default function UserPricing() {
                     background: isYearly ? '#0B2522' : 'transparent',
                     color: isYearly ? '#ffffff' : '#60716B',
                     fontWeight: '700',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -626,7 +626,7 @@ export default function UserPricing() {
                 <Plus size={18} strokeWidth={2.6} />
               </button>
 
-              <span style={{ fontSize: '15.5px', fontWeight: 700, color: '#10201E', marginLeft: '6px' }}>
+              <span style={{ fontSize: '16px', fontWeight: 700, color: '#10201E', marginLeft: '6px' }}>
                 {sitesCount === 1 ? 'Website License' : 'Website Licenses'}
               </span>
             </div>
@@ -687,7 +687,7 @@ export default function UserPricing() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '4px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '52px', fontWeight: 900, color: '#10201E', letterSpacing: '-0.05em', lineHeight: 1 }}>
+              <span style={{ fontSize: '52px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.05em', lineHeight: 1 }}>
                 ${totalPrice}
               </span>
               <span style={{ fontSize: '15px', fontWeight: 700, color: '#5B756E' }}>
@@ -718,7 +718,7 @@ export default function UserPricing() {
                 borderRadius: '12px',
                 background: '#0B2522',
                 color: '#FFFFFF',
-                fontSize: '14.5px',
+                fontSize: '14px',
                 fontWeight: 800,
                 border: 'none',
                 cursor: checkoutLoading ? 'wait' : 'pointer',
@@ -747,7 +747,7 @@ export default function UserPricing() {
                 display: 'flex',
                 justifyContent: 'center',
                 gap: '12px',
-                fontSize: '11.5px',
+                fontSize: '11px',
                 color: '#5B756E',
                 fontWeight: 600,
                 marginTop: '14px',
@@ -767,7 +767,7 @@ export default function UserPricing() {
           <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#10201E', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
             What is Included with Every Website License ($4/mo)
           </h3>
-          <p style={{ margin: 0, fontSize: '13.5px', color: '#60716B' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
             Zero tiered limitations. Every single connected website receives 100% of our enterprise tools.
           </p>
         </div>
@@ -854,7 +854,7 @@ export default function UserPricing() {
               background: '#FBFCFA',
               border: '1px solid #D9E1DC',
               color: '#10201E',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: '600',
               cursor: 'pointer',
               display: 'flex',

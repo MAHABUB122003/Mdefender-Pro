@@ -535,7 +535,7 @@ export default function BulkSafeUpdates() {
                 border: '1.5px solid #10B981',
                 background: '#ffffff',
                 color: '#0B2522',
-                fontSize: '13.5px',
+                fontSize: '13px',
                 fontWeight: 700,
                 cursor: executing ? 'not-allowed' : 'pointer',
                 outline: 'none',
@@ -613,7 +613,7 @@ export default function BulkSafeUpdates() {
               color: '#374151',
               padding: '7px 14px',
               borderRadius: '8px',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
@@ -634,7 +634,7 @@ export default function BulkSafeUpdates() {
               color: '#374151',
               padding: '7px 14px',
               borderRadius: '8px',
-              fontSize: '12.5px',
+              fontSize: '12px',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
@@ -659,10 +659,10 @@ export default function BulkSafeUpdates() {
         gap: '16px'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#0B2522', letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0B2522', letterSpacing: '-0.5px' }}>
             Safe Updates <span style={{ color: '#059669' }}>&amp; Regression Guard.</span>
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#60716B', maxWidth: '680px' }}>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '680px' }}>
             Automated micro-snapshots, synthetic tri-endpoint health probes, and autonomous instant rollback if any fatal error or WSOD occurs.
           </p>
         </div>
@@ -730,7 +730,7 @@ export default function BulkSafeUpdates() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>GUARD POSTURE</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#059669' }}>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: '#059669' }}>
             {kpis.posture}
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -746,7 +746,7 @@ export default function BulkSafeUpdates() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>TOTAL SAFE OPERATIONS</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#0B2522' }}>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: '#0B2522' }}>
             {kpis.totalOps}
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -762,7 +762,7 @@ export default function BulkSafeUpdates() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>DISASTERS PREVENTED</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: kpis.rollbacks > 0 ? '#DC2626' : '#059669' }}>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: kpis.rollbacks > 0 ? '#DC2626' : '#059669' }}>
             {kpis.rollbacks} Rollbacks
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -778,7 +778,7 @@ export default function BulkSafeUpdates() {
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SYNTHETIC PROBE LATENCY</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#0B2522' }}>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: '#0B2522' }}>
             ~{kpis.avgLatency}ms
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -801,7 +801,7 @@ export default function BulkSafeUpdates() {
             <div style={{ fontSize: '12px', fontWeight: 800, color: '#059669', letterSpacing: '0.6px' }}>
               AUTONOMOUS EXECUTION ARCHITECTURE
             </div>
-            <h3 style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+            <h3 style={{ margin: '4px 0 0', fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
               How MDefender Pro Guarantees Zero Broken Websites
             </h3>
           </div>
@@ -889,14 +889,14 @@ export default function BulkSafeUpdates() {
                   }}>
                     <Icon size={16} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 900, color: '#9CA3AF' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#9CA3AF' }}>
                     0{s.step}
                   </span>
                 </div>
-                <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0B2522', marginTop: '4px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#0B2522', marginTop: '4px' }}>
                   {s.title}
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#60716B', lineHeight: '1.4' }}>
+                <div style={{ fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
                   {s.desc}
                 </div>
               </div>
@@ -923,10 +923,10 @@ export default function BulkSafeUpdates() {
           gap: '12px'
         }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
               Pending Updates on {currentSite?.domain || 'Target Website'}
             </h3>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#60716B' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B' }}>
               Select items to upgrade with real-time synthetic probe verification and auto-rollback protection.
             </p>
           </div>
@@ -947,7 +947,7 @@ export default function BulkSafeUpdates() {
                   border: `1px solid ${activeTab === tab.key ? '#0B2522' : '#D9E1DC'}`,
                   padding: '6px 14px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   cursor: 'pointer'
                 }}
@@ -971,12 +971,12 @@ export default function BulkSafeUpdates() {
                     style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#059669' }}
                   />
                 </th>
-                <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>COMPONENT</th>
-                <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>TYPE</th>
-                <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>CURRENT &rarr; NEW</th>
-                <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>RISK POSTURE</th>
-                <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>CHANGELOG SUMMARY</th>
-                <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B', textAlign: 'right' }}>ACTION</th>
+                <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>COMPONENT</th>
+                <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>TYPE</th>
+                <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>CURRENT &rarr; NEW</th>
+                <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>RISK POSTURE</th>
+                <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>CHANGELOG SUMMARY</th>
+                <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B', textAlign: 'right' }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
@@ -984,10 +984,10 @@ export default function BulkSafeUpdates() {
                 <tr>
                   <td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: '#64748B' }}>
                     <CheckCircle2 size={36} color="#10B981" style={{ margin: '0 auto 10px', display: 'block' }} />
-                    <strong style={{ display: 'block', fontSize: '14.5px', color: '#0F172A', marginBottom: '4px' }}>
+                    <strong style={{ display: 'block', fontSize: '14px', color: '#0F172A', marginBottom: '4px' }}>
                       All Installed Components Up To Date
                     </strong>
-                    <span style={{ fontSize: '12.5px', color: '#64748B' }}>
+                    <span style={{ fontSize: '12px', color: '#64748B' }}>
                       All WordPress plugins and themes on this origin are operating on their verified latest versions.
                     </span>
                   </td>
@@ -1027,7 +1027,7 @@ export default function BulkSafeUpdates() {
                           {item.type === 'plugin' ? <Layers size={16} /> : <FileCode size={16} />}
                         </div>
                         <div>
-                          <strong style={{ fontSize: '13.5px', color: '#0B2522' }}>{item.name}</strong>
+                          <strong style={{ fontSize: '13px', color: '#0B2522' }}>{item.name}</strong>
                           <span style={{ display: 'block', fontSize: '11px', color: '#889892' }}>{item.slug}</span>
                         </div>
                       </div>
@@ -1038,7 +1038,7 @@ export default function BulkSafeUpdates() {
                         borderRadius: '6px',
                         background: '#FAFBF9',
                         border: '1px solid #D9E1DC',
-                        fontSize: '11.5px',
+                        fontSize: '11px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         color: '#4B5563'
@@ -1047,7 +1047,7 @@ export default function BulkSafeUpdates() {
                       </span>
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700 }}>
                         <span style={{ color: '#6B7280' }}>v{item.current_version}</span>
                         <ArrowRight size={13} color="#9CA3AF" />
                         <span style={{ color: '#059669', background: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>
@@ -1124,10 +1124,10 @@ export default function BulkSafeUpdates() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
               Rollback &amp; Safety Audit Trail
             </h3>
-            <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#60716B' }}>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B' }}>
               Permanent cryptographic log of micro-snapshots, synthetic probe latencies and automated regression verdicts.
             </p>
           </div>
@@ -1147,13 +1147,13 @@ export default function BulkSafeUpdates() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #E6ECE9', background: '#F8FAF9' }}>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>TIMESTAMP</th>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>TARGET</th>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>TRANSITION</th>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>MICRO-SNAPSHOT</th>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>PROBE LATENCY</th>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B' }}>VERDICT</th>
-                  <th style={{ padding: '12px 14px', fontSize: '11.5px', fontWeight: 800, color: '#60716B', textAlign: 'right' }}>RESTORE POINT</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>TIMESTAMP</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>TARGET</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>TRANSITION</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>MICRO-SNAPSHOT</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>PROBE LATENCY</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B' }}>VERDICT</th>
+                  <th style={{ padding: '12px 14px', fontSize: '11px', fontWeight: 800, color: '#60716B', textAlign: 'right' }}>RESTORE POINT</th>
                 </tr>
               </thead>
               <tbody>
@@ -1171,7 +1171,7 @@ export default function BulkSafeUpdates() {
                         <strong style={{ fontSize: '13px', color: '#0B2522' }}>{h.component_name || h.component_slug}</strong>
                         <span style={{ display: 'block', fontSize: '11px', color: '#889892', textTransform: 'uppercase' }}>{h.component_type}</span>
                       </td>
-                      <td style={{ padding: '14px', fontSize: '12.5px', fontWeight: 700 }}>
+                      <td style={{ padding: '14px', fontSize: '12px', fontWeight: 700 }}>
                         <span style={{ color: '#6B7280' }}>v{h.from_version}</span>
                         <span style={{ margin: '0 6px', color: '#9CA3AF' }}>&rarr;</span>
                         <span style={{ color: isClean ? '#059669' : '#DC2626' }}>v{h.to_version}</span>
@@ -1202,7 +1202,7 @@ export default function BulkSafeUpdates() {
                           background: isClean ? '#ECFDF5' : '#FEF2F2',
                           color: isClean ? '#059669' : '#DC2626',
                           border: `1px solid ${isClean ? '#A7F3D0' : '#FECACA'}`,
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 800
                         }}>
                           {isClean ? <CheckCircle2 size={13} /> : <RotateCcw size={13} />}
@@ -1217,7 +1217,7 @@ export default function BulkSafeUpdates() {
                             border: '1px solid #D9E1DC',
                             padding: '5px 10px',
                             borderRadius: '6px',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             fontWeight: 700,
                             color: '#374151',
                             cursor: 'pointer',
@@ -1276,7 +1276,7 @@ export default function BulkSafeUpdates() {
                   {executionModal.status === 'rollback' ? <RotateCcw size={20} /> : <Sparkles size={20} />}
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 900, color: '#0B2522' }}>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#0B2522' }}>
                     Safe Update Pipeline: {executionModal.target}
                   </h3>
                   <span style={{ fontSize: '12px', color: '#60716B' }}>
@@ -1327,7 +1327,7 @@ export default function BulkSafeUpdates() {
                       {isDone ? <Check size={13} /> : stepNum}
                     </div>
                     <span style={{
-                      fontSize: '11.5px',
+                      fontSize: '11px',
                       fontWeight: isCurrent ? 800 : 600,
                       color: isCurrent ? '#0B2522' : (isDone ? '#059669' : '#9CA3AF')
                     }}>
@@ -1413,7 +1413,7 @@ export default function BulkSafeUpdates() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Sliders size={20} color="#059669" />
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
                   Synthetic Probes Configuration
                 </h3>
               </div>
@@ -1428,8 +1428,8 @@ export default function BulkSafeUpdates() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div>
-                  <strong style={{ fontSize: '13.5px', color: '#0B2522' }}>Probe Homepage (/)</strong>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: '#60716B' }}>Checks for HTTP 200 and frontend rendering</span>
+                  <strong style={{ fontSize: '13px', color: '#0B2522' }}>Probe Homepage (/)</strong>
+                  <span style={{ display: 'block', fontSize: '11px', color: '#60716B' }}>Checks for HTTP 200 and frontend rendering</span>
                 </div>
                 <input
                   type="checkbox"
@@ -1441,8 +1441,8 @@ export default function BulkSafeUpdates() {
 
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div>
-                  <strong style={{ fontSize: '13.5px', color: '#0B2522' }}>Probe WP-Admin (/wp-admin/)</strong>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: '#60716B' }}>Verifies administrative backend bootstrap</span>
+                  <strong style={{ fontSize: '13px', color: '#0B2522' }}>Probe WP-Admin (/wp-admin/)</strong>
+                  <span style={{ display: 'block', fontSize: '11px', color: '#60716B' }}>Verifies administrative backend bootstrap</span>
                 </div>
                 <input
                   type="checkbox"
@@ -1454,8 +1454,8 @@ export default function BulkSafeUpdates() {
 
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div>
-                  <strong style={{ fontSize: '13.5px', color: '#0B2522' }}>Probe WP REST API (/wp-json/)</strong>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: '#60716B' }}>Verifies JSON schema routes &amp; active endpoints</span>
+                  <strong style={{ fontSize: '13px', color: '#0B2522' }}>Probe WP REST API (/wp-json/)</strong>
+                  <span style={{ display: 'block', fontSize: '11px', color: '#60716B' }}>Verifies JSON schema routes &amp; active endpoints</span>
                 </div>
                 <input
                   type="checkbox"
@@ -1467,8 +1467,8 @@ export default function BulkSafeUpdates() {
 
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div>
-                  <strong style={{ fontSize: '13.5px', color: '#0B2522' }}>Scan debug.log for PHP Fatal Errors</strong>
-                  <span style={{ display: 'block', fontSize: '11.5px', color: '#60716B' }}>Immediately trigger rollback if fatal error logged</span>
+                  <strong style={{ fontSize: '13px', color: '#0B2522' }}>Scan debug.log for PHP Fatal Errors</strong>
+                  <span style={{ display: 'block', fontSize: '11px', color: '#60716B' }}>Immediately trigger rollback if fatal error logged</span>
                 </div>
                 <input
                   type="checkbox"

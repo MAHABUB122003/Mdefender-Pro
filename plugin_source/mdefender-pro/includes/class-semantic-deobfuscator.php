@@ -38,7 +38,7 @@ class WAF_FW_Semantic_Deobfuscator {
         }
 
         // FAST-PATH: If string contains no encoded or escaped characters, return normalized whitespace instantly (< 0.001ms)
-        if (strpbrk($input, "%&\\/*\0\xc0\xc1\xe0\xf0") === false) {
+        if (strpbrk($input, "%&\\/*\0\xc0\xc1\xe0\xf0\xa0") === false) {
             return trim(preg_replace('/\s+/', ' ', $input));
         }
 
@@ -95,6 +95,23 @@ class WAF_FW_Semantic_Deobfuscator {
                 $current = $decoded_html;
             }
 
+            // 2b. Canonicalize fullwidth ASCII and Unicode homoglyphs/smart-quotes
+            if (function_exists('mb_convert_kana')) {
+                $current = mb_convert_kana($current, 'as', 'UTF-8');
+            }
+            $current = str_replace([
+                "\xEF\xBC\x87", "\xE2\x80\x99", "\xE2\x80\x98", "\xE2\x80\x9B", "\x60", "´", "’", "‘", "′",
+                "\xEF\xBC\x82", "\xE2\x80\x9C", "\xE2\x80\x9D", "“", "”", "″"
+            ], ["'", "'", "'", "'", "'", "'", "'", "'", "'", '"', '"', '"', '"', '"', '"'], $current);
+            // Confusables: Roman numerals (ⅰ, ⅱ), Cyrillic lookalikes
+            $current = str_replace(
+                ["\xE2\x85\xB0", "\xE2\x85\xB1", "а", "е", "о", "р", "с", "у", "х", "А", "В", "Е", "К", "М", "Н", "О", "Р", "С", "Т", "Х"],
+                ["i", "ii", "a", "e", "o", "p", "c", "y", "x", "A", "B", "E", "K", "M", "H", "O", "P", "C", "T", "X"],
+                $current
+            );
+            // Non-breaking space normalization (%a0 / \xC2\xA0 / \xA0 -> standard space)
+            $current = str_replace(["\xC2\xA0", "\xA0"], ' ', $current);
+
             // 3. Unicode escape sequence normalization (\u0027 -> ', \u003c -> <)
             $current = preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', function ($m) {
                 $codepoint = hexdec($m[1]);
@@ -115,6 +132,13 @@ class WAF_FW_Semantic_Deobfuscator {
             // 6. MySQL inline comments stripping: /*!50000SELECT*/ -> SELECT, UN/**/ION -> UNION
             $current = preg_replace('/\/\*!\d*(.*?)\*\//is', ' $1 ', $current);
             $current = preg_replace('/\/\*.*?\*\//is', ' ', $current);
+
+            // 7. Shell keyword defragmentation & obfuscation stripping
+            // Handles who$@ami -> whoami, cat${IFS}/etc/passwd -> cat /etc/passwd, c'a't -> cat, c\at -> cat, cat$IFS$9 -> cat
+            $current = preg_replace('/(?<=[a-zA-Z0-9_\/])\$(?:@|\*|#|\?|\$|\d|\{\d*\})(?=[a-zA-Z0-9_\/])/', '', $current);
+            $current = preg_replace('/(?i)\$\{?IFS\}?(?:\$\d+)?/', ' ', $current);
+            $current = preg_replace('/(?<=[a-zA-Z])[\'\"](?=[a-zA-Z])/', '', $current);
+            $current = preg_replace('/(?<=[a-zA-Z0-9_\/])\\\\(?=[a-zA-Z0-9_\/])/', '', $current);
 
             $depth++;
             // If no changes occurred in this pass, the string is fully normalized
@@ -157,6 +181,16 @@ class WAF_FW_Semantic_Deobfuscator {
             ];
         }
 
+        // Check for Subquery Boolean Tautology & Injections (e.g. AND (SELECT 1)=1, AND EXISTS(SELECT ...))
+        if (preg_match('/\b(?:OR|AND)\b\s+(?:\(?\s*SELECT\b|EXISTS\s*\(\s*SELECT\b)/i', $normalized)) {
+            return [
+                'is_sqli' => true,
+                'type' => 'SQLi - Subquery / Exists Clause',
+                'confidence' => 0.98,
+                'normalized' => $normalized,
+            ];
+        }
+
         // Check for Blind SQL Time/Resource Delay
         if (preg_match('/\b(?:SLEEP|BENCHMARK|WAITFOR\s+DELAY|PG_SLEEP)\s*\(\s*\d+/i', $normalized)) {
             return [
@@ -167,10 +201,10 @@ class WAF_FW_Semantic_Deobfuscator {
             ];
         }
 
-        // Check for Boolean Tautology (OR 1=1, OR 'a'='a', AND 1=1, OR true)
-        if (preg_match('/\b(?:OR|AND)\b\s+(?:[0-9]+\s*=\s*[0-9]+|\'[a-zA-Z0-9_]*\'\s*=\s*\'[a-zA-Z0-9_]*\'|[a-zA-Z0-9_]+\s*=\s*[a-zA-Z0-9_]+|\bTRUE\b)\b/i', $normalized)) {
+        // Check for Boolean Tautology (OR 1=1, OR 'a'='a', AND 1=1, XOR 1=1, && 1=1, OR true)
+        if (preg_match('/(?:\b(?:OR|AND|XOR)\b|&&)\s+(?:[0-9]+\s*=\s*[0-9]+|\'[a-zA-Z0-9_]*\'\s*=\s*\'[a-zA-Z0-9_]*\'|[a-zA-Z0-9_]+\s*=\s*[a-zA-Z0-9_]+|\bTRUE\b)\b/i', $normalized)) {
             // Ensure this is not a benign single word like 'AND' in a blog post
-            if ($has_comment_term || preg_match('/[\'"]\s*\b(?:OR|AND)\b/i', $normalized)) {
+            if ($has_comment_term || preg_match('/[\'"]\s*(?:\b(?:OR|AND|XOR)\b|&&)/i', $normalized)) {
                 return [
                     'is_sqli' => true,
                     'type' => 'SQLi - Boolean Tautology',

@@ -291,10 +291,24 @@ class WAF_FW_Engine {
                 return $this->do_block($ip, $url, $method, 'Rate Limiting', 1.0, $user_agent, $referer, '', 'Rate limit exceeded (' . $this->rate_limiter->get_max_requests() . ' req/min)', 'Rate Limit Rule');
             }
 
-$body = file_get_contents('php://input');
+            $body = file_get_contents('php://input');
             $comprehensive_payload = $this->get_comprehensive_payload();
             $query_string = $_SERVER['QUERY_STRING'] ?? '';
             $query_params = $_GET;
+
+            // RFC 2046 Multipart Strict Integrity Validation (ModSecurity CRS 920180 parity)
+            // Detect boundary manipulation / differential parser evasion where positive Content-Length yields unparsable multipart body
+            $content_type = $_SERVER['CONTENT_TYPE'] ?? ($headers['Content-Type'] ?? ($headers['content-type'] ?? ''));
+            $content_len = (int)($_SERVER['CONTENT_LENGTH'] ?? ($headers['Content-Length'] ?? ($headers['content-length'] ?? 0)));
+            if (
+                strtoupper($method) === 'POST' &&
+                stripos($content_type, 'multipart/form-data') !== false &&
+                $content_len > 0 &&
+                empty($_POST) &&
+                empty($_FILES)
+            ) {
+                return $this->do_block($ip, $url, $method, 'Malformed Multipart Body or Boundary Tampering', 1.0, $user_agent, $referer, '', 'Malformed multipart request: boundary delimiter mismatch or invalid body structure (RFC 2046 violation).', 'RFC 2046 Multipart Validation');
+            }
 
             // Normal routine WordPress login / admin paths:
             // Notice: We DO NOT bypass before rule_engine! All requests must be inspected by Rule Engine first!

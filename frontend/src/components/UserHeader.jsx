@@ -32,10 +32,8 @@ import {
 const pageConfig = {
   '/user/dashboard': { name: 'Dashboard', icon: LayoutDashboard },
   '/user/logs': { name: 'Attack Logs', icon: FileText },
-  '/user/rules': { name: 'Rules Management', icon: Sliders },
   '/user/notices': { name: 'Notice Board', icon: Bell },
   '/user/websites': { name: 'My Websites', icon: Globe },
-  '/user/domains': { name: 'Custom Domains', icon: Globe },
   '/user/security/threat-intelligence': { name: 'Threat Intelligence & WHOIS', icon: ShieldCheck },
   '/user/security/port-scanner': { name: 'Security & Port Scanner', icon: Wrench },
   '/user/security/bot-shield': { name: 'Visitor Bot Shield', icon: Shield },
@@ -85,6 +83,20 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
     ultra: 'Ultra Enterprise',
     premium: 'Enterprise Pro'
   }[userPlan] || (isPaid ? 'Enterprise Pro' : 'Free Plan');
+
+  const storedTrialDays = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null;
+  const userCreatedAt = typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_created_at') : null;
+  
+  let trialDaysRemaining = 14;
+  if (storedTrialDays !== null && storedTrialDays !== undefined && storedTrialDays !== '') {
+    trialDaysRemaining = Math.max(0, parseInt(storedTrialDays, 10));
+  } else if (userCreatedAt) {
+    const createdTime = new Date(userCreatedAt).getTime();
+    if (!isNaN(createdTime)) {
+      const daysPassed = Math.floor((Date.now() - createdTime) / (1000 * 60 * 60 * 24));
+      trialDaysRemaining = Math.max(0, 14 - daysPassed);
+    }
+  }
 
   useEffect(() => {
     window.__doLogout = onLogout;
@@ -148,6 +160,47 @@ export default function UserHeader({ onToggleSidebar, onLogout }) {
           {isPaid ? <ShieldCheck size={14} color="#E8792F" strokeWidth={2.4} /> : <Crown size={14} color="#E8792F" />}
           <span style={{ color: isPaid ? '#FFFFFF' : '#0F172A' }}>{planLabel}</span>
         </span>
+
+        {!isPaid && (
+          <Link
+            to="/user/pricing"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '20px',
+              background: trialDaysRemaining <= 3 ? '#FEF2F2' : '#EFF6FF',
+              border: trialDaysRemaining <= 3 ? '1px solid #FCA5A5' : '1px solid #BFDBFE',
+              color: trialDaysRemaining <= 3 ? '#DC2626' : '#1D4ED8',
+              fontSize: '12px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s ease'
+            }}
+            title="14-Day Free Trial Protection Active. Click to upgrade anytime."
+          >
+            <Clock size={13} strokeWidth={2.4} color={trialDaysRemaining <= 3 ? '#DC2626' : '#2563EB'} />
+            <span>
+              {trialDaysRemaining > 0 
+                ? `${trialDaysRemaining} Day${trialDaysRemaining === 1 ? '' : 's'} Free Trial`
+                : 'Trial Expired'}
+            </span>
+            <span style={{
+              background: trialDaysRemaining <= 3 ? '#DC2626' : '#2563EB',
+              color: '#FFFFFF',
+              padding: '1px 7px',
+              borderRadius: '10px',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.3px',
+              textTransform: 'uppercase'
+            }}>
+              {trialDaysRemaining > 0 ? 'Upgrade' : 'Renew'}
+            </span>
+          </Link>
+        )}
 
         <div className="header-clock">
           <Clock size={14} color="#87948D" />

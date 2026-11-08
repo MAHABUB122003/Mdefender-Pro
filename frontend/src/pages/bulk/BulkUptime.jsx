@@ -297,7 +297,7 @@ export default function BulkUptime() {
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
                 Origin URL: <a href={primarySite.url || `https://${primarySite.domain}`} target="_blank" rel="noreferrer" style={{ color: '#2563EB', textDecoration: 'none' }}>{primarySite.url || `https://${primarySite.domain}`}</a>
               </div>
             </div>
@@ -351,7 +351,7 @@ export default function BulkUptime() {
           <div style={{ marginBottom: '22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>90-Day Origin Availability</span>
-              <span style={{ fontSize: '12.5px', color: '#16A34A', fontWeight: '600' }}>100.0% Uptime Recorded</span>
+              <span style={{ fontSize: '12px', color: '#16A34A', fontWeight: '600' }}>100.0% Uptime Recorded</span>
             </div>
 
             {/* Heatmap Slits */}
@@ -374,7 +374,7 @@ export default function BulkUptime() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', color: '#94A3B8', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
               <span>90 days ago</span>
               {hoveredBar ? (
                 <span style={{ color: '#0F172A', fontWeight: '600' }}>
@@ -391,7 +391,7 @@ export default function BulkUptime() {
           <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '18px 20px', marginBottom: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0F172A' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: '#0F172A' }}>
                   5-Stage Micro-Waterfall Network Diagnostics
                 </span>
                 <span style={{ fontSize: '12px', color: '#64748B', marginLeft: '10px' }}>
@@ -511,7 +511,7 @@ export default function BulkUptime() {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>{reg.flag}</span>
-                      <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#334155' }}>{reg.name}</span>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: '#334155' }}>{reg.name}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '12px', color: '#64748B', fontVariantNumeric: 'tabular-nums' }}>{reg.latency_ms} ms</span>
@@ -534,15 +534,15 @@ export default function BulkUptime() {
                 Continuous inspection of page payload to prevent false positives from HTTP 200 database crashes.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12.5px', padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
                   <span style={{ color: '#475569' }}>MySQL Database Connection</span>
                   <span style={{ color: '#15803D', fontWeight: '600' }}>✓ Active &amp; No Error Strings</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12.5px', padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', padding: '6px 0', borderBottom: '1px solid #F1F5F9' }}>
                   <span style={{ color: '#475569' }}>PHP Runtime &amp; WSOD Trap</span>
                   <span style={{ color: '#15803D', fontWeight: '600' }}>✓ No Fatal Crashes Detected</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12.5px', padding: '6px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', padding: '6px 0' }}>
                   <span style={{ color: '#475569' }}>Page Title Assertion</span>
                   <span style={{ color: '#0F172A', fontWeight: '600', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {activeProbe?.content_assertion?.page_title || 'Mahabub Shop'}
@@ -589,7 +589,7 @@ export default function BulkUptime() {
                   <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
                     White-Label Public Status Page
                   </h3>
-                  <div style={{ fontSize: '12.5px', color: '#64748B' }}>
+                  <div style={{ fontSize: '12px', color: '#64748B' }}>
                     Share live 99.99% availability metrics with your clients
                   </div>
                 </div>
@@ -635,7 +635,7 @@ export default function BulkUptime() {
                     borderRadius: '8px',
                     background: '#0B2522',
                     color: '#FFFFFF',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: '600',
                     border: 'none',
                     cursor: 'pointer'
@@ -686,7 +686,7 @@ export default function BulkUptime() {
         <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
           Incident &amp; Downtime History
         </div>
-        <div style={{ fontSize: '12.5px', color: '#64748B', marginBottom: '16px' }}>
+        <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '16px' }}>
           Historical record of server reachability failures, connection drops, and HTTP 5xx errors.
         </div>
 
@@ -704,7 +704,7 @@ export default function BulkUptime() {
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#0F172A' }}>
               All Systems Operational
             </div>
-            <div style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
               No outages or downtime incidents recorded for this domain in the last 90 days.
             </div>
           </div>
@@ -761,7 +761,7 @@ const labelStyle = {
 }
 
 const numberStyle = {
-  fontSize: '23px',
+  fontSize: '24px',
   fontWeight: '700',
   color: '#0F172A',
   fontVariantNumeric: 'tabular-nums',
@@ -775,7 +775,7 @@ const subLabelStyle = {
 }
 
 const stageLabelStyle = {
-  fontSize: '11.5px',
+  fontSize: '11px',
   color: '#64748B',
   fontWeight: '500'
 }

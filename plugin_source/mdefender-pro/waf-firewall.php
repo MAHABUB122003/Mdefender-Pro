@@ -849,7 +849,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                         $re_path = ABSPATH . $re;
                         if (is_file($re_path)) {
                             $ext = strtolower(pathinfo($re_path, PATHINFO_EXTENSION));
-                            if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'js', 'html', 'htm', 'txt', 'sql', 'bak', 'jpg', 'jpeg', 'png', 'webp', 'svg']) || $re === '.htaccess') {
+                            if (in_array($ext, ['php', 'phtml', 'inc', 'htaccess', 'js', 'html', 'htm', 'txt', 'sql', 'bak', 'jpg', 'jpeg', 'png', 'webp', 'svg', 'sh', 'bash', 'py', 'pl', 'cgi', 'asp', 'aspx', 'jsp', 'exe', 'bat', 'cmd', 'ps1']) || $re === '.htaccess') {
                                 $scanned_count++;
                                 $res = $scanner->scan_file_multi_signal($re_path, 'core');
                                 if ($res && !empty($res['findings'])) {
@@ -999,7 +999,7 @@ function waf_fw_handle_cloud_sync_webhook() {
                             foreach ($it as $file) {
                                 if ($file->isFile()) {
                                     $ext = strtolower($file->getExtension());
-                                    if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc', 'cgi', 'asp', 'aspx', 'sh', 'py', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'pdf', 'txt', 'zip', 'tar', 'gz', 'bak', 'sql'])) {
+                                    if (in_array($ext, ['php', 'phtml', 'php5', 'php7', 'phar', 'inc', 'cgi', 'asp', 'aspx', 'jsp', 'pl', 'py', 'sh', 'bash', 'ps1', 'exe', 'bat', 'cmd', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'pdf', 'txt', 'zip', 'tar', 'gz', 'bak', 'sql'])) {
                                         $scanned_count++;
                                         $res = $scanner->scan_file_multi_signal($file->getPathname(), 'uploads');
                                         if ($res && !empty($res['findings'])) {
@@ -3194,6 +3194,8 @@ function waf_fw_handle_cloud_sso_login() {
     // 4. Cryptographic HMAC Verification
     $domain = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? '');
     $clean_domain = preg_replace('/^www\./i', '', $domain);
+    $path_part = trim(strval(parse_url(home_url(), PHP_URL_PATH) ?? ''), '/');
+    $domain_with_path = $path_part ? ($clean_domain . '/' . $path_part) : $clean_domain;
 
     $candidate_secrets = array_filter([
         get_option('waf_fw_site_token'),
@@ -3207,16 +3209,21 @@ function waf_fw_handle_cloud_sso_login() {
 
         // Payload matching: f"{website_id}:{clean_domain}:{user_email}:{ts}:{nonce}"
         $payload = "{$sid}:{$clean_domain}:{$email}:{$ts}:{$nonce}";
-        $expected_sig = hash_hmac('sha256', $payload, $secret);
-        if (hash_equals($expected_sig, $token)) {
+        if (hash_equals(hash_hmac('sha256', $payload, $secret), $token)) {
+            $verified = true;
+            break;
+        }
+
+        // Check with domain path (for subdirectory installs e.g. localhost/mahabub)
+        $payload_path = "{$sid}:{$domain_with_path}:{$email}:{$ts}:{$nonce}";
+        if (hash_equals(hash_hmac('sha256', $payload_path, $secret), $token)) {
             $verified = true;
             break;
         }
 
         // Also check with raw domain
         $payload_raw = "{$sid}:{$domain}:{$email}:{$ts}:{$nonce}";
-        $expected_sig_raw = hash_hmac('sha256', $payload_raw, $secret);
-        if (hash_equals($expected_sig_raw, $token)) {
+        if (hash_equals(hash_hmac('sha256', $payload_raw, $secret), $token)) {
             $verified = true;
             break;
         }

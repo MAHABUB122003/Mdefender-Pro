@@ -260,6 +260,21 @@ async def refresh_token(request: Request, response: Response):
             refresh_token = refresh_token_from_header
 
     if not refresh_token:
+        auth_hdr = request.headers.get('Authorization', '')
+        if auth_hdr.startswith('Bearer '):
+            candidate = auth_hdr.replace('Bearer ', '').strip()
+            if jwt_service.decode_refresh_token(candidate):
+                refresh_token = candidate
+
+    if not refresh_token:
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and body.get('refresh_token'):
+                refresh_token = body.get('refresh_token')
+        except Exception:
+            pass
+
+    if not refresh_token:
         raise HTTPException(status_code=401, detail='Refresh token not found')
 
     payload = jwt_service.decode_refresh_token(refresh_token)
@@ -268,17 +283,20 @@ async def refresh_token(request: Request, response: Response):
 
     user_id = payload['sub']
     token_version = payload.get('token_version', 0)
+    remember_me = payload.get('remember_me', False)
 
     is_admin = payload.get('is_admin', False) or payload.get('role') == 'super_admin'
 
     if is_admin:
         new_access_token = jwt_service.create_access_token(
             user_id, payload.get('email', user_id), role='super_admin',
-            extra_claims={'is_admin': True}
+            extra_claims={'is_admin': True},
+            remember_me=remember_me
         )
         new_refresh_token = jwt_service.create_refresh_token(
             user_id, payload.get('session_id', ''),
-            token_version=token_version
+            token_version=token_version,
+            remember_me=remember_me
         )
     else:
         user = db.users.find_one({'_id': to_object_id(user_id)})
@@ -293,16 +311,18 @@ async def refresh_token(request: Request, response: Response):
             raise HTTPException(status_code=401, detail='Token revoked. Please login again.')
 
         new_access_token = jwt_service.create_access_token(
-            user_id, user['email'], role=user.get('role', 'user')
+            user_id, user['email'], role=user.get('role', 'user'),
+            remember_me=remember_me
         )
         new_refresh_token = jwt_service.create_refresh_token(
             user_id, payload.get('session_id', ''),
-            token_version=stored_version
+            token_version=stored_version,
+            remember_me=remember_me
         )
 
     csrf_token = secrets.token_urlsafe(32)
-    cookie_service.set_access_token(response, new_access_token)
-    cookie_service.set_refresh_token(response, new_refresh_token)
+    cookie_service.set_access_token(response, new_access_token, remember_me=remember_me)
+    cookie_service.set_refresh_token(response, new_refresh_token, remember_me=remember_me)
     cookie_service.set_csrf_token(response, csrf_token)
 
     return {

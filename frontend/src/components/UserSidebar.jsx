@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -29,7 +29,11 @@ import {
   Tag,
   Settings,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  ChevronsUpDown,
+  CreditCard,
+  Laptop,
+  ChevronRight
 } from 'lucide-react'
 
 // Hardware-accelerated CSS Grid Accordion: never destroys DOM nodes, zero jitter
@@ -94,6 +98,39 @@ export default function UserSidebar({ isOpen, onClose }) {
     enterprise: 'Dedicated Enterprise'
   }[userPlan] || (isPaid ? 'Premium Plan' : 'Starter Free')
 
+  const trialDays = (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const profileMenuRef = useRef(null)
+
+  // Close profile dropdown when clicking outside or pressing Escape
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false)
+      }
+    }
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setShowProfileMenu(false)
+      }
+    }
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showProfileMenu])
+
+  // Close profile menu on navigation
+  useEffect(() => {
+    setShowProfileMenu(false)
+  }, [location.pathname])
+
   // Only close drawer on mobile viewports (< 1024px)
   const handleLinkClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024 && onClose) {
@@ -154,9 +191,6 @@ export default function UserSidebar({ isOpen, onClose }) {
     }
     if (toPath === '/user/websites') {
       return currentPath === '/user/websites'
-    }
-    if (toPath === '/user/domains') {
-      return currentPath === '/user/domains'
     }
     if (toPath === '/user/team') {
       return currentPath === '/user/team'
@@ -266,7 +300,7 @@ export default function UserSidebar({ isOpen, onClose }) {
               <img src="/assets/mdefender_logo.png" alt="MDefender Pro" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div className="logo-text">
-              <h2 style={{ fontSize: '16.5px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.3px', margin: 0, lineHeight: 1.2 }}>MDefender</h2>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.3px', margin: 0, lineHeight: 1.2 }}>MDefender</h2>
               <span style={{ fontSize: '10px', color: '#E8792F', fontWeight: 700, letterSpacing: '0.9px', textTransform: 'uppercase' }}>Enterprise WAF</span>
             </div>
           </Link>
@@ -520,19 +554,7 @@ export default function UserSidebar({ isOpen, onClose }) {
             <span style={{ pointerEvents: 'none' }}>WordPress Sites</span>
           </Link>
 
-          {/* 10. Custom Domains */}
-          <Link
-            to="/user/domains"
-            onClick={handleLinkClick}
-            className={`user-nav-link ${isLinkActive('/user/domains') ? 'active' : ''}`}
-          >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
-              <Cpu size={16} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Custom Domains</span>
-          </Link>
-
-          {/* 11. Team Members */}
+          {/* 10. Team Members */}
           <Link
             to="/user/team"
             onClick={handleLinkClick}
@@ -594,90 +616,271 @@ export default function UserSidebar({ isOpen, onClose }) {
         </nav>
 
         {/* ========================================================================= */}
-        {/* FOOTER (STATUS, PROFILE & LOGOUT)                                         */}
+        {/* TECH-GIANT ENTERPRISE FOOTER (PROFILE TRIGGER & ELEVATED POPOVER)        */}
         {/* ========================================================================= */}
-        <div className="sidebar-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '12px 10px' }}>
+        <div className="sidebar-footer" ref={profileMenuRef} style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '10px', position: 'relative', overflow: 'visible', zIndex: 100 }}>
           
-          {/* Active Plan Pill */}
-          <div className="sidebar-status" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '6.5px 9px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
-            <span className={`status-dot ${isPaid ? 'online' : ''}`} style={!isPaid ? { background: '#F59E0B' } : { background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }}></span>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: '10px', color: '#889895', fontWeight: 500, lineHeight: 1.1 }}>Active Tier</span>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{planName}</span>
-            </div>
-            {isPaid && <Sparkles size={13} color="#E8792F" />}
-          </div>
+          {/* Elevated Floating Popover Menu */}
+          {showProfileMenu && (
+            <div
+              className="profile-popover-menu"
+              style={{
+                position: 'absolute',
+                bottom: 'calc(100% + 8px)',
+                left: '10px',
+                right: '10px',
+                background: '#0d1817',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '12px',
+                boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(16px)',
+                padding: '8px',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                animation: 'popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+            >
+              {/* Popover Header: User identity & subscription */}
+              <div style={{ padding: '8px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    boxShadow: '0 2px 6px rgba(16,185,129,0.3)',
+                    flexShrink: 0
+                  }}>
+                    {userName ? userName[0].toUpperCase() : 'U'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {userName}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#889895', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {userEmail || 'operator@mdefender.io'}
+                    </span>
+                  </div>
+                </div>
 
-          {/* Profile / Username */}
-          <Link
-            to="/user/settings"
-            onClick={handleLinkClick}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '9px',
-              padding: '6.5px 9px',
-              borderRadius: '8px',
-              marginBottom: '7px',
-              textDecoration: 'none',
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.05)',
-              transition: 'background-color 0.14s ease'
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)'}
-          >
-            <div style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #059669 0%, #0B2522 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10.5px',
-              fontWeight: 800,
-              flexShrink: 0
-            }}>
-              {userName ? userName[0].toUpperCase() : 'U'}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {userName}
-              </span>
-              <span style={{ fontSize: '9.5px', color: '#6A7D78', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {userEmail || 'Account Settings'}
-              </span>
-            </div>
-          </Link>
+                {/* Tier & Trial Status */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: '7px',
+                  padding: '5px 8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      width: '6.5px',
+                      height: '6.5px',
+                      borderRadius: '50%',
+                      background: isPaid ? '#10B981' : '#F59E0B',
+                      boxShadow: isPaid ? '0 0 6px rgba(16,185,129,0.6)' : 'none'
+                    }} />
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#E2E8F0' }}>
+                      {planName}
+                    </span>
+                  </div>
+                  {trialDays ? (
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#F38A3E', background: 'rgba(243,138,62,0.12)', border: '1px solid rgba(243,138,62,0.25)', padding: '2px 6px', borderRadius: '4px' }}>
+                      {trialDays}d Trial
+                    </span>
+                  ) : (
+                    <Link
+                      to="/user/pricing"
+                      onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                      style={{ fontSize: '10.5px', fontWeight: 600, color: '#F38A3E', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
+                    >
+                      Upgrade <ChevronRight size={12} />
+                    </Link>
+                  )}
+                </div>
+              </div>
 
-          {/* Sign Out Button */}
+              {/* Navigation Options List */}
+              <div style={{ padding: '4px 0' }}>
+                <Link
+                  to="/user/settings"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <Settings size={14} />
+                    <span>Account Settings</span>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/user/settings?tab=mfa"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <ShieldCheck size={14} />
+                    <span>Security &amp; 2FA</span>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/user/settings?tab=sessions"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <Laptop size={14} />
+                    <span>Active Sessions</span>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/user/bulk/activity"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <Activity size={14} />
+                    <span>Activity &amp; Audit Logs</span>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/user/team"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <Users size={14} />
+                    <span>Team Members</span>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/user/pricing"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <CreditCard size={14} />
+                    <span>Billing &amp; Subscriptions</span>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/user/websites"
+                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
+                  className="popover-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <Layers size={14} />
+                    <span>Protected Fleet Sites</span>
+                  </div>
+                </Link>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.07)', margin: '2px 0' }} />
+
+              {/* Sign Out Option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  if (window.__doLogout) window.__doLogout();
+                }}
+                className="popover-logout-btn"
+              >
+                <LogOut size={14} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+
+          {/* Unified Profile Trigger Bar */}
           <button
-            className="logout-btn"
             type="button"
-            onClick={() => window.__doLogout && window.__doLogout()}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '7px',
-              padding: '7px 10px',
-              borderRadius: '8px',
-              background: 'rgba(220, 38, 38, 0.08)',
-              color: '#F87171',
-              border: '1px solid rgba(220, 38, 38, 0.18)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '11.5px',
-              transition: 'background-color 0.14s ease'
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.15)'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.08)'}
+            onClick={() => setShowProfileMenu(prev => !prev)}
+            className={`profile-trigger-btn ${showProfileMenu ? 'active' : ''}`}
+            aria-expanded={showProfileMenu}
+            aria-label="User profile and account options"
           >
-            <LogOut size={13.5} style={{ pointerEvents: 'none' }} />
-            <span style={{ pointerEvents: 'none' }}>Sign Out</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
+              {/* Avatar with Live Indicator */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '7px',
+                  background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  {userName ? userName[0].toUpperCase() : 'U'}
+                </div>
+                <span style={{
+                  position: 'absolute',
+                  bottom: '-1.5px',
+                  right: '-1.5px',
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: isPaid ? '#10B981' : '#F59E0B',
+                  border: '1.5px solid #0B1916',
+                  boxShadow: isPaid ? '0 0 6px rgba(16,185,129,0.8)' : 'none'
+                }} />
+              </div>
+
+              {/* Name & Email info */}
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#F1F5F9',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: 1.2
+                }}>
+                  {userName}
+                </span>
+                <span style={{
+                  fontSize: '10.5px',
+                  color: '#6A7D78',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: 1.2,
+                  marginTop: '1.5px'
+                }}>
+                  {userEmail || 'operator@mdefender.io'}
+                </span>
+              </div>
+            </div>
+
+            {/* Up/Down Chevrons Indicator */}
+            <ChevronsUpDown
+              size={14}
+              style={{
+                color: showProfileMenu ? '#F38A3E' : '#6A7D78',
+                flexShrink: 0,
+                transition: 'color 0.15s ease'
+              }}
+            />
           </button>
         </div>
       </aside>

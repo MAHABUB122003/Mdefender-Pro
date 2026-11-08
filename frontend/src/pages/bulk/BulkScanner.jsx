@@ -890,7 +890,7 @@ export default function BulkScanner() {
                 border: '1.5px solid #10B981',
                 background: '#ffffff',
                 color: '#0B2522',
-                fontSize: '13.5px',
+                fontSize: '13px',
                 fontWeight: 700,
                 cursor: scanning ? 'not-allowed' : 'pointer',
                 outline: 'none',
@@ -994,10 +994,10 @@ export default function BulkScanner() {
         gap: '16px'
       }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 900, color: '#0B2522', letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0B2522', letterSpacing: '-0.5px' }}>
             Website Threat <span style={{ color: '#059669' }}>Scanner.</span>
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13.5px', color: '#60716B', maxWidth: '680px' }}>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '680px' }}>
             Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation &amp; Cloud ML Heuristics.
           </p>
         </div>
@@ -1058,7 +1058,7 @@ export default function BulkScanner() {
                 border: '1px solid #A7F3D0',
                 padding: '9px 16px',
                 borderRadius: '8px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: 800,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1135,8 +1135,7 @@ export default function BulkScanner() {
                   color={radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#059669' : '#60716B')}
                 />
                 <span style={{
-                  fontSize: '26px',
-                  fontWeight: 900,
+                  fontSize: '24px', fontWeight: '700',
                   color: radarState === 'threat' ? '#DC2626' : (telemetryMetrics.securityHealth ? '#0B2522' : '#60716B'),
                   lineHeight: 1.1,
                   marginTop: '2px'
@@ -1144,7 +1143,7 @@ export default function BulkScanner() {
                   {telemetryMetrics.securityHealth !== null ? `${telemetryMetrics.securityHealth}` : '—'}
                 </span>
                 <span style={{
-                  fontSize: '9.5px',
+                  fontSize: '10px',
                   fontWeight: 800,
                   color: radarState === 'threat' ? '#DC2626' : '#059669',
                   letterSpacing: '0.8px',
@@ -1168,12 +1167,12 @@ export default function BulkScanner() {
               border: '1px solid #E6ECE9'
             }}>
               <div>
-                <span style={{ display: 'block', fontSize: '9.5px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>ENGINE MODE</span>
-                <strong style={{ fontSize: '11.5px', color: '#0B2522', fontWeight: 700 }}>Cloud ML + Heuristic AST</strong>
+                <span style={{ display: 'block', fontSize: '10px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>ENGINE MODE</span>
+                <strong style={{ fontSize: '11px', color: '#0B2522', fontWeight: 700 }}>Cloud ML + Heuristic AST</strong>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '9.5px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>RADAR SWEEP</span>
-                <strong style={{ fontSize: '11.5px', color: '#059669', fontWeight: 700 }}>
+                <span style={{ display: 'block', fontSize: '10px', color: '#60716B', fontWeight: 800, letterSpacing: '0.6px' }}>RADAR SWEEP</span>
+                <strong style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>
                   {scanning ? 'Active Micro-batch Sweep' : 'Continuous Sentinel'}
                 </strong>
               </div>
@@ -1196,7 +1195,7 @@ export default function BulkScanner() {
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SECURITY HEALTH</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
                   {telemetryMetrics.securityHealth !== null ? `${telemetryMetrics.securityHealth}/100` : '—'}
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
@@ -1212,7 +1211,7 @@ export default function BulkScanner() {
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>FILES SCANNED</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
                   {telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : '—'}
                 </div>
                 <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
@@ -1228,7 +1227,7 @@ export default function BulkScanner() {
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>COMPONENTS AUDITED</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
                   {telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : '—'}
                 </div>
                 <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
@@ -1244,7 +1243,7 @@ export default function BulkScanner() {
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>ACTIONABLE THREATS</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669' }}>
                   {Number(telemetryMetrics.unresolvedChanges).toLocaleString()}
                 </div>
                 <div style={{ fontSize: '12px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', marginTop: '2px' }}>
@@ -1260,7 +1259,7 @@ export default function BulkScanner() {
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>LAST DEEP SCAN</span>
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: 900, color: '#0B2522' }}>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
                   {telemetryMetrics.lastDeepAnalysis}
                 </div>
                 <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
@@ -1276,7 +1275,7 @@ export default function BulkScanner() {
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>AUTONOMOUS UPTIME</span>
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 900, color: '#059669' }}>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#059669' }}>
                   {continuousMonitoring ? 'Enabled' : 'Paused'}
                 </div>
                 <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
@@ -1375,7 +1374,7 @@ export default function BulkScanner() {
                   <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>{stageDetail}</div>
                 </div>
               </div>
-              <span style={{ fontSize: '18px', fontWeight: 900, color: '#059669' }}>
+              <span style={{ fontSize: '18px', fontWeight: '700', color: '#059669' }}>
                 {scanProgressPct}%
               </span>
             </div>
@@ -1455,7 +1454,7 @@ export default function BulkScanner() {
               background: '#059669',
               boxShadow: '0 0 6px rgba(5, 150, 105, 0.4)'
             }} />
-            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B2522' }}>{step}</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0B2522' }}>{step}</span>
             {idx < 5 && <span style={{ color: '#D9E1DC', marginLeft: '12px' }}>&bull;</span>}
           </div>
         ))}
@@ -1493,7 +1492,7 @@ export default function BulkScanner() {
               border: `1px solid ${tabCounts.all > 0 ? '#FECACA' : '#A7F3D0'}`,
               borderRadius: '20px',
               padding: '2px 10px',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 800
             }}>
               {tabCounts.all} Issues
@@ -1580,7 +1579,7 @@ export default function BulkScanner() {
                 border: `1px solid ${activeTab === tab.key ? '#0B2522' : '#D9E1DC'}`,
                 padding: '6px 16px',
                 borderRadius: '7px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
@@ -1600,7 +1599,7 @@ export default function BulkScanner() {
           background: '#F8FAF9',
           borderRadius: '8px',
           border: '1px solid #E6ECE9',
-          fontSize: '12.5px',
+          fontSize: '12px',
           color: '#60716B',
           marginBottom: '20px',
           flexWrap: 'wrap'
@@ -1712,7 +1711,7 @@ export default function BulkScanner() {
                       <div style={{ textAlign: 'right' }}>
                         <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block' }}>Issue Found Just now</span>
                         <span style={{
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 800,
                           color: isCritical ? '#DC2626' : '#D97706'
                         }}>
@@ -1732,7 +1731,7 @@ export default function BulkScanner() {
                               border: '1px solid #BBF7D0',
                               padding: '5px 12px',
                               borderRadius: '6px',
-                              fontSize: '11.5px',
+                              fontSize: '11px',
                               fontWeight: 800,
                               cursor: isBusy ? 'wait' : 'pointer',
                               display: 'inline-flex',
@@ -1755,7 +1754,7 @@ export default function BulkScanner() {
                               border: '1px solid #FECACA',
                               padding: '5px 12px',
                               borderRadius: '6px',
-                              fontSize: '11.5px',
+                              fontSize: '11px',
                               fontWeight: 800,
                               cursor: isBusy ? 'wait' : 'pointer',
                               display: 'inline-flex',
@@ -1776,7 +1775,7 @@ export default function BulkScanner() {
                             border: '1px solid #D9E1DC',
                             padding: '5px 12px',
                             borderRadius: '6px',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             fontWeight: 700,
                             cursor: 'pointer'
                           }}
@@ -1792,7 +1791,7 @@ export default function BulkScanner() {
                             border: '1px solid #D9E1DC',
                             padding: '5px 12px',
                             borderRadius: '6px',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             fontWeight: 800,
                             cursor: 'pointer',
                             display: 'inline-flex',
@@ -1872,7 +1871,7 @@ export default function BulkScanner() {
                             padding: '8px 14px',
                             background: '#1E293B',
                             borderBottom: '1px solid #334155',
-                            fontSize: '11.5px',
+                            fontSize: '11px',
                             fontWeight: 700,
                             color: '#94A3B8'
                           }}>
@@ -1891,14 +1890,14 @@ export default function BulkScanner() {
                                   color: '#38BDF8',
                                   padding: '1px 6px',
                                   borderRadius: '4px',
-                                  fontSize: '10.5px'
+                                  fontSize: '10px'
                                 }}>
                                   Line {f.line_number}
                                 </span>
                               )}
                             </div>
                             <span style={{
-                              fontSize: '10.5px',
+                              fontSize: '10px',
                               letterSpacing: '0.04em',
                               padding: '2px 8px',
                               borderRadius: '4px',
@@ -1914,7 +1913,7 @@ export default function BulkScanner() {
                           <div style={{
                             padding: '12px 14px',
                             fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                            fontSize: '12.5px',
+                            fontSize: '12px',
                             lineHeight: 1.6,
                             overflowX: 'auto'
                           }}>
@@ -2195,7 +2194,7 @@ export default function BulkScanner() {
                         <IconComp size={16} />
                       </div>
                       <span style={{
-                        fontSize: '10.5px',
+                        fontSize: '10px',
                         fontWeight: 800,
                         padding: '2px 8px',
                         borderRadius: '6px',
@@ -2207,7 +2206,7 @@ export default function BulkScanner() {
                       </span>
                     </div>
 
-                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#0B2522' }}>
+                    <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#0B2522' }}>
                       {item.name}
                     </h4>
                     <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#60716B', lineHeight: 1.4 }}>
@@ -2273,7 +2272,7 @@ export default function BulkScanner() {
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
                   Visual Code Differences
                 </h3>
-                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
                   Comparing local file on server with official WordPress.org release: <code>{diffModal.file}</code>
                 </div>
               </div>
@@ -2303,7 +2302,7 @@ export default function BulkScanner() {
                       background: '#F8FAF9',
                       border: '1px solid #E2E8F0',
                       borderRadius: '8px',
-                      fontSize: '11.5px',
+                      fontSize: '11px',
                       fontFamily: 'monospace',
                       height: '420px',
                       overflowY: 'auto',
@@ -2324,7 +2323,7 @@ export default function BulkScanner() {
                       background: '#FEF2F2',
                       border: '1px solid #FECACA',
                       borderRadius: '8px',
-                      fontSize: '11.5px',
+                      fontSize: '11px',
                       fontFamily: 'monospace',
                       height: '420px',
                       overflowY: 'auto',
@@ -2353,7 +2352,7 @@ export default function BulkScanner() {
                   border: '1px solid #D9E1DC',
                   padding: '7px 18px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   cursor: 'pointer'
                 }}
@@ -2372,7 +2371,7 @@ export default function BulkScanner() {
                   color: '#ffffff',
                   padding: '7px 18px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 800,
                   cursor: 'pointer'
                 }}
@@ -2422,7 +2421,7 @@ export default function BulkScanner() {
                 <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0B2522' }}>
                   Source Code Inspection
                 </h3>
-                <div style={{ fontSize: '12.5px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
                   <code>{viewFileModal.file}</code> &bull; {viewFileModal.lines} lines
                 </div>
               </div>
@@ -2476,7 +2475,7 @@ export default function BulkScanner() {
                   border: '1px solid #D9E1DC',
                   padding: '7px 18px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -2495,7 +2494,7 @@ export default function BulkScanner() {
                   color: '#ffffff',
                   padding: '7px 18px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 800,
                   cursor: 'pointer'
                 }}
@@ -2596,7 +2595,7 @@ export default function BulkScanner() {
                   border: '1px solid #D9E1DC',
                   padding: '8px 16px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   cursor: 'pointer'
                 }}
@@ -2614,7 +2613,7 @@ export default function BulkScanner() {
                   color: '#ffffff',
                   padding: '8px 18px',
                   borderRadius: '8px',
-                  fontSize: '12.5px',
+                  fontSize: '12px',
                   fontWeight: 800,
                   cursor: 'pointer'
                 }}
