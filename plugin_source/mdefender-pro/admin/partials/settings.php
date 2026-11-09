@@ -893,8 +893,9 @@ $dashboard = $logger->get_dashboard_data();
                                 <label for="wafFwMlUrl" style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">Custom Cloud API Endpoint</label>
                                 <?php
                                 $current_ml_url = get_option('waf_fw_ml_api_url', '');
-                                if (empty($current_ml_url) || strpos($current_ml_url, 'localhost:8000') !== false || strpos($current_ml_url, 'onrender.com') !== false) {
-                                    $current_ml_url = 'https://mdefender-pro.crafix.tech';
+                                if (empty($current_ml_url)) {
+                                    $is_local_host = in_array(strtolower($_SERVER['HTTP_HOST'] ?? ''), ['localhost', '127.0.0.1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+                                    $current_ml_url = $is_local_host ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
                                 }
                                 ?>
                                 <input type="text" id="wafFwMlUrl" class="waf-key-input" placeholder="https://mdefender-pro.crafix.tech" value="<?php echo esc_attr($current_ml_url); ?>" autocomplete="off" style="font-size:12px;">

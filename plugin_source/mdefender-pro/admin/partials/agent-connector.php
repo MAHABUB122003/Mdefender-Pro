@@ -30,8 +30,9 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
         $allow_sso = !empty($_POST['waf_allow_cloud_sso']) ? 'yes' : 'no';
         update_option('waf_allow_cloud_sso', $allow_sso);
         
-        if (empty($cloud_url) || strpos($cloud_url, 'localhost') !== false) {
-            $cloud_url = 'https://mdefender-pro.crafix.tech'; // Default MDefender Cloud Production URL
+        if (empty($cloud_url)) {
+            $is_local_host = in_array(strtolower($_SERVER['HTTP_HOST'] ?? ''), ['localhost', '127.0.0.1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+            $cloud_url = $is_local_host ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
         }
 
         if (empty($api_key) || strlen($api_key) < 16) {
@@ -157,9 +158,10 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
 }
 
 $api_key = get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''));
-$cloud_url = get_option('waf_fw_cloud_api_url', 'https://mdefender-pro.crafix.tech');
-if (empty($cloud_url) || strpos($cloud_url, 'localhost') !== false) {
-    $cloud_url = 'https://mdefender-pro.crafix.tech';
+$cloud_url = get_option('waf_fw_cloud_api_url', '');
+if (empty($cloud_url)) {
+    $is_local_host = in_array(strtolower($_SERVER['HTTP_HOST'] ?? ''), ['localhost', '127.0.0.1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+    $cloud_url = $is_local_host ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
     update_option('waf_fw_cloud_api_url', $cloud_url);
 }
 $is_connected = get_option('waf_fw_connected', 'no') === 'yes' && !empty($api_key);

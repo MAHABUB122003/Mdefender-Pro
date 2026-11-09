@@ -29,11 +29,18 @@ class WAF_FW_Login_Protector {
 
         // Enforce Administrative & Login Portal IP Whitelist Restriction
         add_action('plugins_loaded', [$this, 'check_admin_ip_restriction'], 2);
-        add_action('init', [$this, 'check_admin_ip_restriction'], 2);
+        add_action('wp_loaded', [$this, 'check_admin_ip_restriction'], 2);
 
         if ($this->custom_login_slug) {
-            add_action('plugins_loaded', [$this, 'handle_custom_login_url'], 1);
-            add_action('init', [$this, 'handle_custom_login_url'], 1);
+            // Stage 1: Detect secret slug early, normalize trailing slash, set $pagenow = 'wp-login.php'
+            add_action('plugins_loaded', [$this, 'plugins_loaded_early_detect'], 1);
+
+            // Stage 2: Serve login screen or block default routes once WordPress & all plugins are 100% loaded
+            add_action('wp_loaded', [$this, 'wp_loaded_serve_custom_login'], 1);
+
+            // Prevent WordPress core from doing canonical redirects from /admin or /dashboard to /wp-login.php
+            remove_action('template_redirect', 'wp_redirect_admin_locations', 1000);
+
             add_filter('site_url', [$this, 'filter_site_url'], 10, 3);
             add_filter('network_site_url', [$this, 'filter_site_url'], 10, 3);
             add_filter('login_url', [$this, 'filter_login_url'], 10, 3);
@@ -56,7 +63,11 @@ class WAF_FW_Login_Protector {
         }
     }
 
-    public function handle_custom_login_url() {
+    /**
+     * Stage 1: Early detection on plugins_loaded.
+     * Sets $pagenow = 'wp-login.php' and performs trailing slash redirection.
+     */
+    public function plugins_loaded_early_detect() {
         $slug = $this->custom_login_slug;
         if (!$slug) return;
 
@@ -75,34 +86,83 @@ class WAF_FW_Login_Protector {
         }
         $trimmed_path = trim($path, '/');
 
-        // Check gateway lockout for custom login slug
-        $client_ip = $this->get_client_ip();
-        if ($this->is_gateway_locked($client_ip)) {
-            $remaining_seconds = max(5, $this->get_gateway_remaining_seconds($client_ip));
-            $cooldown_reason = "Too many failed login attempts detected. Access to the login portal is temporarily restricted for your account security. Public pages remain accessible.";
-            $result = [
-                'ip' => $client_ip,
-                'attack_type' => 'Login Brute-Force Rate Limited',
-                'reference_id' => 'GW-' . strtoupper(substr(md5($client_ip . time()), 0, 8))
-            ];
-            $tpl = defined('WAF_FW_PLUGIN_DIR') ? (WAF_FW_PLUGIN_DIR . 'rate-limit-template.php') : (dirname(__DIR__) . '/rate-limit-template.php');
-            if (file_exists($tpl)) {
-                include $tpl;
-                exit;
-            }
-        }
-
-        // 1. Serving the custom secret login URL (matches path /secret, /secret/, /index.php/secret, or query ?secret)
+        // Check if incoming request matches the custom secret slug
         $is_matching_slug = ($trimmed_path === $slug || strpos($trimmed_path, $slug . '/') === 0 || $trimmed_path === 'index.php/' . $slug);
         if (!$is_matching_slug && (isset($_GET[$slug]) || (isset($_GET['login']) && $_GET['login'] === $slug))) {
             $is_matching_slug = true;
         }
 
         if ($is_matching_slug) {
-            // Wait for init action so WordPress constants and script dependencies are initialized
-            if (!did_action('init')) {
-                return;
+            // Trailing slash redirect check:
+            // If visitor accessed /mahabub without trailing slash, redirect cleanly to /mahabub/ with query params
+            if ($trimmed_path === $slug && !str_ends_with($raw_path, '/') && !isset($_GET[$slug])) {
+                $query = !empty($_SERVER['QUERY_STRING']) ? ('?' . $_SERVER['QUERY_STRING']) : '';
+                wp_safe_redirect(home_url($slug . '/' . $query), 301);
+                exit;
             }
+
+            // Set global $pagenow early so all plugins and core functions know we are on wp-login.php
+            global $pagenow;
+            $pagenow = 'wp-login.php';
+            $_SERVER['SCRIPT_NAME'] = '/wp-login.php';
+            $_SERVER['PHP_SELF'] = '/wp-login.php';
+        }
+    }
+
+    /**
+     * Stage 2: Serve custom login page or intercept direct /wp-login.php & /wp-admin on wp_loaded.
+     * Guaranteed to run after all plugins, themes, translations, and scripts are 100% initialized.
+     */
+    public function wp_loaded_serve_custom_login() {
+        $slug = $this->custom_login_slug;
+        if (!$slug) return;
+
+        // Emergency admin bypass
+        if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || isset($_GET['mdefender_reset']) || isset($_GET['waf_login_restore'])) {
+            return;
+        }
+
+        global $pagenow;
+
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $raw_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
+        
+        $home_path = parse_url(home_url(), PHP_URL_PATH) ?: '';
+        $path = $raw_path;
+        if (!empty($home_path) && strpos($path, $home_path) === 0) {
+            $path = substr($path, strlen($home_path));
+        }
+        $trimmed_path = trim($path, '/');
+
+        $is_matching_slug = ($pagenow === 'wp-login.php' && $trimmed_path !== 'wp-login.php')
+                         || ($trimmed_path === $slug || strpos($trimmed_path, $slug . '/') === 0 || $trimmed_path === 'index.php/' . $slug)
+                         || (isset($_GET[$slug]) || (isset($_GET['login']) && $_GET['login'] === $slug));
+
+        // 1. Serving custom secret login URL
+        if ($is_matching_slug) {
+            // Check gateway lockout for custom login slug
+            $client_ip = $this->get_client_ip();
+            if ($this->is_gateway_locked($client_ip)) {
+                $remaining_seconds = max(5, $this->get_gateway_remaining_seconds($client_ip));
+                $cooldown_reason = "Too many failed login attempts detected. Access to the login portal is temporarily restricted for your account security. Public pages remain accessible.";
+                $result = [
+                    'ip' => $client_ip,
+                    'attack_type' => 'Login Brute-Force Rate Limited',
+                    'reference_id' => 'GW-' . strtoupper(substr(md5($client_ip . time()), 0, 8))
+                ];
+                $tpl = defined('WAF_FW_PLUGIN_DIR') ? (WAF_FW_PLUGIN_DIR . 'rate-limit-template.php') : (dirname(__DIR__) . '/rate-limit-template.php');
+                if (file_exists($tpl)) {
+                    include $tpl;
+                    exit;
+                }
+            }
+
+            // Set all required WordPress login globals
+            global $error, $interim_login, $action, $user_login, $user_ID, $current_site, $wp_hasher;
+            $pagenow = 'wp-login.php';
+            $_SERVER['SCRIPT_NAME'] = '/wp-login.php';
+            $_SERVER['PHP_SELF'] = '/wp-login.php';
+
             if (!defined('AUTOSAVE_INTERVAL')) {
                 define('AUTOSAVE_INTERVAL', 60);
             }
@@ -112,29 +172,22 @@ class WAF_FW_Login_Protector {
             if (!defined('MDEFENDER_ALLOWED_LOGIN')) {
                 define('MDEFENDER_ALLOWED_LOGIN', true);
             }
-            
-            global $error, $interim_login, $action, $user_login, $user_ID, $current_site, $wp_hasher;
-            
-            $_SERVER['SCRIPT_NAME'] = '/wp-login.php';
-            $_SERVER['PHP_SELF'] = '/wp-login.php';
 
             $login_path = ABSPATH . 'wp-login.php';
             if (file_exists($login_path)) {
                 status_header(200);
-                require_once $login_path;
+                try {
+                    require_once $login_path;
+                } catch (\Throwable $e) {
+                    error_log('MDefender Login Gateway Notice: ' . $e->getMessage());
+                }
                 exit;
             }
         }
 
-        // 2. Intercept direct access to default wp-login.php or wp-admin
+        // 2. Intercept direct access to default wp-login.php or unauthorized wp-admin
         $is_login_path = (strpos($raw_path, 'wp-login.php') !== false);
         $is_admin_path = ($trimmed_path === 'wp-admin' || strpos($trimmed_path, 'wp-admin/') === 0);
-
-        // SAFETY: At plugins_loaded hook, WordPress pluggable.php is not loaded yet.
-        // Never inspect wp-admin or call user auth functions until 'init' action fires.
-        if ($is_admin_path && !did_action('init')) {
-            return;
-        }
 
         $user_logged_in = false;
         if (function_exists('is_user_logged_in')) {
@@ -159,6 +212,17 @@ class WAF_FW_Login_Protector {
                     exit;
                 }
             }
+        }
+    }
+
+    /**
+     * Backward-compatible forwarder for any external hook or caller
+     */
+    public function handle_custom_login_url() {
+        if (did_action('wp_loaded')) {
+            $this->wp_loaded_serve_custom_login();
+        } else {
+            $this->plugins_loaded_early_detect();
         }
     }
 

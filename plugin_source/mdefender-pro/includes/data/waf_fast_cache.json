@@ -1,7 +1,9 @@
 {
   "enabled": true,
-  "updated_at": 1794162674,
-  "blacklist_ips": {},
+  "updated_at": 1794200754,
+  "blacklist_ips": {
+    "203.0.113.42": true
+  },
   "blocked_countries": [
     "KP"
   ],
