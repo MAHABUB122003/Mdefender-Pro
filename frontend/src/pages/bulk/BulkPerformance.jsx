@@ -363,15 +363,7 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
     })
   }, [points, plotWidth, plotHeight, maxScaleMs, paddingLeft, paddingTop])
 
-  if (points.length === 0) {
-    return (
-      <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#889893', fontSize: '13px' }}>
-        No telemetry history recorded yet for this endpoint. Run a live audit to capture response metrics.
-      </div>
-    )
-  }
-
-  // Generate smooth cubic Bezier path
+  // Generate smooth cubic Bezier path (Must remain unconditional before any return to uphold React Rules of Hooks)
   const { linePath, areaPath } = useMemo(() => {
     if (coords.length === 0) return { linePath: '', areaPath: '' }
     if (coords.length === 1) {
@@ -401,6 +393,14 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
 
     return { linePath: d, areaPath: area }
   }, [coords, paddingTop, plotHeight])
+
+  if (points.length === 0) {
+    return (
+      <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#889893', fontSize: '13px' }}>
+        No telemetry history recorded yet for this endpoint. Run a live audit to capture response metrics.
+      </div>
+    )
+  }
 
   // Average line Y-coordinate
   const avgY = paddingTop + plotHeight - (Math.min(maxScaleMs, avgMs) / maxScaleMs) * plotHeight
