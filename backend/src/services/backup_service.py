@@ -252,6 +252,7 @@ class BackupService:
         """Fetch all recorded and discovered backups for the specified website."""
         site_id = str(website.get("_id") or website.get("id"))
         domain = website.get("domain") or website.get("url") or "website"
+        clean_name = self.get_clean_domain_slug(website)
         backup_dir = self.get_backup_dir(website)
 
         # 1. Discover physical files on local disk
