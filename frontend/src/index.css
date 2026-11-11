@@ -2910,3 +2910,138 @@ a { color: inherit; text-decoration: none; }
     z-index: 45;
   }
 }
+
+/* ==============================================================================
+   MDefender Pro — Enterprise Interactive Button System (Hover, Active & Tactile Depth)
+   ============================================================================== */
+
+/* Primary Obsidian & Emerald Brand Buttons */
+button[style*="background: #0B2522"],
+button[style*="background:#0B2522"],
+button[style*="background: #10201E"],
+button[style*="background:#10201E"],
+button[style*="background: rgb(11, 37, 34)"],
+button[style*="background: rgb(16, 32, 30)"],
+.mdf-btn-primary {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+  position: relative !important;
+  outline: none !important;
+  user-select: none !important;
+}
+
+button[style*="background: #0B2522"]:hover:not(:disabled),
+button[style*="background:#0B2522"]:hover:not(:disabled),
+button[style*="background: #10201E"]:hover:not(:disabled),
+button[style*="background:#10201E"]:hover:not(:disabled),
+button[style*="background: rgb(11, 37, 34)"]:hover:not(:disabled),
+button[style*="background: rgb(16, 32, 30)"]:hover:not(:disabled),
+.mdf-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0F3833 0%, #155E4C 100%) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 4px 14px rgba(11, 37, 34, 0.28), 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  color: #FFFFFF !important;
+}
+
+button[style*="background: #0B2522"]:active:not(:disabled),
+button[style*="background:#0B2522"]:active:not(:disabled),
+button[style*="background: #10201E"]:active:not(:disabled),
+button[style*="background:#10201E"]:active:not(:disabled),
+button[style*="background: rgb(11, 37, 34)"]:active:not(:disabled),
+button[style*="background: rgb(16, 32, 30)"]:active:not(:disabled),
+.mdf-btn-primary:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.97) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22) !important;
+  background: #071917 !important;
+}
+
+/* Secondary & Action Buttons (Download, Cancel, White Buttons) */
+button[style*="background: #ffffff"],
+button[style*="background:#ffffff"],
+button[style*="background: #FFFFFF"],
+button[style*="background:#FFFFFF"],
+button[style*="background: #F0F4F2"],
+button[style*="background:#F0F4F2"],
+button[style*="background: #F1F5F9"],
+button[style*="background:#F1F5F9"],
+.mdf-btn-secondary {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+}
+
+button[style*="background: #ffffff"]:hover:not(:disabled),
+button[style*="background:#ffffff"]:hover:not(:disabled),
+button[style*="background: #FFFFFF"]:hover:not(:disabled),
+button[style*="background:#FFFFFF"]:hover:not(:disabled),
+button[style*="background: #F0F4F2"]:hover:not(:disabled),
+button[style*="background:#F0F4F2"]:hover:not(:disabled),
+button[style*="background: #F1F5F9"]:hover:not(:disabled),
+button[style*="background:#F1F5F9"]:hover:not(:disabled),
+.mdf-btn-secondary:hover:not(:disabled) {
+  background: #E8F0EC !important;
+  border-color: #B2C7BC !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(11, 37, 34, 0.08) !important;
+  color: #0B2522 !important;
+}
+
+button[style*="background: #ffffff"]:active:not(:disabled),
+button[style*="background:#ffffff"]:active:not(:disabled),
+button[style*="background: #FFFFFF"]:active:not(:disabled),
+button[style*="background:#FFFFFF"]:active:not(:disabled),
+button[style*="background: #F0F4F2"]:active:not(:disabled),
+button[style*="background:#F0F4F2"]:active:not(:disabled),
+button[style*="background: #F1F5F9"]:active:not(:disabled),
+button[style*="background:#F1F5F9"]:active:not(:disabled),
+.mdf-btn-secondary:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.97) !important;
+  background: #DDE8E2 !important;
+}
+
+/* Danger & Delete Trash Buttons */
+button[style*="border: 1px solid #FCA5A5"],
+button[style*="border:1px solid #FCA5A5"],
+button[style*="border-color: #FCA5A5"],
+button[style*="background: #DC2626"],
+button[style*="background:#DC2626"],
+.mdf-btn-danger {
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+}
+
+button[style*="border: 1px solid #FCA5A5"]:hover:not(:disabled),
+button[style*="border:1px solid #FCA5A5"]:hover:not(:disabled),
+button[style*="border-color: #FCA5A5"]:hover:not(:disabled) {
+  background: #FEF2F2 !important;
+  border-color: #EF4444 !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  box-shadow: 0 3px 8px rgba(239, 68, 68, 0.18) !important;
+}
+
+button[style*="border: 1px solid #FCA5A5"]:active:not(:disabled),
+button[style*="border:1px solid #FCA5A5"]:active:not(:disabled),
+button[style*="border-color: #FCA5A5"]:active:not(:disabled) {
+  transform: scale(0.95) !important;
+  background: #FEE2E2 !important;
+}
+
+/* Universal Tactile Feel for All Buttons in Dashboard */
+.bulk-container button,
+.admin-content-canvas button,
+main button {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.bulk-container button:hover:not(:disabled),
+.admin-content-canvas button:hover:not(:disabled),
+main button:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.bulk-container button:active:not(:disabled),
+.admin-content-canvas button:active:not(:disabled),
+main button:active:not(:disabled) {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+

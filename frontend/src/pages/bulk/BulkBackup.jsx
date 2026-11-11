@@ -1190,7 +1190,7 @@ export default function BulkBackup() {
                   style={primaryActionButtonStyle}
                 >
                   <Check size={14} />
-                  <span>{savingSchedule ? 'Saving...' : 'Save Schedule Settings'}</span>
+                  <span>{savingSchedule ? 'Saving...' : 'Save Schedule'}</span>
                 </button>
               </form>
             </div>

@@ -1506,7 +1506,7 @@ export default function BulkSafeUpdates() {
                   cursor: 'pointer'
                 }}
               >
-                Save Configuration
+                Save Changes
               </button>
             </div>
           </div>

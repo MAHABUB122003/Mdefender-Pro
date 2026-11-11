@@ -550,6 +550,7 @@ export default function BulkLoginGateway() {
                   type="button"
                   onClick={handleSaveLoginGateway}
                   disabled={savingSecret || !customLoginSlug.trim()}
+                  className="mdf-btn-primary"
                   style={{
                     height: '36px',
                     padding: '0 20px',
@@ -569,7 +570,7 @@ export default function BulkLoginGateway() {
                   }}
                 >
                   <Save size={13} />
-                  <span>{savingSecret ? 'Saving...' : 'Save Secret Gateway'}</span>
+                  <span>{savingSecret ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </div>
@@ -733,6 +734,7 @@ export default function BulkLoginGateway() {
                   type="button"
                   onClick={() => handleSaveAdminIpRestriction()}
                   disabled={savingIp}
+                  className="mdf-btn-primary"
                   style={{
                     height: '36px',
                     padding: '0 20px',
@@ -751,7 +753,7 @@ export default function BulkLoginGateway() {
                   }}
                 >
                   <Save size={13} />
-                  <span>{savingIp ? 'Saving...' : 'Save Authorized IPs'}</span>
+                  <span>{savingIp ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </div>
