@@ -198,6 +198,12 @@ export default function BulkBackup() {
       onSuccess: (data) => {
         showToast(data.message || 'Backup archive created successfully!')
         setBackupNote('')
+        if (data.backup) {
+          setBackups(prev => [
+            data.backup,
+            ...prev.filter(b => b.filename !== data.backup.filename && b.id !== 'creating_placeholder' && !b.filename.startsWith('mdf_full_') && !b.filename.startsWith('mdf_db_'))
+          ])
+        }
         loadBackups()
         fetchFleet(true)
       },

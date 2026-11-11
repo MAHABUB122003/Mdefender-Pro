@@ -199,6 +199,52 @@ class BackupService:
 
         return {"status": "error", "message": "Failed to communicate with WordPress origin server."}
 
+    def dispatch_remote_backup_query(self, website: Dict[str, Any], timeout: float = 8.0) -> Dict[str, Any]:
+        """Query remote WordPress site for physical backup files directly."""
+        url = website.get("url") or f"https://{website.get('domain')}"
+        target_url = url.rstrip("/")
+        if not target_url.startswith("http://") and not target_url.startswith("https://"):
+            target_url = f"https://{target_url}"
+        api_key = website.get("api_key") or ""
+        site_token = website.get("site_token") or ""
+
+        url_params = "waf_cloud_sync=1&action=get_backups"
+        if api_key:
+            url_params += f"&api_key={api_key}"
+        if site_token:
+            url_params += f"&site_token={site_token}"
+        sep = "&" if "?" in target_url else "?"
+
+        endpoints = [
+            f"{target_url}/wp-json/waf-fw/v1/remote-backups?{url_params}",
+            f"{target_url}/?rest_route=/waf-fw/v1/remote-backups&{url_params}",
+            f"{target_url}/?rest_route=/waf-fw/v1/sync&{url_params}",
+            f"{target_url}{sep}{url_params}",
+        ]
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "MDefender-Pro-CloudAction/1.0",
+        }
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["X-API-Key"] = api_key
+        if site_token:
+            headers["X-Site-Token"] = site_token
+
+        for ep in endpoints:
+            try:
+                resp = requests.get(ep, headers=headers, timeout=timeout, verify=False)
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        if isinstance(data, dict) and (data.get("backups") or data.get("status") == "success"):
+                            return data
+                    except Exception:
+                        pass
+            except Exception:
+                continue
+        return {}
+
     # -------------------------------------------------------------------------
     # 1. Retrieve Backups Catalog for Website (Two-Way Bidirectional Parity)
     # -------------------------------------------------------------------------
@@ -258,14 +304,17 @@ class BackupService:
             })
 
         # 2. If website is a remote WordPress site, query WordPress origin
-        origin_synced = False
         if not self.is_local_site(website) and (website.get("url") or website.get("api_key")):
             try:
-                remote_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=12.0)
-                inv = remote_res.get("inventory") or remote_res.get("data") or {}
-                remote_bks = inv.get("backups") or []
-                if remote_bks or remote_res.get("status") == "success":
-                    origin_synced = True
+                # Primary: Query dedicated remote-backups REST endpoint
+                remote_res = self.dispatch_remote_backup_query(website, timeout=8.0)
+                remote_bks = remote_res.get("backups") or []
+
+                if not remote_bks:
+                    # Secondary: Query sync inventory endpoint
+                    sync_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=8.0)
+                    inv = sync_res.get("inventory") or sync_res.get("data") or {}
+                    remote_bks = inv.get("backups") or sync_res.get("action_result", {}).get("backups") or []
 
                 for rb in remote_bks:
                     rfn = rb.get("filename")
@@ -273,7 +322,7 @@ class BackupService:
                         continue
 
                     seen_filenames.add(rfn)
-                    rsize_str = rb.get("size") or "0 MB"
+                    rsize_str = rb.get("size") or rb.get("size_formatted") or "0 MB"
                     rb_type = rb.get("type") or ("database" if "db_" in rfn else "full")
                     comps = ["Database (SQL)"] if rb_type == "database" else (["Plugins", "Themes", "Uploads"] if rb_type == "files" else ["Database", "Plugins", "Themes", "Uploads", "Core"])
                     
@@ -295,39 +344,42 @@ class BackupService:
                         "size": rsize_str,
                         "created_at": rb.get("date") or rb.get("created_at") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "status": "verified",
-                        "note": rb.get("name") or "WordPress Origin Snapshot",
+                        "note": rb.get("note") or rb.get("name") or "WordPress Origin Snapshot",
                         "storage_path": f"remote:{rfn}",
                         "is_remote": True
                     })
             except Exception as e:
                 logger.warning(f"Could not sync live backups from remote origin {domain}: {e}")
 
-        # 3. Only if origin sync failed (site offline or network timeout), include previous DB cache
-        if not origin_synced:
-            db_backups = list(website.get("backups") or [])
-            for b in db_backups:
-                if isinstance(b, dict):
-                    bfn = b.get("filename")
-                    if bfn and bfn not in seen_filenames:
-                        bsize = b.get("size_bytes") or 0
-                        # Filter out old 1.0 KB or 1.6 KB dummy archives
-                        if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
-                            seen_filenames.add(bfn)
-                            fresh_backups.append(b)
+        # 3. CRITICAL: Always merge existing valid DB backups so created snapshots are NEVER wiped!
+        db_backups = list(website.get("backups") or [])
+        for b in db_backups:
+            if isinstance(b, dict):
+                bfn = b.get("filename")
+                if bfn and bfn not in seen_filenames:
+                    bsize = b.get("size_bytes") or self.parse_size_to_bytes(b.get("size", "0 MB"))
+                    # Filter out old 1.0 KB or 1.6 KB dummy archives
+                    if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
+                        seen_filenames.add(bfn)
+                        fresh_backups.append(b)
+                        total_size_bytes += bsize
 
-        # 4. Prune obsolete legacy archives (e.g. mdf_full_... / mdf_db_...) if clean domain archive exists
+        # 4. If clean domain archive exists (e.g. mahabubur.shop.zip), prune obsolete legacy archives (mdf_full_... / mdf_db_...)
         has_domain_archive = any(
             b.get("filename") == f"{clean_name}.zip" or
             b.get("filename") == f"{domain}.zip" or
-            b.get("filename") == f"{clean_name}-database.zip"
+            b.get("filename") == f"{clean_name}-database.zip" or
+            not (b.get("filename", "").startswith("mdf_full_") or b.get("filename", "").startswith("mdf_db_"))
             for b in fresh_backups
         )
         if has_domain_archive:
-            fresh_backups = [
+            cleaned_backups = [
                 b for b in fresh_backups
                 if not (str(b.get("filename", "")).startswith("mdf_full_") or str(b.get("filename", "")).startswith("mdf_db_") or str(b.get("filename", "")).startswith("mdf_files_"))
             ]
-            total_size_bytes = sum(b.get("size_bytes", 0) for b in fresh_backups)
+            if cleaned_backups:
+                fresh_backups = cleaned_backups
+                total_size_bytes = sum(b.get("size_bytes", 0) for b in fresh_backups)
 
         # Sort newest first
         fresh_backups.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
