@@ -40,16 +40,38 @@ class MonitoringService:
         domain = ""
         site_id = ""
         site_name = "Target Site"
+        api_key = ""
+        doc = None
 
         if isinstance(site_or_url, dict):
-            site_id = str(site_or_url.get("_id") or site_or_url.get("id") or "")
-            raw_url = site_or_url.get("url") or site_or_url.get("domain") or ""
-            domain = site_or_url.get("domain") or site_or_url.get("name") or ""
-            site_name = site_or_url.get("name") or domain or "WordPress Site"
-            api_key = site_or_url.get("api_key") or ""
+            doc = site_or_url
+        elif site_or_url:
+            s_val = str(site_or_url).strip()
+            or_conds = [{"_id": s_val}, {"domain": s_val}, {"url": s_val}]
+            try:
+                from bson import ObjectId
+                if ObjectId.is_valid(s_val):
+                    or_conds.append({"_id": ObjectId(s_val)})
+            except Exception:
+                pass
+            try:
+                doc = self.db.websites.find_one({"$or": or_conds})
+                if not doc:
+                    doc = self.db.wordpress_sites.find_one({"$or": or_conds})
+            except Exception:
+                pass
+
+        if doc and isinstance(doc, dict):
+            site_id = str(doc.get("_id") or doc.get("id") or "")
+            raw_url = doc.get("url") or doc.get("domain") or ""
+            domain = doc.get("domain") or doc.get("name") or ""
+            site_name = doc.get("name") or domain or "WordPress Site"
+            api_key = doc.get("api_key") or ""
         else:
-            raw_url = str(site_or_url)
-            domain = str(site_or_url)
+            raw_url = str(site_or_url).strip()
+            domain = raw_url
+            site_id = ""
+            site_name = "Target Site"
             api_key = ""
 
         raw_url = raw_url.strip()

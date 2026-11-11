@@ -171,7 +171,28 @@ export default function UserLogs() {
     }
   });
 
-  const [websiteFilter, setWebsiteFilter] = useState('');
+  const [websiteFilter, setWebsiteFilter] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site') || '';
+      return stored === 'all' ? '' : stored;
+    }
+    return '';
+  });
+
+  // Listen to top header domain scope change
+  useEffect(() => {
+    const handleDomainSync = () => {
+      const cur = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : '') || '';
+      setWebsiteFilter(cur === 'all' ? '' : cur);
+      setPage(1);
+    };
+    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync);
+    window.addEventListener('mdefender_domain_changed', handleDomainSync);
+    return () => {
+      window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync);
+      window.removeEventListener('mdefender_domain_changed', handleDomainSync);
+    };
+  }, []);
   const [loading, setLoading] = useState(() => {
     try {
       const cached = userStore.get('logs_p1');
