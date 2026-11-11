@@ -35,8 +35,13 @@ export default function UserLayout({ children, onLogout }) {
 
   // Strict Onboarding Defense Guard: Prevent un-onboarded accounts from accessing internal dashboard
   useEffect(() => {
+    const passedOnboard = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_onboard_passed') === 'true';
+    if (passedOnboard) return;
+
     const cachedProfile = userStore.get('profile')
     if (cachedProfile && cachedProfile.role !== 'super_admin' && !cachedProfile.is_admin) {
+      if (cachedProfile.onboarded || cachedProfile.onboarded_skip) return;
+
       const hasSites = (cachedProfile.websites_count > 0) || (Array.isArray(cachedProfile.websites) && cachedProfile.websites.length > 0)
       if (!hasSites) {
         navigate('/onboarding', { replace: true })

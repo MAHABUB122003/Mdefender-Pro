@@ -166,9 +166,19 @@ export default function UserOnboarding() {
             setPollingActive(false);
             setConnectedSite(res.first_site);
             
-            // Mark onboarded in user store
+            // Mark onboarded and cache website count in user store and localStorage
+            localStorage.setItem('mdefender_onboard_passed', 'true');
             const cached = userStore.get('profile') || {};
-            userStore.set('profile', { ...cached, onboarded: true });
+            const updated = {
+              ...cached,
+              onboarded: true,
+              websites_count: res.websites_count || 1,
+              websites: (cached.websites && cached.websites.length) ? cached.websites : [res.first_site]
+            };
+            userStore.set('profile', updated);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('mdefender_user_update'));
+            }
 
             // Start smooth 2-second countdown before transitioning to dashboard
             setRedirectCountdown(2);
@@ -194,6 +204,16 @@ export default function UserOnboarding() {
   useEffect(() => {
     if (redirectCountdown === null) return;
     if (redirectCountdown <= 0) {
+      localStorage.setItem('mdefender_onboard_passed', 'true');
+      const cached = userStore.get('profile') || {};
+      userStore.set('profile', {
+        ...cached,
+        onboarded: true,
+        websites_count: cached.websites_count || 1
+      });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('mdefender_user_update'));
+      }
       navigate('/user/dashboard', { replace: true });
       return;
     }
@@ -276,8 +296,16 @@ export default function UserOnboarding() {
   const handleSkipToDashboard = () => {
     localStorage.setItem('mdefender_onboard_passed', 'true');
     const cached = userStore.get('profile') || {};
-    userStore.set('profile', { ...cached, onboarded_skip: true });
-    navigate('/user/dashboard');
+    userStore.set('profile', {
+      ...cached,
+      onboarded: true,
+      onboarded_skip: true,
+      websites_count: cached.websites_count || 1
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mdefender_user_update'));
+    }
+    navigate('/user/dashboard', { replace: true });
   };
 
   const handleLogout = async () => {

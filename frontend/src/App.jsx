@@ -122,10 +122,19 @@ function PageFallback() {
 function isUserOnboarded(u) {
   if (!u) return false;
   if (u.role === 'super_admin' || u.is_admin) return true;
-  // Origin check or user opted to explore dashboard
+  // Origin check, explicit onboard flag, or user opted to explore dashboard
+  if (u.onboarded || u.onboarded_skip) return true;
   if (typeof u.websites_count === 'number' && u.websites_count > 0) return true;
   if (Array.isArray(u.websites) && u.websites.length > 0) return true;
-  if (typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_onboard_passed') === 'true') return true;
+  if (typeof localStorage !== 'undefined') {
+    if (localStorage.getItem('mdefender_onboard_passed') === 'true') return true;
+    try {
+      const stored = JSON.parse(localStorage.getItem('mdefender_user_profile') || '{}');
+      if (stored.onboarded || stored.onboarded_skip || (stored.websites_count > 0) || (stored.websites && stored.websites.length > 0)) {
+        return true;
+      }
+    } catch {}
+  }
   return false;
 }
 
@@ -164,6 +173,21 @@ function App() {
       return hasToken && !hasProfile
     } catch { return false }
   })
+
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      try {
+        const p = userStore.get('profile');
+        if (p) setUserState(prev => ({ ...(prev || {}), ...p }));
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('mdefender_user_update', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('mdefender_user_update', handleStorageUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     // Intercept Support Impersonation URL Parameter

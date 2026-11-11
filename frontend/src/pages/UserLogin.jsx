@@ -32,7 +32,8 @@ export default function UserLogin({ onLoginSuccess }) {
   const getPostLoginUrl = (user) => {
     if (planParam) return `/user/pricing?plan=${planParam}&cycle=${cycleParam}`;
     if (user?.role === 'super_admin' || user?.is_admin) return '/admin';
-    const hasSites = (user?.websites_count > 0) || (Array.isArray(user?.websites) && user.websites.length > 0);
+    const passedOnboard = typeof localStorage !== 'undefined' && localStorage.getItem('mdefender_onboard_passed') === 'true';
+    const hasSites = passedOnboard || user?.onboarded || user?.onboarded_skip || (user?.websites_count > 0) || (Array.isArray(user?.websites) && user.websites.length > 0);
     if (!hasSites) {
       return '/onboarding';
     }
