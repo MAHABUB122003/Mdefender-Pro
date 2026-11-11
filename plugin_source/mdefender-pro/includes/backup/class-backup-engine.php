@@ -185,6 +185,15 @@ class WAF_FW_Backup_Engine {
             $filename = basename($file_path);
             if (in_array($filename, ['.htaccess', 'index.php', 'web.config'])) continue;
 
+            // Prune temporary SQL dumps and scratch files immediately
+            if (strpos($filename, 'mdf_sql_') === 0 || strpos($filename, 'temp_') === 0) {
+                @unlink($file_path);
+                if (isset($stored[$filename])) {
+                    unset($stored[$filename]);
+                }
+                continue;
+            }
+
             // Prune old legacy mdf_ archives if clean domain-named archive is present
             if ($has_clean_domain_archive && (strpos($filename, 'mdf_full_') === 0 || strpos($filename, 'mdf_db_') === 0 || strpos($filename, 'mdf_files_') === 0)) {
                 @unlink($file_path);

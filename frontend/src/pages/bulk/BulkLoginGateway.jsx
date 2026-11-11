@@ -734,7 +734,6 @@ export default function BulkLoginGateway() {
                   type="button"
                   onClick={() => handleSaveAdminIpRestriction()}
                   disabled={savingIp}
-                  className="mdf-btn-primary"
                   style={{
                     height: '36px',
                     padding: '0 20px',
@@ -753,7 +752,7 @@ export default function BulkLoginGateway() {
                   }}
                 >
                   <Save size={13} />
-                  <span>{savingIp ? 'Saving...' : 'Save Changes'}</span>
+                  <span>{savingIp ? 'Saving...' : 'Save Authorized IPs'}</span>
                 </button>
               </div>
             </div>

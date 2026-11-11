@@ -250,10 +250,14 @@ class BackupService:
     # -------------------------------------------------------------------------
     def get_website_backups(self, website: Dict[str, Any]) -> Dict[str, Any]:
         """Fetch all recorded and discovered backups for the specified website."""
-        site_id = str(website.get("_id") or website.get("id"))
-        domain = website.get("domain") or website.get("url") or "website"
-        clean_name = self.get_clean_domain_slug(website)
-        backup_dir = self.get_backup_dir(website)
+        # Always read fresh site document from database to avoid stale in-memory state
+        fresh_doc = self.db.websites.find_one({"_id": website.get("_id")}) if website.get("_id") else None
+        target_site = fresh_doc if fresh_doc else website
+
+        site_id = str(target_site.get("_id") or target_site.get("id"))
+        domain = target_site.get("domain") or target_site.get("url") or "website"
+        clean_name = self.get_clean_domain_slug(target_site)
+        backup_dir = self.get_backup_dir(target_site)
 
         # 1. Discover physical files on local disk
         discovered_files = []
@@ -267,7 +271,7 @@ class BackupService:
         # Discover physical files in local backup folder
         for fpath in discovered_files:
             fname = os.path.basename(fpath)
-            if fname in (".htaccess", "index.php", "web.config") or fname.startswith("."):
+            if fname in (".htaccess", "index.php", "web.config") or fname.startswith(".") or fname.startswith("mdf_sql_") or fname.startswith("temp_"):
                 continue
 
             try:
@@ -319,7 +323,7 @@ class BackupService:
 
                 for rb in remote_bks:
                     rfn = rb.get("filename")
-                    if not rfn or rfn in seen_filenames:
+                    if not rfn or rfn in seen_filenames or rfn.startswith("mdf_sql_") or rfn.startswith("temp_"):
                         continue
 
                     seen_filenames.add(rfn)
@@ -352,8 +356,8 @@ class BackupService:
             except Exception as e:
                 logger.warning(f"Could not sync live backups from remote origin {domain}: {e}")
 
-        # 3. CRITICAL: Always merge existing valid DB backups so created snapshots are NEVER wiped!
-        db_backups = list(website.get("backups") or [])
+        # 3. CRITICAL: Always merge existing valid DB backups from fresh site doc so created snapshots are NEVER wiped!
+        db_backups = list(target_site.get("backups") or [])
         for b in db_backups:
             if isinstance(b, dict):
                 bfn = b.get("filename")
@@ -884,7 +888,9 @@ class BackupService:
         enabled: bool,
         frequency: str = "daily",
         backup_type: str = "full",
-        retention: int = 5
+        retention: int = 5,
+        *args,
+        **kwargs
     ) -> Dict[str, Any]:
         """Save WP-Cron recurring backup settings."""
         sched_data = {
