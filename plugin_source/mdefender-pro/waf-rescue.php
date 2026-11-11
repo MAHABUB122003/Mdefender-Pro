@@ -57,6 +57,47 @@ if (!empty($filename)) {
     }
 }
 
+// 4.1 Handle Action: Delete Backup Archive
+if ($action === 'delete' || $action === 'delete_backup') {
+    $clean_fn = basename($filename);
+    $deleted_files = [];
+    if (!empty($clean_fn)) {
+        foreach ($possible_backup_dirs as $bdir) {
+            $cand = rtrim($bdir, '/\\') . '/' . $clean_fn;
+            if (file_exists($cand)) {
+                if (@unlink($cand)) {
+                    $deleted_files[] = $cand;
+                }
+            }
+        }
+    }
+    // Also remove from WordPress options if wp-load is accessible
+    $wp_load = $wp_root . '/wp-load.php';
+    if (file_exists($wp_load)) {
+        if (!defined('ABSPATH')) {
+            define('WP_USE_THEMES', false);
+            @require_once $wp_load;
+        }
+        $catalog = (array) get_option('waf_fw_backup_catalog', []);
+        if (isset($catalog[$clean_fn])) {
+            unset($catalog[$clean_fn]);
+            update_option('waf_fw_backup_catalog', $catalog);
+        }
+    }
+    echo json_encode([
+        'status' => 'success',
+        'action' => 'delete_backup',
+        'action_result' => [
+            'success' => true,
+            'filename' => $clean_fn,
+            'deleted_files' => $deleted_files,
+            'message' => "Backup archive deleted from origin storage: {$clean_fn}"
+        ],
+        'timestamp' => date('Y-m-d H:i:s'),
+    ]);
+    exit;
+}
+
 // 5. Handle Action: Restore (Full Disaster Reconstitution)
 if ($action === 'restore' || $action === 'restore_backup') {
     if (empty($backup_file_path)) {

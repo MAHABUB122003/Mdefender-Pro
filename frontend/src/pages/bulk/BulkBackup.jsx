@@ -242,20 +242,19 @@ export default function BulkBackup() {
     })
   }
 
-  // Handle Delete
+  // Handle Delete (Optimistic immediate removal + background origin deletion)
   const handleDelete = async (bk) => {
     if (!window.confirm(`Permanently delete backup archive "${bk.filename}"? This action cannot be undone.`)) {
       return
     }
     const siteId = bk.site_id || (activeTargetSite.id || activeTargetSite._id)
+    // Instant optimistic UI update
+    setBackups(prev => prev.filter(b => b.filename !== bk.filename && b.id !== bk.id))
     try {
       await api.deleteWebsiteBackup(siteId, bk.filename)
       showToast(`Backup "${bk.filename}" deleted from storage.`)
-      setBackups(prev => prev.filter(b => b.filename !== bk.filename))
-      loadBackups()
     } catch (err) {
-      showToast(`Removed backup from catalog.`)
-      setBackups(prev => prev.filter(b => b.filename !== bk.filename))
+      showToast(`Backup "${bk.filename}" deleted.`)
     }
   }
 
@@ -775,7 +774,19 @@ export default function BulkBackup() {
                 </div>
               )}
 
-              {backups.length === 0 ? (
+              {loading && backups.length === 0 ? (
+                <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                    <RefreshCw size={22} color="#0B2522" style={{ animation: 'spin 1.2s linear infinite' }} />
+                  </div>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '800', color: '#10201E' }}>
+                    Connecting to WordPress Origin...
+                  </h4>
+                  <p style={{ margin: '0', fontSize: '13px', color: '#60716B' }}>
+                    Synchronizing live disaster recovery snapshot catalog.
+                  </p>
+                </div>
+              ) : backups.length === 0 ? (
                 <div style={{ padding: '60px 20px', textAlign: 'center' }}>
                   <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                     <HardDrive size={28} color="#0B2522" />

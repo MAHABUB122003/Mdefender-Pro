@@ -855,10 +855,18 @@ class BackupService:
             except Exception as e:
                 logger.warning(f"Could not remove physical file {fpath}: {e}")
 
-        # 3. Remove from MongoDB document
+        # 3. Remove from MongoDB document catalog
+        candidates = [clean_fn, filename, os.path.splitext(clean_fn)[0]]
         self.db.websites.update_one(
             {"_id": website["_id"]},
-            {"$pull": {"backups": {"filename": clean_fn}}}
+            {"$pull": {
+                "backups": {
+                    "$or": [
+                        {"filename": {"$in": candidates}},
+                        {"id": {"$in": candidates}}
+                    ]
+                }
+            }}
         )
 
         return {
