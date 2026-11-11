@@ -1273,6 +1273,7 @@ class WAF_FW_Website_Hardening {
         $results['actions'][] = count($headers) . ' HTTP security response headers configured';
         update_option('waf_harden_security_headers', 'enabled');
         update_option('waf_harden_security_headers_settings', $settings);
+        $this->ensure_htaccess_rule(ABSPATH . '.htaccess', 'security_headers');
         $this->log_activity('Hardening Applied', 'Security Headers', 'Success', implode('; ', $results['actions']));
         return $results;
     }
@@ -1940,6 +1941,10 @@ class WAF_FW_Website_Hardening {
             'protect_sensitive_files' => [
                 'tag' => 'MDefender-Pro - Protect Sensitive Files & Logs',
                 'code' => "\n# MDefender-Pro - Protect Sensitive Files & Logs\n<FilesMatch \"^.*(debug\\.log|\\.log|\\.sql|\\.bak|\\.env|\\.git|wp-config\\.php.*)$\">\nOrder allow,deny\nDeny from all\n</FilesMatch>\n",
+            ],
+            'security_headers' => [
+                'tag' => 'MDefender-Pro - Enterprise HTTP Security Headers',
+                'code' => "\n# MDefender-Pro - Enterprise HTTP Security Headers\n<IfModule mod_headers.c>\n    Header always set X-Frame-Options \"SAMEORIGIN\"\n    Header always set X-Content-Type-Options \"nosniff\"\n    Header always set Referrer-Policy \"strict-origin-when-cross-origin\"\n    Header always set Cross-Origin-Opener-Policy \"same-origin\"\n    Header always set Cross-Origin-Resource-Policy \"same-origin\"\n    Header always set Permissions-Policy \"geolocation=(), microphone=(), camera=(), payment=(), usb=(), fullscreen=(self)\"\n</IfModule>\n",
             ],
         ];
         if (!isset($rules[$rule_type])) return false;

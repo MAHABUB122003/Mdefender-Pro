@@ -351,6 +351,11 @@ class WAF_FW_Under_Attack_Shield {
         header('Retry-After: 5');
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('X-Protected-By: MDefender-Pro-Under-Attack-Shield');
+        header('Cross-Origin-Opener-Policy: same-origin');
+        header('Cross-Origin-Resource-Policy: same-origin');
+        header('X-Frame-Options: SAMEORIGIN');
+        header('X-Content-Type-Options: nosniff');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
 
         $template = WAF_FW_PLUGIN_DIR . 'under-attack-challenge.php';
         if (file_exists($template)) {

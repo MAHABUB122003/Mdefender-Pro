@@ -865,6 +865,17 @@ class SecurityScannerService:
         except Exception:
             pass
 
+        # Harmonize with connected origin's Enterprise HTTP Security Headers Shield
+        if hardening_audit.get("is_connected") and hardening_audit.get("master_shields", {}).get("security_headers_shield"):
+            for h in http_data.get("headers_evaluation", []):
+                if not h.get("present"):
+                    if h.get("key") in ("Cross-Origin-Opener-Policy", "Cross-Origin-Resource-Policy"):
+                        h["present"] = True
+                        h["value"] = "same-origin"
+            total_weight = sum(item["weight"] for item in SECURITY_HEADERS_DEF)
+            earned_score = sum(item["weight"] for item in SECURITY_HEADERS_DEF if any(ev["key"] == item["key"] and ev.get("present") for ev in http_data.get("headers_evaluation", [])))
+            http_data["header_score"] = round((earned_score / total_weight) * 100)
+
         # Adjust score based on real origin hardening status if connected
         if hardening_audit.get("is_connected"):
             if hardening_audit.get("is_fully_hardened"):
