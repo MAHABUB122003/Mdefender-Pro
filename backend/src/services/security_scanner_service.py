@@ -750,12 +750,33 @@ class SecurityScannerService:
                 target_origin = site_doc.get("url") or clean_url
 
                 try:
+                    import secrets
+                    import hmac
+                    import hashlib
                     sep = "&" if "?" in target_origin else "?"
                     h_url = f"{target_origin}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
                     master_shields = {}
+
+                    ts = str(int(time.time()))
+                    nonce = secrets.token_hex(16)
+                    secret = api_key or site_token or ""
+                    sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
+                    auth_headers = {
+                        "User-Agent": "MDefender-Pro-Scanner/4.5 (Enterprise Real-Time Auditor)",
+                        "X-MDefender-Timestamp": ts,
+                        "X-MDefender-Nonce": nonce,
+                    }
+                    if sig:
+                        auth_headers["X-MDefender-Signature"] = sig
+                    if api_key:
+                        auth_headers["Authorization"] = f"Bearer {api_key}"
+                        auth_headers["X-API-Key"] = api_key
+                    if site_token:
+                        auth_headers["X-Site-Token"] = site_token
+
                     try:
                         from src.utils.resilient_client import get_resilient_session
-                        h_resp = get_resilient_session().post(h_url, timeout=4.5, verify=False)
+                        h_resp = get_resilient_session().post(h_url, headers=auth_headers, timeout=5.0, verify=False)
                         if h_resp.status_code == 200:
                             h_data = h_resp.json().get("action_result", {})
                             master_shields = h_data.get("master_shields") or {}

@@ -13252,6 +13252,32 @@ async def get_fleet_safe_updates_summary(user=Depends(get_current_user)):
 # -----------------------------------------------------------------------------
 # Enterprise WordPress Security Hardening & Safe Enforcement Endpoints
 # -----------------------------------------------------------------------------
+def build_origin_auth_headers(api_key: str, site_token: str, body_str: str = "") -> dict:
+    """Construct HMAC SHA-256 authenticated headers for secure origin handshake."""
+    import time
+    import secrets
+    import hmac
+    import hashlib
+    ts = str(int(time.time()))
+    nonce = secrets.token_hex(16)
+    secret = api_key or site_token or ""
+    sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.{body_str}".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "MDefender-Pro-CloudEngine/4.5 (Enterprise Real-Time Sync)",
+        "X-MDefender-Timestamp": ts,
+        "X-MDefender-Nonce": nonce,
+    }
+    if sig:
+        headers["X-MDefender-Signature"] = sig
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["X-API-Key"] = api_key
+    if site_token:
+        headers["X-Site-Token"] = site_token
+    return headers
+
+
 class HardeningProfileRequest(BaseModel):
     profile: str = "balanced"  # "essential" | "balanced" | "strict" | "custom" | "maximum"
     shields: Optional[Dict[str, bool]] = None
@@ -13293,7 +13319,8 @@ async def get_website_hardening_overview(website_id: str, refresh: bool = False,
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
-        resp = get_resilient_session().get(remote_url, timeout=4.5, verify=False)
+        auth_headers = build_origin_auth_headers(api_key, site_token)
+        resp = get_resilient_session().get(remote_url, headers=auth_headers, timeout=4.5, verify=False)
         if resp.status_code == 200:
             res_json = resp.json().get("action_result", {})
             if res_json:
@@ -13370,7 +13397,9 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
         sep = "&" if "?" in target_url else "?"
         shields_json = json.dumps(preset_shields)
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=apply_hardening_profile&profile={body.profile}&shields={urllib.parse.quote(shields_json)}&site_token={site_token}&api_key={api_key}"
-        resp = get_resilient_session().post(remote_url, json={"profile": body.profile, "shields": preset_shields}, timeout=12, verify=False)
+        post_payload = {"profile": body.profile, "shields": preset_shields}
+        auth_headers = build_origin_auth_headers(api_key, site_token, json.dumps(post_payload))
+        resp = get_resilient_session().post(remote_url, json=post_payload, headers=auth_headers, timeout=12, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13408,7 +13437,8 @@ async def toggle_hardening_control(website_id: str, body: HardeningToggleRequest
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=toggle_hardening_control&control={body.control}&enabled={'1' if body.enabled else '0'}&site_token={site_token}&api_key={api_key}"
-        resp = get_resilient_session().post(remote_url, timeout=10, verify=False)
+        auth_headers = build_origin_auth_headers(api_key, site_token)
+        resp = get_resilient_session().post(remote_url, headers=auth_headers, timeout=10, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13436,7 +13466,8 @@ async def verify_hardening_probes(website_id: str, user=Depends(get_current_user
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=verify_hardening_probes&site_token={site_token}&api_key={api_key}"
-        resp = get_resilient_session().post(remote_url, timeout=15, verify=False)
+        auth_headers = build_origin_auth_headers(api_key, site_token)
+        resp = get_resilient_session().post(remote_url, headers=auth_headers, timeout=15, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13464,7 +13495,8 @@ async def rotate_website_salts(website_id: str, user=Depends(get_current_user)):
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=rotate_security_salts&site_token={site_token}&api_key={api_key}"
-        resp = get_resilient_session().post(remote_url, timeout=10, verify=False)
+        auth_headers = build_origin_auth_headers(api_key, site_token)
+        resp = get_resilient_session().post(remote_url, headers=auth_headers, timeout=10, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:

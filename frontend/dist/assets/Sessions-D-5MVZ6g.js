@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-KJkY8l8U.js";import{T as t}from"./index-CHRV8NMa.js";var n=e();function r(){return(0,n.jsx)(t,{to:`/user/settings?tab=sessions`,replace:!0})}export{r as default};

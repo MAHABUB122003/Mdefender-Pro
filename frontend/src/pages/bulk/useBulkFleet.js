@@ -49,7 +49,8 @@ export default function useBulkFleet() {
     return list.filter(w => {
       if (!w || typeof w !== 'object') return false
       const p = String(w.platform || '').toLowerCase()
-      return p === 'wordpress' || p === 'wp' || p.includes('wordpress') || !w.platform
+      const hasWpConn = !!w.wordpress_connection || !!w.site_token
+      return p === 'wordpress' || p === 'wp' || p.includes('wordpress') || hasWpConn || !w.platform
     })
   }, [data])
 
