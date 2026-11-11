@@ -141,6 +141,7 @@ from src.auth.dependencies import get_current_user
 
 
 from src.database.mongodb_connection import MongoDB
+from src.utils.resilient_client import get_resilient_session
 
 
 
@@ -13292,7 +13293,7 @@ async def get_website_hardening_overview(website_id: str, refresh: bool = False,
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
-        resp = requests.get(remote_url, timeout=3.5, verify=False)
+        resp = get_resilient_session().get(remote_url, timeout=4.5, verify=False)
         if resp.status_code == 200:
             res_json = resp.json().get("action_result", {})
             if res_json:
@@ -13369,7 +13370,7 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
         sep = "&" if "?" in target_url else "?"
         shields_json = json.dumps(preset_shields)
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=apply_hardening_profile&profile={body.profile}&shields={urllib.parse.quote(shields_json)}&site_token={site_token}&api_key={api_key}"
-        resp = requests.post(remote_url, json={"profile": body.profile, "shields": preset_shields}, timeout=12, verify=False)
+        resp = get_resilient_session().post(remote_url, json={"profile": body.profile, "shields": preset_shields}, timeout=12, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13407,7 +13408,7 @@ async def toggle_hardening_control(website_id: str, body: HardeningToggleRequest
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=toggle_hardening_control&control={body.control}&enabled={'1' if body.enabled else '0'}&site_token={site_token}&api_key={api_key}"
-        resp = requests.post(remote_url, timeout=10, verify=False)
+        resp = get_resilient_session().post(remote_url, timeout=10, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13435,7 +13436,7 @@ async def verify_hardening_probes(website_id: str, user=Depends(get_current_user
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=verify_hardening_probes&site_token={site_token}&api_key={api_key}"
-        resp = requests.post(remote_url, timeout=15, verify=False)
+        resp = get_resilient_session().post(remote_url, timeout=15, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
@@ -13463,7 +13464,7 @@ async def rotate_website_salts(website_id: str, user=Depends(get_current_user)):
     try:
         sep = "&" if "?" in target_url else "?"
         remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=rotate_security_salts&site_token={site_token}&api_key={api_key}"
-        resp = requests.post(remote_url, timeout=10, verify=False)
+        resp = get_resilient_session().post(remote_url, timeout=10, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
