@@ -1445,6 +1445,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     $action_result = WAF_FW_Backup_Engine::instance()->create_backup($btype, $bcomps, $bnote);
                 }
             } elseif ($action === 'restore_backup') {
+                if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+                    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+                }
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $bfilename = sanitize_text_field($_REQUEST['filename'] ?? $pushed_data['filename'] ?? '');
                     if ($bfilename) {
@@ -1452,6 +1455,9 @@ function waf_fw_handle_cloud_sync_webhook() {
                     }
                 }
             } elseif ($action === 'delete_backup') {
+                if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+                    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+                }
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $bfilename = sanitize_text_field($_REQUEST['filename'] ?? $pushed_data['filename'] ?? '');
                     if ($bfilename) {
@@ -3511,6 +3517,9 @@ add_action('rest_api_init', function() {
             $action_result = null;
 
             if ($action === 'create_backup') {
+                if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+                    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+                }
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $btype = sanitize_text_field($pushed_data['type'] ?? $_REQUEST['type'] ?? 'full');
                     $bnote = sanitize_text_field($pushed_data['note'] ?? $_REQUEST['note'] ?? 'Dashboard Instant Snapshot');
@@ -3518,6 +3527,9 @@ add_action('rest_api_init', function() {
                     $action_result = WAF_FW_Backup_Engine::instance()->create_backup($btype, $bcomps, $bnote);
                 }
             } elseif ($action === 'restore_backup') {
+                if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+                    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+                }
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $bfilename = sanitize_text_field($pushed_data['filename'] ?? $_REQUEST['filename'] ?? '');
                     if ($bfilename) {
@@ -3525,6 +3537,9 @@ add_action('rest_api_init', function() {
                     }
                 }
             } elseif ($action === 'delete_backup') {
+                if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+                    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+                }
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $bfilename = sanitize_text_field($pushed_data['filename'] ?? $_REQUEST['filename'] ?? '');
                     if ($bfilename) {
@@ -3532,6 +3547,9 @@ add_action('rest_api_init', function() {
                     }
                 }
             } elseif ($action === 'save_schedule') {
+                if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
+                    require_once __DIR__ . '/includes/backup/class-backup-engine.php';
+                }
                 if (class_exists('WAF_FW_Backup_Engine')) {
                     $action_result = WAF_FW_Backup_Engine::instance()->save_schedule_settings(is_array($pushed_data) ? $pushed_data : $_REQUEST);
                 }

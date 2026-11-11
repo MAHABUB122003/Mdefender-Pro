@@ -258,11 +258,14 @@ class BackupService:
             })
 
         # 2. If website is a remote WordPress site, query WordPress origin
-        # 2. If website is a remote WordPress site, query WordPress origin
+        origin_synced = False
         if not self.is_local_site(website) and (website.get("url") or website.get("api_key")):
             try:
-                remote_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=2.5)
+                remote_res = self.dispatch_remote_wp_action(website, {"action": "sync"}, timeout=12.0)
+                inv = remote_res.get("inventory") or remote_res.get("data") or {}
                 remote_bks = inv.get("backups") or []
+                if remote_bks or remote_res.get("status") == "success":
+                    origin_synced = True
 
                 for rb in remote_bks:
                     rfn = rb.get("filename")
@@ -299,17 +302,32 @@ class BackupService:
             except Exception as e:
                 logger.warning(f"Could not sync live backups from remote origin {domain}: {e}")
 
-        # 3. Include previous valid DB backups if not already listed
-        db_backups = list(website.get("backups") or [])
-        for b in db_backups:
-            if isinstance(b, dict):
-                bfn = b.get("filename")
-                if bfn and bfn not in seen_filenames:
-                    bsize = b.get("size_bytes") or 0
-                    # Filter out old 1.0 KB or 1.6 KB dummy archives
-                    if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
-                        seen_filenames.add(bfn)
-                        fresh_backups.append(b)
+        # 3. Only if origin sync failed (site offline or network timeout), include previous DB cache
+        if not origin_synced:
+            db_backups = list(website.get("backups") or [])
+            for b in db_backups:
+                if isinstance(b, dict):
+                    bfn = b.get("filename")
+                    if bfn and bfn not in seen_filenames:
+                        bsize = b.get("size_bytes") or 0
+                        # Filter out old 1.0 KB or 1.6 KB dummy archives
+                        if bsize > 5000 or (b.get("size") and "KB" not in b.get("size") and "1." not in b.get("size")):
+                            seen_filenames.add(bfn)
+                            fresh_backups.append(b)
+
+        # 4. Prune obsolete legacy archives (e.g. mdf_full_... / mdf_db_...) if clean domain archive exists
+        has_domain_archive = any(
+            b.get("filename") == f"{clean_name}.zip" or
+            b.get("filename") == f"{domain}.zip" or
+            b.get("filename") == f"{clean_name}-database.zip"
+            for b in fresh_backups
+        )
+        if has_domain_archive:
+            fresh_backups = [
+                b for b in fresh_backups
+                if not (str(b.get("filename", "")).startswith("mdf_full_") or str(b.get("filename", "")).startswith("mdf_db_") or str(b.get("filename", "")).startswith("mdf_files_"))
+            ]
+            total_size_bytes = sum(b.get("size_bytes", 0) for b in fresh_backups)
 
         # Sort newest first
         fresh_backups.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
@@ -652,8 +670,10 @@ class BackupService:
             }
             remote_res = self.dispatch_remote_wp_action(website, action_payload, timeout=300.0)
             act_res = remote_res.get("action_result") or {}
-            if act_res.get("success"):
-                duration = act_res.get("duration") or f"{time.time() - start_time:.2f}s"
+            is_success = bool(act_res.get("success") or remote_res.get("status") == "success" or remote_res.get("success"))
+            if is_success:
+                duration = act_res.get("duration") or remote_res.get("duration") or f"{time.time() - start_time:.2f}s"
+                msg = act_res.get("message") or remote_res.get("message") or f"Website successfully restored from snapshot '{clean_fn}' in {duration}."
                 return {
                     "success": True,
                     "website_id": site_id,
@@ -661,7 +681,7 @@ class BackupService:
                     "filename": clean_fn,
                     "status": "restored",
                     "duration": duration,
-                    "message": act_res.get("message") or f"Website successfully restored from snapshot '{clean_fn}' in {duration}."
+                    "message": msg
                 }
             else:
                 err_msg = act_res.get("message") or remote_res.get("message") or "Restoration failed on origin server."

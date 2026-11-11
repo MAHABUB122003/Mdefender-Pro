@@ -303,6 +303,9 @@ class WAF_FW_ML_Api_Client {
 
         // 4. Backups Inventory
         $backups = [];
+        if (!class_exists('WAF_FW_Backup_Engine') && file_exists(dirname(__FILE__) . '/backup/class-backup-engine.php')) {
+            require_once dirname(__FILE__) . '/backup/class-backup-engine.php';
+        }
         if (class_exists('WAF_FW_Backup_Engine')) {
             $raw_bks = WAF_FW_Backup_Engine::instance()->get_backups();
             if (is_array($raw_bks)) {

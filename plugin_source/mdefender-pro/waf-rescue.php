@@ -186,6 +186,9 @@ if ($action === 'restore' || $action === 'restore_backup') {
             require_once $wp_load;
         }
 
+        if (!class_exists('WAF_FW_Backup_Engine') && file_exists($plugin_dir . '/includes/backup/class-backup-engine.php')) {
+            require_once $plugin_dir . '/includes/backup/class-backup-engine.php';
+        }
         if ($has_db_sql && file_exists($temp_sql) && class_exists('WAF_FW_Backup_Engine')) {
             $db_res = WAF_FW_Backup_Engine::instance()->import_database_file($temp_sql);
             @unlink($temp_sql);

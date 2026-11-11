@@ -104,20 +104,26 @@ export default function BulkBackup() {
       if (selectedSiteId === 'all') {
         const res = await api.getFleetBackups()
         if (res?.data) {
-          setBackups(res.data.backups || [])
+          const rawBackups = res.data.backups || []
+          const hasClean = rawBackups.some(b => b.filename && !b.filename.startsWith('mdf_') && b.filename.endsWith('.zip'))
+          const cleaned = hasClean ? rawBackups.filter(b => !b.filename.startsWith('mdf_full_') && !b.filename.startsWith('mdf_db_')) : rawBackups
+          setBackups(cleaned)
           setTotalSize(res.data.total_size || '0 MB')
           setTotalBytes(res.data.total_bytes || 0)
-          setLatestBackup(res.data.latest_backup || null)
+          setLatestBackup(cleaned[0] || null)
         }
       } else {
         const siteId = activeTargetSite.id || activeTargetSite._id
         if (siteId) {
           const res = await api.getWebsiteBackups(siteId)
           if (res?.data) {
-            setBackups(res.data.backups || [])
+            const rawBackups = res.data.backups || []
+            const hasClean = rawBackups.some(b => b.filename && !b.filename.startsWith('mdf_') && b.filename.endsWith('.zip'))
+            const cleaned = hasClean ? rawBackups.filter(b => !b.filename.startsWith('mdf_full_') && !b.filename.startsWith('mdf_db_')) : rawBackups
+            setBackups(cleaned)
             setTotalSize(res.data.total_size || '0 MB')
             setTotalBytes(res.data.total_bytes || 0)
-            setLatestBackup(res.data.latest_backup || null)
+            setLatestBackup(cleaned[0] || null)
             if (res.data.schedule) {
               setSchedule(res.data.schedule)
               setSchedEnabled(!!res.data.schedule.enabled)
@@ -164,6 +170,24 @@ export default function BulkBackup() {
     }
 
     const currentSiteName = currentSite.domain || currentSite.url || 'WordPress Origin'
+    const cleanDomain = currentSiteName.replace(/^https?:\/\//, '').replace(/:\d+$/, '').replace(/\/.*$/, '').replace(/[^a-zA-Z0-9.\-_]/g, '_')
+    const expectedFn = backupType === 'database' ? `${cleanDomain}-database.zip` : `${cleanDomain}.zip`
+
+    // Optimistically insert in-progress item and remove any old legacy duplicates
+    setBackups(prev => [
+      {
+        id: 'creating_placeholder',
+        filename: expectedFn,
+        name: backupNote.trim() || `Disaster Recovery Snapshot`,
+        type: backupType,
+        components: backupType === 'database' ? ['Database'] : ['Full Site'],
+        size: 'Creating...',
+        created_at: 'In Progress...',
+        status: 'creating',
+        is_creating: true
+      },
+      ...prev.filter(b => b.filename !== expectedFn && !b.filename.startsWith('mdf_full_') && !b.filename.startsWith('mdf_db_'))
+    ])
 
     startBackup({
       siteId: currentSiteId,
@@ -850,33 +874,40 @@ export default function BulkBackup() {
 
                             {/* 6. Actions */}
                             <td style={{ ...tdStyle, textAlign: 'right' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                <button
-                                  onClick={() => setRestoreModalData(bk)}
-                                  style={actionRestoreBtnStyle}
-                                  title="Restore website from this backup (Disaster Recovery)"
-                                >
-                                  <RotateCcw size={12} />
-                                  <span>Restore</span>
-                                </button>
+                              {bk.is_creating || bk.status === 'creating' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', color: '#15803D', fontSize: '12px', fontWeight: 700 }}>
+                                  <RefreshCw size={13} style={{ animation: 'spin 1.2s linear infinite' }} />
+                                  <span>Packaging Archive...</span>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                  <button
+                                    onClick={() => setRestoreModalData(bk)}
+                                    style={actionRestoreBtnStyle}
+                                    title="Restore website from this backup (Disaster Recovery)"
+                                  >
+                                    <RotateCcw size={12} />
+                                    <span>Restore</span>
+                                  </button>
 
-                                <button
-                                  onClick={() => handleDownload(bk)}
-                                  style={actionDownloadBtnStyle}
-                                  title="Download archive to your computer"
-                                >
-                                  <Download size={12} />
-                                  <span>Download</span>
-                                </button>
+                                  <button
+                                    onClick={() => handleDownload(bk)}
+                                    style={actionDownloadBtnStyle}
+                                    title="Download archive to your computer"
+                                  >
+                                    <Download size={12} />
+                                    <span>Download</span>
+                                  </button>
 
-                                <button
-                                  onClick={() => handleDelete(bk)}
-                                  style={actionDeleteBtnStyle}
-                                  title="Delete backup permanently"
-                                >
-                                  <Trash2 size={13} color="#DC2626" />
-                                </button>
-                              </div>
+                                  <button
+                                    onClick={() => handleDelete(bk)}
+                                    style={actionDeleteBtnStyle}
+                                    title="Delete backup permanently"
+                                  >
+                                    <Trash2 size={13} color="#DC2626" />
+                                  </button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )

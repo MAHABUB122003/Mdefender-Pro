@@ -172,10 +172,27 @@ class WAF_FW_Backup_Engine {
         $files = array_unique($files);
 
         $catalog = [];
+        $has_clean_domain_archive = false;
+        foreach ($files as $fp) {
+            $bn = basename($fp);
+            if (!in_array($bn, ['.htaccess', 'index.php', 'web.config']) && strpos($bn, 'mdf_') !== 0 && strpos($bn, 'temp_') !== 0 && substr($bn, -4) === '.zip') {
+                $has_clean_domain_archive = true;
+                break;
+            }
+        }
 
         foreach ($files as $file_path) {
             $filename = basename($file_path);
             if (in_array($filename, ['.htaccess', 'index.php', 'web.config'])) continue;
+
+            // Prune old legacy mdf_ archives if clean domain-named archive is present
+            if ($has_clean_domain_archive && (strpos($filename, 'mdf_full_') === 0 || strpos($filename, 'mdf_db_') === 0 || strpos($filename, 'mdf_files_') === 0)) {
+                @unlink($file_path);
+                if (isset($stored[$filename])) {
+                    unset($stored[$filename]);
+                }
+                continue;
+            }
 
             $file_size = @filesize($file_path);
             $file_mtime = @filemtime($file_path);
@@ -897,7 +914,9 @@ class WAF_FW_Backup_Engine {
             $actions_log[] = 'Emergency self-heal: verified & restored root .htaccess';
         }
 
-        $this->delete_directory($staging_dir);
+        if (!empty($staging_dir) && is_dir($staging_dir)) {
+            $this->delete_directory($staging_dir);
+        }
 
         // 6. Reset all caches
         $this->flush_system_caches();
