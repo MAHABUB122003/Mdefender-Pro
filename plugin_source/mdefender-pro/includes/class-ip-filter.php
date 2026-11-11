@@ -14,7 +14,7 @@ class WAF_FW_IP_Filter {
 
     private $runtime_blacklist_cache = [];
 
-    public function is_blacklisted($ip) {
+    public function is_blacklisted($ip = null) {
         if (empty($ip)) {
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         }
@@ -173,7 +173,10 @@ class WAF_FW_IP_Filter {
         return intval($result) > 0;
     }
 
-    public function is_whitelisted($ip) {
+    public function is_whitelisted($ip = null) {
+        if (empty($ip)) {
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        }
         $ip = trim((string) $ip);
         if (empty($ip)) return false;
 
