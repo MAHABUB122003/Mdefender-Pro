@@ -1228,13 +1228,15 @@ class WAF_FW_Website_Hardening {
         }
 
         // 5. Cross-Origin-Opener-Policy
-        if (!empty($settings['coop']) && $settings['coop'] !== 'off') {
-            $headers['Cross-Origin-Opener-Policy'] = sanitize_text_field($settings['coop']);
+        $coop = $settings['coop'] ?? 'same-origin';
+        if ($coop && $coop !== 'off') {
+            $headers['Cross-Origin-Opener-Policy'] = sanitize_text_field($coop);
         }
 
         // 6. Cross-Origin-Resource-Policy
-        if (!empty($settings['corp']) && $settings['corp'] !== 'off') {
-            $headers['Cross-Origin-Resource-Policy'] = sanitize_text_field($settings['corp']);
+        $corp = $settings['corp'] ?? 'same-origin';
+        if ($corp && $corp !== 'off') {
+            $headers['Cross-Origin-Resource-Policy'] = sanitize_text_field($corp);
         }
 
         // 7. Cross-Origin-Embedder-Policy
@@ -1486,13 +1488,14 @@ class WAF_FW_Website_Hardening {
                 $this->apply_rest_api(['disable_user_endpoints' => true]);
                 $this->apply_xmlrpc(['disable_xmlrpc' => 'complete', 'block_pingback' => true]);
                 $this->apply_file_permissions(['auto_fix' => true]);
-                $this->apply_security_headers(['hsts' => true, 'hsts_subdomains' => true, 'x_frame_options' => 'SAMEORIGIN', 'x_content_type_options' => true]);
+                $this->apply_security_headers(['hsts' => true, 'hsts_subdomains' => true, 'x_frame_options' => 'SAMEORIGIN', 'x_content_type_options' => true, 'referrer_policy' => 'strict-origin-when-cross-origin', 'coop' => 'same-origin', 'corp' => 'same-origin']);
                 $this->apply_user_accounts(['detect_fake_admins' => true, 'enforce_strong_passwords' => true]);
                 $this->apply_version_hiding(['hide_wp_version' => true, 'remove_readme' => true]);
                 $this->apply_directory_browsing([]);
                 $actions[] = 'Strong Enterprise Profile applied (Strict isolation & headers)';
                 break;
 
+            case 'strict':
             case 'maximum':
                 $this->apply_admin_protect(['disable_file_editor' => true, 'disable_user_enum' => true, 'admin_session_timeout' => 1800]);
                 $this->apply_login_protect(['login_captcha' => true, 'brute_force_threshold' => 3, 'login_lockout_time' => 3600]);
@@ -1504,13 +1507,23 @@ class WAF_FW_Website_Hardening {
                 $this->apply_xmlrpc(['disable_xmlrpc' => 'complete', 'block_pingback' => true]);
                 $this->apply_php_files(['scan_dangerous_funcs' => true]);
                 $this->apply_file_permissions(['auto_fix' => true]);
-                $this->apply_security_headers(['hsts' => true, 'hsts_subdomains' => true, 'hsts_preload' => true, 'x_frame_options' => 'DENY', 'x_content_type_options' => true, 'referrer_policy' => 'strict-origin']);
+                $this->apply_security_headers(['hsts' => true, 'hsts_subdomains' => true, 'hsts_preload' => true, 'x_frame_options' => 'SAMEORIGIN', 'x_content_type_options' => true, 'referrer_policy' => 'strict-origin', 'coop' => 'same-origin', 'corp' => 'same-origin']);
                 $this->apply_user_accounts(['detect_fake_admins' => true, 'enforce_strong_passwords' => true]);
                 $this->apply_backup(['detect_backups' => true]);
                 $this->apply_plugin_theme(['detect_modifications' => true]);
                 $this->apply_directory_browsing([]);
                 $this->apply_version_hiding(['hide_wp_version' => true, 'remove_readme' => true]);
-                $actions[] = 'Maximum Lockdown Profile applied (Full hardening suite)';
+                update_option('waf_harden_virtual_patching', 'yes');
+                update_option('waf_fw_virtual_patching', 'yes');
+                update_option('waf_harden_block_uploads_php', 'yes');
+                update_option('waf_harden_xmlrpc_mode', 'jetpack_only');
+                update_option('waf_harden_version_hiding', 'enabled');
+                update_option('waf_harden_login_lockouts', 'yes');
+                update_option('waf_harden_security_headers', 'enabled');
+                update_option('waf_harden_database_prefix_check', 'yes');
+                update_option('waf_harden_disable_wp_debug', 'yes');
+                update_option('waf_harden_fim_core_monitoring', 'yes');
+                $actions[] = 'Strict Maximum Lockdown Profile applied (All 8 master shields armed)';
                 break;
 
             case 'balanced':
@@ -1522,7 +1535,7 @@ class WAF_FW_Website_Hardening {
                 $this->apply_rest_api(['disable_user_endpoints' => true]);
                 $this->apply_xmlrpc(['disable_xmlrpc' => 'jetpack_only', 'block_pingback' => true]);
                 $this->apply_file_permissions(['auto_fix' => true]);
-                $this->apply_security_headers(['x_frame_options' => 'SAMEORIGIN', 'x_content_type_options' => true, 'referrer_policy' => 'strict-origin-when-cross-origin']);
+                $this->apply_security_headers(['x_frame_options' => 'SAMEORIGIN', 'x_content_type_options' => true, 'referrer_policy' => 'strict-origin-when-cross-origin', 'coop' => 'same-origin', 'corp' => 'same-origin']);
                 $this->apply_user_accounts(['detect_fake_admins' => true]);
                 $this->apply_version_hiding(['hide_wp_version' => true]);
                 $this->apply_directory_browsing([]);

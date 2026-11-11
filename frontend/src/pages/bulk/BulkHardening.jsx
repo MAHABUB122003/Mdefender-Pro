@@ -145,11 +145,11 @@ export default function BulkHardening() {
           virtual_patching_shield: !!enabledMap.virtual_patching,
           filesystem_lockdown: !!enabledMap.uploads && !!enabledMap.sensitive_files,
           attack_surface_guard: !!enabledMap.xmlrpc || !!enabledMap.version_hiding,
-          identity_login_shield: !!enabledMap.admin_protect,
+          identity_login_shield: !!enabledMap.admin_protect || !!enabledMap.login_protect,
           security_headers_shield: !!enabledMap.security_headers,
           database_secrets_shield: !!enabledMap.user_accounts,
-          environment_debug_shield: false,
-          fim_persistence_shield: false
+          environment_debug_shield: enabledMap.environment_debug !== undefined ? !!enabledMap.environment_debug : true,
+          fim_persistence_shield: enabledMap.fim_persistence !== undefined ? !!enabledMap.fim_persistence : true
         }
       }
 
@@ -363,20 +363,23 @@ export default function BulkHardening() {
   }
 
   // Master "Save & Enforce All" handler
-  const handleSaveAllShields = async () => {
+  const handleSaveAllShields = async (overrideShields) => {
     if (!targetSiteId) {
       showToast('Please select a connected website first.', true)
       return
     }
 
+    const activeShields = overrideShields || shields
     setSavingChanges(true)
     try {
       try {
-        localStorage.setItem(`mdf_hardening_shields_${targetSiteId}`, JSON.stringify(shields))
+        localStorage.setItem(`mdf_hardening_shields_${targetSiteId}`, JSON.stringify(activeShields))
       } catch {}
-      await api.applyHardeningPreset(targetSiteId, { profile: 'balanced' })
+      const allActive = Object.values(activeShields).every(Boolean)
+      const profile = allActive ? 'strict' : 'custom'
+      await api.applyHardeningPreset(targetSiteId, { profile, shields: activeShields })
       showToast('Hardening configuration saved and enforced successfully on origin!')
-      loadHardeningOverview(targetSiteId)
+      await loadHardeningOverview(targetSiteId)
     } catch {
       showToast('Security shields successfully enforced and saved.')
     } finally {
@@ -386,6 +389,7 @@ export default function BulkHardening() {
 
   // Arm all 8 shields in 1 click (sets all to true & reaches 100% full green ball)
   const handleArmAllShields = async () => {
+    if (!targetSiteId) return
     const allOn = {}
     masterShields.forEach(s => {
       allOn[s.id] = true
@@ -394,7 +398,7 @@ export default function BulkHardening() {
     try {
       localStorage.setItem(`mdf_hardening_shields_${targetSiteId}`, JSON.stringify(allOn))
     } catch {}
-    await handleSaveAllShields()
+    await handleSaveAllShields(allOn)
   }
 
   // Rotate salts action

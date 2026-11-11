@@ -13252,7 +13252,8 @@ async def get_fleet_safe_updates_summary(user=Depends(get_current_user)):
 # Enterprise WordPress Security Hardening & Safe Enforcement Endpoints
 # -----------------------------------------------------------------------------
 class HardeningProfileRequest(BaseModel):
-    profile: str = "balanced"  # "essential" | "balanced" | "strict" | "custom"
+    profile: str = "balanced"  # "essential" | "balanced" | "strict" | "custom" | "maximum"
+    shields: Optional[Dict[str, bool]] = None
 
     class Config:
         extra = "allow"
@@ -13337,6 +13338,7 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
     api_key = website.get("api_key") or ""
     site_token = website.get("site_token") or ""
 
+    is_strict = body.profile in ("strict", "maximum")
     preset_shields = {
         "virtual_patching_shield": True,
         "filesystem_lockdown": True,
@@ -13344,9 +13346,15 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
         "identity_login_shield": True,
         "security_headers_shield": True,
         "database_secrets_shield": True,
-        "environment_debug_shield": True if body.profile == "strict" else False,
-        "fim_persistence_shield": True if body.profile == "strict" else False
+        "environment_debug_shield": True if is_strict else False,
+        "fim_persistence_shield": True if is_strict else False
     }
+
+    if body.shields and isinstance(body.shields, dict):
+        for k in list(preset_shields.keys()):
+            if k in body.shields:
+                preset_shields[k] = bool(body.shields[k])
+
     db.websites.update_one(
         {'_id': website['_id']},
         {'$set': {'hardening_overview.master_shields': preset_shields, 'hardening_overview.profile': body.profile}}
@@ -13356,12 +13364,17 @@ async def apply_hardening_preset(website_id: str, body: HardeningProfileRequest,
         raise HTTPException(status_code=400, detail="Website target URL is not configured.")
 
     try:
+        import json
+        import urllib.parse
         sep = "&" if "?" in target_url else "?"
-        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=apply_hardening_profile&profile={body.profile}&site_token={site_token}&api_key={api_key}"
-        resp = requests.post(remote_url, timeout=12, verify=False)
+        shields_json = json.dumps(preset_shields)
+        remote_url = f"{target_url}{sep}waf_cloud_sync=1&cloud_action=apply_hardening_profile&profile={body.profile}&shields={urllib.parse.quote(shields_json)}&site_token={site_token}&api_key={api_key}"
+        resp = requests.post(remote_url, json={"profile": body.profile, "shields": preset_shields}, timeout=12, verify=False)
         if resp.status_code == 200:
             data = resp.json().get("action_result", {})
             if data:
+                data["master_shields"] = preset_shields
+                db.websites.update_one({'_id': website['_id']}, {'$set': {'hardening_overview': data}})
                 return success(data)
         raise HTTPException(status_code=resp.status_code, detail=f"Preset enforcement failed: HTTP {resp.status_code}")
     except HTTPException:

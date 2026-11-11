@@ -752,78 +752,92 @@ class SecurityScannerService:
                 try:
                     sep = "&" if "?" in target_origin else "?"
                     h_url = f"{target_origin}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
-                    h_resp = requests.post(h_url, timeout=3.5, verify=False)
-                    if h_resp.status_code == 200:
-                        h_data = h_resp.json().get("action_result", {})
-                        master_shields = h_data.get("master_shields") or {}
-                        active_count = sum(1 for v in master_shields.values() if v)
-                        
-                        vulnerabilities = []
-                        if not master_shields.get("virtual_patching_shield"):
-                            vulnerabilities.append({
-                                "shield_id": "virtual_patching_shield",
-                                "name": "Zero-Day Virtual Patching Shield",
-                                "severity": "CRITICAL",
-                                "desc": "WAF Pre-Flight WAAP is inactive. WordPress Core and plugins (Elementor, WooCommerce, CF7) are exposed to 680+ unpatched zero-day CVE exploits."
-                            })
-                        if not master_shields.get("filesystem_lockdown"):
-                            vulnerabilities.append({
-                                "shield_id": "filesystem_lockdown",
-                                "name": "Filesystem Execution Lockdown",
-                                "severity": "HIGH",
-                                "desc": "Uploads directory allows direct PHP execution, and theme/plugin code editors are exposed in WP-Admin."
-                            })
-                        if not master_shields.get("attack_surface_guard"):
-                            vulnerabilities.append({
-                                "shield_id": "attack_surface_guard",
-                                "name": "Attack Surface & XML-RPC Gateway",
-                                "severity": "HIGH",
-                                "desc": "XML-RPC multicall interface and REST user enumeration endpoints are exposed to automated brute-force DDoS."
-                            })
-                        if not master_shields.get("identity_login_shield"):
-                            vulnerabilities.append({
-                                "shield_id": "identity_login_shield",
-                                "name": "Identity & Brute-Force Login Shield",
-                                "severity": "HIGH",
-                                "desc": "Login portal has no failed-login IP ban policy, leaving administrator credentials vulnerable to dictionary attacks."
-                            })
-                        if not master_shields.get("security_headers_shield"):
-                            vulnerabilities.append({
-                                "shield_id": "security_headers_shield",
-                                "name": "Enterprise HTTP Security Headers",
-                                "severity": "HIGH",
-                                "desc": "Missing X-Frame-Options (clickjacking risk), X-Content-Type-Options (MIME sniffing), and Strict-Transport-Security (HSTS)."
-                            })
-                        if not master_shields.get("environment_debug_shield"):
-                            vulnerabilities.append({
-                                "shield_id": "environment_debug_shield",
-                                "name": "Production Environment & Debug Lockdown",
-                                "severity": "MEDIUM",
-                                "desc": "WP_DEBUG error display or debug.log file access is not locked down for production operations."
-                            })
-                        if not master_shields.get("database_secrets_shield"):
-                            vulnerabilities.append({
-                                "shield_id": "database_secrets_shield",
-                                "name": "Database Integrity & Cryptographic Salts",
-                                "severity": "MEDIUM",
-                                "desc": "Database table prefix and 64-character cryptographic security salts have not been audited or rotated."
-                            })
-                        if not master_shields.get("fim_persistence_shield"):
-                            vulnerabilities.append({
-                                "shield_id": "fim_persistence_shield",
-                                "name": "File Integrity Monitoring & Persistence Trap",
-                                "severity": "LOW",
-                                "desc": "Core file integrity monitoring and mu-plugins persistence trap are not actively tracking file changes."
-                            })
+                    master_shields = {}
+                    try:
+                        h_resp = requests.post(h_url, timeout=3.5, verify=False)
+                        if h_resp.status_code == 200:
+                            h_data = h_resp.json().get("action_result", {})
+                            master_shields = h_data.get("master_shields") or {}
+                    except Exception:
+                        pass
 
-                        hardening_audit.update({
-                            "is_fully_hardened": active_count == 8,
-                            "active_shields_count": active_count,
-                            "total_shields": 8,
-                            "master_shields": master_shields,
-                            "vulnerabilities": vulnerabilities,
-                            "action_required": active_count < 8
+                    # Harmonize with MongoDB hardening_overview so scanner never desynchronizes
+                    db_shields = site_doc.get("hardening_overview", {}).get("master_shields", {})
+                    if not master_shields and db_shields:
+                        master_shields = dict(db_shields)
+                    elif db_shields:
+                        for k, v in db_shields.items():
+                            if v and not master_shields.get(k):
+                                master_shields[k] = True
+
+                    active_count = sum(1 for v in master_shields.values() if v)
+                    
+                    vulnerabilities = []
+                    if not master_shields.get("virtual_patching_shield"):
+                        vulnerabilities.append({
+                            "shield_id": "virtual_patching_shield",
+                            "name": "Zero-Day Virtual Patching Shield",
+                            "severity": "CRITICAL",
+                            "desc": "WAF Pre-Flight WAAP is inactive. WordPress Core and plugins (Elementor, WooCommerce, CF7) are exposed to 680+ unpatched zero-day CVE exploits."
                         })
+                    if not master_shields.get("filesystem_lockdown"):
+                        vulnerabilities.append({
+                            "shield_id": "filesystem_lockdown",
+                            "name": "Filesystem Execution Lockdown",
+                            "severity": "HIGH",
+                            "desc": "Uploads directory allows direct PHP execution, and theme/plugin code editors are exposed in WP-Admin."
+                        })
+                    if not master_shields.get("attack_surface_guard"):
+                        vulnerabilities.append({
+                            "shield_id": "attack_surface_guard",
+                            "name": "Attack Surface & XML-RPC Gateway",
+                            "severity": "HIGH",
+                            "desc": "XML-RPC multicall interface and REST user enumeration endpoints are exposed to automated brute-force DDoS."
+                        })
+                    if not master_shields.get("identity_login_shield"):
+                        vulnerabilities.append({
+                            "shield_id": "identity_login_shield",
+                            "name": "Identity & Brute-Force Login Shield",
+                            "severity": "HIGH",
+                            "desc": "Login portal has no failed-login IP ban policy, leaving administrator credentials vulnerable to dictionary attacks."
+                        })
+                    if not master_shields.get("security_headers_shield"):
+                        vulnerabilities.append({
+                            "shield_id": "security_headers_shield",
+                            "name": "Enterprise HTTP Security Headers",
+                            "severity": "HIGH",
+                            "desc": "Missing X-Frame-Options (clickjacking risk), X-Content-Type-Options (MIME sniffing), and Strict-Transport-Security (HSTS)."
+                        })
+                    if not master_shields.get("environment_debug_shield"):
+                        vulnerabilities.append({
+                            "shield_id": "environment_debug_shield",
+                            "name": "Production Environment & Debug Lockdown",
+                            "severity": "MEDIUM",
+                            "desc": "WP_DEBUG error display or debug.log file access is not locked down for production operations."
+                        })
+                    if not master_shields.get("database_secrets_shield"):
+                        vulnerabilities.append({
+                            "shield_id": "database_secrets_shield",
+                            "name": "Database Integrity & Cryptographic Salts",
+                            "severity": "MEDIUM",
+                            "desc": "Database table prefix and 64-character cryptographic security salts have not been audited or rotated."
+                        })
+                    if not master_shields.get("fim_persistence_shield"):
+                        vulnerabilities.append({
+                            "shield_id": "fim_persistence_shield",
+                            "name": "File Integrity Monitoring & Persistence Trap",
+                            "severity": "LOW",
+                            "desc": "Core file integrity monitoring and mu-plugins persistence trap are not actively tracking file changes."
+                        })
+
+                    hardening_audit.update({
+                        "is_fully_hardened": active_count == 8,
+                        "active_shields_count": active_count,
+                        "total_shields": 8,
+                        "master_shields": master_shields,
+                        "vulnerabilities": vulnerabilities,
+                        "action_required": active_count < 8
+                    })
                 except Exception:
                     pass
         except Exception:

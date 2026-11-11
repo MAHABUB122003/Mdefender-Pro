@@ -2220,6 +2220,63 @@ function waf_fw_handle_cloud_sync_webhook() {
                 $hardener = class_exists('WAF_FW_Website_Hardening') ? WAF_FW_Website_Hardening::instance() : null;
                 if ($hardener) {
                     $apply_res = $hardener->apply_profile($target_prof);
+
+                    $incoming_shields = $pushed_data['shields'] ?? $_REQUEST['shields'] ?? null;
+                    if (is_string($incoming_shields)) {
+                        $incoming_shields = json_decode(stripslashes($incoming_shields), true);
+                    }
+                    if (is_array($incoming_shields)) {
+                        if (isset($incoming_shields['virtual_patching_shield'])) {
+                            $on = !empty($incoming_shields['virtual_patching_shield']) ? 'yes' : 'no';
+                            update_option('waf_harden_virtual_patching', $on);
+                            update_option('waf_fw_virtual_patching', $on);
+                        }
+                        if (isset($incoming_shields['filesystem_lockdown'])) {
+                            $on = !empty($incoming_shields['filesystem_lockdown']) ? 'yes' : 'no';
+                            update_option('waf_harden_block_uploads_php', $on);
+                        }
+                        if (isset($incoming_shields['attack_surface_guard'])) {
+                            $on = !empty($incoming_shields['attack_surface_guard']);
+                            update_option('waf_harden_xmlrpc_mode', $on ? 'jetpack_only' : 'off');
+                            update_option('waf_harden_version_hiding', $on ? 'enabled' : 'disabled');
+                        }
+                        if (isset($incoming_shields['identity_login_shield'])) {
+                            $on = !empty($incoming_shields['identity_login_shield']) ? 'yes' : 'no';
+                            update_option('waf_harden_login_lockouts', $on);
+                        }
+                        if (isset($incoming_shields['security_headers_shield'])) {
+                            $on = !empty($incoming_shields['security_headers_shield']);
+                            update_option('waf_harden_security_headers', $on ? 'enabled' : 'disabled');
+                            if ($on) {
+                                $hardener->apply_recommended_security_headers();
+                            }
+                        }
+                        if (isset($incoming_shields['database_secrets_shield'])) {
+                            $on = !empty($incoming_shields['database_secrets_shield']) ? 'yes' : 'no';
+                            update_option('waf_harden_database_prefix_check', $on);
+                        }
+                        if (isset($incoming_shields['environment_debug_shield'])) {
+                            $on = !empty($incoming_shields['environment_debug_shield']) ? 'yes' : 'no';
+                            update_option('waf_harden_disable_wp_debug', $on);
+                        }
+                        if (isset($incoming_shields['fim_persistence_shield'])) {
+                            $on = !empty($incoming_shields['fim_persistence_shield']) ? 'yes' : 'no';
+                            update_option('waf_harden_fim_core_monitoring', $on);
+                        }
+                    } elseif ($target_prof === 'strict' || $target_prof === 'maximum') {
+                        update_option('waf_harden_virtual_patching', 'yes');
+                        update_option('waf_fw_virtual_patching', 'yes');
+                        update_option('waf_harden_block_uploads_php', 'yes');
+                        update_option('waf_harden_xmlrpc_mode', 'jetpack_only');
+                        update_option('waf_harden_version_hiding', 'enabled');
+                        update_option('waf_harden_login_lockouts', 'yes');
+                        update_option('waf_harden_security_headers', 'enabled');
+                        $hardener->apply_recommended_security_headers();
+                        update_option('waf_harden_database_prefix_check', 'yes');
+                        update_option('waf_harden_disable_wp_debug', 'yes');
+                        update_option('waf_harden_fim_core_monitoring', 'yes');
+                    }
+
                     $fresh_report = $hardener->generate_report();
                     $action_result = [
                         'success' => true,
@@ -2227,7 +2284,17 @@ function waf_fw_handle_cloud_sync_webhook() {
                         'score' => $fresh_report['score'] ?? 85,
                         'grade' => $fresh_report['grade'] ?? 'B',
                         'message' => ucfirst($target_prof) . " Enterprise Security Profile successfully enforced across WordPress origin.",
-                        'report' => $fresh_report
+                        'report' => $fresh_report,
+                        'master_shields' => [
+                            'virtual_patching_shield' => (get_option('waf_harden_virtual_patching', 'no') === 'yes' || get_option('waf_fw_virtual_patching', 'no') === 'yes'),
+                            'filesystem_lockdown' => (get_option('waf_harden_block_uploads_php', 'no') === 'yes'),
+                            'attack_surface_guard' => (get_option('waf_harden_xmlrpc_mode', 'off') !== 'off' || get_option('waf_harden_version_hiding') === 'enabled'),
+                            'identity_login_shield' => (get_option('waf_harden_login_lockouts', 'no') === 'yes' || get_option('waf_harden_custom_login_slug', 'no') === 'yes'),
+                            'security_headers_shield' => (get_option('waf_harden_security_headers', 'disabled') === 'enabled'),
+                            'database_secrets_shield' => (get_option('waf_harden_database_prefix_check', 'no') === 'yes'),
+                            'environment_debug_shield' => (get_option('waf_harden_disable_wp_debug', 'no') === 'yes'),
+                            'fim_persistence_shield' => (get_option('waf_harden_fim_core_monitoring', 'no') === 'yes')
+                        ]
                     ];
                 } else {
                     $action_result = ['success' => false, 'message' => 'Hardening engine not loaded on origin.'];
