@@ -63,18 +63,33 @@ class WAF_FW_Backup_Engine {
 
     /**
      * Search all known backup locations for a specific archive.
+     * Binary-safe: Prevents WordPress sanitize_file_name() from corrupting multi-dot domain names (e.g. site.com.zip -> site.com_.zip)
      */
     public function find_backup_file($filename) {
-        $clean_fn = sanitize_file_name($filename);
-        $candidates = [
-            $this->backup_dir . $clean_fn,
-            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/' . $clean_fn),
-            wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/' . $clean_fn),
-            wp_normalize_path(dirname(WP_CONTENT_DIR, 2) . '/mdefender-backups/' . $clean_fn),
-        ];
-        foreach ($candidates as $cand) {
-            if (file_exists($cand) && filesize($cand) > 0) {
-                return $cand;
+        $basename = basename(trim($filename));
+        $clean_fn = sanitize_file_name($basename);
+        $name_variants = array_unique([
+            $basename,
+            $clean_fn,
+            str_replace('_.zip', '.zip', $clean_fn),
+            str_replace('_.sql', '.sql', $clean_fn),
+            str_replace('_.sql.gz', '.sql.gz', $clean_fn),
+        ]);
+
+        $search_dirs = array_unique([
+            $this->backup_dir,
+            wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/'),
+            wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/'),
+            wp_normalize_path(dirname(WP_CONTENT_DIR, 2) . '/mdefender-backups/'),
+            wp_normalize_path(sys_get_temp_dir() . '/mdefender-backups/'),
+        ]);
+
+        foreach ($name_variants as $vname) {
+            foreach ($search_dirs as $sdir) {
+                $cand = rtrim($sdir, '/\\') . '/' . $vname;
+                if (file_exists($cand) && filesize($cand) > 0) {
+                    return $cand;
+                }
             }
         }
         return false;
@@ -765,9 +780,12 @@ class WAF_FW_Backup_Engine {
     public function restore_backup($filename) {
         $this->raise_execution_limits();
         $this->ensure_backup_dir();
+        $staging_dir = '';
 
-        $filename = sanitize_file_name($filename);
         $file_path = $this->find_backup_file($filename);
+        if ($file_path) {
+            $filename = basename($file_path);
+        }
 
         if (!$file_path || !file_exists($file_path)) {
             return ['success' => false, 'message' => 'Backup archive file not found on server: ' . $filename];
@@ -1122,7 +1140,16 @@ class WAF_FW_Backup_Engine {
      * Delete a single backup archive across all storage tiers.
      */
     public function delete_backup($filename) {
-        $filename = sanitize_file_name($filename);
+        $basename = basename(trim($filename));
+        $clean_fn = sanitize_file_name($basename);
+        $name_variants = array_unique([
+            $basename,
+            $clean_fn,
+            str_replace('_.zip', '.zip', $clean_fn),
+            str_replace('_.sql', '.sql', $clean_fn),
+            str_replace('_.sql.gz', '.sql.gz', $clean_fn),
+        ]);
+
         $search_dirs = array_unique([
             $this->backup_dir,
             wp_normalize_path(dirname(ABSPATH) . '/mdefender-backups/'),
@@ -1132,26 +1159,30 @@ class WAF_FW_Backup_Engine {
         ]);
 
         $deleted_any = false;
-        foreach ($search_dirs as $sdir) {
-            $cand = rtrim($sdir, '/\\') . '/' . $filename;
-            if (file_exists($cand)) {
-                if (@unlink($cand)) {
-                    $deleted_any = true;
+        foreach ($name_variants as $vname) {
+            foreach ($search_dirs as $sdir) {
+                $cand = rtrim($sdir, '/\\') . '/' . $vname;
+                if (file_exists($cand)) {
+                    if (@unlink($cand)) {
+                        $deleted_any = true;
+                    }
                 }
             }
         }
 
         $catalog = (array) get_option('waf_fw_backup_catalog', []);
-        if (isset($catalog[$filename])) {
-            unset($catalog[$filename]);
-            update_option('waf_fw_backup_catalog', $catalog);
+        foreach ($name_variants as $vname) {
+            if (isset($catalog[$vname])) {
+                unset($catalog[$vname]);
+            }
         }
+        update_option('waf_fw_backup_catalog', $catalog);
 
         return [
             'success' => true,
-            'filename' => $filename,
+            'filename' => $basename,
             'deleted' => $deleted_any,
-            'message' => 'Backup archive deleted successfully: ' . $filename
+            'message' => 'Backup archive deleted successfully: ' . $basename
         ];
     }
 

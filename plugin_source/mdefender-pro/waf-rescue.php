@@ -7,6 +7,9 @@
  */
 
 // 1. Extreme execution limits for disaster reconstitution
+if (!defined('WAF_FW_IN_RESCUE')) {
+    define('WAF_FW_IN_RESCUE', true);
+}
 @ini_set('memory_limit', '1024M');
 @ini_set('max_execution_time', 600);
 @set_time_limit(600);
@@ -47,26 +50,42 @@ $possible_backup_dirs = [
 
 $backup_file_path = '';
 if (!empty($filename)) {
-    $clean_fn = basename($filename);
-    foreach ($possible_backup_dirs as $bdir) {
-        $cand = $bdir . $clean_fn;
-        if (file_exists($cand) && filesize($cand) > 0) {
-            $backup_file_path = $cand;
-            break;
+    $clean_fn = basename(trim($filename));
+    $name_variants = array_unique([
+        $clean_fn,
+        str_replace('_.zip', '.zip', $clean_fn),
+        str_replace('_.sql', '.sql', $clean_fn),
+        str_replace('_.sql.gz', '.sql.gz', $clean_fn),
+    ]);
+    foreach ($name_variants as $vname) {
+        foreach ($possible_backup_dirs as $bdir) {
+            $cand = rtrim($bdir, '/\\') . '/' . $vname;
+            if (file_exists($cand) && filesize($cand) > 0) {
+                $backup_file_path = $cand;
+                break 2;
+            }
         }
     }
 }
 
 // 4.1 Handle Action: Delete Backup Archive
 if ($action === 'delete' || $action === 'delete_backup') {
-    $clean_fn = basename($filename);
+    $clean_fn = basename(trim($filename));
+    $name_variants = array_unique([
+        $clean_fn,
+        str_replace('_.zip', '.zip', $clean_fn),
+        str_replace('_.sql', '.sql', $clean_fn),
+        str_replace('_.sql.gz', '.sql.gz', $clean_fn),
+    ]);
     $deleted_files = [];
     if (!empty($clean_fn)) {
-        foreach ($possible_backup_dirs as $bdir) {
-            $cand = rtrim($bdir, '/\\') . '/' . $clean_fn;
-            if (file_exists($cand)) {
-                if (@unlink($cand)) {
-                    $deleted_files[] = $cand;
+        foreach ($name_variants as $vname) {
+            foreach ($possible_backup_dirs as $bdir) {
+                $cand = rtrim($bdir, '/\\') . '/' . $vname;
+                if (file_exists($cand)) {
+                    if (@unlink($cand)) {
+                        $deleted_files[] = $cand;
+                    }
                 }
             }
         }

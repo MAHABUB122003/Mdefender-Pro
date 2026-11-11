@@ -16,6 +16,9 @@ import time
 import shutil
 import zipfile
 import logging
+import hmac
+import hashlib
+import secrets
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from bson import ObjectId
@@ -175,10 +178,21 @@ class BackupService:
             f"{target_url}{sep}{url_params}",
             f"{target_url}/index.php?{url_params}",
         ]
+
+        raw_body = json.dumps(action_payload) if action_payload else ""
+        ts = str(int(time.time()))
+        nonce = secrets.token_hex(16)
+        secret = api_key or site_token or ""
+        sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.{raw_body}".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
+
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "MDefender-Pro-CloudAction/1.0",
+            "X-MDefender-Timestamp": ts,
+            "X-MDefender-Nonce": nonce,
         }
+        if sig:
+            headers["X-MDefender-Signature"] = sig
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
             headers["X-API-Key"] = api_key
@@ -216,15 +230,26 @@ class BackupService:
         sep = "&" if "?" in target_url else "?"
 
         endpoints = [
+            f"{target_url}/wp-content/plugins/mdefender-pro/waf-rescue.php?{url_params}",
             f"{target_url}/wp-json/waf-fw/v1/remote-backups?{url_params}",
             f"{target_url}/?rest_route=/waf-fw/v1/remote-backups&{url_params}",
             f"{target_url}/?rest_route=/waf-fw/v1/sync&{url_params}",
             f"{target_url}{sep}{url_params}",
         ]
+
+        ts = str(int(time.time()))
+        nonce = secrets.token_hex(16)
+        secret = api_key or site_token or ""
+        sig = hmac.new(secret.encode("utf-8"), f"{ts}.{nonce}.".encode("utf-8"), hashlib.sha256).hexdigest() if secret else ""
+
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "MDefender-Pro-CloudAction/1.0",
+            "X-MDefender-Timestamp": ts,
+            "X-MDefender-Nonce": nonce,
         }
+        if sig:
+            headers["X-MDefender-Signature"] = sig
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
             headers["X-API-Key"] = api_key
@@ -727,7 +752,10 @@ class BackupService:
             }
             remote_res = self.dispatch_remote_wp_action(website, action_payload, timeout=300.0)
             act_res = remote_res.get("action_result") or {}
-            is_success = bool(act_res.get("success") or remote_res.get("status") == "success" or remote_res.get("success"))
+            if act_res:
+                is_success = bool(act_res.get("success"))
+            else:
+                is_success = bool(remote_res.get("status") == "success" or remote_res.get("success"))
             if is_success:
                 duration = act_res.get("duration") or remote_res.get("duration") or f"{time.time() - start_time:.2f}s"
                 msg = act_res.get("message") or remote_res.get("message") or f"Website successfully restored from snapshot '{clean_fn}' in {duration}."
