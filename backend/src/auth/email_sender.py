@@ -7,7 +7,8 @@ import secrets
 from datetime import datetime, timezone
 from src.services.email_service import EmailService
 
-# Load official MDefender Pro logo for inline email embedding
+# Load official MDefender Pro logo (Gmail & Outlook require HTTPS URLs; they block data:image base64)
+_LOGO_PUBLIC_URL = os.environ.get("MDEFENDER_LOGO_URL", "https://mdefender-pro.crafix.tech/mdefender_logo.png")
 _LOGO_PATH = os.path.join(os.path.dirname(__file__), 'mdefender_logo.png')
 _LOGO_B64 = ""
 if os.path.exists(_LOGO_PATH):
@@ -146,7 +147,7 @@ class AuthEmailService:
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="width: 36px; height: 36px; vertical-align: middle;">
-                                        <img src="data:image/png;base64,{_LOGO_B64}" width="36" height="36" alt="MDefender Pro Logo" style="display: block; width: 36px; height: 36px; border-radius: 8px; object-fit: contain;" />
+                                        <img src="{_LOGO_PUBLIC_URL}" width="36" height="36" alt="MDefender Pro Logo" style="display: block; width: 36px; height: 36px; border-radius: 8px; object-fit: contain;" />
                                     </td>
                                     <td style="padding-left: 12px; vertical-align: middle;">
                                         <span style="font-size: 19px; font-weight: 800; color: #1f2328; letter-spacing: -0.3px;">MDefender <span style="color: #e8792f;">Pro</span></span>
@@ -289,7 +290,7 @@ class AuthEmailService:
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="width: 36px; height: 36px; vertical-align: middle;">
-                                        <img src="data:image/png;base64,{_LOGO_B64}" width="36" height="36" alt="MDefender Pro Logo" style="display: block; width: 36px; height: 36px; border-radius: 8px; object-fit: contain;" />
+                                        <img src="{_LOGO_PUBLIC_URL}" width="36" height="36" alt="MDefender Pro Logo" style="display: block; width: 36px; height: 36px; border-radius: 8px; object-fit: contain;" />
                                     </td>
                                     <td style="padding-left: 12px; vertical-align: middle;">
                                         <span style="font-size: 19px; font-weight: 800; color: #1f2328; letter-spacing: -0.3px;">MDefender <span style="color: #e8792f;">Pro</span></span>
