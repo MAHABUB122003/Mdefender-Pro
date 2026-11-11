@@ -2225,8 +2225,9 @@ class WAF_FW_Scanner {
                         $confidence = 'HIGH';
                     }
                 } else {
-                    $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html'];
-                    if (!in_array($name, $legit_root_extras, true)) {
+                    $legit_root_extras = ['wp-config.php', 'wp-config-sample.php', '.htaccess', 'robots.txt', 'index.php', 'license.txt', 'readme.html', 'malcare-waf.php', 'wordfence-waf.php', 'wp-salt.php', 'wp-cli.local.php'];
+                    $is_legit_root_connector = in_array($name, $legit_root_extras, true) || (bool) preg_match('/^bv_connector_[a-f0-9]{32}\.php$/i', $name);
+                    if (!$is_legit_root_connector) {
                         $is_core_anomaly = true;
                         $is_exec_anomaly = in_array($ext, ['php', 'phtml', 'inc', 'sh', 'bash', 'py', 'pl', 'cgi', 'asp', 'aspx', 'jsp', 'exe', 'bat', 'cmd', 'ps1', 'vbs']);
                         if ($is_exec_anomaly) {

@@ -4454,6 +4454,15 @@ add_action('waf_fw_cloud_heartbeat', 'waf_fw_cloud_heartbeat');
 function waf_fw_bump_stat($which, $amount = 1) {
     static $stats_buffer = ['blocked' => 0, 'allowed' => 0];
     static $registered = false;
+    static $allowed_bumped = false;
+
+    // Deduplication Guard: Never count multiple allowed requests in a single PHP lifecycle
+    if ($which === 'allowed') {
+        if ($allowed_bumped) {
+            return;
+        }
+        $allowed_bumped = true;
+    }
 
     if (isset($stats_buffer[$which])) {
         $stats_buffer[$which] += (int) $amount;
@@ -4816,6 +4825,7 @@ add_action('init', 'waf_fw_analyze_request', 1);
 
 function waf_fw_analyze_rest_request() {
     if (!waf_fw_is_cloud_active()) return;
+    if (!empty($GLOBALS['waf_fw_analyzed'])) return;
     $GLOBALS['waf_fw_analyzed'] = true;
     $engine = WAF_FW_Engine::instance();
     $route = $_SERVER['REQUEST_URI'] ?? '';
