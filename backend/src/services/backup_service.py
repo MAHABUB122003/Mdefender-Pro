@@ -81,9 +81,10 @@ class BackupService:
         domain = (website.get("domain") or website.get("url") or "default").replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
         site_id = str(website.get("_id") or website.get("id") or "site")
 
-        # If it's a confirmed local site, use its actual webroot
+        # If it's a confirmed local site, use its actual webroot or outside-root storage
         if self.is_local_site(website):
             candidates = [
+                r"C:\xampp\htdocs\mdefender-backups",
                 r"C:\xampp\htdocs\mahabub\wp-content\mdefender-backups",
                 rf"C:\xampp\htdocs\{domain.replace('.shop', '').replace('.local', '')}\wp-content\mdefender-backups",
                 r"/var/www/html/wp-content/mdefender-backups",
