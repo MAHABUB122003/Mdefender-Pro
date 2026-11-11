@@ -198,6 +198,9 @@ class WAF_FW_Engine {
             if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') {
                 return $this->allowed_result('', '', '', 'Protection disabled');
             }
+            if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+                return $this->allowed_result('', '', '', 'Protection dormant (Requires MDefender Pro Cloud API Key)');
+            }
 
             $ip = $this->get_client_ip();
             $url = $_SERVER['REQUEST_URI'] ?? '/';
@@ -474,8 +477,29 @@ class WAF_FW_Engine {
 
         $local_geo = get_transient('waf_fw_local_public_geo') ?: get_option('waf_fw_local_server_country', 'US');
 
+        $is_cloud_active = function_exists('waf_fw_is_cloud_active') 
+            ? waf_fw_is_cloud_active() 
+            : (get_option('waf_fw_connected', 'no') === 'yes' && !empty(get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''))));
+
+        if (!$is_cloud_active) {
+            $cache_payload = [
+                'enabled' => false,
+                'connected' => false,
+                'updated_at' => time(),
+                'blacklist_ips' => (object)[],
+                'blocked_countries' => [],
+                'local_server_country' => $local_geo ?: 'US',
+            ];
+            @file_put_contents($data_dir . '/waf_fast_cache.json', json_encode($cache_payload, JSON_PRETTY_PRINT));
+            if (function_exists('apcu_delete')) {
+                apcu_delete('mdefender_waf_fast_cache');
+            }
+            return;
+        }
+
         $cache_payload = [
             'enabled' => get_option('waf_fw_protection_enabled', 'yes') === 'yes',
+            'connected' => true,
             'updated_at' => time(),
             'blacklist_ips' => $bl_map,
             'blocked_countries' => $blocked_countries,

@@ -114,10 +114,39 @@ class WAF_FW_Logger {
         error_log('[MDefender-Pro] ' . $message);
     }
 
-    public function log_request($data) {
-        // Zero-Bloat Pure Security Engine:
-        // Ordinary benign visitor requests are not logged to prevent database bloat and maximize site performance.
-        return;
+    public function log_request($data = []) {
+        if (!empty($GLOBALS['waf_fw_request_logged_in_request'])) {
+            return;
+        }
+        $GLOBALS['waf_fw_request_logged_in_request'] = true;
+
+        global $wpdb;
+        $ip = !empty($data['ip']) ? $data['ip'] : '';
+        if (empty($ip) && class_exists('WAF_FW_Engine')) {
+            $ip = WAF_FW_Engine::instance()->get_client_ip();
+        }
+        if (empty($ip)) {
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        }
+        $country_code = !empty($data['country_code']) ? $data['country_code'] : $this->fast_get_country_code($ip);
+        $url = !empty($data['url']) ? $data['url'] : substr($_SERVER['REQUEST_URI'] ?? '/', 0, 500);
+        $method = !empty($data['method']) ? $data['method'] : ($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        $status = !empty($data['status']) ? $data['status'] : 'allowed';
+        $user_agent = !empty($data['user_agent']) ? $data['user_agent'] : substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 300);
+
+        $wpdb->insert(
+            $this->db->get_requests_table(),
+            [
+                'ip' => $ip,
+                'country_code' => $country_code,
+                'url' => $url,
+                'method' => $method,
+                'status' => $status,
+                'user_agent' => $user_agent,
+                'created_at' => !empty($data['created_at']) ? $data['created_at'] : current_time('mysql'),
+            ]
+        );
+        $this->auto_recycle_if_needed();
     }
 
     public static function flush_requests() {
@@ -153,8 +182,13 @@ class WAF_FW_Logger {
         $requests_table = $this->db->get_requests_table();
         $blacklist_table = $this->db->get_blacklist_table();
 
-        $total_attacks = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
-        $total_allowed = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $table_attacks = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
+        $table_allowed = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $stat_blocked = (int) get_option('waf_fw_stats_blocked', 0);
+        $stat_allowed = (int) get_option('waf_fw_stats_allowed', 0);
+
+        $total_attacks = max($table_attacks, $stat_blocked);
+        $total_allowed = max($table_allowed, $stat_allowed);
         $total_requests = $total_attacks + $total_allowed;
         $blacklisted_ips = (int) $wpdb->get_var("SELECT COUNT(*) FROM $blacklist_table");
 
@@ -174,8 +208,12 @@ class WAF_FW_Logger {
         );
 
         $recent_logs = $wpdb->get_results(
-            "SELECT ip, url, attack_type, confidence, status, reference_id, rule_matched, created_at
-             FROM $attacks_table ORDER BY created_at DESC LIMIT 10"
+            "SELECT id, ip, country_code, url, method, attack_type, confidence, status, reference_id, rule_matched, created_at
+             FROM (
+                 (SELECT id, ip, country_code, url, method, attack_type, confidence, status, reference_id, rule_matched, created_at FROM $attacks_table ORDER BY created_at DESC LIMIT 10)
+                 UNION ALL
+                 (SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, '' AS reference_id, '' AS rule_matched, created_at FROM $requests_table ORDER BY created_at DESC LIMIT 10)
+             ) AS combined ORDER BY created_at DESC LIMIT 10"
         );
 
         $login_blocked = WAF_FW_Login_Protector::instance()->get_blocked_login_count();
@@ -214,27 +252,35 @@ class WAF_FW_Logger {
         $requests_table = $this->db->get_requests_table();
         $blacklist_table = $this->db->get_blacklist_table();
 
-        $total_attacks = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
-        $total_allowed = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $table_attacks = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
+        $table_allowed = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $stat_blocked = (int) get_option('waf_fw_stats_blocked', 0);
+        $stat_allowed = (int) get_option('waf_fw_stats_allowed', 0);
+
+        $total_attacks = max($table_attacks, $stat_blocked);
+        $total_allowed = max($table_allowed, $stat_allowed);
         $total_requests = $total_attacks + $total_allowed;
         $total_blacklisted = (int) $wpdb->get_var("SELECT COUNT(*) FROM $blacklist_table");
         $login_blocked = WAF_FW_Login_Protector::instance()->get_blocked_login_count();
         $attack_blocked = WAF_FW_Attack_Blocker::instance()->get_blocked_count();
 
-        $today_attacks = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM $attacks_table WHERE DATE(created_at) = CURDATE()"
-        );
-        $today_allowed = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM $requests_table WHERE DATE(created_at) = CURDATE()"
-        );
+        $cur_date = current_time('Y-m-d');
+        $yesterday_date = date('Y-m-d', strtotime('-1 day', strtotime($cur_date)));
+
+        $today_attacks = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $attacks_table WHERE DATE(created_at) = %s", $cur_date
+        ));
+        $today_allowed = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $requests_table WHERE DATE(created_at) = %s", $cur_date
+        ));
         $today_requests = $today_attacks + $today_allowed;
 
-        $yesterday_attacks = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM $attacks_table WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)"
-        );
-        $yesterday_allowed = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM $requests_table WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)"
-        );
+        $yesterday_attacks = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $attacks_table WHERE DATE(created_at) = %s", $yesterday_date
+        ));
+        $yesterday_allowed = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $requests_table WHERE DATE(created_at) = %s", $yesterday_date
+        ));
         $yesterday_requests = $yesterday_attacks + $yesterday_allowed;
 
         $attack_trend = 0;
@@ -259,7 +305,11 @@ class WAF_FW_Logger {
 
         $recent_logs = $wpdb->get_results(
             "SELECT id, ip, country_code, url, method, attack_type, confidence, status, reference_id, rule_matched, created_at
-             FROM $attacks_table ORDER BY id DESC LIMIT 10",
+             FROM (
+                 (SELECT id, ip, country_code, url, method, attack_type, confidence, status, reference_id, rule_matched, created_at FROM $attacks_table ORDER BY created_at DESC LIMIT 15)
+                 UNION ALL
+                 (SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, '' AS reference_id, '' AS rule_matched, created_at FROM $requests_table ORDER BY created_at DESC LIMIT 15)
+             ) AS combined ORDER BY created_at DESC LIMIT 15",
             ARRAY_A
         );
 
@@ -390,7 +440,7 @@ class WAF_FW_Logger {
         $malware_findings = 0;
         $scan_results_table = $this->db->get_scan_results_table();
         if ($wpdb->get_var("SHOW TABLES LIKE '$scan_results_table'") === $scan_results_table) {
-            $malware_findings = (int) $wpdb->get_var("SELECT COUNT(*) FROM $scan_results_table WHERE status = 'infected' OR severity IN ('critical', 'high')");
+            $malware_findings = (int) $wpdb->get_var("SELECT COUNT(*) FROM $scan_results_table WHERE status = 'infected' OR issues_found > 0");
         }
 
         $rules_table = $this->db->get_rules_table();
@@ -480,10 +530,10 @@ class WAF_FW_Logger {
         }
 
         global $wpdb;
-        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 2000);
+        $max_logs = (int) get_option('waf_fw_recycle_max_logs', 5000);
         $days = (int) get_option('waf_fw_recycle_days', 7);
-        if ($max_logs <= 0 || $max_logs > 2000) $max_logs = 2000;
-        if ($days <= 0 || $days > 7) $days = 7;
+        if ($max_logs <= 0 || $max_logs > 25000) $max_logs = 5000;
+        if ($days <= 0 || $days > 30) $days = 7;
 
         $requests_table = $this->db->get_requests_table();
         $attacks_table = $this->db->get_attacks_table();
@@ -492,18 +542,33 @@ class WAF_FW_Logger {
         $wpdb->query($wpdb->prepare("DELETE FROM $requests_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days));
         $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", $days));
 
-        // 2. Enforce max row cap on requests table to ensure ultra-lightweight footprint
+        // 2. Enforce strict total cap of $max_logs (5,000) across both tables
         $req_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
-        if ($req_count > $max_logs) {
-            $excess = $req_count - $max_logs;
-            $wpdb->query($wpdb->prepare("DELETE FROM $requests_table ORDER BY id ASC LIMIT %d", $excess));
-        }
-
-        // 3. Enforce max row cap on attacks table
         $att_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
-        if ($att_count > $max_logs) {
-            $excess = $att_count - $max_logs;
-            $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table ORDER BY id ASC LIMIT %d", $excess));
+        $total_logs = $req_count + $att_count;
+
+        if ($total_logs > $max_logs) {
+            $excess = $total_logs - $max_logs;
+            // Prune excess from the larger table first to keep both balanced
+            if ($req_count > $att_count) {
+                $prune_req = min($excess, max(0, $req_count - 100));
+                if ($prune_req > 0) {
+                    $wpdb->query($wpdb->prepare("DELETE FROM $requests_table ORDER BY id ASC LIMIT %d", $prune_req));
+                    $excess -= $prune_req;
+                }
+                if ($excess > 0 && $att_count > 100) {
+                    $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table ORDER BY id ASC LIMIT %d", $excess));
+                }
+            } else {
+                $prune_att = min($excess, max(0, $att_count - 100));
+                if ($prune_att > 0) {
+                    $wpdb->query($wpdb->prepare("DELETE FROM $attacks_table ORDER BY id ASC LIMIT %d", $prune_att));
+                    $excess -= $prune_att;
+                }
+                if ($excess > 0 && $req_count > 100) {
+                    $wpdb->query($wpdb->prepare("DELETE FROM $requests_table ORDER BY id ASC LIMIT %d", $excess));
+                }
+            }
         }
     }
 
@@ -607,8 +672,16 @@ class WAF_FW_Logger {
 
         $status = strtolower(trim($args['status'] ?? ''));
 
-        // Pure Security Event Stream: Attacks, Injections, Blacklist Blocks, Country Geo-Restrictions
-        $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table";
+        // Dual-Stream Unified Traffic Ledger: Seamlessly combines 200 Allowed Traffic and 403 Mitigated Attacks
+        if ($status === 'blocked' || $status === 'threat' || $status === 'mitigated' || $status === '403') {
+            $table_query = "SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table";
+        } elseif ($status === 'allowed' || $status === 'clean' || $status === '200') {
+            $table_query = "SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, '' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table";
+        } else {
+            $table_query = "(SELECT id, ip, country_code, url, method, attack_type, confidence, status, rule_matched, user_agent, referer, request_body, reference_id, details, created_at FROM $attacks_table)
+                            UNION ALL
+                            (SELECT id, ip, country_code, url, method, 'Clean Traffic' AS attack_type, 0.05 AS confidence, status, '' AS rule_matched, user_agent, '' AS referer, '' AS request_body, '' AS reference_id, '' AS details, created_at FROM $requests_table)";
+        }
 
         $where = ['1=1'];
         $params = [];
@@ -652,8 +725,15 @@ class WAF_FW_Logger {
             $total_pages = $total > 0 ? ceil($total / $per_page) : 1;
         }
 
+        $total_attacks_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $attacks_table");
+        $total_allowed_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $requests_table");
+        $distinct_ips = (int) $wpdb->get_var("SELECT COUNT(DISTINCT ip) FROM ($table_query) AS d_ips");
+
         return [
             'total' => $total,
+            'total_blocked' => $total_attacks_count,
+            'total_allowed' => $total_allowed_count,
+            'unique_ips' => $distinct_ips,
             'page' => $page,
             'per_page' => $per_page,
             'total_pages' => $total_pages,

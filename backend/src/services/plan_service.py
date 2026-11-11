@@ -119,6 +119,34 @@ PLAN_KEYS = [
     "team_seats",
 ]
 
+DEFAULT_DYNAMIC_PRICING = {
+    "base_monthly_rate": 4.0,
+    "base_yearly_rate": 40.0,
+    "currency": "USD",
+    "currency_symbol": "$",
+    "trial_days": 14,
+    "price_id_monthly": "",
+    "price_id_yearly": "",
+    "bulk_tiers": [
+        {"min_sites": 1, "max_sites": 9, "discount_percent": 0, "label": "Starter Fleet"},
+        {"min_sites": 10, "max_sites": 24, "discount_percent": 10, "label": "Growth Agency"},
+        {"min_sites": 25, "max_sites": 49, "discount_percent": 15, "label": "Scale Partner"},
+        {"min_sites": 50, "max_sites": 500, "discount_percent": 25, "label": "Enterprise MSP"}
+    ],
+    "features_included": [
+        "Sub-millisecond (<0.12ms) Edge WAF Inspection",
+        "AST Heuristics + Machine Learning Threat Classifier",
+        "5.32M+ Checksum Malware Scanner (SQLite B-Tree)",
+        "Layer-7 DDoS Mitigation & Anti-Bot PoW Challenge",
+        "1-Click Post-Hack Disinfection & Salts Rotation",
+        "Zero-Day Real-Time Virtual Patching Engine",
+        "WordPress RASP Lockdown & Stealth Gateway",
+        "Centralized Multi-Site Fleet Safe Updates",
+        "Automated White-Label PDF Audit Reports",
+        "24/7 Priority Emergency Security Response SLA"
+    ]
+}
+
 
 class PlanService:
     def __init__(self, db=None):
@@ -188,6 +216,57 @@ class PlanService:
             self.db.settings.update_one(
                 {"_type": "plans"},
                 {"$set": {"plans": sanitized, "updated_at": __import__("datetime").datetime.now()}},
+                upsert=True,
+            )
+            return True
+        except Exception:
+            return False
+
+    def get_dynamic_pricing_config(self):
+        """Resolve dynamic per-site pricing configuration. DB override wins; falls back to defaults."""
+        stored = {}
+        try:
+            doc = self.db.settings.find_one({"_type": "dynamic_pricing"})
+            if doc and isinstance(doc.get("config"), dict):
+                stored = doc.get("config", {})
+        except Exception:
+            stored = {}
+
+        config = dict(DEFAULT_DYNAMIC_PRICING)
+        if stored:
+            config.update(stored)
+
+        import os
+        env_m = os.getenv("PADDLE_PRICE_PER_SITE_MONTHLY", "").strip()
+        env_y = os.getenv("PADDLE_PRICE_PER_SITE_YEARLY", "").strip()
+        if env_m and not config.get("price_id_monthly"):
+            config["price_id_monthly"] = env_m
+        if env_y and not config.get("price_id_yearly"):
+            config["price_id_yearly"] = env_y
+
+        return config
+
+    def save_dynamic_pricing_config(self, new_config: dict):
+        """Admin override of dynamic per-site pricing and tiers."""
+        try:
+            clean = dict(DEFAULT_DYNAMIC_PRICING)
+            for k in [
+                "base_monthly_rate",
+                "base_yearly_rate",
+                "currency",
+                "currency_symbol",
+                "trial_days",
+                "price_id_monthly",
+                "price_id_yearly",
+                "bulk_tiers",
+                "features_included",
+            ]:
+                if k in new_config and new_config[k] is not None:
+                    clean[k] = new_config[k]
+
+            self.db.settings.update_one(
+                {"_type": "dynamic_pricing"},
+                {"$set": {"config": clean, "updated_at": __import__("datetime").datetime.now()}},
                 upsert=True,
             )
             return True

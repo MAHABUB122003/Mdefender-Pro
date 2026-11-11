@@ -144,8 +144,9 @@ class AdminAPI:
                     query['timestamp']['$lte'] = datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
                 except:
                     pass
-        total = self.db.attacks.count_documents(query)
-        logs = list(self.db.attacks.find(query)
+        col = self.db.attacks if self.db.attacks.count_documents({}) > 0 else self.db.attack_attempts
+        total = col.count_documents(query)
+        logs = list(col.find(query)
             .sort('timestamp', -1)
             .skip((page - 1) * per_page)
             .limit(per_page))

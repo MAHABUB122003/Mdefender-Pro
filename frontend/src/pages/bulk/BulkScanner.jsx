@@ -38,40 +38,24 @@ import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
+import { useMalwareScan } from '../../context/MalwareScanContext'
 
 export default function BulkScanner() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite } = useBulkFleet()
+  const { activeScan, isScanning: isGlobalScanning, startScan: triggerBackgroundScan, skipWait: skipGlobalWait } = useMalwareScan()
 
-  // Selected site & manual selector state
-  const [chosenSiteId, setChosenSiteId] = useState(() => {
-    return typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || null) : null
-  })
-
+  // Selected site resolved via executive domain scope
   const currentSite = useMemo(() => {
-    if (chosenSiteId && chosenSiteId !== 'all') {
-      const match = wpWebsites.find(s => (s.id || s._id) === chosenSiteId)
-      if (match) return match
-    }
     if (selectedSiteId && selectedSiteId !== 'all') {
       const match = wpWebsites.find(s => (s.id || s._id) === selectedSiteId)
       if (match) return match
     }
     return activeWebsite || wpWebsites[0] || null
-  }, [chosenSiteId, selectedSiteId, activeWebsite, wpWebsites])
+  }, [selectedSiteId, activeWebsite, wpWebsites])
 
   const targetSiteId = currentSite?.id || currentSite?._id
 
-  const handleSelectSite = (newId) => {
-    setChosenSiteId(newId)
-    try {
-      localStorage.setItem('mdf_bulk_selected_site', newId)
-      window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
-    } catch {}
-    setFindings([])
-    loadLatestScans(newId)
-  }
-
-  // Scanner state
+  // Scanner state (mirrored from global background context)
   const [scanning, setScanning] = useState(false)
   const [scanType, setScanType] = useState('full') // 'full' | 'quick'
   const [scanProgressPct, setScanProgressPct] = useState(0)
@@ -82,8 +66,6 @@ export default function BulkScanner() {
   const [totalFilesCount, setTotalFilesCount] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [canSkipWait, setCanSkipWait] = useState(false)
-  const skipWaitSignalRef = useRef(false)
-  const cachedResultRef = useRef(null)
 
   // Scan Results & Findings
   const [findings, setFindings] = useState([])
@@ -370,7 +352,7 @@ export default function BulkScanner() {
   // REAL LIVE SCAN EXECUTION WITH AUTHENTIC PROGRESSIVE TELEMETRY
   // ---------------------------------------------------------------------------
   const handleSkipWait = () => {
-    skipWaitSignalRef.current = true
+    skipGlobalWait()
   }
 
   const formatDurationText = (sec) => {
@@ -380,194 +362,67 @@ export default function BulkScanner() {
     return `${m}m ${s > 0 ? s + 's' : ''}`.trim()
   }
 
-  const handleStartScan = async (type = 'full') => {
+  // Trigger background scan safely without freezing or blocking navigation
+  const handleStartScan = (type = 'full') => {
     if (!targetSiteId) {
       showToast('Please select a connected WordPress site first.', true)
       return
     }
 
-    setScanning(true)
     setScanType(type)
-    setScanProgressPct(2)
-    setElapsedSeconds(0)
-    setCanSkipWait(false)
-    skipWaitSignalRef.current = false
-    cachedResultRef.current = null
+    triggerBackgroundScan({
+      siteId: targetSiteId,
+      siteName: currentSite?.domain || currentSite?.url || 'WordPress Origin',
+      scanType: type
+    })
 
-    // Thorough enterprise pacing: Full Scan ~135 seconds (2m 15s), Quick Scan ~45 seconds
-    const totalTargetSeconds = type === 'quick' ? 45 : 135
-    const totalExpectedFiles = telemetryMetrics.filesScanned > 2000 ? telemetryMetrics.filesScanned : 10376
-    setTotalFilesCount(totalExpectedFiles)
-    setScannedFilesCount(80)
+    showToast(`Deep ${type === 'quick' ? 'Quick' : 'Forensic'} Scan running in background! You can freely browse other sections.`)
+  }
 
-    setScanStage(`Initializing Deep ${type === 'quick' ? 'Quick' : 'Forensic'} Scan...`)
-    setStageDetail('Deploying multi-engine AST analyzers, verifying official checksums & isolating sandboxes...')
-    setStreamLog(`[Queue #101] Initializing deep scan environment on ${currentSite?.domain || 'site'}...`)
-
-    // Detailed 14-phase forensic walkthrough matching Wordfence/MalCare Enterprise Scanners
-    const deepPhases = [
-      { atPct: 4, stage: 'Phase 1: Environment & Sandbox Baseline', detail: 'Verifying PHP memory limit, execution sandboxes, disabled dangerous functions & directory write permissions...', file: 'System Environment & PHP Flags' },
-      { atPct: 10, stage: 'Phase 2: Sensitive Configuration & Secrets Exposure', detail: 'Auditing wp-config.php, .htaccess, .env, debug.log and exposed database backup archives...', file: 'wp-config.php & .htaccess' },
-      { atPct: 18, stage: 'Phase 3: WP Core Baseline Checksum Verification', detail: 'Verifying official WordPress.org SVN release checksums for index.php, wp-settings.php, wp-load.php...', file: 'wp-settings.php & wp-load.php' },
-      { atPct: 26, stage: 'Phase 4: WP Core Administrative Entrypoints Audit', detail: 'Auditing wp-login.php, wp-cron.php, xmlrpc.php, wp-activate.php against tampering & injected hooks...', file: 'wp-login.php & xmlrpc.php' },
-      { atPct: 35, stage: 'Phase 5: WP Admin & Includes Core Integrity Walk', detail: 'Verifying 3,300+ core system files in wp-admin/ and wp-includes/ against pristine baseline release tags...', file: 'wp-includes/plugin.php & wp-admin/' },
-      { atPct: 44, stage: 'Phase 6: Uploads Directory Quarantine Sentinel', detail: 'Deep recursive search of wp-content/uploads/ for rogue standalone PHP scripts, web shells and disguised executables...', file: 'wp-content/uploads/ (Media Sinks)' },
-      { atPct: 54, stage: 'Phase 7: Active Plugins Static AST Syntax Graph', detail: 'Decompiling plugin scripts into AST syntax token trees to locate dynamic execution sinks...', file: 'wp-content/plugins/ (AST Engine)' },
-      { atPct: 64, stage: 'Phase 8: High-Entropy Obfuscation Decompilation', detail: 'De-obfuscating base64_decode, gzinflate, str_rot13, hex2bin, chr() concatenation chains and eval() wrappers...', file: 'AST Tokenizer & De-obfuscator' },
-      { atPct: 73, stage: 'Phase 9: Webshell & Tainted Sink Tracing', detail: 'Tracing untrusted input dataflows from $_POST, $_GET, $_REQUEST, $_COOKIE into execution sinks...', file: 'Active Plugins & Taint Sinks' },
-      { atPct: 81, stage: 'Phase 10: Active Themes & Template Sink Audit', detail: 'Inspecting theme functions.php, header, footer, page templates for injected redirect scripts and cloaking...', file: 'wp-content/themes/' },
-      { atPct: 88, stage: 'Phase 11: Database Administrator Privilege Audit', detail: 'Auditing wp_users and wp_usermeta for rogue administrator accounts, elevated permissions & backdoor users...', file: 'wp_users & wp_usermeta' },
-      { atPct: 93, stage: 'Phase 12: Database Posts, SQL Injection & SEO Cloaking', detail: 'Auditing wp_posts and wp_options for injected malicious script tags, iframes, doorways and Blackhat SEO spam...', file: 'wp_posts & wp_options' },
-      { atPct: 97, stage: 'Phase 13: 5,000,000+ Threat Intelligence Hash Lookup', detail: 'Cross-referencing file cryptographic SHA-256 signatures against cloud zero-day and CVE vulnerability feeds...', file: 'Global Threat Intelligence DB' },
-      { atPct: 99, stage: 'Phase 14: Forensic Ledger Synthesis', detail: 'Correlating 18 security domains, eliminating false positives, and preparing final forensic threat findings...', file: 'Forensic Correlation Engine' }
-    ]
-
-    const activeFilesPool = [
-      'wp-settings.php [Core Verification: Match official WP SVN]',
-      'wp-login.php [Administrative Entrypoint Security]',
-      'wp-load.php [WordPress Environment Bootstrap]',
-      'wp-cron.php [Scheduled Tasks Execution Sentinel]',
-      'wp-includes/plugin.php [Hook & Filter Integrity]',
-      'wp-includes/formatting.php [XSS Sanitization Functions]',
-      'wp-includes/user.php [User Authentication & Roles]',
-      'wp-admin/includes/file.php [Filesystem Direct Method Audit]',
-      'wp-admin/includes/upgrade.php [Schema Integrity Check]',
-      'wp-content/uploads/2026/09/ [Rogue Executable Search]',
-      'wp-content/uploads/ [Scanning for Hidden PHP Drops]',
-      'wp-content/plugins/ (Recursive) [AST De-obfuscation Engine]',
-      'wp-content/plugins/ [Tracing Untrusted $_POST Sinks]',
-      'wp-content/plugins/ [eval & base64_decode Static Analysis]',
-      'wp-content/themes/ [functions.php Template Injection Check]',
-      'wp_users Table [Auditing Administrator Privileges]',
-      'wp_usermeta Table [Checking Cap Key Escalation]',
-      'wp_posts Table [Scanning Injected Scripts & Spam URLs]',
-      'wp_options Table [Scanning Transients & Auto-load Injections]',
-      'Cloud Intelligence [5M+ Malware Hash Catalog Lookup]',
-      'CVE Vulnerability DB [Matching Installed Addons]'
-    ]
-
-    const startTime = Date.now()
-
-    // 1. Dispatch real trigger_website_scan to SaaS backend in parallel
-    api.triggerWebsiteScan(targetSiteId, type)
-      .then(res => {
-        cachedResultRef.current = res?.data || res || {}
-        setCanSkipWait(true)
-      })
-      .catch(err => {
-        console.warn('Scan trigger background note:', err)
-        cachedResultRef.current = { status: 'failed', error: err?.message || 'Failed to dispatch scan to WordPress origin' }
-        setCanSkipWait(true)
-      })
-
-    // 2. Continuous 1-second progressive ticker
-    let currentSec = 0
-    let poolIdx = 0
-
-    const scanInterval = setInterval(() => {
-      currentSec++
-      setElapsedSeconds(currentSec)
-
-      // Calculate progress percentage
-      const targetPct = Math.min(99, Math.max(3, Math.floor((currentSec / totalTargetSeconds) * 98) + 1))
-      setScanProgressPct(targetPct)
-
-      // Update current stage according to progress milestone
-      for (let i = deepPhases.length - 1; i >= 0; i--) {
-        if (targetPct >= deepPhases[i].atPct) {
-          setScanStage(`Analyzing: ${deepPhases[i].stage}`)
-          setStageDetail(deepPhases[i].detail)
-          break
+  // Synchronize state with global active background scan
+  useEffect(() => {
+    if (!activeScan) return
+    if (activeScan.siteId === targetSiteId) {
+      if (activeScan.status === 'running') {
+        setScanning(true)
+        setScanType(activeScan.scanType || 'full')
+        setScanProgressPct(activeScan.progressPct || 0)
+        setScanStage(activeScan.stage || '')
+        setStageDetail(activeScan.stageDetail || '')
+        setStreamLog(activeScan.streamLog || '')
+        setScannedFilesCount(activeScan.scannedFilesCount || 0)
+        setTotalFilesCount(activeScan.totalFilesCount || 0)
+        setElapsedSeconds(activeScan.elapsedSeconds || 0)
+        setCanSkipWait(activeScan.canSkipWait || false)
+      } else if (activeScan.status === 'completed') {
+        setScanning(false)
+        setScanProgressPct(100)
+        if (activeScan.findings) {
+          setFindings(activeScan.findings)
+        }
+        if (activeScan.score !== undefined) {
+          const score = activeScan.score
+          const totalScanned = activeScan.scannedFilesCount || 3800
+          setTelemetryMetrics(prev => ({
+            ...prev,
+            securityHealth: score,
+            healthSub: score >= 90 ? 'A+ Pristine Integrity' : (score >= 70 ? 'Good Security Posture' : 'Action Required'),
+            filesScanned: totalScanned,
+            unresolvedChanges: (activeScan.findings || []).filter(f => f.status !== 'quarantined').length,
+            durationText: `Duration: ${activeScan.elapsedSeconds || 15}s`,
+            lastDeepAnalysis: 'Just now'
+          }))
+        }
+        if (activeScan.domains_status) {
+          setDomainsStatus(activeScan.domains_status)
         }
       }
-
-      // Stream realistic file inspections
-      if (currentSec % 2 === 0) {
-        const item = activeFilesPool[poolIdx % activeFilesPool.length]
-        setStreamLog(`>> Inspecting [${item}]`)
-        poolIdx++
-      }
-
-      // Smoothly update scanned files count
-      const currentScanned = Math.min(totalExpectedFiles, Math.floor((currentSec / totalTargetSeconds) * totalExpectedFiles) + 80)
-      setScannedFilesCount(currentScanned)
-
-      // Check for scan finish conditions
-      const minPacingSec = type === 'quick' ? 10 : 25
-      const shouldFinish = (currentSec >= totalTargetSeconds) || 
-        (skipWaitSignalRef.current && cachedResultRef.current) ||
-        (cachedResultRef.current && currentSec >= minPacingSec)
-
-      if (shouldFinish) {
-        clearInterval(scanInterval)
-        finalizeScanResults()
-      }
-    }, 1000)
-
-    const finalizeScanResults = async () => {
-      setScanProgressPct(100)
-      setScanStage('Scan Complete! Compiling Final Threat Report...')
-      setStageDetail('Correlating cross-domain risk vectors and updating baseline database.')
-
-      let data = cachedResultRef.current || {}
-      if (data.status === 'failed' || (data.error && !data.findings)) {
-        setStreamLog(`Scan aborted: ${data.error || 'WordPress origin agent unreachable'}`)
-        showToast(data.error || 'Deep scan failed on target site.', true)
+    } else {
+      if (scanning && (!activeScan || activeScan.status !== 'running')) {
         setScanning(false)
-        setCanSkipWait(false)
-        return
       }
-
-      if ((!data.findings || data.status === 'queued') && targetSiteId) {
-        try {
-          const fresh = await api.getWebsiteScans(targetSiteId)
-          const scansList = fresh?.data?.scans || fresh?.scans || (Array.isArray(fresh?.data) ? fresh.data : [])
-          const completed = scansList.find(s => s.status === 'completed') || scansList[0]
-          if (completed) {
-            data = completed
-          }
-        } catch (_) {}
-      }
-      const rawFindings = data.findings || []
-      const metrics = data.real_metrics || {}
-      const totalScanned = metrics.total_files || data.total_scanned || data.files_scanned || totalExpectedFiles || 0
-      const pluginFiles = metrics.plugin_files || 0
-      const themeFiles = metrics.theme_files || 0
-      const score = data.health_score ?? data.score ?? (rawFindings.length === 0 ? 100 : Math.max(20, 100 - rawFindings.length * 15))
-
-      setFindings(rawFindings)
-      setScannedFilesCount(totalScanned)
-      setTotalFilesCount(totalScanned)
-
-      const finalElapsed = Math.floor((Date.now() - startTime) / 1000)
-      const durationFormatted = formatDurationText(finalElapsed)
-
-      setTelemetryMetrics({
-        securityHealth: score,
-        healthSub: score >= 90 ? 'A+ Pristine Integrity' : (score >= 70 ? 'Good Security Posture' : 'Action Required'),
-        filesScanned: totalScanned,
-        componentFilesScanned: pluginFiles + themeFiles,
-        usersChecked: metrics.users_checked ?? data.users_checked ?? 0,
-        databaseTables: metrics.database_tables ?? data.database_tables ?? 0,
-        postsScanned: metrics.posts_scanned ?? null,
-        commentsScanned: metrics.comments_scanned ?? null,
-        unresolvedChanges: rawFindings.filter(f => f.status !== 'quarantined').length,
-        lastDeepAnalysis: 'Just now',
-        durationText: `Duration: ${durationFormatted}`,
-        autonomousUptime: 'Enabled'
-      })
-
-      if (data.domains_status) {
-        setDomainsStatus(data.domains_status)
-      }
-
-      setStreamLog(`Deep Scan Completed: ${rawFindings.length} actionable threats identified across ${totalScanned.toLocaleString()} scanned files in ${durationFormatted}.`)
-      showToast(rawFindings.length === 0 ? 'Deep scan complete! Zero threats detected. Site is 100% secure.' : `Deep scan complete! ${rawFindings.length} actionable issues identified on target site.`)
-      
-      setCanSkipWait(false)
-      setTimeout(() => setScanning(false), 900)
     }
-  }
+  }, [activeScan, targetSiteId])
 
   // Quarantine single finding
   const handleQuarantine = async (finding) => {
@@ -766,7 +621,7 @@ export default function BulkScanner() {
   // If no websites connected
   if (!hasWebsites) {
     return (
-      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
+      <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px', minHeight: '100vh' }}>
         <BulkHeader
           title="Website Threat Scanner"
           subtitle="Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics"
@@ -780,8 +635,8 @@ export default function BulkScanner() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7', color: '#10201E' }}>
-      
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px', minHeight: '100vh', color: '#10201E' }}>
+
       {/* Toast Notification */}
       {toastMsg && (
         <div style={{
@@ -806,167 +661,120 @@ export default function BulkScanner() {
         </div>
       )}
 
-      {/* TOP PLATFORM BREADCRUMB / STATUS BAR */}
+      {/* EXECUTIVE BULK HEADER WITH DOMAIN SCOPE SELECTOR */}
+      <BulkHeader
+        title="Website Malware & Integrity Scanner"
+        subtitle="Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation & Cloud ML Heuristics"
+        icon={ShieldAlert}
+        activeBadge="Malware Sentinel"
+      />
+
+      {/* ACTIVE BACKGROUND SCAN PERSISTENCE BANNER */}
+      {scanning && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '16px 20px',
+          background: '#F0FDF4',
+          border: '1px solid #BBF7D0',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
+              background: '#DCFCE7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #86EFAC'
+            }}>
+              <RotateCw size={18} color="#15803D" style={{ animation: 'spin 1.2s linear infinite' }} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <strong style={{ fontSize: '14px', color: '#166534', fontWeight: 800 }}>
+                  Live Deep Scan Running in Background ({scanProgressPct}%)
+                </strong>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: '#BBF7D0',
+                  color: '#14532D',
+                  padding: '2px 8px',
+                  borderRadius: '12px'
+                }}>
+                  {scanType.toUpperCase()} SCAN
+                </span>
+              </div>
+              <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#15803D' }}>
+                {scanStage || 'Analyzing file integrity & executing heuristics...'} &bull; <span style={{ color: '#166534', fontWeight: 600 }}>You can safely browse plugins, themes, backups or other tabs while this scan continues in the background.</span>
+              </p>
+            </div>
+          </div>
+
+          {canSkipWait && (
+            <button
+              onClick={handleSkipWait}
+              style={{
+                background: '#15803D',
+                color: '#ffffff',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(21, 128, 61, 0.25)'
+              }}
+            >
+              <CheckCircle2 size={14} />
+              <span>View Results Now &rarr;</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* SCAN CONTROLS & SCOPE TOOLBAR */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: '20px',
-        padding: '10px 16px',
+        flexWrap: 'wrap',
+        gap: '16px',
+        padding: '14px 18px',
         background: '#ffffff',
         borderRadius: '12px',
         border: '1px solid #D9E1DC',
         boxShadow: '0 2px 8px rgba(11, 37, 34, 0.02)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '6px',
-            background: '#0B2522',
-            color: '#10B981',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '12px',
-            fontWeight: 800
-          }}>
-            M
-          </div>
-          <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>MDefender Pro</span>
-          <span style={{ color: '#C0CBC5' }}>/</span>
-          <span style={{ fontSize: '13px', color: '#60716B', fontWeight: 600 }}>Threat Intelligence</span>
-          <span style={{ color: '#C0CBC5' }}>/</span>
-          <strong style={{ fontSize: '13px', color: '#0B2522', fontWeight: 800 }}>Website Security Scanner</strong>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Target Scope:</span>
           <span style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: '#10B981',
-            boxShadow: '0 0 10px #10B981'
-          }} />
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', letterSpacing: '0.3px' }}>
-            Autonomous Radar Armed
-          </span>
-        </div>
-      </div>
-
-      {/* TARGET WEBSITE SELECTOR BAR */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '20px',
-        padding: '12px 20px',
-        background: '#ffffff',
-        borderRadius: '12px',
-        border: '1px solid #D9E1DC',
-        boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
-        flexWrap: 'wrap',
-        gap: '14px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
-            color: '#059669',
-            background: '#ECFDF5',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            border: '1px solid #A7F3D0',
-            fontSize: '12px',
-            fontWeight: 800
+            gap: '6px',
+            padding: '5px 12px',
+            borderRadius: '6px',
+            background: '#F0FDF4',
+            color: '#15803D',
+            fontSize: '13px',
+            fontWeight: 700,
+            border: '1px solid #BBF7D0'
           }}>
-            <Globe size={15} />
-            <span>SELECT WEBSITE:</span>
-          </div>
-
-          <div style={{ position: 'relative', minWidth: '280px' }}>
-            <select
-              value={targetSiteId || ''}
-              onChange={(e) => handleSelectSite(e.target.value)}
-              disabled={scanning}
-              style={{
-                width: '100%',
-                padding: '9px 36px 9px 14px',
-                borderRadius: '8px',
-                border: '1.5px solid #10B981',
-                background: '#ffffff',
-                color: '#0B2522',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: scanning ? 'not-allowed' : 'pointer',
-                outline: 'none',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}
-            >
-              {wpWebsites.map((site) => {
-                const sId = site.id || site._id
-                const domain = site.domain || site.url || sId
-                const isConnected = !!(site.api_key || site.site_token || site.wordpress_connection?.connected)
-                const score = site.security_score ?? 100
-                return (
-                  <option key={sId} value={sId}>
-                    {domain} {isConnected ? '● Connected' : '○ Pending'} (Health: {score}%)
-                  </option>
-                )
-              })}
-            </select>
-            <ChevronDown
-              size={16}
-              style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#059669',
-                pointerEvents: 'none'
-              }}
-            />
-          </div>
-
-          {currentSite && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                background: '#F0FDF4',
-                color: '#15803D',
-                fontSize: '12px',
-                fontWeight: 700,
-                border: '1px solid #BBF7D0'
-              }}>
-                <CheckCircle2 size={13} />
-                <span>{currentSite.domain || currentSite.url}</span>
-              </span>
-
-              {currentSite.platform && (
-                <span style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  background: '#EFF6FF',
-                  color: '#1D4ED8',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase'
-                }}>
-                  {currentSite.platform}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Globe size={14} color="#15803D" />
+            <span>{currentSite ? (currentSite.domain || currentSite.url) : 'No Site Selected'}</span>
+          </span>
           <button
             onClick={() => targetSiteId && loadLatestScans(targetSiteId)}
             disabled={scanning}
@@ -974,39 +782,20 @@ export default function BulkScanner() {
               background: '#FAFBF9',
               border: '1px solid #D9E1DC',
               color: '#374151',
-              padding: '6px 12px',
-              borderRadius: '7px',
+              padding: '5px 10px',
+              borderRadius: '6px',
               fontSize: '12px',
               fontWeight: 700,
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '5px',
               cursor: 'pointer'
             }}
             title="Refresh latest scan telemetry from origin"
           >
-            <RotateCw size={13} className={scanning ? 'animate-spin' : ''} />
+            <RotateCw size={12} className={scanning ? 'animate-spin' : ''} />
             <span>Sync Origin</span>
           </button>
-        </div>
-      </div>
-
-      {/* HERO HEADER & ACTIONS */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '24px',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0B2522', letterSpacing: '-0.5px' }}>
-            Website Threat <span style={{ color: '#059669' }}>Scanner.</span>
-          </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#60716B', maxWidth: '680px' }}>
-            Continuous Real-Time File Integrity, Deep AST Malware De-obfuscation &amp; Cloud ML Heuristics.
-          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -1118,12 +907,12 @@ export default function BulkScanner() {
           gap: '36px',
           alignItems: 'center'
         }}>
-          
+
           {/* Left Column: Autonomous Holographic Cyber Radar HUD */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ position: 'relative', width: '340px', height: '340px' }}>
               <canvas ref={canvasRef} width={340} height={340} style={{ display: 'block' }} />
-              
+
               {/* Radar Center Score Target Overlay */}
               <div style={{
                 position: 'absolute',
@@ -1193,99 +982,99 @@ export default function BulkScanner() {
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '16px'
             }}>
-              
+
               {/* Metric 1: Security Health Score */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ShieldCheck size={16} />
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ShieldCheck size={15} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SECURITY HEALTH</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
+                <div style={{ fontSize: '19px', fontWeight: '700', color: '#0B2522', lineHeight: '1.2' }}>
                   {telemetryMetrics.securityHealth !== null ? `${telemetryMetrics.securityHealth}/100` : '—'}
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
                   {telemetryMetrics.healthSub}
                 </div>
               </div>
 
               {/* Metric 2: Files Scanned */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FileText size={16} />
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FileText size={15} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>FILES SCANNED</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
+                <div style={{ fontSize: '19px', fontWeight: '700', color: '#0B2522', lineHeight: '1.2' }}>
                   {telemetryMetrics.filesScanned > 0 ? Number(telemetryMetrics.filesScanned).toLocaleString() : '—'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                   {telemetryMetrics.filesScanned > 0 ? 'Verified on origin disk' : 'No completed scan yet'}
                 </div>
               </div>
 
               {/* Metric 3: Component Files Scanned */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F3E8FF', color: '#7E22CE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Layers size={16} />
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#F3E8FF', color: '#7E22CE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={15} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>COMPONENTS AUDITED</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: '#0B2522' }}>
+                <div style={{ fontSize: '19px', fontWeight: '700', color: '#0B2522', lineHeight: '1.2' }}>
                   {telemetryMetrics.componentFilesScanned > 0 ? Number(telemetryMetrics.componentFilesScanned).toLocaleString() : '—'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                   Plugins, themes &amp; uploads
                 </div>
               </div>
 
               {/* Metric 4: Active Threats */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: telemetryMetrics.unresolvedChanges > 0 ? '#FEF2F2' : '#ECFDF5', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <AlertTriangle size={16} />
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: telemetryMetrics.unresolvedChanges > 0 ? '#FEF2F2' : '#ECFDF5', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AlertTriangle size={15} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>ACTIONABLE THREATS</span>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669' }}>
+                <div style={{ fontSize: '19px', fontWeight: '700', color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', lineHeight: '1.2' }}>
                   {Number(telemetryMetrics.unresolvedChanges).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: telemetryMetrics.unresolvedChanges > 0 ? '#DC2626' : '#059669', marginTop: '2px' }}>
                   {telemetryMetrics.unresolvedChanges > 0 ? `${telemetryMetrics.unresolvedChanges} Unresolved Issues` : '0 Actionable Threats'}
                 </div>
               </div>
 
               {/* Metric 5: Last Deep Analysis */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Clock size={16} />
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#F1F5F9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Clock size={15} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>LAST DEEP SCAN</span>
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#0B2522' }}>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#0B2522', lineHeight: '1.2' }}>
                   {telemetryMetrics.lastDeepAnalysis}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                   {telemetryMetrics.durationText}
                 </div>
               </div>
 
               {/* Metric 6: Monitoring Uptime */}
-              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '12px', padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Activity size={16} />
+              <div style={{ background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Activity size={15} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>AUTONOMOUS UPTIME</span>
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#059669' }}>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#059669', lineHeight: '1.2' }}>
                   {continuousMonitoring ? 'Enabled' : 'Paused'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                   Continuous scan monitoring
                 </div>
               </div>
@@ -1476,7 +1265,7 @@ export default function BulkScanner() {
         boxShadow: '0 4px 20px rgba(11, 37, 34, 0.03)',
         marginBottom: '28px'
       }}>
-        
+
         {/* Top Header Block */}
         <div style={{
           display: 'flex',

@@ -357,16 +357,35 @@ class MonitoringService:
                 "checked_at": now
             })
 
-            # Check if this is a downtime incident
+            # Check if this is a downtime incident or recovery
             if not is_online:
                 self._record_incident(site_id, hostname, status_code, error_msg, now)
+            else:
+                self._resolve_incident(site_id, hostname, now)
         except Exception as e:
             logger.debug(f"[Monitoring] Error persisting probe: {e}")
 
         return result
 
+    def _resolve_site_owner(self, site_id: str, domain: str) -> str:
+        """Look up owning user_id for downtime/SSL alerting."""
+        try:
+            queries = []
+            if site_id:
+                queries.extend([{"_id": site_id}, {"id": site_id}])
+            if domain:
+                queries.append({"domain": domain})
+            if not queries:
+                return ""
+            doc = self.db.websites.find_one({"$or": queries}, {"user_id": 1})
+            if doc and doc.get("user_id"):
+                return str(doc["user_id"])
+        except Exception:
+            pass
+        return ""
+
     def _record_incident(self, site_id: str, domain: str, status_code: int, error_msg: str, timestamp: datetime):
-        """Record or update downtime incident."""
+        """Record or update downtime incident and dispatch single Site Down alert."""
         try:
             # Check if there is an active ongoing incident
             ongoing = self.db.monitoring_incidents.find_one({
@@ -374,16 +393,72 @@ class MonitoringService:
                 "status": "ongoing"
             })
             if not ongoing:
+                err_text = error_msg or (f"HTTP {status_code} Error" if status_code else "Origin Unreachable")
                 self.db.monitoring_incidents.insert_one({
                     "site_id": site_id,
                     "domain": domain,
                     "status_code": status_code,
-                    "error_message": error_msg or f"HTTP {status_code} Error",
+                    "error_message": err_text,
                     "started_at": timestamp,
                     "resolved_at": None,
                     "duration_seconds": 0,
                     "status": "ongoing"
                 })
+                owner_id = self._resolve_site_owner(site_id, domain)
+                if owner_id:
+                    from src.services.notification_service import NotificationService
+                    NotificationService(self.db).notify(
+                        owner_id,
+                        title=f"Website Down Alert: {domain}",
+                        message=f"Your website {domain} appears unreachable ({err_text}). MDefender monitoring will notify you once it recovers.",
+                        category="site_down",
+                        website_id=site_id or domain,
+                        data={
+                            "website_domain": domain,
+                            "domain": domain,
+                            "status_code": status_code or "Timeout",
+                            "error": err_text,
+                        },
+                    )
+        except Exception:
+            pass
+
+    def _resolve_incident(self, site_id: str, domain: str, timestamp: datetime):
+        """Resolve ongoing downtime incident and send single Site Recovered notification."""
+        try:
+            ongoing = self.db.monitoring_incidents.find_one({
+                "domain": domain,
+                "status": "ongoing"
+            })
+            if ongoing:
+                started_at = ongoing.get("started_at") or timestamp
+                dur_sec = max(0, int((timestamp - started_at).total_seconds())) if hasattr(started_at, "timestamp") else 0
+                mins, secs = divmod(dur_sec, 60)
+                dur_label = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+                self.db.monitoring_incidents.update_one(
+                    {"_id": ongoing["_id"]},
+                    {"$set": {
+                        "status": "resolved",
+                        "resolved_at": timestamp,
+                        "duration_seconds": dur_sec,
+                    }}
+                )
+                owner_id = self._resolve_site_owner(site_id, domain)
+                if owner_id:
+                    from src.services.notification_service import NotificationService
+                    NotificationService(self.db).notify(
+                        owner_id,
+                        title=f"Website Back Online: {domain}",
+                        message=f"{domain} has recovered and is responding normally (downtime lasted {dur_label}).",
+                        category="site_recovered",
+                        website_id=site_id or domain,
+                        data={
+                            "website_domain": domain,
+                            "domain": domain,
+                            "status_code": 200,
+                            "downtime_duration": dur_label,
+                        },
+                    )
         except Exception:
             pass
 
@@ -549,6 +624,33 @@ class MonitoringService:
                 )
             except Exception:
                 pass
+
+            # Proactive SSL expiration warning (30d / 14d / 3d thresholds with 24h cooldown)
+            if is_expired or days_left <= 30:
+                try:
+                    owner_id = self._resolve_site_owner(site_id, hostname)
+                    if owner_id:
+                        bucket = "expired" if is_expired else ("3d" if days_left <= 3 else ("14d" if days_left <= 14 else "30d"))
+                        from src.services.notification_service import NotificationService
+                        NotificationService(self.db).notify(
+                            owner_id,
+                            title=f"SSL Certificate {'Expired' if is_expired else 'Expiring Soon'}: {hostname}",
+                            message=(
+                                f"SSL certificate for {hostname} has expired!"
+                                if is_expired
+                                else f"SSL certificate for {hostname} expires in {days_left} day(s). Please renew to avoid browser security warnings."
+                            ),
+                            category="ssl_expiring",
+                            website_id=site_id or hostname,
+                            dedupe_key=f"ssl:{bucket}",
+                            data={
+                                "website_domain": hostname,
+                                "domain": hostname,
+                                "days_remaining": max(0, days_left),
+                            },
+                        )
+                except Exception:
+                    pass
 
             return res
 
@@ -1012,10 +1114,19 @@ class MonitoringService:
     # -------------------------------------------------------------------------
     # 5. Incident History
     # -------------------------------------------------------------------------
-    def get_incidents(self, domain_or_site_id: str, limit: int = 15) -> List[Dict[str, Any]]:
-        """Fetch downtime incident reports."""
-        clean_d = domain_or_site_id.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
-        query = {"$or": [{"site_id": domain_or_site_id}, {"domain": clean_d}]}
+    def get_incidents(self, domain_or_site_id: str, domain: Optional[str] = None, limit: int = 15) -> List[Dict[str, Any]]:
+        """Fetch real downtime incident reports for specific website origin with zero cross-tenant bleed."""
+        clauses = []
+        if domain_or_site_id:
+            clauses.append({"site_id": domain_or_site_id})
+        
+        target_domain = domain or domain_or_site_id
+        if target_domain:
+            clean_exact = target_domain.replace("https://", "").replace("http://", "").strip().rstrip("/")
+            clauses.append({"domain": clean_exact})
+            clauses.append({"domain": target_domain})
+        
+        query = {"$or": clauses} if clauses else {}
         incidents = list(self.db.monitoring_incidents.find(query).sort("started_at", -1).limit(limit))
         for inc in incidents:
             inc.pop("_id", None)

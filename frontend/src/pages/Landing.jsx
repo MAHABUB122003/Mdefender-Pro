@@ -24,95 +24,10 @@ import {
   Play,
   Download,
   ExternalLink,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function Landing() {
-  // Interactive PoP Selector for the Global Anycast Map
-  const [activePop, setActivePop] = useState('frankfurt');
-
-  const popsData = {
-    frankfurt: {
-      name: 'Frankfurt, Germany',
-      code: 'FRA-01',
-      coords: '50.1109° N, 8.6821° E',
-      latency: '0.08ms',
-      scrubCapacity: '3.2 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '4,820 req/s dropped',
-      description: 'Primary central European routing cluster. Direct BGP peering with DE-CIX and Tier-1 transit providers.',
-    },
-    london: {
-      name: 'London, United Kingdom',
-      code: 'LHR-02',
-      coords: '51.5074° N, 0.1278° W',
-      latency: '0.07ms',
-      scrubCapacity: '2.8 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '3,910 req/s dropped',
-      description: 'United Kingdom and North Atlantic ingress edge. Low-latency TLS 1.3 handshake optimization.',
-    },
-    newyork: {
-      name: 'New York, United States',
-      code: 'JFK-04',
-      coords: '40.7128° N, 74.0060° W',
-      latency: '0.11ms',
-      scrubCapacity: '4.6 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '6,450 req/s dropped',
-      description: 'North American East Coast mega-cluster with automatic DDoS absorption and anycast traffic balancing.',
-    },
-    sanfrancisco: {
-      name: 'San Francisco, United States',
-      code: 'SFO-01',
-      coords: '37.7749° N, 122.4194° W',
-      latency: '0.10ms',
-      scrubCapacity: '3.8 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '5,120 req/s dropped',
-      description: 'West Coast hub serving Silicon Valley enterprise workloads with deep ML character n-gram inference.',
-    },
-    saopaulo: {
-      name: 'São Paulo, Brazil',
-      code: 'GRU-01',
-      coords: '23.5505° S, 46.6333° W',
-      latency: '0.14ms',
-      scrubCapacity: '1.9 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '2,340 req/s dropped',
-      description: 'Latin America gateway providing regional DDoS scrubbing and localized bot mitigation.',
-    },
-    dubai: {
-      name: 'Dubai, UAE',
-      code: 'DXB-02',
-      coords: '25.2048° N, 55.2708° E',
-      latency: '0.09ms',
-      scrubCapacity: '2.1 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '2,980 req/s dropped',
-      description: 'Middle East primary Anycast node protecting fintech and governmental enterprise web applications.',
-    },
-    singapore: {
-      name: 'Singapore, SG',
-      code: 'SIN-03',
-      coords: '1.3521° N, 103.8198° E',
-      latency: '0.12ms',
-      scrubCapacity: '3.4 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '4,210 req/s dropped',
-      description: 'Southeast Asia backbone hub with sub-millisecond edge inspection and cross-border API filtering.',
-    },
-    tokyo: {
-      name: 'Tokyo, Japan',
-      code: 'HND-01',
-      coords: '35.6762° N, 139.6503° E',
-      latency: '0.09ms',
-      scrubCapacity: '3.1 Tbps',
-      status: 'Active Scrubbing',
-      l7Mitigation: '3,880 req/s dropped',
-      description: 'East Asia Anycast POP with ultra-fast Radix trie matching against CMS and zero-day threat vectors.',
-    },
-  };
-
   // Interactive Live Threat Simulator States
   const [selectedAttack, setSelectedAttack] = useState('sqli');
   const attackScenarios = {
@@ -263,10 +178,10 @@ export default function Landing() {
                     fontSize: '11px',
                     fontWeight: 700,
                     color: '#0B2522',
-                    letterSpacing: '0.14em',
+                    letterSpacing: '0.12em',
                     textTransform: 'uppercase',
                     textDecoration: 'none',
-                    marginBottom: '24px',
+                    marginBottom: '20px',
                     transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => {
@@ -279,46 +194,46 @@ export default function Landing() {
                   }}
                 >
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#28745D' }} />
-                  <span>Autonomous Cloud WAF &amp; Global Anycast Edge</span>
+                  <span>Autonomous Cloud WAF &amp; Global Cyber Defense</span>
                   <ArrowRight size={12} strokeWidth={2.4} style={{ color: '#E8792F' }} />
                 </Link>
 
-                {/* Editorial Hero Heading */}
+                {/* Editorial Hero Heading - Crisp International Scale with Brand Pro Amber */}
                 <h1
                   className="hero-heading"
                   style={{
-                    fontSize: 'clamp(44px, 5.2vw, 74px)',
+                    fontSize: 'clamp(36px, 3.8vw, 52px)',
                     fontWeight: 800,
-                    lineHeight: 1.02,
-                    letterSpacing: '-0.065em',
+                    lineHeight: 1.12,
+                    letterSpacing: '-0.035em',
                     color: '#10201E',
-                    marginBottom: '22px',
+                    marginBottom: '18px',
                     maxWidth: '620px',
                   }}
                 >
-                  Complete website security.{' '}
+                  Autonomous Cloud WAF &amp; Web Defense.{' '}
                   <span
                     style={{
                       color: '#E8792F',
                       display: 'inline',
                     }}
                   >
-                    One intelligent platform.
+                    Stop threats before they touch your server.
                   </span>
                 </h1>
 
-                {/* Concise SaaS Copy */}
+                {/* Concise SaaS Copy with Verified 14M+ Intelligence & Sub-ms Speed */}
                 <p
                   style={{
-                    fontSize: 'clamp(15px, 1.8vw, 16.5px)',
+                    fontSize: '15.5px',
                     lineHeight: 1.6,
                     color: '#344844',
-                    marginBottom: '32px',
+                    marginBottom: '26px',
                     fontWeight: 400,
-                    maxWidth: '520px',
+                    maxWidth: '540px',
                   }}
                 >
-                  Defend web applications with dual-core machine learning trained on 6,501,208+ verified attack vectors, 2M+ deterministic signatures, and native WordPress in-memory RASP.
+                  Protect web applications with dual-core machine learning and deterministic Radix-Trie rule engines trained on <strong>14,041,641+ verified threat vectors</strong>. Neutralize zero-days, botnets, and Layer-7 DDoS in <strong>&lt;0.61ms</strong> without slowing down real users.
                 </p>
 
                 {/* Action Buttons */}
@@ -329,7 +244,7 @@ export default function Landing() {
                     flexWrap: 'wrap',
                     gap: '12px',
                     alignItems: 'center',
-                    marginBottom: '26px',
+                    marginBottom: '22px',
                   }}
                 >
                   <Link
@@ -339,8 +254,8 @@ export default function Landing() {
                       alignItems: 'center',
                       gap: '8px',
                       padding: '0 24px',
-                      height: '46px',
-                      borderRadius: '10px',
+                      height: '44px',
+                      borderRadius: '9px',
                       background: '#0B2522',
                       color: '#ffffff',
                       fontSize: '13.5px',
@@ -358,7 +273,7 @@ export default function Landing() {
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    <span>Get started free</span>
+                    <span>Start 14-Day Free Trial</span>
                     <ArrowRight size={14} strokeWidth={2.4} />
                   </Link>
 
@@ -369,8 +284,8 @@ export default function Landing() {
                       alignItems: 'center',
                       gap: '8px',
                       padding: '0 20px',
-                      height: '46px',
-                      borderRadius: '10px',
+                      height: '44px',
+                      borderRadius: '9px',
                       background: 'transparent',
                       border: '1.5px solid #CBD8CF',
                       color: '#10201E',
@@ -388,7 +303,7 @@ export default function Landing() {
                       e.currentTarget.style.borderColor = '#CBD8CF';
                     }}
                   >
-                    <span>Explore plans &amp; pricing</span>
+                    <span>View pricing ($4/site/mo)</span>
                   </Link>
                 </div>
 
@@ -398,7 +313,7 @@ export default function Landing() {
                     display: 'flex',
                     flexWrap: 'wrap',
                     alignItems: 'center',
-                    gap: '20px',
+                    gap: '18px',
                     fontSize: '12.5px',
                     color: '#4A5D5A',
                     fontWeight: 500,
@@ -406,15 +321,15 @@ export default function Landing() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Check size={14} strokeWidth={2.6} style={{ color: '#28745D' }} />
+                    <span>14-day full free trial</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Check size={14} strokeWidth={2.6} style={{ color: '#28745D' }} />
                     <span>No credit card required</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Check size={14} strokeWidth={2.6} style={{ color: '#28745D' }} />
-                    <span>Deploy in under 5 minutes</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Check size={14} strokeWidth={2.6} style={{ color: '#28745D' }} />
-                    <span>180+ Global Anycast PoPs</span>
+                    <span>Deploy in under 3 minutes</span>
                   </div>
                 </div>
               </div>
@@ -444,11 +359,12 @@ export default function Landing() {
           style={{
             background: '#0B2522',
             color: '#ffffff',
-            height: '68px',
+            minHeight: '64px',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
+            padding: '14px 0',
           }}
         >
           <div
@@ -463,41 +379,41 @@ export default function Landing() {
               className="trust-strip-grid"
               style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '24px',
+                gap: '20px',
                 fontSize: '12.5px',
                 fontWeight: 600,
                 color: '#E8EEE8',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Shield size={16} strokeWidth={2.4} style={{ color: '#28745D' }} />
-                <span>99.999% Guaranteed Edge Uptime SLA</span>
+                <Database size={15} strokeWidth={2.4} style={{ color: '#60A5FA' }} />
+                <span><strong style={{ color: '#ffffff', fontWeight: 700 }}>14.04M+</strong> Threat &amp; Malware Signatures</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Zap size={16} strokeWidth={2.4} style={{ color: '#E8792F' }} />
-                <span>&lt;0.12ms Sub-Millisecond Inspection Latency</span>
+                <Zap size={15} strokeWidth={2.4} style={{ color: '#F59E0B' }} />
+                <span><strong style={{ color: '#ffffff', fontWeight: 700 }}>&lt; 0.61ms</strong> Sub-Millisecond WAF Latency</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Globe size={16} strokeWidth={2.4} style={{ color: '#28745D' }} />
-                <span>240+ Global Anycast Defense Nodes</span>
+                <Cpu size={15} strokeWidth={2.4} style={{ color: '#34D399' }} />
+                <span><strong style={{ color: '#ffffff', fontWeight: 700 }}>99.75%</strong> ML Precision (0.17% FPR)</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Cpu size={16} strokeWidth={2.4} style={{ color: '#E8792F' }} />
-                <span>Autonomous Machine Learning Threat Engine</span>
+                <Lock size={15} strokeWidth={2.4} style={{ color: '#A78BFA' }} />
+                <span><strong style={{ color: '#ffffff', fontWeight: 700 }}>Stealth 502</strong> Hacker Cloaking Defense</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ===================== [SHOWPIECE SECTION] GLOBAL ANYCAST NETWORK & LIVE TELEMETRY ===================== */}
+        {/* ===================== [CORE SERVICES & CAPABILITIES ECOSYSTEM] ===================== */}
         <section
-          id="global-anycast-network"
+          id="services-ecosystem"
           style={{
-            padding: '110px 0 90px 0',
+            padding: '72px 0 80px 0',
             background: '#F7F6F1',
-            position: 'relative',
           }}
         >
           <div
@@ -508,396 +424,553 @@ export default function Landing() {
             }}
           >
             {/* Header Content */}
-            <div style={{ textAlign: 'center', maxWidth: '780px', margin: '0 auto 46px auto' }}>
+            <div style={{ textAlign: 'center', maxWidth: '780px', margin: '0 auto 42px auto' }}>
               <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '5px 12px',
-                  borderRadius: '999px',
-                  background: '#E8EEE8',
-                  border: '1px solid #D9E1DC',
                   fontSize: '11px',
                   fontWeight: 700,
-                  color: '#0B2522',
-                  letterSpacing: '0.14em',
+                  color: '#E8792F',
                   textTransform: 'uppercase',
-                  marginBottom: '14px',
+                  letterSpacing: '0.12em',
+                  marginBottom: '8px',
                 }}
               >
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#28745D' }} />
-                <span>180+ Anycast Scrubbing Data Centers Worldwide</span>
+                Complete Security &amp; Fleet Management Ecosystem
               </div>
-
               <h2
                 style={{
-                  fontSize: 'clamp(32px, 4vw, 50px)',
+                  fontSize: 'clamp(28px, 3.4vw, 42px)',
                   fontWeight: 800,
-                  letterSpacing: '-0.06em',
+                  letterSpacing: '-0.04em',
                   color: '#10201E',
-                  lineHeight: 1.08,
-                  marginBottom: '16px',
+                  lineHeight: 1.15,
+                  marginBottom: '12px',
                 }}
               >
-                Global Anycast Edge Defense &amp; Autonomous Threat Scrubbing
+                Everything you need to protect, monitor &amp; scale your websites.
               </h2>
-
               <p
                 style={{
-                  fontSize: '16px',
+                  fontSize: '15px',
                   lineHeight: 1.6,
                   color: '#4A5D5A',
                   margin: '0 auto',
                 }}
               >
-                Incoming web traffic is routed via BGP Anycast to the topologically closest edge center in under 0.12ms. Malicious requests and volumetric DDoS attacks are scrubbed and dropped before touching your origin server.
+                Replace multiple disjointed plugins, costly enterprise firewalls, and manual maintenance with one high-speed platform. All enterprise services included at just $4/site/mo.
               </p>
             </div>
 
-            {/* Interactive World Map Frame featuring global_anycast_network.jpg */}
-            <div
-              style={{
-                position: 'relative',
-                background: '#ffffff',
-                borderRadius: '20px',
-                border: '1.5px solid #CBD8CF',
-                boxShadow: '0 24px 60px rgba(11, 37, 34, 0.09)',
-                overflow: 'hidden',
-                marginBottom: '32px',
-              }}
-            >
-              {/* Telemetry Header Strip on top of the Map */}
-              <div
-                style={{
-                  background: '#0B2522',
-                  padding: '12px 20px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#28745D',
-                      boxShadow: '0 0 8px #28745D',
-                    }}
-                  />
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#E8EEE8', letterSpacing: '0.04em' }}>
-                    ANYCAST EDGE CLUSTER: ACTIVE SCRUBBING
-                  </span>
-                  <span
-                    style={{
-                      background: 'rgba(232, 121, 47, 0.18)',
-                      color: '#E8792F',
-                      border: '1px solid #E8792F',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    BGP AUTO-REROUTE ON
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '18px', fontSize: '11px', color: '#CBD8CF' }}>
-                  <div>
-                    <span style={{ color: '#8EA29C' }}>Avg Latency: </span>
-                    <strong style={{ color: '#ffffff' }}>&lt; 0.12ms</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#8EA29C' }}>Capacity: </span>
-                    <strong style={{ color: '#ffffff' }}>42.8 Tbps</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#8EA29C' }}>Origin Shield: </span>
-                    <strong style={{ color: '#28745D' }}>100% Absorbed</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* The Actual User Uploaded Image with Overlays */}
-              <div style={{ position: 'relative', width: '100%', background: '#F7F5EE' }}>
-                <img
-                  src="/global_anycast_network.jpg"
-                  alt="MDefender Pro Global Anycast Edge Network and Scrubbing Nodes"
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block',
-                    objectFit: 'cover',
-                  }}
-                />
-
-                {/* Floating HUD Badge 1: Top Left */}
-                <div
-                  className="hidden md:flex"
-                  style={{
-                    position: 'absolute',
-                    top: '20px',
-                    left: '20px',
-                    background: 'rgba(11, 37, 34, 0.88)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '10px',
-                    padding: '10px 14px',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#E8792F', fontWeight: 700 }}>
-                    <Radio size={12} />
-                    <span>REAL-TIME THREAT MITIGATION</span>
-                  </div>
-                  <div style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700 }}>
-                    ATTACK VECTOR: A00A31 [L7 GATE BLOCKED]
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#CBD8CF' }}>
-                    Origin Server Load: 0.00% &bull; Zero Impact
-                  </div>
-                </div>
-
-                {/* Floating HUD Badge 2: Bottom Right */}
-                <div
-                  className="hidden md:flex"
-                  style={{
-                    position: 'absolute',
-                    bottom: '24px',
-                    right: '20px',
-                    background: 'rgba(255, 255, 255, 0.94)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid #CBD8CF',
-                    borderRadius: '10px',
-                    padding: '12px 16px',
-                    color: '#10201E',
-                    fontSize: '11px',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    boxShadow: '0 12px 30px rgba(11, 37, 34, 0.1)',
-                    maxWidth: '280px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 700, color: '#10201E', fontSize: '12px' }}>
-                      Selected PoP: {popsData[activePop].name.split(',')[0]}
-                    </span>
-                    <span
-                      style={{
-                        background: '#E8EEE8',
-                        color: '#28745D',
-                        fontSize: '9.5px',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {popsData[activePop].code}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: '#4A5D5A' }}>
-                    <span>Inspection Latency:</span>
-                    <strong style={{ color: '#28745D' }}>{popsData[activePop].latency}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: '#4A5D5A' }}>
-                    <span>Scrubbing Rate:</span>
-                    <strong style={{ color: '#E8792F' }}>{popsData[activePop].l7Mitigation}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Interactive POP Region Selector Bar below the Map */}
-              <div
-                style={{
-                  background: '#FBFCFA',
-                  borderTop: '1px solid #D9E1DC',
-                  padding: '14px 20px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '10px',
-                }}
-              >
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#10201E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Globe size={14} style={{ color: '#E8792F' }} />
-                  <span>Inspect Regional Anycast Center:</span>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {Object.keys(popsData).map((popKey) => {
-                    const pop = popsData[popKey];
-                    const isActive = activePop === popKey;
-                    return (
-                      <button
-                        key={popKey}
-                        onClick={() => setActivePop(popKey)}
-                        style={{
-                          background: isActive ? '#0B2522' : '#ffffff',
-                          color: isActive ? '#ffffff' : '#10201E',
-                          border: isActive ? '1px solid #0B2522' : '1px solid #CBD8CF',
-                          padding: '5px 12px',
-                          borderRadius: '8px',
-                          fontSize: '11.5px',
-                          fontWeight: isActive ? 700 : 500,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: '5px',
-                            height: '5px',
-                            borderRadius: '50%',
-                            background: isActive ? '#E8792F' : '#28745D',
-                          }}
-                        />
-                        <span>{pop.name.split(',')[0]}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Active PoP Detail Drawer Banner */}
-              <div
-                style={{
-                  background: '#E8EEE8',
-                  padding: '12px 20px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  fontSize: '12px',
-                  color: '#344844',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Shield size={14} style={{ color: '#28745D' }} />
-                  <span>
-                    <strong>{popsData[activePop].name}</strong> ({popsData[activePop].code}) &mdash; {popsData[activePop].description}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11.5px', fontWeight: 600 }}>
-                  <span>Capacity: {popsData[activePop].scrubCapacity}</span>
-                  <span style={{ color: '#28745D' }}>{popsData[activePop].status}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 4-Stat Metrics Cards Grid below Map */}
+            {/* 6 High-Impact Service Cards */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: '16px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                gap: '18px',
               }}
             >
+              {/* Service 1: Cloud WAF & Layer-7 DDoS */}
               <div
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
-                  padding: '22px',
+                  padding: '24px',
                   border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
                   boxShadow: '0 4px 16px rgba(11, 37, 34, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(11, 37, 34, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(11, 37, 34, 0.04)';
                 }}
               >
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#E8EEE8', color: '#0B2522', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                  <Globe size={18} strokeWidth={2.2} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '9px',
+                        background: '#E8EEE8',
+                        color: '#0B2522',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Globe size={18} strokeWidth={2.2} />
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#28745D' }}>
+                      &lt; 0.61ms Line-Rate
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.25 }}>
+                    Autonomous Cloud WAF &amp; DDoS Shield
+                  </h3>
+
+                  <p style={{ fontSize: '13.5px', color: '#4A5D5A', lineHeight: 1.55, marginBottom: '14px' }}>
+                    Sub-millisecond line-rate request inspection stops OWASP Top 10 exploits, SQLi, XSS, and volumetric Layer-7 floods before they ever touch your origin server.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#344844', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Single-pass Radix-Trie rule engine</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>PoW Turnstile (Zero annoying image captchas)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Automated SSL &amp; BGP Anycast routing</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#10201E', marginBottom: '4px' }}>
-                  180+ PoPs
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#E8792F', marginBottom: '4px' }}>
-                  Global Anycast Fabric
-                </div>
-                <p style={{ fontSize: '12.5px', color: '#4A5D5A', lineHeight: 1.5, margin: 0 }}>
-                  Automated BGP routing ensures packet inspection occurs at the closest geographic edge, minimizing origin round-trips.
-                </p>
+
+                <Link
+                  to="/products/waf"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#E8792F',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>Explore Cloud WAF</span>
+                  <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
               </div>
 
+              {/* Service 2: 5.32M Checksum Malware & Backdoor Hunter */}
               <div
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
-                  padding: '22px',
+                  padding: '24px',
                   border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
                   boxShadow: '0 4px 16px rgba(11, 37, 34, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(11, 37, 34, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(11, 37, 34, 0.04)';
                 }}
               >
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#E8EEE8', color: '#0B2522', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                  <Cpu size={18} strokeWidth={2.2} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '9px',
+                        background: '#E8EEE8',
+                        color: '#0B2522',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Database size={18} strokeWidth={2.2} />
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#E8792F' }}>
+                      5.32M Official Hashes
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.25 }}>
+                    5.32M Checksum Malware Hunter
+                  </h3>
+
+                  <p style={{ fontSize: '13.5px', color: '#4A5D5A', lineHeight: 1.55, marginBottom: '14px' }}>
+                    Audits file integrity against 5,321,092 official WordPress core (v4.0 - 6.7) and plugin checksums. Deep AST engine detects obfuscated webshells in memory.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#344844', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>AST analysis for eval/base64/gzinflate backdoors</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>1-Click automated file quarantine &amp; restore</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Scheduled background scans with zero server slowdown</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#10201E', marginBottom: '4px' }}>
-                  6,501,208+
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#E8792F', marginBottom: '4px' }}>
-                  ML Attack Payloads
-                </div>
-                <p style={{ fontSize: '12.5px', color: '#4A5D5A', lineHeight: 1.5, margin: 0 }}>
-                  Character n-gram neural model trained on CSIC, CICIDS2017, and 639K+ Generative AI prompt injection attack vectors.
-                </p>
+
+                <Link
+                  to="/products/neural-engine"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#E8792F',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>Explore Malware Scanner</span>
+                  <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
               </div>
 
+              {/* Service 3: WordPress Fleet & 1-Click Safe Updates */}
               <div
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
-                  padding: '22px',
+                  padding: '24px',
                   border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
                   boxShadow: '0 4px 16px rgba(11, 37, 34, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(11, 37, 34, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(11, 37, 34, 0.04)';
                 }}
               >
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#E8EEE8', color: '#0B2522', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                  <Database size={18} strokeWidth={2.2} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '9px',
+                        background: '#E8EEE8',
+                        color: '#0B2522',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Layers size={18} strokeWidth={2.2} />
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#0B2522' }}>
+                      Fleet SaaS (1-100+ Sites)
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.25 }}>
+                    Centralized Fleet &amp; Bulk Safe Updates
+                  </h3>
+
+                  <p style={{ fontSize: '13.5px', color: '#4A5D5A', lineHeight: 1.55, marginBottom: '14px' }}>
+                    Control all your remote WordPress websites from one unified cloud dashboard. Execute bulk plugin, theme, and core updates safely with automatic pre-update rollbacks.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#344844', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>1-Click bulk updates across all connected sites</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Pre-update snapshot with automated rollback on failure</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Centralized health, uptime &amp; Core Web Vitals speed monitoring</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#10201E', marginBottom: '4px' }}>
-                  2,000,000+
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#E8792F', marginBottom: '4px' }}>
-                  Deterministic Signatures
-                </div>
-                <p style={{ fontSize: '12.5px', color: '#4A5D5A', lineHeight: 1.5, margin: 0 }}>
-                  Pre-compiled in-memory Radix trie lookup ensures single-pass matching for SQLi, XSS, RCE, and CMS zero-day exploits.
-                </p>
+
+                <Link
+                  to="/products/wordpress"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#E8792F',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>Explore Fleet Command</span>
+                  <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
               </div>
 
+              {/* Service 4: 1-Click Post-Hack Remediation */}
               <div
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
-                  padding: '22px',
+                  padding: '24px',
                   border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
                   boxShadow: '0 4px 16px rgba(11, 37, 34, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(11, 37, 34, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(11, 37, 34, 0.04)';
                 }}
               >
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#E8EEE8', color: '#0B2522', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                  <Zap size={18} strokeWidth={2.2} />
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '9px',
+                        background: '#E8EEE8',
+                        color: '#0B2522',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <RotateCcw size={18} strokeWidth={2.2} />
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#FEE2E2', color: '#DC2626' }}>
+                      Disaster Remediation
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.25 }}>
+                    1-Click Post-Hack Remediation
+                  </h3>
+
+                  <p style={{ fontSize: '13.5px', color: '#4A5D5A', lineHeight: 1.55, marginBottom: '14px' }}>
+                    Instantly disinfect hacked websites without losing user data or WooCommerce orders. Reinstalls pristine official files and terminates hacker sessions automatically.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#344844', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Rogue admin account detection &amp; instant purge</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Cryptographic salt rotation &amp; global session termination</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Hidden database backdoors &amp; cron task sanitation</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: 800, color: '#10201E', marginBottom: '4px' }}>
-                  &lt; 0.12ms
+
+                <Link
+                  to="/products/wordpress"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#E8792F',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>Learn about Post-Hack Clean</span>
+                  <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
+              </div>
+
+              {/* Service 5: Stealth Hacker Defense & Host Hardening */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  padding: '24px',
+                  border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 4px 16px rgba(11, 37, 34, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(11, 37, 34, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(11, 37, 34, 0.04)';
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '9px',
+                        background: '#E8EEE8',
+                        color: '#0B2522',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Lock size={18} strokeWidth={2.2} />
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#28745D' }}>
+                      Stealth 502 Cloaking
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.25 }}>
+                    Stealth Defense &amp; WordPress Hardening
+                  </h3>
+
+                  <p style={{ fontSize: '13.5px', color: '#4A5D5A', lineHeight: 1.55, marginBottom: '14px' }}>
+                    Blocked hackers receive an authentic HTTP 502 / ERR_CONNECTION_CLOSED error instead of a 403 badge. Locks down PHP execution in uploads and protects credentials.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#344844', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Stealth admin login gateway (Cryptographically hides /wp-login)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Native RFC-6238 2FA (Google/Microsoft Authenticator)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>PHP execution lock in /uploads/ &amp; file edit lockdown</span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#28745D', marginBottom: '4px' }}>
-                  Single-Pass Latency
+
+                <Link
+                  to="/products/wordpress"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#E8792F',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>Explore Hardening Suite</span>
+                  <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
+              </div>
+
+              {/* Service 6: Live Forensic Telemetry & Zero-Bloat Log Stream */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  padding: '24px',
+                  border: '1px solid #D9E1DC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 4px 16px rgba(11, 37, 34, 0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px rgba(11, 37, 34, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(11, 37, 34, 0.04)';
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '9px',
+                        background: '#E8EEE8',
+                        color: '#0B2522',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Activity size={18} strokeWidth={2.2} />
+                    </div>
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#E8EEE8', color: '#28745D' }}>
+                      Zero-Bloat Telemetry
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.25 }}>
+                    Live Forensic Stream &amp; Observability
+                  </h3>
+
+                  <p style={{ fontSize: '13.5px', color: '#4A5D5A', lineHeight: 1.55, marginBottom: '14px' }}>
+                    Inspect incoming traffic in real-time with full forensic breakdown (IP, country, ASN, risk score). Zero-bloat design streams on-demand without slowing down your database.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px', color: '#344844', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Live HTTP attack interceptor &amp; 1-click IP ban</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Zero database bloat (Only keeps client MySQL clean)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Check size={13} strokeWidth={2.4} style={{ color: '#28745D' }} />
+                      <span>Continuous 60-second synthetic uptime &amp; SSL health alerts</span>
+                    </div>
+                  </div>
                 </div>
-                <p style={{ fontSize: '12.5px', color: '#4A5D5A', lineHeight: 1.5, margin: 0 }}>
-                  No packet re-assembly delays or buffering bottlenecks. Users receive lightning-fast response times with zero lag.
-                </p>
+
+                <Link
+                  to="/docs"
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#E8792F',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>View Telemetry Docs</span>
+                  <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
               </div>
             </div>
           </div>
@@ -907,7 +980,7 @@ export default function Landing() {
         <section
           id="threat-simulator"
           style={{
-            padding: '90px 0 100px 0',
+            padding: '68px 0 76px 0',
             background: '#E8EEE8',
             borderTop: '1px solid #D9E1DC',
             borderBottom: '1px solid #D9E1DC',
@@ -920,32 +993,32 @@ export default function Landing() {
               padding: '0 clamp(20px, 3.2vw, 36px)',
             }}
           >
-            <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 40px auto' }}>
+            <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 34px auto' }}>
               <div
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
                   color: '#E8792F',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.14em',
-                  marginBottom: '10px',
+                  letterSpacing: '0.12em',
+                  marginBottom: '8px',
                 }}
               >
                 Hands-On Security Evaluation
               </div>
               <h2
                 style={{
-                  fontSize: 'clamp(28px, 3.8vw, 44px)',
+                  fontSize: 'clamp(26px, 3.2vw, 38px)',
                   fontWeight: 800,
-                  letterSpacing: '-0.06em',
+                  letterSpacing: '-0.04em',
                   color: '#10201E',
-                  lineHeight: 1.1,
-                  marginBottom: '14px',
+                  lineHeight: 1.15,
+                  marginBottom: '12px',
                 }}
               >
                 Live Edge Threat Simulator: Test Payloads in Real-Time
               </h2>
-              <p style={{ fontSize: '15.5px', color: '#344844', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '14.5px', color: '#344844', lineHeight: 1.6, margin: 0 }}>
                 Select an attack payload below to observe how MDefender Pro's hybrid AST parser, ML vectorizer, and Radix trie inspect and terminate threats at the edge in sub-millisecond execution.
               </p>
             </div>
@@ -1167,11 +1240,11 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ===================== [EXPANDED FUTURN] THE 6 PILLARS OF MDEFENDER PRO ===================== */}
+        {/* ===================== [COMPETITIVE TECHNICAL BENCHMARK MATRIX] ===================== */}
         <section
-          className="capability-section section-padding"
+          id="benchmark-comparison"
           style={{
-            padding: '110px 0',
+            padding: '64px 0 72px 0',
             background: '#F7F6F1',
           }}
         >
@@ -1182,435 +1255,189 @@ export default function Landing() {
               padding: '0 clamp(20px, 3.2vw, 36px)',
             }}
           >
-            {/* Centered Eyebrow, Heading, Description */}
-            <div style={{ textAlign: 'center', maxWidth: '780px', margin: '0 auto clamp(48px, 6vw, 64px) auto' }}>
+            <div style={{ textAlign: 'center', maxWidth: '780px', margin: '0 auto 34px auto' }}>
               <div
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
                   color: '#E8792F',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.14em',
-                  marginBottom: '10px',
+                  letterSpacing: '0.12em',
+                  marginBottom: '8px',
                 }}
               >
-                Comprehensive Cyber Defense Architecture
+                Competitive Technical Benchmark
               </div>
               <h2
                 style={{
-                  fontSize: 'clamp(32px, 4vw, 50px)',
+                  fontSize: 'clamp(26px, 3.2vw, 38px)',
                   fontWeight: 800,
-                  letterSpacing: '-0.06em',
+                  letterSpacing: '-0.04em',
                   color: '#10201E',
-                  lineHeight: 1.06,
-                  marginBottom: '16px',
+                  lineHeight: 1.15,
+                  marginBottom: '12px',
                 }}
               >
-                Engineered for zero-latency, full-stack resilience.
+                Why Developers &amp; Enterprises Switch to MDefender Pro
               </h2>
-              <p
-                style={{
-                  fontSize: '16px',
-                  lineHeight: 1.6,
-                  color: '#4A5D5A',
-                  margin: '0 auto',
-                }}
-              >
-                From DNS-level Layer 7 volumetric filtering to in-memory PHP RASP and autonomous machine learning, discover the six core pillars powering MDefender Pro.
+              <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, margin: 0 }}>
+                Compare line-rate speed, 14M+ threat intelligence, malware scanning, and transparent pricing against legacy cloud firewalls and bloated server-side plugins.
               </p>
             </div>
 
-            {/* 6-Card Grid with 16px gap */}
+            {/* Benchmark Table Card */}
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: '18px',
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1.5px solid #CBD8CF',
+                boxShadow: '0 18px 45px rgba(11, 37, 34, 0.06)',
+                overflowX: 'auto',
               }}
             >
-              {/* Pillar 1: Autonomous Cloud WAF */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  border: '1px solid #D9E1DC',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 18px 45px rgba(11, 37, 34, 0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: '#E8EEE8',
-                      color: '#0B2522',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '18px',
-                    }}
-                  >
-                    <Globe size={20} strokeWidth={2.2} />
-                  </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '760px' }}>
+                <thead>
+                  <tr style={{ background: '#0B2522', color: '#ffffff' }}>
+                    <th style={{ padding: '14px 20px', fontSize: '12.5px', fontWeight: 700, width: '28%' }}>
+                      Technical Capability
+                    </th>
+                    <th style={{ padding: '14px 20px', fontSize: '13px', fontWeight: 800, color: '#E8792F', width: '28%' }}>
+                      🛡️ MDefender Pro
+                    </th>
+                    <th style={{ padding: '14px 20px', fontSize: '12.5px', fontWeight: 600, color: '#8EA29C', width: '22%' }}>
+                      Legacy Cloud WAFs
+                    </th>
+                    <th style={{ padding: '14px 20px', fontSize: '12.5px', fontWeight: 600, color: '#8EA29C', width: '22%' }}>
+                      Generic WP Plugins
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Row 1: Latency */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Edge Inspection Latency
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      &lt; 0.61ms (Single-Pass Radix)
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>15ms &ndash; 30ms</td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>80ms &ndash; 250ms (Origin Lag)</td>
+                  </tr>
 
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.2 }}>
-                    Cloud WAF &amp; Smart DoH DNS
-                  </h3>
+                  {/* Row 2: Threat Dataset */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Threat Intelligence &amp; Signatures
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#E8792F', fontSize: '13.5px' }}>
+                      14,041,641+ Records (ML + Checksums)
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>Static Regex (~50,000)</td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>Local Hashes (~12,000)</td>
+                  </tr>
 
-                  <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, marginBottom: '20px' }}>
-                    Instant zero-downtime DNS proxy with multi-provider Google &amp; Cloudflare DoH discovery. Traffic is routed through our 180+ Anycast PoPs with automated SSL termination.
-                  </p>
-                </div>
+                  {/* Row 3: Hacker Defense / Cloaking */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Hacker Defense &amp; Cloaking
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      Stealth HTTP 502 / ERR_CLOSED
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Obvious 403 (Alerts Attacker)</td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Leaked PHP Error Stacks</td>
+                  </tr>
 
-                <Link
-                  to="/products/waf"
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#E8792F',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>Explore Cloud WAF</span>
-                  <ArrowRight size={13} strokeWidth={2.4} />
-                </Link>
-              </div>
+                  {/* Row 4: Layer 7 DDoS Challenge */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      L7 Anti-DDoS &amp; Bot Challenge
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      PoW Turnstile (Zero Image Captchas)
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>Annoying Puzzle Captchas</td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>None (Crashes Apache/MySQL)</td>
+                  </tr>
 
-              {/* Pillar 2: 6.5M+ ML Neural Core */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  border: '1px solid #D9E1DC',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 18px 45px rgba(11, 37, 34, 0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: '#E8EEE8',
-                      color: '#0B2522',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '18px',
-                    }}
-                  >
-                    <Cpu size={20} strokeWidth={2.2} />
-                  </div>
+                  {/* Row 5: Malware & WebShell Hunting */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Malware &amp; Backdoor Detection
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      5.32M Checksums + AST Taint Analysis
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Blind to Server Files (DNS Only)</td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>Basic Regex (Bypassed by eval/base64)</td>
+                  </tr>
 
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.2 }}>
-                    6.5M+ ML Neural Core
-                  </h3>
+                  {/* Row 6: Zero Bloat Database Rule */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Database Storage Architecture
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      Zero-Bloat (Live Stream On-Demand)
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>Requires Heavy SIEM Logs</td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Bloats wp_options &amp; MySQL (GBs)</td>
+                  </tr>
 
-                  <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, marginBottom: '20px' }}>
-                    Trained across CSIC HTTP, CICIDS2017, and 639K+ Generative AI jailbreak vectors. Scikit-learn character n-gram TF-IDF vectorization identifies polymorphic attacks.
-                  </p>
-                </div>
+                  {/* Row 7: WordPress In-Memory RASP */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      In-Memory Runtime RASP
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      Priority 1 Pre-Execution Hook
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Blind to PHP Internals</td>
+                    <td style={{ padding: '13px 20px', color: '#4A5D5A', fontSize: '12.5px' }}>Post-Execution Check Only</td>
+                  </tr>
 
-                <Link
-                  to="/docs"
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#E8792F',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>Read ML architecture</span>
-                  <ArrowRight size={13} strokeWidth={2.4} />
-                </Link>
-              </div>
+                  {/* Row 8: Generative AI / LLM Guard */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Generative AI &amp; LLM Barrier
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      Built-In OWASP LLM Top 10 Guard
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Expensive Enterprise Add-on ($$$)</td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Not Supported</td>
+                  </tr>
 
-              {/* Pillar 3: 2,000,000+ Deterministic Signatures */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  border: '1px solid #D9E1DC',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 18px 45px rgba(11, 37, 34, 0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: '#E8EEE8',
-                      color: '#0B2522',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '18px',
-                    }}
-                  >
-                    <Database size={20} strokeWidth={2.2} />
-                  </div>
+                  {/* Row 9: Multi-Site Fleet Management */}
+                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
+                    <td style={{ padding: '13px 20px', fontWeight: 700, fontSize: '13px', color: '#10201E' }}>
+                      Multi-Site Fleet SaaS Console
+                    </td>
+                    <td style={{ padding: '13px 20px', fontWeight: 800, color: '#28745D', fontSize: '13.5px' }}>
+                      1-Click Updates &amp; Safe Rollback (1-100+ Sites)
+                    </td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Not Supported (DNS Only)</td>
+                    <td style={{ padding: '13px 20px', color: '#A34F22', fontSize: '12.5px' }}>Single-Site Manual Logins</td>
+                  </tr>
 
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.2 }}>
-                    2M+ Hyper-Scale Signatures
-                  </h3>
-
-                  <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, marginBottom: '20px' }}>
-                    High-speed in-memory Radix trie algorithm traverses rules in O(1) time complexity. Comprehensive coverage for SQLi, XSS, RCE, LFI, and SSRF cloud metadata attacks.
-                  </p>
-                </div>
-
-                <Link
-                  to="/docs"
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#E8792F',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>View signature catalog</span>
-                  <ArrowRight size={13} strokeWidth={2.4} />
-                </Link>
-              </div>
-
-              {/* Pillar 4: Native WordPress RASP Engine */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  border: '1px solid #D9E1DC',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 18px 45px rgba(11, 37, 34, 0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: '#E8EEE8',
-                      color: '#0B2522',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '18px',
-                    }}
-                  >
-                    <Lock size={20} strokeWidth={2.2} />
-                  </div>
-
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.2 }}>
-                    WordPress RASP &amp; Malware Shield
-                  </h3>
-
-                  <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, marginBottom: '20px' }}>
-                    Native plugin intercepts requests at `plugins_loaded` Priority 1 before reaching database layers. AST scanner detects eval/base64 obfuscated PHP webshells and backdoors.
-                  </p>
-                </div>
-
-                <Link
-                  to="/products/wordpress"
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#E8792F',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>Explore WordPress plugin</span>
-                  <ArrowRight size={13} strokeWidth={2.4} />
-                </Link>
-              </div>
-
-              {/* Pillar 5: Continuous Attack Learning Pipeline */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  border: '1px solid #D9E1DC',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 18px 45px rgba(11, 37, 34, 0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: '#E8EEE8',
-                      color: '#0B2522',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '18px',
-                    }}
-                  >
-                    <RefreshCw size={20} strokeWidth={2.2} />
-                  </div>
-
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.2 }}>
-                    Autonomous Attack Learning Lab
-                  </h3>
-
-                  <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, marginBottom: '20px' }}>
-                    Continuous feedback retraining pipeline. Automatically aggregates zero-day exploit attempts across our global sensor grid, synthesizing new mitigation rules within seconds.
-                  </p>
-                </div>
-
-                <Link
-                  to="/blog"
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#E8792F',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>Read intelligence lab</span>
-                  <ArrowRight size={13} strokeWidth={2.4} />
-                </Link>
-              </div>
-
-              {/* Pillar 6: Turnstile Bot Challenge & Rate Limiting */}
-              <div
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  border: '1px solid #D9E1DC',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 18px 45px rgba(11, 37, 34, 0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: '#E8EEE8',
-                      color: '#0B2522',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '18px',
-                    }}
-                  >
-                    <Sparkles size={20} strokeWidth={2.2} />
-                  </div>
-
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#10201E', marginBottom: '8px', lineHeight: 1.2 }}>
-                    Cryptographic Turnstile Defense
-                  </h3>
-
-                  <p style={{ fontSize: '14.5px', color: '#4A5D5A', lineHeight: 1.6, marginBottom: '20px' }}>
-                    Zero-friction proof-of-work challenge stops credential stuffing, brute force login attacks, and automated headless scraping without annoying visual puzzles.
-                  </p>
-                </div>
-
-                <Link
-                  to="/products/waf"
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#E8792F',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>Learn about Turnstile</span>
-                  <ArrowRight size={13} strokeWidth={2.4} />
-                </Link>
-              </div>
+                  {/* Row 10: Pricing & Transparent Scaling */}
+                  <tr style={{ background: '#FAF7EE' }}>
+                    <td style={{ padding: '14px 20px', fontWeight: 800, fontSize: '13px', color: '#10201E' }}>
+                      Pricing &amp; Feature Access
+                    </td>
+                    <td style={{ padding: '14px 20px', fontWeight: 800, color: '#E8792F', fontSize: '14px' }}>
+                      $4 / site / month (14-Day Free Trial)
+                    </td>
+                    <td style={{ padding: '14px 20px', color: '#A34F22', fontSize: '12.5px', fontWeight: 600 }}>
+                      $200 &ndash; $3,000 / month (Enterprise lock)
+                    </td>
+                    <td style={{ padding: '14px 20px', color: '#A34F22', fontSize: '12.5px', fontWeight: 600 }}>
+                      $149 &ndash; $499 / year per site
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -1899,147 +1726,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ===================== [NEW BENCHMARK] PERFORMANCE & ADVANTAGE COMPARISON ===================== */}
-        <section
-          style={{
-            padding: '100px 0',
-            background: '#F7F6F1',
-          }}
-        >
-          <div
-            style={{
-              maxWidth: '1220px',
-              margin: '0 auto',
-              padding: '0 clamp(20px, 3.2vw, 36px)',
-            }}
-          >
-            <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 46px auto' }}>
-              <div
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#E8792F',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.14em',
-                  marginBottom: '10px',
-                }}
-              >
-                Engineered For Superior Speed
-              </div>
-              <h2
-                style={{
-                  fontSize: 'clamp(28px, 3.8vw, 44px)',
-                  fontWeight: 800,
-                  letterSpacing: '-0.06em',
-                  color: '#10201E',
-                  lineHeight: 1.1,
-                  marginBottom: '14px',
-                }}
-              >
-                Why Enterprises Switch to MDefender Pro
-              </h2>
-              <p style={{ fontSize: '15.5px', color: '#4A5D5A', lineHeight: 1.6 }}>
-                Compare technical performance metrics between MDefender Pro's autonomous hybrid architecture versus traditional legacy cloud firewalls.
-              </p>
-            </div>
-
-            {/* Comparison Table */}
-            <div
-              style={{
-                background: '#ffffff',
-                borderRadius: '16px',
-                border: '1.5px solid #CBD8CF',
-                boxShadow: '0 18px 45px rgba(11, 37, 34, 0.06)',
-                overflowX: 'auto',
-              }}
-            >
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                <thead>
-                  <tr style={{ background: '#0B2522', color: '#ffffff' }}>
-                    <th style={{ padding: '16px 22px', fontSize: '13px', fontWeight: 700 }}>Evaluation Metric</th>
-                    <th style={{ padding: '16px 22px', fontSize: '13px', fontWeight: 700, color: '#E8792F' }}>
-                      MDefender Pro Edge
-                    </th>
-                    <th style={{ padding: '16px 22px', fontSize: '13px', fontWeight: 600, color: '#8EA29C' }}>
-                      Legacy Cloud WAFs
-                    </th>
-                    <th style={{ padding: '16px 22px', fontSize: '13px', fontWeight: 600, color: '#8EA29C' }}>
-                      Generic Security Plugins
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
-                    <td style={{ padding: '16px 22px', fontWeight: 700, fontSize: '13.5px', color: '#10201E' }}>
-                      Edge Inspection Latency
-                    </td>
-                    <td style={{ padding: '16px 22px', fontWeight: 800, color: '#28745D', fontSize: '14px' }}>
-                      &lt; 0.12ms (Single-Pass)
-                    </td>
-                    <td style={{ padding: '16px 22px', color: '#4A5D5A', fontSize: '13px' }}>15ms &ndash; 28ms</td>
-                    <td style={{ padding: '16px 22px', color: '#4A5D5A', fontSize: '13px' }}>80ms &ndash; 250ms (Origin Lag)</td>
-                  </tr>
-
-                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
-                    <td style={{ padding: '16px 22px', fontWeight: 700, fontSize: '13.5px', color: '#10201E' }}>
-                      Autonomous Threat Engine
-                    </td>
-                    <td style={{ padding: '16px 22px', fontWeight: 800, color: '#28745D', fontSize: '14px' }}>
-                      Real-Time Neural Heuristics (&lt;0.12ms)
-                    </td>
-                    <td style={{ padding: '16px 22px', color: '#4A5D5A', fontSize: '13px' }}>Static Regex (~5,000 rules)</td>
-                    <td style={{ padding: '16px 22px', color: '#4A5D5A', fontSize: '13px' }}>Local File Hashes (~1,200)</td>
-                  </tr>
-
-                  <tr style={{ borderBottom: '1px solid #D9E1DC' }}>
-                    <td style={{ padding: '16px 22px', fontWeight: 700, fontSize: '13.5px', color: '#10201E' }}>
-                      Generative AI Jailbreak Shield
-                    </td>
-                    <td style={{ padding: '16px 22px', fontWeight: 800, color: '#28745D', fontSize: '14px' }}>
-                      Built-In OWASP LLM Top 10 Guard
-                    </td>
-                    <td style={{ padding: '16px 22px', color: '#A34F22', fontSize: '13px' }}>None (Requires Add-on)</td>
-                    <td style={{ padding: '16px 22px', color: '#A34F22', fontSize: '13px' }}>Not Supported</td>
-                  </tr>
-
-                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
-                    <td style={{ padding: '16px 22px', fontWeight: 700, fontSize: '13.5px', color: '#10201E' }}>
-                      Multi-Site WordPress Fleet SaaS
-                    </td>
-                    <td style={{ padding: '16px 22px', fontWeight: 800, color: '#28745D', fontSize: '14px' }}>
-                      Centralized Console (10 to 100+ Sites)
-                    </td>
-                    <td style={{ padding: '16px 22px', color: '#A34F22', fontSize: '13px' }}>Not Supported (DNS Only)</td>
-                    <td style={{ padding: '16px 22px', color: '#A34F22', fontSize: '13px' }}>Single-Site Manual Logins</td>
-                  </tr>
-
-                  <tr style={{ borderBottom: '1px solid #D9E1DC', background: '#FBFCFA' }}>
-                    <td style={{ padding: '16px 22px', fontWeight: 700, fontSize: '13.5px', color: '#10201E' }}>
-                      Origin Server CPU Overhead
-                    </td>
-                    <td style={{ padding: '16px 22px', fontWeight: 800, color: '#28745D', fontSize: '14px' }}>
-                      0.0% (Terminated at Edge)
-                    </td>
-                    <td style={{ padding: '16px 22px', color: '#4A5D5A', fontSize: '13px' }}>5% &ndash; 12%</td>
-                    <td style={{ padding: '16px 22px', color: '#A34F22', fontSize: '13px' }}>40% &ndash; 75% (Crashes Apache/MySQL)</td>
-                  </tr>
-
-                  <tr>
-                    <td style={{ padding: '16px 22px', fontWeight: 700, fontSize: '13.5px', color: '#10201E' }}>
-                      WordPress In-Memory RASP
-                    </td>
-                    <td style={{ padding: '16px 22px', fontWeight: 800, color: '#28745D', fontSize: '14px' }}>
-                      Priority 1 Pre-Write Barrier
-                    </td>
-                    <td style={{ padding: '16px 22px', color: '#A34F22', fontSize: '13px' }}>Blind to PHP internals</td>
-                    <td style={{ padding: '16px 22px', color: '#4A5D5A', fontSize: '13px' }}>Post-execution check only</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
         {/* ===================== THREAT INTELLIGENCE FEATURE PANEL ===================== */}
         <section
           className="section-padding"
@@ -2324,26 +2010,26 @@ export default function Landing() {
                     fontWeight: 700,
                     color: '#E8792F',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.14em',
+                    letterSpacing: '0.12em',
                     marginBottom: '6px',
                   }}
                 >
-                  Start with a safer web presence
+                  Zero Risk &bull; 14-Day Full Enterprise Access
                 </div>
                 <h3
                   style={{
-                    fontSize: 'clamp(28px, 3.2vw, 38px)',
+                    fontSize: 'clamp(26px, 3vw, 36px)',
                     fontWeight: 800,
-                    letterSpacing: '-0.06em',
+                    letterSpacing: '-0.04em',
                     color: '#10201E',
                     marginBottom: '6px',
                     lineHeight: 1.15,
                   }}
                 >
-                  Security that helps your business move forward.
+                  Start Defending Your Websites Today.
                 </h3>
-                <p style={{ fontSize: '15px', color: '#4A5D5A', margin: 0 }}>
-                  Build a faster, resilient, autonomous security posture with MDefender Pro.
+                <p style={{ fontSize: '14.5px', color: '#4A5D5A', margin: 0 }}>
+                  Deploy sub-millisecond Cloud WAF, L7 DDoS mitigation, and 14M+ malware intelligence in under 3 minutes. Just $4/site/mo afterwards.
                 </p>
               </div>
 
@@ -2355,8 +2041,8 @@ export default function Landing() {
                     alignItems: 'center',
                     gap: '8px',
                     padding: '0 24px',
-                    height: '46px',
-                    borderRadius: '10px',
+                    height: '44px',
+                    borderRadius: '9px',
                     background: '#0B2522',
                     color: '#ffffff',
                     fontSize: '13.5px',
@@ -2374,19 +2060,19 @@ export default function Landing() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <span>Get started free</span>
+                  <span>Start 14-Day Free Trial</span>
                   <ArrowRight size={14} strokeWidth={2.4} />
                 </Link>
 
                 <Link
-                  to="/docs"
+                  to="/pricing"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
                     padding: '0 20px',
-                    height: '46px',
-                    borderRadius: '10px',
+                    height: '44px',
+                    borderRadius: '9px',
                     background: '#E8EEE8',
                     color: '#0B2522',
                     fontSize: '13.5px',
@@ -2395,7 +2081,7 @@ export default function Landing() {
                     transition: 'all 0.18s ease',
                   }}
                 >
-                  <span>Read documentation</span>
+                  <span>View plans ($4/site)</span>
                 </Link>
               </div>
             </div>

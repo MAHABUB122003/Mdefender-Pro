@@ -38,6 +38,9 @@ class WAF_FW_Under_Attack_Shield {
      * Checks if Under Attack Mode is currently active.
      */
     public function is_active() {
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            return false;
+        }
         // Never challenge or intercept WP-Admin administrative tasks or logged-in administrators
         if (is_admin()) {
             return false;
@@ -66,6 +69,9 @@ class WAF_FW_Under_Attack_Shield {
      * automatically trips the Under Attack PoW shield for 10 minutes to protect MySQL & PHP-FPM.
      */
     public function check_autonomous_surge($ip) {
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            return false;
+        }
         if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost' || $ip === '0.0.0.0' ||
             strpos($ip, '192.168.') === 0 || strpos($ip, '10.') === 0 || strpos($ip, '172.16.') === 0) {
             return false;

@@ -98,6 +98,19 @@ export default function UserPricing() {
   const [toastMessage, setToastMessage] = useState(null);
   const [onboardingNotice, setOnboardingNotice] = useState(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [pricingConfig, setPricingConfig] = useState({
+    base_monthly_rate: 4,
+    base_yearly_rate: 40,
+    currency: 'USD',
+    currency_symbol: '$',
+    trial_days: 14,
+    bulk_tiers: [
+      { min_sites: 1, max_sites: 9, discount_percent: 0, label: 'Starter Fleet' },
+      { min_sites: 10, max_sites: 24, discount_percent: 10, label: 'Growth Agency' },
+      { min_sites: 25, max_sites: 49, discount_percent: 15, label: 'Scale Partner' },
+      { min_sites: 50, max_sites: 500, discount_percent: 25, label: 'Enterprise MSP' }
+    ]
+  });
 
   const showToast = (text, isError = false) => {
     setToastMessage({ text, isError });
@@ -106,22 +119,40 @@ export default function UserPricing() {
 
   const isYearly = billingCycle === 'yearly';
 
-  // Pricing configuration: $4/month or $40/year per site
-  const monthlyRate = 4;
-  const yearlyRate = 40; // $3.33/mo equivalent (2 months free)
+  // Dynamic pricing configuration synced with Super Admin
+  const monthlyRate = Number(pricingConfig.base_monthly_rate) || 4;
+  const yearlyRate = Number(pricingConfig.base_yearly_rate) || 40;
 
-  const totalPrice = isYearly ? sitesCount * yearlyRate : sitesCount * monthlyRate;
+  const getDiscount = (count) => {
+    const tiers = pricingConfig.bulk_tiers || [];
+    for (let i = tiers.length - 1; i >= 0; i--) {
+      if (count >= tiers[i].min_sites) {
+        return tiers[i];
+      }
+    }
+    return { discount_percent: 0, label: 'Standard' };
+  };
+
+  const activeTier = getDiscount(sitesCount);
+  const rawBase = isYearly ? sitesCount * yearlyRate : sitesCount * monthlyRate;
+  const discountAmount = (rawBase * activeTier.discount_percent) / 100;
+  const totalPrice = Math.max(0, rawBase - discountAmount);
   const effectiveMonthly = isYearly ? (totalPrice / 12).toFixed(2) : totalPrice.toFixed(2);
-  const savingsAmount = isYearly ? sitesCount * (monthlyRate * 12 - yearlyRate) : 0;
+  const savingsAmount = isYearly ? (sitesCount * monthlyRate * 12 - totalPrice).toFixed(2) : 0;
 
   const fetchBilling = async () => {
     setLoading(true);
     try {
-      const [profRes, billRes, histRes] = await Promise.allSettled([
+      const [profRes, billRes, histRes, configRes] = await Promise.allSettled([
         api.getProfile(),
         api.getBillingSubscription(),
         api.getPaymentHistory(),
+        api.getPublicPricingConfig(),
       ]);
+
+      if (configRes.status === 'fulfilled' && configRes.value?.data?.base_monthly_rate) {
+        setPricingConfig(prev => ({ ...prev, ...configRes.value.data }));
+      }
 
       if (profRes.status === 'fulfilled' && profRes.value?.data) {
         setProfile(profRes.value.data);

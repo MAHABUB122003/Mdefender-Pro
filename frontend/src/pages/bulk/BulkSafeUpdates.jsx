@@ -417,7 +417,7 @@ export default function BulkSafeUpdates() {
 
   if (!hasWebsites) {
     return (
-      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
+      <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px', minHeight: '100vh' }}>
         <BulkHeader
           title="Safe Updates & Regression Guard"
           subtitle="Autonomous Pre-Update Micro-Snapshots, Synthetic Tri-Endpoint Probes & Sub-5s Rollback"
@@ -431,7 +431,7 @@ export default function BulkSafeUpdates() {
   }
 
   return (
-    <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7', color: '#10201E' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px', minHeight: '100vh', color: '#10201E' }}>
       
       {/* Toast Notification */}
       {toastMsg && (
@@ -667,7 +667,7 @@ export default function BulkSafeUpdates() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: '24px',
+        marginBottom: '14px',
         flexWrap: 'wrap',
         gap: '16px'
       }}>
@@ -733,17 +733,17 @@ export default function BulkSafeUpdates() {
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '16px',
-        marginBottom: '24px'
+        marginBottom: '14px'
       }}>
         {/* KPI 1: Posture */}
-        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '18px 20px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ShieldCheck size={18} />
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>GUARD POSTURE</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '700', color: '#059669' }}>
+          <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#059669' }}>
             {kpis.posture}
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -752,14 +752,14 @@ export default function BulkSafeUpdates() {
         </div>
 
         {/* KPI 2: Total Operations */}
-        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '18px 20px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Activity size={18} />
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>TOTAL SAFE OPERATIONS</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '700', color: '#0B2522' }}>
+          <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#0B2522' }}>
             {kpis.totalOps}
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -768,14 +768,14 @@ export default function BulkSafeUpdates() {
         </div>
 
         {/* KPI 3: Disasters Prevented */}
-        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '18px 20px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <RotateCcw size={18} />
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>DISASTERS PREVENTED</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '700', color: kpis.rollbacks > 0 ? '#DC2626' : '#059669' }}>
+          <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: kpis.rollbacks > 0 ? '#DC2626' : '#059669' }}>
             {kpis.rollbacks} Rollbacks
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -784,14 +784,14 @@ export default function BulkSafeUpdates() {
         </div>
 
         {/* KPI 4: Synthetic Latency */}
-        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '18px 20px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #D9E1DC', borderRadius: '14px', padding: '12px 16px', boxShadow: '0 2px 8px rgba(11,37,34,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Zap size={18} />
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#60716B', letterSpacing: '0.6px' }}>SYNTHETIC PROBE LATENCY</span>
           </div>
-          <div style={{ fontSize: '22px', fontWeight: '700', color: '#0B2522' }}>
+          <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#0B2522' }}>
             ~{kpis.avgLatency}ms
           </div>
           <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
@@ -806,7 +806,7 @@ export default function BulkSafeUpdates() {
         border: '1px solid #D9E1DC',
         borderRadius: '16px',
         padding: '24px 28px',
-        marginBottom: '24px',
+        marginBottom: '14px',
         boxShadow: '0 4px 16px rgba(11,37,34,0.02)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -1438,7 +1438,7 @@ export default function BulkSafeUpdates() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '14px' }}>
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div>
                   <strong style={{ fontSize: '13px', color: '#0B2522' }}>Probe Homepage (/)</strong>

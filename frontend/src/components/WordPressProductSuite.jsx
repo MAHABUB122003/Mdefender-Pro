@@ -424,7 +424,7 @@ export default function WordPressProductSuite() {
               desc: 'Enforces geofencing rules (RU, CN, etc.), dropping hostile bots before wp-login or XML-RPC.',
               icon: Globe,
               metric: 'Line-Rate Drop',
-              accent: '#0284C7'
+              accent: '#E8792F'
             },
             {
               step: '04',

@@ -226,7 +226,7 @@ export default function BulkMonitoring() {
   const currentSsl = currentSiteId ? sslData[currentSiteId] : null
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
       {toastMsg && (
         <div style={{
           position: 'fixed',
@@ -273,7 +273,7 @@ export default function BulkMonitoring() {
                 </div>
                 <span style={badgeStyle('#F0FDF4', '#15803D', '#DCFCE7')}>{uptimePct}% OPERATIONAL</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {onlineCount} / {targetWebsites.length} Active
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Fleet Origins Live</div>
@@ -287,7 +287,7 @@ export default function BulkMonitoring() {
                 </div>
                 <span style={badgeStyle('#FFFBEB', '#B45309', '#FEF3C7')}>{avgLatency}ms AVG TTFB</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {avgLatency !== '0.0' ? `${avgLatency} ms` : 'Measuring...'}
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Origin Response Latency</div>
@@ -303,7 +303,7 @@ export default function BulkMonitoring() {
                   {validSslCount} / {targetWebsites.length} SECURED
                 </span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {validSslCount > 0 ? `${validSslCount} Certificates` : 'No Active TLS'}
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>SSL Certificate Health</div>
@@ -317,7 +317,7 @@ export default function BulkMonitoring() {
                 </div>
                 <span style={badgeStyle('#F8FAFC', '#475569', '#E2E8F0')}>CORE WEB VITALS</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                 {currentPerf ? `${currentPerf.score} / 100` : 'Ready to Audit'}
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '3px' }}>Speed &amp; Performance</div>
@@ -670,7 +670,7 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.ttfb_ms < 300 ? 'GOOD' : currentPerf.metrics?.ttfb_ms < 800 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', margin: '6px 0 2px' }}>
                         {currentPerf.metrics?.ttfb_ms || 0} ms
                       </div>
                       <div style={{ fontSize: '11px', color: '#87948D' }}>Time to First Byte (Server speed)</div>
@@ -683,7 +683,7 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.fcp_ms < 1800 ? 'GOOD' : currentPerf.metrics?.fcp_ms < 3000 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', margin: '6px 0 2px' }}>
                         {((currentPerf.metrics?.fcp_ms || 0) / 1000).toFixed(2)} s
                       </div>
                       <div style={{ fontSize: '11px', color: '#87948D' }}>First Contentful Paint</div>
@@ -696,7 +696,7 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.lcp_ms < 2500 ? 'GOOD' : currentPerf.metrics?.lcp_ms < 4000 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', margin: '6px 0 2px' }}>
                         {((currentPerf.metrics?.lcp_ms || 0) / 1000).toFixed(2)} s
                       </div>
                       <div style={{ fontSize: '11px', color: '#87948D' }}>Largest Contentful Paint</div>
@@ -709,7 +709,7 @@ export default function BulkMonitoring() {
                           {currentPerf.metrics?.cls < 0.1 ? 'GOOD' : currentPerf.metrics?.cls < 0.25 ? 'NEEDS WORK' : 'POOR'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#10201E', margin: '6px 0 2px' }}>
+                      <div style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', margin: '6px 0 2px' }}>
                         {currentPerf.metrics?.cls || 0}
                       </div>
                       <div style={{ fontSize: '11px', color: '#87948D' }}>Cumulative Layout Shift</div>
@@ -1025,7 +1025,7 @@ const cardStyle = {
   background: '#ffffff',
   borderRadius: '16px',
   border: '1px solid #D9E1DC',
-  padding: '22px 24px',
+  padding: '12px 16px',
   boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
   display: 'flex',
   flexDirection: 'column'

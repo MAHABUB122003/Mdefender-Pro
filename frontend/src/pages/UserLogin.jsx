@@ -29,8 +29,14 @@ export default function UserLogin({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(searchParams.get('verified') === 'true');
 
-  const getPostLoginUrl = () => {
-    return planParam ? `/user/pricing?plan=${planParam}&cycle=${cycleParam}` : '/user/dashboard';
+  const getPostLoginUrl = (user) => {
+    if (planParam) return `/user/pricing?plan=${planParam}&cycle=${cycleParam}`;
+    if (user?.role === 'super_admin' || user?.is_admin) return '/admin';
+    const hasSites = (user?.websites_count > 0) || (Array.isArray(user?.websites) && user.websites.length > 0);
+    if (!hasSites) {
+      return '/onboarding';
+    }
+    return '/user/dashboard';
   };
 
   useEffect(() => {
@@ -47,29 +53,33 @@ export default function UserLogin({ onLoginSuccess }) {
   const handleLoginSuccess = (user) => {
     if (user) {
       userStore.set('profile', user);
+      if (user.api_key) {
+        localStorage.setItem('mdefender_api_key', user.api_key);
+        window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: user.api_key }));
+      }
+      if (user.email) localStorage.setItem('mdefender_user_email', user.email);
       if (user.plan) localStorage.setItem('mdefender_user_plan', user.plan);
       if (user.name) localStorage.setItem('mdefender_user_name', user.name);
       if (user.trial_days_remaining !== undefined) localStorage.setItem('mdefender_trial_days', user.trial_days_remaining);
       if (user.created_at) localStorage.setItem('mdefender_user_created_at', user.created_at);
-      if (!userStore.get('dashboard')) {
-        userStore.set('dashboard', {
-          user,
-          websites: [],
-          total_requests: 0,
-          blocked_threats: 0,
-          requests_today: 0,
-          recent_attacks: [],
-          attack_types: ['SQL Injection', 'XSS', 'LFI', 'RCE', 'Bot Scan'],
-          attack_counts: [0, 0, 0, 0, 0],
-          daily_requests: [0, 0, 0, 0, 0, 0, 0],
-        });
-      }
+      userStore.set('dashboard', {
+        user,
+        api_key: user.api_key || '',
+        websites: user.websites || [],
+        total_requests: user.total_requests || 0,
+        blocked_threats: user.total_blocked || 0,
+        requests_today: user.requests_today || 0,
+        recent_attacks: [],
+        attack_types: ['SQL Injection', 'XSS', 'LFI', 'RCE', 'Bot Scan'],
+        attack_counts: [0, 0, 0, 0, 0],
+        daily_requests: [0, 0, 0, 0, 0, 0, 0],
+      });
     }
     userStore.prefetchUserData(api);
     if (onLoginSuccess && user) {
       onLoginSuccess(user);
     }
-    navigate(getPostLoginUrl(), { replace: true });
+    navigate(getPostLoginUrl(user), { replace: true });
   };
 
   const handleSubmit = async (e) => {
@@ -582,6 +592,9 @@ export default function UserLogin({ onLoginSuccess }) {
       </div>
 
       <style>{`
+        .auth-input-field:hover {
+          border-color: #10201E !important;
+        }
         .auth-input-field:focus {
           border-color: #E8792F !important;
           box-shadow: 0 0 0 3px rgba(232, 121, 47, 0.14) !important;
@@ -592,6 +605,7 @@ export default function UserLogin({ onLoginSuccess }) {
         }
         .auth-google-btn:hover {
           background-color: #F7FAF7 !important;
+          border-color: #10201E !important;
         }
       `}</style>
     </AuthSplitLayout>

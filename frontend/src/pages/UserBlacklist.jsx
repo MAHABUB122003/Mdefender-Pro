@@ -54,7 +54,7 @@ export default function UserBlacklist({ activeMode }) {
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
   // ── Fleet & Website Scope State ─────────────────────────────────────────────
-  const [selectedWebsite, setSelectedWebsite] = useState('all')
+  const [selectedWebsite, setSelectedWebsite] = useState(() => (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all')
   const [websites, setWebsites] = useState(() => {
     try {
       const cached = userStore.get('websites') || userStore.get('dashboard')
@@ -154,6 +154,21 @@ export default function UserBlacklist({ activeMode }) {
     fetchCountryBlocks(false, selectedWebsite)
     fetchWhitelist(false)
   }, [fetchWebsites, fetchBlacklist, fetchCountryBlocks, fetchWhitelist, selectedWebsite])
+
+  useEffect(() => {
+    const handleDomainSync = () => {
+      const cur = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all';
+      setSelectedWebsite(cur);
+      fetchBlacklist(true, cur);
+      fetchCountryBlocks(true, cur);
+    };
+    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync);
+    window.addEventListener('mdefender_domain_changed', handleDomainSync);
+    return () => {
+      window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync);
+      window.removeEventListener('mdefender_domain_changed', handleDomainSync);
+    };
+  }, [fetchBlacklist, fetchCountryBlocks]);
 
   const blockedCodesSet = useMemo(() =>
     new Set(countryBlocks.map(b => (b.country_code || '').toUpperCase().trim()))
@@ -486,45 +501,7 @@ export default function UserBlacklist({ activeMode }) {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Website Selector Dropdown */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              background: '#FFFFFF',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: '1px solid #D9E1DC',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-            }}>
-              <Globe size={14} color="#10201E" />
-              <select
-                value={selectedWebsite}
-                onChange={(e) => {
-                  const siteId = e.target.value
-                  setSelectedWebsite(siteId)
-                  fetchBlacklist(true, siteId)
-                  fetchCountryBlocks(true, siteId)
-                }}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#0F172A',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  maxWidth: '190px'
-                }}
-              >
-                <option value="all">Global Fleet ({websites.length} Sites)</option>
-                {websites.map(w => (
-                  <option key={w.id || w._id} value={w.id || w._id}>
-                    {w.domain || w.name || w.id}
-                  </option>
-                ))}
-              </select>
-            </div>
+
 
             <button
               style={S.btn('#FFFFFF', '#10201E', '#D9E1DC')}
@@ -558,7 +535,7 @@ export default function UserBlacklist({ activeMode }) {
       {activeTab === 'ip' && (
         <>
           {/* Stats row — Clean Enterprise Standard */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '12px' }}>
             {[
               { label: 'Total Blocked', value: entries.length },
               { label: 'Permanent', value: permCount },
@@ -566,9 +543,9 @@ export default function UserBlacklist({ activeMode }) {
               { label: 'Auto-Blocked', value: autoCount },
               { label: 'Expired', value: expiredEntries.length }
             ].map(s => (
-              <div key={s.label} style={{ ...S.cardPad, padding: '16px 20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#10201E', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+              <div key={s.label} style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -751,15 +728,15 @@ export default function UserBlacklist({ activeMode }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '10px' }}>
             {[
               { label: 'Blocked Countries', value: countryBlocks.length },
               { label: 'Available Regions', value: '250+' },
               { label: 'Block Response', value: 'HTTP 444' }
             ].map(s => (
-              <div key={s.label} style={{ ...S.cardPad, padding: '16px 20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#10201E', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+              <div key={s.label} style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.label}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -1014,41 +991,20 @@ export default function UserBlacklist({ activeMode }) {
       {activeTab === 'whitelist' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            <div style={{ ...S.cardPad, padding: '16px 20px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Whitelisted IPs
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '700', color: '#2A8B68', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>
-                {whitelistEntries.length} Trusted
-              </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
-                Allowed to bypass all WAF inspection
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Whitelisted IPs</div>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: '#2A8B68', fontVariantNumeric: 'tabular-nums' }}>{whitelistEntries.length} Trusted</div>
             </div>
 
-            <div style={{ ...S.cardPad, padding: '16px 20px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Enforcement Scope
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>
-                Global Fleet
-              </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
-                Instant edge synchronization
-              </div>
+            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Enforcement Scope</div>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#10201E' }}>Global Fleet</div>
             </div>
 
-            <div style={{ ...S.cardPad, padding: '16px 20px' }}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Bypass Priority
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '700', color: '#0B2522', marginTop: '4px' }}>
-                Level 0 (Zero-Drop)
-              </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
-                Pre-flight bootstrap allowlist
-              </div>
+            <div style={{ background: '#FFFFFF', border: '1px solid #D9E1DC', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Bypass Priority</div>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#0B2522' }}>Level 0 (Zero-Drop)</div>
             </div>
           </div>
 

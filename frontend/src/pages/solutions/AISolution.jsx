@@ -115,12 +115,12 @@ export default function AISolution() {
               </div>
 
               <h1 style={{
-                fontSize: 'clamp(34px, 4.2vw, 56px)',
+                fontSize: 'clamp(28px, 3.8vw, 44px)',
                 fontWeight: 800,
-                lineHeight: 1.08,
-                letterSpacing: '-0.05em',
+                lineHeight: 1.15,
+                letterSpacing: '-0.04em',
                 color: '#10201E',
-                marginBottom: '20px'
+                marginBottom: '18px'
               }}>
                 Shield LLMs against prompt injection &amp;{' '}
                 <span style={{ color: '#7E22CE' }}>Denial of Wallet.</span>
@@ -209,7 +209,7 @@ export default function AISolution() {
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: '#7A8C89', textTransform: 'uppercase', letterSpacing: '0.08em' }}>PII Protection</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#0284C7' }}>Real-Time Masking</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#E8792F' }}>Real-Time Masking</div>
                 </div>
               </div>
             </div>

@@ -32,6 +32,30 @@ class BackupService:
     def __init__(self):
         self.db = MongoDB()
 
+    def get_clean_domain_slug(self, website: Dict[str, Any]) -> str:
+        url = website.get("url") or ""
+        domain = website.get("domain") or ""
+        target = url or domain or ""
+        import urllib.parse
+        if "://" not in target:
+            target = f"http://{target}"
+        try:
+            parsed = urllib.parse.urlparse(target)
+            host = (parsed.netloc or "").split(":")[0].lower()
+            path = (parsed.path or "").strip("/").split("/")[0] if parsed.path else ""
+            if host in ("localhost", "127.0.0.1"):
+                return f"localhost-{path}" if path else "localhost"
+            if host:
+                return host.replace("www.", "")
+        except Exception:
+            pass
+        clean = (domain or "website").replace("https://", "").replace("http://", "").split("/")[0].split(":")[0].strip()
+        clean = clean.replace("www.", "")
+        if clean in ("localhost", "127.0.0.1") and "/" in domain:
+            sub = domain.split("/")[1].strip()
+            return f"localhost-{sub}"
+        return clean or "website"
+
     # -------------------------------------------------------------------------
     # Helper: Identify if website is hosted locally on this machine
     # -------------------------------------------------------------------------
@@ -214,7 +238,7 @@ class BackupService:
             total_size_bytes += fsize
             seen_filenames.add(fname)
 
-            btype = "database" if (fname.startswith("db_") or fname.endswith(".sql") or fname.endswith(".sql.gz")) else ("files" if fname.startswith("files_") else "full")
+            btype = "database" if ("database" in fname or "-db-" in fname or fname.startswith("db_") or fname.endswith(".sql") or fname.endswith(".sql.gz")) else ("files" if ("files" in fname or "-files-" in fname) else "full")
             comps = ["Database (SQL Dump)"] if btype == "database" else (["Plugins", "Themes", "Uploads"] if btype == "files" else ["Database", "Plugins", "Themes", "Uploads", "Core"])
             fresh_backups.append({
                 "id": os.path.splitext(fname)[0],
@@ -333,7 +357,7 @@ class BackupService:
         """Generate a complete or partial backup snapshot of the target WordPress website."""
         site_id = str(website.get("_id") or website.get("id"))
         domain = website.get("domain") or website.get("url") or "website"
-        clean_name = domain.replace("https://", "").replace("http://", "").replace(".", "_").split("/")[0].split(":")[0]
+        clean_name = self.get_clean_domain_slug(website)
 
         start_time = time.time()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -362,7 +386,8 @@ class BackupService:
 
             act_res = remote_res.get("action_result") or {}
             if act_res.get("success"):
-                fn = act_res.get("filename") or f"mdf_{backup_type}_{clean_name}_{timestamp}.zip"
+                default_fn = f"{clean_name}-database.zip" if backup_type == "database" else f"{clean_name}.zip"
+                fn = act_res.get("filename") or default_fn
                 size_str = act_res.get("size") or "Unknown"
                 duration_str = act_res.get("duration") or f"{time.time() - start_time:.2f}s"
                 size_bytes = self.parse_size_to_bytes(size_str)
@@ -401,10 +426,10 @@ class BackupService:
         backup_dir = self.get_backup_dir(website)
         os.makedirs(backup_dir, exist_ok=True)
         wp_root = self.get_wordpress_root(website)
-        backup_id = f"mdf_{backup_type}_{clean_name}_{timestamp}"
+        backup_id = f"{clean_name}-database" if backup_type == "database" else clean_name
 
         if backup_type == "database" or (len(components) == 1 and components[0] == "db"):
-            sql_filename = f"db_dump_{timestamp}.sql"
+            sql_filename = f"{backup_id}.sql"
             sql_path = os.path.join(backup_dir, sql_filename)
             self._generate_sql_dump(wp_root, sql_path, clean_name)
             fsize = os.path.getsize(sql_path) if os.path.exists(sql_path) else 1024 * 1024

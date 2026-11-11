@@ -17,6 +17,7 @@ from src.api.v1 import (
     turnstile_api,
     team_api,
     monitoring_api,
+    reports_api,
 )
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -37,6 +38,7 @@ v1_router.include_router(billing_api.router)
 v1_router.include_router(billing_api.public_router)
 v1_router.include_router(notifications_api.router)
 v1_router.include_router(team_api.router)
+v1_router.include_router(reports_api.router)
 v1_router.include_router(admin_api.router)
 v1_router.include_router(learning_api.router)
 v1_router.include_router(learning_api.public_router)

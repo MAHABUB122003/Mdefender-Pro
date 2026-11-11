@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   Lock,
   Zap,
-  Globe
+  Globe,
+  Trash2
 } from 'lucide-react'
 import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
@@ -30,6 +31,8 @@ export default function BulkActivity() {
   const [toastMsg, setToastMsg] = useState(null)
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(false)
+  const [showClearModal, setShowClearModal] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   const showToast = (text, isError = false) => {
     setToastMsg({ text, isError })
@@ -83,6 +86,30 @@ export default function BulkActivity() {
       (log.badge && log.badge.toLowerCase().includes(term))
     )
   })
+
+  // Clear all fleet activity logs with confirmation
+  const handleClearLogs = async () => {
+    setClearing(true)
+    try {
+      const params = {}
+      if (selectedSiteId && selectedSiteId !== 'all') {
+        params.website_id = selectedSiteId
+      }
+      if (api.clearFleetActivityLogs) {
+        await api.clearFleetActivityLogs(params)
+      } else {
+        await api.userCleanLogs({ mode: 'all' })
+      }
+      setLogs([])
+      showToast('All activity & audit log records have been cleared.')
+    } catch (err) {
+      console.error('Failed to clear activity logs:', err)
+      showToast('Failed to clear activity logs: ' + err.message, true)
+    } finally {
+      setClearing(false)
+      setShowClearModal(false)
+    }
+  }
 
   // Export Real CSV file for download
   const handleExportLogs = () => {
@@ -156,7 +183,7 @@ export default function BulkActivity() {
   }
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
       {toastMsg && (
         <div style={{
           position: 'fixed',
@@ -195,58 +222,58 @@ export default function BulkActivity() {
       ) : (
         <>
           {/* Summary Metric Counters */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '22px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginBottom: '12px' }}>
             <div style={statCardStyle}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Total Operations
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#10201E', marginTop: '4px' }}>
+              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#10201E', marginTop: '3px' }}>
                 {totalOps} Events
               </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
-                Complete tenant ledger records
+              <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
+                90-day Auto-TTL tenant ledger
               </div>
             </div>
 
             <div style={statCardStyle}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Security &amp; Threats
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#0284C7', marginTop: '4px' }}>
+              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#0284C7', marginTop: '3px' }}>
                 {securityOps} Actions
               </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 IP bans, unblocks &amp; sessions
               </div>
             </div>
 
             <div style={statCardStyle}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Policy Dispatches
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#B45309', marginTop: '4px' }}>
+              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#B45309', marginTop: '3px' }}>
                 {configOps} Updates
               </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 WAF, Under Attack &amp; Rate limits
               </div>
             </div>
 
             <div style={statCardStyle}>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Backup &amp; Recovery
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '800', color: '#2A8B68', marginTop: '4px' }}>
+              <div style={{ fontSize: '17px', fontWeight: '700', letterSpacing: '-0.03em', color: '#2A8B68', marginTop: '3px' }}>
                 {backupOps} Snapshots
               </div>
-              <div style={{ fontSize: '12px', color: '#60716B', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', color: '#60716B', marginTop: '2px' }}>
                 Database &amp; filesystem archives
               </div>
             </div>
           </div>
 
           <div style={contentCardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {[
                   { id: 'all', label: 'All Operations' },
@@ -315,10 +342,34 @@ export default function BulkActivity() {
                   <Download size={13} />
                   <span>Export CSV</span>
                 </button>
+
+                <button
+                  onClick={() => setShowClearModal(true)}
+                  disabled={filteredLogs.length === 0}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #FECACA',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: filteredLogs.length === 0 ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    opacity: filteredLogs.length === 0 ? 0.6 : 1,
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Clear Activity & Audit Logs"
+                >
+                  <Trash2 size={13} />
+                  <span>Clear Logs</span>
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {filteredLogs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '48px 20px', color: '#60716B' }}>
                   <div style={{
@@ -352,21 +403,21 @@ export default function BulkActivity() {
                       key={log.id}
                       style={{
                         border: '1px solid #D9E1DC',
-                        borderRadius: '12px',
-                        padding: '16px 20px',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
                         background: '#FBFCFA',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         flexWrap: 'wrap',
-                        gap: '12px'
+                        gap: '10px'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '10px',
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '8px',
                           background: '#ffffff',
                           border: '1px solid #D9E1DC',
                           display: 'flex',
@@ -377,10 +428,10 @@ export default function BulkActivity() {
                         </div>
 
                         <div>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#10201E' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '800', color: '#10201E' }}>
                             {log.action}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#60716B', marginTop: '3px' }}>
+                          <div style={{ fontSize: '11.5px', color: '#60716B', marginTop: '2px' }}>
                             Operator: <strong>{log.user}</strong> • Target: <strong>{log.target}</strong>
                             {log.ip_address && log.ip_address !== 'system' && log.ip_address !== '127.0.0.1' && (
                               <span> • IP: <span style={{ fontFamily: 'monospace' }}>{log.ip_address}</span></span>
@@ -389,11 +440,11 @@ export default function BulkActivity() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={badgeStyle(bColors.bg, bColors.color, bColors.border)}>
                           {log.badge}
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#889895', minWidth: '130px', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#889895', minWidth: '125px', justifyContent: 'flex-end' }}>
                           <Clock size={12} />
                           <span>{log.time}</span>
                         </div>
@@ -406,24 +457,114 @@ export default function BulkActivity() {
           </div>
         </>
       )}
+
+      {/* CLEAR AUDIT LOGS CONFIRMATION MODAL */}
+      {showClearModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            maxWidth: '440px',
+            width: '100%',
+            padding: '22px 24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '10px',
+                background: '#FEF2F2', color: '#DC2626',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>
+                  Clear Activity &amp; Audit Logs?
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#64748B' }}>
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
+              Are you sure you want to permanently clear all <strong>{filteredLogs.length}</strong> activity audit logs? This will reset your fleet operational history.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                disabled={clearing}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '7px',
+                  border: '1px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#475569',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: clearing ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClearLogs}
+                disabled={clearing}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 16px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: clearing ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
+                  opacity: clearing ? 0.75 : 1
+                }}
+              >
+                <Trash2 size={13} />
+                <span>{clearing ? 'Clearing Logs...' : 'Yes, Clear All Logs'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 const contentCardStyle = {
   background: '#ffffff',
-  borderRadius: '16px',
+  borderRadius: '10px',
   border: '1px solid #D9E1DC',
-  padding: '24px 28px',
-  boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+  padding: '14px 18px',
+  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)'
 }
 
 const statCardStyle = {
   background: '#ffffff',
-  borderRadius: '16px',
+  borderRadius: '8px',
   border: '1px solid #D9E1DC',
-  padding: '20px 22px',
-  boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+  padding: '8px 12px',
+  boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
 }
 
 const primaryButtonStyle = {

@@ -43,6 +43,7 @@ import api from '../api/api'
 import userStore from '../utils/userStore'
 import copyToClipboard from '../utils/clipboard'
 import EmptyFleetState from './bulk/EmptyFleetState'
+import { formatMetricNumber, formatExactNumber } from '../utils/formatters'
 
 function formatRelativeTime(timestamp) {
   if (!timestamp) return 'Active now';
@@ -499,8 +500,10 @@ export default function UserBulkManagement() {
                 </div>
                 <span style={badgeStyle('#FEF3EB', '#D97735', '#FCD8BF')}>ANYCAST EDGE</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '700', color: '#10201E' }}>
-                {(wpWebsites.reduce((acc, w) => acc + (w.requests_today || 0), 0)).toLocaleString()}
+              <div
+                title={`${formatExactNumber(wpWebsites.reduce((acc, w) => acc + (w.requests_today || 0), 0))} requests today`}
+                style={{ fontSize: '28px', fontWeight: '700', color: '#10201E', cursor: 'default' }}>
+                {formatMetricNumber(wpWebsites.reduce((acc, w) => acc + (w.requests_today || 0), 0))}
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Fleet Ingress Today</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>Total requests filtered across connected sites</div>
@@ -513,8 +516,10 @@ export default function UserBulkManagement() {
                 </div>
                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>PROTECTION ACTIVE</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '700', color: '#10201E' }}>
-                {(wpWebsites.reduce((acc, w) => acc + (w.total_blocked || w.blocked_today || 0), 0)).toLocaleString()}
+              <div
+                title={`${formatExactNumber(wpWebsites.reduce((acc, w) => acc + (w.total_blocked || w.blocked_today || 0), 0))} mitigated threats`}
+                style={{ fontSize: '28px', fontWeight: '700', color: '#10201E', cursor: 'default' }}>
+                {formatMetricNumber(wpWebsites.reduce((acc, w) => acc + (w.total_blocked || w.blocked_today || 0), 0))}
               </div>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#10201E', marginTop: '4px' }}>Mitigated Threats</div>
               <div style={{ fontSize: '12px', color: '#60716B', marginTop: '2px' }}>SQLi, XSS &amp; bot attacks quarantined</div>

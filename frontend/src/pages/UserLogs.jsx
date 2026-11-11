@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/api';
 import userStore from '../utils/userStore';
 import copyToClipboard from '../utils/clipboard';
+import { formatMetricNumber, formatExactNumber } from '../utils/formatters';
 import {
   Shield,
   ShieldCheck,
@@ -649,16 +650,16 @@ export default function UserLogs() {
 
   // KPI Metrics computed from current stream
   const kpiMetrics = useMemo(() => {
-    const total = logs?.total || logsList.length || 0;
-    const blockedCount = logsList.filter(l => l?.status === 'blocked' || l?.action === 'blocked').length;
-    const allowedCount = logsList.filter(l => l?.status === 'allowed' || l?.action === 'allowed').length;
-    const uniqueIps = new Set(logsList.map(l => l?.ip).filter(Boolean)).size;
-    const blockedRatio = logsList.length > 0 ? Math.round((blockedCount / logsList.length) * 100) : 0;
+    const total = logs?.total !== undefined ? Number(logs.total) : logsList.length;
+    const blockedCount = logs?.total_blocked !== undefined ? Number(logs.total_blocked) : logsList.filter(l => l?.status === 'blocked' || l?.action === 'blocked').length;
+    const allowedCount = logs?.total_allowed !== undefined ? Number(logs.total_allowed) : logsList.filter(l => l?.status === 'allowed' || l?.action === 'allowed').length;
+    const uniqueIps = logs?.unique_ips !== undefined ? Number(logs.unique_ips) : new Set(logsList.map(l => l?.ip).filter(Boolean)).size;
+    const blockedRatio = total > 0 ? Math.round((blockedCount / total) * 100) : 0;
     return { total, blockedCount, allowedCount, uniqueIps, blockedRatio };
   }, [logs, logsList]);
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 48px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 48px' }}>
       {/* ========================================================================= */}
       {/* 1. CYBER COCKPIT EXECUTIVE HEADER & TELEMETRY KPI CARDS                   */}
       {/* ========================================================================= */}
@@ -666,8 +667,8 @@ export default function UserLogs() {
         background: '#FFFFFF',
         borderRadius: '16px',
         border: '1px solid #D9E1DC',
-        padding: '18px 24px',
-        marginBottom: '22px',
+        padding: '12px 18px',
+        marginBottom: '14px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
         position: 'relative'
       }}>
@@ -680,55 +681,27 @@ export default function UserLogs() {
           gap: '16px',
           marginBottom: '20px'
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: '#0B2522',
-                background: '#E8EEE8',
-                border: '1px solid #D9E1DC',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <Radio size={12} style={{ color: '#2A8B68' }} />
-                <span>Traffic &amp; Incident Feed</span>
-              </span>
-
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: '#2A8B68',
-                background: '#E8F3EC',
-                border: '1px solid #CFE2D4',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
-                <span>Live Edge Synchronized</span>
-              </span>
-            </div>
-            <h1 style={{
-              fontSize: '20px', fontWeight: '700',
-              color: '#10201E',
-              margin: '4px 0 2px',
-              letterSpacing: '-0.3px'
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: '#2A8B68',
+              background: '#E8F3EC',
+              border: '1px solid #CFE2D4',
+              padding: '3px 10px',
+              borderRadius: '20px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              Global Ingress Traffic &amp; Security Incident Logs
-            </h1>
-            <p style={{ fontSize: '12px', color: '#60716B', margin: 0, lineHeight: '1.45' }}>
-              Real-time ingress telemetry, blocked brute-force login attempts, and WAF inspection audit trail.
-            </p>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
+              <span>Live Ingress Feed</span>
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#10201E' }}>
+              Ingress Telemetry &amp; Threat Inspection
+            </span>
           </div>
 
           {/* Quick Actions — Clean Unified Enterprise Secondary Buttons */}
@@ -878,42 +851,45 @@ export default function UserLogs() {
           </div>
         </div>
 
-        {/* 4 Dynamic KPI Cards */}
+        {/* 4 Dynamic KPI Cards - High-Density Enterprise Row */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+          gap: '8px'
         }}>
           {/* KPI 1: Total Logs */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '16px',
+            borderRadius: '8px',
             border: '1px solid #D9E1DC',
-            padding: '18px 20px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            gap: '10px',
+            boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
           }}>
             <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
+              width: '24px',
+              height: '24px',
+              borderRadius: '6px',
               background: '#FBFCFA',
               border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#10201E'
+              color: '#10201E',
+              flexShrink: 0
             }}>
-              <Server size={18} color="#0B2522" />
+              <Server size={13} color="#0B2522" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Total Ingress Logs
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
-                {kpiMetrics.total.toLocaleString()}
+              <div
+                title={`${formatExactNumber(kpiMetrics.total)} Total Ingress Logs`}
+                style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
+                {formatMetricNumber(kpiMetrics.total)}
               </div>
             </div>
           </div>
@@ -921,33 +897,36 @@ export default function UserLogs() {
           {/* KPI 2: Blocked Threats (403) */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '16px',
+            borderRadius: '8px',
             border: '1px solid #D9E1DC',
-            padding: '18px 20px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            gap: '10px',
+            boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
           }}>
             <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
+              width: '24px',
+              height: '24px',
+              borderRadius: '6px',
               background: '#FBFCFA',
               border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#DC2626'
+              color: '#DC2626',
+              flexShrink: 0
             }}>
-              <ShieldAlert size={18} color="#DC2626" />
+              <ShieldAlert size={13} color="#DC2626" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 403 Intercepted Threats
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
-                {kpiMetrics.blockedCount.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: '700', color: '#0B2522', background: '#E8EEE8', padding: '2px 7px', borderRadius: '4px', border: '1px solid #D9E1DC' }}>{kpiMetrics.blockedRatio}% Drop</span>
+              <div
+                title={`${formatExactNumber(kpiMetrics.blockedCount)} Intercepted Threats`}
+                style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
+                {formatMetricNumber(kpiMetrics.blockedCount)} <span style={{ fontSize: '10px', fontWeight: '700', color: '#0B2522', background: '#E8EEE8', padding: '1px 5px', borderRadius: '4px', border: '1px solid #D9E1DC' }}>{kpiMetrics.blockedRatio}% Drop</span>
               </div>
             </div>
           </div>
@@ -955,33 +934,36 @@ export default function UserLogs() {
           {/* KPI 3: Allowed Clean Traffic */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '16px',
+            borderRadius: '8px',
             border: '1px solid #D9E1DC',
-            padding: '18px 20px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            gap: '10px',
+            boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
           }}>
             <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
+              width: '24px',
+              height: '24px',
+              borderRadius: '6px',
               background: '#FBFCFA',
               border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#2A8B68'
+              color: '#2A8B68',
+              flexShrink: 0
             }}>
-              <ShieldCheck size={18} color="#2A8B68" />
+              <ShieldCheck size={13} color="#2A8B68" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 200 Clean Ingress
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
-                {kpiMetrics.allowedCount.toLocaleString()}
+              <div
+                title={`${formatExactNumber(kpiMetrics.allowedCount)} Clean Ingress Logs`}
+                style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
+                {formatMetricNumber(kpiMetrics.allowedCount)}
               </div>
             </div>
           </div>
@@ -989,33 +971,36 @@ export default function UserLogs() {
           {/* KPI 4: Unique Hostile Origins */}
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '16px',
+            borderRadius: '8px',
             border: '1px solid #D9E1DC',
-            padding: '18px 20px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            gap: '10px',
+            boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
           }}>
             <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
+              width: '24px',
+              height: '24px',
+              borderRadius: '6px',
               background: '#FBFCFA',
               border: '1px solid #D9E1DC',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#60716B'
+              color: '#60716B',
+              flexShrink: 0
             }}>
-              <Crosshair size={18} color="#60716B" />
+              <Crosshair size={13} color="#60716B" />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#60716B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Unique Source IPs
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', marginTop: '2px' }}>
-                {kpiMetrics.uniqueIps} <span style={{ fontSize: '11px', fontWeight: '600', color: '#60716B' }}>distinct</span>
+              <div
+                title={`${formatExactNumber(kpiMetrics.uniqueIps)} Unique Hostile Origin IPs`}
+                style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: '1.1', marginTop: '1px', cursor: 'default' }}>
+                {formatMetricNumber(kpiMetrics.uniqueIps)} <span style={{ fontSize: '10.5px', fontWeight: '500', color: '#60716B' }}>distinct</span>
               </div>
             </div>
           </div>
@@ -1875,7 +1860,7 @@ export default function UserLogs() {
             gap: '12px'
           }}>
             <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>
-              Showing Page <strong style={{ color: '#10201E' }}>{page}</strong> of <strong style={{ color: '#10201E' }}>{logs.total_pages}</strong> ({logs.total.toLocaleString()} total security events)
+              Showing Page <strong style={{ color: '#10201E' }}>{page}</strong> of <strong style={{ color: '#10201E' }}>{logs.total_pages}</strong> (<span title={`${formatExactNumber(logs.total)} total security events`}>{formatMetricNumber(logs.total)}</span> total security events)
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

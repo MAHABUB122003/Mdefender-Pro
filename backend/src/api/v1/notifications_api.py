@@ -54,12 +54,12 @@ async def save_preferences(request: Request, user=Depends(get_current_user)):
 async def send_test_notification(request: Request, user=Depends(get_current_user)):
     service = NotificationService()
     title = "MDefender Pro Security Verification Test"
-    message = "Synthetic security incident dispatch test successfully verified notification routing."
+    message = "Synthetic security incident dispatch test successfully verified dashboard, email, and webhook routing."
     service.notify(
         user_id=user["id"],
         title=title,
         message=message,
-        category="critical_attack",
+        category="website_connected",
         data={"test": True, "sender": "Security Operations Gateway", "website_domain": "All Protected Domains"},
         force=True
     )
@@ -68,9 +68,22 @@ async def send_test_notification(request: Request, user=Depends(get_current_user
         user_id=user["id"],
         action="test_alert_dispatched",
         ip_address=ip,
-        details={"title": title, "category": "critical_attack"}
+        details={"title": title, "category": "test"}
     )
-    return success(message="Test security alert dispatched successfully.")
+    return success(message="Test security alert dispatched to dashboard & configured email.")
+
+
+@router.post("/test-webhook")
+async def test_webhook_endpoint(request: Request, user=Depends(get_current_user)):
+    body = await request.json()
+    service = NotificationService()
+    prefs = service.get_preferences(user["id"])
+    url = (body.get("webhook_url") or prefs.get("webhook_url") or "").strip()
+    secret = (body.get("webhook_secret") or prefs.get("webhook_secret") or "").strip()
+    ok, msg = service.test_webhook_sync(user["id"], url, secret)
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return success(message=msg)
 
 
 @router.post("/read-all")

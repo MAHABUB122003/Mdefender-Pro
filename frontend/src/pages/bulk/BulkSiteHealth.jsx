@@ -169,7 +169,7 @@ export default function BulkSiteHealth() {
   const scoreTheme = getScoreColor(perfScore)
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
       {toastMsg && (
         <div style={{
           position: 'fixed',
@@ -447,7 +447,7 @@ export default function BulkSiteHealth() {
               </div>
 
               {/* 4 Core Web Vitals Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginBottom: '14px' }}>
                 {/* 1. LCP */}
                 <div style={statCardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -457,7 +457,7 @@ export default function BulkSiteHealth() {
                     <TrendingUp size={15} color="#0B2522" />
                   </div>
                   <div style={{
-                    fontSize: '24px',
+                    fontSize: '19px',
                     fontWeight: '800',
                     color: lcpSec ? (parseFloat(lcpSec) <= 2.5 ? '#15803D' : '#B45309') : '#64748B',
                     marginTop: '6px'
@@ -491,7 +491,7 @@ export default function BulkSiteHealth() {
                     <Zap size={15} color="#E8792F" />
                   </div>
                   <div style={{
-                    fontSize: '24px',
+                    fontSize: '19px',
                     fontWeight: '800',
                     color: fcpSec ? (parseFloat(fcpSec) <= 1.8 ? '#15803D' : '#B45309') : '#64748B',
                     marginTop: '6px'
@@ -525,7 +525,7 @@ export default function BulkSiteHealth() {
                     <Layers size={15} color="#0B2522" />
                   </div>
                   <div style={{
-                    fontSize: '24px',
+                    fontSize: '19px',
                     fontWeight: '800',
                     color: clsVal !== null ? (clsVal <= 0.1 ? '#15803D' : '#B45309') : '#64748B',
                     marginTop: '6px'
@@ -559,7 +559,7 @@ export default function BulkSiteHealth() {
                     <Clock size={15} color="#E8792F" />
                   </div>
                   <div style={{
-                    fontSize: '24px',
+                    fontSize: '19px',
                     fontWeight: '800',
                     color: perfTtfb ? (perfTtfb <= 300 ? '#15803D' : '#B45309') : '#64748B',
                     marginTop: '6px'
@@ -685,7 +685,7 @@ export default function BulkSiteHealth() {
               )}
 
               {/* 4 Real-time Diagnostic Summary Metric Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginBottom: '14px' }}>
                 <div style={statCardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -951,7 +951,7 @@ const statCardStyle = {
   background: '#ffffff',
   borderRadius: '16px',
   border: '1px solid #D9E1DC',
-  padding: '22px 24px',
+  padding: '12px 16px',
   boxShadow: '0 2px 12px rgba(11, 37, 34, 0.03)'
 }
 

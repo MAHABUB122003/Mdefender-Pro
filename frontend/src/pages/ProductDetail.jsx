@@ -86,7 +86,7 @@ export const PRODUCTS_DATA = {
       { step: '01', title: 'BGP Anycast Ingress', desc: 'Client DNS resolves to the closest of 240+ global PoPs via low-latency BGP Anycast routing.', time: '< 1ms', icon: Globe },
       { step: '02', title: 'TLS 1.3 Termination', desc: 'Edge proxy terminates SSL/TLS in <1ms with modern elliptic-curve cipher suites and HTTP/2/3 multiplexing.', time: '0.8ms', icon: Lock },
       { step: '03', title: 'AST Protocol De-obfuscation', desc: 'Normalizes Unicode, percent-encoding, and SQL comment splitting (e.g. UN/**/ION SEL/**/ECT) into abstract syntax trees.', time: '0.04ms', icon: FileCode },
-      { step: '04', title: 'Deterministic & ML Ring', desc: 'Evaluates payload against 2M+ compiled Hyperscan patterns and linear SGD classifier in 0.12ms.', time: '0.12ms', icon: Cpu },
+      { step: '04', title: 'Deterministic & ML Ring', desc: 'Evaluates payload against compiled Hyperscan DFA state machines and SGD classifier in 0.12ms.', time: '0.12ms', icon: Cpu },
       { step: '05', title: 'Clean Origin Forwarding', desc: 'Legitimate traffic is securely forwarded over encrypted backhaul to your origin server; attacks get an instant 403.', time: '0.00ms', icon: ShieldCheck }
     ],
     techStack: [
@@ -197,18 +197,18 @@ async def verify_mdefender_header(request: Request, call_next):
 
   wordpress: {
     slug: 'wordpress',
-    title: 'Official WordPress Security Plugin',
+    title: 'WordPress Fleet SaaS & RASP Suite',
     shortName: 'WordPress Suite',
-    badge: 'OFFICIAL PLUGIN v4.1.0 · MUST-USE KERNEL HOOK',
-    category: 'CMS Application Hardening',
-    headline: 'Native WordPress & WooCommerce Armor with Pre-Boot PHP Interception',
-    subtitle: 'Direct plugin integration bringing MDefender Pro Cloud Anycast WAF, deep PHP webshell quarantine, and wp-config hardening directly into your WordPress dashboard with 1-click cloud synchronization.',
+    badge: 'WORDPRESS FLEET SAAS · 5.32M CHECKSUMS',
+    category: 'Fleet Management & Host Hardening',
+    headline: 'WordPress Fleet SaaS with Pre-Boot RASP & 1-Click Remediation',
+    subtitle: 'Govern 10, 50, or 100+ WordPress sites from one cloud console. Features 5.32M+ official core/plugin checksum verification, safe updates with autonomous <800ms rollback, and 16-point host hardening.',
     accentColor: '#28745D',
     statHighlights: [
-      { label: 'Database Overhead', value: '0.00ms', sub: 'mu-plugins pre-boot interceptor' },
-      { label: 'PHP Webshell Signatures', value: '30+ Zero-Days', sub: 'c99, r57, b374k, WSO heuristics' },
-      { label: 'XML-RPC Brute Force Shield', value: '100% Blocked', sub: 'Multi-call bot attack neutralization' },
-      { label: 'Plugin Package Size', value: '1.4 MB', sub: 'Zero external bloated dependencies' }
+      { label: 'Official Checksum DB', value: '5.32M+', sub: 'Core & plugin pristine hashes' },
+      { label: 'Safe Updates Engine', value: '< 800ms', sub: 'Autonomous WSOD rollback' },
+      { label: 'Post-Hack Remediation', value: '1-Click', sub: 'Quarantine & pristine file restore' },
+      { label: 'RASP Memory Hook', value: '0.00ms', sub: 'mu-plugins pre-boot interceptor' }
     ],
     problemSolution: {
       problem: {
@@ -325,18 +325,18 @@ wp mdefender scan --quarantine-threats=true`
 
   'neural-engine': {
     slug: 'neural-engine',
-    title: '6.5M+ Threat Neural Engine',
-    shortName: 'Neural ML',
-    badge: 'MACHINE LEARNING · 99.23% PRECISION',
-    category: 'Machine Learning Threat Classification',
-    headline: 'Real-Time Neural Tokenization & Zero-Day Interception',
-    subtitle: 'Trained on 6,501,208 hostile payloads to vectorize token distribution entropy, AST syntax trees, and polymorphic mutations that easily bypass static signature rules.',
+    title: 'Deep Malware & Threat Intelligence Core',
+    shortName: 'Malware & Neural Core',
+    badge: 'AUTONOMOUS ML · 5.32M CHECKSUMS',
+    category: 'Integrity Scanning & Zero-Day Threat Classification',
+    headline: 'Line-Rate Malware Hunter & Autonomous Zero-Day Core',
+    subtitle: 'Combines a 5.32M+ official WordPress core and plugin checksum database with character n-gram tokenization and YARA webshell heuristics to detect novel zero-days and hidden backdoors in under 0.12ms.',
     accentColor: '#6366F1',
     statHighlights: [
-      { label: 'Training Corpus', value: '6,501,208', sub: 'Curated malicious & benign payloads' },
-      { label: 'Classification Precision', value: '99.23%', sub: 'Near-zero false positive rate' },
-      { label: 'SGD Inference Time', value: '0.12ms', sub: 'Linear Stochastic Gradient Descent' },
-      { label: 'Model Hot-Swap', value: '0.00s', sub: 'Continuous attack learning sync' }
+      { label: 'Official Checksum DB', value: '5.32M+', sub: 'Clean WordPress.org SHA-256' },
+      { label: 'Classification Precision', value: '99.75%', sub: 'Verified across enterprise traffic' },
+      { label: 'SGD Inference Time', value: '< 0.12ms', sub: 'Linear Stochastic Gradient Descent' },
+      { label: 'WebShell Heuristics', value: 'YARA + AST', sub: 'c99, r57, WSO & base64 eval' }
     ],
     problemSolution: {
       problem: {
@@ -349,14 +349,14 @@ wp mdefender scan --quarantine-threats=true`
       solution: {
         badge: 'THE NEURAL ADVANTAGE',
         title: 'Character N-Gram Vectorization & Syntactic Entropy',
-        desc: 'MDefender Pro’s Neural Engine breaks incoming payload strings into sliding 3-to-5 character n-grams and computes syntactic entropy. Even if an attacker invents a brand new obfuscation method, the structural distribution of hostile tokens triggers machine learning anomaly classification with 99.23% precision.',
-        impact: 'Defeats automated AI-crafted attack payloads, blocks novel zero-days on first encounter, and delivers an ultra-low 0.75% false positive rate.',
+        desc: 'MDefender Pro’s Neural Engine breaks incoming payload strings into sliding 3-to-5 character n-grams and computes syntactic entropy. Even if an attacker invents a brand new obfuscation method, the structural distribution of hostile tokens triggers machine learning anomaly classification with 99.75% precision.',
+        impact: 'Defeats automated AI-crafted attack payloads, blocks novel zero-days on first encounter, and delivers an ultra-low 0.17% false positive rate.',
         vectorSample: 'Verdict: BLOCKED (403) | Neural ML Anomaly: 0.9923 | Syntactic Entropy: 4.82 bits'
       }
     },
     lifecycle: [
       { step: '01', title: 'Payload Tokenization', desc: 'Splits raw ingress text into overlapping character n-grams (e.g., "uni", "nio", "ion").', time: '0.02ms', icon: Boxes },
-      { step: '02', title: 'TF-IDF Matrix Vectorization', desc: 'Maps token occurrences against term frequency weights learned across 6.5M+ attack samples.', time: '0.03ms', icon: Activity },
+      { step: '02', title: 'TF-IDF Matrix Vectorization', desc: 'Maps token occurrences against term frequency weights learned across comprehensive attack corpora.', time: '0.03ms', icon: Activity },
       { step: '03', title: 'Syntactic Entropy Scoring', desc: 'Measures Shannon character entropy to identify hidden hex wrappers and base64 shells.', time: '0.02ms', icon: Sparkles },
       { step: '04', title: 'Sub-Millisecond SGD Inference', desc: 'Executes high-speed linear Stochastic Gradient Descent classifier in 0.12ms.', time: '0.12ms', icon: Cpu },
       { step: '05', title: 'Multi-Class Anomaly Verdict', desc: 'Outputs confidence probability score and categorizes attack type (SQLi, XSS, RCE, SSRF).', time: '0.00ms', icon: ShieldCheck }
@@ -970,7 +970,7 @@ export default function ProductDetail() {
         ring: 'Ring 3: Autonomous Machine Intelligence & Prompt Shields',
         color: '#6366F1',
         products: [PRODUCTS_DATA['neural-engine'], PRODUCTS_DATA['ai-gateway']],
-        role: 'Trained on 6.5M+ attack vectors and 639K+ prompt injections to vectorize syntactic token entropy, stopping novel polymorphic zero-days and LLM jailbreaks.'
+        role: 'Autonomous neural intelligence and 5.32M+ checksum engine vectorizing syntactic token entropy to stop novel polymorphic zero-days, webshells, and LLM prompt injections.'
       },
       {
         ring: 'Ring 4: Host Kernel Hardening & Invisible Client Verification',
@@ -985,44 +985,44 @@ export default function ProductDetail() {
         <PublicNavbar />
 
         {/* Hero Section */}
-        <section style={{ padding: '130px 24px 60px', maxWidth: 1240, margin: '0 auto', textAlign: 'center' }}>
+        <section style={{ padding: '120px 24px 50px', maxWidth: 1240, margin: '0 auto', textAlign: 'center' }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            padding: '6px 16px',
+            padding: '5px 14px',
             borderRadius: 30,
             background: '#FEF3EB',
             border: '1px solid #FCD8BF',
             color: '#D97735',
-            fontSize: 12.5,
+            fontSize: 11.5,
             fontWeight: 800,
             letterSpacing: '0.6px',
             textTransform: 'uppercase',
-            marginBottom: 20
+            marginBottom: 18
           }}>
-            <ShieldCheck size={16} /> Autonomous Defense-in-Depth Suite
+            <ShieldCheck size={15} /> Autonomous Defense-in-Depth Suite
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(36px, 4.8vw, 62px)',
+            fontSize: 'clamp(28px, 3.8vw, 46px)',
             fontWeight: 900,
-            letterSpacing: '-1.5px',
-            lineHeight: 1.12,
+            letterSpacing: '-1.2px',
+            lineHeight: 1.15,
             color: '#10201E',
             maxWidth: 960,
-            margin: '0 auto 20px'
+            margin: '0 auto 18px'
           }}>
             The Modern Cyber Defense Architecture{' '}
             <span style={{ color: '#E8792F' }}>Engineered for Zero-Trust Clouds</span>
           </h1>
 
           <p style={{
-            fontSize: 'clamp(16px, 1.8vw, 19px)',
+            fontSize: 'clamp(14.5px, 1.5vw, 16.5px)',
             color: '#4A5D5A',
             lineHeight: 1.65,
             maxWidth: 820,
-            margin: '0 auto 36px'
+            margin: '0 auto 32px'
           }}>
             MDefender Pro is not a collection of disconnected point tools. It is an integrated multi-ring defense fabric: from Anycast flood scrubbing and sub-millisecond Cloud WAF to machine learning zero-day vectorization and native WordPress kernel protection.
           </p>
@@ -1259,12 +1259,12 @@ export default function ProductDetail() {
             </div>
 
             <h1 style={{
-              fontSize: 'clamp(32px, 4vw, 48px)',
+              fontSize: 'clamp(26px, 3.4vw, 42px)',
               fontWeight: 900,
-              lineHeight: 1.15,
-              letterSpacing: '-1.2px',
+              lineHeight: 1.18,
+              letterSpacing: '-1px',
               color: '#10201E',
-              margin: '0 0 18px'
+              margin: '0 0 16px'
             }}>
               {activeProduct.headline}
             </h1>

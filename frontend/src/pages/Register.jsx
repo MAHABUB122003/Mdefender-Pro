@@ -169,7 +169,7 @@ export default function Register() {
             margin: 0,
           }}
         >
-          Use your personal email to create a secure workspace.
+          Set up your personal or enterprise security workspace in seconds.
         </p>
       </div>
 
@@ -618,6 +618,9 @@ export default function Register() {
       </div>
 
       <style>{`
+        .auth-input-field:hover {
+          border-color: #10201E !important;
+        }
         .auth-input-field:focus {
           border-color: #E8792F !important;
           box-shadow: 0 0 0 3px rgba(232, 121, 47, 0.14) !important;
@@ -628,6 +631,7 @@ export default function Register() {
         }
         .auth-google-btn:hover {
           background-color: #F7FAF7 !important;
+          border-color: #10201E !important;
         }
       `}</style>
     </AuthSplitLayout>

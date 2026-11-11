@@ -293,7 +293,7 @@ export default function BulkCore() {
   const outdatedCount = coreData.needs_update_count || 0
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
       {toastMsg && (
         <div style={{
           position: 'fixed',
@@ -336,7 +336,7 @@ export default function BulkCore() {
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: '18px',
-            marginBottom: '24px'
+            marginBottom: '14px'
           }}>
             {/* Card 1: WordPress.org Official Release */}
             <div style={kpiCardStyle}>
@@ -345,7 +345,7 @@ export default function BulkCore() {
                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>WP.ORG LIVE</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                   WordPress {latestOfficialVer}
                 </span>
               </div>
@@ -373,7 +373,7 @@ export default function BulkCore() {
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                   {coreData.up_to_date_count} / {coreData.total_sites || displayedSites.length}
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#60716B' }}>Sites Updated</span>
@@ -399,7 +399,7 @@ export default function BulkCore() {
                 <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>3,224 HASHES</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '19px', fontWeight: '700', letterSpacing: '-0.04em', color: '#10201E', letterSpacing: '-0.02em' }}>
                   100%
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#2A8B68' }}>Integrity Target</span>
@@ -905,7 +905,7 @@ const kpiCardStyle = {
   background: '#ffffff',
   borderRadius: '16px',
   border: '1px solid #D9E1DC',
-  padding: '22px 24px',
+  padding: '12px 16px',
   boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
 }
 

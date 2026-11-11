@@ -157,37 +157,76 @@ export default function UserTools({ isBulk = false, activeMode }) {
   const [geoViewMode, setGeoViewMode] = useState('cards') // 'cards' | 'table'
   const [blockedSearchQuery, setBlockedSearchQuery] = useState('')
 
-  // --- AUTO-BLOCK & RATE LIMIT STATE ---
-  const [securityConfig, setSecurityConfig] = useState({
-    auto_block_enabled: true,
-    auto_block_threshold: 10,
-    auto_block_window_hours: 24,
-    auto_block_duration_hours: 24,
-    rate_limit_per_minute: 120,
-    ddos_mitigation_enabled: true,
-    admin_bruteforce_protection: true,
-    auto_block_permanent: false,
-    login_lockout_threshold: 5,
-    login_lockout_duration_minutes: 60,
-    login_lockout_scope: 'gateway_only',
-    rate_limit_action: 'throttle_429',
-    hold_press_enabled: false,
-    hold_press_duration_ms: 2000,
-    turnstile_enabled: false,
-    turnstile_mode: 'site_wide',
-    turnstile_theme: 'auto',
-    turnstile_site_key: '',
-    turnstile_secret_key: '',
-    two_factor_enabled: false,
-    two_factor_scope: 'all',
-    two_factor_roles: 'admins',
-    two_factor_method_totp: true,
-    two_factor_method_email: true,
-    two_factor_method_backup: true,
-    two_factor_max_attempts: 3,
-    two_factor_lockout_hours: 24,
-    two_factor_remember_days: 0,
-    two_factor_domain_overrides: {},
+  // --- AUTO-BLOCK & RATE LIMIT STATE (Optimistic instant cache load to eliminate latency) ---
+  const [securityConfig, setSecurityConfig] = useState(() => {
+    try {
+      const cached = typeof localStorage !== 'undefined' ? localStorage.getItem('mdf_cached_security_config') : null
+      if (cached) {
+        return {
+          auto_block_enabled: true,
+          auto_block_threshold: 10,
+          auto_block_window_hours: 24,
+          auto_block_duration_hours: 24,
+          rate_limit_per_minute: 120,
+          ddos_mitigation_enabled: true,
+          admin_bruteforce_protection: true,
+          auto_block_permanent: false,
+          login_lockout_threshold: 5,
+          login_lockout_duration_minutes: 60,
+          login_lockout_scope: 'gateway_only',
+          rate_limit_action: 'throttle_429',
+          hold_press_enabled: false,
+          hold_press_duration_ms: 2000,
+          turnstile_enabled: false,
+          turnstile_mode: 'site_wide',
+          turnstile_theme: 'auto',
+          turnstile_site_key: '',
+          turnstile_secret_key: '',
+          two_factor_enabled: false,
+          two_factor_scope: 'all',
+          two_factor_roles: 'admins',
+          two_factor_method_totp: true,
+          two_factor_method_email: true,
+          two_factor_method_backup: true,
+          two_factor_max_attempts: 3,
+          two_factor_lockout_hours: 24,
+          two_factor_remember_days: 0,
+          two_factor_domain_overrides: {},
+          ...JSON.parse(cached)
+        }
+      }
+    } catch (e) {}
+    return {
+      auto_block_enabled: true,
+      auto_block_threshold: 10,
+      auto_block_window_hours: 24,
+      auto_block_duration_hours: 24,
+      rate_limit_per_minute: 120,
+      ddos_mitigation_enabled: true,
+      admin_bruteforce_protection: true,
+      auto_block_permanent: false,
+      login_lockout_threshold: 5,
+      login_lockout_duration_minutes: 60,
+      login_lockout_scope: 'gateway_only',
+      rate_limit_action: 'throttle_429',
+      hold_press_enabled: false,
+      hold_press_duration_ms: 2000,
+      turnstile_enabled: false,
+      turnstile_mode: 'site_wide',
+      turnstile_theme: 'auto',
+      turnstile_site_key: '',
+      turnstile_secret_key: '',
+      two_factor_enabled: false,
+      two_factor_scope: 'all',
+      two_factor_roles: 'admins',
+      two_factor_method_totp: true,
+      two_factor_method_email: true,
+      two_factor_method_backup: true,
+      two_factor_max_attempts: 3,
+      two_factor_lockout_hours: 24,
+      two_factor_remember_days: 0,
+      two_factor_domain_overrides: {},
+    }
   })
   const [connectedWebsites, setConnectedWebsites] = useState([])
 // Authentic RFC 3548 Base32 Secret Generator (A-Z, 2-7)
@@ -255,9 +294,7 @@ const generateRecoveryCodes = () => {
   const [verifying2Fa, setVerifying2Fa] = useState(false)
   const [loading2FaConfig, setLoading2FaConfig] = useState(false)
   const [twoFaQrDataUrl, setTwoFaQrDataUrl] = useState('')
-  const [selectedDdosSite, setSelectedDdosSite] = useState(
-    searchParams.get('website_id') || searchParams.get('site_id') || searchParams.get('site') || 'all'
-  )
+  const selectedDdosSite = selectedSiteId || searchParams.get('website_id') || searchParams.get('site_id') || searchParams.get('site') || 'all'
   const [togglingUnderAttack, setTogglingUnderAttack] = useState(false)
   const [ddosFeedbackMsg, setDdosFeedbackMsg] = useState('')
 
@@ -849,7 +886,15 @@ Report Generated: ${new Date().toISOString()}`
       setConfigLoading(true)
       const res = await api.getUserSecurityConfig()
       if (res?.config) {
-        setSecurityConfig(res.config)
+        setSecurityConfig(prev => {
+          const merged = { ...prev, ...res.config }
+          try {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('mdf_cached_security_config', JSON.stringify(merged))
+            }
+          } catch (e) {}
+          return merged
+        })
       }
     } catch (err) {
       console.error(err)
@@ -954,6 +999,77 @@ Report Generated: ${new Date().toISOString()}`
     setDemoHolding(false)
     setDemoProgress(0)
     setDemoStatus('idle')
+  }
+
+  const handleToggleHoldPress = async () => {
+    const nextVal = !securityConfig.hold_press_enabled
+    const updated = { ...securityConfig, hold_press_enabled: nextVal }
+    setSecurityConfig(updated)
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('mdf_cached_security_config', JSON.stringify(updated))
+      }
+    } catch (e) {}
+    setAdminLoginFeedback(nextVal ? '⚡ Enabling Hold Press...' : '⚡ Disabling Hold Press...')
+    try {
+      const payload = {
+        hold_press_enabled: nextVal,
+        hold_press_duration_ms: Number(securityConfig.hold_press_duration_ms) || 2000,
+        website_id: selectedDdosSite || 'all'
+      }
+      const res = await api.updateUserSecurityConfig(payload)
+      if (res?.status === 'success' || (res && res.status !== 'error')) {
+        setAdminLoginFeedback(nextVal ? '✓ Biometric Hold Press active & synchronized!' : '✓ Biometric Hold Press disabled & synchronized!')
+        if (res.config) {
+          const merged = { ...updated, ...res.config }
+          setSecurityConfig(merged)
+          try {
+            localStorage.setItem('mdf_cached_security_config', JSON.stringify(merged))
+          } catch (e) {}
+        }
+        setTimeout(() => setAdminLoginFeedback(''), 3000)
+      } else {
+        setAdminLoginFeedback(res?.message || 'Failed to sync.')
+      }
+    } catch (err) {
+      setAdminLoginFeedback(err.message || 'Error updating.')
+    }
+  }
+
+  const handleToggleVisitorBotShield = async () => {
+    const nextVal = !securityConfig.turnstile_enabled
+    const updated = { ...securityConfig, turnstile_enabled: nextVal }
+    setSecurityConfig(updated)
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('mdf_cached_security_config', JSON.stringify(updated))
+      }
+    } catch (e) {}
+    setVisitorBotFeedback(nextVal ? '⚡ Enabling Visitor Bot Shield...' : '⚡ Disabling Bot Shield...')
+    try {
+      const payload = {
+        turnstile_enabled: nextVal,
+        turnstile_mode: securityConfig.turnstile_mode || 'site_wide',
+        turnstile_theme: securityConfig.turnstile_theme || 'auto',
+        website_id: selectedDdosSite || 'all'
+      }
+      const res = await api.updateUserSecurityConfig(payload)
+      if (res?.status === 'success' || (res && res.status !== 'error')) {
+        setVisitorBotFeedback(nextVal ? '✓ Visitor Bot Shield active & synchronized!' : '✓ Visitor Bot Shield disabled & synchronized!')
+        if (res.config) {
+          const merged = { ...updated, ...res.config }
+          setSecurityConfig(merged)
+          try {
+            localStorage.setItem('mdf_cached_security_config', JSON.stringify(merged))
+          } catch (e) {}
+        }
+        setTimeout(() => setVisitorBotFeedback(''), 3000)
+      } else {
+        setVisitorBotFeedback(res?.message || 'Failed to sync.')
+      }
+    } catch (err) {
+      setVisitorBotFeedback(err.message || 'Error updating.')
+    }
   }
 
   const handleSaveAdminLoginSecurity = async (e) => {
@@ -1234,7 +1350,7 @@ Generated by MDefender Pro Cloud Security Matrix`
   }, [activeTab])
 
   return (
-    <div className="user-tools-page" style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div className="user-tools-page" style={{ maxWidth: '1680px', margin: '0 auto', padding: '4px 0 60px' }}>
       <BulkHeader
         title={headerConfig.title}
         subtitle={headerConfig.subtitle}
@@ -3157,15 +3273,15 @@ Generated by MDefender Pro Cloud Security Matrix`
           <div style={{
             background: '#ffffff',
             border: '1px solid #D9E1DC',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            marginBottom: '24px',
+            borderRadius: '12px',
+            padding: '12px 18px',
+            marginBottom: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            gap: '12px',
+            boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
@@ -3221,11 +3337,11 @@ Generated by MDefender Pro Cloud Security Matrix`
           {/* UNDER ATTACK MODE (DDoS PoW SHIELD) — COMPACT ENTERPRISE CAPSULE */}
           {/* ========================================================================= */}
           <div className="card" style={{
-            padding: '16px 20px',
-            borderRadius: '12px',
+            padding: '10px 16px',
+            borderRadius: '10px',
             border: '1px solid #D9E1DC',
             background: 'var(--card-bg, #ffffff)',
-            marginBottom: '20px',
+            marginBottom: '14px',
             boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
             transition: 'all 0.2s ease'
           }}>
@@ -3262,25 +3378,6 @@ Generated by MDefender Pro Cloud Security Matrix`
 
               {/* Target Website & Master Action Toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                {connectedWebsites.length > 1 && (
-                  <select
-                    value={selectedDdosSite}
-                    onChange={(e) => setSelectedDdosSite(e.target.value)}
-                    style={{
-                      height: '34px', padding: '0 10px', borderRadius: '6px',
-                      border: '1px solid #D9E1DC', background: '#ffffff',
-                      color: '#10201E', fontSize: '12px', fontWeight: 600, outline: 'none'
-                    }}
-                  >
-                    <option value="all">Global Fleet (All Sites)</option>
-                    {connectedWebsites.map(w => (
-                      <option key={w.id || w._id} value={w.id || w._id}>
-                        {w.domain || w.name || w.url}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
                 <button
                   type="button"
                   onClick={() => handleToggleUnderAttack(selectedDdosSite, isSelectedSiteUnderAttack)}
@@ -3312,12 +3409,12 @@ Generated by MDefender Pro Cloud Security Matrix`
           {/* SECTION 1: WORDPRESS ADMIN LOGIN — BIOMETRIC PRESS & HOLD DEFENSE */}
           {/* ========================================================================= */}
           <div className="card" style={{
-            padding: '26px 28px',
-            borderRadius: '16px',
+            padding: '14px 18px',
+            borderRadius: '12px',
             border: securityConfig.hold_press_enabled ? '1.5px solid rgba(42, 139, 104, 0.4)' : '1px solid #D9E1DC',
             background: 'var(--card-bg, #ffffff)',
-            marginBottom: '24px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+            marginBottom: '16px',
+            boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
             position: 'relative'
           }}>
             {/* Header with Switch */}
@@ -3354,7 +3451,7 @@ Generated by MDefender Pro Cloud Security Matrix`
               {/* Master Toggle */}
               <div
                 id="toggle-admin-hold-press"
-                onClick={() => setSecurityConfig(prev => ({ ...prev, hold_press_enabled: !prev.hold_press_enabled }))}
+                onClick={handleToggleHoldPress}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', background: '#F8FAF9', padding: '8px 14px', borderRadius: '10px', border: '1px solid #D9E1DC', userSelect: 'none' }}
               >
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#10201E' }}>
@@ -3541,12 +3638,12 @@ Generated by MDefender Pro Cloud Security Matrix`
           {/* SECTION 2: WEBSITE VISITORS & PUBLIC FORMS — MDEFENDER PRO BOT SHIELD */}
           {/* ========================================================================= */}
           <div className="card" style={{
-            padding: '26px 28px',
-            borderRadius: '16px',
+            padding: '14px 18px',
+            borderRadius: '12px',
             border: securityConfig.turnstile_enabled ? '1.5px solid rgba(243, 138, 62, 0.4)' : '1px solid #D9E1DC',
             background: 'var(--card-bg, #ffffff)',
-            marginBottom: '24px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            marginBottom: '16px',
+            boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)'
           }}>
             {/* Header with Switch */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
@@ -3582,7 +3679,7 @@ Generated by MDefender Pro Cloud Security Matrix`
               {/* Master Toggle */}
               <div
                 id="toggle-visitor-bot-shield"
-                onClick={() => setSecurityConfig(prev => ({ ...prev, turnstile_enabled: !prev.turnstile_enabled }))}
+                onClick={handleToggleVisitorBotShield}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', background: '#F8FAF9', padding: '8px 14px', borderRadius: '10px', border: '1px solid #D9E1DC', userSelect: 'none' }}
               >
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#10201E' }}>
@@ -3888,10 +3985,10 @@ Generated by MDefender Pro Cloud Security Matrix`
               ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.03) 100%)'
               : '#ffffff',
             border: isSelectedSiteUnderAttack ? '1.5px solid #EF4444' : '1px solid #D9E1DC',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            marginBottom: '20px',
-            boxShadow: isSelectedSiteUnderAttack ? '0 4px 20px rgba(239, 68, 68, 0.12)' : '0 4px 20px rgba(11, 37, 34, 0.04)',
+            borderRadius: '12px',
+            padding: '12px 18px',
+            marginBottom: '14px',
+            boxShadow: isSelectedSiteUnderAttack ? '0 4px 16px rgba(239, 68, 68, 0.10)' : '0 2px 8px rgba(11, 37, 34, 0.03)',
             transition: 'all 0.3s ease'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -3930,25 +4027,6 @@ Generated by MDefender Pro Cloud Security Matrix`
 
               {/* Target Website & Master Action Toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                {connectedWebsites.length > 1 && (
-                  <select
-                    value={selectedDdosSite}
-                    onChange={(e) => setSelectedDdosSite(e.target.value)}
-                    style={{
-                      height: '34px', padding: '0 10px', borderRadius: '6px',
-                      border: '1px solid #D9E1DC', background: '#ffffff',
-                      color: '#10201E', fontSize: '12px', fontWeight: 600, outline: 'none'
-                    }}
-                  >
-                    <option value="all">Global Fleet (All Sites)</option>
-                    {connectedWebsites.map(w => (
-                      <option key={w.id || w._id} value={w.id || w._id}>
-                        {w.domain || w.name || w.url}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
                 <button
                   type="button"
                   onClick={() => handleToggleUnderAttack(selectedDdosSite, isSelectedSiteUnderAttack)}
@@ -3980,15 +4058,15 @@ Generated by MDefender Pro Cloud Security Matrix`
           <div style={{
             background: '#ffffff',
             border: '1px solid #D9E1DC',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            marginBottom: '24px',
+            borderRadius: '12px',
+            padding: '12px 18px',
+            marginBottom: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '14px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            gap: '12px',
+            boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
@@ -4043,11 +4121,11 @@ Generated by MDefender Pro Cloud Security Matrix`
           {/* Policy Configuration Form — Clean Enterprise Standard */}
           <div style={{
             background: '#ffffff',
-            borderRadius: '16px',
+            borderRadius: '12px',
             border: '1px solid #D9E1DC',
-            padding: '24px 28px',
-            marginBottom: '20px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            padding: '14px 18px',
+            marginBottom: '16px',
+            boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)'
           }}>
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ fontSize: '15px', fontWeight: '700', margin: '0 0 3px', color: '#10201E', letterSpacing: '-0.01em' }}>
@@ -5061,34 +5139,34 @@ Generated by MDefender Pro Cloud Security Matrix`
       {/* TAB 4: TWO-FACTOR AUTHENTICATION (2FA)  DEDICATED SIMPLE & FRIENDLY SETUP */}
       {/* ========================================================================= */}
       {activeTab === 'twofactor' && (
-        <div style={{ maxWidth: '1040px' }}>
+        <div style={{ width: '100%' }}>
           
           {/* Top Domain Scope & Live Status Card */}
           <div className="card" style={{
-            padding: '22px 26px',
-            borderRadius: '16px',
+            padding: '12px 18px',
+            borderRadius: '12px',
             border: '1px solid #D9E1DC',
             background: '#FFFFFF',
-            marginBottom: '24px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+            marginBottom: '16px',
+            boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '18px'
+            gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
-                width: '48px', height: '48px', borderRadius: '12px',
+                width: '44px', height: '44px', borderRadius: '10px',
                 background: securityConfig.two_factor_enabled ? '#0B2522' : '#F1F5F3',
                 color: securityConfig.two_factor_enabled ? '#FFFFFF' : '#60716B',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                <Key size={22} />
+                <Key size={20} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#10201E' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#10201E' }}>
                     Two-Factor Authentication (2FA)
                   </h3>
                   <span style={{
@@ -5100,72 +5178,26 @@ Generated by MDefender Pro Cloud Security Matrix`
                     {securityConfig.two_factor_enabled ? '✓ 2FA ACTIVE & ENFORCED' : 'NOT ACTIVE'}
                   </span>
                 </div>
-                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#60716B', lineHeight: '1.4' }}>
                   Adds an unbypassable extra layer of security. Log in with your password plus a 6-digit code from your phone.
                 </p>
               </div>
             </div>
 
-            {/* Master Switch & Synchronized Domain Scope Target */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '5px 12px',
-                borderRadius: '8px',
-                background: '#F8FAF9',
-                border: '1px solid #D9E1DC'
-              }}>
-                <Globe size={14} color="#2A8B68" />
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#60716B' }}>Target Scope:</span>
-                <select
-                  value={twoFaActiveDomain}
-                  onChange={(e) => {
-                    const newSite = e.target.value
-                    if (typeof localStorage !== 'undefined') {
-                      localStorage.setItem('mdf_bulk_selected_site', newSite)
-                      window.dispatchEvent(new Event('mdf_bulk_domain_changed'))
-                    }
-                  }}
-                  style={{
-                    height: '32px',
-                    borderRadius: '6px',
-                    border: '1px solid #CFE2D4',
-                    background: '#FFFFFF',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    color: '#0B2522',
-                    padding: '0 8px',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="all">🌐 All Connected Domains ({(Array.isArray(twoFaFleetWebsites) && twoFaFleetWebsites.length) || (Array.isArray(wpWebsites) ? wpWebsites.length : 0)} Sites)</option>
-                  {((Array.isArray(twoFaFleetWebsites) && twoFaFleetWebsites.length > 0) ? twoFaFleetWebsites : (wpWebsites || [])).map(w => {
-                    if (!w) return null;
-                    const wEn = Boolean(w.enabled || w.two_factor_enabled || w.login_two_factor);
-                    return (
-                      <option key={w.id || w._id || String(Math.random())} value={w.id || w._id}>
-                        {w.domain || w.url} {wEn ? '✓ (2FA Active)' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
+            {/* Master Switch */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button
                 type="button"
                 onClick={handleToggle2Fa}
                 disabled={verifying2Fa}
                 style={{
-                  height: '38px',
-                  padding: '0 20px',
+                  height: '36px',
+                  padding: '0 18px',
                   borderRadius: '8px',
                   border: securityConfig.two_factor_enabled ? '1px solid #0B2522' : '1px solid #D9E1DC',
                   background: securityConfig.two_factor_enabled ? '#0B2522' : '#FBFCFA',
                   color: securityConfig.two_factor_enabled ? '#FFFFFF' : '#10201E',
-                  fontSize: '13px',
+                  fontSize: '12px',
                   fontWeight: 700,
                   cursor: verifying2Fa ? 'not-allowed' : 'pointer',
                   display: 'inline-flex',
@@ -5181,50 +5213,58 @@ Generated by MDefender Pro Cloud Security Matrix`
             </div>
           </div>
 
-          {/* 3-STEP USER FRIENDLY SETUP CONTAINER */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+          {/* 3-STEP HORIZONTAL DASHBOARD (FITS SINGLE SCREEN WITH ZERO SCROLLING) */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '16px',
+            marginBottom: '16px',
+            alignItems: 'stretch'
+          }}>
             
-            {/* STEP 1: SCAN QR CODE OR USE SECRET TOKEN */}
+            {/* STEP 1: SCAN QR CODE & SECRET KEY */}
             <div className="card" style={{
-              padding: '24px 26px',
-              borderRadius: '16px',
+              padding: '16px 18px',
+              borderRadius: '12px',
               border: '1px solid #D9E1DC',
               background: '#FFFFFF',
-              boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+              boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
               display: 'flex',
               flexDirection: 'column'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                 <span style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
+                  width: '24px', height: '24px', borderRadius: '50%',
                   background: '#0B2522', color: '#FFFFFF', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800
+                  alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, flexShrink: 0
                 }}>1</span>
-                <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#10201E' }}>
-                  Scan QR Code with your Authenticator App
-                </h4>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
+                    Scan QR Code
+                  </h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#60716B' }}>
+                    Open Google Authenticator, Authy or 1Password
+                  </p>
+                </div>
               </div>
-
-              <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#60716B', lineHeight: '1.5' }}>
-                Open Google Authenticator, Microsoft Authenticator, Authy, or 1Password on your mobile phone and scan this code:
-              </p>
 
               {/* QR Code Presentation Box */}
               <div style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 background: '#FBFCFA',
-                border: '1px solid #D9E1DC',
-                borderRadius: '14px',
-                padding: '20px',
-                marginBottom: '16px'
+                border: '1px solid #E8EEE8',
+                borderRadius: '10px',
+                padding: '12px 14px',
+                margin: '8px 0 12px'
               }}>
                 <div style={{
                   background: '#FFFFFF',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 16px rgba(11, 37, 34, 0.06)',
+                  padding: '8px',
+                  borderRadius: '10px',
+                  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.04)',
                   border: '1px solid #E8EEE8',
                   textAlign: 'center'
                 }}>
@@ -5232,23 +5272,23 @@ Generated by MDefender Pro Cloud Security Matrix`
                     <img
                       src={twoFaQrDataUrl}
                       alt="2FA QR Code"
-                      style={{ width: '190px', height: '190px', display: 'block', borderRadius: '8px' }}
+                      style={{ width: '135px', height: '135px', display: 'block', borderRadius: '6px' }}
                     />
                   ) : (
-                    <div style={{ width: '190px', height: '190px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60716B' }}>
+                    <div style={{ width: '135px', height: '135px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60716B', fontSize: '12px' }}>
                       Generating QR...
                     </div>
                   )}
-                  <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 700, color: '#60716B' }}>
-                    Scan with Phone Camera or App
-                  </div>
                 </div>
+                <span style={{ marginTop: '6px', fontSize: '11px', fontWeight: 600, color: '#60716B' }}>
+                  Scan with Phone Camera or App
+                </span>
               </div>
 
-              {/* Manual Secret Token Toggle */}
-              <div style={{ borderTop: '1px solid #E8EEE8', paddingTop: '14px', marginTop: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#10201E' }}>
+              {/* Manual Secret Token Accordion / Direct View */}
+              <div style={{ borderTop: '1px solid #E8EEE8', paddingTop: '10px', marginTop: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#10201E' }}>
                     Can't scan QR code?
                   </span>
                   <button
@@ -5256,30 +5296,27 @@ Generated by MDefender Pro Cloud Security Matrix`
                     onClick={() => setTwoFaShowManualToken(!twoFaShowManualToken)}
                     style={{
                       background: 'none', border: 'none', color: '#0B2522',
-                      fontWeight: 700, fontSize: '12px', cursor: 'pointer', textDecoration: 'underline'
+                      fontWeight: 700, fontSize: '11px', cursor: 'pointer', textDecoration: 'underline'
                     }}
                   >
-                    {twoFaShowManualToken ? 'Hide Manual Key' : 'Enter Key Manually'}
+                    {twoFaShowManualToken ? 'Hide Secret Key' : 'Show Secret Key'}
                   </button>
                 </div>
 
-                {twoFaShowManualToken && (
+                {twoFaShowManualToken ? (
                   <div style={{
-                    marginTop: '10px',
                     background: '#FBFCFA',
                     border: '1px solid #D9E1DC',
-                    borderRadius: '10px',
-                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    padding: '6px 10px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    gap: '8px'
                   }}>
-                    <div>
-                      <small style={{ fontSize: '10px', color: '#60716B', fontWeight: 700, display: 'block' }}>SECRET TOKEN (KEY)</small>
-                      <code style={{ fontSize: '14px', fontWeight: 800, color: '#10201E', letterSpacing: '0.05em' }}>
-                        {twoFaSecretKey}
-                      </code>
-                    </div>
+                    <code style={{ fontSize: '11px', fontWeight: 800, color: '#10201E', letterSpacing: '0.04em', wordBreak: 'break-all' }}>
+                      {twoFaSecretKey}
+                    </code>
                     <button
                       type="button"
                       onClick={handleCopySecretKey}
@@ -5287,19 +5324,25 @@ Generated by MDefender Pro Cloud Security Matrix`
                         background: '#FFFFFF',
                         border: '1px solid #D9E1DC',
                         borderRadius: '6px',
-                        padding: '6px 12px',
-                        fontSize: '12px',
+                        padding: '4px 8px',
+                        fontSize: '11px',
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        color: '#0B2522'
+                        gap: '4px',
+                        color: '#0B2522',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}
                     >
-                      {twoFaCopiedToken ? <Check size={13} /> : <Copy size={13} />}
-                      <span>{twoFaCopiedToken ? 'Copied!' : 'Copy Key'}</span>
+                      {twoFaCopiedToken ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{twoFaCopiedToken ? 'Copied' : 'Copy'}</span>
                     </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '11px', color: '#889892', fontStyle: 'italic' }}>
+                    Click above to view base32 secret code for manual entry
                   </div>
                 )}
               </div>
@@ -5307,31 +5350,38 @@ Generated by MDefender Pro Cloud Security Matrix`
 
             {/* STEP 2: ENTER 6-DIGIT VERIFICATION CODE */}
             <div className="card" style={{
-              padding: '24px 26px',
-              borderRadius: '16px',
+              padding: '16px 18px',
+              borderRadius: '12px',
               border: '1px solid #D9E1DC',
               background: '#FFFFFF',
-              boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)',
+              boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
               display: 'flex',
               flexDirection: 'column'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                 <span style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
+                  width: '24px', height: '24px', borderRadius: '50%',
                   background: '#0B2522', color: '#FFFFFF', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800
+                  alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, flexShrink: 0
                 }}>2</span>
-                <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#10201E' }}>
-                  Enter 6-Digit Code from your App
-                </h4>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
+                    Enter 6-Digit Code
+                  </h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#60716B' }}>
+                    Type the live code displayed in your authenticator app
+                  </p>
+                </div>
               </div>
 
-              <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#60716B', lineHeight: '1.5' }}>
-                Type the 6-digit confirmation code currently displayed in your authenticator app to verify that setup is working correctly:
-              </p>
-
               {/* 6 Digit Input Boxes */}
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', margin: '10px 0 24px' }}>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'center',
+                margin: '22px 0 18px',
+                flexWrap: 'nowrap'
+              }}>
                 {[0, 1, 2, 3, 4, 5].map((idx) => (
                   <input
                     key={idx}
@@ -5344,12 +5394,12 @@ Generated by MDefender Pro Cloud Security Matrix`
                     onKeyDown={(e) => handleDigitKeyDown(idx, e)}
                     onPaste={handleDigitPaste}
                     style={{
-                      width: '48px',
-                      height: '56px',
+                      width: '40px',
+                      height: '48px',
                       textAlign: 'center',
-                      fontSize: '24px',
+                      fontSize: '22px',
                       fontWeight: 800,
-                      borderRadius: '10px',
+                      borderRadius: '8px',
                       border: twoFaDigits[idx] ? '2px solid #0B2522' : '1px solid #D9E1DC',
                       background: twoFaDigits[idx] ? '#FFFFFF' : '#FBFCFA',
                       color: '#10201E',
@@ -5361,18 +5411,18 @@ Generated by MDefender Pro Cloud Security Matrix`
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
                 <button
                   type="button"
                   onClick={handleVerifyTwoFactor}
                   disabled={verifying2Fa}
                   style={{
-                    height: '44px',
-                    borderRadius: '10px',
+                    height: '38px',
+                    borderRadius: '8px',
                     border: 'none',
                     background: '#0B2522',
                     color: '#FFFFFF',
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 700,
                     cursor: verifying2Fa ? 'not-allowed' : 'pointer',
                     display: 'inline-flex',
@@ -5380,24 +5430,25 @@ Generated by MDefender Pro Cloud Security Matrix`
                     justifyContent: 'center',
                     gap: '8px',
                     opacity: verifying2Fa ? 0.7 : 1,
-                    boxShadow: '0 2px 8px rgba(11, 37, 34, 0.2)'
+                    boxShadow: '0 2px 6px rgba(11, 37, 34, 0.15)'
                   }}
                 >
-                  <ShieldCheck size={16} />
-                  <span>{verifying2Fa ? 'Verifying with RFC 6238 TOTP...' : 'Verify & Activate 2FA Protection'}</span>
+                  <ShieldCheck size={15} />
+                  <span>{verifying2Fa ? 'Verifying with TOTP...' : 'Verify & Activate 2FA Protection'}</span>
                 </button>
 
-                <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#60716B', textAlign: 'center' }}>
-                  🔒 Authentic TOTP: Enter the live 6-digit code from Google Authenticator, Microsoft Authenticator, or Authy
+                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#60716B', textAlign: 'center' }}>
+                  🔒 RFC 6238 TOTP Standard: Refreshes automatically every 30s
                 </p>
               </div>
 
               {/* Verification Message Alert */}
               {twoFaVerifyResult.status !== 'idle' && (
                 <div style={{
-                  padding: '12px 14px',
+                  marginTop: '10px',
+                  padding: '8px 12px',
                   borderRadius: '8px',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
@@ -5406,172 +5457,185 @@ Generated by MDefender Pro Cloud Security Matrix`
                   color: twoFaVerifyResult.status === 'success' ? '#0B2522' : '#991B1B',
                   border: twoFaVerifyResult.status === 'success' ? '1px solid #D9E1DC' : '1px solid #FCA5A5'
                 }}>
-                  {twoFaVerifyResult.status === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                  {twoFaVerifyResult.status === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
                   <span>{twoFaVerifyResult.message}</span>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* STEP 3: EMERGENCY BACKUP RECOVERY CODES CARD */}
-          <div className="card" style={{
-            padding: '24px 28px',
-            borderRadius: '16px',
-            border: '1px solid #D9E1DC',
-            background: '#FFFFFF',
-            marginBottom: '24px',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* STEP 3: EMERGENCY BACKUP RECOVERY CODES CARD */}
+            <div className="card" style={{
+              padding: '16px 18px',
+              borderRadius: '12px',
+              border: '1px solid #D9E1DC',
+              background: '#FFFFFF',
+              boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                 <span style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
+                  width: '24px', height: '24px', borderRadius: '50%',
                   background: '#0B2522', color: '#FFFFFF', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800
+                  alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 800, flexShrink: 0
                 }}>3</span>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#10201E' }}>
-                    Emergency Backup Recovery Codes
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#10201E' }}>
+                    Emergency Backup Codes
                   </h4>
-                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
-                    Keep these one-time codes in a safe place. If you ever lose or damage your phone, you can use any of these to sign in.
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#60716B' }}>
+                    Store safely in case your mobile phone is unavailable
                   </p>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {/* Action buttons (Copy All & Download) */}
+              <div style={{ display: 'flex', gap: '8px', margin: '4px 0 10px' }}>
                 <button
                   type="button"
                   onClick={handleCopyAllRecoveryCodes}
                   style={{
+                    flex: 1,
                     background: '#FBFCFA',
                     border: '1px solid #D9E1DC',
-                    borderRadius: '8px',
-                    padding: '7px 14px',
-                    fontSize: '12px',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '11px',
                     fontWeight: 700,
                     color: '#0B2522',
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    justifyContent: 'center',
+                    gap: '5px'
                   }}
                 >
-                  {twoFaCopiedCodes ? <Check size={14} /> : <Copy size={14} />}
-                  <span>{twoFaCopiedCodes ? 'Codes Copied!' : 'Copy All Codes'}</span>
+                  {twoFaCopiedCodes ? <Check size={12} /> : <Copy size={12} />}
+                  <span>{twoFaCopiedCodes ? 'Copied!' : 'Copy All'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleDownloadRecoveryCodes}
                   style={{
+                    flex: 1,
                     background: '#0B2522',
                     border: 'none',
-                    borderRadius: '8px',
-                    padding: '7px 14px',
-                    fontSize: '12px',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '11px',
                     fontWeight: 700,
                     color: '#FFFFFF',
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    justifyContent: 'center',
+                    gap: '5px'
                   }}
                 >
-                  <Download size={14} />
+                  <Download size={12} />
                   <span>Download (.txt)</span>
                 </button>
               </div>
-            </div>
 
-            {/* Grid of 8 Recovery Tokens */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '12px',
-              background: '#FBFCFA',
-              border: '1px solid #D9E1DC',
-              borderRadius: '12px',
-              padding: '16px'
-            }}>
-              {twoFaRecoveryCodes.map((code, idx) => (
-                <div key={idx} style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E8EEE8',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <span style={{ fontSize: '11px', color: '#60716B', fontWeight: 700 }}>#{idx + 1}</span>
-                  <code style={{ fontSize: '13px', fontWeight: 800, color: '#10201E', fontFamily: 'monospace' }}>
-                    {code}
-                  </code>
-                </div>
-              ))}
+              {/* Grid of 8 Recovery Tokens (2 columns x 4 rows) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '6px',
+                background: '#FBFCFA',
+                border: '1px solid #E8EEE8',
+                borderRadius: '8px',
+                padding: '8px',
+                marginTop: 'auto'
+              }}>
+                {twoFaRecoveryCodes.map((code, idx) => (
+                  <div key={idx} style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E8EEE8',
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span style={{ fontSize: '10px', color: '#60716B', fontWeight: 700 }}>#{idx + 1}</span>
+                    <code style={{ fontSize: '11px', fontWeight: 800, color: '#10201E', fontFamily: 'monospace' }}>
+                      {code}
+                    </code>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '8px', fontSize: '10px', color: '#889892', textAlign: 'center' }}>
+                Each one-time code burns immediately upon use for security
+              </div>
             </div>
           </div>
 
           {/* SIMPLIFIED HIGH-SECURITY POLICY SETTINGS */}
           <div className="card" style={{
-            padding: '22px 26px',
-            borderRadius: '16px',
+            padding: '14px 18px',
+            borderRadius: '12px',
             border: '1px solid #D9E1DC',
             background: '#FFFFFF',
-            boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+            boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)'
           }}>
-            <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800, color: '#10201E' }}>
-              Fleet Security Safeguards & Anti-Bypass Policies
-            </h4>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#10201E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Shield size={14} color="#0B2522" />
+                <span>Fleet Security Safeguards & Anti-Bypass Policies</span>
+              </h4>
+              <span style={{ fontSize: '11px', color: '#60716B', fontWeight: 600 }}>Active Fleet Rules</span>
+            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
               
               {/* Policy 1: Roles */}
-              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', padding: '14px', borderRadius: '10px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#10201E', marginBottom: '6px' }}>
+              <div style={{ background: '#FBFCFA', border: '1px solid #E8EEE8', padding: '10px 12px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#10201E', marginBottom: '4px' }}>
                   Enforce On User Roles
                 </div>
                 <select
                   value={securityConfig.two_factor_roles}
                   onChange={(e) => setSecurityConfig({ ...securityConfig, two_factor_roles: e.target.value })}
                   style={{
-                    width: '100%', height: '36px', borderRadius: '6px',
+                    width: '100%', height: '32px', borderRadius: '6px',
                     border: '1px solid #D9E1DC', background: '#FFFFFF',
-                    fontSize: '12px', fontWeight: 700, color: '#10201E', padding: '0 10px'
+                    fontSize: '11px', fontWeight: 700, color: '#10201E', padding: '0 8px'
                   }}
                 >
                   <option value="admins">Administrators & Super Admins (Recommended)</option>
                   <option value="editors">Admins, Editors & Authors</option>
                   <option value="all_users">All Users & Subscribers</option>
                 </select>
-                <small style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#60716B' }}>
+                <small style={{ display: 'block', marginTop: '4px', fontSize: '10px', color: '#60716B' }}>
                   Ensures accounts with administrative privileges must pass 2FA.
                 </small>
               </div>
 
               {/* Policy 2: Anti-Brute Force IP Lockout */}
-              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', padding: '14px', borderRadius: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#10201E' }}>Brute-Force IP Auto-Ban</span>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#0B2522', background: '#E8EEE8', padding: '2px 6px', borderRadius: '4px' }}>
+              <div style={{ background: '#FBFCFA', border: '1px solid #E8EEE8', padding: '10px 12px', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#10201E' }}>Brute-Force IP Auto-Ban</span>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: '#0B2522', background: '#E8EEE8', padding: '2px 5px', borderRadius: '4px' }}>
                     3 Failed Codes
                   </span>
                 </div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
-                  If an attacker or bot attempts to guess the 6-digit code 3 times, their IP is immediately dropped with HTTP 403 for 24 hours.
+                <p style={{ margin: 0, fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
+                  If an attacker attempts to guess the 6-digit code 3 times, their IP is immediately dropped with HTTP 403 for 24 hours.
                 </p>
               </div>
 
               {/* Policy 3: Email OTP Fallback */}
-              <div style={{ background: '#FBFCFA', border: '1px solid #D9E1DC', padding: '14px', borderRadius: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#10201E' }}>Instant Email OTP Fallback</span>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#0B2522', background: '#E8EEE8', padding: '2px 6px', borderRadius: '4px' }}>
+              <div style={{ background: '#FBFCFA', border: '1px solid #E8EEE8', padding: '10px 12px', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#10201E' }}>Instant Email OTP Fallback</span>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: '#0B2522', background: '#E8EEE8', padding: '2px 5px', borderRadius: '4px' }}>
                     Unbypassable
                   </span>
                 </div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#60716B', lineHeight: '1.45' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#60716B', lineHeight: '1.4' }}>
                   If an admin has not enrolled their phone yet, an instant 6-digit OTP is dispatched to their email so attackers cannot bypass login.
                 </p>
               </div>

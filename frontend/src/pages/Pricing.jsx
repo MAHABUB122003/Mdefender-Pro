@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import PaymentModal from '../components/PaymentModal';
+import api from '../api/api';
 import {
   Shield,
   Zap,
@@ -46,14 +47,14 @@ const FEATURE_CATEGORIES = [
     badge: 'Real-Time Edge Perimeter',
     badgeColor: '#059669',
     icon: Shield,
-    desc: 'Autonomous sub-millisecond line-rate request inspection powered by hybrid deterministic DFA rules and SGD machine learning.',
+    desc: 'Autonomous sub-millisecond request inspection powered by hybrid DFA deterministic rules and real-time machine learning.',
     features: [
       'Sub-millisecond (<0.12ms) Line-Rate Request Inspection',
-      'Dual-Tier AST Syntactic + SGD Machine Learning Classifier',
+      'Dual-Tier AST Syntactic + Machine Learning Classifier',
       'Full OWASP Top 10 Mitigation (SQLi, XSS, RCE, LFI, SSRF)',
       'Generative AI Prompt Injection & LLM Security Barrier',
       'Proof-of-Work (PoW) Anti-DDoS Challenge (Zero visual captchas)',
-      'Token-Bucket Dynamic Rate Limiting & Scalper Scraper Ban',
+      'Dynamic Rate Limiting & Scalper Scraper Automated Ban',
       'Real-Time Zero-Day Virtual Patching Engine',
     ],
   },
@@ -68,7 +69,7 @@ const FEATURE_CATEGORIES = [
       'Unlimited IP Blacklist & Whitelist Management (CIDR subnets)',
       'Granular Country Blocking & Geographic Regional Fencing',
       'Autonomous ASN & Cloud Hosting Provider Network Fencing',
-      'High-Speed In-Memory Radix Trie for Instant IP Lookups',
+      'In-Memory Radix Trie for Ultra-Fast IP Lookups',
       'Customizable Brandable Edge 403 & 429 Block Barrier Pages',
       'Live Attack Telemetry & Visual Geographic Event Streaming',
       'Aggressive Crawler & Vulnerability Scanner Immediate Ban',
@@ -76,14 +77,14 @@ const FEATURE_CATEGORIES = [
   },
   {
     id: 'malware',
-    title: '5.24M+ Checksum Malware & Backdoor Hunter',
-    badge: 'Deep File Integrity',
+    title: 'Deep File Integrity & Backdoor Hunter',
+    badge: 'File Integrity & AST',
     badgeColor: '#2563EB',
     icon: Database,
     desc: 'Ultra-fast file integrity auditing against official WordPress repository hashes to neutralize web-shells and obfuscated backdoors.',
     features: [
-      '5.24M+ Official WordPress Checksums Database (SQLite B-Tree)',
-      '0.01ms File Integrity Verification with Instant Tamper Alerts',
+      'Official WordPress Checksums Database (Instant Core Verification)',
+      'High-Speed File Integrity Verification with Instant Tamper Alerts',
       'In-Memory AST Heuristic Scanner for Obfuscated PHP Code',
       'Automated Isolation & 1-Click File Quarantine with Safe Restore',
       'Zero-Day Web-Shell, Backdoor, & Crypto-Miner Hunter',
@@ -185,7 +186,7 @@ const FAQS = [
   },
   {
     q: 'What is included in the 14-Day Free Trial?',
-    a: 'The 14-Day Free Trial gives you 100% full access to every enterprise feature on your first website. You get real-time AI WAF protection, 5.24M+ checksum malware scans, WordPress hardening, post-hack recovery tools, and live attack telemetry. No credit card is required to get started.',
+    a: 'The 14-Day Free Trial gives you 100% full access to every enterprise feature on your first website. You get real-time AI WAF protection, deep checksum malware scans, WordPress hardening, post-hack recovery tools, and live attack telemetry. No credit card is required to get started.',
   },
   {
     q: 'Do I get all enterprise features if I only have 1 website?',
@@ -193,7 +194,7 @@ const FAQS = [
   },
   {
     q: 'Can existing users upgrade or add more websites from their dashboard?',
-    a: 'Yes! From your MDefender Pro user dashboard, you can add extra website slots at any time for $4/month with 1-click. You can pay securely with your card or digital bank transfer, and your new site slots activate instantly.',
+    a: 'Yes! From your MDefender Pro user dashboard, you can add extra website slots at any time for $4/month with 1-click. You can pay securely with your card or digital payment method, and your new site slots activate instantly.',
   },
   {
     q: 'How does the annual billing discount work?',
@@ -215,14 +216,49 @@ export default function Pricing() {
   const [sitesCount, setSitesCount] = useState(3);
   const [openFaq, setOpenFaq] = useState(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [pricingConfig, setPricingConfig] = useState({
+    base_monthly_rate: 4,
+    base_yearly_rate: 40,
+    currency: 'USD',
+    currency_symbol: '$',
+    trial_days: 14,
+    bulk_tiers: [
+      { min_sites: 1, max_sites: 9, discount_percent: 0, label: 'Starter Fleet' },
+      { min_sites: 10, max_sites: 24, discount_percent: 10, label: 'Growth Agency' },
+      { min_sites: 25, max_sites: 49, discount_percent: 15, label: 'Scale Partner' },
+      { min_sites: 50, max_sites: 500, discount_percent: 25, label: 'Enterprise MSP' }
+    ]
+  });
 
-  // Pricing formula: $4/mo or $40/yr per site
-  const monthlyRate = 4;
-  const yearlyRate = 40; // $3.33/mo equivalent (2 months free)
+  useEffect(() => {
+    let mounted = true;
+    api.getPublicPricingConfig().then(res => {
+      if (mounted && res?.data && res.data.base_monthly_rate) {
+        setPricingConfig(prev => ({ ...prev, ...res.data }));
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
 
-  const totalPrice = isYearly ? sitesCount * yearlyRate : sitesCount * monthlyRate;
+  const monthlyRate = Number(pricingConfig.base_monthly_rate) || 4;
+  const yearlyRate = Number(pricingConfig.base_yearly_rate) || 40;
+
+  const getDiscount = (count) => {
+    const tiers = pricingConfig.bulk_tiers || [];
+    for (let i = tiers.length - 1; i >= 0; i--) {
+      if (count >= tiers[i].min_sites) {
+        return tiers[i];
+      }
+    }
+    return { discount_percent: 0, label: 'Standard' };
+  };
+
+  const activeTier = getDiscount(sitesCount);
+  const rawBase = isYearly ? sitesCount * yearlyRate : sitesCount * monthlyRate;
+  const discountAmount = (rawBase * activeTier.discount_percent) / 100;
+  const totalPrice = Math.max(0, rawBase - discountAmount);
   const effectiveMonthly = isYearly ? (totalPrice / 12).toFixed(2) : totalPrice.toFixed(2);
-  const savingsAmount = isYearly ? sitesCount * (monthlyRate * 12 - yearlyRate) : 0;
+  const savingsAmount = isYearly ? (sitesCount * monthlyRate * 12 - totalPrice).toFixed(2) : '0';
 
   const handleSitesChange = (val) => {
     const num = parseInt(val, 10);
@@ -267,21 +303,9 @@ export default function Pricing() {
           position: 'absolute',
           top: 0,
           right: 0,
-          width: '750px',
-          height: '650px',
-          background: 'radial-gradient(circle at 80% 15%, rgba(232, 238, 232, 0.65) 0%, rgba(247, 246, 241, 0) 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          top: '220px',
-          left: 0,
-          width: '580px',
-          height: '580px',
-          background: 'radial-gradient(circle at 15% 30%, rgba(234, 244, 255, 0.5) 0%, rgba(247, 246, 241, 0) 65%)',
+          width: '600px',
+          height: '500px',
+          background: 'radial-gradient(circle at 80% 15%, rgba(232, 238, 232, 0.6) 0%, rgba(247, 246, 241, 0) 70%)',
           pointerEvents: 'none',
           zIndex: 0,
         }}
@@ -294,8 +318,8 @@ export default function Pricing() {
         {/* ===================== HERO / HEADER SECTION ===================== */}
         <section
           style={{
-            paddingTop: 'calc(76px + 52px)',
-            paddingBottom: '44px',
+            paddingTop: 'calc(76px + 40px)',
+            paddingBottom: '32px',
             textAlign: 'center',
             position: 'relative',
             zIndex: 1,
@@ -303,9 +327,9 @@ export default function Pricing() {
         >
           <div
             style={{
-              maxWidth: '1180px',
+              maxWidth: '960px',
               margin: '0 auto',
-              padding: '0 clamp(20px, 3.2vw, 32px)',
+              padding: '0 clamp(16px, 3vw, 28px)',
             }}
           >
             {/* Eyebrow Pill */}
@@ -313,52 +337,52 @@ export default function Pricing() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '6px 16px',
+                gap: '7px',
+                padding: '5px 14px',
                 borderRadius: '999px',
                 background: '#E8EEE8',
                 border: '1px solid #D9E1DC',
                 fontSize: '11px',
                 fontWeight: 700,
                 color: '#E8792F',
-                letterSpacing: '0.14em',
+                letterSpacing: '0.12em',
                 textTransform: 'uppercase',
-                marginBottom: '20px',
+                marginBottom: '16px',
               }}
             >
-              <ShieldCheck size={14} style={{ color: '#059669' }} />
+              <ShieldCheck size={13} style={{ color: '#059669' }} />
               <span>Predictable &amp; Honest WordPress Security</span>
             </div>
 
             {/* Editorial Heading */}
             <h1
               style={{
-                fontSize: 'clamp(34px, 4.8vw, 56px)',
+                fontSize: 'clamp(30px, 3.6vw, 44px)',
                 fontWeight: 800,
-                lineHeight: 1.08,
-                letterSpacing: '-0.06em',
+                lineHeight: 1.15,
+                letterSpacing: '-0.045em',
                 color: '#10201E',
-                maxWidth: '860px',
-                margin: '0 auto 18px',
+                maxWidth: '780px',
+                margin: '0 auto 14px',
               }}
             >
-              One simple price per website.{' '}
-              <span style={{ color: '#E8792F' }}>Add or remove sites anytime.</span>
+              One transparent price.{' '}
+              <span style={{ color: '#E8792F' }}>$4/month per website.</span>
             </h1>
 
             {/* Subheading */}
             <p
               style={{
-                fontSize: 'clamp(15px, 1.8vw, 17px)',
+                fontSize: 'clamp(14px, 1.4vw, 15.5px)',
                 lineHeight: 1.6,
                 color: '#4A5D5A',
-                maxWidth: '680px',
-                margin: '0 auto 32px',
+                maxWidth: '640px',
+                margin: '0 auto 26px',
               }}
             >
-              No expensive tier traps. No paying for unused slots. Start with a <strong>14-day free trial</strong>,
-              then protect any number of WordPress sites for just <strong>$4 / site / month</strong> with full enterprise
-              AI WAF, malware hunting, post-hack clean, and fleet management included.
+              No artificial feature gates or locked tiers. Start with a <strong>14-day full free trial</strong>,
+              then protect any number of WordPress sites with full enterprise AI WAF, deep malware inspection,
+              and multi-site safe updates.
             </p>
 
             {/* Billing Cycle Toggle */}
@@ -366,12 +390,11 @@ export default function Pricing() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '4px',
                 background: '#E8EEE8',
-                padding: '5px',
+                padding: '4px',
                 borderRadius: '999px',
                 border: '1px solid #D9E1DC',
-                boxShadow: 'inset 0 1px 3px rgba(11, 37, 34, 0.05)',
               }}
             >
               <button
@@ -379,16 +402,16 @@ export default function Pricing() {
                 onClick={() => setIsYearly(false)}
                 className="billing-toggle-btn"
                 style={{
-                  padding: '9px 24px',
+                  padding: '7px 20px',
                   borderRadius: '999px',
-                  fontSize: '13px',
+                  fontSize: '12.5px',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
                   background: !isYearly ? '#0B2522' : 'transparent',
                   color: !isYearly ? '#FFFFFF' : '#4A5D5A',
-                  boxShadow: !isYearly ? '0 2px 8px rgba(11, 37, 34, 0.2)' : 'none',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  boxShadow: !isYearly ? '0 2px 6px rgba(11, 37, 34, 0.16)' : 'none',
+                  transition: 'all 0.18s ease',
                 }}
               >
                 Monthly ($4 / site)
@@ -399,9 +422,9 @@ export default function Pricing() {
                 onClick={() => setIsYearly(true)}
                 className="billing-toggle-btn"
                 style={{
-                  padding: '9px 24px',
+                  padding: '7px 20px',
                   borderRadius: '999px',
-                  fontSize: '13px',
+                  fontSize: '12.5px',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
@@ -409,9 +432,9 @@ export default function Pricing() {
                   color: isYearly ? '#FFFFFF' : '#4A5D5A',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: isYearly ? '0 2px 8px rgba(11, 37, 34, 0.2)' : 'none',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  gap: '6px',
+                  boxShadow: isYearly ? '0 2px 6px rgba(11, 37, 34, 0.16)' : 'none',
+                  transition: 'all 0.18s ease',
                 }}
               >
                 <span>Annual ($40 / site)</span>
@@ -419,13 +442,12 @@ export default function Pricing() {
                   style={{
                     background: '#E8792F',
                     color: '#FFFFFF',
-                    fontSize: '10px',
+                    fontSize: '9.5px',
                     fontWeight: 800,
-                    padding: '2px 8px',
+                    padding: '2px 7px',
                     borderRadius: '999px',
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
-                    boxShadow: '0 1px 4px rgba(232, 121, 47, 0.3)',
                   }}
                 >
                   Save 17% (2 Mo Free)
@@ -435,12 +457,12 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* ===================== INTERACTIVE PRICING CALCULATOR HERO ===================== */}
+        {/* ===================== COMPACT ENTERPRISE PRICING CALCULATOR ===================== */}
         <section
           style={{
-            maxWidth: '1100px',
-            margin: '0 auto 72px',
-            padding: '0 clamp(20px, 3.2vw, 32px)',
+            maxWidth: '1020px',
+            margin: '0 auto 60px',
+            padding: '0 clamp(16px, 2.5vw, 24px)',
             position: 'relative',
             zIndex: 1,
           }}
@@ -449,23 +471,23 @@ export default function Pricing() {
             className="pricing-calculator-card"
             style={{
               background: '#FFFFFF',
-              borderRadius: '24px',
-              border: '2px solid #E6ECE8',
-              boxShadow: '0 24px 60px rgba(11, 37, 34, 0.08), 0 4px 16px rgba(11, 37, 34, 0.04)',
-              padding: 'clamp(28px, 4vw, 44px)',
+              borderRadius: '20px',
+              border: '1px solid #D9E1DC',
+              boxShadow: '0 12px 36px rgba(11, 37, 34, 0.05), 0 2px 8px rgba(11, 37, 34, 0.02)',
+              padding: 'clamp(20px, 2.8vw, 28px)',
               position: 'relative',
               overflow: 'hidden',
             }}
           >
-            {/* Top Banner Accent */}
+            {/* Top Amber Brand Accent */}
             <div
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 right: 0,
-                height: '5px',
-                background: 'linear-gradient(90deg, #059669 0%, #E8792F 50%, #2563EB 100%)',
+                height: '3px',
+                background: '#E8792F',
               }}
             />
 
@@ -473,7 +495,7 @@ export default function Pricing() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1.2fr 1fr',
-                gap: 'clamp(32px, 4vw, 56px)',
+                gap: 'clamp(24px, 3vw, 40px)',
                 alignItems: 'center',
               }}
               className="calculator-grid"
@@ -485,35 +507,35 @@ export default function Pricing() {
                     fontSize: '11px',
                     fontWeight: 700,
                     textTransform: 'uppercase',
-                    letterSpacing: '0.14em',
+                    letterSpacing: '0.12em',
                     color: '#E8792F',
-                    marginBottom: '8px',
+                    marginBottom: '6px',
                   }}
                 >
                   Interactive License Calculator
                 </div>
                 <h2
                   style={{
-                    fontSize: 'clamp(24px, 3vw, 34px)',
+                    fontSize: 'clamp(19px, 2.2vw, 24px)',
                     fontWeight: 800,
-                    letterSpacing: '-0.04em',
+                    letterSpacing: '-0.035em',
                     color: '#10201E',
-                    lineHeight: 1.2,
-                    margin: '0 0 12px 0',
+                    lineHeight: 1.25,
+                    margin: '0 0 8px 0',
                   }}
                 >
                   How many websites do you manage?
                 </h2>
                 <p
                   style={{
-                    fontSize: '14.5px',
+                    fontSize: '13px',
                     color: '#5B756E',
-                    lineHeight: 1.55,
-                    margin: '0 0 24px 0',
+                    lineHeight: 1.5,
+                    margin: '0 0 20px 0',
                   }}
                 >
                   Adjust the count to match your active sites. Each website receives dedicated line-rate WAF inspection,
-                  automatic malware scanning, post-hack recovery, and fleet command.
+                  automatic malware scanning, post-hack recovery, and centralized fleet command.
                 </p>
 
                 {/* Counter Control Widget */}
@@ -521,8 +543,8 @@ export default function Pricing() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '20px',
+                    gap: '10px',
+                    marginBottom: '16px',
                   }}
                 >
                   <button
@@ -530,9 +552,9 @@ export default function Pricing() {
                     onClick={() => setSitesCount((prev) => Math.max(1, prev - 1))}
                     disabled={sitesCount <= 1}
                     style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '12px',
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
                       border: '1.5px solid #CBD8CF',
                       background: sitesCount <= 1 ? '#F7F6F1' : '#FFFFFF',
                       color: sitesCount <= 1 ? '#CBD8CF' : '#0B2522',
@@ -544,7 +566,7 @@ export default function Pricing() {
                     }}
                     aria-label="Decrease websites"
                   >
-                    <Minus size={18} strokeWidth={2.6} />
+                    <Minus size={16} strokeWidth={2.4} />
                   </button>
 
                   <div
@@ -561,18 +583,18 @@ export default function Pricing() {
                       value={sitesCount}
                       onChange={(e) => handleSitesChange(e.target.value)}
                       style={{
-                        width: '110px',
-                        height: '46px',
-                        borderRadius: '12px',
-                        border: '2px solid #0B2522',
+                        width: '82px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        border: '1.5px solid #0B2522',
                         background: '#FBFCFA',
                         textAlign: 'center',
-                        fontSize: '20px',
+                        fontSize: '16px',
                         fontWeight: 800,
                         color: '#0B2522',
                         fontFamily: 'inherit',
                         outline: 'none',
-                        boxShadow: '0 2px 8px rgba(11, 37, 34, 0.08)',
+                        boxShadow: '0 1px 4px rgba(11, 37, 34, 0.06)',
                       }}
                     />
                   </div>
@@ -581,9 +603,9 @@ export default function Pricing() {
                     type="button"
                     onClick={() => setSitesCount((prev) => Math.min(500, prev + 1))}
                     style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '12px',
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '10px',
                       border: '1.5px solid #0B2522',
                       background: '#0B2522',
                       color: '#FFFFFF',
@@ -592,23 +614,55 @@ export default function Pricing() {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 4px 12px rgba(11, 37, 34, 0.15)',
+                      boxShadow: '0 2px 6px rgba(11, 37, 34, 0.12)',
                     }}
                     aria-label="Increase websites"
                   >
-                    <Plus size={18} strokeWidth={2.6} />
+                    <Plus size={16} strokeWidth={2.4} />
                   </button>
 
                   <span
                     style={{
-                      fontSize: '16px',
+                      fontSize: '13.5px',
                       fontWeight: 700,
                       color: '#10201E',
-                      marginLeft: '6px',
+                      marginLeft: '4px',
                     }}
                   >
                     {sitesCount === 1 ? 'Protected Website' : 'Protected Websites'}
                   </span>
+                </div>
+
+                {/* Range Slider for fast scrubbing */}
+                <div style={{ marginBottom: '16px' }}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={Math.min(sitesCount, 100)}
+                    onChange={(e) => setSitesCount(parseInt(e.target.value, 10))}
+                    style={{
+                      width: '100%',
+                      accentColor: '#E8792F',
+                      cursor: 'pointer',
+                      height: '5px',
+                    }}
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '10.5px',
+                      color: '#7A928B',
+                      fontWeight: 600,
+                      marginTop: '4px',
+                    }}
+                  >
+                    <span>1 site</span>
+                    <span>25 sites</span>
+                    <span>50 sites</span>
+                    <span>100+ sites</span>
+                  </div>
                 </div>
 
                 {/* Quick Presets Pills */}
@@ -617,23 +671,25 @@ export default function Pricing() {
                     display: 'flex',
                     flexWrap: 'wrap',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '6px',
                   }}
                 >
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#7A928B' }}>Quick Pick:</span>
-                  {[1, 3, 5, 10, 20, 50].map((num) => (
+                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#7A928B', marginRight: '2px' }}>
+                    Quick Pick:
+                  </span>
+                  {[1, 3, 5, 10, 25, 50].map((num) => (
                     <button
                       key={num}
                       type="button"
                       onClick={() => setSitesCount(num)}
                       style={{
-                        padding: '4px 12px',
+                        padding: '4px 10px',
                         borderRadius: '999px',
-                        fontSize: '12px',
+                        fontSize: '11.5px',
                         fontWeight: 700,
-                        border: sitesCount === num ? '1.5px solid #059669' : '1px solid #D9E1DC',
-                        background: sitesCount === num ? '#E8EEE8' : '#FFFFFF',
-                        color: sitesCount === num ? '#059669' : '#4A5D5A',
+                        border: sitesCount === num ? '1px solid #0B2522' : '1px solid #D9E1DC',
+                        background: sitesCount === num ? '#0B2522' : '#F7F6F1',
+                        color: sitesCount === num ? '#FFFFFF' : '#4A5D5A',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                       }}
@@ -647,35 +703,35 @@ export default function Pricing() {
               {/* Right Column: Dynamic Price Summary Box */}
               <div
                 style={{
-                  background: '#F7F6F1',
-                  borderRadius: '20px',
+                  background: '#FBFBF9',
+                  borderRadius: '16px',
                   border: '1px solid #D9E1DC',
-                  padding: '30px 28px',
+                  padding: '22px 20px',
                   textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
-                  boxShadow: 'inset 0 1px 3px rgba(11, 37, 34, 0.03)',
+                  boxShadow: 'inset 0 1px 2px rgba(11, 37, 34, 0.02)',
                 }}
               >
                 <div
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    margin: '0 auto 14px',
+                    gap: '5px',
+                    margin: '0 auto 10px',
                     background: '#FFFFFF',
                     border: '1px solid #CBD8CF',
-                    padding: '4px 14px',
+                    padding: '3px 10px',
                     borderRadius: '999px',
-                    fontSize: '11px',
+                    fontSize: '10.5px',
                     fontWeight: 700,
                     color: '#059669',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
+                    letterSpacing: '0.06em',
                   }}
                 >
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669' }} />
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#059669' }} />
                   <span>All Features Unlocked</span>
                 </div>
 
@@ -686,21 +742,21 @@ export default function Pricing() {
                     alignItems: 'baseline',
                     justifyContent: 'center',
                     gap: '4px',
-                    marginBottom: '4px',
+                    marginBottom: '2px',
                   }}
                 >
                   <span
                     style={{
-                      fontSize: 'clamp(44px, 5.5vw, 64px)',
-                      fontWeight: 900,
+                      fontSize: 'clamp(34px, 3.8vw, 44px)',
+                      fontWeight: 800,
                       color: '#10201E',
-                      letterSpacing: '-0.06em',
+                      letterSpacing: '-0.05em',
                       lineHeight: 1,
                     }}
                   >
                     ${totalPrice}
                   </span>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#5B756E' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#5B756E' }}>
                     {isYearly ? '/ year total' : '/ month total'}
                   </span>
                 </div>
@@ -708,10 +764,10 @@ export default function Pricing() {
                 {/* Subtext breakdown */}
                 <div
                   style={{
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     color: '#5B756E',
-                    marginBottom: '18px',
+                    marginBottom: '16px',
                   }}
                 >
                   {isYearly ? (
@@ -727,30 +783,30 @@ export default function Pricing() {
                 </div>
 
                 {/* Action CTA Buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={handleStartTrial}
                     style={{
                       width: '100%',
-                      height: '48px',
-                      borderRadius: '12px',
+                      height: '42px',
+                      borderRadius: '10px',
                       background: '#0B2522',
                       color: '#FFFFFF',
-                      fontSize: '14.5px',
+                      fontSize: '13.5px',
                       fontWeight: 800,
                       border: 'none',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 6px 20px rgba(11, 37, 34, 0.22)',
-                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                      gap: '7px',
+                      boxShadow: '0 4px 14px rgba(11, 37, 34, 0.16)',
+                      transition: 'all 0.18s ease',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = '#153B34';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = '#0B2522';
@@ -758,7 +814,7 @@ export default function Pricing() {
                     }}
                   >
                     <span>Start 14-Day Free Trial</span>
-                    <ArrowRight size={16} strokeWidth={2.4} />
+                    <ArrowRight size={15} strokeWidth={2.4} />
                   </button>
 
                   <button
@@ -766,18 +822,18 @@ export default function Pricing() {
                     onClick={handleDeployPro}
                     style={{
                       width: '100%',
-                      height: '42px',
-                      borderRadius: '12px',
+                      height: '38px',
+                      borderRadius: '10px',
                       background: '#FFFFFF',
                       color: '#0B2522',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: 700,
                       border: '1.5px solid #CBD8CF',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px',
+                      gap: '5px',
                       transition: 'all 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
@@ -799,11 +855,11 @@ export default function Pricing() {
                     display: 'flex',
                     flexWrap: 'wrap',
                     justifyContent: 'center',
-                    gap: '12px',
-                    fontSize: '11.5px',
+                    gap: '10px',
+                    fontSize: '11px',
                     fontWeight: 600,
                     color: '#5B756E',
-                    marginTop: '16px',
+                    marginTop: '12px',
                   }}
                 >
                   <span>✓ 14 Days Full Access</span>
@@ -820,13 +876,13 @@ export default function Pricing() {
           style={{
             background: '#0B2522',
             color: '#ffffff',
-            minHeight: '68px',
-            padding: '18px 0',
+            minHeight: '60px',
+            padding: '14px 0',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
-            marginBottom: '76px',
+            marginBottom: '64px',
           }}
         >
           <div
@@ -834,7 +890,7 @@ export default function Pricing() {
               maxWidth: '1180px',
               margin: '0 auto',
               width: '100%',
-              padding: '0 clamp(20px, 3.2vw, 32px)',
+              padding: '0 clamp(16px, 2.8vw, 28px)',
             }}
           >
             <div
@@ -843,26 +899,26 @@ export default function Pricing() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '24px',
-                fontSize: '12.5px',
+                gap: '20px',
+                fontSize: '12px',
                 fontWeight: 600,
                 color: '#E8EEE8',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Shield size={16} strokeWidth={2.4} style={{ color: '#059669' }} />
-                <span>99.99% Guaranteed Cloud Edge Availability SLA</span>
+                <Shield size={15} strokeWidth={2.4} style={{ color: '#059669' }} />
+                <span>99.99% Guaranteed Cloud Edge SLA</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Zap size={16} strokeWidth={2.4} style={{ color: '#E8792F' }} />
+                <Zap size={15} strokeWidth={2.4} style={{ color: '#E8792F' }} />
                 <span>&lt;0.12ms Line-Rate Inspection Overhead</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Database size={16} strokeWidth={2.4} style={{ color: '#2563EB' }} />
-                <span>13.91M+ Real-Time Threat Intelligence &amp; Checksums</span>
+                <Database size={15} strokeWidth={2.4} style={{ color: '#2563EB' }} />
+                <span>14M+ Unified Threat Intelligence &amp; Checksums</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle2 size={16} strokeWidth={2.4} style={{ color: '#059669' }} />
+                <CheckCircle2 size={15} strokeWidth={2.4} style={{ color: '#059669' }} />
                 <span>256-Bit Bank-Grade Encrypted Global Checkout</span>
               </div>
             </div>
@@ -873,49 +929,49 @@ export default function Pricing() {
         <section
           style={{
             maxWidth: '1180px',
-            margin: '0 auto 96px',
-            padding: '0 clamp(20px, 3.2vw, 32px)',
+            margin: '0 auto 80px',
+            padding: '0 clamp(16px, 2.8vw, 28px)',
             position: 'relative',
             zIndex: 1,
           }}
         >
           {/* Section Header */}
-          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <div
               style={{
                 fontSize: '11px',
                 fontWeight: 700,
                 color: '#E8792F',
                 textTransform: 'uppercase',
-                letterSpacing: '0.14em',
-                marginBottom: '10px',
+                letterSpacing: '0.12em',
+                marginBottom: '8px',
               }}
             >
               Comprehensive Protection Architecture
             </div>
             <h2
               style={{
-                fontSize: 'clamp(28px, 3.8vw, 44px)',
+                fontSize: 'clamp(24px, 3.2vw, 36px)',
                 fontWeight: 800,
-                letterSpacing: '-0.05em',
+                letterSpacing: '-0.04em',
                 color: '#10201E',
-                lineHeight: 1.15,
-                marginBottom: '14px',
+                lineHeight: 1.2,
+                marginBottom: '10px',
               }}
             >
               Everything included in every single website.
             </h2>
             <p
               style={{
-                fontSize: '16px',
-                lineHeight: 1.6,
+                fontSize: '14.5px',
+                lineHeight: 1.55,
                 color: '#4A5D5A',
-                maxWidth: '680px',
+                maxWidth: '640px',
                 margin: '0 auto',
               }}
             >
               Whether you are protecting 1 personal website for $4/month or a fleet of 50 client sites,
-              every website receives 100% of our enterprise cybersecurity, post-hack recovery, and speed optimization tools.
+              every website receives 100% of our enterprise cybersecurity, post-hack recovery, and safe update tools.
             </p>
           </div>
 
@@ -924,8 +980,8 @@ export default function Pricing() {
             className="feature-modules-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-              gap: '24px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '20px',
             }}
           >
             {FEATURE_CATEGORIES.map((cat) => {
@@ -936,13 +992,13 @@ export default function Pricing() {
                   className="feature-module-card"
                   style={{
                     background: '#FFFFFF',
-                    borderRadius: '18px',
+                    borderRadius: '16px',
                     border: '1px solid #D9E1DC',
-                    padding: '30px 26px',
+                    padding: '22px 20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: '0 4px 18px rgba(11, 37, 34, 0.04)',
+                    boxShadow: '0 2px 10px rgba(11, 37, 34, 0.03)',
                     transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
                   }}
                 >
@@ -953,14 +1009,14 @@ export default function Pricing() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: '16px',
+                        marginBottom: '14px',
                       }}
                     >
                       <div
                         style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '12px',
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '10px',
                           background: '#F7F6F1',
                           border: '1px solid #E6ECE8',
                           display: 'flex',
@@ -969,14 +1025,14 @@ export default function Pricing() {
                           color: '#0B2522',
                         }}
                       >
-                        <IconComp size={22} strokeWidth={2.2} />
+                        <IconComp size={19} strokeWidth={2.2} />
                       </div>
 
                       <span
                         style={{
-                          fontSize: '11px',
+                          fontSize: '10.5px',
                           fontWeight: 700,
-                          padding: '4px 10px',
+                          padding: '3px 9px',
                           borderRadius: '999px',
                           background: '#E8EEE8',
                           color: cat.badgeColor,
@@ -990,11 +1046,11 @@ export default function Pricing() {
 
                     <h3
                       style={{
-                        fontSize: '18.5px',
-                        fontWeight: 800,
-                        letterSpacing: '-0.03em',
+                        fontSize: '16.5px',
+                        fontWeight: 700,
+                        letterSpacing: '-0.025em',
                         color: '#10201E',
-                        margin: '0 0 8px 0',
+                        margin: '0 0 6px 0',
                         lineHeight: 1.3,
                       }}
                     >
@@ -1003,10 +1059,10 @@ export default function Pricing() {
 
                     <p
                       style={{
-                        fontSize: '13px',
+                        fontSize: '12.5px',
                         color: '#5B756E',
-                        lineHeight: 1.55,
-                        margin: '0 0 20px 0',
+                        lineHeight: 1.5,
+                        margin: '0 0 16px 0',
                       }}
                     >
                       {cat.desc}
@@ -1016,7 +1072,7 @@ export default function Pricing() {
                       style={{
                         height: '1px',
                         background: '#E6ECE8',
-                        marginBottom: '18px',
+                        marginBottom: '14px',
                       }}
                     />
 
@@ -1028,7 +1084,7 @@ export default function Pricing() {
                         margin: 0,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '10px',
+                        gap: '8px',
                       }}
                     >
                       {cat.features.map((feat, fIdx) => (
@@ -1037,14 +1093,14 @@ export default function Pricing() {
                           style={{
                             display: 'flex',
                             alignItems: 'flex-start',
-                            gap: '9px',
-                            fontSize: '13px',
+                            gap: '8px',
+                            fontSize: '12.5px',
                             color: '#10201E',
                             lineHeight: 1.45,
                           }}
                         >
                           <Check
-                            size={15}
+                            size={14}
                             strokeWidth={2.6}
                             style={{
                               color: '#059669',
@@ -1061,18 +1117,18 @@ export default function Pricing() {
                   {/* Included Pill at Bottom */}
                   <div
                     style={{
-                      marginTop: '24px',
-                      paddingTop: '14px',
+                      marginTop: '20px',
+                      paddingTop: '12px',
                       borderTop: '1px dashed #E6ECE8',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '11.5px',
+                      gap: '5px',
+                      fontSize: '11px',
                       fontWeight: 700,
                       color: '#059669',
                     }}
                   >
-                    <CheckCircle2 size={14} strokeWidth={2.4} />
+                    <CheckCircle2 size={13} strokeWidth={2.4} />
                     <span>Included in every $4/site license</span>
                   </div>
                 </div>
@@ -1084,7 +1140,7 @@ export default function Pricing() {
         {/* ===================== FAQS SECTION ===================== */}
         <section
           style={{
-            padding: '96px 0',
+            padding: '72px 0',
             background: '#E8EEE8',
             borderTop: '1px solid #D9E1DC',
             borderBottom: '1px solid #D9E1DC',
@@ -1092,31 +1148,31 @@ export default function Pricing() {
         >
           <div
             style={{
-              maxWidth: '840px',
+              maxWidth: '800px',
               margin: '0 auto',
-              padding: '0 clamp(20px, 3.2vw, 32px)',
+              padding: '0 clamp(16px, 2.5vw, 24px)',
             }}
           >
-            <div style={{ textAlign: 'center', marginBottom: '44px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '36px' }}>
               <div
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
                   color: '#E8792F',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.14em',
-                  marginBottom: '8px',
+                  letterSpacing: '0.12em',
+                  marginBottom: '6px',
                 }}
               >
                 Zero Confusion
               </div>
               <h2
                 style={{
-                  fontSize: 'clamp(28px, 3.4vw, 38px)',
+                  fontSize: 'clamp(24px, 3vw, 32px)',
                   fontWeight: 800,
-                  letterSpacing: '-0.06em',
+                  letterSpacing: '-0.04em',
                   color: '#10201E',
-                  lineHeight: 1.15,
+                  lineHeight: 1.2,
                   margin: 0,
                 }}
               >
@@ -1124,7 +1180,7 @@ export default function Pricing() {
               </h2>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {FAQS.map((faq, i) => {
                 const isOpen = openFaq === i;
                 return (
@@ -1132,11 +1188,11 @@ export default function Pricing() {
                     key={i}
                     style={{
                       background: '#FFFFFF',
-                      borderRadius: '14px',
+                      borderRadius: '12px',
                       border: '1px solid #D9E1DC',
-                      padding: '18px 22px',
+                      padding: '16px 20px',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 10px rgba(11, 37, 34, 0.02)',
+                      boxShadow: '0 1px 4px rgba(11, 37, 34, 0.02)',
                       transition: 'border-color 0.15s ease',
                     }}
                     onClick={() => setOpenFaq(isOpen ? null : i)}
@@ -1147,14 +1203,14 @@ export default function Pricing() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         gap: '12px',
-                        fontSize: '14.5px',
+                        fontSize: '14px',
                         fontWeight: 700,
                         color: '#10201E',
                       }}
                     >
                       <span>{faq.q}</span>
                       <ChevronDown
-                        size={16}
+                        size={15}
                         strokeWidth={2.4}
                         style={{
                           color: isOpen ? '#E8792F' : '#60716B',
@@ -1167,8 +1223,8 @@ export default function Pricing() {
                     {isOpen && (
                       <p
                         style={{
-                          margin: '12px 0 0',
-                          fontSize: '13.5px',
+                          margin: '10px 0 0',
+                          fontSize: '13px',
                           lineHeight: 1.6,
                           color: '#4A5D5A',
                         }}
@@ -1186,7 +1242,7 @@ export default function Pricing() {
         {/* ===================== FINAL CALL TO ACTION ===================== */}
         <section
           style={{
-            padding: '96px 0',
+            padding: '72px 0',
             background: '#F7F6F1',
           }}
         >
@@ -1194,72 +1250,72 @@ export default function Pricing() {
             style={{
               maxWidth: '1180px',
               margin: '0 auto',
-              padding: '0 clamp(20px, 3.2vw, 32px)',
+              padding: '0 clamp(16px, 2.8vw, 28px)',
             }}
           >
             <div
               style={{
                 background: '#FFFFFF',
-                borderRadius: '20px',
+                borderRadius: '18px',
                 border: '1px solid #D9E1DC',
-                boxShadow: '0 20px 50px rgba(11, 37, 34, 0.06)',
-                padding: 'clamp(32px, 4vw, 48px)',
+                boxShadow: '0 12px 36px rgba(11, 37, 34, 0.05)',
+                padding: 'clamp(28px, 3.5vw, 40px)',
                 display: 'flex',
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '28px',
+                gap: '24px',
               }}
             >
-              <div style={{ maxWidth: '640px' }}>
+              <div style={{ maxWidth: '600px' }}>
                 <div
                   style={{
                     fontSize: '11px',
                     fontWeight: 700,
                     color: '#059669',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.14em',
-                    marginBottom: '8px',
+                    letterSpacing: '0.12em',
+                    marginBottom: '6px',
                   }}
                 >
                   14-Day Free Trial • Instant Deployment
                 </div>
                 <h3
                   style={{
-                    fontSize: 'clamp(26px, 3.2vw, 36px)',
+                    fontSize: 'clamp(22px, 2.6vw, 30px)',
                     fontWeight: 800,
-                    letterSpacing: '-0.05em',
+                    letterSpacing: '-0.04em',
                     color: '#10201E',
-                    marginBottom: '8px',
-                    lineHeight: 1.15,
+                    marginBottom: '6px',
+                    lineHeight: 1.2,
                   }}
                 >
                   Ready to protect your WordPress websites?
                 </h3>
-                <p style={{ fontSize: '15px', color: '#4A5D5A', margin: 0, lineHeight: 1.55 }}>
-                  Deploy sub-millisecond edge firewalling, 5.24M+ checksum malware scans, post-hack recovery,
+                <p style={{ fontSize: '13.5px', color: '#4A5D5A', margin: 0, lineHeight: 1.55 }}>
+                  Deploy sub-millisecond edge firewalling, checksum malware integrity scans, post-hack recovery,
                   and safe rollback updates with zero server downtime. No credit card required.
                 </p>
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 <button
                   type="button"
                   onClick={handleStartTrial}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '0 28px',
-                    height: '48px',
-                    borderRadius: '12px',
+                    gap: '7px',
+                    padding: '0 24px',
+                    height: '42px',
+                    borderRadius: '10px',
                     background: '#0B2522',
                     color: '#FFFFFF',
-                    fontSize: '14px',
+                    fontSize: '13.5px',
                     fontWeight: 800,
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 6px 18px rgba(11, 37, 34, 0.18)',
+                    boxShadow: '0 4px 14px rgba(11, 37, 34, 0.16)',
                     transition: 'all 0.18s ease',
                   }}
                   onMouseEnter={(e) => {
@@ -1272,7 +1328,7 @@ export default function Pricing() {
                   }}
                 >
                   <span>Start 14-Day Free Trial</span>
-                  <ArrowRight size={16} strokeWidth={2.4} />
+                  <ArrowRight size={15} strokeWidth={2.4} />
                 </button>
 
                 <Link
@@ -1280,14 +1336,14 @@ export default function Pricing() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '0 22px',
-                    height: '48px',
-                    borderRadius: '12px',
+                    gap: '6px',
+                    padding: '0 20px',
+                    height: '42px',
+                    borderRadius: '10px',
                     background: 'transparent',
                     border: '1.5px solid #CBD8CF',
                     color: '#10201E',
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     fontWeight: 700,
                     textDecoration: 'none',
                     transition: 'all 0.18s ease',
@@ -1314,14 +1370,14 @@ export default function Pricing() {
         style={{
           background: '#FBFCFA',
           borderTop: '1px solid #D9E1DC',
-          padding: '58px 0 26px 0',
+          padding: '50px 0 24px 0',
         }}
       >
         <div
           style={{
             maxWidth: '1180px',
             margin: '0 auto',
-            padding: '0 clamp(20px, 3.2vw, 32px)',
+            padding: '0 clamp(16px, 2.8vw, 28px)',
           }}
         >
           <div
@@ -1329,8 +1385,8 @@ export default function Pricing() {
             style={{
               display: 'grid',
               gridTemplateColumns: '1.4fr 1fr 1fr 1fr',
-              gap: 'clamp(24px, 4vw, 40px)',
-              marginBottom: '42px',
+              gap: 'clamp(20px, 3.5vw, 36px)',
+              marginBottom: '36px',
             }}
           >
             {/* Col 1 */}
@@ -1342,14 +1398,14 @@ export default function Pricing() {
                   alignItems: 'center',
                   gap: '8px',
                   textDecoration: 'none',
-                  marginBottom: '14px',
+                  marginBottom: '12px',
                 }}
               >
                 <div
                   style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '7px',
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '6px',
                     overflow: 'hidden',
                     display: 'flex',
                     alignItems: 'center',
@@ -1364,11 +1420,11 @@ export default function Pricing() {
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </div>
-                <span style={{ fontSize: '16px', fontWeight: 700, color: '#10201E', letterSpacing: '-0.02em' }}>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: '#10201E', letterSpacing: '-0.02em' }}>
                   MDefender <span style={{ color: '#E8792F', fontWeight: 800 }}>Pro</span>
                 </span>
               </Link>
-              <p style={{ fontSize: '12px', color: '#4A5D5A', lineHeight: 1.6, margin: 0 }}>
+              <p style={{ fontSize: '12px', color: '#4A5D5A', lineHeight: 1.55, margin: 0 }}>
                 Next-generation Web Application Firewall, Layer-7 DDoS Shield, Post-Hack Recovery, and WordPress
                 Security Hardening ecosystem powered by Machine Learning and Threat Intelligence.
               </p>
@@ -1383,12 +1439,12 @@ export default function Pricing() {
                   color: '#10201E',
                   textTransform: 'uppercase',
                   letterSpacing: '0.12em',
-                  marginBottom: '14px',
+                  marginBottom: '12px',
                 }}
               >
                 Product
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
                 <Link to="/products/waf" style={{ color: '#4A5D5A', textDecoration: 'none' }}>Cloud WAF</Link>
                 <Link to="/products/wordpress" style={{ color: '#4A5D5A', textDecoration: 'none' }}>WordPress Security</Link>
                 <Link to="/threat-intelligence" style={{ color: '#4A5D5A', textDecoration: 'none' }}>Threat Intelligence</Link>
@@ -1405,12 +1461,12 @@ export default function Pricing() {
                   color: '#10201E',
                   textTransform: 'uppercase',
                   letterSpacing: '0.12em',
-                  marginBottom: '14px',
+                  marginBottom: '12px',
                 }}
               >
                 Resources
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
                 <Link to="/docs" style={{ color: '#4A5D5A', textDecoration: 'none' }}>Documentation</Link>
                 <Link to="/docs" style={{ color: '#4A5D5A', textDecoration: 'none' }}>System Status</Link>
                 <Link to="/docs" style={{ color: '#4A5D5A', textDecoration: 'none' }}>API Reference</Link>
@@ -1427,12 +1483,12 @@ export default function Pricing() {
                   color: '#10201E',
                   textTransform: 'uppercase',
                   letterSpacing: '0.12em',
-                  marginBottom: '14px',
+                  marginBottom: '12px',
                 }}
               >
                 Company &amp; Legal
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
                 <Link to="/about" style={{ color: '#4A5D5A', textDecoration: 'none' }}>About Us</Link>
                 <Link to="/about" style={{ color: '#4A5D5A', textDecoration: 'none' }}>Trust Center</Link>
                 <Link to="/docs" style={{ color: '#4A5D5A', textDecoration: 'none' }}>Privacy Policy</Link>
@@ -1444,14 +1500,14 @@ export default function Pricing() {
           {/* Bottom Row */}
           <div
             style={{
-              paddingTop: '20px',
+              paddingTop: '18px',
               borderTop: '1px solid #D9E1DC',
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '12px',
-              fontSize: '11.5px',
+              gap: '10px',
+              fontSize: '11px',
               color: '#6A7E7A',
             }}
           >
@@ -1459,14 +1515,14 @@ export default function Pricing() {
               &copy; {new Date().getFullYear()} MDefender Pro. All rights reserved. Built for mission-critical web infrastructure.
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#059669', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#059669', fontWeight: 600 }}>
               <span
                 style={{
-                  width: '6px',
-                  height: '6px',
+                  width: '5px',
+                  height: '5px',
                   borderRadius: '50%',
                   background: '#059669',
-                  boxShadow: '0 0 6px #059669',
+                  boxShadow: '0 0 5px #059669',
                 }}
               />
               <span>Systems operational · 256-Bit SSL Encrypted</span>
@@ -1490,8 +1546,8 @@ export default function Pricing() {
       {/* Micro-Interactions & Responsive CSS */}
       <style>{`
         .feature-module-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 16px 36px rgba(11, 37, 34, 0.08) !important;
+          transform: translateY(-3px);
+          box-shadow: 0 10px 24px rgba(11, 37, 34, 0.06) !important;
           border-color: #059669 !important;
         }
 
@@ -1515,7 +1571,7 @@ export default function Pricing() {
           .trust-strip-grid {
             display: grid !important;
             grid-template-columns: 1fr !important;
-            gap: 12px !important;
+            gap: 10px !important;
           }
           .footer-grid {
             grid-template-columns: 1fr !important;

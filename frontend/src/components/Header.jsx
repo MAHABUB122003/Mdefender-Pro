@@ -1,40 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLocation, Link } from 'react-router-dom'
+import {
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Bell,
+  Clock,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Maximize2,
+  Minimize2,
+  User,
+  ExternalLink
+} from 'lucide-react'
 
 const pageNames = {
-  '/admin/dashboard': 'Dashboard',
-  '/admin/users': 'Users & Support',
-  '/admin/pricing': 'Pricing & Tiers',
-  '/admin/clients': 'Tenant Websites',
+  '/admin/dashboard': 'Global Overview',
+  '/admin/users': 'Users & Fleets',
+  '/admin/pricing': 'Dynamic SaaS Pricing',
+  '/admin/clients': 'Protected Websites',
   '/admin/ddos': 'DDoS Shield',
-  '/admin/logs': 'Attack Logs',
-  '/admin/rules': 'Rules Management',
-  '/admin/blacklist': 'Blacklist Management',
-  '/admin/settings': 'Settings',
-  '/admin/notices': 'Notice Board',
-  '/connect': 'Website Connection',
+  '/admin/logs': 'Fleet Audit Logs',
+  '/admin/rules': 'Virtual Patches & Rules',
+  '/admin/blacklist': 'IP Threat Network',
+  '/admin/learning': 'Attack Evasion Lab',
+  '/admin/settings': 'System Settings',
+  '/connect': 'Cluster Nodes',
 }
 
-export default function Header({ onToggleSidebar, onLogout }) {
+export default function Header({ isCollapsed, onToggleCollapse, onToggleSidebar, onLogout }) {
   const [time, setTime] = useState({ date: '', time: '' })
-  const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const location = useLocation()
-  const pageName = pageNames[location.pathname] || 'Dashboard'
-
-  const iconMap = {
-    '/admin/dashboard': 'fa-chart-pie',
-    '/admin/users': 'fa-users-gear',
-    '/admin/pricing': 'fa-tags',
-    '/admin/clients': 'fa-globe',
-    '/admin/ddos': 'fa-shield-halved',
-    '/admin/logs': 'fa-list',
-    '/admin/rules': 'fa-shield',
-    '/admin/blacklist': 'fa-ban',
-    '/admin/settings': 'fa-cog',
-    '/admin/notices': 'fa-bullhorn',
-    '/connect': 'fa-link',
-  }
+  const pageName = pageNames[location.pathname] || 'Control Center'
 
   useEffect(() => {
     window.__doLogout = onLogout
@@ -52,85 +53,153 @@ export default function Header({ onToggleSidebar, onLogout }) {
   }, [onLogout])
 
   useEffect(() => {
-    const close = () => { setShowDropdown(false); setShowNotifications(false) }
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {})
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const close = () => setShowNotifications(false)
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
   }, [])
 
   return (
-    <header className="header">
-      <div className="header-left">
-        <button className="menu-toggle" id="menuToggle" onClick={onToggleSidebar}>
-          <i className="fas fa-bars"></i>
+    <header className="admin-header">
+      {/* Left: Breadcrumbs & Toggle */}
+      <div className="admin-header-left">
+        {/* Mobile menu trigger */}
+        <button 
+          className="admin-mobile-menu-btn" 
+          onClick={onToggleSidebar}
+          aria-label="Toggle Mobile Menu"
+        >
+          <Menu size={19} />
         </button>
-        <div className="header-title-group">
-          <div className="header-page-icon"><i className={`fas ${iconMap[location.pathname] || 'fa-chart-pie'}`}></i></div>
-          <div>
-            <h1>{pageName}</h1>
-            <div className="breadcrumb">
-              MDefender / <span>{pageName}</span>
-            </div>
-          </div>
+
+        {/* Desktop collapse toggle */}
+        <button
+          className="admin-desktop-toggle-btn"
+          onClick={onToggleCollapse}
+          title={isCollapsed ? 'Expand Sidebar ( [ )' : 'Collapse Sidebar ( [ )'}
+        >
+          {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
+
+        <div className="admin-page-breadcrumbs">
+          <span className="crumb-root">MDefender Super Admin</span>
+          <span className="crumb-sep">/</span>
+          <h1 className="crumb-current">{pageName}</h1>
         </div>
       </div>
-      <div className="header-right">
-        <span className="header-threat-badge">
-          <i className="fas fa-shield-halved"></i> Systems Secure
-        </span>
-        <div className="header-clock">
-          <i className="fas fa-clock"></i>
-          <span className="clock-time">{time.time}</span>
-          <span className="clock-date">{time.date}</span>
+
+      {/* Middle: Universal Search Bar */}
+      <div className="admin-header-center">
+        <div className="admin-global-search">
+          <Search size={15} className="search-icon" />
+          <input 
+            type="text" 
+            placeholder="Search 500,000+ domains, CVEs, users, or IPs..." 
+            readOnly
+            onClick={() => {
+              const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
+              window.dispatchEvent(event)
+            }}
+          />
+          <kbd className="search-shortcut">⌘K</kbd>
         </div>
-        <div className="header-actions">
-          <div style={{ position: 'relative' }}>
-            <button className="header-action-btn" onClick={(e) => { e.stopPropagation(); setShowNotifications(!showNotifications); setShowDropdown(false) }}>
-              <i className="fas fa-bell"></i>
-              <span className="notif-dot"></span>
-            </button>
-            <div className={`notification-panel ${showNotifications ? 'show' : ''}`}>
-              <div className="panel-header">
-                <span>Notifications</span>
-                <span className="panel-count">3 new</span>
+      </div>
+
+      {/* Right: Metrics, Clock, Ultra-Wide Fullscreen & Actions */}
+      <div className="admin-header-right">
+        {/* Fleet Security Badge */}
+        <div className="admin-fleet-badge">
+          <span className="badge-pulse-dot" />
+          <span className="badge-text">Cluster Protected</span>
+        </div>
+
+        {/* UTC / Local Clock */}
+        <div className="admin-header-clock">
+          <Clock size={14} className="clock-icon" />
+          <span className="time-val">{time.time}</span>
+        </div>
+
+        {/* Ultra-Wide Fullscreen Workspace Expander */}
+        <button
+          className="admin-header-icon-btn"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Exit Full Screen Canvas' : 'Expand to Ultra-Wide Full Screen Canvas'}
+          aria-label="Toggle Fullscreen"
+        >
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
+
+        {/* Notifications Dropdown */}
+        <div className="admin-notif-wrap" style={{ position: 'relative' }}>
+          <button 
+            className="admin-header-icon-btn" 
+            onClick={(e) => { 
+              e.stopPropagation()
+              setShowNotifications(prev => !prev) 
+            }}
+            aria-label="Notifications"
+          >
+            <Bell size={17} />
+            <span className="admin-notif-ping" />
+          </button>
+
+          {showNotifications && (
+            <div className="admin-notif-popover" onClick={e => e.stopPropagation()}>
+              <div className="popover-head">
+                <span className="head-title">Fleet Security Alerts</span>
+                <span className="head-badge">Real-Time</span>
               </div>
-              <div className="panel-item">
-                <div className="panel-icon critical"><i className="fas fa-bug"></i></div>
-                <div className="panel-body">
-                  <div className="panel-text">SQL Injection blocked from 192.168.1.100</div>
-                  <div className="panel-meta">2 minutes ago</div>
+              <div className="popover-list">
+                <div className="alert-row">
+                  <div className="alert-icon-wrap red">
+                    <AlertTriangle size={14} />
+                  </div>
+                  <div className="alert-body">
+                    <div className="alert-msg">CVE-2026-4439 probe auto-dropped</div>
+                    <div className="alert-sub">Target: elementor-core • 2m ago</div>
+                  </div>
+                </div>
+                <div className="alert-row">
+                  <div className="alert-icon-wrap green">
+                    <CheckCircle2 size={14} />
+                  </div>
+                  <div className="alert-body">
+                    <div className="alert-msg">Global Hot Patch v4.1 deployed</div>
+                    <div className="alert-sub">Syncing to 512,840 sites • 12m ago</div>
+                  </div>
                 </div>
               </div>
-              <div className="panel-item">
-                <div className="panel-icon warning"><i className="fas fa-bug"></i></div>
-                <div className="panel-body">
-                  <div className="panel-text">XSS attack detected on /search</div>
-                  <div className="panel-meta">5 minutes ago</div>
-                </div>
+              <div className="popover-foot">
+                <Link to="/admin/logs" onClick={() => setShowNotifications(false)}>
+                  View All Fleet Audit Logs →
+                </Link>
               </div>
-              <div className="panel-item">
-                <div className="panel-icon success"><i className="fas fa-check-circle"></i></div>
-                <div className="panel-body">
-                  <div className="panel-text">New client "example.com" connected</div>
-                  <div className="panel-meta">1 hour ago</div>
-                </div>
-              </div>
-              <Link to="/admin/logs" className="panel-footer">
-                View All <i className="fas fa-arrow-right"></i>
-              </Link>
             </div>
-          </div>
-          <div style={{ position: 'relative' }}>
-            <div className="user-pill" onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); setShowNotifications(false) }}>
-              <div className="avatar">A</div>
-              <span className="user-name">Admin</span>
-              <i className="fas fa-chevron-down"></i>
-            </div>
-            <div className={`dropdown-menu ${showDropdown ? 'show' : ''}`}>
-              <Link to="/admin/settings" onClick={() => setShowDropdown(false)}><i className="fas fa-user"></i> Profile</Link>
-              <Link to="/admin/settings" onClick={() => setShowDropdown(false)}><i className="fas fa-cog"></i> Settings</Link>
-              <div className="divider"></div>
-              <button onClick={onLogout}><i className="fas fa-right-from-bracket"></i> Logout</button>
-            </div>
+          )}
+        </div>
+
+        {/* User Pill */}
+        <div className="admin-user-pill">
+          <div className="user-avatar">SA</div>
+          <div className="user-details">
+            <span className="user-role-label">Super Admin</span>
           </div>
         </div>
       </div>

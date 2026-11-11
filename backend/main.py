@@ -56,6 +56,7 @@ from src.auth.config import AuthConfig
 from src.api.v1.routes import get_v1_router
 from src.api.v1 import turnstile_api
 from src.utils.block_page import render_block_page
+from src.services.support_ticket_service import SupportTicketService
 
 app = FastAPI(title="MDefender Pro", version="2.0.0")
 
@@ -67,10 +68,11 @@ def ensure_default_wordpress_site():
         import hashlib
         
         _db = MongoDB()
+        from src.utils.api_key import generate_api_key
         admin_doc = _db.users.find_one({'$or': [{'username': 'admin'}, {'email': 'admin@mdefender-pro.io'}, {'role': 'super_admin'}]})
         pw_svc = PasswordService()
-        wp_api_key = 'zq8V5f4Swk9GCqxMFJU6nVV9E3HfcQS47mi8piDdXMn32WUToSJ29mo-lzULOSl1'
         admin_id = str(admin_doc.get('_id', 'admin-user-001')) if admin_doc else 'admin-user-001'
+        wp_api_key = (admin_doc.get('api_key') if admin_doc else None) or generate_api_key()
 
         if not admin_doc:
             admin_doc = {
@@ -92,10 +94,17 @@ def ensure_default_wordpress_site():
             }
             _db.users.insert_one(admin_doc)
         else:
-            _db.users.update_one({'_id': admin_doc['_id']}, {'$set': {'api_key': wp_api_key, 'is_admin': True, 'plan': 'enterprise'}})
+            # Preserve existing user's API key; do NOT overwrite it!
+            if not admin_doc.get('api_key'):
+                _db.users.update_one({'_id': admin_doc['_id']}, {'$set': {'api_key': wp_api_key, 'is_admin': True, 'plan': 'enterprise'}})
+            else:
+                wp_api_key = admin_doc.get('api_key')
+                _db.users.update_one({'_id': admin_doc['_id']}, {'$set': {'is_admin': True, 'plan': 'enterprise'}})
 
-        site_doc = _db.websites.find_one({'$or': [{'api_key': wp_api_key}, {'domain': 'localhost'}, {'domain': 'mahabub.shop'}]})
+        site_doc = _db.websites.find_one({'domain': 'localhost', 'user_id': admin_id})
         site_id = str(site_doc.get('_id', '56af1d88-657b-4e28-be92-6942fa82b1fe')) if site_doc else '56af1d88-657b-4e28-be92-6942fa82b1fe'
+        if site_doc and site_doc.get('api_key'):
+            wp_api_key = site_doc.get('api_key')
 
         site_fields = {
             '_id': site_id,
@@ -130,6 +139,11 @@ def ensure_default_wordpress_site():
         if not site_doc:
             _db.websites.insert_one(site_fields)
         elif not site_doc.get('user_id') or site_doc.get('user_id') == admin_id:
+            # Preserve existing site api_key if already present
+            if site_doc.get('api_key'):
+                site_fields['api_key'] = site_doc['api_key']
+                if 'wordpress_connection' in site_fields:
+                    site_fields['wordpress_connection']['api_key'] = site_doc['api_key']
             _db.websites.update_one({'_id': site_doc['_id']}, {'$set': site_fields})
 
         key_hash = hashlib.sha256(wp_api_key.encode()).hexdigest()
@@ -148,6 +162,52 @@ def ensure_default_wordpress_site():
         print("[MDefender] WordPress site 'Mahabub Shop' seeded and linked with active API key.")
     except Exception as e:
         print(f"[MDefender] Error ensuring default WordPress site: {e}")
+
+async def _uptime_monitor_loop():
+    """Lightweight background uptime & SSL watchdog for connected WordPress sites."""
+    await asyncio.sleep(45)
+    while True:
+        try:
+            def _run_cycle():
+                from concurrent.futures import ThreadPoolExecutor
+                from src.services.monitoring_service import MonitoringService
+                svc = MonitoringService()
+                sites = list(
+                    svc.db.websites.find(
+                        {
+                            "wordpress_connection.connected": True,
+                            "status": {"$nin": ["disconnected", "paused", "deleted"]},
+                        },
+                        {"_id": 1, "id": 1, "domain": 1, "url": 1, "name": 1, "api_key": 1},
+                    ).limit(100)
+                )
+                valid_sites = [
+                    s for s in sites
+                    if not str(s.get("domain", "")).endswith((".local", ".internal", "example.com"))
+                ]
+                if not valid_sites:
+                    return
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    for site in valid_sites:
+                        pool.submit(svc.probe_website_health, site, 5.0)
+
+            await asyncio.to_thread(_run_cycle)
+        except Exception as e:
+            print(f"[Uptime Watchdog] Cycle notice: {e}")
+        await asyncio.sleep(300)
+
+
+async def _report_scheduler_loop():
+    """Zero-load automated executive digest scheduler (processes small due batches)."""
+    await asyncio.sleep(60)
+    while True:
+        try:
+            from src.services.report_service import ReportService
+            await asyncio.to_thread(lambda: ReportService().run_due_schedules(batch_limit=25))
+        except Exception as e:
+            print(f"[Report Scheduler] Cycle notice: {e}")
+        await asyncio.sleep(300)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -174,6 +234,8 @@ async def startup_event():
 
     # Start background traffic metric batch flusher (eliminates DB overhead per request)
     asyncio.create_task(_stats_flush_loop())
+    asyncio.create_task(_uptime_monitor_loop())
+    asyncio.create_task(_report_scheduler_loop())
 
     # Pre-load in-memory IP filter sets (eliminates first-hit DB delay)
     try:
@@ -203,7 +265,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=auth_config.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=[
         "Authorization", "Content-Type", "X-CSRF-Token",
         "X-Request-ID", "X-Forwarded-For",
@@ -226,6 +288,7 @@ malware_api = MalwareAPI()
 admin_api = AdminAPI()
 user_api = UserAPI()
 notice_api = NoticeAPI()
+support_svc = SupportTicketService()
 logger = Logger()
 cookie_svc = CookieService()
 jwt_svc = JWTService()
@@ -1090,6 +1153,202 @@ async def admin_clean_attack_attempts(request: Request, user: str = Depends(veri
 async def admin_auto_block_get_settings(user: str = Depends(verify_admin_token)):
     return admin_api.get_auto_block_settings()
 
+# ============================================================================
+# SUPER ADMIN SUPPORT DESK & INCIDENT RESOLUTION APIS
+# ============================================================================
+
+@app.get("/api/admin/support/tickets")
+async def admin_get_support_tickets(
+    status: Optional[str] = "all",
+    priority: Optional[str] = "all",
+    category: Optional[str] = "all",
+    search: Optional[str] = "",
+    limit: int = 50,
+    skip: int = 0,
+    user: str = Depends(verify_admin_token)
+):
+    """Super Admin inbox for all user inquiries, incidents, and tickets."""
+    return support_svc.get_admin_tickets(
+        status=status,
+        priority=priority,
+        category=category,
+        search=search,
+        limit=limit,
+        skip=skip
+    )
+
+@app.get("/api/admin/support/tickets/{ticket_id}")
+async def admin_get_support_ticket_details(
+    ticket_id: str,
+    user: str = Depends(verify_admin_token)
+):
+    res = support_svc.get_ticket_details(ticket_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"status": "success", "ticket": res}
+
+@app.post("/api/admin/support/tickets/{ticket_id}/reply")
+async def admin_reply_support_ticket(
+    ticket_id: str,
+    request: Request,
+    user: str = Depends(verify_admin_token)
+):
+    data = await request.json()
+    msg = data.get("message", "")
+    if not msg.strip():
+        raise HTTPException(status_code=400, detail="Reply message cannot be empty")
+    new_status = data.get("status")
+    attachments = data.get("attachments", [])
+    staff_name = data.get("staff_name", "Mahabubur Rahman")
+    
+    updated = support_svc.add_message(
+        ticket_id=ticket_id,
+        sender_type="admin",
+        sender_id="super_admin",
+        sender_email=user or "admin@mdefender-pro.io",
+        message=msg,
+        attachments=attachments,
+        new_status=new_status,
+        staff_name=staff_name
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"status": "success", "ticket": updated}
+
+@app.put("/api/admin/support/tickets/{ticket_id}/status")
+async def admin_update_ticket_status(
+    ticket_id: str,
+    request: Request,
+    user: str = Depends(verify_admin_token)
+):
+    data = await request.json()
+    status = data.get("status", "open")
+    priority = data.get("priority")
+    notes = data.get("admin_notes")
+    
+    updated = support_svc.update_ticket_status(
+        ticket_id=ticket_id,
+        status=status,
+        priority=priority,
+        admin_notes=notes
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"status": "success", "ticket": updated}
+
+@app.delete("/api/admin/support/tickets/{ticket_id}")
+async def admin_delete_ticket(
+    ticket_id: str,
+    user: str = Depends(verify_admin_token)
+):
+    ok = support_svc.delete_ticket(ticket_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Ticket not found or already deleted")
+    return {"status": "success", "message": f"Ticket {ticket_id} permanently purged."}
+
+@app.get("/api/admin/support/inspector")
+async def admin_remote_site_inspector(
+    domain: str,
+    user: str = Depends(verify_admin_token)
+):
+    """Super Admin live diagnostics for user origin site & WAF block history."""
+    if not domain.strip():
+        raise HTTPException(status_code=400, detail="Domain parameter is required")
+    diag = support_svc.get_remote_diagnostics(domain)
+    return {"status": "success", "diagnostics": diag}
+
+# ============================================================================
+# USER DASHBOARD SUPPORT & TICKETING APIS (MULTI-TENANT ISOLATED)
+# ============================================================================
+
+@app.get("/api/user/support/tickets")
+async def user_get_support_tickets(
+    status: Optional[str] = "all",
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    return support_svc.get_user_tickets(
+        user_id=current_user["id"],
+        status=status,
+        limit=limit,
+        skip=skip
+    )
+
+@app.post("/api/user/support/tickets")
+async def user_create_support_ticket(
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    data = await request.json()
+    subject = data.get("subject", "")
+    message = data.get("message", "")
+    if not subject.strip() or not message.strip():
+        raise HTTPException(status_code=400, detail="Subject and message are required")
+        
+    doc = support_svc.create_ticket(
+        user_id=current_user["id"],
+        user_email=current_user.get("email", ""),
+        subject=subject,
+        category=data.get("category", "general_inquiry"),
+        priority=data.get("priority", "medium"),
+        message=message,
+        target_domain=data.get("target_domain"),
+        attachments=data.get("attachments", []),
+        diagnostics=data.get("diagnostics", {}),
+        user_name=current_user.get("full_name") or current_user.get("name") or data.get("user_name")
+    )
+    return {"status": "success", "ticket": doc}
+
+@app.get("/api/user/support/tickets/{ticket_id}")
+async def user_get_ticket_details(
+    ticket_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    ticket = support_svc.get_ticket_details(ticket_id, user_id=current_user["id"])
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found or unauthorized")
+    return {"status": "success", "ticket": ticket}
+
+@app.post("/api/user/support/tickets/{ticket_id}/reply")
+async def user_reply_ticket(
+    ticket_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    data = await request.json()
+    msg = data.get("message", "")
+    if not msg.strip():
+        raise HTTPException(status_code=400, detail="Reply message cannot be empty")
+    
+    # Verify ownership before reply
+    existing = support_svc.get_ticket_details(ticket_id, user_id=current_user["id"])
+    if not existing:
+        raise HTTPException(status_code=404, detail="Ticket not found or unauthorized")
+        
+    updated = support_svc.add_message(
+        ticket_id=ticket_id,
+        sender_type="user",
+        sender_id=current_user["id"],
+        sender_email=current_user.get("email", ""),
+        message=msg,
+        attachments=data.get("attachments", []),
+        new_status="in_progress",
+        sender_name=current_user.get("full_name") or current_user.get("name") or data.get("user_name")
+    )
+    return {"status": "success", "ticket": updated}
+
+@app.delete("/api/user/support/tickets/{ticket_id}")
+async def user_delete_ticket(
+    ticket_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    ok = support_svc.delete_ticket(ticket_id, user_id=current_user["id"])
+    if not ok:
+        raise HTTPException(status_code=400, detail="Cannot delete an active ticket or ticket not found. Only resolved/closed tickets can be purged.")
+    return {"status": "success", "message": "Ticket purged successfully."}
+
+
 @app.post("/api/admin/auto_block_settings")
 async def admin_auto_block_update_settings(request: Request, user: str = Depends(verify_admin_token)):
     data = await request.json()
@@ -1108,6 +1367,82 @@ async def user_get_profile(user: dict = Depends(verify_user_token_compat)):
 async def user_update_profile(request: Request, user: dict = Depends(verify_user_token_compat)):
     data = await request.json()
     return await asyncio.to_thread(user_api.update_profile, user, data)
+
+@app.get("/api/user/onboarding-status")
+async def user_onboarding_status(user: dict = Depends(verify_user_token_compat)):
+    user_id_str = str(user.get('id') or user.get('_id'))
+    user_oid = None
+    try:
+        user_oid = ObjectId(user_id_str)
+    except Exception:
+        pass
+    cond = [{'user_id': user_id_str}]
+    if user_oid:
+        cond.append({'user_id': user_oid})
+    sites = list(db.websites.find({'$or': cond}))
+    for s in sites:
+        s['id'] = str(s['_id'])
+        s['_id'] = str(s['_id'])
+    
+    is_onboarded = bool(user.get('onboarded') or len(sites) > 0)
+    return {
+        'status': 'success',
+        'onboarded': is_onboarded,
+        'websites_count': len(sites),
+        'first_site': sites[0] if sites else None,
+        'api_key': user.get('api_key', ''),
+        'workspace_name': user.get('workspace_name', ''),
+        'organization_type': user.get('organization_type', ''),
+        'onboarding_step': user.get('onboarding_step', 'workspace' if not is_onboarded else 'completed')
+    }
+
+@app.post("/api/user/onboarding-setup")
+async def user_onboarding_setup(request: Request, user: dict = Depends(verify_user_token_compat)):
+    data = await request.json()
+    updates = {}
+    if 'name' in data and data['name']:
+        updates['name'] = str(data['name']).strip()
+        updates['full_name'] = str(data['name']).strip()
+    if 'workspace_name' in data and data['workspace_name']:
+        updates['workspace_name'] = str(data['workspace_name']).strip()
+    if 'organization_type' in data and data['organization_type']:
+        updates['organization_type'] = str(data['organization_type']).strip()
+
+    fleet_size = str(data.get('fleet_size', '')).strip()
+    if not fleet_size or fleet_size in ['Select number of websites...', '']:
+        raise HTTPException(status_code=400, detail="Please select how many websites you manage.")
+    updates['fleet_size'] = fleet_size
+
+    referral_source = str(data.get('referral_source', '')).strip()
+    if not referral_source or referral_source in ['Select a source...', '']:
+        raise HTTPException(status_code=400, detail="Please select how you discovered Mdefender Pro.")
+    updates['referral_source'] = referral_source
+
+    updates['onboarding_step'] = 'connect'
+    updates['updated_at'] = datetime.now()
+
+    db.users.update_one({'_id': user['_id']}, {'$set': updates})
+    return {'status': 'success', 'message': 'Workspace profile saved', 'step': 'connect'}
+
+@app.post("/api/user/onboarding-complete")
+async def user_onboarding_complete(request: Request, user: dict = Depends(verify_user_token_compat)):
+    user_id_str = str(user.get('id') or user.get('_id'))
+    cond = [{'user_id': user_id_str}]
+    try:
+        cond.append({'user_id': ObjectId(user_id_str)})
+    except Exception:
+        pass
+    websites_count = db.websites.count_documents({'$or': cond})
+    if websites_count == 0:
+        return JSONResponse(
+            status_code=400,
+            content={
+                'status': 'error',
+                'message': 'Cannot complete onboarding: At least one active WordPress origin website must be paired with your workspace first.'
+            }
+        )
+    db.users.update_one({'_id': user['_id']}, {'$set': {'onboarded': True, 'onboarding_step': 'completed', 'updated_at': datetime.now()}})
+    return {'status': 'success', 'message': 'Onboarding completed', 'websites_count': websites_count}
 
 @app.post("/api/user/change_password")
 async def user_change_password(request: Request, user: dict = Depends(verify_user_token_compat)):
@@ -1180,6 +1515,23 @@ async def user_ddos_toggle(request: Request, user: dict = Depends(verify_user_to
 @app.get("/api/user/dashboard")
 async def user_dashboard(request: Request, user: dict = Depends(verify_user_token_compat)):
     try:
+        # Zero-Trust Mandatory Origin Guard: Reject un-onboarded user without websites
+        if user.get('role') != 'super_admin' and not user.get('is_admin'):
+            user_id_str = str(user.get('id') or user.get('_id'))
+            cond = [{'user_id': user_id_str}]
+            try:
+                cond.append({'user_id': ObjectId(user_id_str)})
+            except Exception:
+                pass
+            if db.websites.count_documents({'$or': cond}) == 0:
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        'status': 'onboarding_required',
+                        'message': 'Access Denied: You must connect at least one active WordPress website in onboarding to unlock the dashboard.'
+                    }
+                )
+
         website_id = request.query_params.get('website_id')
         refresh = request.query_params.get('refresh') in ('1', 'true')
         res = await asyncio.to_thread(user_api.get_dashboard_stats, user, website_id=website_id, force_refresh=refresh)

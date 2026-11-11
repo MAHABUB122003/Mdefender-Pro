@@ -276,7 +276,7 @@ export default function VerifyEmail() {
               transition: 'all 0.18s ease',
             }}
           >
-            <span>Continue to sign in</span>
+            <span>Continue to workspace setup</span>
             <ArrowRight size={15} strokeWidth={2.4} />
           </button>
         </div>

@@ -792,6 +792,10 @@ class WAF_FW_Ajax_Handler {
     public function scan_website() {
         $this->check_access();
         $this->verify_nonce();
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            wp_send_json_error(['message' => 'MDefender Pro Cloud API key required to run malware scans. Please connect your site from the MDefender Pro dashboard.']);
+            return;
+        }
         $data = json_decode(file_get_contents('php://input'), true);
         $scan_type = sanitize_text_field($data['scan_type'] ?? 'full');
         $scanner = WAF_FW_Scanner::instance();
@@ -1105,6 +1109,10 @@ class WAF_FW_Ajax_Handler {
     public function start_progressive_scan() {
         $this->check_access();
         $this->verify_nonce();
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            wp_send_json_error(['message' => 'MDefender Pro Cloud API key required to run malware scans. Please connect your site from the MDefender Pro dashboard.']);
+            return;
+        }
         $data = $this->get_json_input();
         $scan_type = sanitize_text_field($data['scan_type'] ?? 'full');
 

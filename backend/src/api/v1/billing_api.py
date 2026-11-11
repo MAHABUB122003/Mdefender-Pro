@@ -38,6 +38,18 @@ async def get_public_pricing_plans():
     return success({"plans": plans})
 
 
+@public_router.get("/config")
+async def get_public_pricing_config():
+    """Returns dynamic per-site pricing rates, trial days, volume discounts, and feature set."""
+    db = MongoDB()
+    config = PlanService(db).get_dynamic_pricing_config()
+    # Mask backend payment IDs on public endpoint
+    safe_config = dict(config)
+    safe_config.pop("price_id_monthly", None)
+    safe_config.pop("price_id_yearly", None)
+    return success(safe_config)
+
+
 def _paddle(db):
     return PaddleService()
 

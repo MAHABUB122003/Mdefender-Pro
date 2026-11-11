@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import userStore from '../utils/userStore'
 import {
   LayoutDashboard,
   FileText,
@@ -21,11 +22,14 @@ import {
   Bot,
   SlidersHorizontal,
   Key,
+  Copy,
+  Check,
   Flame,
   Radio,
   Layers,
   Users,
   Bell,
+  FileBarChart2,
   Tag,
   Settings,
   LogOut,
@@ -33,7 +37,8 @@ import {
   ChevronsUpDown,
   CreditCard,
   Laptop,
-  ChevronRight
+  ChevronRight,
+  LifeBuoy
 } from 'lucide-react'
 
 // Hardware-accelerated CSS Grid Accordion: never destroys DOM nodes, zero jitter
@@ -85,11 +90,22 @@ function DropdownItem({
 export default function UserSidebar({ isOpen, onClose }) {
   const location = useLocation()
 
-  const userName = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_name') || 'User Profile') : 'User Profile')
-  const userEmail = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_email') || '') : '')
+  const cachedProfile = typeof window !== 'undefined' ? (userStore.get('profile') || {}) : {}
+  const rawName = cachedProfile.name || cachedProfile.full_name || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_name') : null)
+  const userName = rawName || 'SecOps Lead Operator'
+  const userEmail = cachedProfile.email || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_user_email') : '') || 'operator@mdefender.io'
 
-  const userPlan = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free').toLowerCase()
+  const userPlan = (cachedProfile.plan || (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_user_plan') || 'free') : 'free')).toLowerCase()
   const isPaid = ['go', 'pro', 'enterprise', 'premium', 'ultra'].includes(userPlan)
+
+  const userInitials = useMemo(() => {
+    if (!userName || userName === 'User Profile') return 'SO'
+    const parts = userName.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase()
+    }
+    return userName.slice(0, 2).toUpperCase()
+  }, [userName])
 
   const planName = {
     free: 'Starter Free',
@@ -100,6 +116,68 @@ export default function UserSidebar({ isOpen, onClose }) {
 
   const trialDays = (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_trial_days') : null)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [copiedApiKey, setCopiedApiKey] = useState(false)
+  const [sidebarApiKey, setSidebarApiKey] = useState(() => {
+    return (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdefender_api_key') || '') : '')
+  })
+
+  // Synchronize API Key with workspace and external events
+  useEffect(() => {
+    const handleKeyUpdate = (e) => {
+      if (e?.detail) {
+        setSidebarApiKey(e.detail)
+      } else if (typeof localStorage !== 'undefined') {
+        setSidebarApiKey(localStorage.getItem('mdefender_api_key') || '')
+      }
+    }
+    window.addEventListener('mdefender_api_key_updated', handleKeyUpdate)
+
+    if (!sidebarApiKey) {
+      import('../api/api').then(({ default: api }) => {
+        api.getUserData().then(res => {
+          const key = res?.data?.api_key || res?.data?.user?.api_key || res?.api_key || res?.user?.api_key
+          if (key) {
+            setSidebarApiKey(key)
+            if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_api_key', key)
+          }
+        }).catch(() => {})
+      }).catch(() => {})
+    }
+
+    return () => window.removeEventListener('mdefender_api_key_updated', handleKeyUpdate)
+  }, [sidebarApiKey])
+
+  const handleCopyApiKey = async (e) => {
+    e.stopPropagation()
+    let key = sidebarApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : '')
+    if (!key) {
+      try {
+        const { default: api } = await import('../api/api')
+        const res = await api.getUserData()
+        const fetched = res?.data?.api_key || res?.data?.user?.api_key || res?.api_key || res?.user?.api_key
+        if (fetched) {
+          key = fetched
+          setSidebarApiKey(fetched)
+          if (typeof localStorage !== 'undefined') localStorage.setItem('mdefender_api_key', fetched)
+        }
+      } catch (err) {
+        console.warn('Failed to fetch api key for copy:', err)
+      }
+    }
+    if (!key) return
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(key)
+      } else {
+        const { default: copyToClipboard } = await import('../utils/clipboard')
+        await copyToClipboard(key)
+      }
+    } catch {
+      // clipboard fallback
+    }
+    setCopiedApiKey(true)
+    setTimeout(() => setCopiedApiKey(false), 2000)
+  }
   const profileMenuRef = useRef(null)
 
   // Close profile dropdown when clicking outside or pressing Escape
@@ -144,7 +222,7 @@ export default function UserSidebar({ isOpen, onClose }) {
     const search = typeof window !== 'undefined' ? window.location.search : ''
     return {
       monitoring: path.includes('/monitoring') || path.includes('/site-health'),
-      wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates'),
+      wordpress: path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/database'),
       accessControl: path.includes('/blacklist') || path.includes('/access/'),
       securityProtection: path.includes('/security/bot-shield') || path.includes('/security/bot-defense') || path.includes('/security/login-gateway') || path.includes('/security/rate-limits') || path.includes('/security/2fa') || path.includes('/security/post-hack') || path.includes('/security/incident-response') || path.includes('/bulk/posthack') || path.includes('/bulk/tools'),
       securityCenter: path.includes('/security/threat-intelligence') || path.includes('/security/port-scanner') || path.includes('/security/breach-intelligence') || path.includes('/security/hibp') || path.includes('/security/pwned') || path.includes('/bulk/breach-intelligence')
@@ -157,7 +235,7 @@ export default function UserSidebar({ isOpen, onClose }) {
     const search = location.search
     if (path.includes('/monitoring') || path.includes('/site-health')) {
       setOpenDropdowns(prev => prev.monitoring ? prev : { ...prev, monitoring: true })
-    } else if (path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/safe-updates')) {
+    } else if (path.includes('/bulk/plugins') || path.includes('/bulk/themes') || path.includes('/bulk/core') || path.includes('/bulk/scanner') || path.includes('/bulk/hardening') || path.includes('/bulk/database')) {
       setOpenDropdowns(prev => prev.wordpress ? prev : { ...prev, wordpress: true })
     } else if (path.includes('/blacklist') || path.includes('/access/')) {
       setOpenDropdowns(prev => prev.accessControl ? prev : { ...prev, accessControl: true })
@@ -197,6 +275,9 @@ export default function UserSidebar({ isOpen, onClose }) {
     }
     if (toPath === '/user/alerts') {
       return currentPath === '/user/alerts'
+    }
+    if (toPath === '/user/reports') {
+      return currentPath === '/user/reports'
     }
     if (toPath === '/user/bulk/activity') {
       return currentPath === '/user/bulk/activity'
@@ -258,7 +339,7 @@ export default function UserSidebar({ isOpen, onClose }) {
 
   // Active status for dropdown parent headers
   const isMonitoringGroupActive = currentPath.includes('/monitoring') || currentPath.includes('/site-health')
-  const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/safe-updates')
+  const isWordpressGroupActive = currentPath.includes('/bulk/plugins') || currentPath.includes('/bulk/themes') || currentPath.includes('/bulk/core') || currentPath.includes('/bulk/scanner') || currentPath.includes('/bulk/hardening') || currentPath.includes('/bulk/database')
   const isAccessControlGroupActive = currentPath === '/user/blacklist' || currentPath.includes('/access/')
   const isSecurityProtectionGroupActive = currentPath.includes('/security/bot-shield') || currentPath.includes('/security/bot-defense') || currentPath.includes('/security/login-gateway') || currentPath.includes('/security/rate-limits') || currentPath.includes('/security/2fa') || currentPath.includes('/security/post-hack') || currentPath.includes('/security/incident-response') || currentPath.includes('/bulk/posthack') || currentPath.includes('/bulk/tools')
   const isSecurityCenterGroupActive = currentPath.includes('/security/threat-intelligence') || currentPath.includes('/security/port-scanner') || currentPath.includes('/security/breach-intelligence') || currentPath.includes('/security/hibp') || currentPath.includes('/security/pwned') || currentPath.includes('/bulk/breach-intelligence') || currentPath === '/threat-intelligence'
@@ -365,6 +446,13 @@ export default function UserSidebar({ isOpen, onClose }) {
             >
               <span style={{ pointerEvents: 'none' }}>Broken Links</span>
             </Link>
+            <Link
+              to="/user/monitoring/blacklist"
+              onClick={handleLinkClick}
+              className={`user-subnav-link ${isSubLinkActive('/user/monitoring/blacklist') ? 'active' : ''}`}
+            >
+              <span style={{ pointerEvents: 'none' }}>Blacklist Monitor</span>
+            </Link>
           </DropdownItem>
 
           {/* 4. WordPress Management > (Dropdown) */}
@@ -412,11 +500,11 @@ export default function UserSidebar({ isOpen, onClose }) {
               <span style={{ pointerEvents: 'none' }}>Security Hardening</span>
             </Link>
             <Link
-              to="/user/bulk/safe-updates"
+              to="/user/bulk/database"
               onClick={handleLinkClick}
-              className={`user-subnav-link ${isSubLinkActive('/user/bulk/safe-updates') ? 'active' : ''}`}
+              className={`user-subnav-link ${isSubLinkActive('/user/bulk/database') ? 'active' : ''}`}
             >
-              <span style={{ pointerEvents: 'none' }}>Safe Updates</span>
+              <span style={{ pointerEvents: 'none' }}>Database Optimizer</span>
             </Link>
           </DropdownItem>
 
@@ -578,6 +666,18 @@ export default function UserSidebar({ isOpen, onClose }) {
             <span style={{ pointerEvents: 'none' }}>Alerts &amp; Notifications</span>
           </Link>
 
+          {/* Security Reports & Automated Digests */}
+          <Link
+            to="/user/reports"
+            onClick={handleLinkClick}
+            className={`user-nav-link ${isLinkActive('/user/reports') ? 'active' : ''}`}
+          >
+            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
+              <FileBarChart2 size={16} />
+            </span>
+            <span style={{ pointerEvents: 'none' }}>Security Reports</span>
+          </Link>
+
           {/* 13. Activity & Audit Logs */}
           <Link
             to="/user/bulk/activity"
@@ -588,30 +688,6 @@ export default function UserSidebar({ isOpen, onClose }) {
               <Activity size={16} />
             </span>
             <span style={{ pointerEvents: 'none' }}>Activity &amp; Audit Logs</span>
-          </Link>
-
-          {/* 14. Pricing & Plans */}
-          <Link
-            to="/user/pricing"
-            onClick={handleLinkClick}
-            className={`user-nav-link ${isLinkActive('/user/pricing') ? 'active' : ''}`}
-          >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
-              <Tag size={16} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Pricing &amp; Plans</span>
-          </Link>
-
-          {/* 15. Settings */}
-          <Link
-            to="/user/settings"
-            onClick={handleLinkClick}
-            className={`user-nav-link ${isLinkActive('/user/settings') ? 'active' : ''}`}
-          >
-            <span className="nav-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, pointerEvents: 'none' }}>
-              <Settings size={16} />
-            </span>
-            <span style={{ pointerEvents: 'none' }}>Settings</span>
           </Link>
         </nav>
 
@@ -643,29 +719,46 @@ export default function UserSidebar({ isOpen, onClose }) {
               }}
             >
               {/* Popover Header: User identity & subscription */}
-              <div style={{ padding: '8px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ padding: '8px 8px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                   <div style={{
-                    width: '32px',
-                    height: '32px',
+                    width: '36px',
+                    height: '36px',
                     borderRadius: '8px',
                     background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '13px',
-                    fontWeight: 700,
-                    boxShadow: '0 2px 6px rgba(16,185,129,0.3)',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
                     flexShrink: 0
                   }}>
-                    {userName ? userName[0].toUpperCase() : 'U'}
+                    {userInitials}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {userName}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#889895', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {userName}
+                      </span>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: 800,
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        background: isPaid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(232, 121, 47, 0.15)',
+                        color: isPaid ? '#10B981' : '#E8792F',
+                        border: isPaid ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(232, 121, 47, 0.3)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em'
+                      }}>
+                        {isPaid ? (userPlan === 'enterprise' ? 'ENTERPRISE' : 'PRO') : 'FREE TIER'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#94A3B8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {userEmail || 'operator@mdefender.io'}
                     </span>
                   </div>
@@ -676,10 +769,10 @@ export default function UserSidebar({ isOpen, onClose }) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: '7px',
-                  padding: '5px 8px'
+                  padding: '6px 8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{
@@ -687,23 +780,23 @@ export default function UserSidebar({ isOpen, onClose }) {
                       height: '6.5px',
                       borderRadius: '50%',
                       background: isPaid ? '#10B981' : '#F59E0B',
-                      boxShadow: isPaid ? '0 0 6px rgba(16,185,129,0.6)' : 'none'
+                      boxShadow: isPaid ? '0 0 6px rgba(16,185,129,0.8)' : 'none'
                     }} />
                     <span style={{ fontSize: '11px', fontWeight: 600, color: '#E2E8F0' }}>
                       {planName}
                     </span>
                   </div>
                   {trialDays ? (
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#F38A3E', background: 'rgba(243,138,62,0.12)', border: '1px solid rgba(243,138,62,0.25)', padding: '2px 6px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#E8792F', background: 'rgba(232,121,47,0.12)', border: '1px solid rgba(232,121,47,0.25)', padding: '2px 6px', borderRadius: '4px' }}>
                       {trialDays}d Trial
                     </span>
                   ) : (
                     <Link
                       to="/user/pricing"
                       onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                      style={{ fontSize: '10.5px', fontWeight: 600, color: '#F38A3E', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
+                      style={{ fontSize: '10.5px', fontWeight: 600, color: '#E8792F', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px' }}
                     >
-                      Upgrade <ChevronRight size={12} />
+                      Manage Plan <ChevronRight size={12} />
                     </Link>
                   )}
                 </div>
@@ -745,46 +838,13 @@ export default function UserSidebar({ isOpen, onClose }) {
                 </Link>
 
                 <Link
-                  to="/user/bulk/activity"
+                  to="/user/support"
                   onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
                   className="popover-item"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                    <Activity size={14} />
-                    <span>Activity &amp; Audit Logs</span>
-                  </div>
-                </Link>
-
-                <Link
-                  to="/user/team"
-                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                  className="popover-item"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                    <Users size={14} />
-                    <span>Team Members</span>
-                  </div>
-                </Link>
-
-                <Link
-                  to="/user/pricing"
-                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                  className="popover-item"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                    <CreditCard size={14} />
-                    <span>Billing &amp; Subscriptions</span>
-                  </div>
-                </Link>
-
-                <Link
-                  to="/user/websites"
-                  onClick={() => { setShowProfileMenu(false); handleLinkClick(); }}
-                  className="popover-item"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                    <Layers size={14} />
-                    <span>Protected Fleet Sites</span>
+                    <LifeBuoy size={14} color="#E8792F" />
+                    <span style={{ fontWeight: 600, color: '#FFFFFF' }}>Support &amp; Help Desk</span>
                   </div>
                 </Link>
               </div>
@@ -806,6 +866,59 @@ export default function UserSidebar({ isOpen, onClose }) {
             </div>
           )}
 
+          {/* Quick API Key Action Item (Positioned Directly Above Profile Trigger) */}
+          <button
+            type="button"
+            onClick={handleCopyApiKey}
+            style={{
+              width: '100%',
+              padding: '7px 10px',
+              borderRadius: '8px',
+              border: copiedApiKey ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+              background: copiedApiKey ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+              color: copiedApiKey ? '#10B981' : '#E2E8F0',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '8px',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (!copiedApiKey) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!copiedApiKey) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+              }
+            }}
+            title="Click to copy your Workspace API Key"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Key size={14} color={copiedApiKey ? '#10B981' : '#F38A3E'} />
+              <span>API Key</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: copiedApiKey ? '#10B981' : '#889895' }}>
+              {copiedApiKey ? (
+                <>
+                  <Check size={12} color="#10B981" />
+                  <span style={{ fontWeight: 700 }}>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={11} />
+                  <span>Copy</span>
+                </>
+              )}
+            </div>
+          </button>
+
           {/* Unified Profile Trigger Bar */}
           <button
             type="button"
@@ -814,58 +927,76 @@ export default function UserSidebar({ isOpen, onClose }) {
             aria-expanded={showProfileMenu}
             aria-label="User profile and account options"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
               {/* Avatar with Live Indicator */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <div style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '7px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
                   background: 'linear-gradient(135deg, #10B981 0%, #064E3B 100%)',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
                   color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '12px',
-                  fontWeight: 700,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)'
                 }}>
-                  {userName ? userName[0].toUpperCase() : 'U'}
+                  {userInitials}
                 </div>
                 <span style={{
                   position: 'absolute',
-                  bottom: '-1.5px',
-                  right: '-1.5px',
-                  width: '7px',
-                  height: '7px',
+                  bottom: '-2px',
+                  right: '-2px',
+                  width: '8px',
+                  height: '8px',
                   borderRadius: '50%',
                   background: isPaid ? '#10B981' : '#F59E0B',
-                  border: '1.5px solid #0B1916',
-                  boxShadow: isPaid ? '0 0 6px rgba(16,185,129,0.8)' : 'none'
+                  border: '2px solid #0B1916',
+                  boxShadow: isPaid ? '0 0 6px rgba(16, 185, 129, 0.8)' : 'none'
                 }} />
               </div>
 
-              {/* Name & Email info */}
+              {/* Name & Plan Badge / Email */}
               <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, textAlign: 'left' }}>
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: '#F1F5F9',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  lineHeight: 1.2
-                }}>
-                  {userName}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: '#F8FAFC',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    lineHeight: 1.2
+                  }}>
+                    {userName}
+                  </span>
+                  <span style={{
+                    fontSize: '8.5px',
+                    fontWeight: 800,
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: isPaid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(232, 121, 47, 0.15)',
+                    color: isPaid ? '#10B981' : '#E8792F',
+                    border: isPaid ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(232, 121, 47, 0.3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    lineHeight: 1.2
+                  }}>
+                    {isPaid ? (userPlan === 'enterprise' ? 'ENT' : 'PRO') : 'FREE'}
+                  </span>
+                </div>
                 <span style={{
                   fontSize: '10.5px',
-                  color: '#6A7D78',
+                  color: '#94A3B8',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   lineHeight: 1.2,
-                  marginTop: '1.5px'
+                  marginTop: '2px'
                 }}>
                   {userEmail || 'operator@mdefender.io'}
                 </span>

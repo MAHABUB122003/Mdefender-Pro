@@ -15,6 +15,7 @@ import { Doughnut, Line } from 'react-chartjs-2';
 import api from '../api/api';
 import userStore from '../utils/userStore';
 import copyToClipboard from '../utils/clipboard';
+import { formatMetricNumber, formatExactNumber } from '../utils/formatters';
 import {
   Shield,
   ShieldCheck,
@@ -129,25 +130,27 @@ function StatCard({
   isThreat = false,
   badgeText
 }) {
-  const displayVal = typeof value === 'string'
-    ? value
-    : Number(value || 0).toLocaleString();
+  const isPercent = typeof value === 'string' && value.includes('%');
+  const displayVal = isPercent ? value : formatMetricNumber(value);
+  const exactVal = isPercent ? value : formatExactNumber(value);
 
   return (
-    <div style={{
-      background: brandTokens.cardBg,
-      borderRadius: brandTokens.cardRadius,
-      border: brandTokens.cardBorder,
-      padding: '16px 20px',
-      boxShadow: brandTokens.cardShadow,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      position: 'relative'
-    }}>
+    <div
+      title={exactVal ? `${label}: ${exactVal}` : undefined}
+      style={{
+        background: brandTokens.cardBg,
+        borderRadius: brandTokens.cardRadius,
+        border: brandTokens.cardBorder,
+        padding: '12px 16px',
+        boxShadow: brandTokens.cardShadow,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        position: 'relative'
+      }}>
       <div>
         {/* Top Header: Label & Icon */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <span style={{
             fontSize: '11px',
             fontWeight: '700',
@@ -158,9 +161,9 @@ function StatCard({
             {label}
           </span>
           <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '10px',
+            width: '28px',
+            height: '28px',
+            borderRadius: '8px',
             background: isThreat ? '#FEF2F2' : brandTokens.pillBg,
             border: isThreat ? '1px solid #FECACA' : '1px solid #D9E1DC',
             display: 'flex',
@@ -168,19 +171,22 @@ function StatCard({
             justifyContent: 'center',
             color: isThreat ? brandTokens.dangerRed : brandTokens.brandForest
           }}>
-            {Icon && <Icon size={16} strokeWidth={2.4} />}
+            {Icon && <Icon size={15} strokeWidth={2.4} />}
           </div>
         </div>
 
-        {/* Primary Metric Number */}
-        <div style={{
-          fontSize: '24px',
-          fontWeight: '700',
-          fontVariantNumeric: 'tabular-nums',
-          color: isThreat && value > 0 ? brandTokens.dangerRed : brandTokens.headingColor,
-          lineHeight: '1.1',
-          letterSpacing: '-0.04em'
-        }}>
+        {/* Primary Metric Number (Compact international SaaS notation: 1k, 1.6k, 2k, 1M, 1B) */}
+        <div
+          title={exactVal ? `${exactVal} ${label.toLowerCase()}` : undefined}
+          style={{
+            fontSize: '20px',
+            fontWeight: '700',
+            fontVariantNumeric: 'tabular-nums',
+            color: isThreat && value > 0 ? brandTokens.dangerRed : brandTokens.headingColor,
+            lineHeight: '1.1',
+            letterSpacing: '-0.03em',
+            cursor: 'default'
+          }}>
           {displayVal}
         </div>
 
@@ -226,7 +232,7 @@ function StatCard({
 // =========================================================================
 export default function UserDashboard() {
   const navigate = useNavigate();
-  const [selectedWebsite, setSelectedWebsite] = useState('all');
+  const [selectedWebsite, setSelectedWebsite] = useState(() => (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all');
   const [data, setData] = useState(() => userStore.get('dashboard'));
   const [loading, setLoading] = useState(() => !userStore.get('dashboard'));
   const [refreshing, setRefreshing] = useState(false);
@@ -239,6 +245,12 @@ export default function UserDashboard() {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blockForm, setBlockForm] = useState({ ip: '', reason: '', duration: '1d', website_id: 'all', action_type: 'block' });
   const [submittingBlock, setSubmittingBlock] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const showToast = (text, isError = false) => {
+    setToastMsg({ text, isError });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
 
   const handleOpenBlockModal = (ip, reason = 'Automated IP Quarantine via Dashboard') => {
     if (!ip) return;
@@ -259,7 +271,7 @@ export default function UserDashboard() {
     try {
       if (blockForm.action_type === 'whitelist') {
         const res = await api.addUserWhitelist({ ip: blockForm.ip, reason: blockForm.reason || 'Whitelisted via Dashboard' });
-        alert(res?.message || `IP ${blockForm.ip} added to safe whitelist successfully.`);
+        showToast(res?.message || `IP ${blockForm.ip} added to safe whitelist successfully.`);
       } else {
         const res = await api.addUserBlacklist({
           ip: blockForm.ip,
@@ -268,13 +280,13 @@ export default function UserDashboard() {
           website_id: blockForm.website_id
         });
         setBannedIps(prev => new Set(prev).add(blockForm.ip));
-        alert(res?.message || `IP ${blockForm.ip} quarantined successfully.`);
+        showToast(res?.message || `IP ${blockForm.ip} quarantined successfully.`);
       }
       setShowBlockModal(false);
       userStore.clear();
       fetchData(true, selectedWebsite);
     } catch (err) {
-      alert(err.message || `Failed to quarantine IP ${blockForm.ip}`);
+      showToast(err.message || `Failed to quarantine IP ${blockForm.ip}`, true);
     } finally {
       setSubmittingBlock(false);
     }
@@ -323,6 +335,20 @@ export default function UserDashboard() {
 
     return () => clearInterval(interval);
   }, [fetchData, selectedWebsite]);
+
+  useEffect(() => {
+    const handleDomainSync = () => {
+      const cur = (typeof localStorage !== 'undefined' ? (localStorage.getItem('mdf_bulk_selected_site') || localStorage.getItem('mdefender_selected_site')) : null) || 'all';
+      setSelectedWebsite(cur);
+      fetchData(true, cur);
+    };
+    window.addEventListener('mdf_bulk_domain_changed', handleDomainSync);
+    window.addEventListener('mdefender_domain_changed', handleDomainSync);
+    return () => {
+      window.removeEventListener('mdf_bulk_domain_changed', handleDomainSync);
+      window.removeEventListener('mdefender_domain_changed', handleDomainSync);
+    };
+  }, [fetchData]);
 
   const websitesList = data?.websites || [];
   const [ddosFeedback, setDdosFeedback] = useState(null);
@@ -393,10 +419,11 @@ export default function UserDashboard() {
     try {
       await api.userBlockIp(ip, 'Automated IP Quarantine via Dashboard', 0, selectedWebsite);
       setBannedIps(prev => new Set(prev).add(ip));
+      showToast(`IP ${ip} quarantined successfully.`);
       userStore.clear();
       fetchData(true, selectedWebsite);
     } catch (err) {
-      alert(err.message || `Failed to block IP ${ip}`);
+      showToast(err.message || `Failed to block IP ${ip}`, true);
     }
   };
 
@@ -465,9 +492,17 @@ export default function UserDashboard() {
     d.setDate(d.getDate() - (6 - i));
     dailyDays.push(d.toLocaleDateString('en', { weekday: 'short', month: 'numeric', day: 'numeric' }));
     const count = data?.daily_requests?.[i] || 0;
-    const estimatedThreats = Math.round(count * threatRatio);
-    dailyThreatCounts.push(estimatedThreats);
-    dailyCleanCounts.push(Math.max(0, count - estimatedThreats));
+    const realClean = data?.daily_clean?.[i];
+    const realThreat = data?.daily_threats?.[i];
+
+    if (realClean !== undefined && realThreat !== undefined) {
+      dailyCleanCounts.push(Number(realClean) || 0);
+      dailyThreatCounts.push(Number(realThreat) || 0);
+    } else {
+      const estimatedThreats = Math.round(count * threatRatio);
+      dailyThreatCounts.push(estimatedThreats);
+      dailyCleanCounts.push(Math.max(0, count - estimatedThreats));
+    }
   }
 
   const dailyDatasets = [];
@@ -570,251 +605,99 @@ export default function UserDashboard() {
 
   return (
     <div className="mdf-dashboard-container">
+      {toastMsg && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 999999,
+          background: toastMsg.isError ? '#DC2626' : '#0B2522',
+          color: '#FFFFFF',
+          padding: '10px 18px',
+          borderRadius: '8px',
+          fontSize: '12.5px',
+          fontWeight: '700',
+          boxShadow: '0 8px 24px rgba(11, 37, 34, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          {toastMsg.isError ? <ShieldAlert size={15} /> : <CheckCircle2 size={15} color="#4ADE80" />}
+          <span>{toastMsg.text}</span>
+        </div>
+      )}
       
       {/* ========================================================================= */}
-      {/* 1. HEADER BANNER — MATCHING UserPricing HEADER DESIGN                     */}
+      {/* 1. SLIM STATUS & UNDER ATTACK SHIELD ACTION BAR                           */}
       {/* ========================================================================= */}
-      <div className="mdf-dashboard-header" style={{
-        background: brandTokens.cardBg,
-        borderRadius: brandTokens.cardRadius,
-        padding: '18px 24px',
-        marginBottom: '18px',
-        border: brandTokens.cardBorder,
-        boxShadow: brandTokens.cardShadow
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: '#ffffff',
+        border: '1px solid #D9E1DC',
+        borderRadius: '10px',
+        padding: '8px 16px',
+        marginBottom: '14px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        flexWrap: 'wrap',
+        gap: '10px'
       }}>
-        <div>
-          {/* Top Pill Badges */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '800',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              background: brandTokens.pillBg,
-              color: brandTokens.brandForest,
-              border: '1px solid #D9E1DC',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <Shield size={12} strokeWidth={2.4} style={{ color: brandTokens.brandEmerald }} />
-              <span>Active Security Workspace</span>
-            </span>
-
-            <span style={{
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '800',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              background: isPaidActive ? '#E8F3EC' : '#F7F6F1',
-              color: isPaidActive ? brandTokens.brandEmerald : brandTokens.bodyColor,
-              border: `1px solid ${isPaidActive ? '#CFE2D4' : '#D9E1DC'}`
-            }}>
-              Current Plan: {userPlan.toUpperCase()}
-            </span>
-
-            <span style={{
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '800',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              background: '#E8F3EC',
-              color: brandTokens.brandEmerald,
-              border: '1px solid #CFE2D4',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-              <span>Fleet Online</span>
-            </span>
-          </div>
-
-          <h1 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 4px', color: brandTokens.headingColor, letterSpacing: '-0.02em', lineHeight: '1.25' }}>
-            Security &amp; Threat Overview
-          </h1>
-          <p style={{ margin: 0, fontSize: '12px', color: brandTokens.bodyColor, maxWidth: '680px', lineHeight: '1.45' }}>
-            Real-time edge telemetry, malicious payload mitigation, and active posture across your connected WordPress fleet.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: '600', color: brandTokens.headingColor }}>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
+          <span>Active Fleet Security Posture</span>
+          <span style={{ color: brandTokens.mutedText, fontSize: '11px', fontWeight: '500' }}>
+            • Synced: {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}
+          </span>
+          <button
+            onClick={() => fetchData(true, selectedWebsite)}
+            disabled={refreshing}
+            title="Refresh fleet telemetry"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: brandTokens.bodyColor, display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}
+          >
+            <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+          </button>
         </div>
 
-        {/* Right Controls: Cluster with DDoS Shield & Domain Scope */}
-        <div style={{
-          display: 'flex',
-          gap: '14px',
-          alignItems: 'stretch',
-          flexWrap: 'wrap'
-        }}>
-          {/* 1. DDoS & Under Attack Shield Card */}
-          <div style={{
-            background: brandTokens.subCardBg,
-            border: brandTokens.cardBorder,
-            borderRadius: '12px',
-            padding: '12px 16px',
-            minWidth: '220px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
+        {/* 1-Click Under Attack Shield Quick Toggle */}
+        <button
+          type="button"
+          onClick={handleUnderAttackToggle}
+          disabled={ddosToggling}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '5px 14px',
+            borderRadius: '6px',
+            border: isSelectedSiteAttacked ? '1px solid #FCA5A5' : '1px solid #D9E1DC',
+            background: isSelectedSiteAttacked ? '#FEF2F2' : '#0B2522',
+            color: isSelectedSiteAttacked ? '#DC2626' : '#FFFFFF',
+            fontSize: '11.5px',
+            fontWeight: '700',
+            cursor: ddosToggling ? 'not-allowed' : 'pointer',
             boxShadow: 'none',
-            transition: 'all 0.2s ease'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Flame size={13} color={isSelectedSiteAttacked ? '#E8792F' : brandTokens.brandEmerald} />
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: brandTokens.headingColor
-                }}>
-                  Under Attack Shield
-                </span>
-              </div>
-              <span style={{
-                padding: '2px 7px',
-                borderRadius: '6px',
-                fontSize: '10px',
-                fontWeight: '700',
-                letterSpacing: '0.04em',
-                background: isSelectedSiteAttacked ? '#E8F3EC' : '#F1F5F3',
-                color: isSelectedSiteAttacked ? '#2A8B68' : brandTokens.mutedText,
-                border: isSelectedSiteAttacked ? '1px solid #CFE2D4' : '1px solid #D9E1DC',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                <span style={{
-                  width: '5px',
-                  height: '5px',
-                  borderRadius: '50%',
-                  background: isSelectedSiteAttacked ? '#2A8B68' : '#94a3b8'
-                }} />
-                {isSelectedSiteAttacked ? 'ACTIVE' : 'STANDBY'}
-              </span>
-            </div>
-
-            <div style={{ fontSize: '11px', color: brandTokens.bodyColor, lineHeight: '1.35', marginBottom: '8px' }}>
-              {isSelectedSiteAttacked
-                ? 'PoW challenge active on all traffic.'
-                : '1-click PoW mitigation standby.'}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleUnderAttackToggle}
-              disabled={ddosToggling}
-              style={{
-                width: '100%',
-                height: '28px',
-                padding: '0 10px',
-                borderRadius: '6px',
-                border: isSelectedSiteAttacked ? '1px solid #D9E1DC' : 'none',
-                background: isSelectedSiteAttacked ? '#FFFFFF' : '#0B2522',
-                color: isSelectedSiteAttacked ? '#10201E' : '#FFFFFF',
-                fontSize: '11px',
-                fontWeight: '600',
-                cursor: ddosToggling ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                boxShadow: 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              {ddosToggling ? (
-                <>
-                  <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
-                  <span>Syncing Fleet...</span>
-                </>
-              ) : isSelectedSiteAttacked ? (
-                <>
-                  <Power size={11} color="#60716B" />
-                  <span>Turn Off Shield</span>
-                </>
-              ) : (
-                <>
-                  <Flame size={11} color="#F38A3E" />
-                  <span>Activate Under Attack</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* 2. Domain Scope Selector Card (Matching UserPricing Account Status Box) */}
-          <div style={{
-            background: brandTokens.subCardBg,
-            border: brandTokens.cardBorder,
-            borderRadius: '12px',
-            padding: '16px 20px',
-            minWidth: '240px'
-          }}>
-            <div style={{
-              fontSize: '11px',
-              color: brandTokens.bodyColor,
-              textTransform: 'uppercase',
-              fontWeight: '700',
-              letterSpacing: '0.08em',
-              marginBottom: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <span>Domain Scope</span>
-              <button
-                onClick={() => fetchData(true, selectedWebsite)}
-                disabled={refreshing}
-                title="Refresh telemetry"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: brandTokens.bodyColor, display: 'inline-flex', alignItems: 'center', padding: 0 }}
-              >
-                <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-              </button>
-            </div>
-
-            <select
-              value={selectedWebsite}
-              onChange={(e) => {
-                const siteId = e.target.value;
-                setSelectedWebsite(siteId);
-                fetchData(true, siteId);
-              }}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                borderRadius: '6px',
-                border: '1px solid #D9E1DC',
-                background: '#ffffff',
-                color: brandTokens.headingColor,
-                fontSize: '13px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="all">All Connected Sites ({websitesList.length})</option>
-              {websitesList.map((w) => {
-                const sId = w.id || w._id;
-                return (
-                  <option key={sId} value={sId}>
-                    {w.domain || w.name || sId}
-                  </option>
-                );
-              })}
-            </select>
-
-            <div style={{ fontSize: '11px', color: brandTokens.brandEmerald, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: brandTokens.brandEmerald }} />
-              <span>Synced: {lastRefreshed ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live'}</span>
-            </div>
-          </div>
-        </div>
+            transition: 'all 0.15s ease'
+          }}
+          title="1-Click Proof-of-Work Challenge for All Traffic"
+        >
+          {ddosToggling ? (
+            <>
+              <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} />
+              <span>Syncing Fleet...</span>
+            </>
+          ) : isSelectedSiteAttacked ? (
+            <>
+              <Power size={11} color="#DC2626" />
+              <span>Under Attack: ACTIVE (Click to Disarm)</span>
+            </>
+          ) : (
+            <>
+              <Flame size={11} color="#F38A3E" />
+              <span>Activate Under Attack Shield</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* DDoS & Status Feedback Alert */}
@@ -1067,11 +950,11 @@ export default function UserDashboard() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: brandTokens.brandForest }} />
-              <span>Clean: <strong style={{ color: brandTokens.headingColor }}>{dailyCleanCounts.reduce((a, b) => a + b, 0).toLocaleString()}</strong></span>
+              <span>Clean: <strong style={{ color: brandTokens.headingColor }} title={`${formatExactNumber(dailyCleanCounts.reduce((a, b) => a + b, 0))} clean requests`}>{formatMetricNumber(dailyCleanCounts.reduce((a, b) => a + b, 0))}</strong></span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: brandTokens.dangerRed }} />
-              <span>Mitigated: <strong style={{ color: brandTokens.dangerRed }}>{dailyThreatCounts.reduce((a, b) => a + b, 0).toLocaleString()}</strong></span>
+              <span>Mitigated: <strong style={{ color: brandTokens.dangerRed }} title={`${formatExactNumber(dailyThreatCounts.reduce((a, b) => a + b, 0))} threats mitigated`}>{formatMetricNumber(dailyThreatCounts.reduce((a, b) => a + b, 0))}</strong></span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <ShieldCheck size={14} color={brandTokens.brandEmerald} />
@@ -1097,16 +980,19 @@ export default function UserDashboard() {
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: brandTokens.headingColor, margin: 0, letterSpacing: '-0.01em' }}>
                 Threat Breakdown
               </h3>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '800',
-                padding: '3px 9px',
-                borderRadius: '999px',
-                background: brandTokens.pillBg,
-                color: brandTokens.bodyColor,
-                border: '1px solid #D9E1DC'
-              }}>
-                {totalAttacksCount.toLocaleString()} Total Drops
+              <span
+                title={`${formatExactNumber(totalAttacksCount)} Total Threat Drops`}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  padding: '3px 9px',
+                  borderRadius: '999px',
+                  background: brandTokens.pillBg,
+                  color: brandTokens.bodyColor,
+                  border: '1px solid #D9E1DC',
+                  cursor: 'help'
+                }}>
+                {formatMetricNumber(totalAttacksCount)} Total Drops
               </span>
             </div>
 
@@ -1123,8 +1009,10 @@ export default function UserDashboard() {
                   justifyContent: 'center',
                   pointerEvents: 'none'
                 }}>
-                  <span style={{ fontSize: '20px', fontWeight: '700', color: brandTokens.headingColor, lineHeight: '1' }}>
-                    {totalAttacksCount.toLocaleString()}
+                  <span
+                    title={`${formatExactNumber(totalAttacksCount)} Total Drops`}
+                    style={{ fontSize: '20px', fontWeight: '700', color: brandTokens.headingColor, lineHeight: '1' }}>
+                    {formatMetricNumber(totalAttacksCount)}
                   </span>
                   <span style={{ fontSize: '10px', color: brandTokens.bodyColor, textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.06em', marginTop: '3px' }}>
                     QUARANTINED
@@ -1281,8 +1169,10 @@ export default function UserDashboard() {
                             <div style={{ width: '65px', height: '6px', background: brandTokens.pillBg, borderRadius: '4px', overflow: 'hidden' }}>
                               <div style={{ width: `${ratio}%`, height: '100%', background: brandTokens.dangerRed }} />
                             </div>
-                            <span style={{ fontWeight: '700', color: brandTokens.headingColor, fontSize: '13px' }}>
-                              {attacker.count}
+                            <span
+                              title={`${formatExactNumber(attacker.count)} hostile attempts`}
+                              style={{ fontWeight: '700', color: brandTokens.headingColor, fontSize: '13px', cursor: 'default' }}>
+                              {formatMetricNumber(attacker.count)}
                             </span>
                           </div>
                         </td>

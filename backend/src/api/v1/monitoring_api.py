@@ -93,8 +93,9 @@ async def probe_ssl_handshake(website_id: str, user=Depends(get_current_user)):
 async def get_incidents_log(website_id: str, limit: int = Query(15, ge=1, le=50), user=Depends(get_current_user)):
     """Retrieve real downtime incidents and outage reports for this website."""
     website = get_owned_website(user, website_id)
+    s_id = str(website.get("_id") or website.get("id"))
     domain = website.get("domain") or website.get("url") or website_id
-    incidents = monitoring_svc.get_incidents(domain, limit=limit)
+    incidents = monitoring_svc.get_incidents(s_id, domain=domain, limit=limit)
     return success(incidents)
 
 

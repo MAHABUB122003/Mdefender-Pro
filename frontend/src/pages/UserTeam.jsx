@@ -202,7 +202,7 @@ export default function UserTeam() {
   }, [members, searchQuery, roleFilter])
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
       {/* Toast Notification */}
       {toastMsg && (
         <div style={{

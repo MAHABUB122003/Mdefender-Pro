@@ -105,12 +105,12 @@ export default function FintechSolution() {
               </div>
 
               <h1 style={{
-                fontSize: 'clamp(34px, 4.2vw, 56px)',
+                fontSize: 'clamp(28px, 3.8vw, 44px)',
                 fontWeight: 800,
-                lineHeight: 1.08,
-                letterSpacing: '-0.05em',
+                lineHeight: 1.15,
+                letterSpacing: '-0.04em',
                 color: '#10201E',
-                marginBottom: '20px'
+                marginBottom: '18px'
               }}>
                 Institutional Security.{' '}
                 <span style={{ color: '#CA8A04' }}>Provable Compliance.</span>
@@ -199,7 +199,7 @@ export default function FintechSolution() {
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: '#7A8C89', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incident Response</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#0284C7' }}>15-Min Dedicated SLA</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#E8792F' }}>15-Min Dedicated SLA</div>
                 </div>
               </div>
             </div>

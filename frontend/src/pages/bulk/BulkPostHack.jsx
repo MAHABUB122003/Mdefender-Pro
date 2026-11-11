@@ -153,7 +153,7 @@ export default function BulkPostHack() {
 
   if (!hasWebsites) {
     return (
-      <div style={{ padding: '32px 36px', minHeight: '100vh', background: '#F6F8F7' }}>
+      <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px', minHeight: '100vh' }}>
         <BulkHeader
           title="Incident Response & Post-Hack Recovery"
           subtitle="Enterprise emergency response toolkit for compromised website containment."
@@ -171,7 +171,7 @@ export default function BulkPostHack() {
   const saltsRegenTime = statusData?.salts_last_regenerated || 'Not rotated yet'
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F6F8F7', color: '#10201E', paddingBottom: '60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px', minHeight: '100vh', color: '#10201E' }}>
       
       {/* Toast Notification */}
       {toastMsg && (
@@ -184,7 +184,7 @@ export default function BulkPostHack() {
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            padding: '14px 20px',
+            padding: '8px 14px',
             borderRadius: '10px',
             background: toastMsg.isError ? '#DC2626' : '#0B2522',
             color: '#FFFFFF',
@@ -325,9 +325,9 @@ export default function BulkPostHack() {
           style={{
             background: isLockdownActive ? '#FEF2F2' : '#FFFFFF',
             border: `1px solid ${isLockdownActive ? '#FECACA' : '#E2E8F0'}`,
-            borderRadius: '14px',
-            padding: '22px 28px',
-            marginBottom: '28px',
+            borderRadius: '10px',
+            padding: '12px 18px',
+            marginBottom: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -424,7 +424,7 @@ export default function BulkPostHack() {
         </div>
 
         {/* 4 Emergency Response Action Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px', marginBottom: '18px' }}>
           
           {/* Card 1: Session Kickout */}
           <div
@@ -471,7 +471,7 @@ export default function BulkPostHack() {
               onClick={promptTerminateSessions}
               style={{
                 width: '100%',
-                padding: '11px 16px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: '1px solid #FECACA',
                 background: '#FEF2F2',
@@ -538,7 +538,7 @@ export default function BulkPostHack() {
               onClick={promptRegenerateSalts}
               style={{
                 width: '100%',
-                padding: '11px 16px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: '1px solid #FED7AA',
                 background: '#FFF7ED',
@@ -641,7 +641,7 @@ export default function BulkPostHack() {
               onClick={promptForcePasswordReset}
               style={{
                 width: '100%',
-                padding: '11px 16px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: '1px solid #FDE68A',
                 background: '#FFFBEB',
@@ -710,7 +710,7 @@ export default function BulkPostHack() {
               onClick={() => promptToggleLockdown(!isLockdownActive)}
               style={{
                 width: '100%',
-                padding: '11px 16px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: `1px solid ${isLockdownActive ? '#A7F3D0' : '#FECACA'}`,
                 background: isLockdownActive ? '#ECFDF5' : '#FEF2F2',
@@ -803,11 +803,11 @@ export default function BulkPostHack() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  <th style={{ padding: '12px 28px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Administrator</th>
-                  <th style={{ padding: '12px 20px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Risk Rating</th>
-                  <th style={{ padding: '12px 20px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>2FA Status</th>
-                  <th style={{ padding: '12px 20px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Sessions</th>
-                  <th style={{ padding: '12px 20px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status Flags</th>
+                  <th style={{ padding: '8px 18px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Administrator</th>
+                  <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Risk Rating</th>
+                  <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>2FA Status</th>
+                  <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active Sessions</th>
+                  <th style={{ padding: '8px 14px', color: '#64748B', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status Flags</th>
                 </tr>
               </thead>
               <tbody>
@@ -825,11 +825,11 @@ export default function BulkPostHack() {
                         onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                         onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
                       >
-                        <td style={{ padding: '14px 28px' }}>
+                        <td style={{ padding: '8px 18px' }}>
                           <div style={{ fontWeight: 700, color: '#0F172A' }}>{adm.user_login}</div>
                           <div style={{ fontSize: '12px', color: '#64748B' }}>{adm.user_email}</div>
                         </td>
-                        <td style={{ padding: '14px 20px' }}>
+                        <td style={{ padding: '8px 14px' }}>
                           <span
                             style={{
                               fontSize: '11px',
@@ -844,7 +844,7 @@ export default function BulkPostHack() {
                             {adm.risk_level || 'Low'}
                           </span>
                         </td>
-                        <td style={{ padding: '14px 20px' }}>
+                        <td style={{ padding: '8px 14px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             {adm.has_2fa ? (
                               <>
@@ -859,10 +859,10 @@ export default function BulkPostHack() {
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '14px 20px', color: '#334155' }}>
+                        <td style={{ padding: '8px 14px', color: '#334155' }}>
                           <strong style={{ color: '#0F172A' }}>{adm.active_sessions || 0}</strong> active device(s)
                         </td>
-                        <td style={{ padding: '14px 20px' }}>
+                        <td style={{ padding: '8px 14px' }}>
                           {Array.isArray(adm.warnings) && adm.warnings.length > 0 ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                               {adm.warnings.map((w, wIdx) => (

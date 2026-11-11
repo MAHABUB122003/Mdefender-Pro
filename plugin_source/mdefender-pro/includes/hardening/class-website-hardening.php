@@ -23,6 +23,9 @@ class WAF_FW_Website_Hardening {
     }
 
     public function __construct() {
+        if (!function_exists('waf_fw_is_cloud_active') || !waf_fw_is_cloud_active()) {
+            return; // Hardening engine remains dormant without valid MDefender Pro Cloud API key
+        }
         $this->db = class_exists('WAF_FW_DB') ? WAF_FW_DB::instance() : null;
         $this->backup_dir = wp_normalize_path(WP_CONTENT_DIR . '/mdefender-backups/safety_snapshots/');
 

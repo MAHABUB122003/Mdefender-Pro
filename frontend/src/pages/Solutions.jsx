@@ -39,11 +39,11 @@ export default function Solutions() {
       subtitle: 'Eliminate tedious manual logins across dozens of client wp-admin dashboards. Govern your entire WordPress fleet from one sovereign cloud console with automated snapshots, zero-downtime rollbacks, and concurrent remote malware scanning.',
       icon: Layers,
       accentColor: '#4ADE80',
-      tagline: '1-Click Updates · <800ms Rollback · 5.2M+ Integrity DB',
+      tagline: '1-Click Updates · <800ms Rollback · 5.32M+ Integrity DB',
       stats: [
         { label: 'Bulk Dispatch', value: '1-Click Entire Fleet' },
         { label: 'Auto-Rollback', value: '< 800ms In-Memory' },
-        { label: 'Integrity DB', value: '5.2M+ Checksums' }
+        { label: 'Integrity DB', value: '5.32M+ Checksums' }
       ],
       highlights: [
         'Centralized sovereign command console for 10 to 100+ client sites',
@@ -80,7 +80,7 @@ export default function Solutions() {
       title: 'Zero-Latency API Shielding & Microservices Ingress',
       subtitle: 'Defend REST, GraphQL, and microservice backends against SQLi evasion, JSON injection, and noisy-neighbor volumetric abuse with abstract syntax tree (AST) normalization.',
       icon: Cloud,
-      accentColor: '#38BDF8',
+      accentColor: '#E8792F',
       tagline: 'AST Grammar Normalization · Per-Tenant Token Bucket · Anycast PoPs',
       stats: [
         { label: 'Edge Inspection', value: '0.08ms – 0.12ms' },
@@ -106,11 +106,11 @@ export default function Solutions() {
       stats: [
         { label: 'Hook Priority', value: 'Priority 1 (mu-plugin)' },
         { label: 'PHP Overhead', value: '< 0.05ms Memory' },
-        { label: 'Integrity Check', value: '5,214,098 Hashes' }
+        { label: 'Integrity Check', value: '5.32M+ Checksums' }
       ],
       highlights: [
         'Runtime Application Self-Protection (RASP) dropping attacks in memory',
-        '5.2M+ official WordPress.org core & plugin cryptographic checksum scan',
+        '5.32M+ official WordPress.org core & plugin cryptographic checksum scan',
         'Zero-origin XML-RPC and wp-login.php brute force absorber',
         'Autonomous safe updates with instant atomic rollback guarantee'
       ],
@@ -194,10 +194,10 @@ export default function Solutions() {
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(36px, 4.6vw, 64px)',
+            fontSize: 'clamp(30px, 3.8vw, 48px)',
             fontWeight: 800,
-            lineHeight: 1.06,
-            letterSpacing: '-0.05em',
+            lineHeight: 1.15,
+            letterSpacing: '-0.04em',
             color: '#10201E',
             maxWidth: '920px',
             margin: '0 auto 20px auto'
@@ -461,7 +461,7 @@ export default function Solutions() {
                 title: 'WordPress RASP Agent',
                 badge: 'IN-MEMORY · 1-CLICK',
                 desc: 'Install the official MDefender Pro WordPress plugin. Intercepts queries at Priority 1 in memory before MySQL execution.',
-                spec: '< 0.05ms PHP overhead · 5.2M+ Hashes'
+                spec: '< 0.05ms PHP overhead · 5.32M+ Checksums'
               },
               {
                 title: 'NGINX & Envoy Ingress',

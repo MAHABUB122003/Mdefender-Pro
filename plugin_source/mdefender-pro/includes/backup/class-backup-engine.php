@@ -225,17 +225,25 @@ class WAF_FW_Backup_Engine {
 
         $start_time = microtime(true);
         $timestamp = date('Ymd_His');
-        $domain = '';
-        if (!empty($_SERVER['HTTP_HOST'])) {
-            $domain = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower($_SERVER['HTTP_HOST']));
+
+        // Extract real clean domain / site slug
+        $home_url = home_url();
+        $parsed = parse_url($home_url);
+        $host = !empty($parsed['host']) ? $parsed['host'] : (!empty($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'site');
+        $path = !empty($parsed['path']) ? trim($parsed['path'], '/') : '';
+
+        // Clean port and www
+        $host = preg_replace('/:[0-9]+$/', '', strtolower($host));
+        $host = preg_replace('/^www\./', '', $host);
+
+        if ($host === 'localhost' || $host === '127.0.0.1') {
+            $site_identifier = $path ? ('localhost-' . preg_replace('/[^a-zA-Z0-9_\.\-]/', '_', $path)) : 'localhost';
+        } else {
+            $site_identifier = preg_replace('/[^a-zA-Z0-9_\.\-]/', '_', $host);
         }
-        if (!$domain) {
-            $home_host = parse_url(home_url(), PHP_URL_HOST);
-            if ($home_host) {
-                $domain = preg_replace('/[^a-zA-Z0-9_\-]/', '_', strtolower($home_host));
-            }
+        if (empty($site_identifier)) {
+            $site_identifier = sanitize_title(get_bloginfo('name')) ?: 'site';
         }
-        $site_identifier = $domain ?: (sanitize_title(get_bloginfo('name')) ?: 'site');
 
         if (empty($components) || !is_array($components) || count($components) === 0) {
             if ($type === 'database') {
@@ -248,7 +256,8 @@ class WAF_FW_Backup_Engine {
             }
         }
 
-        $backup_id = 'mdf_' . $type . '_' . $site_identifier . '_' . $timestamp;
+        // Direct domain name zip file: e.g. localhost-mahabub.zip or mahabub.shop.zip
+        $backup_id = ($type === 'database') ? ($site_identifier . '-database') : $site_identifier;
         $zip_filename = $backup_id . '.zip';
         $zip_path = $this->backup_dir . $zip_filename;
 
@@ -258,7 +267,7 @@ class WAF_FW_Backup_Engine {
 
         // Step 1: Export Database if requested
         if (in_array('db', $components)) {
-            $db_sql_filename = 'db_dump_' . $timestamp . '.sql';
+            $db_sql_filename = $backup_id . '.sql';
             $db_sql_file = $this->backup_dir . $db_sql_filename;
             $db_result = $this->export_database($db_sql_file);
 

@@ -13,6 +13,9 @@ class WAF_FW_Login_Protector {
     }
 
     public function register_hooks() {
+        if (!function_exists('waf_fw_is_cloud_active') || !waf_fw_is_cloud_active()) {
+            return; // Login protector remains dormant without valid MDefender Pro Cloud API key
+        }
         $slug = trim(get_option('waf_harden_login_rename', get_option('waf_custom_login_slug', '')));
         $hide_login_enabled = in_array(get_option('waf_harden_hide_login_url'), ['yes', '1', 1, true], true) 
                            || in_array(get_option('waf_hide_login_url'), ['yes', '1', 1, true], true)

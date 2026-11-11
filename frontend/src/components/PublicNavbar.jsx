@@ -177,7 +177,7 @@ export default function PublicNavbar() {
       },
       {
         title: 'Deep Malware & Integrity Scanner',
-        desc: '5.2M+ WordPress core checksums, YARA & webshell hunter',
+        desc: '5.32M+ WordPress core & plugin checksums, AST webshell hunter',
         to: '/products/neural-engine',
       },
       {
@@ -638,7 +638,7 @@ export default function PublicNavbar() {
                 if (loc.pathname !== '/docs') e.currentTarget.style.color = '#10201E';
               }}
             >
-              Documentation
+              Docs
             </Link>
 
             {/* 5. Pricing Link */}
@@ -818,7 +818,7 @@ export default function PublicNavbar() {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <span>Get started free</span>
+                  <span>Start Free Trial</span>
                   <ArrowRight size={13} strokeWidth={2.4} />
                 </Link>
               </>
@@ -954,7 +954,7 @@ export default function PublicNavbar() {
             onTouchStart={() => prefetch('docs')}
             style={{ fontSize: '15px', fontWeight: 600, color: loc.pathname === '/docs' ? '#E8792F' : '#10201E', textDecoration: 'none' }}
           >
-            Documentation
+            Docs
           </Link>
           <Link
             to="/pricing"

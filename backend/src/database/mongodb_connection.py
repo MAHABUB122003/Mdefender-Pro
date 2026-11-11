@@ -134,8 +134,32 @@ class MongoDB:
         _idx('api_keys', 'key_hash')
         _idx('api_keys', 'website_id')
         _idx('subscriptions', 'user_id')
+        def _ttl_idx(coll, field, expire_seconds):
+            try:
+                if not hasattr(self._db, coll):
+                    return
+                collection = getattr(self._db, coll)
+                try:
+                    collection.create_index(field, expireAfterSeconds=expire_seconds)
+                except Exception:
+                    # Upgrade existing non-TTL index in-place via collMod
+                    try:
+                        self._db.command({
+                            "collMod": coll,
+                            "index": {
+                                "keyPattern": {field: 1},
+                                "expireAfterSeconds": expire_seconds,
+                            },
+                        })
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
         for coll in ('entitlements', 'notifications', 'usage_metrics'):
             _idx(coll, 'user_id')
+        _idx('notifications', [('user_id', 1), ('created_at', -1)])
+        _ttl_idx('notifications', 'created_at', 2592000)  # Auto-expire after 30 days (zero VPS bloat)
         _idx('users', 'email', sparse=True)
         _idx('users', 'username', sparse=True)
         _idx('users', 'google_id', sparse=True)
@@ -153,8 +177,15 @@ class MongoDB:
         _idx('failed_logins', 'identifier')
         _idx('failed_logins', 'timestamp')
         _idx('audit_logs', 'user_id')
-        _idx('audit_logs', 'timestamp')
+        _ttl_idx('audit_logs', 'timestamp', 7776000)  # Auto-expire after 90 days (zero VPS bloat)
         _idx('audit_logs', 'action')
+        _ttl_idx('security_events', 'timestamp', 2592000)  # Auto-expire after 30 days
+        _idx('monitoring_probes', [('domain', 1), ('checked_at', -1)])
+        _ttl_idx('monitoring_probes', 'checked_at', 1209600)  # Auto-expire after 14 days
+        _idx('monitoring_incidents', [('domain', 1), ('status', 1)])
+        _ttl_idx('monitoring_incidents', 'started_at', 7776000)  # Auto-expire after 90 days
+        _idx('report_schedules', 'user_id')
+        _idx('report_schedules', [('enabled', 1), ('next_run_at', 1)])
         _idx('mfa_secrets', 'user_id')
 
 
@@ -288,6 +319,10 @@ class MongoDB:
     def country_blocks(self):
         return self._db['country_blocks'] if self._db is not None else None
 
+    @property
+    def report_schedules(self):
+        return self._db['report_schedules'] if self._db is not None else None
+
     def __getitem__(self, key):
         return getattr(self, key, None)
 
@@ -331,6 +366,7 @@ class InMemoryDB:
         self.dns_records = InMemoryCollection()
         self.domains = InMemoryCollection()
         self.country_blocks = InMemoryCollection()
+        self.report_schedules = InMemoryCollection()
 
     def __getattr__(self, key):
         if key not in self.__dict__:

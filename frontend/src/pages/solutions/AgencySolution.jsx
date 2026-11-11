@@ -98,12 +98,12 @@ export default function AgencySolution() {
               </div>
 
               <h1 style={{
-                fontSize: 'clamp(34px, 4.2vw, 56px)',
+                fontSize: 'clamp(28px, 3.8vw, 44px)',
                 fontWeight: 800,
-                lineHeight: 1.08,
-                letterSpacing: '-0.05em',
+                lineHeight: 1.15,
+                letterSpacing: '-0.04em',
                 color: '#10201E',
-                marginBottom: '20px'
+                marginBottom: '18px'
               }}>
                 Govern 10, 50, or 100+ WordPress sites from{' '}
                 <span style={{ color: '#28745D' }}>One Sovereign Console.</span>
@@ -115,7 +115,7 @@ export default function AgencySolution() {
                 color: '#4A5D5A',
                 marginBottom: '32px'
               }}>
-                Eliminate tedious manual logins, fatal PHP crashes (WSOD), and plugin update dread. Orchestrate 1-click bulk updates, autonomous &lt;800ms rollbacks, and concurrent 5.2M+ checksum malware scans across all client properties simultaneously.
+                Eliminate tedious manual logins, fatal PHP crashes (WSOD), and plugin update dread. Orchestrate 1-click bulk updates, autonomous &lt;800ms rollbacks, and concurrent 5.32M+ checksum malware scans across all client properties simultaneously.
               </p>
 
               {/* CTAs */}
@@ -188,7 +188,7 @@ export default function AgencySolution() {
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: '#7A8C89', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Integrity DB</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#10201E' }}>5.2M+ Core Checksums</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#10201E' }}>5.32M+ Core Checksums</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: '#7A8C89', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Origin Impact</div>
@@ -304,7 +304,7 @@ export default function AgencySolution() {
                       border: '1px solid #D9E1DC'
                     }}
                   >
-                    5.2M+ Malware Audit
+                    5.32M+ Malware Audit
                   </button>
                   <button
                     onClick={() => setActiveSimTab('hardening')}
@@ -380,7 +380,7 @@ export default function AgencySolution() {
 
                 {activeSimTab === 'scanner' && (
                   <div style={{ fontSize: '12px', color: '#4A5D5A' }}>
-                    <p style={{ marginBottom: '8px' }}>Auditing 148,200 files across 35 sites against 5,214,098 official WordPress.org hashes:</p>
+                    <p style={{ marginBottom: '8px' }}>Auditing 148,200 files across 35 sites against 5,320,000+ official WordPress.org checksums:</p>
                     <div style={{ background: '#10201E', padding: '10px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '11px', color: '#E4EAE6' }}>
                       [0.00s] Connected to 35 client RASP agents via HMAC-SHA256.<br />
                       [0.34s] Auditing /wp-includes/ and /wp-admin/ core binaries... 100% MATCH.<br />
@@ -607,9 +607,9 @@ export default function AgencySolution() {
               {
                 icon: HardDrive,
                 badge: 'ZERO SERVER CPU',
-                title: '5.2M+ Checksum Remote Malware Audit',
+                title: '5.32M+ Checksum Remote Malware Audit',
                 desc: 'Audits every PHP, JS, and theme file against official cryptographic hashes from WordPress.org. Any modified core file, inserted webshell, or obfuscated base64 backdoor is flagged immediately without consuming your client’s host CPU.',
-                specs: '5,214,098 core & plugin hashes · 2.5M+ malicious pattern regexes · Non-blocking remote worker execution'
+                specs: '5.32M+ core & plugin checksums · 2.5M+ malicious pattern regexes · Non-blocking remote worker execution'
               },
               {
                 icon: Lock,

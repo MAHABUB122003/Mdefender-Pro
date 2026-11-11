@@ -150,6 +150,13 @@ SENSITIVE_PATHS = [
         "desc": "Direct exposure of database credentials and cryptographic salts."
     },
     {
+        "path": "/wp-content/debug.log",
+        "name": "WordPress Debug & Error Log",
+        "risk": "critical",
+        "type": "debug_log",
+        "desc": "Direct exposure of server traces, database queries, and PHP stack dumps."
+    },
+    {
         "path": "/robots.txt",
         "name": "Search Engine Directives",
         "risk": "info",
@@ -184,7 +191,9 @@ class SecurityScannerService:
         hostname = parsed.hostname or url.replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
         scheme = parsed.scheme or "https"
         port_suffix = f":{parsed.port}" if parsed.port and parsed.port not in (80, 443) else ""
-        return f"{scheme}://{hostname}{port_suffix}", hostname, scheme
+        base_path = parsed.path.rstrip('/')
+        clean_url = f"{scheme}://{hostname}{port_suffix}{base_path}"
+        return clean_url, hostname, scheme
 
     def _probe_single_port(self, hostname: str, item: dict):
         port = item["port"]
@@ -532,6 +541,21 @@ class SecurityScannerService:
                 else:
                     is_exposed = False
 
+            elif item.get("type") == "debug_log":
+                if status == 200:
+                    is_html = "<html" in body_sample.lower() or "<!doctype" in body_sample.lower()
+                    if not is_html and ("stack trace" in body_sample.lower() or "php" in body_sample.lower() or "error" in body_sample.lower() or len(body_sample) > 20):
+                        is_exposed = True
+                        notes = "debug.log publicly exposed with system traces"
+                    else:
+                        is_exposed = False
+                        notes = "Returned soft HTML (Safe)"
+                elif status in (403, 401, 404):
+                    is_exposed = False
+                    notes = f"Protected with HTTP {status} Access Denied"
+                else:
+                    is_exposed = False
+
             elif item.get("type") in ("login", "admin"):
                 # WordPress login / admin portal
                 if status in (200, 301, 302):
@@ -695,13 +719,131 @@ class SecurityScannerService:
         if len(http_data.get("server_exposure", [])) > 1:
             score -= 5
 
+        # 4. Cross-Reference Origin Security Hardening Status
+        hardening_audit = {
+            "is_connected": False,
+            "website_id": None,
+            "is_fully_hardened": False,
+            "active_shields_count": 0,
+            "total_shields": 8,
+            "master_shields": {},
+            "vulnerabilities": [],
+            "action_required": False
+        }
+
+        try:
+            from src.database.mongodb_connection import MongoDB
+            mongo = MongoDB()
+            site_doc = mongo.websites.find_one({
+                "$or": [
+                    {"domain": hostname},
+                    {"domain": clean_url.replace("https://", "").replace("http://", "").split("/")[0]},
+                    {"url": {"$regex": re.escape(hostname), "$options": "i"}}
+                ]
+            })
+
+            if site_doc:
+                hardening_audit["is_connected"] = True
+                hardening_audit["website_id"] = str(site_doc.get("_id"))
+                api_key = site_doc.get("api_key") or ""
+                site_token = site_doc.get("site_token") or ""
+                target_origin = site_doc.get("url") or clean_url
+
+                try:
+                    sep = "&" if "?" in target_origin else "?"
+                    h_url = f"{target_origin}{sep}waf_cloud_sync=1&cloud_action=get_hardening_overview&site_token={site_token}&api_key={api_key}"
+                    h_resp = requests.post(h_url, timeout=3.5, verify=False)
+                    if h_resp.status_code == 200:
+                        h_data = h_resp.json().get("action_result", {})
+                        master_shields = h_data.get("master_shields") or {}
+                        active_count = sum(1 for v in master_shields.values() if v)
+                        
+                        vulnerabilities = []
+                        if not master_shields.get("virtual_patching_shield"):
+                            vulnerabilities.append({
+                                "shield_id": "virtual_patching_shield",
+                                "name": "Zero-Day Virtual Patching Shield",
+                                "severity": "CRITICAL",
+                                "desc": "WAF Pre-Flight WAAP is inactive. WordPress Core and plugins (Elementor, WooCommerce, CF7) are exposed to 680+ unpatched zero-day CVE exploits."
+                            })
+                        if not master_shields.get("filesystem_lockdown"):
+                            vulnerabilities.append({
+                                "shield_id": "filesystem_lockdown",
+                                "name": "Filesystem Execution Lockdown",
+                                "severity": "HIGH",
+                                "desc": "Uploads directory allows direct PHP execution, and theme/plugin code editors are exposed in WP-Admin."
+                            })
+                        if not master_shields.get("attack_surface_guard"):
+                            vulnerabilities.append({
+                                "shield_id": "attack_surface_guard",
+                                "name": "Attack Surface & XML-RPC Gateway",
+                                "severity": "HIGH",
+                                "desc": "XML-RPC multicall interface and REST user enumeration endpoints are exposed to automated brute-force DDoS."
+                            })
+                        if not master_shields.get("identity_login_shield"):
+                            vulnerabilities.append({
+                                "shield_id": "identity_login_shield",
+                                "name": "Identity & Brute-Force Login Shield",
+                                "severity": "HIGH",
+                                "desc": "Login portal has no failed-login IP ban policy, leaving administrator credentials vulnerable to dictionary attacks."
+                            })
+                        if not master_shields.get("security_headers_shield"):
+                            vulnerabilities.append({
+                                "shield_id": "security_headers_shield",
+                                "name": "Enterprise HTTP Security Headers",
+                                "severity": "HIGH",
+                                "desc": "Missing X-Frame-Options (clickjacking risk), X-Content-Type-Options (MIME sniffing), and Strict-Transport-Security (HSTS)."
+                            })
+                        if not master_shields.get("environment_debug_shield"):
+                            vulnerabilities.append({
+                                "shield_id": "environment_debug_shield",
+                                "name": "Production Environment & Debug Lockdown",
+                                "severity": "MEDIUM",
+                                "desc": "WP_DEBUG error display or debug.log file access is not locked down for production operations."
+                            })
+                        if not master_shields.get("database_secrets_shield"):
+                            vulnerabilities.append({
+                                "shield_id": "database_secrets_shield",
+                                "name": "Database Integrity & Cryptographic Salts",
+                                "severity": "MEDIUM",
+                                "desc": "Database table prefix and 64-character cryptographic security salts have not been audited or rotated."
+                            })
+                        if not master_shields.get("fim_persistence_shield"):
+                            vulnerabilities.append({
+                                "shield_id": "fim_persistence_shield",
+                                "name": "File Integrity Monitoring & Persistence Trap",
+                                "severity": "LOW",
+                                "desc": "Core file integrity monitoring and mu-plugins persistence trap are not actively tracking file changes."
+                            })
+
+                        hardening_audit.update({
+                            "is_fully_hardened": active_count == 8,
+                            "active_shields_count": active_count,
+                            "total_shields": 8,
+                            "master_shields": master_shields,
+                            "vulnerabilities": vulnerabilities,
+                            "action_required": active_count < 8
+                        })
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Adjust score based on real origin hardening status if connected
+        if hardening_audit.get("is_connected"):
+            if hardening_audit.get("is_fully_hardened"):
+                score = max(score, 95)
+            elif hardening_audit.get("action_required"):
+                inactive_shields = 8 - hardening_audit.get("active_shields_count", 0)
+                score = max(20, min(score - (inactive_shields * 6), 65))
+
         score = max(15, min(score, 100))
 
         if score >= 90:
             grade = "A+"
             grade_color = "#10b981"
-            verdict = "Excellent Security Posture"
-            summary_message = "Your website demonstrates robust defenses with modern encryption and hardened headers."
+            verdict = "Origin Server Fully Fortified" if hardening_audit.get("is_fully_hardened") else "Excellent Security Posture"
+            summary_message = "All 8 Security Hardening Shields are actively enforced on origin. Zero-day exploits blocked, sensitive paths isolated, and headers fortified." if hardening_audit.get("is_fully_hardened") else "Your website demonstrates robust defenses with modern encryption and hardened headers."
         elif score >= 78:
             grade = "A"
             grade_color = "#3b82f6"
@@ -715,12 +857,12 @@ class SecurityScannerService:
         elif score >= 40:
             grade = "C"
             grade_color = "#f97316"
-            verdict = "Needs Security Hardening"
-            summary_message = "Multiple missing headers or open management ports were detected. MDefender Pro 1-click hardening can resolve these instantly."
+            verdict = f"{len(hardening_audit.get('vulnerabilities', []))} Critical Hardening Vulnerabilities Detected" if hardening_audit.get("action_required") else "Needs Security Hardening"
+            summary_message = "Security Hardening is inactive or incomplete on your origin server. Attackers can exploit unpatched zero-day CVEs, brute-force XML-RPC, and iframe your website." if hardening_audit.get("action_required") else "Multiple missing headers or open management ports were detected. MDefender Pro 1-click hardening can resolve these instantly."
         else:
             grade = "F"
             grade_color = "#ef4444"
-            verdict = "Immediate Hardening Recommended"
+            verdict = f"{len(hardening_audit.get('vulnerabilities', []))} Severe Security Vulnerabilities Detected" if hardening_audit.get("action_required") else "Immediate Hardening Recommended"
             summary_message = "Critical security issues or exposed interfaces were detected. Activate MDefender Pro WAF & DDoS mitigation to shield your origin."
 
         return {
@@ -738,5 +880,6 @@ class SecurityScannerService:
             "ports": port_data,
             "sensitive_paths": path_data,
             "dns": dns_data,
+            "hardening": hardening_audit
         }
 

@@ -169,7 +169,7 @@ export default function BulkBrokenLinks() {
   }
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <BulkHeader
         title="Broken Links & Dead Reference Crawler"
         subtitle="Automated crawling to identify 404 dead links, broken anchors and redirection loops."
@@ -655,7 +655,7 @@ const cardStyle = {
   border: '1px solid #E2E8F0',
   borderRadius: '14px',
   boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-  padding: '18px 20px'
+  padding: '12px 16px'
 }
 
 const labelStyle = {
@@ -667,7 +667,7 @@ const labelStyle = {
 }
 
 const numberStyle = {
-  fontSize: '23px',
+  fontSize: '19px', letterSpacing: '-0.04em',
   fontWeight: '700',
   color: '#0F172A',
   fontVariantNumeric: 'tabular-nums',

@@ -56,6 +56,22 @@ if (isset($_GET['mdefender_bypass']) || isset($_GET['mdefender_restore']) || iss
     }
 }
 
+/**
+ * Strict SaaS Cloud-Gated License & API Key Verification
+ * In enterprise SaaS architecture, if the site is not actively connected
+ * with a valid MDefender Pro Cloud API key, all defense engines remain dormant.
+ */
+if (!function_exists('waf_fw_is_cloud_active')) {
+    function waf_fw_is_cloud_active() {
+        $connected = get_option('waf_fw_connected', 'no') === 'yes';
+        $api_key = trim((string) get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', '')));
+        if (!$connected || empty($api_key) || strlen($api_key) < 16) {
+            return false;
+        }
+        return true;
+    }
+}
+
 require_once WAF_FW_PLUGIN_DIR . 'includes/core/class-service-container.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/core/class-engine-registry.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-db.php';
@@ -83,24 +99,32 @@ require_once WAF_FW_PLUGIN_DIR . 'includes/class-ajax-handler.php';
 require_once WAF_FW_PLUGIN_DIR . 'includes/class-scanner.php';
 require_once WAF_FW_PLUGIN_DIR . 'admin/class-admin.php';
 
-// Initialize Turnstile Bot Challenge Engine
+// Initialize Turnstile Bot Challenge Engine (only if cloud-connected)
 if (class_exists('WAF_FW_Turnstile')) {
-    WAF_FW_Turnstile::instance()->init();
+    if (waf_fw_is_cloud_active()) {
+        WAF_FW_Turnstile::instance()->init();
+    }
 }
 
-// Initialize Under Attack Proof-of-Work Shield
+// Initialize Under Attack Proof-of-Work Shield (only if cloud-connected)
 if (class_exists('WAF_FW_Under_Attack_Shield')) {
-    WAF_FW_Under_Attack_Shield::instance();
+    if (waf_fw_is_cloud_active()) {
+        WAF_FW_Under_Attack_Shield::instance();
+    }
 }
 
-// Initialize Two-Factor Authentication Engine
+// Initialize Two-Factor Authentication Engine (only if cloud-connected)
 if (class_exists('WAF_FW_2FA')) {
-    WAF_FW_2FA::instance();
+    if (waf_fw_is_cloud_active()) {
+        WAF_FW_2FA::instance();
+    }
 }
 
-// Initialize Custom Secret Login Gateway & Login Protector
+// Initialize Custom Secret Login Gateway & Login Protector (only if cloud-connected)
 if (class_exists('WAF_FW_Login_Protector')) {
-    WAF_FW_Login_Protector::instance()->register_hooks();
+    if (waf_fw_is_cloud_active()) {
+        WAF_FW_Login_Protector::instance()->register_hooks();
+    }
 }
 
 // Instant Bidirectional Cloud Inventory Synchronization Hooks
@@ -1390,6 +1414,23 @@ function waf_fw_handle_cloud_sync_webhook() {
                     wp_send_json_error(['message' => 'Repair engine unavailable'], 500);
                     exit;
                 }
+            } elseif ($action === 'disconnect' || $action === 'unlink' || $action === 'revoke_license') {
+                delete_option('waf_fw_api_key');
+                delete_option('waf_fw_ml_api_key');
+                delete_option('waf_fw_site_token');
+                delete_option('waf_fw_website_id');
+                delete_option('waf_fw_trial_days_remaining');
+                delete_option('waf_fw_subscription_status');
+                delete_option('waf_allow_cloud_sso');
+                delete_option('waf_fw_last_sync');
+                delete_option('waf_fw_local_blacklist_cache');
+                update_option('waf_fw_connected', 'no');
+                wp_clear_scheduled_hook('waf_fw_cloud_heartbeat');
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+                wp_send_json_success(['disconnected' => true, 'status' => 'dormant', 'message' => 'Site disconnected and protection deactivated.']);
+                exit;
             } elseif ($action === 'create_backup') {
                 if (!class_exists('WAF_FW_Backup_Engine') && file_exists(__DIR__ . '/includes/backup/class-backup-engine.php')) {
                     require_once __DIR__ . '/includes/backup/class-backup-engine.php';
@@ -2143,6 +2184,16 @@ function waf_fw_handle_cloud_sync_webhook() {
                         'debug_display' => (defined('WP_DEBUG_DISPLAY') && WP_DEBUG_DISPLAY),
                         'disallow_file_edit' => (defined('DISALLOW_FILE_EDIT') && DISALLOW_FILE_EDIT),
                         'disallow_file_mods' => (defined('DISALLOW_FILE_MODS') && DISALLOW_FILE_MODS)
+                    ],
+                    'master_shields' => [
+                        'virtual_patching_shield' => (get_option('waf_harden_virtual_patching', 'no') === 'yes' || get_option('waf_fw_virtual_patching', 'no') === 'yes'),
+                        'filesystem_lockdown' => (get_option('waf_harden_block_uploads_php', 'no') === 'yes'),
+                        'attack_surface_guard' => (get_option('waf_harden_xmlrpc_mode', 'off') !== 'off' || get_option('waf_harden_version_hiding') === 'enabled'),
+                        'identity_login_shield' => (get_option('waf_harden_login_lockouts', 'no') === 'yes' || get_option('waf_harden_custom_login_slug', 'no') === 'yes'),
+                        'security_headers_shield' => (get_option('waf_harden_security_headers', 'disabled') === 'enabled'),
+                        'database_secrets_shield' => (get_option('waf_harden_database_prefix_check', 'no') === 'yes'),
+                        'environment_debug_shield' => (get_option('waf_harden_disable_wp_debug', 'no') === 'yes'),
+                        'fim_persistence_shield' => (get_option('waf_harden_fim_core_monitoring', 'no') === 'yes')
                     ]
                 ];
             } elseif ($action === 'apply_hardening_profile' || $action === 'apply_hardening_preset') {
@@ -2233,6 +2284,84 @@ function waf_fw_handle_cloud_sync_webhook() {
                             break;
                         case 'disallow_file_mods':
                             update_option('waf_harden_disallow_file_mods', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'virtual_patching_shield':
+                        case 'virtual_patching':
+                        case 'virtual_patch':
+                            update_option('waf_harden_virtual_patching', $val ? 'yes' : 'no');
+                            update_option('waf_fw_virtual_patching', $val ? 'yes' : 'no');
+                            update_option('waf_harden_waf_sqli_xss', $val ? 'yes' : 'no');
+                            update_option('waf_fw_deep_inspection', $val ? 'yes' : 'no');
+                            update_option('waf_harden_waf_webshell_trap', $val ? 'yes' : 'no');
+                            update_option('waf_fw_webshell_trap', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'filesystem_lockdown':
+                            $val ? $hardener->apply_uploads(['block_php' => true]) : $hardener->remove_uploads();
+                            update_option('waf_harden_block_uploads_php', $val ? 'yes' : 'no');
+                            update_option('waf_fw_disable_file_editing', $val ? 'yes' : 'no');
+                            update_option('waf_harden_disable_file_editor', $val ? 'yes' : 'no');
+                            update_option('waf_harden_protect_wp_config', $val ? 'yes' : 'no');
+                            update_option('waf_harden_directory_browsing', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'attack_surface_guard':
+                            update_option('waf_harden_xmlrpc_mode', $val ? 'jetpack_only' : 'off');
+                            update_option('waf_harden_hide_wp_version', $val ? 'yes' : 'no');
+                            update_option('waf_harden_version_hiding', $val ? 'enabled' : 'disabled');
+                            update_option('waf_fw_prevent_user_enumeration', $val ? 'yes' : 'no');
+                            update_option('waf_harden_user_enumeration', $val ? 'enabled' : 'disabled');
+                            $val ? $hardener->apply_rest_api(['disable_user_endpoints' => true]) : $hardener->remove_rest_api();
+                            $executed = true;
+                            break;
+                        case 'identity_login_shield':
+                            update_option('waf_harden_login_lockouts', $val ? 'yes' : 'no');
+                            update_option('waf_harden_custom_login_slug', $val ? 'yes' : 'no');
+                            update_option('waf_harden_enforce_2fa', $val ? 'yes' : 'no');
+                            update_option('waf_harden_idle_session_logout', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'security_headers_shield':
+                        case 'security_headers':
+                        case 'securityHeaders':
+                            update_option('waf_harden_security_headers', $val ? 'enabled' : 'disabled');
+                            $val ? $hardener->apply_recommended_security_headers() : $hardener->remove_security_headers();
+                            $executed = true;
+                            break;
+                        case 'database_secrets_shield':
+                            update_option('waf_harden_database_prefix_check', $val ? 'yes' : 'no');
+                            update_option('waf_harden_admin_user_audit', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'environment_debug_shield':
+                            update_option('waf_harden_disable_wp_debug', $val ? 'yes' : 'no');
+                            update_option('waf_harden_disable_wp_debug_display', $val ? 'yes' : 'no');
+                            update_option('waf_harden_disable_wp_debug_log', $val ? 'yes' : 'no');
+                            update_option('waf_harden_block_debug_log_access', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'fim_persistence_shield':
+                            update_option('waf_harden_fim_core_monitoring', $val ? 'yes' : 'no');
+                            update_option('waf_harden_mu_plugins_trap', $val ? 'yes' : 'no');
+                            update_option('waf_harden_cron_persistence_trap', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'waf_sqli_xss':
+                            update_option('waf_harden_waf_sqli_xss', $val ? 'yes' : 'no');
+                            update_option('waf_fw_deep_inspection', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'waf_webshell_trap':
+                            update_option('waf_harden_waf_webshell_trap', $val ? 'yes' : 'no');
+                            update_option('waf_fw_webshell_trap', $val ? 'yes' : 'no');
+                            $executed = true;
+                            break;
+                        case 'disable_wp_debug':
+                        case 'disable_wp_debug_display':
+                        case 'disable_wp_debug_log':
+                        case 'block_debug_log_access':
+                            update_option('waf_harden_' . $ctrl, $val ? 'yes' : 'no');
                             $executed = true;
                             break;
                         default:
@@ -2572,6 +2701,32 @@ function waf_fw_handle_cloud_sync_webhook() {
                     echo json_encode($log_data);
                     exit;
                 }
+            } elseif ($action === 'get_db_optimizer_status' || $action === 'db_optimizer_status') {
+                require_once WAF_FW_PLUGIN_DIR . 'includes/class-db-optimizer.php';
+                $action_result = WAF_FW_DB_Optimizer::instance()->get_status();
+            } elseif ($action === 'run_db_optimization' || $action === 'optimize_database') {
+                require_once WAF_FW_PLUGIN_DIR . 'includes/class-db-optimizer.php';
+                $raw_targets = $_REQUEST['targets'] ?? $pushed_data['targets'] ?? ['all'];
+                if (is_string($raw_targets)) {
+                    $raw_targets = array_map('trim', explode(',', $raw_targets));
+                }
+                $action_result = WAF_FW_DB_Optimizer::instance()->optimize($raw_targets);
+            } elseif ($action === 'get_environment_status' || $action === 'environment_status') {
+                require_once WAF_FW_PLUGIN_DIR . 'includes/class-environment-lockdown.php';
+                $action_result = WAF_FW_Environment_Lockdown::instance()->get_status();
+            } elseif ($action === 'enforce_environment_lockdown' || $action === 'environment_lockdown') {
+                require_once WAF_FW_PLUGIN_DIR . 'includes/class-environment-lockdown.php';
+                $options = $_REQUEST['options'] ?? $pushed_data['options'] ?? (is_array($pushed_data) ? $pushed_data : []);
+                if (is_string($options)) {
+                    $decoded = json_decode($options, true);
+                    if (is_array($decoded)) {
+                        $options = $decoded;
+                    }
+                }
+                $action_result = WAF_FW_Environment_Lockdown::instance()->enforce_lockdown($options);
+            } elseif ($action === 'purge_debug_log') {
+                require_once WAF_FW_PLUGIN_DIR . 'includes/class-environment-lockdown.php';
+                $action_result = WAF_FW_Environment_Lockdown::instance()->purge_debug_log();
             } elseif ($action === 'get_diagnostics' || $action === 'site_health') {
                 global $wpdb;
                 if (!function_exists('get_plugins')) {
@@ -3100,6 +3255,10 @@ function waf_fw_handle_cloud_sync_webhook() {
                 'recent_logs' => $dash_data['recent_logs'] ?? [],
             ];
 
+            // Clean any stray notices or database output from previous plugins/WordPress core
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
             if (!headers_sent()) {
                 header('Content-Type: application/json; charset=UTF-8');
             }
@@ -4249,6 +4408,7 @@ if (!function_exists('waf_fw_bump_stat')) {
 function waf_fw_analyze_request() {
     if (php_sapi_name() === 'cli' || (defined('WP_CLI') && WP_CLI)) return;
     if (get_option('waf_fw_protection_enabled', 'yes') !== 'yes') return;
+    if (!waf_fw_is_cloud_active()) return;
     if (defined('DOING_CRON') && DOING_CRON) return;
 
     // WP-ADMIN SAFETY: Pluggable user authentication is not ready at 'plugins_loaded'.
@@ -4529,12 +4689,35 @@ function waf_fw_analyze_request() {
         WAF_FW_Engine::flush_telemetry();
         exit;
     }
+
+    // Request is clean & allowed: Increment allowed counter and log non-blockingly
+    waf_fw_bump_stat('allowed');
+    if (empty($GLOBALS['waf_fw_allowed_shutdown_registered'])) {
+        $GLOBALS['waf_fw_allowed_shutdown_registered'] = true;
+        $eval_c_ip = !empty($eval_ip) ? $eval_ip : ($engine ? $engine->get_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'));
+        $req_uri_logged = substr($_SERVER['REQUEST_URI'] ?? '/', 0, 500);
+        $req_meth_logged = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $req_ua_logged = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 300);
+
+        add_action('shutdown', function() use ($eval_c_ip, $req_uri_logged, $req_meth_logged, $req_ua_logged) {
+            if (class_exists('WAF_FW_Logger')) {
+                WAF_FW_Logger::instance()->log_request([
+                    'ip' => $eval_c_ip,
+                    'url' => $req_uri_logged,
+                    'method' => $req_meth_logged,
+                    'status' => 'allowed',
+                    'user_agent' => $req_ua_logged
+                ]);
+            }
+        }, 35);
+    }
 }
 // Hook early at plugins_loaded priority 1 and keep init priority 1 as fallback
 add_action('plugins_loaded', 'waf_fw_analyze_request', 1);
 add_action('init', 'waf_fw_analyze_request', 1);
 
 function waf_fw_analyze_rest_request() {
+    if (!waf_fw_is_cloud_active()) return;
     $GLOBALS['waf_fw_analyzed'] = true;
     $engine = WAF_FW_Engine::instance();
     $route = $_SERVER['REQUEST_URI'] ?? '';
@@ -4560,6 +4743,28 @@ function waf_fw_analyze_rest_request() {
         // Immediately flush telemetry so the blocked attack is recorded on cloud dashboard
         WAF_FW_Engine::flush_telemetry();
         exit;
+    }
+
+    // Clean REST request allowed: Increment allowed counter and log on shutdown
+    waf_fw_bump_stat('allowed');
+    if (empty($GLOBALS['waf_fw_allowed_shutdown_registered'])) {
+        $GLOBALS['waf_fw_allowed_shutdown_registered'] = true;
+        $rest_c_ip = $engine ? $engine->get_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+        $rest_uri_logged = substr($_SERVER['REQUEST_URI'] ?? '/', 0, 500);
+        $rest_meth_logged = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $rest_ua_logged = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 300);
+
+        add_action('shutdown', function() use ($rest_c_ip, $rest_uri_logged, $rest_meth_logged, $rest_ua_logged) {
+            if (class_exists('WAF_FW_Logger')) {
+                WAF_FW_Logger::instance()->log_request([
+                    'ip' => $rest_c_ip,
+                    'url' => $rest_uri_logged,
+                    'method' => $rest_meth_logged,
+                    'status' => 'allowed',
+                    'user_agent' => $rest_ua_logged
+                ]);
+            }
+        }, 35);
     }
 }
 

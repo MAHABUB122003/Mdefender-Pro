@@ -78,10 +78,6 @@ export default function UserWebsites() {
 
   const [loading, setLoading] = useState(() => !cachedData)
 
-  const [newWebsite, setNewWebsite] = useState('')
-
-  const [adding, setAdding] = useState(false)
-
   const [feedbackMsg, setFeedbackMsg] = useState(null)
 
 
@@ -144,15 +140,24 @@ export default function UserWebsites() {
   const [ssoLoadingId, setSsoLoadingId] = useState(null)
   const [copiedAccountKey, setCopiedAccountKey] = useState(false)
   const [showAccountKey, setShowAccountKey] = useState(false)
-  const [showManualForm, setShowManualForm] = useState(false)
   const [currentAccountKey, setCurrentAccountKey] = useState(() => accountApiKey)
   const [regeneratingAccountKey, setRegeneratingAccountKey] = useState(false)
 
   useEffect(() => {
-    if (accountApiKey && !currentAccountKey) {
+    if (accountApiKey && accountApiKey !== currentAccountKey) {
       setCurrentAccountKey(accountApiKey)
     }
-  }, [accountApiKey, currentAccountKey])
+  }, [accountApiKey])
+
+  useEffect(() => {
+    const handleKeyUpdate = (e) => {
+      if (e?.detail) {
+        setCurrentAccountKey(e.detail)
+      }
+    }
+    window.addEventListener('mdefender_api_key_updated', handleKeyUpdate)
+    return () => window.removeEventListener('mdefender_api_key_updated', handleKeyUpdate)
+  }, [])
 
 
 
@@ -275,179 +280,13 @@ export default function UserWebsites() {
   }, [fetchData])
 
 
-
-  const handleAddWebsite = async (e) => {
-
-    e.preventDefault()
-
-    setFeedbackMsg(null)
-
-    if (!newWebsite.trim()) return
-
-
-
-    // Clean up domain: strip http(s)://, trailing slash, path
-
-    let cleanDomain = newWebsite.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
-
-    cleanDomain = cleanDomain.split('/')[0].trim().toLowerCase()
-
-
-
-    if (!cleanDomain) {
-
-      setFeedbackMsg({ type: 'error', text: 'Please enter a valid website domain or hostname.' })
-
-      return
-
-    }
-
-
-
-    setAdding(true)
-
-    try {
-
-      const res = await api.addUserWebsite({ domain: cleanDomain, platform: 'wordpress' })
-
-      if (res?.status === 'error') {
-
-        if (res.message && res.message.toLowerCase().includes('upgrade to premium')) {
-
-          setShowUpgradeModal(true)
-
-        } else {
-
-          setFeedbackMsg({ type: 'error', text: res.message || 'Failed to connect website.' })
-
-        }
-
-        return
-
-      }
-
-
-
-      const siteKey = res?.api_key || res?.website?.api_key || ''
-
-      const siteId = res?.website_id || res?.website?.id || res?.website?._id || `site_${Date.now()}`
-
-
-
-      const newSiteObj = {
-
-        id: siteId,
-
-        _id: siteId,
-
-        domain: cleanDomain,
-
-        name: cleanDomain,
-
-        url: cleanDomain,
-
-        platform: 'wordpress',
-
-        status: 'active',
-
-        api_key: siteKey,
-
-        added_at: new Date().toISOString(),
-
-        waf_mode: 'protect',
-
-        threat_level: 'LOW'
-
-      }
-
-
-
-      // Optimistic update: render immediately in UI
-
-      setData(prev => {
-
-        const prevList = prev?.websites || []
-
-        const existingIdx = prevList.findIndex(w => (w.domain || '').toLowerCase() === cleanDomain)
-
-        let updatedList
-
-        if (existingIdx >= 0) {
-
-          updatedList = prevList.map((w, idx) => idx === existingIdx ? { ...w, ...newSiteObj } : w)
-
-        } else {
-
-          updatedList = [newSiteObj, ...prevList]
-
-        }
-
-        const updated = { ...(prev || {}), websites: updatedList }
-
-        userStore.set('websites', updated)
-
-        userStore.set('dashboard', updated)
-
-        return updated
-
-      })
-
-
-
-      setModalKey(siteKey)
-
-      setModalDomain(cleanDomain)
-
-      setModalWebsiteId(siteId)
-
-      setModalTab('wordpress')
-
-      setIsMasked(false)
-
-      setShowKeyModal(true)
-
-
-
-      setNewWebsite('')
-
-      setFeedbackMsg({ type: 'success', text: `WordPress site "${cleanDomain}" connected successfully!` })
-
-      userStore.invalidate('websites')
-
-      userStore.invalidate('dashboard')
-
-      await fetchData(true)
-
-    } catch (err) {
-
-      const errMsg = err.message || 'Failed to connect website. Please try again.'
-
-      if (errMsg.toLowerCase().includes('upgrade') || errMsg.toLowerCase().includes('limit')) {
-
-        setShowUpgradeModal(true)
-
-      } else {
-
-        setFeedbackMsg({ type: 'error', text: errMsg })
-
-      }
-
-    } finally {
-
-      setAdding(false)
-
-    }
-
-  }
-
-
-
   const handleOpenKeyModal = (w) => {
     const domain = w.domain || w.name || w.url || 'My Website'
     const id = w.id || w._id || ''
     setModalDomain(domain)
     setModalWebsiteId(id)
-    const key = w.api_key || data?.api_key || ''
+    // Synchronize directly with active Workspace API Key so WordPress pairing is 100% unified
+    const key = currentAccountKey || accountApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : '') || w.api_key || ''
     setModalKey(key)
     setIsMasked(true)
     setModalTab(w.platform === 'custom_sdk' ? 'sdk' : 'wordpress')
@@ -733,9 +572,11 @@ export default function UserWebsites() {
       const newKey = res?.api_key || res?.data?.api_key
       if (newKey) {
         setCurrentAccountKey(newKey)
+        setModalKey(newKey)
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('mdefender_api_key', newKey)
         }
+        window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: newKey }))
         setFeedbackMsg({ type: 'success', text: 'MDefender Pro API Key regenerated successfully!' })
       } else {
         setFeedbackMsg({ type: 'error', text: 'Failed to regenerate API Key.' })
@@ -758,27 +599,22 @@ export default function UserWebsites() {
       const res = await api.regenerateApiKey({ website_id: modalWebsiteId })
 
       if (res && res.api_key) {
-
         setModalKey(res.api_key)
-
+        setCurrentAccountKey(res.api_key)
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('mdefender_api_key', res.api_key)
+        }
+        window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: res.api_key }))
         setIsMasked(false)
-
         userStore.invalidate('websites')
-
         userStore.invalidate('dashboard')
-
         fetchData()
-
+        setFeedbackMsg({ type: 'success', text: `API key regenerated successfully.` })
       } else {
-
-        alert('Failed to regenerate key')
-
+        setFeedbackMsg({ type: 'error', text: 'Failed to regenerate site API key.' })
       }
-
     } catch (err) {
-
-      alert(err.message || 'Error regenerating key')
-
+      setFeedbackMsg({ type: 'error', text: err.message || 'Error regenerating site API key' })
     } finally {
 
       setRegenerating(false)
@@ -880,19 +716,18 @@ export default function UserWebsites() {
 
 
   const handleCopyKey = async () => {
+    const keyToCopy = modalKey || currentAccountKey || accountApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : '') || ''
+    if (!keyToCopy) return
 
-    if (!modalKey) return
-
-    const ok = await copyToClipboard(modalKey)
-
+    const ok = await copyToClipboard(keyToCopy)
     if (ok) {
-
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('mdefender_api_key', keyToCopy)
+      }
+      window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: keyToCopy }))
       setCopiedKey(true)
-
       setTimeout(() => setCopiedKey(false), 2200)
-
     }
-
   }
 
 
@@ -1237,231 +1072,135 @@ export default function UserWebsites() {
 
 
 
-        {/* Clean MDefender Pro API Key Card */}
+        {/* Sleek Minimalist Workspace API Key Card */}
         <div style={{
           background: '#FFFFFF',
           border: '1px solid #E2E8F0',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          marginBottom: '20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+          borderRadius: '10px',
+          padding: '12px 18px',
+          marginBottom: '10px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '26px', height: '26px', borderRadius: '6px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Key size={14} color="#059669" />
-              </div>
-              <span>MDefender Pro API Key</span>
-              <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '999px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
-                Active
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Key size={15} color="#0B2522" />
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#0F172A' }}>
+                Workspace API Key
+              </span>
+              <span style={{
+                fontSize: '10.5px',
+                fontWeight: '700',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                background: '#F1F5F9',
+                color: '#475569',
+                border: '1px solid #E2E8F0'
+              }}>
+                Auto-Pairing
               </span>
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B' }}>
-              Paste this key into your WordPress plugin to connect your website.
-            </div>
+            <span style={{ fontSize: '11.5px', color: '#64748B' }}>
+              Used to pair and authenticate WordPress websites with MDefender Pro
+            </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Monospace Key Display with Mask Toggle */}
             <div style={{
-              flex: '1 1 320px', background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '8px',
-              padding: '9px 14px', fontFamily: 'Consolas, monospace', fontSize: '13px', color: '#1E293B',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              flex: '1 1 360px',
+              background: '#F8FAFC',
+              border: '1px solid #CBD5E1',
+              borderRadius: '7px',
+              padding: '7px 12px',
+              fontFamily: 'Consolas, monospace',
+              fontSize: '12.5px',
+              color: '#0F172A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              letterSpacing: '0.02em'
             }}>
-              <span>{showAccountKey ? (currentAccountKey || accountApiKey || 'mdf_live_sec_key') : (((currentAccountKey || accountApiKey || 'mdf_live_sec_key')).substring(0, 14) + '••••••••••••••••••••••••')}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {showAccountKey
+                  ? (currentAccountKey || accountApiKey || '••••••••••••••••••••••••••••••••')
+                  : (currentAccountKey || accountApiKey
+                      ? `${(currentAccountKey || accountApiKey).slice(0, 10)}••••••••••••••••••••••••${(currentAccountKey || accountApiKey).slice(-8)}`
+                      : '••••••••••••••••••••••••••••••••')
+                }
+              </span>
               <button
                 type="button"
                 onClick={() => setShowAccountKey(!showAccountKey)}
-                title={showAccountKey ? 'Mask Key' : 'Reveal Key'}
-                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 4px' }}
+                title={showAccountKey ? 'Mask API Key' : 'Reveal API Key'}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 4px', marginLeft: '8px' }}
               >
-                {showAccountKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                {showAccountKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
 
+            {/* Copy Button */}
             <button
               type="button"
               onClick={() => {
-                const keyToCopy = currentAccountKey || accountApiKey || 'mdf_live_sec_key'
+                const keyToCopy = currentAccountKey || accountApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('mdefender_api_key') : '') || ''
+                if (!keyToCopy) return
                 copyToClipboard(keyToCopy)
                 setCopiedAccountKey(true)
+                if (typeof localStorage !== 'undefined') {
+                  localStorage.setItem('mdefender_api_key', keyToCopy)
+                }
+                window.dispatchEvent(new CustomEvent('mdefender_api_key_updated', { detail: keyToCopy }))
                 setTimeout(() => setCopiedAccountKey(false), 2000)
               }}
               style={{
-                padding: '9px 18px', background: '#059669', color: '#FFFFFF', border: 'none',
-                borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                boxShadow: '0 1px 3px rgba(5, 150, 105, 0.25)',
+                height: '34px',
+                padding: '0 16px',
+                background: '#0B2522',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 1px 3px rgba(11, 37, 34, 0.15)',
                 transition: 'all 0.15s ease'
               }}
             >
-              {copiedAccountKey ? <Check size={14} /> : <Copy size={14} />}
+              {copiedAccountKey ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
               <span>{copiedAccountKey ? 'Copied Key!' : 'Copy API Key'}</span>
             </button>
 
+            {/* Rotate Button */}
             <button
               type="button"
               onClick={handleRegenerateAccountKey}
               disabled={regeneratingAccountKey}
               style={{
-                padding: '9px 14px', background: '#FFFFFF', color: '#475569', border: '1px solid #CBD5E1',
-                borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: regeneratingAccountKey ? 'wait' : 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                height: '34px',
+                padding: '0 13px',
+                background: '#FFFFFF',
+                color: '#475569',
+                border: '1px solid #CBD5E1',
+                borderRadius: '7px',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: regeneratingAccountKey ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
                 transition: 'all 0.15s ease'
               }}
-              title="Regenerate your account API key"
+              title="Rotate your Workspace Connect Key"
             >
-              <RotateCw size={13} className={regeneratingAccountKey ? 'animate-spin' : ''} />
-              <span>{regeneratingAccountKey ? 'Regenerating...' : 'Regenerate Key'}</span>
+              <RotateCw size={12} className={regeneratingAccountKey ? 'animate-spin' : ''} />
+              <span>{regeneratingAccountKey ? 'Rotating...' : 'Rotate Key'}</span>
             </button>
-
-            <div style={{ marginLeft: 'auto' }}>
-              <button
-                type="button"
-                onClick={() => setShowManualForm(!showManualForm)}
-                style={{ background: 'none', border: 'none', color: '#059669', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-              >
-                {showManualForm ? 'Hide manual domain form' : '+ Add Domain Manually'}
-              </button>
-            </div>
           </div>
         </div>
-
-        {/* Optional Manual Pre-registration Form */}
-        {showManualForm && (
-          <div style={{ marginBottom: '16px', padding: '16px', background: '#FAFBF9', border: '1px solid #D9E1DC', borderRadius: '10px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '8px' }}>
-              Pre-register a WordPress domain manually:
-            </div>
-
-
-
-            <form onSubmit={handleAddWebsite} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-
-              <div style={{ flex: '1 1 320px', position: 'relative' }}>
-
-                <Globe size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#87948D' }} />
-
-                <input
-
-                  type="text"
-
-                  placeholder="e.g. mahabub.shop or blog.company.com"
-
-                  value={newWebsite}
-
-                  onChange={e => setNewWebsite(e.target.value)}
-
-                  style={{
-
-                    width: '100%',
-
-                    height: '44px',
-
-                    padding: '0 16px 0 40px',
-
-                    border: '1.5px solid #D9E1DC',
-
-                    borderRadius: '10px',
-
-                    fontSize: '13px',
-
-                    fontFamily: 'inherit',
-
-                    background: '#FAFBF9',
-
-                    color: '#10201E',
-
-                    fontWeight: '600',
-
-                    boxSizing: 'border-box',
-
-                    outline: 'none',
-
-                    transition: 'border-color 0.15s ease'
-
-                  }}
-
-                  required
-
-                />
-
-              </div>
-
-
-
-              <button
-
-                type="submit"
-
-                disabled={adding}
-
-                style={{
-
-                  height: '44px',
-
-                  padding: '0 24px',
-
-                  borderRadius: '10px',
-
-                  fontSize: '13px',
-
-                  fontWeight: '700',
-
-                  display: 'inline-flex',
-
-                  alignItems: 'center',
-
-                  gap: '8px',
-
-                  cursor: adding ? 'not-allowed' : 'pointer',
-
-                  background: '#10201E',
-
-                  color: '#FFFFFF',
-
-                  border: 'none',
-
-                  boxShadow: '0 2px 8px rgba(16, 32, 30, 0.2)',
-
-                  flexShrink: 0,
-
-                  transition: 'all 0.15s ease'
-
-                }}
-
-              >
-
-                {adding ? (
-
-                  <>
-
-                    <RotateCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
-
-                    <span>Connecting...</span>
-
-                  </>
-
-                ) : (
-
-                  <>
-
-                    <WordPressLogo size={18} variant="stencil" color="#FFFFFF" />
-
-                    <span>Connect WordPress Site</span>
-
-                  </>
-
-                )}
-
-              </button>
-
-            </form>
-          </div>
-        )}
-
       </div>
-
-
 
       {/* ========================================================================= */}
 
@@ -2513,9 +2252,7 @@ export default function UserWebsites() {
                   }}>
                     {isMasked
                       ? (modalKey
-                        ? (modalKey.startsWith('mdf_live_sec_')
-                          ? `mdf_live_sec_••••••••••••${modalKey.slice(-4)}`
-                          : `${modalKey.slice(0, 8)}••••••••••••${modalKey.slice(-4)}`)
+                        ? `${modalKey.slice(0, 10)}••••••••••••••••••••••••${modalKey.slice(-8)}`
                         : '••••••••••••••••••••••••••••••••')
                       : (modalKey || 'No API key generated')}
                   </div>

@@ -98,27 +98,27 @@ class PerformanceErrorBoundary extends React.Component {
 // ----------------------------------------------------------------------------
 function CircularScoreGauge({ score = 100 }) {
   const safeScore = Math.max(0, Math.min(100, Math.round(score ?? 100)))
-  const radius = 56
-  const strokeWidth = 9
+  const radius = 32
+  const strokeWidth = 6
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (safeScore / 100) * circumference
 
   // Color mapping matching Google PageSpeed / Lighthouse standards
-  let strokeColor = '#16A34A' // Green (90 - 100)
+  let strokeColor = '#10B981' // Vivid Green (90 - 100)
   if (safeScore < 50) {
-    strokeColor = '#DC2626'   // Red (0 - 49)
+    strokeColor = '#EF4444'   // Vivid Red (0 - 49)
   } else if (safeScore < 90) {
-    strokeColor = '#EAB308'   // Yellow / Amber (50 - 89)
+    strokeColor = '#F59E0B'   // Vivid Amber (50 - 89)
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '150px' }}>
-      <div style={{ position: 'relative', width: '136px', height: '136px' }}>
-        <svg width="136" height="136" viewBox="0 0 136 136" style={{ transform: 'rotate(-90deg)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '90px' }}>
+      <div style={{ position: 'relative', width: '76px', height: '76px' }}>
+        <svg width="76" height="76" viewBox="0 0 76 76" style={{ transform: 'rotate(-90deg)' }}>
           {/* Background Track */}
           <circle
-            cx="68"
-            cy="68"
+            cx="38"
+            cy="38"
             r={radius}
             fill="transparent"
             stroke="#E2E8F0"
@@ -126,8 +126,8 @@ function CircularScoreGauge({ score = 100 }) {
           />
           {/* Active Animated Score Stroke */}
           <circle
-            cx="68"
-            cy="68"
+            cx="38"
+            cy="38"
             r={radius}
             fill="transparent"
             stroke={strokeColor}
@@ -152,7 +152,7 @@ function CircularScoreGauge({ score = 100 }) {
           pointerEvents: 'none'
         }}>
           <span style={{
-            fontSize: '32px',
+            fontSize: '18px',
             fontWeight: '700',
             color: strokeColor,
             lineHeight: 1,
@@ -168,23 +168,23 @@ function CircularScoreGauge({ score = 100 }) {
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        fontSize: '11px',
+        gap: '6px',
+        fontSize: '9.5px',
         fontWeight: '600',
         color: '#64748B',
-        marginTop: '12px',
+        marginTop: '4px',
         userSelect: 'none'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#DC2626' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#EF4444' }} />
           <span>0-49</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#EAB308' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#F59E0B' }} />
           <span>50-89</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
           <span>90-100</span>
         </div>
       </div>
@@ -193,16 +193,16 @@ function CircularScoreGauge({ score = 100 }) {
 }
 
 // ----------------------------------------------------------------------------
-// SEMI-CIRCULAR SPEEDOMETER GAUGE COMPONENT (SVG)
+// SEMI-CIRCULAR SPEEDOMETER GAUGE COMPONENT (SVG) — VIVID HIGH-CONTRAST COLORS
 // ----------------------------------------------------------------------------
 function SpeedometerGauge({ responseTimeMs = 155 }) {
   const safeMs = Math.max(10, Math.round(responseTimeMs || 155))
 
-  // Realistic needle angle mapping:
-  // - 0ms = -90° (far left, start of green arc)
-  // - 800ms = -25° (green/yellow boundary)
-  // - 1800ms = +65° (yellow/red boundary)
-  // - 2500ms+ = +90° (far right, end of red arc)
+  // Needle angle mapping:
+  // - 0ms = -90° (far left, green start)
+  // - 800ms = -25° (green/amber boundary)
+  // - 1800ms = +65° (amber/red boundary)
+  // - 2500ms+ = +90° (far right, red end)
   let needleAngleDeg = -90
   if (safeMs <= 800) {
     needleAngleDeg = -90 + (safeMs / 800) * 65
@@ -213,75 +213,81 @@ function SpeedometerGauge({ responseTimeMs = 155 }) {
     needleAngleDeg = 65 + (over / 1000) * 25
   }
 
-  // Needle & text color strictly matches latency zone
-  const zoneColor = safeMs < 800 ? '#2E9E66' : (safeMs <= 1800 ? '#D97706' : '#DC2626')
+  // Clear, crisp, high-contrast zone colors (Zero blur, full visibility)
+  const zoneColor = safeMs < 800 ? '#10B981' : (safeMs <= 1800 ? '#F59E0B' : '#EF4444')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '185px' }}>
-      {/* Upper Gauge Arc SVG: Needle operates strictly in the upper half */}
-      <div style={{ width: '180px', height: '90px' }}>
-        <svg width="180" height="90" viewBox="0 0 180 90" style={{ overflow: 'visible', display: 'block' }}>
-          {/* Background Semi-Circle Arc Segments (Radius 65, Center at (90, 85)) */}
-          {/* Segment 1: Green Zone (180deg to 115deg) - Fast < 800ms */}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '145px', height: '100%' }}>
+      {/* Semi-Circle Gauge Arc SVG: Center at (75, 56), Radius 48 */}
+      <div style={{ width: '135px', height: '56px' }}>
+        <svg width="135" height="56" viewBox="0 0 150 62" style={{ overflow: 'visible', display: 'block' }}>
+          {/* Neutral Background Track Arc */}
           <path
-            d="M 25 85 A 65 65 0 0 1 62.5 26.1"
+            d="M 27 56 A 48 48 0 0 1 123 56"
             fill="none"
-            stroke="#2E9E66"
-            strokeWidth="10"
+            stroke="#E2E8F0"
+            strokeWidth="8"
             strokeLinecap="round"
           />
 
-          {/* Segment 2: Soft Cream/Amber Zone (110deg to 25deg) - Average 800ms to 1.8s */}
+          {/* Segment 1: Vivid Emerald Green (< 800ms) */}
           <path
-            d="M 67.8 23.9 A 65 65 0 0 1 148.9 57.5"
+            d="M 27 56 A 48 48 0 0 1 54.7 12.5"
             fill="none"
-            stroke="#F6E3B4"
-            strokeWidth="10"
+            stroke="#10B981"
+            strokeWidth="8"
             strokeLinecap="round"
           />
 
-          {/* Segment 3: Soft Coral/Red Zone (20deg to 0deg) - Slow > 1.8s */}
+          {/* Segment 2: Vivid Crisp Golden Amber (800ms - 1.8s) */}
           <path
-            d="M 151.1 62.8 A 65 65 0 0 1 155 85"
+            d="M 58.6 10.9 A 48 48 0 0 1 118.5 35.7"
             fill="none"
-            stroke="#F8C0C0"
-            strokeWidth="10"
+            stroke="#F59E0B"
+            strokeWidth="8"
             strokeLinecap="round"
           />
 
-          {/* Rotating Speedometer Needle Pointer: Rotates around (90, 85) */}
+          {/* Segment 3: Vivid Crimson Red (> 1.8s) */}
+          <path
+            d="M 120.1 39.6 A 48 48 0 0 1 123 56"
+            fill="none"
+            stroke="#EF4444"
+            strokeWidth="8"
+            strokeLinecap="round"
+          />
+
+          {/* Rotating Speedometer Needle Pointer */}
           <g
-            transform={`translate(90, 85) rotate(${needleAngleDeg})`}
+            transform={`translate(75, 56) rotate(${needleAngleDeg})`}
             style={{ transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
           >
-            {/* Pointer blade */}
             <line
               x1="0"
               y1="0"
               x2="0"
-              y2="-46"
+              y2="-32"
               stroke={zoneColor}
-              strokeWidth="2.8"
+              strokeWidth="2.4"
               strokeLinecap="round"
             />
-            {/* Center Cap Pivot */}
-            <circle cx="0" cy="0" r="4.5" fill={zoneColor} />
-            <circle cx="0" cy="0" r="1.5" fill="#FFFFFF" />
+            <circle cx="0" cy="0" r="3.2" fill={zoneColor} />
+            <circle cx="0" cy="0" r="1.2" fill="#FFFFFF" />
           </g>
         </svg>
       </div>
 
-      {/* Digital Speed Readout: Cleanly positioned BELOW the arc with zero needle collision */}
+      {/* Digital Speed Readout */}
       <div style={{
         display: 'flex',
         alignItems: 'baseline',
         justifyContent: 'center',
         gap: '1px',
-        marginTop: '6px',
-        marginBottom: '10px'
+        marginTop: '2px',
+        marginBottom: '2px'
       }}>
         <span style={{
-          fontSize: '24px',
+          fontSize: '15px',
           fontWeight: '700',
           color: zoneColor,
           letterSpacing: '-0.02em',
@@ -292,36 +298,28 @@ function SpeedometerGauge({ responseTimeMs = 155 }) {
         </span>
       </div>
 
-      {/* Speedometer Threshold Legend */}
+      {/* Speedometer Threshold Inline Legend */}
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        fontSize: '11px',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '7px',
+        fontSize: '9.5px',
+        fontWeight: '600',
         color: '#64748B',
-        width: '100%',
-        maxWidth: '170px'
+        userSelect: 'none'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#2E9E66' }} />
-            <span>Fast</span>
-          </div>
-          <span style={{ fontWeight: '600', color: '#334155' }}>&lt; 800ms</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }} />
+          <span>&lt;800ms</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EAB308' }} />
-            <span>Average</span>
-          </div>
-          <span style={{ fontWeight: '600', color: '#334155' }}>800ms to 1.8s</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#F59E0B' }} />
+          <span>800m-1.8s</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#DC2626' }} />
-            <span>Slow</span>
-          </div>
-          <span style={{ fontWeight: '600', color: '#334155' }}>&gt; 1.8s</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#EF4444' }} />
+          <span>&gt;1.8s</span>
         </div>
       </div>
     </div>
@@ -341,13 +339,13 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
     return []
   }, [history])
 
-  // Coordinate calculations
-  const width = 640
-  const height = 180
+  // Coordinate calculations (Sleek, low-profile height matching Page Speed)
+  const width = 840
+  const height = 135
   const paddingLeft = 45
-  const paddingRight = 20
-  const paddingTop = 20
-  const paddingBottom = 30
+  const paddingRight = 15
+  const paddingTop = 12
+  const paddingBottom = 22
 
   const plotWidth = width - paddingLeft - paddingRight
   const plotHeight = height - paddingTop - paddingBottom
@@ -396,7 +394,7 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
 
   if (points.length === 0) {
     return (
-      <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#889893', fontSize: '13px' }}>
+      <div style={{ height: '135px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#889893', fontSize: '11px' }}>
         No telemetry history recorded yet for this endpoint. Run a live audit to capture response metrics.
       </div>
     )
@@ -406,21 +404,21 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
   const avgY = paddingTop + plotHeight - (Math.min(maxScaleMs, avgMs) / maxScaleMs) * plotHeight
 
   return (
-    <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: '180px' }}>
+    <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: '135px', height: '135px' }}>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
+        style={{ width: '100%', height: '135px', display: 'block', overflow: 'visible' }}
       >
         <defs>
           <linearGradient id="responseAreaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366F1" stopOpacity="0.28" />
-            <stop offset="65%" stopColor="#818CF8" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#6366F1" stopOpacity="0.25" />
+            <stop offset="65%" stopColor="#818CF8" stopOpacity="0.06" />
             <stop offset="100%" stopColor="#6366F1" stopOpacity="0.0" />
           </linearGradient>
         </defs>
 
-        {/* Horizontal Y-Axis Grid Lines & Labels */}
-        {[800, 600, 400, 200, 0].map(val => {
+        {/* Horizontal Y-Axis Grid Lines & Labels (Clean 3-tier: 800, 400, 0) */}
+        {[800, 400, 0].map(val => {
           const y = paddingTop + plotHeight - (val / maxScaleMs) * plotHeight
           return (
             <g key={val}>
@@ -433,10 +431,10 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
                 strokeWidth="1"
               />
               <text
-                x={paddingLeft - 8}
-                y={y + 3.5}
+                x={paddingLeft - 6}
+                y={y + 3}
                 fill="#94A3B8"
-                fontSize="10"
+                fontSize="9"
                 textAnchor="end"
                 fontWeight="500"
               >
@@ -502,9 +500,9 @@ function ResponseTimeTimelineChart({ history = [], avgMs = 155 }) {
           <text
             key={i}
             x={pt.x}
-            y={height - 8}
+            y={height - 2}
             fill={hoveredPoint?.date === pt.date ? '#0F172A' : '#94A3B8'}
-            fontSize="10.5"
+            fontSize="9"
             textAnchor="middle"
             fontWeight={hoveredPoint?.date === pt.date ? '700' : '500'}
             style={{ transition: 'fill 0.15s ease' }}
@@ -680,7 +678,7 @@ function BulkPerformanceContent() {
   }
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '32px' }}>
       
       {/* EXECUTIVE BULK HEADER */}
       <BulkHeader
@@ -807,11 +805,11 @@ function BulkPerformanceContent() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '20px',
+          marginBottom: '6px',
           borderBottom: '1px solid #F1F5F9',
-          paddingBottom: '14px'
+          paddingBottom: '5px'
         }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
+          <h3 style={{ fontSize: '13.5px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
             Page speed
           </h3>
 
@@ -819,7 +817,7 @@ function BulkPerformanceContent() {
             display: 'inline-flex',
             background: '#F8FAFC',
             border: '1px solid #E2E8F0',
-            borderRadius: '7px',
+            borderRadius: '5px',
             padding: '2px'
           }}>
             <button
@@ -827,11 +825,11 @@ function BulkPerformanceContent() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '5px',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '3px',
                 border: strategy === 'desktop' ? '1px solid #C7D2FE' : '1px solid transparent',
-                fontSize: '12px',
+                fontSize: '10.5px',
                 fontWeight: '600',
                 cursor: 'pointer',
                 background: strategy === 'desktop' ? '#EEF2FF' : 'transparent',
@@ -839,7 +837,7 @@ function BulkPerformanceContent() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <Monitor size={13} />
+              <Monitor size={11} />
               <span>Desktop</span>
             </button>
             <button
@@ -847,11 +845,11 @@ function BulkPerformanceContent() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '5px',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '3px',
                 border: strategy === 'mobile' ? '1px solid #C7D2FE' : '1px solid transparent',
-                fontSize: '12px',
+                fontSize: '10.5px',
                 fontWeight: '600',
                 cursor: 'pointer',
                 background: strategy === 'mobile' ? '#EEF2FF' : 'transparent',
@@ -859,7 +857,7 @@ function BulkPerformanceContent() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <Smartphone size={13} />
+              <Smartphone size={11} />
               <span>Mobile</span>
             </button>
           </div>
@@ -869,88 +867,88 @@ function BulkPerformanceContent() {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '32px',
+          gap: '14px',
           flexWrap: 'wrap'
         }}>
           {/* Left Circular Gauge */}
-          <div style={{ padding: '8px 12px' }}>
+          <div style={{ padding: '0 2px' }}>
             <CircularScoreGauge score={score} />
           </div>
 
-          {/* Right 5 Metric Cards (2 Rows, 3 Columns as in reference image) */}
+          {/* Right 5 Metric Cards (Compact single row on wide screens) */}
           <div style={{
             flex: 1,
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '14px'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))',
+            gap: '6px'
           }}>
             {/* Metric 1: First Contentful Paint */}
             <div style={metricCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1E293B' }}>First Contentful Paint</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>First Contentful Paint</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
                 {fcpValue}
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', lineHeight: 1.35 }}>
+              <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
                 When the first text or image is displayed.
               </div>
             </div>
 
             {/* Metric 2: Largest Contentful Paint */}
             <div style={metricCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1E293B' }}>Largest Contentful Paint</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Largest Contentful Paint</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
                 {lcpValue}
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', lineHeight: 1.35 }}>
-                When the largest text or image element is displayed.
+              <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
+                When the largest element is displayed.
               </div>
             </div>
 
             {/* Metric 3: Total Blocking Time */}
             <div style={metricCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1E293B' }}>Total Blocking Time</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Total Blocking Time</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
                 {tbtValue}
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', lineHeight: 1.35 }}>
-                Time between first paint and interactivity spent on tasks longer than 50ms.
+              <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
+                Time spent on tasks longer than 50ms.
               </div>
             </div>
 
             {/* Metric 4: Cumulative Layout Shift */}
             <div style={metricCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1E293B' }}>Cumulative Layout Shift</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Cumulative Layout Shift</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
                 {clsValue}
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', lineHeight: 1.35 }}>
-                How much visible elements move around while loading.
+              <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
+                How much visible elements move around.
               </div>
             </div>
 
             {/* Metric 5: Speed Index */}
             <div style={metricCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#16A34A', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1E293B' }}>Speed Index</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155' }}>Speed Index</span>
               </div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+              <div style={{ fontSize: '17px', fontWeight: '800', color: '#0F172A', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
                 {speedIndexValue}
               </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '5px', lineHeight: 1.35 }}>
-                How quickly the contents of the page are visibly filled.
+              <div style={{ fontSize: '10px', color: '#64748B', marginTop: '2px', lineHeight: 1.25 }}>
+                How quickly contents are visibly filled.
               </div>
             </div>
           </div>
@@ -967,33 +965,33 @@ function BulkPerformanceContent() {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '20px',
+          gap: '8px',
+          marginBottom: '6px',
           borderBottom: '1px solid #F1F5F9',
-          paddingBottom: '14px'
+          paddingBottom: '5px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <h3 style={{ fontSize: '13.5px', fontWeight: '700', color: '#0F172A', margin: 0 }}>
               Response time
             </h3>
             <span
               title="Time to First Byte (TTFB) and socket connection latency measured directly against origin"
               style={{ display: 'inline-flex', cursor: 'help', color: '#94A3B8' }}
             >
-              <Info size={14} />
+              <Info size={12} />
             </span>
           </div>
 
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '18px',
-            fontSize: '12px',
+            gap: '12px',
+            fontSize: '11px',
             color: '#64748B',
             fontWeight: '500'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '16px', height: '0px', borderTop: '2px dashed #6366F1' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '12px', height: '0px', borderTop: '2px dashed #6366F1' }} />
               <span>30-day average <strong style={{ color: '#0F172A' }}>{avg30dMs}ms</strong></span>
             </div>
             <div>
@@ -1009,19 +1007,19 @@ function BulkPerformanceContent() {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '28px',
+          gap: '14px',
           flexWrap: 'wrap'
         }}>
           {/* Left Speedometer Gauge */}
           <div style={{
-            padding: '10px 14px',
+            padding: '2px 10px 2px 0',
             borderRight: '1px solid #F1F5F9'
           }}>
             <SpeedometerGauge responseTimeMs={currentResponseMs} />
           </div>
 
           {/* Right Smooth Response Timeline Curve */}
-          <div style={{ flex: 1, minWidth: '300px' }}>
+          <div style={{ flex: 1, minWidth: '280px' }}>
             <ResponseTimeTimelineChart history={historyData} avgMs={avg30dMs} />
           </div>
         </div>
@@ -1322,16 +1320,18 @@ export default function BulkPerformance() {
 const cardStyle = {
   background: '#FFFFFF',
   border: '1px solid #E2E8F0',
-  borderRadius: '14px',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-  padding: '22px 24px'
+  borderRadius: '10px',
+  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
+  padding: '8px 14px'
 }
 
 const metricCardStyle = {
-  background: '#FFFFFF',
-  border: '1px solid #E2E8F0',
-  borderRadius: '10px',
-  padding: '14px 16px',
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)',
-  transition: 'border-color 0.15s ease'
+  background: '#F8FAFC',
+  border: 'none',
+  borderRadius: '8px',
+  padding: '8px 12px',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  transition: 'all 0.15s ease'
 }

@@ -388,16 +388,25 @@ async def get_me(user: dict = Depends(get_current_user)):
         'status': 'success',
         'user': {
             'id': user['id'],
+            '_id': user['id'],
             'email': user['email'],
             'full_name': user_full_name,
             'name': user_full_name,
             'username': user_uname,
             'role': user['role'],
+            'is_admin': user.get('is_admin', user.get('role') == 'super_admin'),
             'email_verified': user.get('email_verified', False),
             'mfa_enabled': user.get('mfa_enabled', False),
             'plan': user.get('plan', 'free'),
             'api_key': user.get('api_key', ''),
             'created_at': user.get('created_at'),
+            'onboarded': user.get('onboarded', False),
+            'websites_count': user.get('websites_count', 0),
+            'workspace_name': user.get('workspace_name', ''),
+            'organization_type': user.get('organization_type', ''),
+            'fleet_size': user.get('fleet_size', ''),
+            'referral_source': user.get('referral_source', ''),
+            'onboarding_step': user.get('onboarding_step', 'workspace'),
         }
     }
 

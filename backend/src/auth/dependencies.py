@@ -73,17 +73,38 @@ async def get_current_user(request: Request) -> dict:
     if not user.get('is_active', True):
         raise HTTPException(status_code=403, detail='Account is deactivated')
 
+    user_id_str = str(user['_id'])
+    websites_count = 0
+    try:
+        websites_count = db.websites.count_documents({
+            '$or': [{'user_id': user_id_str}, {'user_id': user['_id']}]
+        })
+    except Exception:
+        pass
+    is_onboarded = bool(user.get('onboarded') or websites_count > 0)
+
     return {
-        'id': str(user['_id']),
+        'id': user_id_str,
+        '_id': user_id_str,
         'email': user['email'],
         'full_name': user.get('full_name', user.get('name', '')),
         'name': user.get('name', user.get('full_name', '')),
         'username': user.get('username'),
         'role': user.get('role', 'user'),
+        'is_admin': user.get('role') == 'super_admin' or user.get('is_admin', False),
         'email_verified': user.get('email_verified', False),
         'mfa_enabled': user.get('mfa_enabled', False),
         'plan': user.get('plan', 'free'),
         'token_version': user.get('token_version', 0),
+        'api_key': user.get('api_key', ''),
+        'created_at': str(user.get('created_at', '')),
+        'onboarded': is_onboarded,
+        'websites_count': websites_count,
+        'workspace_name': user.get('workspace_name', ''),
+        'organization_type': user.get('organization_type', ''),
+        'fleet_size': user.get('fleet_size', ''),
+        'referral_source': user.get('referral_source', ''),
+        'onboarding_step': user.get('onboarding_step', 'workspace' if not is_onboarded else 'completed'),
     }
 
 
@@ -105,7 +126,7 @@ async def get_current_admin(request: Request) -> str:
             raise HTTPException(status_code=401, detail='Not authenticated')
         raise HTTPException(status_code=401, detail='Invalid or expired token')
 
-    if not payload.get('is_admin'):
+    if not payload.get('is_admin') and payload.get('role') not in ('super_admin', 'admin'):
         raise HTTPException(status_code=403, detail='Admin access required')
 
     return payload.get('email', payload.get('sub', ''))

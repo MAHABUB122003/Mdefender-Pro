@@ -9,9 +9,12 @@ Never return internal detection logic, model details, or scores to blocked
 clients - the block page is rendered from a generic reason + reference ID.
 """
 
+from collections import deque
 import hashlib
 import hmac
 import re
+import threading
+import time
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,10 +27,56 @@ from src.engine.decision_engine import DecisionEngine
 from src.security.ip_filter import IPFilter
 from src.security.rate_limiter import RateLimiter
 from src.services.notification_service import NotificationService
+from src.utils.api_key import generate_api_key, mask_api_key
 from src.utils.api_response import serialize, success
 from src.utils.block_page import render_block_page
 
 router = APIRouter(prefix="/waf", tags=["WAF"])
+
+# Rolling 10-minute attack surge tracker per website to eliminate single-attack alert spam
+_SURGE_LOCK = threading.Lock()
+_SURGE_BUCKETS: dict[str, deque] = {}
+_SURGE_WINDOW_SEC = 600
+_SURGE_THRESHOLD = 50
+
+
+def _record_block_and_notify_surge(db, user_id: str, website_id: str, domain: str, count: int = 1, attack_type: str = ""):
+    """Record blocked requests and dispatch ONE summary alert only if a volumetric surge occurs."""
+    if not user_id or not website_id or count <= 0:
+        return
+    now_mono = time.monotonic()
+    cutoff = now_mono - _SURGE_WINDOW_SEC
+    key = str(website_id)
+    with _SURGE_LOCK:
+        if len(_SURGE_BUCKETS) > 10000:
+            stale = [k for k, dq in _SURGE_BUCKETS.items() if not dq or dq[-1] < cutoff]
+            for k in stale:
+                _SURGE_BUCKETS.pop(k, None)
+        dq = _SURGE_BUCKETS.setdefault(key, deque(maxlen=500))
+        for _ in range(min(count, 500)):
+            dq.append(now_mono)
+        while dq and dq[0] < cutoff:
+            dq.popleft()
+        recent_blocks = len(dq)
+
+    if recent_blocks >= _SURGE_THRESHOLD:
+        try:
+            dom_label = domain or "Protected Website"
+            NotificationService(db).notify(
+                user_id,
+                title=f"Attack Surge Mitigated: {dom_label}",
+                message=f"High-volume threat activity detected: {recent_blocks}+ malicious requests blocked on {dom_label} in the last 10 minutes. Edge WAF is actively defending.",
+                category="ddos_surge",
+                website_id=str(website_id),
+                data={
+                    "website_domain": dom_label,
+                    "domain": dom_label,
+                    "blocked_count": recent_blocks,
+                    "attack_type": attack_type or "Volumetric Threat Surge",
+                },
+            )
+        except Exception:
+            pass
 
 
 class WafAnalyzeRequest(BaseModel):
@@ -59,26 +108,124 @@ def _clean_host(host_or_url):
     return h
 
 
-def _domain_matches_site(site, domain):
-    if not domain or not site:
+def normalize_target_identity(domain=None, site_url=None):
+    """Extract normalized host, canonical domain (preserving local subfolder paths), and target URL."""
+    raw = (site_url or domain or "").strip()
+    without_scheme = re.sub(r"^https?://", "", raw, flags=re.I).split("?")[0].split("#")[0].strip("/")
+    parts = without_scheme.split("/", 1)
+    host_raw = parts[0]
+    path_raw = parts[1].strip("/") if len(parts) > 1 else ""
+
+    host = _clean_host(host_raw) or _clean_host(domain or "")
+    # If domain itself carried a path (e.g. "localhost/mahabub"), extract it when path_raw empty
+    if not path_raw and domain and "/" in str(domain).split("://")[-1]:
+        d_parts = re.sub(r"^https?://", "", str(domain), flags=re.I).split("?")[0].strip("/").split("/", 1)
+        if len(d_parts) > 1:
+            path_raw = d_parts[1].strip("/")
+
+    is_local = host in ("localhost", "127.0.0.1", "::1")
+    canonical_domain = f"{host}/{path_raw}" if (is_local and path_raw) else host
+    default_scheme = "http" if is_local else "https"
+    norm_url = f"{default_scheme}://{host}" + (f"/{path_raw}" if path_raw else "")
+    return host, canonical_domain, norm_url
+
+
+def _domain_matches_site(site, domain, site_url=None):
+    if not site or (not domain and not site_url):
         return True
-    req_host = _clean_host(domain)
+    req_host, req_canonical, _ = normalize_target_identity(domain, site_url)
+    site_host, site_canonical, _ = normalize_target_identity(site.get("domain") or "", site.get("url") or "")
+    if not req_host:
+        return True
     if req_host in ("localhost", "127.0.0.1", "::1"):
-        return True
-    site_dom = _clean_host(site.get("domain") or "")
-    site_url = _clean_host(site.get("url") or "")
-    allowed = {site_dom, site_url}
-    allowed = {h for h in allowed if h}
+        # For localhost subdirectory fleets (localhost/site1 vs localhost/site2), enforce exact canonical path if both specify one
+        if "/" in req_canonical and "/" in site_canonical:
+            return req_canonical == site_canonical
+        return site_host in ("localhost", "127.0.0.1", "::1")
+    allowed = {h for h in (site_host,) if h}
     if not allowed:
         return True
+    # Exact match or explicit subdomain of the site (never reverse substring collision like shop.com matching myshop.com)
     return req_host in allowed or any(req_host.endswith("." + h) for h in allowed)
 
 
-def verify_api_key(db, api_key, domain=None):
+def find_user_website_exact(db, user_id_str: str, domain=None, site_url=None):
+    """Exact tenant-scoped website lookup (eliminates substring regex & cross-site collisions)."""
+    from bson import ObjectId
+
+    if not domain and not site_url:
+        return None
+    u_conds = [{"user_id": user_id_str}]
+    if ObjectId.is_valid(user_id_str):
+        u_conds.append({"user_id": ObjectId(user_id_str)})
+
+    host, canonical, norm_url = normalize_target_identity(domain, site_url)
+    if not host:
+        return None
+
+    esc_canonical = re.escape(canonical)
+    esc_host = re.escape(host)
+    is_local = host in ("localhost", "127.0.0.1", "::1")
+
+    # 1. Exact URL / local subdirectory match first
+    if "/" in canonical or site_url:
+        esc_url_path = re.escape(canonical)
+        exact_url_match = db.websites.find_one({
+            "$and": [
+                {"$or": u_conds},
+                {"$or": [
+                    {"domain": {"$regex": f"^(?:www\\.)?{esc_canonical}$", "$options": "i"}},
+                    {"url": {"$regex": f"^https?://(?:www\\.)?{esc_url_path}/?$", "$options": "i"}},
+                ]},
+            ]
+        })
+        if exact_url_match:
+            return exact_url_match
+
+    # On localhost with an explicit subdirectory path, do NOT collide with a different localhost subfolder
+    if is_local and "/" in canonical:
+        return None
+
+    # 2. Anchored exact host match (^host$ or ^www.host$) — zero substring collision (shop.com != blog.shop.com / myshop.com)
+    return db.websites.find_one({
+        "$and": [
+            {"$or": u_conds},
+            {"$or": [
+                {"domain": {"$regex": f"^(?:www\\.)?{esc_host}$", "$options": "i"}},
+                {"url": {"$regex": f"^https?://(?:www\\.)?{esc_host}(?::\\d+)?/?$", "$options": "i"}},
+            ]},
+        ]
+    })
+
+
+def provision_isolated_site_key(db, user_id_str: str, website_id: str) -> str:
+    """Ensure a website owns a unique per-site API key isolated from the user's Master Connect Key."""
+    raw_key = generate_api_key()
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    prefix = mask_api_key(raw_key)
+    try:
+        db.api_keys.delete_many({"website_id": str(website_id)})
+        db.api_keys.insert_one({
+            "website_id": str(website_id),
+            "user_id": str(user_id_str),
+            "key_hash": key_hash,
+            "prefix": prefix,
+            "label": "WordPress",
+            "created_at": datetime.now(),
+            "status": "active",
+        })
+    except Exception:
+        pass
+    return raw_key
+
+
+def verify_api_key(db, api_key, domain=None, site_url=None):
     """Resolve an API key to (user_id, website_id, website). None if invalid.
-    
-    Hardened against NoSQL regex injection and timing side-channel attacks.
-    Strictly verifies domain match against site registration to enforce SaaS tenant boundaries.
+
+    Supports both:
+      1. Master Account Connect Key (db.users.api_key): pairs/resolves any site under that user via exact domain/path matching,
+         giving each site its own isolated per-site key.
+      2. Isolated Per-Site API Key (db.websites.api_key / db.api_keys): scoped strictly to its single website.
     """
     if not api_key or not isinstance(api_key, str):
         return None
@@ -87,46 +234,30 @@ def verify_api_key(db, api_key, domain=None):
         return None
 
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-    
-    # 1. PRIORITY 1: Master Account API key (from db.users)
-    # Allows a user to connect unlimited WordPress sites with a single account key!
+
+    # 1. PRIORITY 1: Master Account Connect Key (from db.users)
     user = db.users.find_one({"api_key": api_key})
     if user:
-        from bson import ObjectId
         user_id_str = str(user["_id"])
-        u_conds = [{"user_id": user_id_str}]
-        if ObjectId.is_valid(user_id_str):
-            u_conds.append({"user_id": ObjectId(user_id_str)})
+        host, canonical, norm_url = normalize_target_identity(domain or "localhost", site_url)
+        website = find_user_website_exact(db, user_id_str, domain, site_url)
+        if not website and not domain and not site_url:
+            website = db.websites.find_one({"user_id": user_id_str})
 
-        expected = _hostname(domain) if domain else "localhost"
-        clean_expected = re.sub(r"^www\.", "", expected, flags=re.I)
-        escaped_clean = re.escape(clean_expected)
-        website = None
-        if domain:
-            website = db.websites.find_one({
-                "$and": [
-                    {"$or": u_conds},
-                    {"$or": [
-                        {"domain": {"$regex": f"{escaped_clean}", "$options": "i"}},
-                        {"url": {"$regex": f"{escaped_clean}", "$options": "i"}},
-                        {"domain": expected},
-                        {"domain": f"www.{clean_expected}"},
-                    ]}
-                ]
-            })
-        if not website:
+        if not website and domain:
             try:
                 import uuid
                 site_id = f"site_{uuid.uuid4().hex[:12]}"
                 now = datetime.now()
-                site_name = domain or "WordPress Site"
+                site_api_key = provision_isolated_site_key(db, user_id_str, site_id)
                 website = {
                     "_id": site_id,
                     "id": site_id,
                     "user_id": user_id_str,
-                    "name": site_name,
-                    "url": f"https://{expected}" if (expected and expected not in ("localhost", "127.0.0.1")) else "http://localhost",
-                    "domain": expected or "localhost",
+                    "name": canonical or host or "WordPress Site",
+                    "url": norm_url,
+                    "domain": canonical or host or "localhost",
+                    "api_key": site_api_key,
                     "platform": "wordpress",
                     "status": "active",
                     "protection_enabled": True,
@@ -145,47 +276,41 @@ def verify_api_key(db, api_key, domain=None):
                 try:
                     db.websites.insert_one(website)
                 except Exception:
-                    existing = db.websites.find_one({"domain": expected})
-                    if existing:
-                        db.websites.update_one({"_id": existing["_id"]}, {"$set": {"user_id": user_id_str}})
-                        website = existing
-                        website["user_id"] = user_id_str
-                        site_id = str(existing.get("_id"))
+                    # Only resolve within the SAME user's exact namespace (never hijack another user's domain!)
+                    website = find_user_website_exact(db, user_id_str, domain, site_url)
+                    if not website:
+                        return None
             except Exception:
-                website = db.websites.find_one({"domain": expected})
-                if not website and not domain:
-                    website = db.websites.find_one({"user_id": user_id_str})
-                if not website:
-                    return None
+                return None
+
+        if not website:
+            return None
         return {
             "user_id": user_id_str,
             "website_id": str(website.get("_id") or website.get("id")),
             "website": website,
         }
 
-    # 2. PRIORITY 2: Direct Website API key (from db.websites)
-    direct_site = db.websites.find_one({"api_key": api_key})
-    if direct_site:
-        if domain and not _domain_matches_site(direct_site, domain):
-            return None
-        user_id_str = str(direct_site.get("user_id", ""))
-        return {
-            "user_id": user_id_str,
-            "website_id": str(direct_site["_id"]),
-            "website": direct_site,
-        }
+    # 2. PRIORITY 2: Isolated Website API key (from db.websites)
+    # Check candidate docs matching this key against domain/url in case legacy docs shared a key
+    for direct_site in db.websites.find({"api_key": api_key}).limit(25):
+        if _domain_matches_site(direct_site, domain, site_url):
+            user_id_str = str(direct_site.get("user_id", ""))
+            return {
+                "user_id": user_id_str,
+                "website_id": str(direct_site["_id"]),
+                "website": direct_site,
+            }
 
     # 3. PRIORITY 3: Scoped API key (from db.api_keys)
     record = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
     if record:
         website = db.websites.find_one({"_id": record.get("website_id")})
-        if website:
-            if domain and not _domain_matches_site(website, domain):
-                return None
+        if website and _domain_matches_site(website, domain, site_url):
             user_id_str = str(record.get("user_id") or website.get("user_id", ""))
             return {
                 "user_id": user_id_str,
-                "website_id": record.get("website_id"),
+                "website_id": str(record.get("website_id")),
                 "website": website,
             }
 
@@ -333,16 +458,16 @@ async def analyze(body: WafAnalyzeRequest, request: Request):
         except Exception:
             pass
 
-    # Notify on critical blocks.
+    # Track block volume & notify ONLY on volumetric attack surges (zero single-attack spam)
     if decision["decision"] == "BLOCK":
         try:
-            NotificationService(db).notify(
-                auth_data["user_id"],
-                title="Attack blocked",
-                message=f"{decision.get('attack_type') or 'Malicious request'} blocked on {body.domain or website.get('domain')}",
-                category="critical_attack",
+            _record_block_and_notify_surge(
+                db,
+                user_id=auth_data["user_id"],
                 website_id=auth_data["website_id"],
-                data={"reference_id": decision["reference_id"], "risk_score": decision["risk_score"]},
+                domain=body.domain or website.get("domain") or website.get("url"),
+                count=1,
+                attack_type=decision.get("attack_type") or "",
             )
         except Exception:
             pass
@@ -510,6 +635,18 @@ async def ingest_telemetry_batch(body: TelemetryBatchRequest, request: Request):
 
     # Zero MongoDB Storage: Live stream logs are queried on-demand directly from WordPress MySQL.
     pass
+
+    if total_blocks > 0:
+        try:
+            _record_block_and_notify_surge(
+                db,
+                user_id=user_id_str,
+                website_id=website_id_str,
+                domain=domain,
+                count=total_blocks,
+            )
+        except Exception:
+            pass
 
     if total_reqs > 0:
         today_str = now.strftime("%Y-%m-%d")

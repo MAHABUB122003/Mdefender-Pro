@@ -256,6 +256,16 @@ class LoginService:
         import math
         trial_days_remaining = max(0, int(math.ceil((trial_ends - now_dt).total_seconds() / 86400)))
 
+        # Resolve website count and onboarding flag
+        websites_count = 0
+        try:
+            websites_count = self.db.websites.count_documents({
+                '$or': [{'user_id': str(user_id)}, {'user_id': user['_id']}]
+            })
+        except Exception:
+            pass
+        is_onboarded = bool(user.get('onboarded') or websites_count > 0)
+
         return {
             'success': True,
             'access_token': access_token,
@@ -267,12 +277,20 @@ class LoginService:
                 'name': user_full_name,
                 'username': user_uname,
                 'role': user.get('role', 'user'),
+                'is_admin': user.get('role') == 'super_admin' or user.get('is_admin', False),
                 'plan': user.get('plan', 'free'),
                 'email_verified': user.get('email_verified', False),
                 'api_key': api_key,
                 'trial_days_remaining': trial_days_remaining,
                 'trial_ends_at': trial_ends.isoformat() if hasattr(trial_ends, 'isoformat') else str(trial_ends),
                 'created_at': user_created.isoformat() if hasattr(user_created, 'isoformat') else str(user_created),
+                'onboarded': is_onboarded,
+                'websites_count': websites_count,
+                'workspace_name': user.get('workspace_name', ''),
+                'organization_type': user.get('organization_type', ''),
+                'fleet_size': user.get('fleet_size', ''),
+                'referral_source': user.get('referral_source', ''),
+                'onboarding_step': user.get('onboarding_step', 'workspace' if not is_onboarded else 'completed'),
             },
         }
 

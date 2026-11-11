@@ -19,6 +19,9 @@ class WAF_FW_Turnstile {
         if ($this->initialized) {
             return;
         }
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            return; // Turnstile dormant without valid MDefender Pro Cloud API key
+        }
 
         $en1 = get_option('waf_fw_turnstile_enabled', 'no');
         $en2 = get_option('waf_turnstile_enabled', 'no');

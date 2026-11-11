@@ -79,6 +79,9 @@ class WAF_FW_Scanner {
     }
 
     public function create_scan_queue($scan_type = 'full') {
+        if (function_exists('waf_fw_is_cloud_active') && !waf_fw_is_cloud_active()) {
+            return false;
+        }
         global $wpdb;
         $table = $this->db->get_scan_queue_table();
         $wpdb->insert($table, [

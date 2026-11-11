@@ -23,7 +23,7 @@ class WAF_FW_2FA {
 
     public function render_login_field() {
         global $wpdb;
-        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        $is_connected = function_exists('waf_fw_is_cloud_active') ? waf_fw_is_cloud_active() : (get_option('waf_fw_connected', 'no') === 'yes' && !empty(get_option('waf_fw_api_key')));
         if (!$is_connected) {
             return; // Not connected to cloud API — never show 2FA field
         }
@@ -66,7 +66,7 @@ class WAF_FW_2FA {
             }
         }
 
-        $is_connected = get_option('waf_fw_connected', 'no') === 'yes' || !empty(get_option('waf_fw_ml_api_key')) || !empty(get_option('waf_fw_api_key'));
+        $is_connected = function_exists('waf_fw_is_cloud_active') ? waf_fw_is_cloud_active() : (get_option('waf_fw_connected', 'no') === 'yes' && !empty(get_option('waf_fw_api_key')));
         if (!$is_connected) {
             return $user; // Not connected to cloud API — zero login intervention
         }

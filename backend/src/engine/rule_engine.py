@@ -2,8 +2,25 @@ import re
 import urllib.parse
 from datetime import datetime
 import logging
+import fnmatch
 
 _log = logging.getLogger(__name__)
+
+def _matches_url_pattern(url, pattern):
+    if not url or not pattern:
+        return False
+    pattern = pattern.strip()
+    if pattern == url or pattern == "*":
+        return True
+    try:
+        if fnmatch.fnmatch(url.lower(), pattern.lower()):
+            return True
+        clean_pat = pattern.strip("*").lower()
+        if clean_pat and clean_pat in url.lower():
+            return True
+    except Exception:
+        pass
+    return False
 
 # Heuristic trigger characters - if none of these are present, request is 100% safe from injection
 _TRIGGER_CHARS = set("'\"<>;\\`|{}[]$%.@:?=\x00\r\n\t&#/")
@@ -154,6 +171,63 @@ class RuleEngine:
                 combined = urllib.parse.unquote_plus(combined)
                 if '%' in combined:
                     combined = urllib.parse.unquote_plus(combined)
+        except Exception:
+            pass
+
+        # 1. False Positive Whitelist Bypass Check (<0.01ms)
+        try:
+            db = self._get_db()
+            whitelists = list(db.whitelist_rules.find({"is_active": True}))
+            for wl in whitelists:
+                pattern = wl.get("url_pattern", "")
+                scope = wl.get("scope", "global")
+                wl_user = wl.get("user_id")
+                if scope == "global" or (user_id and str(user_id) == str(wl_user)):
+                    if pattern and _matches_url_pattern(url, pattern):
+                        try:
+                            db.whitelist_rules.update_one({"_id": wl["_id"]}, {"$inc": {"hits_bypassed": 1}})
+                        except Exception:
+                            pass
+                        return []
+        except Exception:
+            pass
+
+        # 2. Virtual Patches & Hot CVE Signatures
+        try:
+            db = self._get_db()
+            patches = list(db.virtual_patches.find({"is_active": True}))
+            for patch in patches:
+                pat = patch.get("pattern", "")
+                if not pat:
+                    continue
+                target_scope = patch.get("target_scope", "all")
+                test_str = combined
+                if target_scope == "url":
+                    test_str = url
+                elif target_scope == "query":
+                    test_str = query_string or query_values
+                elif target_scope == "post_body":
+                    test_str = body or body_field_values
+                elif target_scope == "headers":
+                    test_str = f"{user_agent} {referer} {cookies}"
+
+                if pat not in self._compiled_cache:
+                    self._compiled_cache[pat] = re.compile(pat, re.IGNORECASE)
+
+                if self._compiled_cache[pat].search(test_str):
+                    cve_id = patch.get("cve_id", "HOT-PATCH")
+                    rule_title = f"[{cve_id}] {patch.get('name', 'Hot Virtual Patch')}"
+                    try:
+                        db.virtual_patches.update_one({"_id": patch["_id"]}, {"$inc": {"hits_count": 1}})
+                    except Exception:
+                        pass
+                    return [{
+                        'rule_name': rule_title,
+                        'cve_id': cve_id,
+                        'severity': patch.get('severity', 'critical'),
+                        'action': patch.get('action', 'block'),
+                        'category': 'Virtual Patch'
+                    }]
         except Exception:
             pass
 

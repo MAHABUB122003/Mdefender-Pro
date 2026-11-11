@@ -94,7 +94,8 @@ if (!$mdefender_cache_data) {
     }
 }
 
-if (!$mdefender_cache_data || empty($mdefender_cache_data['enabled'])) {
+// Cloud-gated license verification: If disabled OR not connected to cloud, exit immediately
+if (!$mdefender_cache_data || empty($mdefender_cache_data['enabled']) || empty($mdefender_cache_data['connected'])) {
     return;
 }
 

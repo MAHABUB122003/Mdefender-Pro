@@ -61,8 +61,12 @@ from pydantic import BaseModel
 
 
 from src.api.v1.deps import get_owned_website
-
-from src.api.v1.waf_api import verify_api_key
+from src.api.v1.waf_api import (
+    find_user_website_exact,
+    normalize_target_identity,
+    provision_isolated_site_key,
+    verify_api_key,
+)
 
 from src.auth.dependencies import get_current_user
 
@@ -254,175 +258,71 @@ class AgentDisconnectRequest(BaseModel):
 
 
 @router.post("/connect")
-
 async def connect_wordpress(body: ConnectRequest, request: Request):
-
     db = MongoDB()
-
     auth_header = request.headers.get("Authorization", "")
-
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
-
     api_key = (body.api_key or bearer_key or "").strip()
 
     if not api_key or len(api_key) < 16:
         raise HTTPException(status_code=401, detail="Valid MDefender Pro API Key is required (minimum 16 characters).")
 
-    # 1. Primary: Verify through standard verify_api_key
-    auth_data = verify_api_key(db, api_key, body.domain)
+    target_url = body.site_url or body.home_url or None
+    auth_data = verify_api_key(db, api_key, body.domain, site_url=target_url)
 
-    # 2. Resilient Fleet Auto-Pairing: If not matched, resolve owning user from any key of this account
-    if not auth_data and api_key:
-        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-        user = db.users.find_one({"api_key": api_key})
-
-        if not user:
-            # Check if key is a site-level key from db.websites
-            site_key_match = db.websites.find_one({"api_key": api_key})
-            if site_key_match and site_key_match.get("user_id"):
-                uid = site_key_match.get("user_id")
-                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
-                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
-
-        if not user:
-            # Check if key is in db.api_keys
-            scoped_match = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
-            if scoped_match and scoped_match.get("user_id"):
-                uid = scoped_match.get("user_id")
-                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
-                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
-
-        if user:
-            user_id_str = str(user["_id"])
-            raw_dom = body.domain or ""
-            clean_dom = re.sub(r"^https?:\/\/", "", raw_dom, flags=re.I).split("/")[0].split(":")[0].strip().lower()
-            clean_dom = re.sub(r"^www\.", "", clean_dom, flags=re.I)
-            escaped_dom = re.escape(clean_dom)
-
-            u_conds = [{"user_id": user_id_str}]
-            if ObjectId.is_valid(user_id_str):
-                u_conds.append({"user_id": ObjectId(user_id_str)})
-
-            # Check if user already has this website registered
-            website = db.websites.find_one({
-                "$and": [
-                    {"$or": u_conds},
-                    {"$or": [
-                        {"domain": {"$regex": f"{escaped_dom}", "$options": "i"}},
-                        {"url": {"$regex": f"{escaped_dom}", "$options": "i"}},
-                        {"domain": clean_dom},
-                        {"domain": f"www.{clean_dom}"},
-                    ]}
-                ]
-            })
-
-            now = datetime.now()
-            if not website:
-                site_id = f"site_{uuid.uuid4().hex[:12]}"
-                website = {
-                    "_id": site_id,
-                    "id": site_id,
-                    "user_id": user_id_str,
-                    "name": clean_dom or "WordPress Site",
-                    "url": body.site_url or body.home_url or f"https://{clean_dom}",
-                    "domain": clean_dom or "localhost",
-                    "platform": "wordpress",
-                    "status": "active",
-                    "protection_enabled": True,
-                    "waf_mode": "protect",
-                    "malware_scanner": True,
-                    "threat_level": "LOW",
-                    "verified": True,
-                    "subscription_status": "trial_active",
-                    "trial_starts_at": now,
-                    "trial_ends_at": now + timedelta(days=14),
-                    "connected_at": now,
-                    "last_activity": now,
-                    "created_at": now,
-                    "updated_at": now,
-                }
-                try:
-                    db.websites.insert_one(website)
-                except Exception:
-                    website = db.websites.find_one({"domain": clean_dom})
-
-            if website:
-                auth_data = {
-                    "user_id": user_id_str,
-                    "website_id": str(website.get("_id") or website.get("id")),
-                    "website": website
-                }
-
+    # Secondary lookup if site used a legacy site key or db.api_keys entry
     if not auth_data:
-        raise HTTPException(status_code=401, detail="Invalid API key. Please check your Master API Key from MDefender Pro dashboard.")
-
-
+        raise HTTPException(status_code=401, detail="Invalid API key. Please check your Connect API Key from MDefender Pro dashboard.")
 
     website = auth_data["website"]
+    user_doc = None
+    try:
+        uid = auth_data["user_id"]
+        u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
+        user_doc = db.users.find_one(u_q, {"api_key": 1})
+    except Exception:
+        user_doc = None
+    master_key = (user_doc or {}).get("api_key") or ""
+
+    # Preserve/assign an isolated per-site API key (never store the account's Master Key across multiple sites)
+    existing_site_key = website.get("api_key") or ""
+    if not existing_site_key or (master_key and existing_site_key == master_key):
+        site_api_key = provision_isolated_site_key(db, auth_data["user_id"], auth_data["website_id"])
+    else:
+        site_api_key = existing_site_key
 
     site_token = _generate_site_token()
-
     now = datetime.now()
 
-
-
-    clean_target_url = body.site_url or body.home_url or ""
-
-    if not clean_target_url and body.domain:
-
-        clean_target_url = f"https://{body.domain}" if body.domain not in ("localhost", "127.0.0.1") else "http://localhost"
+    host, canonical_domain, norm_url = normalize_target_identity(body.domain, target_url)
+    clean_target_url = target_url or norm_url
 
     trial_starts_at = website.get("trial_starts_at") or now
-    trial_ends_at = website.get("trial_ends_at")
-    if not trial_ends_at:
-        trial_ends_at = now + timedelta(days=14)
+    trial_ends_at = website.get("trial_ends_at") or (now + timedelta(days=14))
 
     update_fields = {
-
         "status": "active",
-
         "user_id": str(auth_data["user_id"]),
-
         "platform": "wordpress",
-
         "verified": True,
-
-        "api_key": api_key,
-
+        "api_key": site_api_key,
         "site_token": site_token,
-
         "url": clean_target_url,
-
         "subscription_status": website.get("subscription_status") or "trial_active",
-
         "trial_starts_at": trial_starts_at,
-
         "trial_ends_at": trial_ends_at,
-
         "wordpress_connection": {
-
             "connected": True,
-
             "connected_at": now,
-
             "site_token": _hash_token(site_token),
-
             "raw_site_token": site_token,
-
-            "api_key": api_key,
-
+            "api_key": site_api_key,
             "site_url": clean_target_url,
-
             "plugin_version": body.plugin_version,
-
             "php_version": body.php_version,
-
             "wp_version": body.wp_version,
-
         },
-
         "updated_at": now,
-
     }
 
     
@@ -480,8 +380,7 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
 
     if not website.get("verified") or website.get("domain") in ("localhost", "127.0.0.1", "", None):
-
-        update_fields["domain"] = body.domain
+        update_fields["domain"] = canonical_domain or body.domain
 
 
 
@@ -535,11 +434,9 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
             "user_id": auth_data["user_id"],
 
-            "domain": body.domain,
-
+            "domain": canonical_domain or body.domain,
             "url": clean_target_url,
-
-            "api_key": api_key,
+            "api_key": site_api_key,
 
             "site_token": site_token,
 
@@ -573,6 +470,26 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
         pass
 
+    # Dispatch Website Connected notification & email to registered user
+    try:
+        conn_domain = (body.domain or website.get("domain") or clean_target_url or "").strip()
+        NotificationService(db).notify(
+            auth_data["user_id"],
+            title=f"Website Connected: {conn_domain}",
+            message=f"Your WordPress site {conn_domain} is now connected and actively protected by MDefender Pro.",
+            category="website_connected",
+            website_id=str(auth_data["website_id"]),
+            data={
+                "website_domain": conn_domain,
+                "domain": conn_domain,
+                "waf_mode": website.get("waf_mode", "protect"),
+                "wp_version": body.wp_version,
+                "php_version": body.php_version,
+            },
+        )
+    except Exception:
+        pass
+
 
 
     import math
@@ -580,19 +497,13 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
     days_remaining = max(0, math.ceil(seconds_remaining / 86400))
 
     return success({
-
         "site_token": site_token,
-
+        "site_api_key": site_api_key,
         "website_id": auth_data["website_id"],
-
         "mode": website.get("waf_mode", "protect"),
-
         "subscription_status": update_fields.get("subscription_status", "trial_active"),
-
         "trial_days_remaining": days_remaining,
-
         "message": "WordPress site connected",
-
     })
 
 
@@ -600,107 +511,18 @@ async def connect_wordpress(body: ConnectRequest, request: Request):
 
 
 @router.post("/heartbeat")
-
 async def heartbeat(body: HeartbeatRequest, request: Request):
-
     db = MongoDB()
-
     auth_header = request.headers.get("Authorization", "")
-
     bearer_key = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
-
     api_key = (body.api_key or bearer_key or "").strip()
 
     if not api_key or len(api_key) < 16:
         raise HTTPException(status_code=401, detail="Valid MDefender Pro API Key is required (minimum 16 characters).")
 
-    # 1. Primary: Verify through standard verify_api_key
     auth_data = verify_api_key(db, api_key, body.domain)
-
-    # 2. Resilient Fleet Auto-Pairing: If not matched, resolve owning user from any key of this account
-    if not auth_data and api_key:
-        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-        user = db.users.find_one({"api_key": api_key})
-
-        if not user:
-            # Check if key is a site-level key from db.websites
-            site_key_match = db.websites.find_one({"api_key": api_key})
-            if site_key_match and site_key_match.get("user_id"):
-                uid = site_key_match.get("user_id")
-                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
-                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
-
-        if not user:
-            # Check if key is in db.api_keys
-            scoped_match = db.api_keys.find_one({"key_hash": key_hash, "status": "active"})
-            if scoped_match and scoped_match.get("user_id"):
-                uid = scoped_match.get("user_id")
-                u_q = {"_id": ObjectId(uid)} if ObjectId.is_valid(str(uid)) else {"_id": str(uid)}
-                user = db.users.find_one(u_q) or db.users.find_one({"_id": uid})
-
-        if user:
-            user_id_str = str(user["_id"])
-            raw_dom = body.domain or ""
-            clean_dom = re.sub(r"^https?:\/\/", "", raw_dom, flags=re.I).split("/")[0].split(":")[0].strip().lower()
-            clean_dom = re.sub(r"^www\.", "", clean_dom, flags=re.I)
-            escaped_dom = re.escape(clean_dom)
-
-            u_conds = [{"user_id": user_id_str}]
-            if ObjectId.is_valid(user_id_str):
-                u_conds.append({"user_id": ObjectId(user_id_str)})
-
-            # Check if user already has this website registered
-            website = db.websites.find_one({
-                "$and": [
-                    {"$or": u_conds},
-                    {"$or": [
-                        {"domain": {"$regex": f"{escaped_dom}", "$options": "i"}},
-                        {"url": {"$regex": f"{escaped_dom}", "$options": "i"}},
-                        {"domain": clean_dom},
-                        {"domain": f"www.{clean_dom}"},
-                    ]}
-                ]
-            })
-
-            now = datetime.now()
-            if not website:
-                site_id = f"site_{uuid.uuid4().hex[:12]}"
-                website = {
-                    "_id": site_id,
-                    "id": site_id,
-                    "user_id": user_id_str,
-                    "name": clean_dom or "WordPress Site",
-                    "url": body.site_url or body.home_url or f"https://{clean_dom}",
-                    "domain": clean_dom or "localhost",
-                    "platform": "wordpress",
-                    "status": "active",
-                    "protection_enabled": True,
-                    "waf_mode": "protect",
-                    "malware_scanner": True,
-                    "threat_level": "LOW",
-                    "verified": True,
-                    "subscription_status": "trial_active",
-                    "trial_starts_at": now,
-                    "trial_ends_at": now + timedelta(days=14),
-                    "connected_at": now,
-                    "last_activity": now,
-                    "created_at": now,
-                    "updated_at": now,
-                }
-                try:
-                    db.websites.insert_one(website)
-                except Exception:
-                    website = db.websites.find_one({"domain": clean_dom})
-
-            if website:
-                auth_data = {
-                    "user_id": user_id_str,
-                    "website_id": str(website.get("_id") or website.get("id")),
-                    "website": website
-                }
-
     if not auth_data:
-        raise HTTPException(status_code=401, detail="Invalid API key. Please check your Master API Key from MDefender Pro dashboard.")
+        raise HTTPException(status_code=401, detail="Invalid API key. Please check your Connect API Key from MDefender Pro dashboard.")
 
 
 
@@ -1475,6 +1297,36 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     })
 
+            # Merge Active Zero-Day Virtual Patches fleet-wide
+            try:
+                for vp in db.virtual_patches.find({"is_active": True}):
+                    user_rules.append({
+                        "id": f"vp_{str(vp.get('_id', ''))}",
+                        "name": f"[{vp.get('cve_id', 'HOT-PATCH')}] {vp.get('name', 'Virtual Patch')}",
+                        "pattern": vp.get("pattern", ""),
+                        "action": vp.get("action", "block"),
+                        "severity": vp.get("severity", "critical"),
+                        "enabled": True,
+                        "is_virtual_patch": True
+                    })
+            except Exception:
+                pass
+
+            # Build URL Whitelists (global + tenant)
+            url_whitelists = []
+            try:
+                wl_query = [{"scope": "global"}]
+                if u_str:
+                    wl_query.append({"user_id": u_str})
+                    if ObjectId.is_valid(u_str):
+                        wl_query.append({"user_id": ObjectId(u_str)})
+                for wl in db.whitelist_rules.find({"is_active": True, "$or": wl_query}):
+                    p = (wl.get("url_pattern") or "").strip()
+                    if p and p not in url_whitelists:
+                        url_whitelists.append(p)
+            except Exception:
+                pass
+
 
 
             query = {}
@@ -1513,38 +1365,29 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
             w_sites = list(db.websites.find(query if query else {}))
 
-            if not w_sites and website_id:
-
+            if not w_sites and website_id and u_str:
                 w_id_str = str(website_id)
-
                 w_fallback = [{"_id": w_id_str}, {"id": w_id_str}, {"domain": w_id_str}, {"website_id": w_id_str}]
-
                 if ObjectId.is_valid(w_id_str):
-
                     w_fallback.append({"_id": ObjectId(w_id_str)})
+                w_sites = list(db.websites.find({
+                    "$and": [
+                        {"$or": w_cond if w_cond else [{"user_id": u_str}]},
+                        {"$or": w_fallback}
+                    ]
+                }))
 
-                w_sites = list(db.websites.find({"$or": w_fallback}))
-
-            if not w_sites and user_email:
-
-                w_sites = list(db.websites.find({"$or": [{"owner_email": user_email}, {"email": user_email}]}))
-
-            if not w_sites:
-
-                w_sites = list(db.websites.find({"status": {"$ne": "deleted"}}))
-
-
+            if not w_sites and user_email and u_str:
+                w_sites = list(db.websites.find({
+                    "$and": [
+                        {"$or": w_cond if w_cond else [{"user_id": u_str}]},
+                        {"$or": [{"owner_email": user_email}, {"email": user_email}]}
+                    ]
+                }))
 
             wp_sites = list(db.wordpress_sites.find(query if query else {}))
 
-            if not wp_sites:
-
-                wp_sites = list(db.wordpress_sites.find({}))
-
-
-
             # Target URLs list: (url, api_key, site_token)
-
             targets = []
             for ws in w_sites:
                 domain = (ws.get("domain") or "").strip().rstrip("/")
@@ -1583,14 +1426,6 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                     targets.append((f"http://{domain}", k, tok))
 
 
-
-            # Also ensure local development WordPress installations receive instant push
-
-            local_keys = [k for (_, k, _) in targets if k] or ([user_master_key] if user_master_key else [""])
-
-            for lk in local_keys:
-                targets.append(("http://localhost/mahabub", lk, ""))
-                targets.append(("http://127.0.0.1/mahabub", lk, ""))
 
 
 
@@ -1638,6 +1473,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                 "blocked_countries": blocked_countries,
 
                 "user_rules": user_rules,
+
+                "url_whitelists": url_whitelists,
 
                 "config": {
 
@@ -1827,10 +1664,9 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
 
                     php_exe = r"C:\xampp\php\php.exe"
 
-                    if os.path.exists(php_exe):
-
-                        # Specifically resolve the website doc matching mahabub for local database options
-                        mahabub_doc = db.websites.find_one({"$or": [{"_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba"}, {"domain": "localhost/mahabub"}, {"url": "http://localhost/mahabub"}]}) or ref_ws
+                    is_local_mahabub = any("localhost/mahabub" in (ws.get("url") or ws.get("domain") or "") for ws in w_sites)
+                    if os.path.exists(php_exe) and is_local_mahabub:
+                        mahabub_doc = next((ws for ws in w_sites if "localhost/mahabub" in (ws.get("url") or ws.get("domain") or "")), ref_ws)
                         mb_harden = mahabub_doc.get("hardening") or {}
                         b_str = json.dumps(blacklist)
 
@@ -2118,17 +1954,8 @@ def push_instant_sync_to_wordpress(user_id=None, website_id=None):
                             if (dom and dom in clean_norm) or (ru and ru in clean_norm):
                                 target_ws = ws
                                 break
-                    # 3. Direct database lookup for local site
                     if not target_ws:
-                        target_ws = db.websites.find_one({
-                            "$or": [
-                                {"_id": "eab7dc9f-316b-4a72-a71c-7c0a97a55fba"},
-                                {"domain": "localhost/mahabub"},
-                                {"url": "http://localhost/mahabub"},
-                                {"url": clean_norm},
-                                {"url": clean_url}
-                            ]
-                        })
+                        target_ws = ref_ws
                     if target_ws:
                         mb_h = target_ws.get("hardening") or {}
                         effective_slug = str(target_ws.get("custom_login_slug") or mb_h.get("custom_login_slug") or "").strip()
@@ -2326,23 +2153,16 @@ async def disconnect_wordpress(website_id: str, user=Depends(get_current_user)):
     )
 
     try:
-
+        disc_domain = website.get("domain") or website.get("url") or "WordPress Site"
         NotificationService(db).notify(
-
             user["id"],
-
-            title="WordPress site disconnected",
-
-            message=f"{website.get('url')} is no longer protected by the plugin",
-
+            title=f"Website Disconnected: {disc_domain}",
+            message=f"{disc_domain} has been disconnected and is no longer receiving real-time plugin protection.",
             category="website_disconnected",
-
-            website_id=website_id,
-
+            website_id=str(website_id),
+            data={"website_domain": disc_domain, "domain": disc_domain},
         )
-
     except Exception:
-
         pass
 
     return success(message="WordPress connection removed")
@@ -2386,6 +2206,20 @@ async def agent_disconnect_wordpress(body: AgentDisconnectRequest, request: Requ
             {"website_id": str(site_id)},
             {"$set": {"connected": False, "status": "offline"}}
         )
+        try:
+            owner_id = website.get("user_id")
+            disc_domain = website.get("domain") or website.get("url") or body.domain or "WordPress Site"
+            if owner_id:
+                NotificationService(db).notify(
+                    str(owner_id),
+                    title=f"Website Disconnected: {disc_domain}",
+                    message=f"The MDefender Pro plugin on {disc_domain} was disconnected or deactivated.",
+                    category="website_disconnected",
+                    website_id=str(site_id),
+                    data={"website_domain": disc_domain, "domain": disc_domain},
+                )
+        except Exception:
+            pass
         return success(message="Agent successfully disconnected from cloud fleet.")
 
     return success(message="Disconnected locally.")

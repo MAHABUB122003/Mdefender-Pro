@@ -25,9 +25,12 @@ export default function useBulkFleet() {
     if (manual) setRefreshing(true)
     try {
       const res = await api.getUserDashboard(manual ? { refresh: '1' } : {})
-      setData(res)
-      userStore.set('dashboard', res)
-      userStore.set('websites', res)
+      const webList = res?.websites || res?.data?.websites
+      if (Array.isArray(webList) && webList.length > 0) {
+        setData(res.websites ? res : res.data)
+        userStore.set('dashboard', res.websites ? res : res.data)
+        userStore.set('websites', res.websites ? res : res.data)
+      }
     } catch (err) {
       console.error('Fleet sync error:', err)
     } finally {
@@ -62,7 +65,7 @@ export default function useBulkFleet() {
 
   // Directly update fleet websites without waiting for re-fetch
   const updateFleetWebsites = useCallback((freshWebsites) => {
-    if (!Array.isArray(freshWebsites)) return
+    if (!Array.isArray(freshWebsites) || freshWebsites.length === 0) return
     setData(prev => ({ ...(prev || {}), websites: freshWebsites }))
     try {
       const curDash = userStore.get('dashboard') || {}

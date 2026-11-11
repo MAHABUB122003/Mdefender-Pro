@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Shield } from 'lucide-react';
+import { ArrowLeft, Shield, CheckCircle2 } from 'lucide-react';
 
 export default function AuthSplitLayout({ children }) {
   return (
@@ -156,21 +156,34 @@ export default function AuthSplitLayout({ children }) {
             Protect your digital presence with one calm, intelligent workspace built for modern engineering teams.
           </p>
 
-          {/* Security List: Gap 20px, text 12px, check icons 12-14px */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#E8EEE8' }}>
-              <span style={{ color: '#28745D', fontWeight: 700, fontSize: '13px', lineHeight: 1 }}>✓</span>
-              <span>Unified website visibility &amp; zero-day WAF</span>
+          {/* Security List: Gap 16px, text 12px, clean check marks */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: '#E8EEE8' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(40, 116, 93, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle2 size={13} style={{ color: '#28745D' }} strokeWidth={2.4} />
+              </div>
+              <span>Unified fleet visibility &amp; zero-day Edge WAF</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#E8EEE8' }}>
-              <span style={{ color: '#E8792F', fontWeight: 700, fontSize: '13px', lineHeight: 1 }}>✓</span>
-              <span>&lt;0.12ms edge inspection latency</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: '#E8EEE8' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(232, 121, 47, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle2 size={13} style={{ color: '#E8792F' }} strokeWidth={2.4} />
+              </div>
+              <span>&lt;0.12ms edge traffic inspection latency</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#E8EEE8' }}>
-              <span style={{ color: '#28745D', fontWeight: 700, fontSize: '13px', lineHeight: 1 }}>✓</span>
-              <span>WordPress runtime protection &amp; auto-quarantine</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: '#E8EEE8' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(40, 116, 93, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle2 size={13} style={{ color: '#28745D' }} strokeWidth={2.4} />
+              </div>
+              <span>WordPress runtime defense &amp; 1-click quarantine</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: '#E8EEE8' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(232, 121, 47, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle2 size={13} style={{ color: '#E8792F' }} strokeWidth={2.4} />
+              </div>
+              <span>5.32M+ verified checksum intelligence database</span>
             </div>
           </div>
         </div>

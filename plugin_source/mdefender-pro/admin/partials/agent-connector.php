@@ -105,6 +105,10 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
                 update_option('waf_fw_connected', 'yes');
                 update_option('waf_fw_last_sync', current_time('mysql'));
 
+                if (class_exists('WAF_FW_Engine')) {
+                    WAF_FW_Engine::instance()->export_fast_cache();
+                }
+
                 $notice_msg = sprintf(
                     __('Successfully paired with MDefender Pro Cloud Fleet! 14-Day Enterprise Protection Trial is ACTIVE (%d days remaining).', 'mdefender-pro'),
                     $trial_days
@@ -149,10 +153,15 @@ if (isset($_POST['waf_connector_action']) && check_admin_referer('waf_connector_
         delete_option('waf_fw_subscription_status');
         delete_option('waf_allow_cloud_sso');
         delete_option('waf_fw_last_sync');
+        delete_option('waf_fw_local_blacklist_cache');
         update_option('waf_fw_connected', 'no');
         wp_clear_scheduled_hook('waf_fw_cloud_heartbeat');
 
-        $notice_msg = __('Disconnected from MDefender Pro Cloud. Agent credentials cleared and local agent returned to standalone mode.', 'mdefender-pro');
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
+        $notice_msg = __('Disconnected from MDefender Pro Cloud. License revoked. All security engines, WAF inspection, and malware scanning are now DORMANT. Connect a valid API key to reactivate.', 'mdefender-pro');
         $notice_type = 'warning';
     }
 }
@@ -164,7 +173,7 @@ if (empty($cloud_url)) {
     $cloud_url = $is_local_host ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
     update_option('waf_fw_cloud_api_url', $cloud_url);
 }
-$is_connected = get_option('waf_fw_connected', 'no') === 'yes' && !empty($api_key);
+$is_connected = function_exists('waf_fw_is_cloud_active') ? waf_fw_is_cloud_active() : (get_option('waf_fw_connected', 'no') === 'yes' && !empty($api_key));
 $site_token = get_option('waf_fw_site_token', '');
 
 $last_sync = get_option('waf_fw_last_sync', '');

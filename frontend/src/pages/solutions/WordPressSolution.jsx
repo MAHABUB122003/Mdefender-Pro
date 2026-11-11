@@ -84,12 +84,12 @@ export default function WordPressSolution() {
               </div>
 
               <h1 style={{
-                fontSize: 'clamp(34px, 4.2vw, 56px)',
+                fontSize: 'clamp(28px, 3.8vw, 44px)',
                 fontWeight: 800,
-                lineHeight: 1.08,
-                letterSpacing: '-0.05em',
+                lineHeight: 1.15,
+                letterSpacing: '-0.04em',
                 color: '#10201E',
-                marginBottom: '20px'
+                marginBottom: '18px'
               }}>
                 In-Memory WordPress Defense.{' '}
                 <span style={{ color: '#28745D' }}>Zero Origin Load.</span>
@@ -174,7 +174,7 @@ export default function WordPressSolution() {
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: '#7A8C89', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Official Hashes</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#10201E' }}>5.2M+ Checksums</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: '#10201E' }}>5.32M+ Checksums</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', color: '#7A8C89', textTransform: 'uppercase', letterSpacing: '0.08em' }}>WSOD Rollback</div>
@@ -183,7 +183,7 @@ export default function WordPressSolution() {
               </div>
             </div>
 
-            {/* Right: Interactive 5.2M+ Checksum Scanner Simulator */}
+            {/* Right: Interactive 5.32M+ Checksum Scanner Simulator */}
             <div style={{
               background: '#FFFFFF',
               borderRadius: '18px',
@@ -207,7 +207,7 @@ export default function WordPressSolution() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#4ADE80' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ADE80' }} />
-                  <span>5,214,098 Checksums Synced</span>
+                  <span>5.32M+ Checksums Synced</span>
                 </div>
               </div>
 
@@ -321,9 +321,9 @@ export default function WordPressSolution() {
               {
                 icon: HardDrive,
                 badge: 'CORE & PLUGIN INTEGRITY',
-                title: '5.2M+ Official WP.org Checksum Scanner',
+                title: '5.32M+ Official WP.org Checksum Scanner',
                 desc: 'Audits every core file, theme, and plugin against official cryptographic hashes from WordPress.org. Any injected backdoors, eval() webshells, or unauthorized modifications are flagged and neutralized.',
-                specs: '5,214,098 core & plugin hashes · Remote non-blocking scan · Zero host disk thrashing'
+                specs: '5.32M+ core & plugin checksums · Remote non-blocking scan · Zero host disk thrashing'
               },
               {
                 icon: Zap,

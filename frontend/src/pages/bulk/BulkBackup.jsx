@@ -29,9 +29,11 @@ import BulkHeader from './BulkHeader'
 import EmptyFleetState from './EmptyFleetState'
 import useBulkFleet from './useBulkFleet'
 import api from '../../api/api'
+import { useBackupRestore } from '../../context/BackupRestoreContext'
 
 export default function BulkBackup() {
   const { wpWebsites, hasWebsites, selectedSiteId, activeWebsite, fetchFleet } = useBulkFleet()
+  const { activeJob, isJobRunning, startBackup, startRestore } = useBackupRestore()
 
   const [activeTab, setActiveTab] = useState('backups') // 'backups' | 'create' | 'schedule' | 'upload'
   const [loading, setLoading] = useState(false)
@@ -51,7 +53,6 @@ export default function BulkBackup() {
   const [backupType, setBackupType] = useState('full')
   const [backupNote, setBackupNote] = useState('')
   const [selectedComponents, setSelectedComponents] = useState(['db', 'plugins', 'themes', 'uploads', 'core', 'wp_config'])
-  const [creating, setCreating] = useState(false)
 
   // Schedule Form State
   const [schedEnabled, setSchedEnabled] = useState(false)
@@ -67,8 +68,6 @@ export default function BulkBackup() {
 
   // Restore Modal State
   const [restoreModalData, setRestoreModalData] = useState(null)
-  const [restoring, setRestoring] = useState(false)
-  const [progressMsg, setProgressMsg] = useState(null)
 
   // Live Download Progress Tracker State
   const [downloadTracker, setDownloadTracker] = useState(null)
@@ -140,68 +139,77 @@ export default function BulkBackup() {
     loadBackups()
   }, [selectedSiteId, hasWebsites])
 
-  // Handle Create Backup
-  const handleCreateSubmit = async (e) => {
+  // Auto-refresh backups whenever a background backup or restore finishes
+  useEffect(() => {
+    const handleBackgroundComplete = () => {
+      loadBackups()
+      fetchFleet(true)
+    }
+    window.addEventListener('mdefender:backup_completed', handleBackgroundComplete)
+    window.addEventListener('mdefender:restore_completed', handleBackgroundComplete)
+    return () => {
+      window.removeEventListener('mdefender:backup_completed', handleBackgroundComplete)
+      window.removeEventListener('mdefender:restore_completed', handleBackgroundComplete)
+    }
+  }, [hasWebsites, selectedSiteId])
+
+  // Handle Create Backup (Runs safely in Background without blocking the UI)
+  const handleCreateSubmit = (e) => {
     e.preventDefault()
-    const currentSiteId = (selectedSiteId !== 'all' ? (activeTargetSite.id || activeTargetSite._id) : targetSiteId) || (wpWebsites[0]?.id || wpWebsites[0]?._id)
+    const currentSite = (selectedSiteId !== 'all' ? activeTargetSite : wpWebsites.find(w => (w.id || w._id) === targetSiteId)) || wpWebsites[0] || {}
+    const currentSiteId = currentSite.id || currentSite._id
     if (!currentSiteId) {
       showToast('Please select a target WordPress website.', true)
       return
     }
 
-    setCreating(true)
-    setProgressMsg('Packaging database dump and compressing WordPress files...')
-    try {
-      const res = await api.createWebsiteBackup(currentSiteId, {
-        type: backupType,
-        components: backupType === 'custom' ? selectedComponents : (backupType === 'database' ? ['db'] : (backupType === 'files' ? ['plugins', 'themes', 'uploads', 'core', 'wp_config'] : ['db', 'plugins', 'themes', 'uploads', 'core', 'wp_config'])),
-        note: backupNote.trim() || `Manual ${backupType.toUpperCase()} Snapshot`
-      })
+    const currentSiteName = currentSite.domain || currentSite.url || 'WordPress Origin'
 
-      if (res?.data?.success) {
-        showToast(res.data.message || 'Backup archive created successfully!')
+    startBackup({
+      siteId: currentSiteId,
+      siteName: currentSiteName,
+      type: backupType,
+      components: backupType === 'custom' ? selectedComponents : undefined,
+      note: backupNote.trim() || `Manual ${backupType.toUpperCase()} Snapshot`,
+      onSuccess: (data) => {
+        showToast(data.message || 'Backup archive created successfully!')
         setBackupNote('')
-        setActiveTab('backups')
         loadBackups()
         fetchFleet(true)
-      } else {
-        showToast(res?.data?.message || 'Backup generated.', false)
-        setActiveTab('backups')
+      },
+      onError: (err) => {
+        showToast(err.message || 'Backup process encountered an error', true)
         loadBackups()
       }
-    } catch (err) {
-      showToast('Backup process completed. Stored in server storage.', false)
-      setActiveTab('backups')
-      loadBackups()
-    } finally {
-      setCreating(false)
-      setProgressMsg(null)
-    }
+    })
+
+    // Immediately switch to Backups tab so user can see progress or navigate elsewhere
+    setActiveTab('backups')
   }
 
-  // Handle Restore
-  const handleConfirmRestore = async () => {
+  // Handle Restore (Runs safely in Background without blocking the UI)
+  const handleConfirmRestore = () => {
     if (!restoreModalData) return
-    setRestoring(true)
-    setProgressMsg(`Restoring website from snapshot "${restoreModalData.filename}"... Reconstituting database tables and WordPress files...`)
-    try {
-      const siteId = restoreModalData.site_id || (activeTargetSite.id || activeTargetSite._id)
-      const res = await api.restoreWebsiteBackup(siteId, restoreModalData.filename)
-      if (res?.data?.success) {
-        showToast(res.data.message || `Disaster Recovery complete! Website restored from ${restoreModalData.filename}!`)
-      } else {
-        showToast(res?.data?.message || 'Restoration completed. Site operational.', false)
+    const siteId = restoreModalData.site_id || (activeTargetSite.id || activeTargetSite._id)
+    const siteName = restoreModalData.domain || activeTargetSite.domain || 'WordPress Origin'
+    const filename = restoreModalData.filename
+
+    setRestoreModalData(null) // Dismiss confirmation dialog immediately!
+
+    startRestore({
+      siteId,
+      siteName,
+      filename,
+      onSuccess: (data) => {
+        showToast(data.message || `Disaster Recovery complete! Website restored from ${filename}!`)
+        loadBackups()
+        fetchFleet(true)
+      },
+      onError: (err) => {
+        showToast(err.message || 'Restoration completed. Site operational.', false)
+        loadBackups()
       }
-      setRestoreModalData(null)
-      loadBackups()
-      fetchFleet(true)
-    } catch (err) {
-      showToast(err.message || 'Restoration completed. Site operational.', false)
-      setRestoreModalData(null)
-    } finally {
-      setRestoring(false)
-      setProgressMsg(null)
-    }
+    })
   }
 
   // Handle Delete
@@ -233,7 +241,7 @@ export default function BulkBackup() {
   // Cancel live download stream
   const handleCancelDownload = () => {
     if (downloadAbortRef.current) {
-      try { downloadAbortRef.current.abort() } catch {}
+      try { downloadAbortRef.current.abort() } catch { }
       downloadAbortRef.current = null
     }
     setDownloadTracker(null)
@@ -430,7 +438,7 @@ export default function BulkBackup() {
   }
 
   return (
-    <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '4px 0 60px' }}>
+    <div style={{ maxWidth: '1720px', margin: '0 auto', padding: '4px 0 40px' }}>
       {toastMsg && (
         <div style={{
           position: 'fixed',
@@ -513,50 +521,48 @@ export default function BulkBackup() {
             </div>
           </div>
 
-          {/* 4 Telemetry KPI Cards (Exact match with Plugin KPI Grid) */}
+          {/* 4 Telemetry KPI Cards - Sleek Low Profile */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '18px',
-            marginBottom: '24px'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '10px',
+            marginBottom: '12px'
           }}>
             {/* Card 1: Stored Backups */}
-            <div style={kpiCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={kpiCardStyle} title="Stored in isolated filesystem storage">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={kpiHeaderLabelStyle}>STORED BACKUPS</span>
                 <span style={badgeStyle('#E8F3EC', '#2A8B68', '#CFE2D4')}>STORAGE LIVE</span>
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
-                {backups.length} {backups.length === 1 ? 'Archive' : 'Archives'}
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '13px', color: '#2A8B68', fontWeight: '700' }}>
-                {totalSize} Total Storage
-              </div>
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
-                Stored in isolated filesystem storage
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: '17px', fontWeight: '700', color: '#10201E', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+                  {backups.length} {backups.length === 1 ? 'Archive' : 'Archives'}
+                </span>
+                <span style={{ fontSize: '11px', color: '#2A8B68', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                  {totalSize} Total
+                </span>
               </div>
             </div>
 
             {/* Card 2: Latest Snapshot */}
-            <div style={kpiCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={kpiCardStyle} title={latestBackup ? latestBackup.filename : 'Ready for capture'}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={kpiHeaderLabelStyle}>LATEST SNAPSHOT</span>
                 <span style={badgeStyle('#EEF2FF', '#4F46E5', '#C7D2FE')}>LATEST</span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '800', color: '#10201E', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {latestBackup ? latestBackup.created_at : 'No backups yet'}
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '13px', color: '#4F46E5', fontWeight: '700' }}>
-                {latestBackup ? `${(latestBackup.type || 'full').toUpperCase()} Snapshot (${latestBackup.size})` : 'Create your first backup'}
-              </div>
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
-                {latestBackup ? latestBackup.filename : 'Ready for capture'}
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: '14.5px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {latestBackup ? latestBackup.created_at : 'No backups yet'}
+                </span>
+                <span style={{ fontSize: '11px', color: '#4F46E5', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                  {latestBackup ? `${(latestBackup.type || 'full').toUpperCase()} (${latestBackup.size})` : 'Ready'}
+                </span>
               </div>
             </div>
 
             {/* Card 3: Automated Schedule */}
-            <div style={kpiCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={kpiCardStyle} title="Background execution managed via WP-Cron">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={kpiHeaderLabelStyle}>AUTOMATED SCHEDULE</span>
                 <span style={badgeStyle(
                   schedule.enabled ? '#E8F3EC' : '#F1F5F9',
@@ -566,31 +572,29 @@ export default function BulkBackup() {
                   {schedule.enabled ? 'ACTIVE' : 'DISABLED'}
                 </span>
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
-                {schedule.enabled ? `● ${schedule.frequency.toUpperCase()}` : 'Manual Only'}
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '13px', color: '#60716B', fontWeight: '600' }}>
-                Retention: Keep last {schedule.retention} backups
-              </div>
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
-                Background execution managed via WP-Cron
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: '15px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+                  {schedule.enabled ? `● ${schedule.frequency.toUpperCase()}` : 'Manual Only'}
+                </span>
+                <span style={{ fontSize: '11px', color: '#60716B', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                  Keep last {schedule.retention}
+                </span>
               </div>
             </div>
 
             {/* Card 4: Engine Capabilities */}
-            <div style={kpiCardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={kpiCardStyle} title="Direct access protected by .htaccess & web.config">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={kpiHeaderLabelStyle}>ENGINE CAPABILITIES</span>
                 <span style={badgeStyle('#F0F9FF', '#0284C7', '#BAE6FD')}>ZIP / SQL</span>
               </div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
-                ZipArchive: Active
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '12px', color: '#60716B' }}>
-                <code>wp-content/mdefender-backups/</code>
-              </div>
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#889892' }}>
-                Direct access protected by .htaccess &amp; web.config
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '6px' }}>
+                <span style={{ fontSize: '15px', fontWeight: '700', color: '#10201E', letterSpacing: '-0.02em' }}>
+                  ZipArchive: Active
+                </span>
+                <span style={{ fontSize: '11px', color: '#059669', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                  WP Filesystem
+                </span>
               </div>
             </div>
           </div>
@@ -698,6 +702,49 @@ export default function BulkBackup() {
                 </button>
               </div>
 
+              {/* NON-BLOCKING INLINE STATUS BANNER WHEN JOB IS ACTIVE */}
+              {isJobRunning && (
+                <div style={{
+                  margin: '16px 20px 0',
+                  padding: '14px 18px',
+                  background: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: '#DCFCE7',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <RefreshCw size={16} color="#15803D" style={{ animation: 'spin 1.2s linear infinite' }} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <strong style={{ fontSize: '13px', color: '#166534' }}>
+                          {activeJob?.operation === 'backup' ? 'Disaster Recovery Snapshot In Progress' : 'Disaster Recovery Restoration In Progress'}
+                        </strong>
+                        <span style={{ fontSize: '11px', fontWeight: 800, padding: '1px 7px', borderRadius: '4px', background: '#DCFCE7', color: '#15803D' }}>
+                          {activeJob?.siteName}
+                        </span>
+                      </div>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#15803D' }}>
+                        {activeJob?.progressMessage} — <em>You can safely navigate to plugins, themes, or hardening while this task runs in the background.</em>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {backups.length === 0 ? (
                 <div style={{ padding: '60px 20px', textAlign: 'center' }}>
                   <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#F0F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -754,16 +801,9 @@ export default function BulkBackup() {
                                   <HardDrive size={16} color="#0B2522" />
                                 </div>
                                 <div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <strong style={{ fontSize: '13px', color: '#10201E', fontFamily: 'monospace' }}>
-                                      {bk.filename}
-                                    </strong>
-                                    {bk.domain && (
-                                      <span style={badgeStyle('#F1F5F9', '#475569', '#CBD5E1')}>
-                                        {bk.domain}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <strong style={{ fontSize: '13.5px', fontWeight: 700, color: '#10201E', fontFamily: 'monospace' }}>
+                                    {bk.filename}
+                                  </strong>
                                   <div style={{ fontSize: '11px', color: '#60716B', marginTop: '3px' }}>
                                     {bk.note || 'Disaster Recovery Snapshot'}
                                   </div>
@@ -988,11 +1028,15 @@ export default function BulkBackup() {
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     type="submit"
-                    disabled={creating}
-                    style={primaryActionButtonStyle}
+                    disabled={isJobRunning}
+                    style={{
+                      ...primaryActionButtonStyle,
+                      opacity: isJobRunning ? 0.75 : 1,
+                      cursor: isJobRunning ? 'not-allowed' : 'pointer'
+                    }}
                   >
-                    <HardDrive size={14} style={{ animation: creating ? 'spin 1s linear infinite' : 'none' }} />
-                    <span>{creating ? 'Packaging Snapshot...' : 'Start Backup Process'}</span>
+                    <HardDrive size={14} style={{ animation: isJobRunning ? 'spin 1s linear infinite' : 'none' }} />
+                    <span>{isJobRunning ? 'Disaster Recovery Active in Background...' : 'Generate Disaster Recovery Snapshot'}</span>
                   </button>
                   <button
                     type="button"
@@ -1254,40 +1298,25 @@ export default function BulkBackup() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                   <button
                     onClick={() => setRestoreModalData(null)}
-                    disabled={restoring}
+                    disabled={isJobRunning}
                     style={secondaryActionButtonStyle}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleConfirmRestore}
-                    disabled={restoring}
+                    disabled={isJobRunning}
                     style={dangerActionButtonStyle}
                   >
-                    <RotateCcw size={14} style={{ animation: restoring ? 'spin 1s linear infinite' : 'none' }} />
-                    <span>{restoring ? 'Restoring Website...' : 'Proceed with Restoration'}</span>
+                    <RotateCcw size={14} />
+                    <span>Proceed with Restoration</span>
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 6. PROGRESS OVERLAY MODAL */}
-          {progressMsg && (
-            <div style={modalBackdropStyle}>
-              <div style={{ ...modalContentStyle, maxWidth: '440px', textAlign: 'center', padding: '36px 24px' }}>
-                <RefreshCw size={36} color="#2A8B68" style={{ animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '17px', fontWeight: '800', color: '#10201E' }}>
-                  Disaster Recovery Engine Active
-                </h4>
-                <p style={{ margin: 0, fontSize: '13px', color: '#60716B' }}>
-                  {progressMsg}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 7. LIVE DOWNLOAD PROGRESS TRACKER MODAL */}
+          {/* 6. LIVE DOWNLOAD PROGRESS TRACKER MODAL */}
           {downloadTracker && (
             <div style={modalBackdropStyle}>
               <div style={{ ...modalContentStyle, maxWidth: '480px', padding: '24px' }}>
@@ -1431,21 +1460,21 @@ export default function BulkBackup() {
 
 const kpiCardStyle = {
   background: '#ffffff',
-  borderRadius: '16px',
+  borderRadius: '8px',
   border: '1px solid #D9E1DC',
-  padding: '22px 24px',
-  boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+  padding: '8px 12px',
+  boxShadow: '0 1px 3px rgba(11, 37, 34, 0.02)'
 }
 
 const kpiHeaderLabelStyle = {
-  fontSize: '11px',
+  fontSize: '10.5px',
   fontWeight: '800',
   letterSpacing: '0.04em',
   color: '#889892'
 }
 
 const thStyle = {
-  padding: '14px 20px',
+  padding: '10px 16px',
   fontSize: '11px',
   fontWeight: '800',
   letterSpacing: '0.04em',
@@ -1454,7 +1483,7 @@ const thStyle = {
 }
 
 const tdStyle = {
-  padding: '16px 20px',
+  padding: '10px 16px',
   verticalAlign: 'middle',
   borderBottom: '1px solid #F0F4F2'
 }
@@ -1465,10 +1494,10 @@ const trStyle = {
 
 const formCardStyle = {
   background: '#ffffff',
-  borderRadius: '16px',
+  borderRadius: '12px',
   border: '1px solid #D9E1DC',
-  padding: '28px 32px',
-  boxShadow: '0 4px 20px rgba(11, 37, 34, 0.04)'
+  padding: '20px 24px',
+  boxShadow: '0 2px 8px rgba(11, 37, 34, 0.03)'
 }
 
 const formLabelStyle = {

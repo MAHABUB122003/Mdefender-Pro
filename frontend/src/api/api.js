@@ -2,8 +2,8 @@ const API_BASE = (
   typeof window !== 'undefined' && (window.location.hostname === 'mdefender-pro.crafix.tech' || window.location.hostname !== 'localhost')
     ? ''
     : (import.meta.env.VITE_API_BASE && import.meta.env.VITE_API_BASE !== 'http://localhost:8000'
-        ? import.meta.env.VITE_API_BASE
-        : 'http://localhost:8000')
+      ? import.meta.env.VITE_API_BASE
+      : 'http://localhost:8000')
 ).replace(/\/+$/, "");
 
 let csrfToken = null;
@@ -47,7 +47,7 @@ function storeTokens(data) {
       Object.keys(sessionStorage).forEach(k => {
         if (k.startsWith('mdf_cache_')) sessionStorage.removeItem(k);
       });
-    } catch {}
+    } catch { }
   }
 }
 
@@ -63,7 +63,7 @@ export function clearTokens() {
       Object.keys(sessionStorage).forEach(k => {
         if (k.startsWith('mdf_cache_')) sessionStorage.removeItem(k);
       });
-    } catch {}
+    } catch { }
   }
 }
 
@@ -298,6 +298,12 @@ export const api = {
 
   updateProfile: (data) => apiCall('/api/user/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
+  getOnboardingStatus: () => apiCall('/api/user/onboarding-status'),
+
+  saveOnboardingSetup: (data) => apiCall('/api/user/onboarding-setup', { method: 'POST', body: JSON.stringify(data) }),
+
+  completeOnboarding: () => apiCall('/api/user/onboarding-complete', { method: 'POST' }),
+
   changePassword: (data) => apiCall('/api/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 
   changeEmail: (data) => apiCall('/api/auth/change-email', { method: 'POST', body: JSON.stringify(data) }),
@@ -414,6 +420,20 @@ export const api = {
   createRule: (data) => apiCall('/api/admin/rules', { method: 'POST', body: JSON.stringify(data) }),
   updateRule: (id, data) => apiCall(`/api/admin/rules?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteRule: (id) => apiCall(`/api/admin/rules?id=${id}`, { method: 'DELETE' }),
+
+  // Virtual Patching & Hot CVE Studio
+  adminGetVirtualPatches: () => apiCall('/api/v1/admin/rules/patches'),
+  adminCreateVirtualPatch: (data) => apiCall('/api/v1/admin/rules/patches', { method: 'POST', body: JSON.stringify(data) }),
+  adminToggleVirtualPatch: (id) => apiCall(`/api/v1/admin/rules/patches/${id}/toggle`, { method: 'PUT' }),
+  adminDeleteVirtualPatch: (id) => apiCall(`/api/v1/admin/rules/patches/${id}`, { method: 'DELETE' }),
+
+  // False Positive Whitelisting
+  adminGetWhitelists: () => apiCall('/api/v1/admin/rules/whitelists'),
+  adminCreateWhitelist: (data) => apiCall('/api/v1/admin/rules/whitelists', { method: 'POST', body: JSON.stringify(data) }),
+  adminDeleteWhitelist: (id) => apiCall(`/api/v1/admin/rules/whitelists/${id}`, { method: 'DELETE' }),
+
+  // Attack Evasion Lab & Rapid Blocker
+  adminTestEvasion: (data) => apiCall('/api/v1/admin/rules/test-evasion', { method: 'POST', body: JSON.stringify(data) }),
   getClients: () => apiCall('/api/admin/clients'),
   addClient: (data) => apiCall('/api/admin/clients', { method: 'POST', body: JSON.stringify(data) }),
   updateClient: (id, data) => apiCall(`/api/admin/clients?id=${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -456,9 +476,33 @@ export const api = {
 
   adminGetPricing: () => apiCall('/api/v1/admin/pricing'),
   adminUpdatePricing: (plans) => apiCall('/api/v1/admin/pricing', { method: 'POST', body: JSON.stringify({ plans }) }),
+  adminGetDynamicPricingConfig: () => apiCall('/api/v1/admin/pricing/config'),
+  adminUpdateDynamicPricingConfig: (config) => apiCall('/api/v1/admin/pricing/config', { method: 'POST', body: JSON.stringify(config) }),
+  getPublicPricingConfig: () => apiCall('/api/v1/pricing/config', { skipAuthRedirect: true }).catch(() => ({ data: null })),
 
   adminGetTenantWebsites: () => apiCall('/api/v1/admin/websites'),
   adminDeleteTenantWebsite: (id) => apiCall(`/api/v1/admin/websites/${id}`, { method: 'DELETE' }),
+  adminUpdateWebsiteWafMode: (id, waf_mode) => apiCall(`/api/v1/admin/websites/${id}/waf_mode`, { method: 'PUT', body: JSON.stringify({ waf_mode }) }),
+  adminPingWebsite: (id) => apiCall(`/api/v1/admin/websites/${id}/ping`, { method: 'POST' }),
+  adminImpersonateUser: (userId) => apiCall(`/api/v1/admin/users/${userId}/impersonate`, { method: 'POST' }),
+
+  // International Compliance & Audit Trail
+  adminGetAuditLogs: (params) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+    return apiCall(`/api/v1/admin/audit-log${qs}`)
+  },
+  adminGetComplianceSettings: () => apiCall('/api/v1/admin/compliance/settings'),
+  adminUpdateComplianceSettings: (data) => apiCall('/api/v1/admin/compliance/settings', { method: 'POST', body: JSON.stringify(data) }),
+  adminExportUserData: (userId) => apiCall(`/api/v1/admin/compliance/export/${userId}`),
+  adminPurgeUserData: (userId) => apiCall(`/api/v1/admin/compliance/purge/${userId}`, { method: 'POST' }),
+
+  // 5.32M+ WordPress Checksum & Integrity Sync
+  adminGetChecksumStatus: () => apiCall('/api/v1/admin/checksums/status'),
+  adminSyncChecksums: () => apiCall('/api/v1/admin/checksums/sync', { method: 'POST' }),
+
+  // Fleet Global Broadcast Notices
+  adminGetBroadcastNotices: () => apiCall('/api/v1/admin/broadcast-notice'),
+  adminCreateBroadcastNotice: (data) => apiCall('/api/v1/admin/broadcast-notice', { method: 'POST', body: JSON.stringify(data) }),
 
   adminGetOverview: () => apiCall('/api/v1/admin/overview'),
   adminGetSystemHealth: () => apiCall('/api/v1/admin/system-health'),
@@ -486,7 +530,7 @@ export const api = {
   getWebsiteSecuritySettings: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/security-settings`),
   getMyIp: () => apiCall('/api/v1/my-ip'),
   updateWebsiteSecuritySettings: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/security-settings`, {
-    method: 'PATCH',
+    method: 'POST',
     body: JSON.stringify(data)
   }),
   triggerWebsiteScan: (websiteId, scanType = 'full') =>
@@ -582,6 +626,10 @@ export const api = {
     apiCall(`/api/v1/websites/${websiteId}/health-audit`),
   getWebsitePerformanceAudit: (websiteId, strategy = 'desktop', force = false) =>
     apiCall(`/api/v1/websites/${websiteId}/performance-audit?strategy=${strategy}&force=${force}`),
+  clearFleetActivityLogs: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiCall(`/api/v1/websites/fleet/activity${qs ? '?' + qs : ''}`, { method: 'DELETE' })
+  },
   getFleetActivityLogs: (params = {}) => {
     const qs = new URLSearchParams(params).toString()
     return apiCall(`/api/v1/websites/fleet/activity${qs ? '?' + qs : ''}`)
@@ -723,6 +771,16 @@ export const api = {
   deleteNotification: (id) => apiCall(`/api/v1/notifications/${id}`, { method: 'DELETE' }),
   clearAllNotifications: () => apiCall('/api/v1/notifications/clear', { method: 'DELETE' }),
   sendTestNotification: () => apiCall('/api/v1/notifications/test', { method: 'POST' }),
+  testNotificationWebhook: (data = {}) => apiCall('/api/v1/notifications/test-webhook', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Executive Security Reports & Automated Digest Schedules
+  generateExecutiveReport: (websiteId = 'all', period = '30d') =>
+    apiCall(`/api/v1/reports/generate?website_id=${encodeURIComponent(websiteId || 'all')}&period=${encodeURIComponent(period || '30d')}`),
+  getReportSchedules: () => apiCall('/api/v1/reports/schedules'),
+  createReportSchedule: (data) => apiCall('/api/v1/reports/schedules', { method: 'POST', body: JSON.stringify(data) }),
+  updateReportSchedule: (id, data) => apiCall(`/api/v1/reports/schedules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteReportSchedule: (id) => apiCall(`/api/v1/reports/schedules/${id}`, { method: 'DELETE' }),
+  runReportScheduleNow: (id) => apiCall(`/api/v1/reports/schedules/${id}/run-now`, { method: 'POST' }),
 
   // Team RBAC APIs
   getTeamMembers: () => apiCall('/api/v1/team/members'),
@@ -793,6 +851,52 @@ export const api = {
   },
   saveWebsiteBackupSchedule: (websiteId, data) => apiCall(`/api/v1/websites/${websiteId}/backups/schedule`, { method: 'POST', body: JSON.stringify(data) }),
   getWebsiteBackupDownloadUrl: (websiteId, filename) => `${API_BASE}/api/v1/websites/${websiteId}/backups/${encodeURIComponent(filename)}/download`,
+
+  // Enterprise Database Optimizer APIs
+  getWebsiteDbStatus: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/database/status`),
+  optimizeWebsiteDb: (websiteId, targets = ['all']) => apiCall(`/api/v1/websites/${websiteId}/database/optimize`, { method: 'POST', body: JSON.stringify({ targets }) }),
+  bulkOptimizeDb: (targets = ['all'], websiteIds = null) => apiCall('/api/v1/websites/bulk/database/optimize', { method: 'POST', body: JSON.stringify({ targets, website_ids: websiteIds }) }),
+
+  // Environment Governance & Debug Lockdown APIs
+  getWebsiteEnvironmentStatus: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/environment/status`),
+  enforceWebsiteEnvironmentLockdown: (websiteId, options = {}) => apiCall(`/api/v1/websites/${websiteId}/environment/lockdown`, { method: 'POST', body: JSON.stringify({ options }) }),
+  purgeWebsiteDebugLog: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/environment/purge-debug-log`, { method: 'POST' }),
+  bulkEnforceEnvironmentLockdown: (options = {}, websiteIds = null) => apiCall('/api/v1/websites/bulk/environment/lockdown', { method: 'POST', body: JSON.stringify({ options, website_ids: websiteIds }) }),
+
+  // Google Blacklist & Domain Reputation APIs
+  getWebsiteReputation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/reputation/status`),
+  scanWebsiteReputation: (websiteId) => apiCall(`/api/v1/websites/${websiteId}/reputation/scan`, { method: 'POST' }),
+  getFleetReputation: () => apiCall('/api/v1/websites/bulk/reputation/fleet'),
+  scanFleetReputation: (websiteIds = null) => apiCall('/api/v1/websites/bulk/reputation/scan', { method: 'POST', body: JSON.stringify({ website_ids: websiteIds }) }),
+
+  // Support Desk & Incident Resolution APIs (Admin + Multi-Tenant User)
+  getAdminSupportTickets: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.status) q.append('status', params.status)
+    if (params.priority) q.append('priority', params.priority)
+    if (params.category) q.append('category', params.category)
+    if (params.search) q.append('search', params.search)
+    if (params.limit) q.append('limit', params.limit)
+    if (params.skip) q.append('skip', params.skip)
+    return apiCall(`/api/admin/support/tickets?${q.toString()}`)
+  },
+  getAdminSupportTicketDetails: (ticketId) => apiCall(`/api/admin/support/tickets/${ticketId}`),
+  replyAdminSupportTicket: (ticketId, data) => apiCall(`/api/admin/support/tickets/${ticketId}/reply`, { method: 'POST', body: JSON.stringify(data) }),
+  updateAdminTicketStatus: (ticketId, data) => apiCall(`/api/admin/support/tickets/${ticketId}/status`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAdminTicket: (ticketId) => apiCall(`/api/admin/support/tickets/${ticketId}`, { method: 'DELETE' }),
+  getAdminRemoteDiagnostics: (domain) => apiCall(`/api/admin/support/inspector?domain=${encodeURIComponent(domain)}`),
+
+  getUserSupportTickets: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.status) q.append('status', params.status)
+    if (params.limit) q.append('limit', params.limit)
+    if (params.skip) q.append('skip', params.skip)
+    return apiCall(`/api/user/support/tickets?${q.toString()}`)
+  },
+  createUserSupportTicket: (data) => apiCall('/api/user/support/tickets', { method: 'POST', body: JSON.stringify(data) }),
+  getUserSupportTicketDetails: (ticketId) => apiCall(`/api/user/support/tickets/${ticketId}`),
+  replyUserSupportTicket: (ticketId, data) => apiCall(`/api/user/support/tickets/${ticketId}/reply`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteUserSupportTicket: (ticketId) => apiCall(`/api/user/support/tickets/${ticketId}`, { method: 'DELETE' }),
 }
 
 export default api
