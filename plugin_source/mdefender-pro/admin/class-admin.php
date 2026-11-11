@@ -28,6 +28,8 @@ class WAF_FW_Admin {
         add_action('admin_head', [$this, 'admin_head_styles']);
         add_action('admin_notices', [$this, 'show_admin_notifications']);
         add_action('admin_page_access_denied', [$this, 'handle_access_denied_fallback']);
+        add_action('wp_ajax_waf_connector_save_connection', [$this, 'ajax_save_connection']);
+        add_action('wp_ajax_waf_connector_disconnect', [$this, 'ajax_disconnect']);
     }
 
     public function handle_legacy_redirects() {
@@ -158,6 +160,149 @@ class WAF_FW_Admin {
 
     public function render_agent_dashboard() {
         include WAF_FW_PLUGIN_DIR . 'admin/partials/agent-connector.php';
+    }
+
+    public function ajax_save_connection() {
+        check_ajax_referer('waf_connector_nonce_action', 'waf_connector_nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized permissions']);
+        }
+
+        $api_key = sanitize_text_field(trim($_POST['waf_api_key'] ?? ''));
+        $cloud_url = esc_url_raw(trim($_POST['waf_cloud_url'] ?? ''));
+        $allow_sso = !empty($_POST['waf_allow_cloud_sso']) ? 'yes' : 'no';
+        update_option('waf_allow_cloud_sso', $allow_sso);
+
+        if (empty($cloud_url)) {
+            $is_local_host = in_array(strtolower($_SERVER['HTTP_HOST'] ?? ''), ['localhost', '127.0.0.1']) || strpos($_SERVER['HTTP_HOST'] ?? '', 'localhost') !== false;
+            $cloud_url = $is_local_host ? 'http://127.0.0.1:8000' : 'https://mdefender-pro.crafix.tech';
+        }
+
+        if (empty($api_key) || strlen($api_key) < 16) {
+            wp_send_json_error(['message' => 'Valid MDefender Pro API Key required (minimum 16 characters).']);
+        }
+
+        $host = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        $clean_host = preg_replace('/^www\./i', '', $host);
+        $site_path = trim(parse_url(home_url(), PHP_URL_PATH) ?? '', '/');
+        if (in_array(strtolower($clean_host), ['localhost', '127.0.0.1']) && !empty($site_path)) {
+            $clean_domain = $clean_host . '/' . $site_path;
+        } else {
+            $clean_domain = $clean_host;
+        }
+
+        $handshake_payload = [
+            'api_key' => $api_key,
+            'domain' => $clean_domain,
+            'site_url' => home_url(),
+            'home_url' => home_url(),
+            'site_name' => get_bloginfo('name'),
+            'wp_version' => get_bloginfo('version'),
+            'php_version' => phpversion(),
+            'plugin_version' => defined('WAF_FW_VERSION') ? WAF_FW_VERSION : '4.3.0'
+        ];
+
+        $response = wp_remote_post(rtrim($cloud_url, '/') . '/api/v1/wordpress/connect', [
+            'timeout' => 15,
+            'sslverify' => false,
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $api_key
+            ],
+            'body' => wp_json_encode($handshake_payload)
+        ]);
+
+        if (is_wp_error($response)) {
+            wp_send_json_error(['message' => 'Connection failed: ' . $response->get_error_message()]);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+        $decoded = json_decode($body, true);
+
+        if ($code !== 200 || empty($decoded['data'])) {
+            $err = $decoded['detail'] ?? $decoded['message'] ?? 'Authentication failed. Please verify your API Key.';
+            wp_send_json_error(['message' => $err]);
+        }
+
+        $res_data = $decoded['data'];
+        $site_token = $res_data['site_token'] ?? '';
+        $website_id = $res_data['website_id'] ?? '';
+        $trial_days = intval($res_data['trial_days_remaining'] ?? 14);
+        $sub_status = $res_data['subscription_status'] ?? 'trial_active';
+
+        update_option('waf_fw_api_key', $api_key);
+        update_option('waf_fw_ml_api_key', $api_key);
+        if (!empty($site_token)) update_option('waf_fw_site_token', $site_token);
+        if (!empty($website_id)) update_option('waf_fw_website_id', $website_id);
+        update_option('waf_fw_trial_days_remaining', $trial_days);
+        update_option('waf_fw_subscription_status', $sub_status);
+        update_option('waf_fw_cloud_api_url', $cloud_url);
+        update_option('waf_fw_ml_api_url', $cloud_url);
+        update_option('waf_fw_connected', 'yes');
+        update_option('waf_fw_last_sync', current_time('mysql'));
+
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
+        wp_send_json_success([
+            'message' => 'Successfully connected to MDefender Pro Cloud Fleet!',
+            'trial_days' => $trial_days,
+            'status' => 'connected',
+            'last_sync' => date_i18n('M j, Y - H:i:s')
+        ]);
+    }
+
+    public function ajax_disconnect() {
+        check_ajax_referer('waf_connector_nonce_action', 'waf_connector_nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized permissions']);
+        }
+
+        $api_key = get_option('waf_fw_api_key', get_option('waf_fw_ml_api_key', ''));
+        $cloud_url = get_option('waf_fw_cloud_api_url', 'https://mdefender-pro.crafix.tech');
+        $site_token = get_option('waf_fw_site_token', '');
+        $website_id = get_option('waf_fw_website_id', '');
+
+        if (!empty($cloud_url)) {
+            $host = parse_url(home_url(), PHP_URL_HOST) ?: ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            wp_remote_post(rtrim($cloud_url, '/') . '/api/v1/wordpress/disconnect', [
+                'timeout' => 5,
+                'sslverify' => false,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $api_key
+                ],
+                'body' => wp_json_encode([
+                    'api_key' => $api_key,
+                    'domain' => $host,
+                    'website_id' => $website_id,
+                    'site_token' => $site_token
+                ])
+            ]);
+        }
+
+        delete_option('waf_fw_api_key');
+        delete_option('waf_fw_ml_api_key');
+        delete_option('waf_fw_site_token');
+        delete_option('waf_fw_website_id');
+        delete_option('waf_fw_trial_days_remaining');
+        delete_option('waf_fw_subscription_status');
+        delete_option('waf_allow_cloud_sso');
+        delete_option('waf_fw_last_sync');
+        delete_option('waf_fw_local_blacklist_cache');
+        update_option('waf_fw_connected', 'no');
+        wp_clear_scheduled_hook('waf_fw_cloud_heartbeat');
+
+        if (class_exists('WAF_FW_Engine')) {
+            WAF_FW_Engine::instance()->export_fast_cache();
+        }
+
+        wp_send_json_success([
+            'message' => 'Agent disconnected. Protection is currently dormant.',
+            'status' => 'disconnected'
+        ]);
     }
 
     // Dynamic alias fallbacks
