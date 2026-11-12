@@ -1,6 +1,4 @@
 <?php
-defined('ABSPATH') || exit('Access Denied');
-
 /**
  * Plugin Name: MDefender-Pro
  * Plugin URI: https://mdefender-pro.io
